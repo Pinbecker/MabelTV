@@ -1,0 +1,15 @@
+{
+    "crt_effect": "low",
+    "default_aspect": "crop",
+    "display_resolution": "720p",
+    "parent_pin": "0973",
+    "picture_mode": "channel",
+    "playback_mode": "continuous",
+    "schema_version": 1,
+    "sound_effects_enabled": true,
+    "volume": {
+        "initial": 20,
+        "limit_enabled": true,
+        "maximum": 60
+    }
+}

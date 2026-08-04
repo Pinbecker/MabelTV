@@ -1,0 +1,6 @@
+/out/
+/dev-data/
+/CMakeUserPresets.json
+*.user
+*.autosave
+

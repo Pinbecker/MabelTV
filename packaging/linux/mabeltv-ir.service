@@ -1,0 +1,13 @@
+[Unit]
+Description=Mabel TV infrared keymap
+After=systemd-udev-settle.service
+Before=mabeltv.service
+ConditionPathExists=/etc/rc_keymaps/mabeltv.toml
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/ir-keytable -s rc0 -c -w /etc/rc_keymaps/mabeltv.toml
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

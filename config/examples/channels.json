@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "channels": [
+    {
+      "number": 1,
+      "name": "Postman Pat",
+      "folder": "postman-pat",
+      "aspect": "crop"
+    },
+    {
+      "number": 2,
+      "name": "Fireman Sam",
+      "folder": "fireman-sam",
+      "aspect": "crop"
+    },
+    {
+      "number": 3,
+      "name": "Thomas the Tank Engine",
+      "folder": "thomas",
+      "aspect": "crop"
+    },
+    {
+      "number": 5,
+      "name": "Films",
+      "folder": "films",
+      "aspect": "fit"
+    },
+    {
+      "number": 8,
+      "name": "Family Videos",
+      "folder": "family",
+      "aspect": "fit"
+    },
+    {
+      "number": 99,
+      "name": "No Signal Test",
+      "folder": "empty-channel",
+      "aspect": "crop"
+    }
+  ]
+}

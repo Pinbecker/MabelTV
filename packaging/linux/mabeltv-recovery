@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+install -d -o mabeltv -g mabeltv -m 0750 /var/lib/mabeltv/recovery
+date --iso-8601=seconds >> /var/lib/mabeltv/recovery/startup-failures.log
+journalctl -u mabeltv.service -n 100 --no-pager > /var/lib/mabeltv/recovery/last-failure.log
+chown mabeltv:mabeltv /var/lib/mabeltv/recovery/startup-failures.log /var/lib/mabeltv/recovery/last-failure.log

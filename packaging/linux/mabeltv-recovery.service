@@ -1,0 +1,6 @@
+[Unit]
+Description=Record a Mabel TV startup failure
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/mabeltv-recovery
