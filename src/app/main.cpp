@@ -90,9 +90,10 @@ int main(int argc, char *argv[])
     if (forceOpenGlEs2) {
         // Debian 13 currently ships a libmpv OpenGL render-API regression
         // (upstream mpv #17217): an unreclaimable GL fence is allocated for
-        // every embedded frame.  The GLES 2 path does not expose GL_ARB_sync,
-        // so the affected libmpv code is never entered.  This remains a
-        // supported renderer for both Qt Quick and libmpv on the Pi.
+        // every embedded frame. The Pi service pairs this GLES 2 request with
+        // Mesa version/extension overrides so the affected GL sync path is not
+        // exposed to libmpv. This remains a supported renderer for both Qt
+        // Quick and libmpv on the Pi.
         QSurfaceFormat format = QSurfaceFormat::defaultFormat();
         format.setRenderableType(QSurfaceFormat::OpenGLES);
         format.setVersion(2, 0);

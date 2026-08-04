@@ -63,8 +63,9 @@ the descriptor columns recorded by `sudo mabeltv-soak-test`. Debian 13's
 libmpv OpenGL render API has an upstream fence leak (mpv issue 17217): embedded
 rendering creates one `sync_file` per frame but never runs the swap-chain cleanup
 that releases it. The Pi service selects the supported OpenGL ES 2 compatibility
-path until Debian ships upstream fix `f74adc4`; this leaves hardware video
-decoding enabled while avoiding the affected OpenGL sync API. Run
+path and masks Mesa's `GL_ARB_sync`/`GL_APPLE_sync` extensions until Debian ships
+upstream fix `f74adc4`; this leaves hardware video decoding enabled while making
+the affected fence call unavailable to libmpv. Run
 `sudo mabeltv-fence-check` after an update to verify in one minute that the
 descriptor count remains bounded.
 

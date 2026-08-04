@@ -33,9 +33,13 @@ Environment=QT_QPA_EGLFS_KMS_ATOMIC=1
 Environment=MABELTV_HIDE_CURSOR=1
 Environment=MABELTV_HWDEC=auto-safe
 # Debian 13 libmpv 0.40/0.41 leaks one GL sync-file descriptor for every
-# embedded OpenGL frame (mpv #17217). GLES 2 avoids that unavailable cleanup
-# path until a distro libmpv containing upstream fix f74adc4 is installed.
+# embedded OpenGL frame (mpv #17217). Request the compatible renderer and mask
+# Mesa's sync extensions so libmpv cannot enter the affected path until a
+# distro libmpv containing upstream fix f74adc4 is installed.
 Environment=MABELTV_FORCE_GLES2=1
+Environment=MESA_GLES_VERSION_OVERRIDE=2.0
+Environment=MESA_GL_VERSION_OVERRIDE=2.1
+Environment="MESA_EXTENSION_OVERRIDE=-GL_ARB_sync -GL_APPLE_sync"
 ExecStart=/opt/mabeltv/current/mabeltv-launch
 Restart=on-failure
 RestartSec=2
