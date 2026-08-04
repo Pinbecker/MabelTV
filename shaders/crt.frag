@@ -40,7 +40,9 @@ float analogueNoise(vec2 point)
 void main()
 {
     vec2 centered = qt_TexCoord0 * 2.0 - 1.0;
-    float curve = 1.0 + 0.007 * uniforms.effectStrength * dot(centered, centered);
+    float glass = clamp(uniforms.effectStrength, 0.0, 1.0);
+    float glassCurve = pow(glass, 1.25);
+    float curve = 1.0 + 0.040 * glassCurve * dot(centered, centered);
     // Bend the contents within the fixed rounded screen instead of expanding
     // them beyond the texture. Expanding created a second transparent edge
     // that became squarer and more obvious as CRT Glass increased.
@@ -48,10 +50,13 @@ void main()
     float mask = roundedScreenMask(qt_TexCoord0);
     float distortion = clamp(uniforms.distortion, 0.0, 1.0);
 
+    // Motion is deliberately reserved for the very top of the distortion
+    // control. Lower settings add age and haze without making the image swim.
+    float wobbleAmount = smoothstep(0.94, 1.0, distortion);
     float horizontalWobble = sin(sampleUv.y * 31.0 + uniforms.phase * 4.7)
         + 0.45 * sin(sampleUv.y * 83.0 - uniforms.phase * 7.1);
-    sampleUv.x += horizontalWobble * 0.0018 * distortion;
-    sampleUv.y += sin(uniforms.phase * 3.3) * 0.0012 * distortion;
+    sampleUv.x += horizontalWobble * 0.00032 * wobbleAmount;
+    sampleUv.y += sin(uniforms.phase * 3.3) * 0.00012 * wobbleAmount;
 
     if (mask <= 0.0) {
         fragColor = vec4(0.0);
@@ -71,14 +76,14 @@ void main()
                                clamp(sampleUv + vec2(pixel.x, 0.0),
                                      sampleMinimum,
                                      sampleMaximum));
-    float softness = 0.07 * uniforms.effectStrength;
+    float softness = 0.025 * glass + 0.14 * distortion;
     vec3 colour = centreSample.rgb * (1.0 - softness * 2.0)
         + (leftSample.rgb + rightSample.rgb) * softness;
-    colour.r = mix(colour.r, rightSample.r, 0.025 * uniforms.effectStrength);
-    colour.b = mix(colour.b, leftSample.b, 0.025 * uniforms.effectStrength);
+    colour.r = mix(colour.r, rightSample.r, 0.012 * glass);
+    colour.b = mix(colour.b, leftSample.b, 0.012 * glass);
 
     if (distortion > 0.001) {
-        float colourOffset = (0.5 + 4.5 * distortion * distortion) * pixel.x;
+        float colourOffset = (0.5 + 3.5 * distortion * distortion) * pixel.x;
         vec3 separatedColour = vec3(
             texture(source,
                     clamp(sampleUv + vec2(colourOffset, 0.0),
@@ -89,20 +94,29 @@ void main()
                     clamp(sampleUv - vec2(colourOffset, 0.0),
                           sampleMinimum,
                           sampleMaximum)).b);
-        colour = mix(colour, separatedColour, 0.58 * distortion);
+        colour = mix(colour, separatedColour, 0.44 * distortion);
 
         float grain = analogueNoise(sampleUv * uniforms.resolution
                                      + vec2(uniforms.phase * 31.0));
-        colour += (grain - 0.5) * 0.085 * distortion;
+        float coarseGrain = analogueNoise(floor(sampleUv * uniforms.resolution / 5.0)
+                                          + vec2(uniforms.phase * 7.0));
+        colour += (grain - 0.5) * 0.105 * distortion;
+        colour += (coarseGrain - 0.5) * 0.035 * distortion * distortion;
+        float luminance = dot(colour, vec3(0.299, 0.587, 0.114));
+        colour = mix(colour, vec3(luminance), 0.075 * distortion);
+        colour = mix(colour, colour * 0.88 + vec3(0.055),
+                     0.15 * distortion);
     }
 
-    float scanline = 1.0 - 0.035 * uniforms.effectStrength
+    float scanline = 1.0 - (0.018 * glass + 0.055 * distortion)
         * (0.5 + 0.5 * sin(sampleUv.y * uniforms.resolution.y * 3.14159265));
-    float vignette = 1.0 - 0.09 * uniforms.effectStrength
+    float vignette = 1.0 - 0.18 * glassCurve
         * smoothstep(0.38, 1.25, length(centered));
+    float cornerDepth = pow(abs(centered.x * centered.y), 1.35);
+    float glassDepth = 1.0 - 0.13 * glassCurve * cornerDepth;
     float analogueVariation = 1.0
-        - uniforms.flicker * uniforms.effectStrength * 0.005;
-    colour *= scanline * vignette * analogueVariation;
+        - uniforms.flicker * (0.001 * glass + 0.003 * distortion);
+    colour *= scanline * vignette * glassDepth * analogueVariation;
 
     fragColor = vec4(colour, centreSample.a * mask) * uniforms.qt_Opacity;
 }

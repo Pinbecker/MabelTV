@@ -31,7 +31,7 @@ Item {
         case 0: return pretty(controller.playbackMode)
         case 1: return pretty(controller.pictureMode)
         case 2: return pretty(controller.tvBorderStyle)
-        case 3: return controller.crtEffectLevel.toUpperCase()
+        case 3: return controller.crtGlass + "%"
         case 4: return controller.videoDistortion + "%"
         case 5: return controller.displayResolution.toUpperCase()
         case 6: return controller.volumeLimitEnabled ? "ON" : "OFF"
@@ -52,7 +52,7 @@ Item {
         case 0: controller.cyclePlaybackMode(direction); break
         case 1: controller.cyclePictureMode(direction); break
         case 2: controller.cycleTvBorderStyle(direction); break
-        case 3: controller.cycleCrtEffectLevel(direction); break
+        case 3: controller.adjustCrtGlass(direction); break
         case 4: controller.adjustVideoDistortion(direction); break
         case 5: controller.cycleDisplayResolution(direction); break
         case 6: controller.toggleVolumeLimit(); break
@@ -329,7 +329,7 @@ Item {
                             font.family: "Consolas"
                             font.pixelSize: 14
                             horizontalAlignment: Text.AlignRight
-                            visible: index !== 4
+                            visible: index !== 3 && index !== 4
                             text: overlay.valueForRow(index)
                         }
 
@@ -340,7 +340,7 @@ Item {
                             anchors.leftMargin: parent.width * 0.58
                             anchors.rightMargin: 12
                             height: 22
-                            visible: index === 4
+                            visible: index === 3 || index === 4
 
                             Rectangle {
                                 anchors.left: parent.left
@@ -357,7 +357,9 @@ Item {
                                     anchors.left: parent.left
                                     anchors.top: parent.top
                                     anchors.bottom: parent.bottom
-                                    width: parent.width * controller.videoDistortion / 100
+                                    width: parent.width * (index === 3
+                                        ? controller.crtGlass
+                                        : controller.videoDistortion) / 100
                                     radius: parent.radius
                                     color: index === overlay.selectedRow ? "#a6d49d" : "#6d936b"
                                     antialiasing: true
@@ -373,7 +375,8 @@ Item {
                                 font.family: "Consolas"
                                 font.pixelSize: 14
                                 horizontalAlignment: Text.AlignRight
-                                text: controller.videoDistortion + "%"
+                                text: (index === 3 ? controller.crtGlass
+                                                   : controller.videoDistortion) + "%"
                             }
                         }
                     }

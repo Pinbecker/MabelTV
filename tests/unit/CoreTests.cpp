@@ -423,6 +423,7 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
         "schema_version": 1,
         "parent_pin": "0973",
         "playback_mode": "continuous",
+        "crt_effect": "low",
         "volume": {"initial": 20, "maximum": 60, "limit_enabled": true}
     })");
     settings.close();
@@ -446,12 +447,17 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
 
     controller.cyclePlaybackMode(1);
     controller.cycleTvBorderStyle(1);
+    QCOMPARE(controller.crtGlass(), 35);
+    for (int count = 0; count < 20; ++count) {
+        controller.adjustCrtGlass(1);
+    }
     for (int count = 0; count < 30; ++count) {
         controller.adjustVideoDistortion(1);
     }
     controller.toggleVolumeLimit();
     QCOMPARE(controller.playbackMode(), QStringLiteral("resume"));
     QCOMPARE(controller.tvBorderStyle(), QStringLiteral("charcoal"));
+    QCOMPARE(controller.crtGlass(), 100);
     QCOMPARE(controller.videoDistortion(), 100);
     QVERIFY(!controller.volumeLimitEnabled());
 
@@ -462,6 +468,8 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
              QStringLiteral("resume"));
     QCOMPARE(savedDocument.object().value(QStringLiteral("tv_border")).toString(),
              QStringLiteral("charcoal"));
+    QCOMPARE(savedDocument.object().value(QStringLiteral("crt_glass")).toInt(), 100);
+    QVERIFY(!savedDocument.object().contains(QStringLiteral("crt_effect")));
     QCOMPARE(savedDocument.object().value(QStringLiteral("video_distortion")).toInt(), 100);
     QVERIFY(!savedDocument.object().contains(QStringLiteral("parent_pin")));
     QVERIFY(!savedDocument.object()
@@ -477,6 +485,7 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
                                 directory.filePath(QStringLiteral("restored-state.json")),
                                 [](const QString &) { return MediaInspection{}; }));
     QCOMPARE(restored.tvBorderStyle(), QStringLiteral("charcoal"));
+    QCOMPARE(restored.crtGlass(), 100);
     QCOMPARE(restored.videoDistortion(), 100);
 }
 

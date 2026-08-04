@@ -39,7 +39,7 @@ class TvController final : public QObject
     Q_PROPERTY(QString playbackMode READ playbackMode NOTIFY playbackModeChanged)
     Q_PROPERTY(QString pictureMode READ pictureMode NOTIFY pictureModeChanged)
     Q_PROPERTY(QString displayResolution READ displayResolution NOTIFY displayResolutionChanged)
-    Q_PROPERTY(QString crtEffectLevel READ crtEffectLevel NOTIFY crtEffectLevelChanged)
+    Q_PROPERTY(int crtGlass READ crtGlass NOTIFY crtGlassChanged)
     Q_PROPERTY(QString tvBorderStyle READ tvBorderStyle NOTIFY tvBorderStyleChanged)
     Q_PROPERTY(int videoDistortion READ videoDistortion NOTIFY videoDistortionChanged)
     Q_PROPERTY(bool soundEffectsEnabled READ soundEffectsEnabled NOTIFY soundEffectsEnabledChanged)
@@ -98,7 +98,7 @@ public:
     [[nodiscard]] QString playbackMode() const;
     [[nodiscard]] QString pictureMode() const;
     [[nodiscard]] QString displayResolution() const;
-    [[nodiscard]] QString crtEffectLevel() const;
+    [[nodiscard]] int crtGlass() const;
     [[nodiscard]] QString tvBorderStyle() const;
     [[nodiscard]] int videoDistortion() const;
     [[nodiscard]] bool soundEffectsEnabled() const;
@@ -118,7 +118,7 @@ public:
     Q_INVOKABLE void cyclePlaybackMode(int direction);
     Q_INVOKABLE void cyclePictureMode(int direction);
     Q_INVOKABLE void cycleDisplayResolution(int direction);
-    Q_INVOKABLE void cycleCrtEffectLevel(int direction);
+    Q_INVOKABLE void adjustCrtGlass(int direction);
     Q_INVOKABLE void cycleTvBorderStyle(int direction);
     Q_INVOKABLE void adjustVideoDistortion(int direction);
     Q_INVOKABLE void toggleSoundEffects();
@@ -147,7 +147,7 @@ signals:
     void playbackModeChanged();
     void pictureModeChanged();
     void displayResolutionChanged();
-    void crtEffectLevelChanged();
+    void crtGlassChanged();
     void tvBorderStyleChanged();
     void videoDistortionChanged();
     void soundEffectsEnabledChanged();
@@ -222,7 +222,7 @@ private:
     QString m_playbackMode = QStringLiteral("continuous");
     QString m_pictureMode = QStringLiteral("channel");
     QString m_displayResolution = QStringLiteral("720p");
-    QString m_crtEffectLevel = QStringLiteral("low");
+    int m_crtGlass = 35;
     QString m_tvBorderStyle = QStringLiteral("slim-black");
     int m_videoDistortion = 20;
     QJsonObject m_settingsRoot;

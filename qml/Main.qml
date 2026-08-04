@@ -116,10 +116,12 @@ Window {
         id: cabinet
 
         readonly property string styleName: tvController.tvBorderStyle
-        readonly property real sideInset: styleName === "slim-black" ? 18
-            : (styleName === "charcoal" ? 26 : (styleName === "walnut" ? 32 : 28))
-        readonly property real lipWidth: styleName === "slim-black" ? 5
-            : (styleName === "walnut" ? 8 : 7)
+        readonly property real sideInset: Math.max(54, width * (
+            styleName === "slim-black" ? 0.070
+            : (styleName === "charcoal" ? 0.085
+               : (styleName === "walnut" ? 0.095 : 0.082))))
+        readonly property real lipWidth: Math.max(12, width * (
+            styleName === "walnut" ? 0.018 : 0.015))
         readonly property color lipColor: styleName === "slim-black" ? "#060807"
             : (styleName === "charcoal" ? "#171b18"
                : (styleName === "walnut" ? "#24170f" : "#554d40"))
@@ -127,8 +129,8 @@ Window {
         anchors.centerIn: parent
         width: Math.min(root.width - 48, (root.height - 48) * 4 / 3)
         height: width * 3 / 4
-        radius: styleName === "slim-black" ? Math.max(30, width * 0.041)
-            : Math.max(34, width * 0.052)
+        radius: styleName === "slim-black" ? Math.max(38, width * 0.055)
+            : Math.max(44, width * 0.067)
         color: "#151a16"
         border.color: styleName === "slim-black" ? "#454c46"
             : (styleName === "charcoal" ? "#646a62"
@@ -181,8 +183,8 @@ Window {
             anchors.centerIn: parent
             width: cabinet.width - cabinet.sideInset * 2
             height: width * 3 / 4
-            radius: cabinet.styleName === "slim-black" ? Math.max(25, width * 0.032)
-                : Math.max(28, width * 0.039)
+            radius: cabinet.styleName === "slim-black" ? Math.max(38, width * 0.065)
+                : Math.max(42, width * 0.075)
             color: "#010201"
             clip: true
             antialiasing: true
@@ -191,8 +193,7 @@ Window {
             layer.effect: ShaderEffect {
                 property variant source
                 property real flicker: root.flickerAmount
-                property real effectStrength: tvController.crtEffectLevel === "off" ? 0
-                    : (tvController.crtEffectLevel === "high" ? 1.65 : 1)
+                property real effectStrength: tvController.crtGlass / 100
                 property real distortion: tvController.videoDistortion / 100
                 property real phase: root.distortionPhase
                 property real cornerRadius: screen.radius
@@ -277,12 +278,33 @@ Window {
             Rectangle {
                 anchors.fill: parent
                 color: "transparent"
+                opacity: tvController.crtGlass / 100
 
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: "#18ffffff" }
-                    GradientStop { position: 0.17; color: "#05000000" }
-                    GradientStop { position: 0.78; color: "#09000000" }
-                    GradientStop { position: 1.0; color: "#1d000000" }
+                    GradientStop { position: 0.0; color: "#60ffffff" }
+                    GradientStop { position: 0.16; color: "#24ffffff" }
+                    GradientStop { position: 0.46; color: "#03000000" }
+                    GradientStop { position: 0.78; color: "#13000000" }
+                    GradientStop { position: 1.0; color: "#36000000" }
+                }
+            }
+
+            Rectangle {
+                width: screen.width * 1.18
+                height: screen.height * 0.23
+                x: -screen.width * 0.12
+                y: screen.height * 0.055
+                rotation: -10
+                transformOrigin: Item.Center
+                opacity: 0.72 * Math.pow(tvController.crtGlass / 100, 1.3)
+                color: "transparent"
+
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: "#00ffffff" }
+                    GradientStop { position: 0.34; color: "#28ffffff" }
+                    GradientStop { position: 0.50; color: "#64ffffff" }
+                    GradientStop { position: 0.67; color: "#1cffffff" }
+                    GradientStop { position: 1.0; color: "#00ffffff" }
                 }
             }
 

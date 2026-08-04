@@ -15,7 +15,7 @@ Mabel TV is a native, child-friendly recreation of watching television in the 19
 - persistent channel, volume, and remote-lock state
 - corrupt-episode exclusion and automatic recovery
 - synthetic, non-copyrighted development channels and automated core tests
-- rounded/curved CRT shader, warm-up/standby transitions, scanlines, vignette, and adjustable 0–100 analogue distortion
+- thick selectable CRT cabinets, warm-up/standby transitions, and independent 0–100 curved-glass and analogue-distortion controls
 - hidden hold-and-confirm parent panel with complete channel/programme switches plus playback, picture, border, CRT, distortion, display, volume and lifecycle choices
 - portable Windows packaging with dependency discovery and clean-environment smoke tests
 - Raspberry Pi OS Lite installer using Qt EGLFS/KMS, safe libmpv hardware decoding, systemd restart/recovery and a 1 GB memory budget
@@ -80,8 +80,9 @@ Keyboard controls:
 
 Hold `B` for 3.5 seconds, then press Enter three times, to reveal parent access. Open
 **Channels & Programmes** there to switch entire channels or individual episodes and films on or off.
-`TV Border` cycles between Slim Black, Classic Charcoal, Warm Walnut and Cream 90s.
-`90s Distortion` is a 0–100 slider; use Left/Right to adjust it in five-point steps.
+`TV Border` cycles between thick Slim Black, Classic Charcoal, Warm Walnut and Cream 90s CRT cabinets.
+`CRT Glass` is a 0–100 slider for picture curvature, corner depth and reflective sheen.
+`90s Distortion` is a separate 0–100 haze, grain, softness, scanline and colour-bleed slider. It remains steady below 95 and adds only a tiny wobble at the very top. Use Left/Right to adjust either slider in five-point steps.
 
 ## Adding your media
 

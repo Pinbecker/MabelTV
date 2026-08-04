@@ -11,7 +11,8 @@ Do not treat the Pi as a finished child appliance until every applicable item pa
 - [ ] Continuous broadcast advances while away; resume and restart modes work.
 - [ ] Crop, fit, stretch and low/high/off CRT choices work.
 - [ ] All four TV borders have smooth outer and inner corners and survive restart.
-- [ ] The 90s distortion slider spans 0–100, visibly changes the content, and survives restart.
+- [ ] The CRT glass slider spans 0–100, increases curvature, corner depth and reflective sheen, and survives restart.
+- [ ] The 90s distortion slider spans 0–100, increases haze and grain without picture movement below 95, and survives restart.
 - [ ] Volume begins low and cannot exceed 60 until a parent changes policy.
 - [ ] Holding Back and pressing OK three times opens parent mode.
 - [ ] The parent library screen can disable and restore a channel, episode and film, and the choices survive restart.

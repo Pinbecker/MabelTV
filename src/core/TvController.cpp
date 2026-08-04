@@ -221,9 +221,9 @@ QString TvController::displayResolution() const
     return m_displayResolution;
 }
 
-QString TvController::crtEffectLevel() const
+int TvController::crtGlass() const
 {
-    return m_crtEffectLevel;
+    return m_crtGlass;
 }
 
 QString TvController::tvBorderStyle() const
@@ -545,14 +545,14 @@ void TvController::cycleDisplayResolution(int direction)
     setParentMessage(QStringLiteral("Display output applies after relaunch"));
 }
 
-void TvController::cycleCrtEffectLevel(int direction)
+void TvController::adjustCrtGlass(int direction)
 {
-    m_crtEffectLevel = cycleValue({QStringLiteral("off"),
-                                   QStringLiteral("low"),
-                                   QStringLiteral("high")},
-                                  m_crtEffectLevel,
-                                  direction);
-    emit crtEffectLevelChanged();
+    const int next = std::clamp(m_crtGlass + (direction < 0 ? -5 : 5), 0, 100);
+    if (next == m_crtGlass) {
+        return;
+    }
+    m_crtGlass = next;
+    emit crtGlassChanged();
     saveSettings();
 }
 
@@ -778,11 +778,16 @@ void TvController::loadSettings(const QString &settingsPath)
         ? resolution
         : QStringLiteral("720p");
 
-    const QString effectLevel = m_settingsRoot.value(QStringLiteral("crt_effect"))
-                                    .toString(QStringLiteral("low"));
-    m_crtEffectLevel = effectLevel == QStringLiteral("off") || effectLevel == QStringLiteral("high")
-        ? effectLevel
-        : QStringLiteral("low");
+    if (m_settingsRoot.contains(QStringLiteral("crt_glass"))) {
+        m_crtGlass = std::clamp(
+            m_settingsRoot.value(QStringLiteral("crt_glass")).toInt(35), 0, 100);
+    } else {
+        const QString legacyEffect = m_settingsRoot.value(QStringLiteral("crt_effect"))
+                                         .toString(QStringLiteral("low"));
+        m_crtGlass = legacyEffect == QStringLiteral("off")
+            ? 0
+            : (legacyEffect == QStringLiteral("high") ? 75 : 35);
+    }
     const QString borderStyle = m_settingsRoot.value(QStringLiteral("tv_border"))
                                     .toString(QStringLiteral("slim-black"));
     m_tvBorderStyle = borderStyle == QStringLiteral("charcoal")
@@ -835,7 +840,8 @@ void TvController::saveSettings()
     m_settingsRoot.insert(QStringLiteral("playback_mode"), m_playbackMode);
     m_settingsRoot.insert(QStringLiteral("picture_mode"), m_pictureMode);
     m_settingsRoot.insert(QStringLiteral("display_resolution"), m_displayResolution);
-    m_settingsRoot.insert(QStringLiteral("crt_effect"), m_crtEffectLevel);
+    m_settingsRoot.insert(QStringLiteral("crt_glass"), m_crtGlass);
+    m_settingsRoot.remove(QStringLiteral("crt_effect"));
     m_settingsRoot.insert(QStringLiteral("tv_border"), m_tvBorderStyle);
     m_settingsRoot.insert(QStringLiteral("video_distortion"), m_videoDistortion);
     m_settingsRoot.insert(QStringLiteral("sound_effects_enabled"), m_soundEffectsEnabled);
