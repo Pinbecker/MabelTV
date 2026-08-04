@@ -17,6 +17,9 @@ Window {
     property real flickerAmount: 0
     property bool previousHeldForParent: false
     property bool powerHeldForShutdown: false
+    readonly property bool showStatic: !directMediaMode
+        && (tvController.tuning
+            || (tvController.noSignal && player.status !== "Playing"))
     property bool introPlaying: false
     property bool televisionStarted: false
     property double lastChannelRepeatMs: 0
@@ -139,25 +142,48 @@ Window {
                 }
             }
 
-            ShaderEffect {
+            Item {
                 id: staticNoise
 
                 anchors.fill: parent
-                visible: !directMediaMode && (tvController.tuning || tvController.noSignal)
-                property real frame: 0
-                fragmentShader: "qrc:/shaders/static.frag.qsb"
+                visible: root.showStatic
+
+                Canvas {
+                    id: staticCanvas
+
+                    width: 160
+                    height: 120
+                    anchors.centerIn: parent
+                    scale: parent.width / width
+                    transformOrigin: Item.Center
+                    smooth: false
+
+                    onPaint: {
+                        const context = getContext("2d")
+                        const block = 2
+                        context.fillStyle = "#111411"
+                        context.fillRect(0, 0, width, height)
+                        for (let y = 0; y < height; y += block) {
+                            for (let x = 0; x < width; x += block) {
+                                const value = Math.floor(25 + Math.random() * 145)
+                                context.fillStyle = "rgb(" + value + "," + value + "," + value + ")"
+                                context.fillRect(x, y, block, block)
+                            }
+                        }
+                    }
+                }
             }
 
             Timer {
                 interval: 125
                 repeat: true
                 running: staticNoise.visible
-                onTriggered: staticNoise.frame = (staticNoise.frame + 1) % 4096
+                onTriggered: staticCanvas.requestPaint()
             }
 
             Text {
                 anchors.centerIn: parent
-                visible: !directMediaMode && tvController.noSignal && !tvController.tuning
+                visible: root.showStatic && tvController.noSignal && !tvController.tuning
                 color: "#e6e3c4"
                 style: Text.Outline
                 styleColor: "#4b4b40"
@@ -438,7 +464,12 @@ Window {
         focus: true
 
         Keys.onPressed: event => {
-            if (parentOverlay.visible) {
+            if (parentOverlay.visible && event.key === Qt.Key_B
+                    && root.previousHeldForParent) {
+                // Swallow the repeat tail of the same Back hold that opened
+                // parent access. A fresh Back press still closes the overlay.
+                event.accepted = true
+            } else if (parentOverlay.visible) {
                 event.accepted = parentOverlay.handleKey(event.key, event.modifiers)
             } else if (event.key === Qt.Key_P
                        && (event.modifiers & Qt.ControlModifier) !== 0) {

@@ -82,7 +82,6 @@ qt_add_shaders(mabeltv "mabeltv_shaders"
     BASE "shaders"
     FILES
         shaders/crt.frag
-        shaders/static.frag
 )
 
 target_link_libraries(mabeltv PRIVATE

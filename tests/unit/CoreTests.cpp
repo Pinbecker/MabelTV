@@ -18,6 +18,7 @@ private slots:
     void channelLibraryLoadsAndSortsValidChannels();
     void channelLibraryKeepsMissingFoldersAsNoSignalChannels();
     void controllerTunesNumericChannelsAndHonoursVolumeLimit();
+    void controllerClearsNoSignalWhenReturningToPopulatedChannel();
     void controllerSkipsAnEpisodeAfterPlaybackFailure();
     void parentControlsRequireThreeConfirmationsAndPersistSettings();
     void longPowerRequestBypassesParentPanelButUsesOnlyShutdownCommand();
@@ -154,6 +155,50 @@ void CoreTests::controllerTunesNumericChannelsAndHonoursVolumeLimit()
     }
     QCOMPARE(controller.volume(), 60);
     QCOMPARE(controller.maximumVolume(), 60);
+}
+
+void CoreTests::controllerClearsNoSignalWhenReturningToPopulatedChannel()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/one")));
+
+    QFile episode(directory.filePath(QStringLiteral("media/one/a.mp4")));
+    QVERIFY(episode.open(QIODevice::WriteOnly));
+    episode.close();
+
+    QFile configuration(directory.filePath(QStringLiteral("channels.json")));
+    QVERIFY(configuration.open(QIODevice::WriteOnly));
+    configuration.write(R"({
+        "schema_version": 1,
+        "channels": [
+            {"number": 1, "name": "One", "folder": "one"},
+            {"number": 2, "name": "Empty", "folder": "empty"}
+        ]
+    })");
+    configuration.close();
+
+    TvController controller;
+    QVERIFY(controller.initialize(configuration.fileName(),
+                                  directory.filePath(QStringLiteral("settings.json")),
+                                  directory.filePath(QStringLiteral("media")),
+                                  directory.filePath(QStringLiteral("state.json")),
+                                  [](const QString &) {
+                                      return MediaInspection{true, true, 42.0, QStringLiteral("h264"), {}};
+                                  }));
+
+    QSignalSpy playbackRequests(&controller, &TvController::playbackRequested);
+    controller.start();
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 1, 1000);
+    QVERIFY(!controller.noSignal());
+
+    controller.dispatch(TvController::ChannelUp);
+    QTRY_VERIFY_WITH_TIMEOUT(controller.noSignal(), 1000);
+
+    controller.dispatch(TvController::ChannelDown);
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 2, 1000);
+    QVERIFY(!controller.noSignal());
+    QVERIFY(!controller.tuning());
 }
 
 void CoreTests::controllerSkipsAnEpisodeAfterPlaybackFailure()

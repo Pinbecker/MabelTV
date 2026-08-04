@@ -775,6 +775,9 @@ void TvController::finishTune()
     }
 
     const Episode &episode = runtime.channel.episodes[runtime.currentEpisode];
+    // Reassert the successful tune state. This also clears a late no-signal
+    // result left by the channel we just departed.
+    setNoSignal(false);
     setTuning(false);
     emit playbackRequested(QUrl::fromLocalFile(episode.path), startPosition);
 }
