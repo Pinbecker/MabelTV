@@ -12,7 +12,7 @@ fi
 # rc0/rc1 when KMS is loaded from the initramfs, so identify the KY-022's
 # gpio_ir_recv driver instead of assuming a particular rc number.
 rc_device="$(
-    /usr/bin/ir-keytable 2>/dev/null | awk '
+    /usr/bin/ir-keytable 2>&1 | awk '
         /^Found \/sys\/class\/rc\/rc[0-9]+\/ with:/ {
             current = $2
             sub(/\/$/, "", current)
