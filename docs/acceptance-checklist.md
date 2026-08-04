@@ -35,6 +35,7 @@ Do not treat the Pi as a finished child appliance until every applicable item pa
 - [ ] Temperature and `get_throttled` remain healthy through the soak.
 - [ ] RSS remains below the service memory high-water mark and does not grow continually.
 - [ ] Open file descriptors and GPU sync fences remain bounded during video playback.
+- [ ] `sudo mabeltv-fence-check` reports `PASS` before the longer soak test.
 - [ ] Reboot with the TV on, TV off, and HDMI temporarily disconnected all recover sensibly.
 - [ ] A real power interruption causes no config/state corruption on the next boot.
 - [ ] Caregiver knows media paths, parent gesture, long-power shutdown, backup, rollback, and diagnostic commands.

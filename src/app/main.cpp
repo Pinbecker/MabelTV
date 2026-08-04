@@ -17,6 +17,7 @@
 #include <QSGRendererInterface>
 #include <QSet>
 #include <QStandardPaths>
+#include <QSurfaceFormat>
 #include <QUrl>
 #include <QWindow>
 
@@ -83,6 +84,20 @@ int main(int argc, char *argv[])
 {
     if (hasArgument(argc, argv, "--self-test")) {
         return runLibmpvSelfTest(argc, argv);
+    }
+
+    const bool forceOpenGlEs2 = qEnvironmentVariableIntValue("MABELTV_FORCE_GLES2") != 0;
+    if (forceOpenGlEs2) {
+        // Debian 13 currently ships a libmpv OpenGL render-API regression
+        // (upstream mpv #17217): an unreclaimable GL fence is allocated for
+        // every embedded frame.  The GLES 2 path does not expose GL_ARB_sync,
+        // so the affected libmpv code is never entered.  This remains a
+        // supported renderer for both Qt Quick and libmpv on the Pi.
+        QSurfaceFormat format = QSurfaceFormat::defaultFormat();
+        format.setRenderableType(QSurfaceFormat::OpenGLES);
+        format.setVersion(2, 0);
+        format.setProfile(QSurfaceFormat::NoProfile);
+        QSurfaceFormat::setDefaultFormat(format);
     }
 
     QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
@@ -172,6 +187,9 @@ int main(int argc, char *argv[])
     qInfo().noquote() << "Settings:" << QDir::toNativeSeparators(settingsPath);
     qInfo().noquote() << "Media root:" << QDir::toNativeSeparators(mediaRoot);
     qInfo().noquote() << "State:" << QDir::toNativeSeparators(statePath);
+    if (forceOpenGlEs2) {
+        qInfo() << "Using OpenGL ES 2 compatibility mode for the libmpv fence-leak workaround";
+    }
     const QUrl startupIntro = findStartupIntro(mediaRoot);
     if (startupIntro.isEmpty()) {
         qInfo() << "No startup intro was found; starting television directly";

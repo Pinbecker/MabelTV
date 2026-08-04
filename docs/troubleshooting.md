@@ -59,10 +59,14 @@ vcgencmd get_throttled
 Use H.264/AAC content at 720p, select low/off CRT effects, select 720p display output, use the official-quality power supply, and ensure the Pi has airflow. Software fallback is intentional when a codec cannot be decoded safely in hardware.
 
 If playback works briefly and then freezes while the service stays active, check
-the descriptor columns recorded by `sudo mabeltv-soak-test`. Mabel TV disables
-libmpv's direct-rendering upload path on Linux because Raspberry Pi's V3D Mesa
-driver can otherwise retain one `sync_file` fence per video frame until the
-process descriptor limit is exhausted.
+the descriptor columns recorded by `sudo mabeltv-soak-test`. Debian 13's
+libmpv OpenGL render API has an upstream fence leak (mpv issue 17217): embedded
+rendering creates one `sync_file` per frame but never runs the swap-chain cleanup
+that releases it. The Pi service selects the supported OpenGL ES 2 compatibility
+path until Debian ships upstream fix `f74adc4`; this leaves hardware video
+decoding enabled while avoiding the affected OpenGL sync API. Run
+`sudo mabeltv-fence-check` after an update to verify in one minute that the
+descriptor count remains bounded.
 
 ## A channel shows NO SIGNAL
 

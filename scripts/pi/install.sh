@@ -107,6 +107,7 @@ install -o root -g root -m 0755 "$source_root/scripts/pi/backup-config.sh" /usr/
 install -o root -g root -m 0755 "$source_root/scripts/pi/rollback.sh" /usr/local/sbin/mabeltv-rollback
 install -o root -g root -m 0755 "$source_root/scripts/pi/diagnostics.sh" /usr/local/sbin/mabeltv-diagnostics
 install -o root -g root -m 0755 "$source_root/scripts/pi/soak-test.sh" /usr/local/sbin/mabeltv-soak-test
+install -o root -g root -m 0755 "$source_root/scripts/pi/fence-check.sh" /usr/local/sbin/mabeltv-fence-check
 install -o root -g root -m 0644 "$source_root/packaging/linux/mabeltv-logrotate" /etc/logrotate.d/mabeltv
 install -d -o root -g root -m 0755 /etc/systemd/journald.conf.d
 install -o root -g root -m 0644 "$source_root/packaging/linux/mabeltv-journald.conf" /etc/systemd/journald.conf.d/mabeltv.conf
