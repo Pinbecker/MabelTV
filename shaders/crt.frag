@@ -36,7 +36,7 @@ float roundedScreenMask(vec2 uv)
     float pixelFootprint = dot(shapeGradient, 1.0 / safeResolution);
     float softness = max(uniforms.maskSoftness * 2.2
                              / min(safeResolution.x, safeResolution.y),
-                         pixelFootprint * 1.05);
+                         pixelFootprint * 1.50);
     return 1.0 - smoothstep(1.0 - softness, 1.0 + softness, shape);
 }
 
@@ -180,5 +180,9 @@ void main()
         - uniforms.flicker * (0.001 * glass + 0.003 * distortion);
     colour *= scanline * vignette * glassDepth * analogueVariation;
 
-    fragColor = vec4(colour, centreSample.a * mask) * uniforms.qt_Opacity;
+    // Qt Quick composites ShaderEffect output as premultiplied alpha. Leaving
+    // full-strength RGB in the partially transparent mask pixels produces a
+    // bright, stair-stepped fringe against the black bezel.
+    float outputAlpha = centreSample.a * mask * uniforms.qt_Opacity;
+    fragColor = vec4(colour * outputAlpha, outputAlpha);
 }
