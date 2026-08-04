@@ -100,6 +100,9 @@ def main() -> int:
                     return 2
                 if response.strip().lower() == "s" and not required:
                     break
+                # Discard the release/repeat tail of the previously learned
+                # button before inviting the next press.
+                drain(selector)
                 print("  Listening…")
                 scancode = capture_scancode(process, selector, arguments.timeout)
                 if scancode is None:

@@ -75,7 +75,7 @@ Item {
                 controller.parentDigit(pinWheelDigit)
             } else if (key === Qt.Key_Left || key === Qt.Key_Backspace) {
                 controller.parentBackspace()
-            } else if (key === Qt.Key_Escape) {
+            } else if (key === Qt.Key_Escape || key === Qt.Key_B) {
                 controller.closeParent()
             } else {
                 return false
@@ -93,7 +93,7 @@ Item {
             adjustRow(selectedRow, 1)
         } else if (key === Qt.Key_Return || key === Qt.Key_Enter) {
             activateRow(selectedRow)
-        } else if (key === Qt.Key_Escape || key === Qt.Key_Backspace) {
+        } else if (key === Qt.Key_Escape || key === Qt.Key_Backspace || key === Qt.Key_B) {
             controller.closeParent()
         } else {
             return false
