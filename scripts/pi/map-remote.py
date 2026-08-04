@@ -15,10 +15,13 @@ import time
 
 BUTTONS = [
     ("POWER", "KEY_P", True),
-    ("CHANNEL UP", "KEY_UP", True),
-    ("CHANNEL DOWN", "KEY_DOWN", True),
-    ("VOLUME UP", "KEY_RIGHT", True),
-    ("VOLUME DOWN", "KEY_LEFT", True),
+    # Keep the television controls distinct from the navigation pad. Page
+    # Up/Down and Equal/Minus are ordinary keys that Qt's direct Linux input
+    # backend handles reliably without a desktop session.
+    ("CHANNEL UP", "KEY_PAGEUP", True),
+    ("CHANNEL DOWN", "KEY_PAGEDOWN", True),
+    ("VOLUME UP", "KEY_EQUAL", True),
+    ("VOLUME DOWN", "KEY_MINUS", True),
     ("MUTE", "KEY_M", True),
     ("PREVIOUS / BACK", "KEY_B", True),
     ("OK / ENTER", "KEY_ENTER", True),

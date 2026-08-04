@@ -292,6 +292,12 @@ void TvController::dispatch(Action action)
             requestTune(m_currentChannelIndex, false);
         }
         break;
+    case PreviousProgramme:
+        changeProgramme(-1);
+        break;
+    case NextProgramme:
+        changeProgramme(1);
+        break;
     case ToggleStandby:
         break;
     }
@@ -720,7 +726,9 @@ void TvController::saveState() const
     state.commit();
 }
 
-void TvController::requestTune(int channelIndex, bool updatePreviousChannel)
+void TvController::requestTune(int channelIndex,
+                               bool updatePreviousChannel,
+                               bool chooseRestartEpisode)
 {
     if (channelIndex < 0 || channelIndex >= m_channels.size()) {
         return;
@@ -736,7 +744,7 @@ void TvController::requestTune(int channelIndex, bool updatePreviousChannel)
 
     m_currentChannelIndex = channelIndex;
     ChannelRuntime &targetRuntime = m_channels[m_currentChannelIndex];
-    if (m_playbackMode == QStringLiteral("restart")) {
+    if (m_playbackMode == QStringLiteral("restart") && chooseRestartEpisode) {
         targetRuntime.currentEpisode = takeUsableEpisode(targetRuntime);
         targetRuntime.anchorPositionSeconds = 0.0;
         targetRuntime.anchorMilliseconds = m_broadcastClock.elapsed();
@@ -795,6 +803,24 @@ void TvController::changeChannel(int direction)
         next = (next + direction + m_channels.size()) % m_channels.size();
     }
     requestTune(next);
+}
+
+void TvController::changeProgramme(int direction)
+{
+    if (m_currentChannelIndex < 0 || direction == 0) {
+        return;
+    }
+
+    ChannelRuntime &runtime = m_channels[m_currentChannelIndex];
+    const int nextEpisode = adjacentUsableEpisode(runtime, direction);
+    if (nextEpisode < 0) {
+        return;
+    }
+
+    runtime.currentEpisode = nextEpisode;
+    runtime.anchorMilliseconds = m_broadcastClock.elapsed();
+    runtime.anchorPositionSeconds = 0.0;
+    requestTune(m_currentChannelIndex, false, false);
 }
 
 void TvController::setVolume(int value)
@@ -905,6 +931,28 @@ int TvController::takeUsableEpisode(ChannelRuntime &runtime)
     const int episodeCount = static_cast<int>(runtime.channel.episodes.size());
     for (int attempt = 0; attempt < episodeCount; ++attempt) {
         const int candidate = runtime.shuffle.take();
+        if (!runtime.failedEpisodes.contains(candidate)) {
+            return candidate;
+        }
+    }
+    return -1;
+}
+
+int TvController::adjacentUsableEpisode(const ChannelRuntime &runtime, int direction) const
+{
+    const int episodeCount = static_cast<int>(runtime.channel.episodes.size());
+    if (episodeCount == 0 || direction == 0) {
+        return -1;
+    }
+
+    const int step = direction < 0 ? -1 : 1;
+    int candidate = runtime.currentEpisode;
+    if (candidate < 0 || candidate >= episodeCount) {
+        candidate = step > 0 ? episodeCount - 1 : 0;
+    }
+
+    for (int attempt = 0; attempt < episodeCount; ++attempt) {
+        candidate = (candidate + step + episodeCount) % episodeCount;
         if (!runtime.failedEpisodes.contains(candidate)) {
             return candidate;
         }

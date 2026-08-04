@@ -505,22 +505,37 @@ Window {
                        && !event.isAutoRepeat && !directMediaMode) {
                 tvController.dispatch(TvController.RandomEpisode)
                 event.accepted = true
-            } else if (event.key === Qt.Key_Up || event.key === Qt.Key_PageUp) {
+            } else if (event.key === Qt.Key_PageUp) {
                 if (root.acceptRepeat("channel", event.isAutoRepeat))
                     tvController.dispatch(TvController.ChannelUp)
                 event.accepted = true
-            } else if (event.key === Qt.Key_Down || event.key === Qt.Key_PageDown) {
+            } else if (event.key === Qt.Key_PageDown) {
                 if (root.acceptRepeat("channel", event.isAutoRepeat))
                     tvController.dispatch(TvController.ChannelDown)
                 event.accepted = true
-            } else if (event.key === Qt.Key_Right || event.key === Qt.Key_Plus
-                       || event.key === Qt.Key_Equal) {
+            } else if (event.key === Qt.Key_Up) {
+                if (root.acceptRepeat("channel", event.isAutoRepeat))
+                    tvController.dispatch(TvController.ChannelUp)
+                event.accepted = true
+            } else if (event.key === Qt.Key_Down) {
+                if (root.acceptRepeat("channel", event.isAutoRepeat))
+                    tvController.dispatch(TvController.ChannelDown)
+                event.accepted = true
+            } else if (event.key === Qt.Key_Plus || event.key === Qt.Key_Equal) {
                 if (root.acceptRepeat("volume", event.isAutoRepeat))
                     tvController.dispatch(TvController.VolumeUp)
                 event.accepted = true
-            } else if (event.key === Qt.Key_Left || event.key === Qt.Key_Minus) {
+            } else if (event.key === Qt.Key_Minus) {
                 if (root.acceptRepeat("volume", event.isAutoRepeat))
                     tvController.dispatch(TvController.VolumeDown)
+                event.accepted = true
+            } else if (event.key === Qt.Key_Right && !event.isAutoRepeat
+                       && !directMediaMode) {
+                tvController.dispatch(TvController.NextProgramme)
+                event.accepted = true
+            } else if (event.key === Qt.Key_Left && !event.isAutoRepeat
+                       && !directMediaMode) {
+                tvController.dispatch(TvController.PreviousProgramme)
                 event.accepted = true
             } else if (event.key === Qt.Key_M && !event.isAutoRepeat) {
                 tvController.dispatch(TvController.ToggleMute)

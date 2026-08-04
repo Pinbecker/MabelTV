@@ -50,6 +50,8 @@ public:
         PreviousChannel,
         ToggleStandby,
         RandomEpisode,
+        PreviousProgramme,
+        NextProgramme,
     };
     Q_ENUM(Action)
 
@@ -158,9 +160,12 @@ private:
     void saveSettings();
     void loadState();
     void saveState() const;
-    void requestTune(int channelIndex, bool updatePreviousChannel = true);
+    void requestTune(int channelIndex,
+                     bool updatePreviousChannel = true,
+                     bool chooseRestartEpisode = true);
     void finishTune();
     void changeChannel(int direction);
+    void changeProgramme(int direction);
     void setVolume(int value);
     void setMuted(bool muted);
     void setTuning(bool tuning);
@@ -170,6 +175,7 @@ private:
     void seedTimeline(ChannelRuntime &runtime);
     int findChannelByNumber(int channelNumber) const;
     int takeUsableEpisode(ChannelRuntime &runtime);
+    int adjacentUsableEpisode(const ChannelRuntime &runtime, int direction) const;
     double resolveBroadcastPosition(ChannelRuntime &runtime);
     void freezeTimeline(ChannelRuntime &runtime);
     void setParentMessage(const QString &message);

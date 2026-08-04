@@ -20,6 +20,7 @@ private slots:
     void controllerTunesNumericChannelsAndHonoursVolumeLimit();
     void controllerClearsNoSignalWhenReturningToPopulatedChannel();
     void controllerSkipsAnEpisodeAfterPlaybackFailure();
+    void controllerMovesBetweenProgrammesInFilenameOrder();
     void parentControlsRequireThreeConfirmationsAndPersistSettings();
     void longPowerRequestBypassesParentPanelButUsesOnlyShutdownCommand();
 };
@@ -243,6 +244,68 @@ void CoreTests::controllerSkipsAnEpisodeAfterPlaybackFailure()
     QVERIFY(!replacementSource.isEmpty());
     QVERIFY(firstSource != replacementSource);
     QVERIFY(!controller.noSignal());
+}
+
+void CoreTests::controllerMovesBetweenProgrammesInFilenameOrder()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/one")));
+
+    for (const QString &fileName : {QStringLiteral("a.mp4"),
+                                    QStringLiteral("b.mp4"),
+                                    QStringLiteral("c.mp4")}) {
+        QFile episode(directory.filePath(QStringLiteral("media/one/%1").arg(fileName)));
+        QVERIFY(episode.open(QIODevice::WriteOnly));
+        episode.close();
+    }
+
+    QFile configuration(directory.filePath(QStringLiteral("channels.json")));
+    QVERIFY(configuration.open(QIODevice::WriteOnly));
+    configuration.write(R"({
+        "schema_version": 1,
+        "channels": [{"number": 1, "name": "One", "folder": "one"}]
+    })");
+    configuration.close();
+
+    QFile settings(directory.filePath(QStringLiteral("settings.json")));
+    QVERIFY(settings.open(QIODevice::WriteOnly));
+    settings.write(R"({
+        "schema_version": 1,
+        "playback_mode": "restart"
+    })");
+    settings.close();
+
+    TvController controller;
+    QVERIFY(controller.initialize(configuration.fileName(),
+                                  directory.filePath(QStringLiteral("settings.json")),
+                                  directory.filePath(QStringLiteral("media")),
+                                  directory.filePath(QStringLiteral("state.json")),
+                                  [](const QString &) {
+                                      return MediaInspection{true, true, 42.0, QStringLiteral("h264"), {}};
+                                  }));
+
+    QSignalSpy playbackRequests(&controller, &TvController::playbackRequested);
+    controller.start();
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 1, 1000);
+
+    const QString firstFile = playbackRequests.at(0).at(0).toUrl().fileName();
+    const QStringList orderedFiles{QStringLiteral("a.mp4"),
+                                   QStringLiteral("b.mp4"),
+                                   QStringLiteral("c.mp4")};
+    const int firstIndex = orderedFiles.indexOf(firstFile);
+    QVERIFY(firstIndex >= 0);
+
+    controller.dispatch(TvController::NextProgramme);
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 2, 1000);
+    QCOMPARE(playbackRequests.at(1).at(0).toUrl().fileName(),
+             orderedFiles[(firstIndex + 1) % orderedFiles.size()]);
+    QVERIFY(playbackRequests.at(1).at(1).toDouble() < 1.0);
+
+    controller.dispatch(TvController::PreviousProgramme);
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 3, 1000);
+    QCOMPARE(playbackRequests.at(2).at(0).toUrl().fileName(), firstFile);
+    QVERIFY(playbackRequests.at(2).at(1).toDouble() < 1.0);
 }
 
 void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()

@@ -49,13 +49,14 @@ The normal mapping is deliberately simple:
 
 | Physical function | Linux/Qt key | Mabel TV action |
 | --- | --- | --- |
-| Channel + / - | Up / Down | next / previous channel |
-| Volume + / - | Right / Left | louder / quieter |
+| Channel + / - | Page Up / Page Down | next / previous channel |
+| Volume + / - | Equal / Minus | louder / quieter |
 | Mute | M | mute |
 | Previous / Back | B | previous channel; hold for parent confirmation |
 | Power | P | standby; hold five seconds for shutdown |
-| OK | Enter | another programme; confirm channel number or parent access |
-| Navigation pad | arrows | navigate the parent panel |
+| OK | Enter | another random programme; confirm channel number or parent access |
+| Navigation Up / Down | Up / Down | next / previous channel; navigate the parent panel |
+| Navigation Left / Right | Left / Right | previous / next episode or film; adjust parent settings |
 | 0–9 | 0–9 | direct channel entry |
 | Source or spare button | R | random episode |
 

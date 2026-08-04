@@ -66,8 +66,10 @@ Keyboard controls:
 | Number keys, then Enter | Go directly to a channel (or wait briefly after typing) |
 | Up / Page Up | Next channel |
 | Down / Page Down | Previous channel |
-| Right / `+` | Volume up |
-| Left / `-` | Volume down |
+| Right | Next episode or film |
+| Left | Previous episode or film |
+| `+` / `=` | Volume up |
+| `-` | Volume down |
 | `M` | Mute |
 | `B` | Return to the previous channel |
 | `R` | Pick another episode on the current channel |
