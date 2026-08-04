@@ -8,7 +8,7 @@ Run:
 sudo mabeltv-diagnostics
 ```
 
-The command prints a `.tar.gz` path containing OS/model, memory and disk status, display connectors, IR state, service status, the last 500 journal lines, temperature/throttling state, and any startup-recovery record. It does not include media files or the parent PIN.
+The command prints a `.tar.gz` path containing OS/model, memory and disk status, display connectors, IR state, service status, the last 500 journal lines, temperature/throttling state, and any startup-recovery record. It does not include media files.
 
 ## Black screen or application restart loop
 

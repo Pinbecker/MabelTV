@@ -16,7 +16,7 @@ Mabel TV is a native, child-friendly recreation of watching television in the 19
 - corrupt-episode exclusion and automatic recovery
 - synthetic, non-copyrighted development channels and automated core tests
 - rounded/curved CRT shader, warm-up/standby transitions, scanlines, vignette, subtle RGB separation, and procedural tuning/click sounds
-- hidden PIN-protected parent panel (`0973`) for playback, picture, CRT, display, volume and lifecycle choices
+- hidden hold-and-confirm parent panel for playback, picture, CRT, display, volume and lifecycle choices
 - portable Windows packaging with dependency discovery and clean-environment smoke tests
 - Raspberry Pi OS Lite installer using Qt EGLFS/KMS, safe libmpv hardware decoding, systemd restart/recovery and a 1 GB memory budget
 - KY-022 `gpio-ir` integration with an interactive EZClicker keymap utility
@@ -75,7 +75,7 @@ Keyboard controls:
 | Hold `P` for 5 seconds | Safe Raspberry Pi shutdown |
 | F11 | Toggle full-screen |
 
-Hold `B` for 3.5 seconds to reveal parent access. The PIN is `0973`.
+Hold `B` for 3.5 seconds, then press Enter three times, to reveal parent access.
 
 ## Adding your media
 

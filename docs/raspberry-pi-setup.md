@@ -112,8 +112,7 @@ Mabel TV then owns tty1 and launches directly through Qt EGLFS/KMS without a des
 
 - Tap Power (`P` on a keyboard) for standby/wake.
 - Hold Power for five seconds for an orderly Pi shutdown. Wait until activity has stopped before removing power.
-- Hold Previous (`B`) for 3.5 seconds, then enter PIN `0973`, for parent controls.
-- Direct PIN digits work; without digits, use Up/Down to select each digit and Enter to add it.
+- Hold Previous (`B`) for 3.5 seconds, then press OK three times, for parent controls.
 - Display output changes take effect after selecting **Restart Mabel TV**.
 
 The parent panel can select continuous/resume/restart playback, per-channel/crop/fit/stretch picture handling, CRT strength, 720p/1080p/native display output, volume-limit policy, TV sounds, library reload, restart, exit, or shutdown.

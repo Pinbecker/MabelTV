@@ -93,6 +93,10 @@ fi
 if [[ ! -e /var/lib/mabeltv/settings.json ]]; then
     install -o mabeltv -g mabeltv -m 0640 "$source_root/config/examples/settings.json" /var/lib/mabeltv/settings.json
 fi
+# Repair mutable configuration ownership on every update. This also recovers
+# files that were copied or edited through a root maintenance session.
+chown mabeltv:mabeltv /var/lib/mabeltv/channels.json /var/lib/mabeltv/settings.json
+chmod 0640 /var/lib/mabeltv/channels.json /var/lib/mabeltv/settings.json
 
 install -o root -g root -m 0644 "$source_root/packaging/linux/mabeltv.service" /etc/systemd/system/mabeltv.service
 install -o root -g root -m 0644 "$source_root/packaging/linux/mabeltv-ir.service" /etc/systemd/system/mabeltv-ir.service

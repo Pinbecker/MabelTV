@@ -31,7 +31,7 @@ class TvController final : public QObject
     Q_PROPERTY(QString numericEntry READ numericEntry NOTIFY numericEntryChanged)
     Q_PROPERTY(QString libraryStatus READ libraryStatus NOTIFY libraryStatusChanged)
     Q_PROPERTY(int parentAccessState READ parentAccessState NOTIFY parentAccessStateChanged)
-    Q_PROPERTY(QString parentPinEntry READ parentPinEntry NOTIFY parentPinEntryChanged)
+    Q_PROPERTY(int parentConfirmationCount READ parentConfirmationCount NOTIFY parentConfirmationCountChanged)
     Q_PROPERTY(QString parentMessage READ parentMessage NOTIFY parentMessageChanged)
     Q_PROPERTY(QString playbackMode READ playbackMode NOTIFY playbackModeChanged)
     Q_PROPERTY(QString pictureMode READ pictureMode NOTIFY pictureModeChanged)
@@ -56,7 +56,7 @@ public:
     enum ParentAccessState
     {
         ParentClosed,
-        ParentPinEntry,
+        ParentConfirmation,
         ParentOpen,
     };
     Q_ENUM(ParentAccessState)
@@ -84,7 +84,7 @@ public:
     [[nodiscard]] QString numericEntry() const;
     [[nodiscard]] QString libraryStatus() const;
     [[nodiscard]] int parentAccessState() const;
-    [[nodiscard]] QString parentPinEntry() const;
+    [[nodiscard]] int parentConfirmationCount() const;
     [[nodiscard]] QString parentMessage() const;
     [[nodiscard]] QString playbackMode() const;
     [[nodiscard]] QString pictureMode() const;
@@ -99,8 +99,7 @@ public:
     Q_INVOKABLE void playbackEnded();
     Q_INVOKABLE void playbackFailed(const QString &message);
     Q_INVOKABLE void requestParentAccess();
-    Q_INVOKABLE void parentDigit(int digit);
-    Q_INVOKABLE void parentBackspace();
+    Q_INVOKABLE void parentConfirm();
     Q_INVOKABLE void closeParent();
     Q_INVOKABLE void cyclePlaybackMode(int direction);
     Q_INVOKABLE void cyclePictureMode(int direction);
@@ -124,7 +123,7 @@ signals:
     void libraryStatusChanged();
     void volumePolicyChanged();
     void parentAccessStateChanged();
-    void parentPinEntryChanged();
+    void parentConfirmationCountChanged();
     void parentMessageChanged();
     void playbackModeChanged();
     void pictureModeChanged();
@@ -185,8 +184,7 @@ private:
     QString m_mediaRoot;
     QString m_libraryStatus;
     QString m_numericEntry;
-    QString m_parentPin = QStringLiteral("0973");
-    QString m_parentPinEntry;
+    int m_parentConfirmationCount = 0;
     QString m_parentMessage;
     QString m_playbackMode = QStringLiteral("continuous");
     QString m_pictureMode = QStringLiteral("channel");

@@ -6,7 +6,6 @@ Item {
 
     required property var controller
     property int selectedRow: 0
-    property int pinWheelDigit: 0
     readonly property int rowCount: 12
 
     visible: controller.parentAccessState !== TvController.ParentClosed
@@ -64,17 +63,9 @@ Item {
     }
 
     function handleKey(key, modifiers) {
-        if (controller.parentAccessState === TvController.ParentPinEntry) {
-            if (key >= Qt.Key_0 && key <= Qt.Key_9) {
-                controller.parentDigit(key - Qt.Key_0)
-            } else if (key === Qt.Key_Up) {
-                pinWheelDigit = (pinWheelDigit + 1) % 10
-            } else if (key === Qt.Key_Down) {
-                pinWheelDigit = (pinWheelDigit + 9) % 10
-            } else if (key === Qt.Key_Return || key === Qt.Key_Enter) {
-                controller.parentDigit(pinWheelDigit)
-            } else if (key === Qt.Key_Left || key === Qt.Key_Backspace) {
-                controller.parentBackspace()
+        if (controller.parentAccessState === TvController.ParentConfirmation) {
+            if (key === Qt.Key_Return || key === Qt.Key_Enter) {
+                controller.parentConfirm()
             } else if (key === Qt.Key_Escape || key === Qt.Key_B) {
                 controller.closeParent()
             } else {
@@ -117,7 +108,7 @@ Item {
         Item {
             anchors.fill: parent
             anchors.margins: 30
-            visible: controller.parentAccessState === TvController.ParentPinEntry
+            visible: controller.parentAccessState === TvController.ParentConfirmation
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -136,8 +127,8 @@ Item {
                 font.bold: true
                 font.pixelSize: 52
                 font.letterSpacing: 8
-                text: "●".repeat(controller.parentPinEntry.length)
-                    + "○".repeat(4 - controller.parentPinEntry.length)
+                text: "●".repeat(controller.parentConfirmationCount)
+                    + "○".repeat(3 - controller.parentConfirmationCount)
             }
 
             Text {
@@ -147,7 +138,7 @@ Item {
                 color: "#bdd0ad"
                 font.family: "Consolas"
                 font.pixelSize: 21
-                text: "NO NUMBER KEYS?  UP/DOWN: " + pinWheelDigit + "   ENTER: ADD"
+                text: "PRESS OK THREE TIMES"
             }
 
             Text {
@@ -157,7 +148,7 @@ Item {
                 color: "#789379"
                 font.family: "Consolas"
                 font.pixelSize: 16
-                text: controller.parentMessage + "   ·   ESC: CANCEL"
+                text: controller.parentMessage + "   ·   BACK: CANCEL"
             }
         }
 

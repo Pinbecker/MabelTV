@@ -2,7 +2,6 @@
     "crt_effect": "low",
     "default_aspect": "crop",
     "display_resolution": "720p",
-    "parent_pin": "0973",
     "picture_mode": "channel",
     "playback_mode": "continuous",
     "schema_version": 1,

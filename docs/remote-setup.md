@@ -52,10 +52,10 @@ The normal mapping is deliberately simple:
 | Channel + / - | Up / Down | next / previous channel |
 | Volume + / - | Right / Left | louder / quieter |
 | Mute | M | mute |
-| Previous / Back | B | previous channel; hold for parent PIN |
+| Previous / Back | B | previous channel; hold for parent confirmation |
 | Power | P | standby; hold five seconds for shutdown |
-| OK | Enter | confirm channel number or PIN digit |
-| 0–9 | 0–9 | direct channel/PIN entry |
+| OK | Enter | confirm channel number or parent access |
+| 0–9 | 0–9 | direct channel entry |
 | Source or spare button | R | random episode |
 
 Start Mabel TV again with `sudo systemctl start mabeltv.service`.

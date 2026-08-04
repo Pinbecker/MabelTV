@@ -19,7 +19,7 @@ private slots:
     void channelLibraryKeepsMissingFoldersAsNoSignalChannels();
     void controllerTunesNumericChannelsAndHonoursVolumeLimit();
     void controllerSkipsAnEpisodeAfterPlaybackFailure();
-    void parentControlsRequirePinAndPersistSettings();
+    void parentControlsRequireThreeConfirmationsAndPersistSettings();
     void longPowerRequestBypassesParentPanelButUsesOnlyShutdownCommand();
 };
 
@@ -200,7 +200,7 @@ void CoreTests::controllerSkipsAnEpisodeAfterPlaybackFailure()
     QVERIFY(!controller.noSignal());
 }
 
-void CoreTests::parentControlsRequirePinAndPersistSettings()
+void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
 {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
@@ -231,16 +231,13 @@ void CoreTests::parentControlsRequirePinAndPersistSettings()
                                   [](const QString &) { return MediaInspection{}; }));
 
     controller.requestParentAccess();
-    QCOMPARE(controller.parentAccessState(), TvController::ParentPinEntry);
-    for (const int digit : {1, 2, 3, 4}) {
-        controller.parentDigit(digit);
-    }
-    QCOMPARE(controller.parentAccessState(), TvController::ParentPinEntry);
-    QVERIFY(controller.parentPinEntry().isEmpty());
-
-    for (const int digit : {0, 9, 7, 3}) {
-        controller.parentDigit(digit);
-    }
+    QCOMPARE(controller.parentAccessState(), TvController::ParentConfirmation);
+    QCOMPARE(controller.parentConfirmationCount(), 0);
+    controller.parentConfirm();
+    controller.parentConfirm();
+    QCOMPARE(controller.parentAccessState(), TvController::ParentConfirmation);
+    QCOMPARE(controller.parentConfirmationCount(), 2);
+    controller.parentConfirm();
     QCOMPARE(controller.parentAccessState(), TvController::ParentOpen);
 
     controller.cyclePlaybackMode(1);
@@ -253,6 +250,7 @@ void CoreTests::parentControlsRequirePinAndPersistSettings()
     const QJsonDocument savedDocument = QJsonDocument::fromJson(savedSettings.readAll());
     QCOMPARE(savedDocument.object().value(QStringLiteral("playback_mode")).toString(),
              QStringLiteral("resume"));
+    QVERIFY(!savedDocument.object().contains(QStringLiteral("parent_pin")));
     QVERIFY(!savedDocument.object()
                  .value(QStringLiteral("volume"))
                  .toObject()

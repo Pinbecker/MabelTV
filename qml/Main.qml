@@ -139,31 +139,20 @@ Window {
                 }
             }
 
-            Canvas {
+            ShaderEffect {
                 id: staticNoise
 
                 anchors.fill: parent
                 visible: !directMediaMode && (tvController.tuning || tvController.noSignal)
-                onPaint: {
-                    const context = getContext("2d")
-                    const block = Math.max(3, width / 180)
-                    context.fillStyle = "#111411"
-                    context.fillRect(0, 0, width, height)
-                    for (let y = 0; y < height; y += block) {
-                        for (let x = 0; x < width; x += block) {
-                            const value = Math.floor(25 + Math.random() * 145)
-                            context.fillStyle = "rgb(" + value + "," + value + "," + value + ")"
-                            context.fillRect(x, y, block + 1, block + 1)
-                        }
-                    }
-                }
+                property real frame: 0
+                fragmentShader: "qrc:/shaders/static.frag.qsb"
             }
 
             Timer {
-                interval: 55
+                interval: 125
                 repeat: true
                 running: staticNoise.visible
-                onTriggered: staticNoise.requestPaint()
+                onTriggered: staticNoise.frame = (staticNoise.frame + 1) % 4096
             }
 
             Text {

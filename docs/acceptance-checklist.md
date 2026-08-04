@@ -11,7 +11,7 @@ Do not treat the Pi as a finished child appliance until every applicable item pa
 - [ ] Continuous broadcast advances while away; resume and restart modes work.
 - [ ] Crop, fit, stretch and low/high/off CRT choices work.
 - [ ] Volume begins low and cannot exceed 60 until a parent changes policy.
-- [ ] Wrong PIN fails; `0973` opens parent mode.
+- [ ] Holding Back and pressing OK three times opens parent mode.
 
 ## Pi commissioning
 
@@ -23,7 +23,7 @@ Do not treat the Pi as a finished child appliance until every applicable item pa
 - [ ] Remote buttons perform only their mapped actions; none unexpectedly controls the LG TV.
 - [ ] HDMI-CEC is disabled and booting the Pi does not wake/switch/control the TV.
 - [ ] Short Power cleanly enters/wakes standby; long Power causes an orderly Pi shutdown.
-- [ ] Parent access works both with number buttons and the Up/Down digit wheel.
+- [ ] Parent access requires a Back hold followed by three deliberate OK presses.
 - [ ] Removing one media folder leaves a stable no-signal channel rather than crashing.
 - [ ] Killing the process once makes systemd restart it.
 - [ ] Five rapid forced failures create a recovery log instead of an unbounded restart storm.
@@ -36,4 +36,4 @@ Do not treat the Pi as a finished child appliance until every applicable item pa
 - [ ] RSS remains below the service memory high-water mark and does not grow continually.
 - [ ] Reboot with the TV on, TV off, and HDMI temporarily disconnected all recover sensibly.
 - [ ] A real power interruption causes no config/state corruption on the next boot.
-- [ ] Caregiver knows media paths, PIN, long-power shutdown, backup, rollback, and diagnostic commands.
+- [ ] Caregiver knows media paths, parent gesture, long-power shutdown, backup, rollback, and diagnostic commands.

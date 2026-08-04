@@ -181,9 +181,9 @@ int TvController::parentAccessState() const
     return m_parentAccessState;
 }
 
-QString TvController::parentPinEntry() const
+int TvController::parentConfirmationCount() const
 {
-    return m_parentPinEntry;
+    return m_parentConfirmationCount;
 }
 
 QString TvController::parentMessage() const
@@ -370,47 +370,31 @@ void TvController::requestParentAccess()
     if (m_parentAccessState == ParentOpen) {
         return;
     }
-    m_parentAccessState = ParentPinEntry;
-    m_parentPinEntry.clear();
-    setParentMessage(QStringLiteral("Enter the four-digit parent PIN"));
-    emit parentPinEntryChanged();
+    m_parentAccessState = ParentConfirmation;
+    m_parentConfirmationCount = 0;
+    setParentMessage(QStringLiteral("Press OK three times"));
+    emit parentConfirmationCountChanged();
     emit parentAccessStateChanged();
-    qInfo() << "Parent PIN requested";
+    qInfo() << "Parent confirmation requested";
 }
 
-void TvController::parentDigit(int digit)
+void TvController::parentConfirm()
 {
-    if (m_parentAccessState != ParentPinEntry || digit < 0 || digit > 9) {
+    if (m_parentAccessState != ParentConfirmation) {
         return;
     }
-    if (m_parentPinEntry.size() >= 4) {
-        m_parentPinEntry.clear();
-    }
-    m_parentPinEntry.append(QString::number(digit));
-    emit parentPinEntryChanged();
-
-    if (m_parentPinEntry.size() == 4) {
-        if (m_parentPinEntry == m_parentPin) {
-            m_parentAccessState = ParentOpen;
-            setParentMessage(QStringLiteral("Parent controls unlocked"));
-            emit parentAccessStateChanged();
-            qInfo() << "Parent controls unlocked";
-        } else {
-            m_parentPinEntry.clear();
-            emit parentPinEntryChanged();
-            setParentMessage(QStringLiteral("Incorrect PIN — try again"));
-            qWarning() << "Incorrect parent PIN entered";
-        }
-    }
-}
-
-void TvController::parentBackspace()
-{
-    if (m_parentAccessState != ParentPinEntry || m_parentPinEntry.isEmpty()) {
+    ++m_parentConfirmationCount;
+    emit parentConfirmationCountChanged();
+    if (m_parentConfirmationCount >= 3) {
+        m_parentAccessState = ParentOpen;
+        setParentMessage(QStringLiteral("Parent controls unlocked"));
+        emit parentAccessStateChanged();
+        qInfo() << "Parent controls unlocked";
         return;
     }
-    m_parentPinEntry.chop(1);
-    emit parentPinEntryChanged();
+    const int remaining = 3 - m_parentConfirmationCount;
+    setParentMessage(remaining == 1 ? QStringLiteral("Press OK once more")
+                                    : QStringLiteral("Press OK two more times"));
 }
 
 void TvController::closeParent()
@@ -419,9 +403,9 @@ void TvController::closeParent()
         return;
     }
     m_parentAccessState = ParentClosed;
-    m_parentPinEntry.clear();
+    m_parentConfirmationCount = 0;
     setParentMessage(QString());
-    emit parentPinEntryChanged();
+    emit parentConfirmationCountChanged();
     emit parentAccessStateChanged();
     qInfo() << "Parent controls closed";
 }
@@ -590,11 +574,6 @@ void TvController::loadSettings(const QString &settingsPath)
         ? effectLevel
         : QStringLiteral("low");
     m_soundEffectsEnabled = m_settingsRoot.value(QStringLiteral("sound_effects_enabled")).toBool(true);
-    m_parentPin = m_settingsRoot.value(QStringLiteral("parent_pin"))
-                      .toString(QStringLiteral("0973"));
-    if (m_parentPin.size() != 4) {
-        m_parentPin = QStringLiteral("0973");
-    }
 }
 
 void TvController::saveSettings()
@@ -609,7 +588,7 @@ void TvController::saveSettings()
     m_settingsRoot.insert(QStringLiteral("display_resolution"), m_displayResolution);
     m_settingsRoot.insert(QStringLiteral("crt_effect"), m_crtEffectLevel);
     m_settingsRoot.insert(QStringLiteral("sound_effects_enabled"), m_soundEffectsEnabled);
-    m_settingsRoot.insert(QStringLiteral("parent_pin"), m_parentPin);
+    m_settingsRoot.remove(QStringLiteral("parent_pin"));
     m_settingsRoot.insert(
         QStringLiteral("volume"),
         QJsonObject{{QStringLiteral("initial"), m_volume},
@@ -620,12 +599,22 @@ void TvController::saveSettings()
     QSaveFile settings(m_settingsPath);
     if (!settings.open(QIODevice::WriteOnly)) {
         setParentMessage(QStringLiteral("Could not save settings"));
-        qWarning().noquote() << "Could not save settings:" << m_settingsPath;
+        qWarning().noquote() << "Could not open settings for writing:" << m_settingsPath
+                             << "-" << settings.errorString();
         return;
     }
-    settings.write(QJsonDocument(m_settingsRoot).toJson(QJsonDocument::Indented));
+    const QByteArray contents = QJsonDocument(m_settingsRoot).toJson(QJsonDocument::Indented);
+    if (settings.write(contents) != contents.size()) {
+        setParentMessage(QStringLiteral("Could not save settings"));
+        qWarning().noquote() << "Could not write settings:" << m_settingsPath << "-"
+                             << settings.errorString();
+        settings.cancelWriting();
+        return;
+    }
     if (!settings.commit()) {
         setParentMessage(QStringLiteral("Could not save settings"));
+        qWarning().noquote() << "Could not commit settings:" << m_settingsPath << "-"
+                             << settings.errorString();
         return;
     }
     setParentMessage(QStringLiteral("Settings saved"));
