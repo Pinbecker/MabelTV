@@ -470,6 +470,10 @@ Window {
                        && tvController.numericEntry.length > 0) {
                 tvController.confirmNumericEntry()
                 event.accepted = true
+            } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+                       && !event.isAutoRepeat && !directMediaMode) {
+                tvController.dispatch(TvController.RandomEpisode)
+                event.accepted = true
             } else if (event.key === Qt.Key_Up || event.key === Qt.Key_PageUp) {
                 if (root.acceptRepeat("channel", event.isAutoRepeat))
                     tvController.dispatch(TvController.ChannelUp)

@@ -37,7 +37,7 @@ sudo systemctl stop mabeltv.service
 sudo mabeltv-map-remote
 ```
 
-The mapper asks for the essential buttons first, then optional random/source and digit buttons. Point the EZClicker at the KY-022 rather than the television, press each requested button once, and use `S` to skip an optional button that the remote does not have. It saves `/etc/rc_keymaps/mabeltv.toml`, loads it immediately, and enables `mabeltv-ir.service` for later boots.
+The mapper asks for the essential buttons first, then optional navigation-pad, random/source and digit buttons. Point the EZClicker at the KY-022 rather than the television, press each requested button once, and use `S` to skip an optional button that the remote does not have. It saves `/etc/rc_keymaps/mabeltv.toml`, loads it immediately, and enables `mabeltv-ir.service` for later boots.
 
 Test the resulting Linux keys:
 
@@ -54,7 +54,8 @@ The normal mapping is deliberately simple:
 | Mute | M | mute |
 | Previous / Back | B | previous channel; hold for parent confirmation |
 | Power | P | standby; hold five seconds for shutdown |
-| OK | Enter | confirm channel number or parent access |
+| OK | Enter | another programme; confirm channel number or parent access |
+| Navigation pad | arrows | navigate the parent panel |
 | 0–9 | 0–9 | direct channel entry |
 | Source or spare button | R | random episode |
 
