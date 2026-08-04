@@ -13,6 +13,12 @@ User=mabeltv
 Group=mabeltv
 SupplementaryGroups=audio video render input
 WorkingDirectory=/var/lib/mabeltv
+StateDirectory=mabeltv
+StateDirectoryMode=0750
+CacheDirectory=mabeltv
+CacheDirectoryMode=0750
+LogsDirectory=mabeltv
+LogsDirectoryMode=0750
 RuntimeDirectory=mabeltv
 RuntimeDirectoryMode=0750
 Environment=HOME=/var/lib/mabeltv
