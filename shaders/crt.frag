@@ -48,15 +48,9 @@ void main()
     float mask = roundedScreenMask(qt_TexCoord0);
     float distortion = clamp(uniforms.distortion, 0.0, 1.0);
 
-    float trackingPosition = fract(uniforms.phase * 0.075);
-    float trackingDistance = abs(sampleUv.y - trackingPosition);
-    trackingDistance = min(trackingDistance, 1.0 - trackingDistance);
-    float trackingBand = 1.0 - smoothstep(0.006, 0.034, trackingDistance);
     float horizontalWobble = sin(sampleUv.y * 31.0 + uniforms.phase * 4.7)
         + 0.45 * sin(sampleUv.y * 83.0 - uniforms.phase * 7.1);
     sampleUv.x += horizontalWobble * 0.0018 * distortion;
-    sampleUv.x += trackingBand * sin(uniforms.phase * 11.0) * 0.016
-        * distortion * distortion;
     sampleUv.y += sin(uniforms.phase * 3.3) * 0.0012 * distortion;
 
     if (mask <= 0.0) {
@@ -65,10 +59,18 @@ void main()
     }
 
     vec2 pixel = 1.0 / max(uniforms.resolution, vec2(1.0));
-    sampleUv = clamp(sampleUv, pixel * 0.5, vec2(1.0) - pixel * 0.5);
+    vec2 sampleMinimum = pixel * 0.5;
+    vec2 sampleMaximum = vec2(1.0) - sampleMinimum;
+    sampleUv = clamp(sampleUv, sampleMinimum, sampleMaximum);
     vec4 centreSample = texture(source, sampleUv);
-    vec4 leftSample = texture(source, sampleUv - vec2(pixel.x, 0.0));
-    vec4 rightSample = texture(source, sampleUv + vec2(pixel.x, 0.0));
+    vec4 leftSample = texture(source,
+                              clamp(sampleUv - vec2(pixel.x, 0.0),
+                                    sampleMinimum,
+                                    sampleMaximum));
+    vec4 rightSample = texture(source,
+                               clamp(sampleUv + vec2(pixel.x, 0.0),
+                                     sampleMinimum,
+                                     sampleMaximum));
     float softness = 0.07 * uniforms.effectStrength;
     vec3 colour = centreSample.rgb * (1.0 - softness * 2.0)
         + (leftSample.rgb + rightSample.rgb) * softness;
@@ -78,15 +80,20 @@ void main()
     if (distortion > 0.001) {
         float colourOffset = (0.5 + 4.5 * distortion * distortion) * pixel.x;
         vec3 separatedColour = vec3(
-            texture(source, sampleUv + vec2(colourOffset, 0.0)).r,
+            texture(source,
+                    clamp(sampleUv + vec2(colourOffset, 0.0),
+                          sampleMinimum,
+                          sampleMaximum)).r,
             centreSample.g,
-            texture(source, sampleUv - vec2(colourOffset, 0.0)).b);
+            texture(source,
+                    clamp(sampleUv - vec2(colourOffset, 0.0),
+                          sampleMinimum,
+                          sampleMaximum)).b);
         colour = mix(colour, separatedColour, 0.58 * distortion);
 
         float grain = analogueNoise(sampleUv * uniforms.resolution
                                      + vec2(uniforms.phase * 31.0));
         colour += (grain - 0.5) * 0.085 * distortion;
-        colour *= 1.0 + trackingBand * 0.14 * distortion;
     }
 
     float scanline = 1.0 - 0.035 * uniforms.effectStrength
