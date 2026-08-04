@@ -27,8 +27,16 @@ float roundedScreenMask(vec2 uv)
     // towards the visibly convex face of a deep CRT tube.
     float exponent = mix(7.0, 4.0, pow(glass, 0.8));
     float shape = pow(point.x, exponent) + pow(point.y, exponent);
-    float softness = max(0.0015, uniforms.maskSoftness * 2.2
-        / max(1.0, min(uniforms.resolution.x, uniforms.resolution.y)));
+    vec2 safeResolution = max(uniforms.resolution, vec2(1.0));
+    vec2 shapeGradient = exponent
+        * pow(max(point, vec2(0.0001)), vec2(exponent - 1.0)) * 2.0;
+    // Convert the curve's local slope into a pixel footprint. A fixed UV
+    // softness became sub-pixel along the flatter parts of the superellipse,
+    // which made the inside bezel edge look stair-stepped on a television.
+    float pixelFootprint = dot(shapeGradient, 1.0 / safeResolution);
+    float softness = max(uniforms.maskSoftness * 2.2
+                             / min(safeResolution.x, safeResolution.y),
+                         pixelFootprint * 1.05);
     return 1.0 - smoothstep(1.0 - softness, 1.0 + softness, shape);
 }
 
