@@ -12,11 +12,11 @@ Mabel TV is a native, child-friendly recreation of watching television in the 19
 - continuous-broadcast simulation while changing channel or using standby
 - number entry, channel recall, volume/mute, a 60% default volume cap, and standby
 - tuning static, channel/volume OSDs, and an intentional no-signal channel
-- persistent channel and volume state
+- persistent channel, volume, and remote-lock state
 - corrupt-episode exclusion and automatic recovery
 - synthetic, non-copyrighted development channels and automated core tests
 - rounded/curved CRT shader, warm-up/standby transitions, scanlines, vignette, subtle RGB separation, and procedural tuning/click sounds
-- hidden hold-and-confirm parent panel for playback, picture, CRT, display, volume and lifecycle choices
+- hidden hold-and-confirm parent panel with complete channel/programme switches plus playback, picture, CRT, display, volume and lifecycle choices
 - portable Windows packaging with dependency discovery and clean-environment smoke tests
 - Raspberry Pi OS Lite installer using Qt EGLFS/KMS, safe libmpv hardware decoding, systemd restart/recovery and a 1 GB memory budget
 - KY-022 `gpio-ir` integration with an interactive EZClicker keymap utility
@@ -70,7 +70,7 @@ Keyboard controls:
 | Left | Previous episode or film |
 | `+` / `=` | Volume up |
 | `-` | Volume down |
-| `M` | Mute |
+| `M` | Mute; hold for 3 seconds to lock or unlock every other remote button |
 | `B` | Return to the previous channel |
 | `R` | Pick another episode on the current channel |
 | Enter | Pick another episode on the current channel; confirm in parent controls |
@@ -78,7 +78,8 @@ Keyboard controls:
 | Hold `P` for 5 seconds | Safe Raspberry Pi shutdown |
 | F11 | Toggle full-screen |
 
-Hold `B` for 3.5 seconds, then press Enter three times, to reveal parent access.
+Hold `B` for 3.5 seconds, then press Enter three times, to reveal parent access. Open
+**Channels & Programmes** there to switch entire channels or individual episodes and films on or off.
 
 ## Adding your media
 
@@ -95,6 +96,7 @@ MabelTV\
   postman-pat\
   fireman-sam\
   thomas\
+  Waffle Dog\
   films\
   family\
   empty-channel\

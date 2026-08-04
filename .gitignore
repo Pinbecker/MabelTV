@@ -3,4 +3,4 @@
 /CMakeUserPresets.json
 *.user
 *.autosave
-
+__pycache__/

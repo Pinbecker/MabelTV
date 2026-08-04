@@ -56,6 +56,7 @@ The supplied channel configuration expects:
 ├── postman-pat/
 ├── fireman-sam/
 ├── thomas/
+├── Waffle Dog/
 ├── films/
 ├── family/
 └── empty-channel/
@@ -81,7 +82,15 @@ sudo -u mabeltv /opt/mabeltv/current/mabeltv_media_check \
   --cache /var/lib/mabeltv/media-index.json
 ```
 
-Supported containers are MP4, M4V, MKV, MOV, WebM, AVI, MPG, and MPEG. H.264 video with AAC audio at SD or 720p is the safest starting format for a 1 GB Pi 4. The validator rejects unreadable files before the child-facing player sees them.
+An existing installation keeps its live `channels.json` during updates. Add the new Waffle Dog channel once with:
+
+```bash
+sudo mabeltv-add-channel --number 4 --name "Waffle Dog" --folder "Waffle Dog" --aspect crop
+```
+
+The command is safe to repeat and will not overwrite another channel using number 4 or the same folder.
+
+Supported containers are MP4, M4V, MKV, MOV, WebM, AVI, MPG, and MPEG. H.264 video with AAC audio at SD or 720p is the safest starting format for the 2 GB Pi 4. The validator rejects unreadable files before the child-facing player sees them.
 
 ## 4. Wire and map the remote
 

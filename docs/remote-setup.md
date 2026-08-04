@@ -51,7 +51,7 @@ The normal mapping is deliberately simple:
 | --- | --- | --- |
 | Channel + / - | Page Up / Page Down | next / previous channel |
 | Volume + / - | Equal / Minus | louder / quieter |
-| Mute | M | mute |
+| Mute | M | mute; hold three seconds to lock or unlock the remote |
 | Previous / Back | B | previous channel; hold for parent confirmation |
 | Power | P | standby / welcome-screen wake; hold five seconds for shutdown |
 | OK | Enter | another random programme; confirm channel number or parent access |
@@ -62,7 +62,7 @@ The normal mapping is deliberately simple:
 
 Start Mabel TV again with `sudo systemctl start mabeltv.service`.
 
-One-shot actions (digits, mute, random, standby, parent access and shutdown) ignore Linux auto-repeat events. Channel and volume holds are allowed but rate-limited, so a noisy receiver or a long press cannot generate an uncontrolled burst of actions.
+One-shot actions (digits, mute, random, standby, parent access and shutdown) ignore Linux auto-repeat events. Channel and volume holds are allowed but rate-limited, so a noisy receiver or a long press cannot generate an uncontrolled burst of actions. While the remote is locked, every button except the three-second Mute hold is ignored; a small on-screen label remains as a reminder.
 
 ## TV interaction
 

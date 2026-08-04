@@ -17,6 +17,7 @@ Window {
     property real flickerAmount: 0
     property bool previousHeldForParent: false
     property bool powerHeldForShutdown: false
+    property bool muteHeldForLock: false
     readonly property bool showStatic: !directMediaMode
         && (tvController.tuning
             || (tvController.noSignal && player.status !== "Playing"))
@@ -89,6 +90,14 @@ Window {
         volumeLevel.width = isMuted ? 0 : volumeTrack.width * value / 100
         volumeOsd.opacity = 1
         volumeOsdTimer.restart()
+    }
+
+    function showRemoteLockState() {
+        remoteLockMessage.text = tvController.remoteLocked
+                ? "REMOTE LOCKED\nHOLD MUTE TO UNLOCK"
+                : "REMOTE UNLOCKED"
+        remoteLockOsd.opacity = 1
+        remoteLockOsdTimer.restart()
     }
 
     Rectangle {
@@ -380,6 +389,55 @@ Window {
         controller: tvController
     }
 
+    Rectangle {
+        id: remoteLockOsd
+        anchors.centerIn: parent
+        z: 310
+        width: Math.min(500, parent.width * 0.62)
+        height: tvController.remoteLocked ? 128 : 84
+        color: "#f20b130d"
+        border.color: "#91bc8e"
+        border.width: 2
+        opacity: 0
+
+        Behavior on opacity { NumberAnimation { duration: 150 } }
+
+        Text {
+            id: remoteLockMessage
+            anchors.fill: parent
+            anchors.margins: 14
+            color: "#e9f2dc"
+            font.family: "Consolas"
+            font.bold: true
+            font.pixelSize: 24
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
+    }
+
+    Rectangle {
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.margins: 18
+        z: 300
+        width: lockBadge.implicitWidth + 24
+        height: 34
+        radius: 3
+        visible: tvController.remoteLocked
+        color: "#d50b130d"
+        border.color: "#779b76"
+
+        Text {
+            id: lockBadge
+            anchors.centerIn: parent
+            color: "#dce9cd"
+            font.family: "Consolas"
+            font.bold: true
+            font.pixelSize: 15
+            text: "REMOTE LOCKED"
+        }
+    }
+
     Timer {
         id: parentHoldTimer
         interval: 3500
@@ -395,6 +453,15 @@ Window {
         onTriggered: {
             root.powerHeldForShutdown = true
             tvController.requestSafeShutdown()
+        }
+    }
+
+    Timer {
+        id: muteHoldTimer
+        interval: 3000
+        onTriggered: {
+            root.muteHeldForLock = true
+            tvController.toggleRemoteLock()
         }
     }
 
@@ -446,6 +513,12 @@ Window {
         onTriggered: volumeOsd.opacity = 0
     }
 
+    Timer {
+        id: remoteLockOsdTimer
+        interval: 2200
+        onTriggered: remoteLockOsd.opacity = 0
+    }
+
     Connections {
         target: tvController
 
@@ -476,6 +549,9 @@ Window {
                     tvController.resumeFromStandby()
             }
         }
+        function onRemoteLockedChanged() {
+            root.showRemoteLockState()
+        }
     }
 
     Item {
@@ -483,7 +559,15 @@ Window {
         focus: true
 
         Keys.onPressed: event => {
-            if (parentOverlay.visible && event.key === Qt.Key_B
+            if (event.key === Qt.Key_M) {
+                if (!event.isAutoRepeat) {
+                    root.muteHeldForLock = false
+                    muteHoldTimer.restart()
+                }
+                event.accepted = true
+            } else if (tvController.remoteLocked) {
+                event.accepted = true
+            } else if (parentOverlay.visible && event.key === Qt.Key_B
                     && root.previousHeldForParent) {
                 // Swallow the repeat tail of the same Back hold that opened
                 // parent access. A fresh Back press still closes the overlay.
@@ -556,9 +640,6 @@ Window {
                        && !directMediaMode) {
                 tvController.dispatch(TvController.PreviousProgramme)
                 event.accepted = true
-            } else if (event.key === Qt.Key_M && !event.isAutoRepeat) {
-                tvController.dispatch(TvController.ToggleMute)
-                event.accepted = true
             } else if (event.key === Qt.Key_R && !event.isAutoRepeat && !directMediaMode) {
                 tvController.dispatch(TvController.RandomEpisode)
                 event.accepted = true
@@ -576,7 +657,15 @@ Window {
         }
 
         Keys.onReleased: event => {
-            if (event.key === Qt.Key_B && !event.isAutoRepeat) {
+            if (event.key === Qt.Key_M && !event.isAutoRepeat) {
+                if (muteHoldTimer.running) {
+                    muteHoldTimer.stop()
+                    if (!root.muteHeldForLock && !tvController.remoteLocked)
+                        tvController.dispatch(TvController.ToggleMute)
+                }
+                root.muteHeldForLock = false
+                event.accepted = true
+            } else if (event.key === Qt.Key_B && !event.isAutoRepeat) {
                 if (parentHoldTimer.running) {
                     parentHoldTimer.stop()
                     if (!root.previousHeldForParent && !parentOverlay.visible)

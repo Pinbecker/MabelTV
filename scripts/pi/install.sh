@@ -103,6 +103,7 @@ install -o root -g root -m 0644 "$source_root/packaging/linux/mabeltv-ir.service
 install -o root -g root -m 0644 "$source_root/packaging/linux/mabeltv-recovery.service" /etc/systemd/system/mabeltv-recovery.service
 install -o root -g root -m 0755 "$source_root/packaging/linux/mabeltv-recovery" /usr/local/libexec/mabeltv-recovery
 install -o root -g root -m 0755 "$source_root/scripts/pi/map-remote.py" /usr/local/sbin/mabeltv-map-remote
+install -o root -g root -m 0755 "$source_root/scripts/pi/add-channel.py" /usr/local/sbin/mabeltv-add-channel
 install -o root -g root -m 0755 "$source_root/scripts/pi/backup-config.sh" /usr/local/sbin/mabeltv-backup
 install -o root -g root -m 0755 "$source_root/scripts/pi/rollback.sh" /usr/local/sbin/mabeltv-rollback
 install -o root -g root -m 0755 "$source_root/scripts/pi/diagnostics.sh" /usr/local/sbin/mabeltv-diagnostics

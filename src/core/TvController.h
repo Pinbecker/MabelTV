@@ -4,12 +4,14 @@
 #include "library/ShuffleBag.h"
 
 #include <QElapsedTimer>
+#include <QHash>
 #include <QJsonObject>
 #include <QObject>
 #include <QSet>
 #include <QString>
 #include <QTimer>
 #include <QUrl>
+#include <QVariantList>
 #include <QVector>
 
 #include <utility>
@@ -28,6 +30,7 @@ class TvController final : public QObject
     Q_PROPERTY(bool tuning READ tuning NOTIFY tuningChanged)
     Q_PROPERTY(bool noSignal READ noSignal NOTIFY noSignalChanged)
     Q_PROPERTY(bool standby READ standby NOTIFY standbyChanged)
+    Q_PROPERTY(bool remoteLocked READ remoteLocked NOTIFY remoteLockedChanged)
     Q_PROPERTY(QString numericEntry READ numericEntry NOTIFY numericEntryChanged)
     Q_PROPERTY(QString libraryStatus READ libraryStatus NOTIFY libraryStatusChanged)
     Q_PROPERTY(int parentAccessState READ parentAccessState NOTIFY parentAccessStateChanged)
@@ -38,6 +41,7 @@ class TvController final : public QObject
     Q_PROPERTY(QString displayResolution READ displayResolution NOTIFY displayResolutionChanged)
     Q_PROPERTY(QString crtEffectLevel READ crtEffectLevel NOTIFY crtEffectLevelChanged)
     Q_PROPERTY(bool soundEffectsEnabled READ soundEffectsEnabled NOTIFY soundEffectsEnabledChanged)
+    Q_PROPERTY(QVariantList parentLibrary READ parentLibrary NOTIFY parentLibraryChanged)
 
 public:
     enum Action
@@ -83,6 +87,7 @@ public:
     [[nodiscard]] bool tuning() const;
     [[nodiscard]] bool noSignal() const;
     [[nodiscard]] bool standby() const;
+    [[nodiscard]] bool remoteLocked() const;
     [[nodiscard]] QString numericEntry() const;
     [[nodiscard]] QString libraryStatus() const;
     [[nodiscard]] int parentAccessState() const;
@@ -93,9 +98,11 @@ public:
     [[nodiscard]] QString displayResolution() const;
     [[nodiscard]] QString crtEffectLevel() const;
     [[nodiscard]] bool soundEffectsEnabled() const;
+    [[nodiscard]] QVariantList parentLibrary() const;
 
     Q_INVOKABLE void start();
     Q_INVOKABLE void dispatch(Action action);
+    Q_INVOKABLE void toggleRemoteLock();
     Q_INVOKABLE void resumeFromStandby();
     Q_INVOKABLE void enterDigit(int digit);
     Q_INVOKABLE void confirmNumericEntry();
@@ -112,6 +119,8 @@ public:
     Q_INVOKABLE void toggleVolumeLimit();
     Q_INVOKABLE void adjustMaximumVolume(int direction);
     Q_INVOKABLE void reloadLibrary();
+    Q_INVOKABLE void toggleChannelEnabled(int channelNumber);
+    Q_INVOKABLE void toggleProgrammeEnabled(int channelNumber, const QString &fileName);
     Q_INVOKABLE void requestParentCommand(const QString &command);
     Q_INVOKABLE void requestSafeShutdown();
 
@@ -122,6 +131,7 @@ signals:
     void tuningChanged();
     void noSignalChanged();
     void standbyChanged();
+    void remoteLockedChanged();
     void numericEntryChanged();
     void libraryStatusChanged();
     void volumePolicyChanged();
@@ -133,6 +143,7 @@ signals:
     void displayResolutionChanged();
     void crtEffectLevelChanged();
     void soundEffectsEnabledChanged();
+    void parentLibraryChanged();
 
     void playbackRequested(const QUrl &source, double startPositionSeconds);
     void stopPlaybackRequested();
@@ -155,6 +166,8 @@ private:
         qint64 anchorMilliseconds = 0;
         double anchorPositionSeconds = 0.0;
         QSet<int> failedEpisodes;
+        QSet<int> disabledEpisodes;
+        bool enabled = true;
     };
 
     void loadSettings(const QString &settingsPath);
@@ -174,12 +187,16 @@ private:
     void setStandby(bool standby);
     void tuneNumericEntry();
     void seedTimeline(ChannelRuntime &runtime);
-    int findChannelByNumber(int channelNumber) const;
+    int findChannelByNumber(int channelNumber, bool includeDisabled = false) const;
+    int adjacentEnabledChannel(int channelIndex, int direction) const;
+    bool episodeIsUsable(const ChannelRuntime &runtime, int episodeIndex) const;
     int takeUsableEpisode(ChannelRuntime &runtime);
     int adjacentUsableEpisode(const ChannelRuntime &runtime, int direction) const;
     double resolveBroadcastPosition(ChannelRuntime &runtime);
     void freezeTimeline(ChannelRuntime &runtime);
     void setParentMessage(const QString &message);
+    void updateLibraryStatus();
+    void enterNoChannelsState();
 
     QVector<ChannelRuntime> m_channels;
     QTimer m_tuningTimer;
@@ -190,6 +207,7 @@ private:
     QString m_settingsPath;
     QString m_mediaRoot;
     QString m_libraryStatus;
+    QStringList m_libraryWarnings;
     QString m_numericEntry;
     int m_parentConfirmationCount = 0;
     QString m_parentMessage;
@@ -198,6 +216,8 @@ private:
     QString m_displayResolution = QStringLiteral("720p");
     QString m_crtEffectLevel = QStringLiteral("low");
     QJsonObject m_settingsRoot;
+    QSet<int> m_disabledChannelNumbers;
+    QHash<int, QSet<QString>> m_disabledProgrammeNames;
     int m_currentChannelIndex = -1;
     int m_initialChannelNumber = -1;
     int m_previousChannelNumber = -1;
@@ -208,6 +228,7 @@ private:
     bool m_tuning = false;
     bool m_noSignal = false;
     bool m_standby = false;
+    bool m_remoteLocked = false;
     bool m_started = false;
     bool m_soundEffectsEnabled = true;
     ParentAccessState m_parentAccessState = ParentClosed;

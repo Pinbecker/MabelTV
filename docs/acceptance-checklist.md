@@ -6,12 +6,13 @@ Do not treat the Pi as a finished child appliance until every applicable item pa
 
 - [ ] `scripts/windows/build.ps1` passes all CTest tests.
 - [ ] `scripts/windows/package.ps1` produces and clean-PATH tests the portable ZIP.
-- [ ] Five configured channels tune correctly; channel 99 shows no signal.
+- [ ] Six populated channels, including Waffle Dog and Films, tune correctly; channel 99 shows no signal.
 - [ ] Corrupt media is skipped and a runtime decoder failure selects a replacement.
 - [ ] Continuous broadcast advances while away; resume and restart modes work.
 - [ ] Crop, fit, stretch and low/high/off CRT choices work.
 - [ ] Volume begins low and cannot exceed 60 until a parent changes policy.
 - [ ] Holding Back and pressing OK three times opens parent mode.
+- [ ] The parent library screen can disable and restore a channel, episode and film, and the choices survive restart.
 
 ## Pi commissioning
 
@@ -21,6 +22,7 @@ Do not treat the Pi as a finished child appliance until every applicable item pa
 - [ ] HDMI picture and audio survive ten channel changes.
 - [ ] `Active hardware decoder` is logged for at least the primary H.264 test media, or software fallback is measured as smooth and cool enough.
 - [ ] Remote buttons perform only their mapped actions; none unexpectedly controls the LG TV.
+- [ ] Holding Mute for three seconds locks every other remote button; holding it again unlocks them.
 - [ ] HDMI-CEC is disabled and booting the Pi does not wake/switch/control the TV.
 - [ ] Short Power enters standby; the next short press plays the welcome intro before returning to the channel.
 - [ ] Long Power causes an orderly Pi shutdown.

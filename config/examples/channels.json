@@ -20,6 +20,12 @@
       "aspect": "crop"
     },
     {
+      "number": 4,
+      "name": "Waffle Dog",
+      "folder": "Waffle Dog",
+      "aspect": "crop"
+    },
+    {
       "number": 5,
       "name": "Films",
       "folder": "films",

@@ -22,6 +22,8 @@ $episodes = @(
     @{ Path = 'fireman-sam\sam-02.mp4'; Hue = 125; Frequency = 587 },
     @{ Path = 'thomas\thomas-01.mp4'; Hue = 180; Frequency = 659 },
     @{ Path = 'thomas\thomas-02.mp4'; Hue = 215; Frequency = 698 },
+    @{ Path = 'Waffle Dog\waffle-01.mp4'; Hue = 235; Frequency = 392 },
+    @{ Path = 'films\film-01.mp4'; Hue = 255; Frequency = 370 },
     @{ Path = 'family\family-01.mp4'; Hue = 275; Frequency = 330 }
 )
 

@@ -4,6 +4,7 @@
 
 #include <QDir>
 #include <QFile>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QTemporaryDir>
 #include <QtTest>
@@ -22,7 +23,9 @@ private slots:
     void controllerSkipsAnEpisodeAfterPlaybackFailure();
     void controllerMovesBetweenProgrammesInFilenameOrder();
     void standbyWakeWaitsForWelcomeBeforeResumingPlayback();
+    void remoteLockBlocksActionsAndPersists();
     void parentControlsRequireThreeConfirmationsAndPersistSettings();
+    void parentLibraryControlsPersistAndAffectPlayback();
     void longPowerRequestBypassesParentPanelButUsesOnlyShutdownCommand();
 };
 
@@ -355,6 +358,52 @@ void CoreTests::standbyWakeWaitsForWelcomeBeforeResumingPlayback()
     QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 2, 1000);
 }
 
+void CoreTests::remoteLockBlocksActionsAndPersists()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+
+    QFile configuration(directory.filePath(QStringLiteral("channels.json")));
+    QVERIFY(configuration.open(QIODevice::WriteOnly));
+    configuration.write(R"({
+        "schema_version": 1,
+        "channels": [{"number": 1, "name": "One", "folder": "one"}]
+    })");
+    configuration.close();
+
+    const QString settingsPath = directory.filePath(QStringLiteral("settings.json"));
+    const QString statePath = directory.filePath(QStringLiteral("state.json"));
+    {
+        TvController controller;
+        QVERIFY(controller.initialize(configuration.fileName(),
+                                      settingsPath,
+                                      directory.filePath(QStringLiteral("media")),
+                                      statePath,
+                                      [](const QString &) { return MediaInspection{}; }));
+        QCOMPARE(controller.volume(), 20);
+        QVERIFY(!controller.remoteLocked());
+
+        controller.toggleRemoteLock();
+        QVERIFY(controller.remoteLocked());
+        controller.dispatch(TvController::VolumeUp);
+        controller.dispatch(TvController::ToggleStandby);
+        QCOMPARE(controller.volume(), 20);
+        QVERIFY(!controller.standby());
+    }
+
+    TvController restored;
+    QVERIFY(restored.initialize(configuration.fileName(),
+                                settingsPath,
+                                directory.filePath(QStringLiteral("media")),
+                                statePath,
+                                [](const QString &) { return MediaInspection{}; }));
+    QVERIFY(restored.remoteLocked());
+    restored.toggleRemoteLock();
+    QVERIFY(!restored.remoteLocked());
+    restored.dispatch(TvController::VolumeUp);
+    QCOMPARE(restored.volume(), 25);
+}
+
 void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
 {
     QTemporaryDir directory;
@@ -411,6 +460,95 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
                  .toObject()
                  .value(QStringLiteral("limit_enabled"))
                  .toBool(true));
+}
+
+void CoreTests::parentLibraryControlsPersistAndAffectPlayback()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/one")));
+    QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/two")));
+    for (const QString &path : {QStringLiteral("media/one/a.mp4"),
+                                QStringLiteral("media/one/b.mp4"),
+                                QStringLiteral("media/two/c.mp4")}) {
+        QFile episode(directory.filePath(path));
+        QVERIFY(episode.open(QIODevice::WriteOnly));
+        episode.close();
+    }
+
+    QFile configuration(directory.filePath(QStringLiteral("channels.json")));
+    QVERIFY(configuration.open(QIODevice::WriteOnly));
+    configuration.write(R"({
+        "schema_version": 1,
+        "channels": [
+            {"number": 1, "name": "One", "folder": "one"},
+            {"number": 2, "name": "Two", "folder": "two"}
+        ]
+    })");
+    configuration.close();
+
+    QFile settings(directory.filePath(QStringLiteral("settings.json")));
+    QVERIFY(settings.open(QIODevice::WriteOnly));
+    settings.write(R"({"schema_version": 1, "playback_mode": "restart"})");
+    settings.close();
+
+    const auto inspector = [](const QString &) {
+        return MediaInspection{true, true, 42.0, QStringLiteral("h264"), {}};
+    };
+    TvController controller;
+    QVERIFY(controller.initialize(configuration.fileName(),
+                                  settings.fileName(),
+                                  directory.filePath(QStringLiteral("media")),
+                                  directory.filePath(QStringLiteral("state.json")),
+                                  inspector));
+    QSignalSpy playbackRequests(&controller, &TvController::playbackRequested);
+    controller.start();
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 1, 1000);
+
+    controller.requestParentAccess();
+    controller.parentConfirm();
+    controller.parentConfirm();
+    controller.parentConfirm();
+    QCOMPARE(controller.parentAccessState(), TvController::ParentOpen);
+
+    const QString playingFile = playbackRequests.constFirst().constFirst().toUrl().fileName();
+    controller.toggleProgrammeEnabled(1, playingFile);
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 2, 1000);
+    QVERIFY(playbackRequests.at(1).at(0).toUrl().fileName() != playingFile);
+
+    controller.toggleChannelEnabled(2);
+    const QVariantList library = controller.parentLibrary();
+    QCOMPARE(library.size(), 2);
+    QVERIFY(!library.at(1).toMap().value(QStringLiteral("enabled")).toBool());
+    QCOMPARE(library.at(0).toMap().value(QStringLiteral("enabledProgrammeCount")).toInt(), 1);
+    controller.closeParent();
+    controller.dispatch(TvController::ChannelUp);
+    QCOMPARE(controller.currentChannelNumber(), 1);
+
+    QFile savedSettings(settings.fileName());
+    QVERIFY(savedSettings.open(QIODevice::ReadOnly));
+    const QJsonObject savedRoot = QJsonDocument::fromJson(savedSettings.readAll()).object();
+    const QJsonObject librarySettings = savedRoot.value(QStringLiteral("library")).toObject();
+    QCOMPARE(librarySettings.value(QStringLiteral("disabled_channels")).toArray().at(0).toInt(), 2);
+    QVERIFY(librarySettings.value(QStringLiteral("disabled_programmes"))
+                .toObject()
+                .value(QStringLiteral("1"))
+                .toArray()
+                .contains(playingFile));
+
+    TvController restored;
+    QVERIFY(restored.initialize(configuration.fileName(),
+                                settings.fileName(),
+                                directory.filePath(QStringLiteral("media")),
+                                directory.filePath(QStringLiteral("restored-state.json")),
+                                inspector));
+    const QVariantList restoredLibrary = restored.parentLibrary();
+    QVERIFY(!restoredLibrary.at(1).toMap().value(QStringLiteral("enabled")).toBool());
+    QCOMPARE(restoredLibrary.at(0)
+                 .toMap()
+                 .value(QStringLiteral("enabledProgrammeCount"))
+                 .toInt(),
+             1);
 }
 
 void CoreTests::longPowerRequestBypassesParentPanelButUsesOnlyShutdownCommand()

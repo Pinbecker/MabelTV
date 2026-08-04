@@ -2,6 +2,10 @@
     "crt_effect": "low",
     "default_aspect": "crop",
     "display_resolution": "720p",
+    "library": {
+        "disabled_channels": [],
+        "disabled_programmes": {}
+    },
     "picture_mode": "channel",
     "playback_mode": "continuous",
     "schema_version": 1,

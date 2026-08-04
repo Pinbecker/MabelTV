@@ -4,6 +4,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSaveFile>
@@ -52,6 +53,7 @@ bool TvController::initialize(const QString &channelsPath,
     m_tuningTimer.stop();
     m_numericTimer.stop();
     m_channels.clear();
+    m_libraryWarnings.clear();
     m_currentChannelIndex = -1;
     m_initialChannelNumber = -1;
     m_started = false;
@@ -91,12 +93,20 @@ bool TvController::initialize(const QString &channelsPath,
     for (Channel &channel : library.channels) {
         const quint32 seed = baseSeed ^ (static_cast<quint32>(channel.number) * 2654435761U);
         m_channels.emplaceBack(std::move(channel), seed);
+        ChannelRuntime &runtime = m_channels.back();
+        runtime.enabled = !m_disabledChannelNumbers.contains(runtime.channel.number);
+        const QSet<QString> disabledNames = m_disabledProgrammeNames.value(runtime.channel.number);
+        for (int index = 0; index < runtime.channel.episodes.size(); ++index) {
+            const QString fileName = QFileInfo(runtime.channel.episodes[index].path).fileName();
+            if (disabledNames.contains(fileName)) {
+                runtime.disabledEpisodes.insert(index);
+            }
+        }
     }
 
-    m_libraryStatus = library.warnings.isEmpty()
-                          ? QStringLiteral("%1 channels ready").arg(m_channels.size())
-                          : library.warnings.join(QLatin1Char('\n'));
-    emit libraryStatusChanged();
+    m_libraryWarnings = library.warnings;
+    updateLibraryStatus();
+    emit parentLibraryChanged();
     qInfo() << m_channels.size() << "channels loaded";
     for (const QString &warning : library.warnings) {
         qWarning().noquote() << warning;
@@ -166,6 +176,11 @@ bool TvController::standby() const
     return m_standby;
 }
 
+bool TvController::remoteLocked() const
+{
+    return m_remoteLocked;
+}
+
 QString TvController::numericEntry() const
 {
     return m_numericEntry;
@@ -216,6 +231,38 @@ bool TvController::soundEffectsEnabled() const
     return m_soundEffectsEnabled;
 }
 
+QVariantList TvController::parentLibrary() const
+{
+    QVariantList channels;
+    channels.reserve(m_channels.size());
+    for (const ChannelRuntime &runtime : m_channels) {
+        QVariantList programmes;
+        programmes.reserve(runtime.channel.episodes.size());
+        int enabledProgrammeCount = 0;
+        for (int index = 0; index < runtime.channel.episodes.size(); ++index) {
+            const QString fileName = QFileInfo(runtime.channel.episodes[index].path).fileName();
+            QString displayName = QFileInfo(fileName).completeBaseName();
+            displayName.replace(QLatin1Char('_'), QLatin1Char(' '));
+            displayName = displayName.simplified();
+            const bool enabled = !runtime.disabledEpisodes.contains(index);
+            enabledProgrammeCount += enabled ? 1 : 0;
+            programmes.append(QVariantMap{{QStringLiteral("fileName"), fileName},
+                                          {QStringLiteral("name"), displayName},
+                                          {QStringLiteral("enabled"), enabled}});
+        }
+        channels.append(QVariantMap{
+            {QStringLiteral("number"), runtime.channel.number},
+            {QStringLiteral("name"), runtime.channel.name},
+            {QStringLiteral("folder"), runtime.channel.folder},
+            {QStringLiteral("enabled"), runtime.enabled},
+            {QStringLiteral("programmeCount"), runtime.channel.episodes.size()},
+            {QStringLiteral("enabledProgrammeCount"), enabledProgrammeCount},
+            {QStringLiteral("programmes"), programmes},
+        });
+    }
+    return channels;
+}
+
 void TvController::start()
 {
     if (m_started || m_channels.isEmpty()) {
@@ -225,13 +272,20 @@ void TvController::start()
 
     int index = findChannelByNumber(m_initialChannelNumber);
     if (index < 0) {
-        index = 0;
+        index = adjacentEnabledChannel(-1, 1);
+    }
+    if (index < 0) {
+        enterNoChannelsState();
+        return;
     }
     requestTune(index, false);
 }
 
 void TvController::dispatch(Action action)
 {
+    if (m_remoteLocked) {
+        return;
+    }
     if (m_parentAccessState != ParentClosed && action != ToggleStandby) {
         return;
     }
@@ -301,6 +355,22 @@ void TvController::dispatch(Action action)
     }
 }
 
+void TvController::toggleRemoteLock()
+{
+    m_remoteLocked = !m_remoteLocked;
+    if (m_remoteLocked) {
+        closeParent();
+        m_numericTimer.stop();
+        if (!m_numericEntry.isEmpty()) {
+            m_numericEntry.clear();
+            emit numericEntryChanged();
+        }
+    }
+    emit remoteLockedChanged();
+    saveState();
+    qInfo() << (m_remoteLocked ? "Remote locked" : "Remote unlocked");
+}
+
 void TvController::resumeFromStandby()
 {
     if (m_standby || !m_started || m_currentChannelIndex < 0) {
@@ -311,7 +381,7 @@ void TvController::resumeFromStandby()
 
 void TvController::enterDigit(int digit)
 {
-    if (m_standby || digit < 0 || digit > 9) {
+    if (m_remoteLocked || m_standby || digit < 0 || digit > 9) {
         return;
     }
 
@@ -379,7 +449,7 @@ void TvController::playbackFailed(const QString &message)
 
 void TvController::requestParentAccess()
 {
-    if (m_parentAccessState == ParentOpen) {
+    if (m_remoteLocked || m_parentAccessState == ParentOpen) {
         return;
     }
     m_parentAccessState = ParentConfirmation;
@@ -518,6 +588,96 @@ void TvController::reloadLibrary()
     }
 }
 
+void TvController::toggleChannelEnabled(int channelNumber)
+{
+    if (m_parentAccessState != ParentOpen) {
+        return;
+    }
+
+    const int channelIndex = findChannelByNumber(channelNumber, true);
+    if (channelIndex < 0) {
+        return;
+    }
+
+    ChannelRuntime &runtime = m_channels[channelIndex];
+    runtime.enabled = !runtime.enabled;
+    if (runtime.enabled) {
+        m_disabledChannelNumbers.remove(channelNumber);
+    } else {
+        m_disabledChannelNumbers.insert(channelNumber);
+    }
+    saveSettings();
+    updateLibraryStatus();
+    emit parentLibraryChanged();
+
+    setParentMessage(QStringLiteral("Channel %1 %2")
+                         .arg(channelNumber)
+                         .arg(runtime.enabled ? QStringLiteral("enabled")
+                                              : QStringLiteral("disabled")));
+
+    if (!runtime.enabled && m_currentChannelIndex == channelIndex) {
+        const int next = adjacentEnabledChannel(channelIndex, 1);
+        if (next >= 0) {
+            requestTune(next, false);
+        } else {
+            enterNoChannelsState();
+        }
+    } else if (runtime.enabled && m_currentChannelIndex < 0 && m_started) {
+        requestTune(channelIndex, false);
+    }
+}
+
+void TvController::toggleProgrammeEnabled(int channelNumber, const QString &fileName)
+{
+    if (m_parentAccessState != ParentOpen || fileName.isEmpty()) {
+        return;
+    }
+
+    const int channelIndex = findChannelByNumber(channelNumber, true);
+    if (channelIndex < 0) {
+        return;
+    }
+
+    ChannelRuntime &runtime = m_channels[channelIndex];
+    int episodeIndex = -1;
+    for (int index = 0; index < runtime.channel.episodes.size(); ++index) {
+        if (QFileInfo(runtime.channel.episodes[index].path).fileName() == fileName) {
+            episodeIndex = index;
+            break;
+        }
+    }
+    if (episodeIndex < 0) {
+        return;
+    }
+
+    const bool enabling = runtime.disabledEpisodes.remove(episodeIndex);
+    QSet<QString> &disabledNames = m_disabledProgrammeNames[channelNumber];
+    if (enabling) {
+        disabledNames.remove(fileName);
+    } else {
+        runtime.disabledEpisodes.insert(episodeIndex);
+        disabledNames.insert(fileName);
+    }
+    if (disabledNames.isEmpty()) {
+        m_disabledProgrammeNames.remove(channelNumber);
+    }
+    saveSettings();
+    emit parentLibraryChanged();
+    setParentMessage(QStringLiteral("%1 %2")
+                         .arg(QFileInfo(fileName).completeBaseName())
+                         .arg(enabling ? QStringLiteral("enabled")
+                                       : QStringLiteral("disabled")));
+
+    if (runtime.enabled && m_currentChannelIndex == channelIndex) {
+        if ((!enabling && runtime.currentEpisode == episodeIndex) || m_noSignal) {
+            runtime.currentEpisode = enabling ? episodeIndex : takeUsableEpisode(runtime);
+            runtime.anchorMilliseconds = m_broadcastClock.elapsed();
+            runtime.anchorPositionSeconds = 0.0;
+            requestTune(channelIndex, false, false);
+        }
+    }
+}
+
 void TvController::requestParentCommand(const QString &command)
 {
     if (m_parentAccessState != ParentOpen) {
@@ -533,6 +693,9 @@ void TvController::requestParentCommand(const QString &command)
 
 void TvController::requestSafeShutdown()
 {
+    if (m_remoteLocked) {
+        return;
+    }
     qInfo() << "Safe shutdown requested by long power-button hold";
     saveState();
     emit parentCommandRequested(QStringLiteral("shutdown"));
@@ -541,6 +704,8 @@ void TvController::requestSafeShutdown()
 void TvController::loadSettings(const QString &settingsPath)
 {
     m_settingsRoot = QJsonObject{};
+    m_disabledChannelNumbers.clear();
+    m_disabledProgrammeNames.clear();
     QFile settings(settingsPath);
     if (!settings.open(QIODevice::ReadOnly)) {
         return;
@@ -586,6 +751,36 @@ void TvController::loadSettings(const QString &settingsPath)
         ? effectLevel
         : QStringLiteral("low");
     m_soundEffectsEnabled = m_settingsRoot.value(QStringLiteral("sound_effects_enabled")).toBool(true);
+
+    const QJsonObject librarySettings = m_settingsRoot.value(QStringLiteral("library")).toObject();
+    const QJsonArray disabledChannels = librarySettings.value(QStringLiteral("disabled_channels"))
+                                            .toArray();
+    for (const QJsonValue &value : disabledChannels) {
+        if (value.isDouble()) {
+            m_disabledChannelNumbers.insert(value.toInt());
+        }
+    }
+    const QJsonObject disabledProgrammes =
+        librarySettings.value(QStringLiteral("disabled_programmes")).toObject();
+    for (auto iterator = disabledProgrammes.constBegin();
+         iterator != disabledProgrammes.constEnd();
+         ++iterator) {
+        bool validChannel = false;
+        const int channelNumber = iterator.key().toInt(&validChannel);
+        if (!validChannel || !iterator.value().isArray()) {
+            continue;
+        }
+        QSet<QString> names;
+        for (const QJsonValue &value : iterator.value().toArray()) {
+            const QString fileName = QFileInfo(value.toString()).fileName();
+            if (!fileName.isEmpty()) {
+                names.insert(fileName);
+            }
+        }
+        if (!names.isEmpty()) {
+            m_disabledProgrammeNames.insert(channelNumber, names);
+        }
+    }
 }
 
 void TvController::saveSettings()
@@ -606,6 +801,30 @@ void TvController::saveSettings()
         QJsonObject{{QStringLiteral("initial"), m_volume},
                     {QStringLiteral("maximum"), m_maximumVolume},
                     {QStringLiteral("limit_enabled"), m_volumeLimitEnabled}});
+
+    QList<int> disabledChannels = m_disabledChannelNumbers.values();
+    std::sort(disabledChannels.begin(), disabledChannels.end());
+    QJsonArray disabledChannelValues;
+    for (const int channelNumber : disabledChannels) {
+        disabledChannelValues.append(channelNumber);
+    }
+
+    QList<int> programmeChannels = m_disabledProgrammeNames.keys();
+    std::sort(programmeChannels.begin(), programmeChannels.end());
+    QJsonObject disabledProgrammes;
+    for (const int channelNumber : programmeChannels) {
+        QStringList names = m_disabledProgrammeNames.value(channelNumber).values();
+        names.sort(Qt::CaseInsensitive);
+        QJsonArray nameValues;
+        for (const QString &name : names) {
+            nameValues.append(name);
+        }
+        disabledProgrammes.insert(QString::number(channelNumber), nameValues);
+    }
+    m_settingsRoot.insert(
+        QStringLiteral("library"),
+        QJsonObject{{QStringLiteral("disabled_channels"), disabledChannelValues},
+                    {QStringLiteral("disabled_programmes"), disabledProgrammes}});
 
     QDir().mkpath(QFileInfo(m_settingsPath).absolutePath());
     QSaveFile settings(m_settingsPath);
@@ -648,6 +867,11 @@ void TvController::loadState()
     m_previousChannelNumber = object.value(QStringLiteral("previous_channel")).toInt(-1);
     m_volume = std::clamp(object.value(QStringLiteral("volume")).toInt(m_volume), 0, maximumVolume());
     m_muted = object.value(QStringLiteral("muted")).toBool(false);
+    const bool remoteWasLocked = m_remoteLocked;
+    m_remoteLocked = object.value(QStringLiteral("remote_locked")).toBool(false);
+    if (remoteWasLocked != m_remoteLocked) {
+        emit remoteLockedChanged();
+    }
 
     const qint64 savedAt = static_cast<qint64>(
         object.value(QStringLiteral("saved_at_utc_ms")).toDouble(0.0));
@@ -673,7 +897,7 @@ void TvController::loadState()
             episodeIndex = timeline.value(QStringLiteral("episode_index")).toInt(-1);
         }
 
-        if (episodeIndex >= 0 && episodeIndex < runtime.channel.episodes.size()) {
+        if (episodeIsUsable(runtime, episodeIndex)) {
             runtime.currentEpisode = episodeIndex;
             for (int attempt = 0; attempt < runtime.channel.episodes.size(); ++attempt) {
                 if (runtime.shuffle.take() == episodeIndex) {
@@ -709,6 +933,7 @@ void TvController::saveState() const
         {QStringLiteral("previous_channel"), m_previousChannelNumber},
         {QStringLiteral("volume"), m_volume},
         {QStringLiteral("muted"), m_muted},
+        {QStringLiteral("remote_locked"), m_remoteLocked},
     };
 
     QJsonObject timelines;
@@ -736,7 +961,8 @@ void TvController::requestTune(int channelIndex,
                                bool updatePreviousChannel,
                                bool chooseRestartEpisode)
 {
-    if (channelIndex < 0 || channelIndex >= m_channels.size()) {
+    if (channelIndex < 0 || channelIndex >= m_channels.size()
+        || !m_channels[channelIndex].enabled) {
         return;
     }
 
@@ -775,14 +1001,14 @@ void TvController::finishTune()
     }
 
     ChannelRuntime &runtime = m_channels[m_currentChannelIndex];
-    if (runtime.channel.episodes.isEmpty()) {
+    if (runtime.channel.episodes.isEmpty() || !runtime.enabled) {
         setTuning(false);
         setNoSignal(true);
         return;
     }
 
     const double startPosition = resolveBroadcastPosition(runtime);
-    if (runtime.currentEpisode < 0 || runtime.currentEpisode >= runtime.channel.episodes.size()) {
+    if (!episodeIsUsable(runtime, runtime.currentEpisode)) {
         setTuning(false);
         setNoSignal(true);
         return;
@@ -798,17 +1024,14 @@ void TvController::finishTune()
 
 void TvController::changeChannel(int direction)
 {
-    if (m_channels.isEmpty()) {
+    if (m_channels.isEmpty() || direction == 0) {
         return;
     }
 
-    int next = m_currentChannelIndex;
-    if (next < 0) {
-        next = 0;
-    } else {
-        next = (next + direction + m_channels.size()) % m_channels.size();
+    const int next = adjacentEnabledChannel(m_currentChannelIndex, direction);
+    if (next >= 0) {
+        requestTune(next);
     }
-    requestTune(next);
 }
 
 void TvController::changeProgramme(int direction)
@@ -896,8 +1119,11 @@ void TvController::seedTimeline(ChannelRuntime &runtime)
     runtime.anchorPositionSeconds = 0.0;
 
     double totalDuration = 0.0;
-    for (const Episode &episode : runtime.channel.episodes) {
-        totalDuration += std::max(0.0, episode.durationSeconds);
+    for (int index = 0; index < runtime.channel.episodes.size(); ++index) {
+        if (!runtime.disabledEpisodes.contains(index)) {
+            totalDuration += std::max(0.0,
+                                      runtime.channel.episodes[index].durationSeconds);
+        }
     }
     if (totalDuration > 0.0 && m_playbackMode == QStringLiteral("continuous")) {
         const double channelOffset = static_cast<double>(runtime.channel.number) * 977.0;
@@ -922,14 +1148,73 @@ void TvController::setParentMessage(const QString &message)
     emit parentMessageChanged();
 }
 
-int TvController::findChannelByNumber(int channelNumber) const
+void TvController::updateLibraryStatus()
+{
+    int enabledChannels = 0;
+    for (const ChannelRuntime &runtime : m_channels) {
+        enabledChannels += runtime.enabled ? 1 : 0;
+    }
+
+    QStringList status{
+        QStringLiteral("%1 of %2 channels enabled").arg(enabledChannels).arg(m_channels.size())};
+    status.append(m_libraryWarnings);
+    const QString nextStatus = status.join(QLatin1Char('\n'));
+    if (nextStatus == m_libraryStatus) {
+        return;
+    }
+    m_libraryStatus = nextStatus;
+    emit libraryStatusChanged();
+}
+
+void TvController::enterNoChannelsState()
+{
+    m_tuningTimer.stop();
+    emit stopPlaybackRequested();
+    m_currentChannelIndex = -1;
+    emit channelChanged();
+    setTuning(false);
+    setNoSignal(true);
+    saveState();
+}
+
+int TvController::findChannelByNumber(int channelNumber, bool includeDisabled) const
 {
     for (int index = 0; index < m_channels.size(); ++index) {
-        if (m_channels[index].channel.number == channelNumber) {
+        if (m_channels[index].channel.number == channelNumber
+            && (includeDisabled || m_channels[index].enabled)) {
             return index;
         }
     }
     return -1;
+}
+
+int TvController::adjacentEnabledChannel(int channelIndex, int direction) const
+{
+    const int channelCount = static_cast<int>(m_channels.size());
+    if (channelCount == 0 || direction == 0) {
+        return -1;
+    }
+
+    const int step = direction < 0 ? -1 : 1;
+    int candidate = channelIndex;
+    for (int attempt = 0; attempt < channelCount; ++attempt) {
+        if (candidate < 0 || candidate >= channelCount) {
+            candidate = step > 0 ? 0 : channelCount - 1;
+        } else {
+            candidate = (candidate + step + channelCount) % channelCount;
+        }
+        if (m_channels[candidate].enabled) {
+            return candidate;
+        }
+    }
+    return -1;
+}
+
+bool TvController::episodeIsUsable(const ChannelRuntime &runtime, int episodeIndex) const
+{
+    return episodeIndex >= 0 && episodeIndex < runtime.channel.episodes.size()
+        && !runtime.failedEpisodes.contains(episodeIndex)
+        && !runtime.disabledEpisodes.contains(episodeIndex);
 }
 
 int TvController::takeUsableEpisode(ChannelRuntime &runtime)
@@ -937,7 +1222,7 @@ int TvController::takeUsableEpisode(ChannelRuntime &runtime)
     const int episodeCount = static_cast<int>(runtime.channel.episodes.size());
     for (int attempt = 0; attempt < episodeCount; ++attempt) {
         const int candidate = runtime.shuffle.take();
-        if (!runtime.failedEpisodes.contains(candidate)) {
+        if (episodeIsUsable(runtime, candidate)) {
             return candidate;
         }
     }
@@ -959,7 +1244,7 @@ int TvController::adjacentUsableEpisode(const ChannelRuntime &runtime, int direc
 
     for (int attempt = 0; attempt < episodeCount; ++attempt) {
         candidate = (candidate + step + episodeCount) % episodeCount;
-        if (!runtime.failedEpisodes.contains(candidate)) {
+        if (episodeIsUsable(runtime, candidate)) {
             return candidate;
         }
     }
@@ -969,7 +1254,7 @@ int TvController::adjacentUsableEpisode(const ChannelRuntime &runtime, int direc
 double TvController::resolveBroadcastPosition(ChannelRuntime &runtime)
 {
     const qint64 now = m_broadcastClock.elapsed();
-    if (runtime.currentEpisode < 0 || runtime.failedEpisodes.contains(runtime.currentEpisode)) {
+    if (!episodeIsUsable(runtime, runtime.currentEpisode)) {
         runtime.currentEpisode = takeUsableEpisode(runtime);
         runtime.anchorMilliseconds = now;
         runtime.anchorPositionSeconds = 0.0;
@@ -985,7 +1270,7 @@ double TvController::resolveBroadcastPosition(ChannelRuntime &runtime)
 
     double usableRoundDuration = 0.0;
     for (int index = 0; index < episodeCount; ++index) {
-        if (!runtime.failedEpisodes.contains(index)) {
+        if (episodeIsUsable(runtime, index)) {
             usableRoundDuration += std::max(0.0, runtime.channel.episodes[index].durationSeconds);
         }
     }
