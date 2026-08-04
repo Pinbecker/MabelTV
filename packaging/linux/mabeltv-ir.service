@@ -6,7 +6,7 @@ ConditionPathExists=/etc/rc_keymaps/mabeltv.toml
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/ir-keytable -s rc0 -c -w /etc/rc_keymaps/mabeltv.toml
+ExecStart=/usr/local/libexec/mabeltv-load-ir-keymap
 RemainAfterExit=yes
 
 [Install]

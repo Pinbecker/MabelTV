@@ -36,13 +36,37 @@ BUTTONS = [
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Map the Mabel TV infrared remote")
-    parser.add_argument("--device", default="rc0", help="rc-core device (default: rc0)")
+    parser.add_argument(
+        "--device",
+        help="rc-core device (default: automatically find gpio_ir_recv)",
+    )
     parser.add_argument("--protocol", default="nec", help="decoded protocol (default: nec)")
     parser.add_argument(
         "--output", default="/etc/rc_keymaps/mabeltv.toml", help="keymap output file"
     )
     parser.add_argument("--timeout", type=float, default=20.0, help="seconds allowed per button")
     return parser.parse_args()
+
+
+def find_gpio_ir_device() -> str | None:
+    """Return the rc-core device backed by the KY-022 GPIO receiver."""
+    result = subprocess.run(
+        ["ir-keytable"],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    current: str | None = None
+    found_pattern = re.compile(r"^Found /sys/class/rc/(rc\d+)/ with:")
+    gpio_pattern = re.compile(r"^\s*(?:Name|Driver):\s+gpio_ir_recv\s*$")
+    for line in result.stdout.splitlines():
+        found = found_pattern.match(line)
+        if found:
+            current = found.group(1)
+        elif current is not None and gpio_pattern.match(line):
+            return current
+    return None
 
 
 def capture_scancode(process: subprocess.Popen[str], selector: selectors.BaseSelector, timeout: float) -> str | None:
@@ -75,9 +99,19 @@ def main() -> int:
     if os.geteuid() != 0:
         print("Run this utility with sudo.", file=sys.stderr)
         return 1
+    if arguments.device is None:
+        arguments.device = find_gpio_ir_device()
+    if arguments.device is None:
+        print(
+            "Could not find the KY-022 gpio_ir_recv device. Check its wiring "
+            "and the gpio-ir boot overlay.",
+            file=sys.stderr,
+        )
+        return 1
     if not Path(f"/sys/class/rc/{arguments.device}").exists():
         print(
-            f"/{arguments.device} is not available. Check KY-022 wiring and reboot after configure-boot.sh.",
+            f"{arguments.device} is not available. Check KY-022 wiring and "
+            "reboot after configure-boot.sh.",
             file=sys.stderr,
         )
         return 1
@@ -146,7 +180,10 @@ def main() -> int:
     )
     subprocess.run(["systemctl", "enable", "mabeltv-ir.service"], check=True)
     print(f"\nSaved and loaded {len(mappings)} buttons in {output}.")
-    print("Use 'sudo ir-keytable -s rc0 -t' if any button needs further diagnosis.")
+    print(
+        f"Use 'sudo ir-keytable -s {arguments.device} -t' if any button needs "
+        "further diagnosis."
+    )
     return 0
 
 

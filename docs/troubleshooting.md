@@ -84,7 +84,7 @@ Check that the folder spelling exactly matches `channels.json` and that user `ma
 
 ## Remote absent or unreliable
 
-Use `ir-keytable` to confirm `rc0`, then `sudo ir-keytable -s rc0 -t` to observe raw presses. Recheck the module labels rather than relying on its physical pin order. Keep signal wiring short, keep it away from noisy power wiring, and shield the receiver from direct sunlight. Re-run `sudo mabeltv-map-remote` after changing remotes.
+Use `ir-keytable` to find the rc device whose Name and Driver are `gpio_ir_recv`, then run `sudo ir-keytable -s rcN -t` with that number to observe raw presses. Do not assume it is always `rc0`: HDMI CEC receivers can be enumerated first. Recheck the module labels rather than relying on its physical pin order. Keep signal wiring short, keep it away from noisy power wiring, and shield the receiver from direct sunlight. Re-run `sudo mabeltv-map-remote` after changing remotes.
 
 ## Recover after a bad update
 

@@ -22,7 +22,7 @@ After `configure-boot.sh` and a reboot:
 ir-keytable
 ```
 
-It should list `/sys/class/rc/rc0` and a `gpio_ir_recv` driver. If not, recheck all three wires and confirm this line exists in `/boot/firmware/config.txt`:
+It should list one rc device with the Name and Driver `gpio_ir_recv`; its number may vary between boots. If it is absent, recheck all three wires and confirm this line exists in `/boot/firmware/config.txt`:
 
 ```text
 dtoverlay=gpio-ir,gpio_pin=18
@@ -37,12 +37,14 @@ sudo systemctl stop mabeltv.service
 sudo mabeltv-map-remote
 ```
 
-The mapper asks for the essential buttons first, then optional navigation-pad, random/source and digit buttons. Point the EZClicker at the KY-022 rather than the television, press each requested button once, and use `S` to skip an optional button that the remote does not have. It saves `/etc/rc_keymaps/mabeltv.toml`, loads it immediately, and enables `mabeltv-ir.service` for later boots.
+The mapper asks for the essential buttons first, then optional navigation-pad, random/source and digit buttons. Point the EZClicker at the KY-022 rather than the television, press each requested button once, and use `S` to skip an optional button that the remote does not have. It automatically finds the `gpio_ir_recv` device, saves `/etc/rc_keymaps/mabeltv.toml`, loads it immediately, and enables `mabeltv-ir.service` for later boots. The rc-core number is deliberately not fixed because HDMI CEC receivers can take `rc0` or `rc1` depending on boot order.
 
 Test the resulting Linux keys:
 
 ```bash
-sudo ir-keytable -s rc0 -t
+sudo ir-keytable
+# Use the rc number whose Name and Driver are gpio_ir_recv, for example:
+sudo ir-keytable -s rc2 -t
 ```
 
 The normal mapping is deliberately simple:
