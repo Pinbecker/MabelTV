@@ -16,6 +16,9 @@ Window {
     property real warmProgress: 0
     property real flickerAmount: 0
     property real distortionPhase: 0
+    property bool poweringOff: false
+    property bool powerOffShutsDown: false
+    property real powerOffProgress: 0
     property bool previousHeldForParent: false
     property bool powerHeldForShutdown: false
     property bool muteHeldForLock: false
@@ -77,6 +80,34 @@ Window {
         warmingUp = true
         warmProgress = 0
         warmupAnimation.restart()
+    }
+
+    function syncPlaybackPosition() {
+        if (!directMediaMode && !introPlaying
+                && (player.status === "Playing" || player.paused)) {
+            tvController.updatePlaybackPosition(player.positionSeconds(), player.paused)
+        }
+    }
+
+    function togglePlaybackPause() {
+        if (introPlaying || poweringOff)
+            return
+        syncPlaybackPosition()
+        player.togglePause()
+    }
+
+    function beginPowerOff(shutDownPi) {
+        if (poweringOff || tvController.standby)
+            return
+        syncPlaybackPosition()
+        if (player.status === "Playing" && !player.paused)
+            player.togglePause()
+        powerOffShutsDown = shutDownPi
+        poweringOff = true
+        powerOffProgress = 0
+        if (tvController.soundEffectsEnabled)
+            soundEffects.playPowerDown()
+        powerOffAnimation.restart()
     }
 
     function showChannel(number, name) {
@@ -196,6 +227,7 @@ Window {
                 property real effectStrength: tvController.crtGlass / 100
                 property real distortion: tvController.videoDistortion / 100
                 property real phase: root.distortionPhase
+                property real pausedEffect: player.paused && !root.introPlaying ? 1 : 0
                 property real cornerRadius: screen.radius
                 property real maskSoftness: 1.65
                 property vector2d resolution: Qt.vector2d(screen.width, screen.height)
@@ -209,6 +241,12 @@ Window {
                 volume: tvController.volume
                 muted: tvController.muted
                 aspectMode: tvController.currentAspectMode
+
+                onPausedChanged: {
+                    if (!root.introPlaying && !directMediaMode
+                            && (status === "Playing" || status === "Paused"))
+                        tvController.updatePlaybackPosition(positionSeconds(), paused)
+                }
 
                 onPlaybackFinished: {
                     if (root.introPlaying)
@@ -305,6 +343,57 @@ Window {
                     GradientStop { position: 0.50; color: "#64ffffff" }
                     GradientStop { position: 0.67; color: "#1cffffff" }
                     GradientStop { position: 1.0; color: "#00ffffff" }
+                }
+            }
+
+            Text {
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.margins: Math.max(18, screen.width * 0.035)
+                z: 70
+                visible: player.paused && !root.introPlaying && !root.poweringOff
+                color: "#e8e4d0"
+                style: Text.Outline
+                styleColor: "#5f5360"
+                font.family: "Consolas"
+                font.bold: true
+                font.pixelSize: Math.max(19, screen.height * 0.045)
+                text: "Ⅱ  PAUSE"
+            }
+
+            Item {
+                anchors.fill: parent
+                z: 95
+                visible: root.poweringOff
+
+                readonly property real closing: Math.min(1, root.powerOffProgress / 0.72)
+                readonly property real lineCollapse: Math.max(
+                    0, 1 - Math.max(0, root.powerOffProgress - 0.70) / 0.25)
+
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    height: parent.height * 0.5 * parent.closing
+                    color: "black"
+                }
+
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    height: parent.height * 0.5 * parent.closing
+                    color: "black"
+                }
+
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: parent.width * parent.lineCollapse
+                    height: Math.max(2, parent.height * 0.009 * parent.lineCollapse)
+                    radius: height / 2
+                    visible: root.powerOffProgress > 0.54
+                    color: "#eaf2dc"
+                    opacity: parent.lineCollapse * 0.92
                 }
             }
 
@@ -532,7 +621,7 @@ Window {
         interval: 5000
         onTriggered: {
             root.powerHeldForShutdown = true
-            tvController.requestSafeShutdown()
+            root.beginPowerOff(true)
         }
     }
 
@@ -559,6 +648,30 @@ Window {
         }
         PauseAnimation { duration: 120 }
         ScriptAction { script: root.warmingUp = false }
+    }
+
+    SequentialAnimation {
+        id: powerOffAnimation
+
+        NumberAnimation {
+            target: root
+            property: "powerOffProgress"
+            from: 0
+            to: 1
+            duration: 620
+            easing.type: Easing.InCubic
+        }
+        PauseAnimation { duration: 70 }
+        ScriptAction {
+            script: {
+                if (root.powerOffShutsDown) {
+                    tvController.requestSafeShutdown()
+                } else {
+                    tvController.dispatch(TvController.ToggleStandby)
+                    root.poweringOff = false
+                }
+            }
+        }
     }
 
     SequentialAnimation {
@@ -602,8 +715,8 @@ Window {
     Timer {
         interval: 50
         repeat: true
-        running: tvController.videoDistortion > 0
-                 && player.status === "Playing"
+        running: (tvController.videoDistortion > 0 || player.paused)
+                 && (player.status === "Playing" || player.paused)
                  && !tvController.standby
         onTriggered: root.distortionPhase = (root.distortionPhase + 0.05) % 1000
     }
@@ -626,9 +739,10 @@ Window {
             root.showVolume(value, isMuted)
         }
         function onStandbyChanged() {
-            if (tvController.soundEffectsEnabled)
+            if (tvController.soundEffectsEnabled && !tvController.standby)
                 soundEffects.playPowerClick()
             if (!tvController.standby) {
+                root.poweringOff = false
                 root.beginWarmup()
                 if (directMediaMode)
                     player.play(startupMediaUrl, 0)
@@ -648,7 +762,9 @@ Window {
         focus: true
 
         Keys.onPressed: event => {
-            if (event.key === Qt.Key_M) {
+            if (root.poweringOff) {
+                event.accepted = true
+            } else if (event.key === Qt.Key_M) {
                 if (!event.isAutoRepeat) {
                     root.muteHeldForLock = false
                     muteHoldTimer.restart()
@@ -695,23 +811,31 @@ Window {
                 event.accepted = true
             } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
                        && !event.isAutoRepeat && !directMediaMode) {
-                tvController.dispatch(TvController.RandomEpisode)
+                root.togglePlaybackPause()
                 event.accepted = true
             } else if (event.key === Qt.Key_PageUp) {
-                if (root.acceptRepeat("channel", event.isAutoRepeat))
+                if (root.acceptRepeat("channel", event.isAutoRepeat)) {
+                    root.syncPlaybackPosition()
                     tvController.dispatch(TvController.ChannelUp)
+                }
                 event.accepted = true
             } else if (event.key === Qt.Key_PageDown) {
-                if (root.acceptRepeat("channel", event.isAutoRepeat))
+                if (root.acceptRepeat("channel", event.isAutoRepeat)) {
+                    root.syncPlaybackPosition()
                     tvController.dispatch(TvController.ChannelDown)
+                }
                 event.accepted = true
             } else if (event.key === Qt.Key_Up) {
-                if (root.acceptRepeat("channel", event.isAutoRepeat))
+                if (root.acceptRepeat("channel", event.isAutoRepeat)) {
+                    root.syncPlaybackPosition()
                     tvController.dispatch(TvController.ChannelUp)
+                }
                 event.accepted = true
             } else if (event.key === Qt.Key_Down) {
-                if (root.acceptRepeat("channel", event.isAutoRepeat))
+                if (root.acceptRepeat("channel", event.isAutoRepeat)) {
+                    root.syncPlaybackPosition()
                     tvController.dispatch(TvController.ChannelDown)
+                }
                 event.accepted = true
             } else if (event.key === Qt.Key_Plus || event.key === Qt.Key_Equal) {
                 if (root.acceptRepeat("volume", event.isAutoRepeat))
@@ -723,17 +847,20 @@ Window {
                 event.accepted = true
             } else if (event.key === Qt.Key_Right && !event.isAutoRepeat
                        && !directMediaMode) {
+                root.syncPlaybackPosition()
                 tvController.dispatch(TvController.NextProgramme)
                 event.accepted = true
             } else if (event.key === Qt.Key_Left && !event.isAutoRepeat
                        && !directMediaMode) {
+                root.syncPlaybackPosition()
                 tvController.dispatch(TvController.PreviousProgramme)
                 event.accepted = true
             } else if (event.key === Qt.Key_R && !event.isAutoRepeat && !directMediaMode) {
+                root.syncPlaybackPosition()
                 tvController.dispatch(TvController.RandomEpisode)
                 event.accepted = true
             } else if (event.key === Qt.Key_Space && directMediaMode) {
-                player.togglePause()
+                root.togglePlaybackPause()
                 event.accepted = true
             } else if (event.key === Qt.Key_F11) {
                 root.visibility = root.visibility === Window.FullScreen
@@ -757,8 +884,10 @@ Window {
             } else if (event.key === Qt.Key_B && !event.isAutoRepeat) {
                 if (parentHoldTimer.running) {
                     parentHoldTimer.stop()
-                    if (!root.previousHeldForParent && !parentOverlay.visible)
+                    if (!root.previousHeldForParent && !parentOverlay.visible) {
+                        root.syncPlaybackPosition()
                         tvController.dispatch(TvController.PreviousChannel)
+                    }
                 }
                 root.previousHeldForParent = false
                 event.accepted = true
@@ -766,7 +895,7 @@ Window {
                 if (powerHoldTimer.running) {
                     powerHoldTimer.stop()
                     if (!root.powerHeldForShutdown)
-                        tvController.dispatch(TvController.ToggleStandby)
+                        root.beginPowerOff(false)
                 }
                 root.powerHeldForShutdown = false
                 event.accepted = true

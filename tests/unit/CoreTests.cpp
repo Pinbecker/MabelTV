@@ -9,6 +9,8 @@
 #include <QTemporaryDir>
 #include <QtTest>
 
+#include <cmath>
+
 class CoreTests final : public QObject
 {
     Q_OBJECT
@@ -299,17 +301,41 @@ void CoreTests::controllerMovesBetweenProgrammesInFilenameOrder()
                                    QStringLiteral("c.mp4")};
     const int firstIndex = orderedFiles.indexOf(firstFile);
     QVERIFY(firstIndex >= 0);
+    QCOMPARE(controller.playbackMode(), QStringLiteral("resume"));
 
+    controller.updatePlaybackPosition(23.5, true);
     controller.dispatch(TvController::NextProgramme);
     QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 2, 1000);
     QCOMPARE(playbackRequests.at(1).at(0).toUrl().fileName(),
              orderedFiles[(firstIndex + 1) % orderedFiles.size()]);
     QVERIFY(playbackRequests.at(1).at(1).toDouble() < 1.0);
 
+    controller.updatePlaybackPosition(9.25, false);
     controller.dispatch(TvController::PreviousProgramme);
     QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 3, 1000);
     QCOMPARE(playbackRequests.at(2).at(0).toUrl().fileName(), firstFile);
-    QVERIFY(playbackRequests.at(2).at(1).toDouble() < 1.0);
+    QVERIFY(std::abs(playbackRequests.at(2).at(1).toDouble() - 23.5) < 0.2);
+
+    TvController restored;
+    QVERIFY(restored.initialize(configuration.fileName(),
+                                settings.fileName(),
+                                directory.filePath(QStringLiteral("media")),
+                                directory.filePath(QStringLiteral("state.json")),
+                                [](const QString &) {
+                                    return MediaInspection{true, true, 42.0,
+                                                           QStringLiteral("h264"), {}};
+                                }));
+    QSignalSpy restoredRequests(&restored, &TvController::playbackRequested);
+    restored.start();
+    QTRY_COMPARE_WITH_TIMEOUT(restoredRequests.count(), 1, 1000);
+    QCOMPARE(restoredRequests.at(0).at(0).toUrl().fileName(), firstFile);
+    QVERIFY(std::abs(restoredRequests.at(0).at(1).toDouble() - 23.5) < 0.2);
+
+    controller.requestParentAccess();
+    controller.restartCurrentProgramme();
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 4, 1000);
+    QCOMPARE(playbackRequests.at(3).at(0).toUrl().fileName(), firstFile);
+    QVERIFY(playbackRequests.at(3).at(1).toDouble() < 0.2);
 }
 
 void CoreTests::standbyWakeWaitsForWelcomeBeforeResumingPlayback()
@@ -345,6 +371,7 @@ void CoreTests::standbyWakeWaitsForWelcomeBeforeResumingPlayback()
     QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 1, 1000);
     stopRequests.clear();
 
+    controller.updatePlaybackPosition(17.25, false);
     controller.dispatch(TvController::ToggleStandby);
     QVERIFY(controller.standby());
     QCOMPARE(stopRequests.count(), 1);
@@ -356,6 +383,7 @@ void CoreTests::standbyWakeWaitsForWelcomeBeforeResumingPlayback()
 
     controller.resumeFromStandby();
     QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 2, 1000);
+    QVERIFY(std::abs(playbackRequests.at(1).at(1).toDouble() - 17.25) < 0.8);
 }
 
 void CoreTests::remoteLockBlocksActionsAndPersists()

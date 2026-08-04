@@ -78,6 +78,7 @@ SoundEffects::SoundEffects(QObject *parent)
         QStandardPaths::writableLocation(QStandardPaths::CacheLocation))
                                          .filePath(QStringLiteral("effects"));
     m_powerClickPath = QDir(effectsDirectory).filePath(QStringLiteral("power-click.wav"));
+    m_powerDownPath = QDir(effectsDirectory).filePath(QStringLiteral("power-down-v2.wav"));
     m_tuningNoisePath = QDir(effectsDirectory).filePath(QStringLiteral("tuning-noise.wav"));
 
     constexpr int sampleRate = 48000;
@@ -102,6 +103,23 @@ SoundEffects::SoundEffects(QObject *parent)
                 return noise(random) * fade * 0.24;
             });
         createEffectFile(m_tuningNoisePath, samples, sampleRate);
+    }
+    if (!QFileInfo::exists(m_powerDownPath)) {
+        std::mt19937 random(9073U);
+        std::uniform_real_distribution<double> noise(-1.0, 1.0);
+        const QByteArray samples = makeSamples(
+            sampleRate, 0.68, [&random, &noise](double time, double duration) {
+                const double progress = time / duration;
+                const double sweepFrequency = 155.0 - 105.0 * progress;
+                const double sweep = std::sin(2.0 * pi * sweepFrequency * time);
+                const double shuumEnvelope = std::sin(pi * progress)
+                    * std::exp(-progress * 0.65);
+                const double buttonThump = std::exp(-time * 34.0)
+                    * std::sin(2.0 * pi * 72.0 * time);
+                return buttonThump * 0.48
+                    + shuumEnvelope * (sweep * 0.30 + noise(random) * 0.075);
+            });
+        createEffectFile(m_powerDownPath, samples, sampleRate);
     }
     setVolume(m_volume);
 }
@@ -145,6 +163,11 @@ void SoundEffects::setMuted(bool muted)
 void SoundEffects::playPowerClick()
 {
     playFile(m_powerClickPath);
+}
+
+void SoundEffects::playPowerDown()
+{
+    playFile(m_powerDownPath);
 }
 
 void SoundEffects::playTuningNoise()

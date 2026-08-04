@@ -112,6 +112,8 @@ public:
     Q_INVOKABLE void confirmNumericEntry();
     Q_INVOKABLE void playbackEnded();
     Q_INVOKABLE void playbackFailed(const QString &message);
+    Q_INVOKABLE void updatePlaybackPosition(double positionSeconds, bool paused);
+    Q_INVOKABLE void restartCurrentProgramme();
     Q_INVOKABLE void requestParentAccess();
     Q_INVOKABLE void parentConfirm();
     Q_INVOKABLE void closeParent();
@@ -165,11 +167,13 @@ private:
         explicit ChannelRuntime(Channel value, quint32 seed)
             : channel(std::move(value))
             , shuffle(channel.episodes.size(), seed)
+            , programmePositions(channel.episodes.size(), 0.0)
         {
         }
 
         Channel channel;
         ShuffleBag shuffle;
+        QVector<double> programmePositions;
         int currentEpisode = -1;
         qint64 anchorMilliseconds = 0;
         double anchorPositionSeconds = 0.0;
@@ -184,7 +188,7 @@ private:
     void saveState() const;
     void requestTune(int channelIndex,
                      bool updatePreviousChannel = true,
-                     bool chooseRestartEpisode = true);
+                     bool preserveCurrentPosition = true);
     void finishTune();
     void changeChannel(int direction);
     void changeProgramme(int direction);
@@ -239,6 +243,7 @@ private:
     bool m_noSignal = false;
     bool m_standby = false;
     bool m_remoteLocked = false;
+    bool m_playbackPaused = false;
     bool m_started = false;
     bool m_soundEffectsEnabled = true;
     ParentAccessState m_parentAccessState = ParentClosed;

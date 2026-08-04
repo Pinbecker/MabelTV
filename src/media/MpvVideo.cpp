@@ -354,12 +354,17 @@ void MpvVideo::togglePause()
     checkMpv(mpv_command_async(m_state->handle, 0, command), "Toggling pause");
 }
 
-void MpvVideo::replay()
+double MpvVideo::positionSeconds() const
 {
-    const char *command[] = {"seek", "0", "absolute+exact", nullptr};
-    checkMpv(mpv_command_async(m_state->handle, 0, command), "Seeking to the beginning");
-    const char *unpause[] = {"set", "pause", "no", nullptr};
-    checkMpv(mpv_command_async(m_state->handle, 0, unpause), "Resuming playback");
+    if (m_state->handle == nullptr) {
+        return std::max(0.0, m_pendingStartPosition);
+    }
+    double position = 0.0;
+    if (mpv_get_property(m_state->handle, "time-pos", MPV_FORMAT_DOUBLE, &position) < 0
+        || !std::isfinite(position)) {
+        return std::max(0.0, m_pendingStartPosition);
+    }
+    return std::max(0.0, position);
 }
 
 void MpvVideo::wakeup(void *context)
@@ -380,6 +385,8 @@ void MpvVideo::loadCurrentSource()
     const QString localPath = m_source.isLocalFile() ? m_source.toLocalFile() : m_source.toString();
     const QByteArray encodedPath = QFileInfo(localPath).absoluteFilePath().toUtf8();
     qInfo().noquote() << "Loading media:" << QDir::toNativeSeparators(QString::fromUtf8(encodedPath));
+    const char *unpause[] = {"set", "pause", "no", nullptr};
+    checkMpv(mpv_command_async(m_state->handle, 0, unpause), "Clearing pause for new media");
     const char *command[] = {"loadfile", encodedPath.constData(), "replace", nullptr};
     checkMpv(mpv_command_async(m_state->handle, 0, command), "Loading media");
     setStatus(QStringLiteral("Loading"));

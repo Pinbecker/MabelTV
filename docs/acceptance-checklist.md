@@ -8,7 +8,7 @@ Do not treat the Pi as a finished child appliance until every applicable item pa
 - [ ] `scripts/windows/package.ps1` produces and clean-PATH tests the portable ZIP.
 - [ ] Six populated channels, including Waffle Dog and Films, tune correctly; channel 99 shows no signal.
 - [ ] Corrupt media is skipped and a runtime decoder failure selects a replacement.
-- [ ] Continuous broadcast advances while away; resume and restart modes work.
+- [ ] Continuous broadcast advances while away; Resume preserves every programme position and legacy restart mode migrates to Resume.
 - [ ] Crop, fit, stretch and low/high/off CRT choices work.
 - [ ] All four TV borders have smooth outer and inner corners and survive restart.
 - [ ] The CRT glass slider spans 0–100, increases curvature, corner depth and reflective sheen, and survives restart.
@@ -26,6 +26,8 @@ Do not treat the Pi as a finished child appliance until every applicable item pa
 - [ ] `Active hardware decoder` is logged for at least the primary H.264 test media, or software fallback is measured as smooth and cool enough.
 - [ ] Remote buttons perform only their mapped actions; none unexpectedly controls the LG TV.
 - [ ] Holding Mute for three seconds locks every other remote button; holding it again unlocks them.
+- [ ] OK pauses/plays with a VHS freeze effect; Left/Right never rewinds an item; hold Back then Left, Right, OK deliberately restarts it.
+- [ ] Standby and full shutdown begin with the CRT outside-in collapse and power-down sound.
 - [ ] HDMI-CEC is disabled and booting the Pi does not wake/switch/control the TV.
 - [ ] Short Power enters standby; the next short press plays the welcome intro before returning to the channel.
 - [ ] Long Power causes an orderly Pi shutdown.

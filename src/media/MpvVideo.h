@@ -39,7 +39,7 @@ public:
     Q_INVOKABLE void play(const QUrl &source, double startPositionSeconds = 0.0);
     Q_INVOKABLE void stop();
     Q_INVOKABLE void togglePause();
-    Q_INVOKABLE void replay();
+    Q_INVOKABLE double positionSeconds() const;
 
 signals:
     void sourceChanged();

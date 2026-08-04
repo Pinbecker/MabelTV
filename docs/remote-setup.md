@@ -54,7 +54,7 @@ The normal mapping is deliberately simple:
 | Mute | M | mute; hold three seconds to lock or unlock the remote |
 | Previous / Back | B | previous channel; hold for parent confirmation |
 | Power | P | standby / welcome-screen wake; hold five seconds for shutdown |
-| OK | Enter | another random programme; confirm channel number or parent access |
+| OK | Enter | pause / play; confirm channel number or parent access |
 | Navigation Up / Down | Up / Down | next / previous channel; navigate the parent panel |
 | Navigation Left / Right | Left / Right | previous / next episode or film; adjust parent settings |
 | 0–9 | 0–9 | direct channel entry |
@@ -62,7 +62,9 @@ The normal mapping is deliberately simple:
 
 Start Mabel TV again with `sudo systemctl start mabeltv.service`.
 
-One-shot actions (digits, mute, random, standby, parent access and shutdown) ignore Linux auto-repeat events. Channel and volume holds are allowed but rate-limited, so a noisy receiver or a long press cannot generate an uncontrolled burst of actions. While the remote is locked, every button except the three-second Mute hold is ignored; a small on-screen label remains as a reminder.
+One-shot actions (digits, pause/play, mute, random, standby, parent access and shutdown) ignore Linux auto-repeat events. Channel and volume holds are allowed but rate-limited, so a noisy receiver or a long press cannot generate an uncontrolled burst of actions. While the remote is locked, every button except the three-second Mute hold is ignored; a small on-screen label remains as a reminder.
+
+Left/Right navigation always resumes the saved position for that individual episode or film. Restarting is deliberately hidden behind the adult sequence: hold Back for the parent-confirmation screen, then press Left, Right, OK. The normal playback-mode setting never rewinds content.
 
 ## TV interaction
 

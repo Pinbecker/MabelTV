@@ -10,6 +10,7 @@ Item {
     property int selectedChannel: 0
     property int selectedProgramme: 0
     property bool programmePane: false
+    property int restartSequenceStep: 0
     readonly property int rowCount: 15
 
     visible: controller.parentAccessState !== TvController.ParentClosed
@@ -17,7 +18,6 @@ Item {
     function pretty(value) {
         if (value === "continuous") return "CONTINUOUS BROADCAST"
         if (value === "resume") return "RESUME WHEN RETURNING"
-        if (value === "restart") return "NEW EPISODE FROM START"
         if (value === "channel") return "PER CHANNEL"
         if (value === "slim-black") return "SLIM BLACK"
         if (value === "charcoal") return "CLASSIC CHARCOAL"
@@ -134,11 +134,23 @@ Item {
 
     function handleKey(key, modifiers) {
         if (controller.parentAccessState === TvController.ParentConfirmation) {
-            if (key === Qt.Key_Return || key === Qt.Key_Enter) {
-                controller.parentConfirm()
+            if (key === Qt.Key_Left) {
+                restartSequenceStep = 1
+            } else if (key === Qt.Key_Right) {
+                restartSequenceStep = restartSequenceStep === 1 ? 2 : 0
+            } else if (key === Qt.Key_Return || key === Qt.Key_Enter) {
+                if (restartSequenceStep === 2) {
+                    controller.restartCurrentProgramme()
+                    controller.closeParent()
+                } else {
+                    restartSequenceStep = 0
+                    controller.parentConfirm()
+                }
             } else if (key === Qt.Key_Escape || key === Qt.Key_B) {
+                restartSequenceStep = 0
                 controller.closeParent()
             } else {
+                restartSequenceStep = 0
                 return false
             }
             return true
@@ -191,6 +203,7 @@ Item {
             overlay.clampLibrarySelection()
         }
         function onParentAccessStateChanged() {
+            overlay.restartSequenceStep = 0
             if (controller.parentAccessState !== TvController.ParentOpen) {
                 overlay.page = "settings"
                 overlay.programmePane = false
@@ -240,11 +253,21 @@ Item {
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: 78
+                anchors.bottomMargin: 102
                 color: "#bdd0ad"
                 font.family: "Consolas"
                 font.pixelSize: 21
                 text: "PRESS OK THREE TIMES"
+            }
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 68
+                color: overlay.restartSequenceStep > 0 ? "#d4c78e" : "#718a71"
+                font.family: "Consolas"
+                font.pixelSize: 16
+                text: "RESTART CURRENT PROGRAMME:  LEFT  →  RIGHT  →  OK"
             }
 
             Text {

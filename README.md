@@ -72,14 +72,15 @@ Keyboard controls:
 | `-` | Volume down |
 | `M` | Mute; hold for 3 seconds to lock or unlock every other remote button |
 | `B` | Return to the previous channel |
-| `R` | Pick another episode on the current channel |
-| Enter | Pick another episode on the current channel; confirm in parent controls |
+| `R` | Pick another episode on the current channel and resume its saved position |
+| Enter | Pause/play; confirm in parent controls |
 | `P` | Standby / wake through the welcome intro |
 | Hold `P` for 5 seconds | Safe Raspberry Pi shutdown |
 | F11 | Toggle full-screen |
 
 Hold `B` for 3.5 seconds, then press Enter three times, to reveal parent access. Open
 **Channels & Programmes** there to switch entire channels or individual episodes and films on or off.
+Every programme keeps its own position when navigating with Left/Right. To deliberately restart the current item, hold `B` for parent confirmation, then press Left, Right, Enter.
 `TV Border` cycles between thick Slim Black, Classic Charcoal, Warm Walnut and Cream 90s CRT cabinets.
 `CRT Glass` is a 0–100 slider for picture curvature, corner depth and reflective sheen.
 `90s Distortion` is a separate 0–100 haze, grain, softness, scanline and colour-bleed slider. It remains steady below 95 and adds only a tiny wobble at the very top. Use Left/Right to adjust either slider in five-point steps.

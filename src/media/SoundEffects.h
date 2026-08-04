@@ -21,6 +21,7 @@ public:
     void setMuted(bool muted);
 
     Q_INVOKABLE void playPowerClick();
+    Q_INVOKABLE void playPowerDown();
     Q_INVOKABLE void playTuningNoise();
 
 signals:
@@ -35,6 +36,7 @@ private:
 
     std::unique_ptr<State> m_state;
     QString m_powerClickPath;
+    QString m_powerDownPath;
     QString m_tuningNoisePath;
     int m_volume = 20;
     bool m_muted = false;

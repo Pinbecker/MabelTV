@@ -9,6 +9,7 @@ layout(std140, binding = 0) uniform Buffer {
     float flicker;
     float effectStrength;
     float distortion;
+    float pausedEffect;
     float phase;
     float cornerRadius;
     float maskSoftness;
@@ -19,16 +20,16 @@ layout(binding = 1) uniform sampler2D source;
 
 float roundedScreenMask(vec2 uv)
 {
-    vec2 halfSize = uniforms.resolution * 0.5 - vec2(0.75);
-    float radius = clamp(uniforms.cornerRadius,
-                         0.0,
-                         max(0.0, min(halfSize.x, halfSize.y) - 1.0));
-    vec2 point = abs((uv - vec2(0.5)) * uniforms.resolution);
-    vec2 cornerDistance = point - halfSize + vec2(radius);
-    float signedDistance = min(max(cornerDistance.x, cornerDistance.y), 0.0)
-        + length(max(cornerDistance, vec2(0.0))) - radius;
-    float softness = max(0.75, uniforms.maskSoftness);
-    return 1.0 - smoothstep(-softness, softness, signedDistance);
+    vec2 point = abs(uv * 2.0 - 1.0);
+    float glass = clamp(uniforms.effectStrength, 0.0, 1.0);
+    // A superellipse bows every edge outward like the glass in the Mabel TV
+    // welcome film. Higher glass settings move from a modern rounded rectangle
+    // towards the visibly convex face of a deep CRT tube.
+    float exponent = mix(7.0, 4.0, pow(glass, 0.8));
+    float shape = pow(point.x, exponent) + pow(point.y, exponent);
+    float softness = max(0.0015, uniforms.maskSoftness * 2.2
+        / max(1.0, min(uniforms.resolution.x, uniforms.resolution.y)));
+    return 1.0 - smoothstep(1.0 - softness, 1.0 + softness, shape);
 }
 
 float analogueNoise(vec2 point)
@@ -42,11 +43,12 @@ void main()
     vec2 centered = qt_TexCoord0 * 2.0 - 1.0;
     float glass = clamp(uniforms.effectStrength, 0.0, 1.0);
     float glassCurve = pow(glass, 1.25);
-    float curve = 1.0 + 0.040 * glassCurve * dot(centered, centered);
-    // Bend the contents within the fixed rounded screen instead of expanding
-    // them beyond the texture. Expanding created a second transparent edge
-    // that became squarer and more obvious as CRT Glass increased.
-    vec2 sampleUv = centered / curve * 0.5 + 0.5;
+    float curveAmount = 0.044 * glassCurve;
+    float curve = 1.0 + curveAmount * dot(centered, centered);
+    // Barrel distortion is the convex direction. Dividing here produced the
+    // concave/pincushion look. Normalising by the corner maximum retains the
+    // convex bend while keeping every sample inside the source texture.
+    vec2 sampleUv = centered * curve / (1.0 + curveAmount * 2.0) * 0.5 + 0.5;
     float mask = roundedScreenMask(qt_TexCoord0);
     float distortion = clamp(uniforms.distortion, 0.0, 1.0);
 
@@ -57,6 +59,16 @@ void main()
         + 0.45 * sin(sampleUv.y * 83.0 - uniforms.phase * 7.1);
     sampleUv.x += horizontalWobble * 0.00032 * wobbleAmount;
     sampleUv.y += sin(uniforms.phase * 3.3) * 0.00012 * wobbleAmount;
+
+    float paused = clamp(uniforms.pausedEffect, 0.0, 1.0);
+    if (paused > 0.001) {
+        float verticalJitter = sin(sampleUv.x * 24.0 + uniforms.phase * 9.0);
+        float tearWave = sin(sampleUv.y * 61.0 - uniforms.phase * 7.5);
+        float tearBand = pow(max(0.0, tearWave), 11.0);
+        sampleUv.y += verticalJitter * 0.0032 * paused;
+        sampleUv.x += (0.004 + 0.015 * tearBand)
+            * sin(uniforms.phase * 13.0 + sampleUv.y * 19.0) * paused;
+    }
 
     if (mask <= 0.0) {
         fragColor = vec4(0.0);
@@ -106,6 +118,17 @@ void main()
         colour = mix(colour, vec3(luminance), 0.075 * distortion);
         colour = mix(colour, colour * 0.88 + vec3(0.055),
                      0.15 * distortion);
+    }
+
+    if (paused > 0.001) {
+        float pauseNoise = analogueNoise(
+            floor(sampleUv * uniforms.resolution * vec2(0.35, 1.0))
+            + vec2(uniforms.phase * 43.0));
+        float pauseStreak = pow(0.5 + 0.5
+            * sin(sampleUv.y * uniforms.resolution.y * 0.44
+                  + uniforms.phase * 18.0), 10.0);
+        colour += (pauseNoise - 0.5) * 0.11 * paused;
+        colour += vec3(0.13, 0.11, 0.14) * pauseStreak * paused;
     }
 
     float scanline = 1.0 - (0.018 * glass + 0.055 * distortion)
