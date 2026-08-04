@@ -110,7 +110,7 @@ Mabel TV then owns tty1 and launches directly through Qt EGLFS/KMS without a des
 
 ## 6. Parent mode and daily operation
 
-- Tap Power (`P` on a keyboard) for standby/wake.
+- Tap Power (`P` on a keyboard) for standby; tap it again to wake through the welcome intro.
 - Hold Power for five seconds for an orderly Pi shutdown. Wait until activity has stopped before removing power.
 - Hold Previous (`B`) for 3.5 seconds, then press OK three times, for parent controls.
 - Display output changes take effect after selecting **Restart Mabel TV**.

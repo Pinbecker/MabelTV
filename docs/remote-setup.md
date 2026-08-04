@@ -53,7 +53,7 @@ The normal mapping is deliberately simple:
 | Volume + / - | Equal / Minus | louder / quieter |
 | Mute | M | mute |
 | Previous / Back | B | previous channel; hold for parent confirmation |
-| Power | P | standby; hold five seconds for shutdown |
+| Power | P | standby / welcome-screen wake; hold five seconds for shutdown |
 | OK | Enter | another random programme; confirm channel number or parent access |
 | Navigation Up / Down | Up / Down | next / previous channel; navigate the parent panel |
 | Navigation Left / Right | Left / Right | previous / next episode or film; adjust parent settings |

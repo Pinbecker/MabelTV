@@ -22,7 +22,8 @@ Do not treat the Pi as a finished child appliance until every applicable item pa
 - [ ] `Active hardware decoder` is logged for at least the primary H.264 test media, or software fallback is measured as smooth and cool enough.
 - [ ] Remote buttons perform only their mapped actions; none unexpectedly controls the LG TV.
 - [ ] HDMI-CEC is disabled and booting the Pi does not wake/switch/control the TV.
-- [ ] Short Power cleanly enters/wakes standby; long Power causes an orderly Pi shutdown.
+- [ ] Short Power enters standby; the next short press plays the welcome intro before returning to the channel.
+- [ ] Long Power causes an orderly Pi shutdown.
 - [ ] Parent access requires a Back hold followed by three deliberate OK presses.
 - [ ] Removing one media folder leaves a stable no-signal channel rather than crashing.
 - [ ] Killing the process once makes systemd restart it.

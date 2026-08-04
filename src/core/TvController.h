@@ -96,6 +96,7 @@ public:
 
     Q_INVOKABLE void start();
     Q_INVOKABLE void dispatch(Action action);
+    Q_INVOKABLE void resumeFromStandby();
     Q_INVOKABLE void enterDigit(int digit);
     Q_INVOKABLE void confirmNumericEntry();
     Q_INVOKABLE void playbackEnded();

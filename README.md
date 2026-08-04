@@ -74,7 +74,7 @@ Keyboard controls:
 | `B` | Return to the previous channel |
 | `R` | Pick another episode on the current channel |
 | Enter | Pick another episode on the current channel; confirm in parent controls |
-| `P` | Standby / wake |
+| `P` | Standby / wake through the welcome intro |
 | Hold `P` for 5 seconds | Safe Raspberry Pi shutdown |
 | F11 | Toggle full-screen |
 

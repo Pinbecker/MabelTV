@@ -21,6 +21,7 @@ private slots:
     void controllerClearsNoSignalWhenReturningToPopulatedChannel();
     void controllerSkipsAnEpisodeAfterPlaybackFailure();
     void controllerMovesBetweenProgrammesInFilenameOrder();
+    void standbyWakeWaitsForWelcomeBeforeResumingPlayback();
     void parentControlsRequireThreeConfirmationsAndPersistSettings();
     void longPowerRequestBypassesParentPanelButUsesOnlyShutdownCommand();
 };
@@ -306,6 +307,52 @@ void CoreTests::controllerMovesBetweenProgrammesInFilenameOrder()
     QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 3, 1000);
     QCOMPARE(playbackRequests.at(2).at(0).toUrl().fileName(), firstFile);
     QVERIFY(playbackRequests.at(2).at(1).toDouble() < 1.0);
+}
+
+void CoreTests::standbyWakeWaitsForWelcomeBeforeResumingPlayback()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/one")));
+
+    QFile episode(directory.filePath(QStringLiteral("media/one/a.mp4")));
+    QVERIFY(episode.open(QIODevice::WriteOnly));
+    episode.close();
+
+    QFile configuration(directory.filePath(QStringLiteral("channels.json")));
+    QVERIFY(configuration.open(QIODevice::WriteOnly));
+    configuration.write(R"({
+        "schema_version": 1,
+        "channels": [{"number": 1, "name": "One", "folder": "one"}]
+    })");
+    configuration.close();
+
+    TvController controller;
+    QVERIFY(controller.initialize(configuration.fileName(),
+                                  directory.filePath(QStringLiteral("settings.json")),
+                                  directory.filePath(QStringLiteral("media")),
+                                  directory.filePath(QStringLiteral("state.json")),
+                                  [](const QString &) {
+                                      return MediaInspection{true, true, 42.0, QStringLiteral("h264"), {}};
+                                  }));
+
+    QSignalSpy playbackRequests(&controller, &TvController::playbackRequested);
+    QSignalSpy stopRequests(&controller, &TvController::stopPlaybackRequested);
+    controller.start();
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 1, 1000);
+    stopRequests.clear();
+
+    controller.dispatch(TvController::ToggleStandby);
+    QVERIFY(controller.standby());
+    QCOMPARE(stopRequests.count(), 1);
+
+    controller.dispatch(TvController::ToggleStandby);
+    QVERIFY(!controller.standby());
+    QTest::qWait(600);
+    QCOMPARE(playbackRequests.count(), 1);
+
+    controller.resumeFromStandby();
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 2, 1000);
 }
 
 void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()

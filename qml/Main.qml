@@ -21,6 +21,7 @@ Window {
         && (tvController.tuning
             || (tvController.noSignal && player.status !== "Playing"))
     property bool introPlaying: false
+    property bool introCompletesStandbyWake: false
     property bool televisionStarted: false
     property double lastChannelRepeatMs: 0
     property double lastVolumeRepeatMs: 0
@@ -56,7 +57,18 @@ Window {
         if (!introPlaying)
             return
         introPlaying = false
-        startTelevision()
+        if (introCompletesStandbyWake) {
+            introCompletesStandbyWake = false
+            tvController.resumeFromStandby()
+        } else {
+            startTelevision()
+        }
+    }
+
+    function playWelcome(isStandbyWake) {
+        introCompletesStandbyWake = isStandbyWake
+        introPlaying = true
+        player.play(startupIntroUrl, 0)
     }
 
     function beginWarmup() {
@@ -454,8 +466,15 @@ Window {
         function onStandbyChanged() {
             if (tvController.soundEffectsEnabled)
                 soundEffects.playPowerClick()
-            if (!tvController.standby)
+            if (!tvController.standby) {
                 root.beginWarmup()
+                if (directMediaMode)
+                    player.play(startupMediaUrl, 0)
+                else if (startupIntroUrl.toString().length > 0)
+                    root.playWelcome(true)
+                else
+                    tvController.resumeFromStandby()
+            }
         }
     }
 
@@ -584,8 +603,7 @@ Window {
         if (directMediaMode)
             player.play(startupMediaUrl, 0)
         else if (startupIntroUrl.toString().length > 0) {
-            root.introPlaying = true
-            player.play(startupIntroUrl, 0)
+            root.playWelcome(false)
         } else {
             root.startTelevision()
         }

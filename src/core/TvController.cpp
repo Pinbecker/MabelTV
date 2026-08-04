@@ -242,8 +242,6 @@ void TvController::dispatch(Action action)
             m_tuningTimer.stop();
             setTuning(false);
             emit stopPlaybackRequested();
-        } else if (m_currentChannelIndex >= 0) {
-            requestTune(m_currentChannelIndex, false);
         }
         saveState();
         return;
@@ -301,6 +299,14 @@ void TvController::dispatch(Action action)
     case ToggleStandby:
         break;
     }
+}
+
+void TvController::resumeFromStandby()
+{
+    if (m_standby || !m_started || m_currentChannelIndex < 0) {
+        return;
+    }
+    requestTune(m_currentChannelIndex, false);
 }
 
 void TvController::enterDigit(int digit)
