@@ -41,7 +41,10 @@ void main()
 {
     vec2 centered = qt_TexCoord0 * 2.0 - 1.0;
     float curve = 1.0 + 0.007 * uniforms.effectStrength * dot(centered, centered);
-    vec2 sampleUv = centered * curve * 0.5 + 0.5;
+    // Bend the contents within the fixed rounded screen instead of expanding
+    // them beyond the texture. Expanding created a second transparent edge
+    // that became squarer and more obvious as CRT Glass increased.
+    vec2 sampleUv = centered / curve * 0.5 + 0.5;
     float mask = roundedScreenMask(qt_TexCoord0);
     float distortion = clamp(uniforms.distortion, 0.0, 1.0);
 
@@ -56,13 +59,13 @@ void main()
         * distortion * distortion;
     sampleUv.y += sin(uniforms.phase * 3.3) * 0.0012 * distortion;
 
-    if (mask <= 0.0 || sampleUv.x < 0.0 || sampleUv.x > 1.0
-        || sampleUv.y < 0.0 || sampleUv.y > 1.0) {
+    if (mask <= 0.0) {
         fragColor = vec4(0.0);
         return;
     }
 
     vec2 pixel = 1.0 / max(uniforms.resolution, vec2(1.0));
+    sampleUv = clamp(sampleUv, pixel * 0.5, vec2(1.0) - pixel * 0.5);
     vec4 centreSample = texture(source, sampleUv);
     vec4 leftSample = texture(source, sampleUv - vec2(pixel.x, 0.0));
     vec4 rightSample = texture(source, sampleUv + vec2(pixel.x, 0.0));

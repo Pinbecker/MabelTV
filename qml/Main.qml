@@ -276,11 +276,7 @@ Window {
 
             Rectangle {
                 anchors.fill: parent
-                radius: screen.radius
                 color: "transparent"
-                border.color: "#30000000"
-                border.width: 6
-                antialiasing: true
 
                 gradient: Gradient {
                     GradientStop { position: 0.0; color: "#18ffffff" }
