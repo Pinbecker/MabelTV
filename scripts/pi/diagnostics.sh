@@ -11,6 +11,12 @@ free -h > "$destination/memory.txt"
 df -h > "$destination/filesystems.txt"
 systemctl status mabeltv.service --no-pager > "$destination/service-status.txt" 2>&1 || true
 journalctl -u mabeltv.service -b --no-pager -n 500 > "$destination/journal.txt" 2>&1 || true
+pid="$(systemctl show -p MainPID --value mabeltv.service)"
+if [[ "$pid" =~ ^[1-9][0-9]*$ && -d "/proc/$pid/fd" ]]; then
+    find "/proc/$pid/fd" -maxdepth 1 -type l -printf '%l\n' 2>/dev/null \
+        | sort | uniq -c | sort -nr > "$destination/file-descriptors.txt" || true
+    cat "/proc/$pid/limits" > "$destination/process-limits.txt" 2>/dev/null || true
+fi
 ir-keytable > "$destination/ir-keytable.txt" 2>&1 || true
 for card in /sys/class/drm/card*-*/status; do
     [[ -e "$card" ]] || continue

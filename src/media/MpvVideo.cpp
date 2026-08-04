@@ -129,7 +129,14 @@ private:
             resolveOpenGlSymbol,
             nullptr,
         };
+#ifdef Q_OS_LINUX
+        // Advanced control lets libmpv allocate decoder output directly in
+        // persistently mapped OpenGL buffers. That path leaks V3D sync-file
+        // descriptors on the Raspberry Pi OS Mesa build used by the appliance.
+        int advancedControl = 0;
+#else
         int advancedControl = 1;
+#endif
         mpv_render_param parameters[] = {
             {MPV_RENDER_PARAM_API_TYPE, const_cast<char *>(MPV_RENDER_API_TYPE_OPENGL)},
             {MPV_RENDER_PARAM_OPENGL_INIT_PARAMS, &openGlParameters},
@@ -189,6 +196,12 @@ MpvVideo::MpvVideo(QQuickItem *parent)
 #ifdef Q_OS_LINUX
     checkMpv(mpv_set_option_string(m_state->handle, "vd-lavc-threads", "2"),
              "Limiting decoder threads for Raspberry Pi");
+    // V3D can retain the native sync-file fence created for every direct
+    // rendering upload. Once the process reaches its descriptor limit, all
+    // later frames fail with "export failed". The bounded copy path avoids
+    // those fences and is reliable for the appliance's local 720p/1080p media.
+    checkMpv(mpv_set_option_string(m_state->handle, "vd-lavc-dr", "no"),
+             "Disabling unsafe direct-rendering uploads on Raspberry Pi");
 #endif
     checkMpv(mpv_set_option_string(m_state->handle, "keep-open", "no"),
              "Configuring mpv end-of-file behaviour");

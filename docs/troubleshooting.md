@@ -58,6 +58,12 @@ vcgencmd get_throttled
 
 Use H.264/AAC content at 720p, select low/off CRT effects, select 720p display output, use the official-quality power supply, and ensure the Pi has airflow. Software fallback is intentional when a codec cannot be decoded safely in hardware.
 
+If playback works briefly and then freezes while the service stays active, check
+the descriptor columns recorded by `sudo mabeltv-soak-test`. Mabel TV disables
+libmpv's direct-rendering upload path on Linux because Raspberry Pi's V3D Mesa
+driver can otherwise retain one `sync_file` fence per video frame until the
+process descriptor limit is exhausted.
+
 ## A channel shows NO SIGNAL
 
 Validate the complete library:
