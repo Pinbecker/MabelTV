@@ -6,7 +6,7 @@ Mabel TV is a native, child-friendly recreation of watching television in the 19
 
 - C++20 and Qt 6/QML application shell
 - libmpv video rendered into the Qt Quick scene through its OpenGL Render API
-- central 4:3 picture with a subtle glass/scanline treatment
+- central 4:3 picture with smoothly masked rounded corners and four selectable TV borders
 - JSON-configured channels backed by ordinary media folders
 - shuffled episodes with no immediate repeats
 - continuous-broadcast simulation while changing channel or using standby
@@ -15,8 +15,8 @@ Mabel TV is a native, child-friendly recreation of watching television in the 19
 - persistent channel, volume, and remote-lock state
 - corrupt-episode exclusion and automatic recovery
 - synthetic, non-copyrighted development channels and automated core tests
-- rounded/curved CRT shader, warm-up/standby transitions, scanlines, vignette, subtle RGB separation, and procedural tuning/click sounds
-- hidden hold-and-confirm parent panel with complete channel/programme switches plus playback, picture, CRT, display, volume and lifecycle choices
+- rounded/curved CRT shader, warm-up/standby transitions, scanlines, vignette, and adjustable 0–100 analogue distortion
+- hidden hold-and-confirm parent panel with complete channel/programme switches plus playback, picture, border, CRT, distortion, display, volume and lifecycle choices
 - portable Windows packaging with dependency discovery and clean-environment smoke tests
 - Raspberry Pi OS Lite installer using Qt EGLFS/KMS, safe libmpv hardware decoding, systemd restart/recovery and a 1 GB memory budget
 - KY-022 `gpio-ir` integration with an interactive EZClicker keymap utility
@@ -80,6 +80,8 @@ Keyboard controls:
 
 Hold `B` for 3.5 seconds, then press Enter three times, to reveal parent access. Open
 **Channels & Programmes** there to switch entire channels or individual episodes and films on or off.
+`TV Border` cycles between Slim Black, Classic Charcoal, Warm Walnut and Cream 90s.
+`90s Distortion` is a 0–100 slider; use Left/Right to adjust it in five-point steps.
 
 ## Adding your media
 

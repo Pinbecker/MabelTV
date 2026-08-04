@@ -40,6 +40,8 @@ class TvController final : public QObject
     Q_PROPERTY(QString pictureMode READ pictureMode NOTIFY pictureModeChanged)
     Q_PROPERTY(QString displayResolution READ displayResolution NOTIFY displayResolutionChanged)
     Q_PROPERTY(QString crtEffectLevel READ crtEffectLevel NOTIFY crtEffectLevelChanged)
+    Q_PROPERTY(QString tvBorderStyle READ tvBorderStyle NOTIFY tvBorderStyleChanged)
+    Q_PROPERTY(int videoDistortion READ videoDistortion NOTIFY videoDistortionChanged)
     Q_PROPERTY(bool soundEffectsEnabled READ soundEffectsEnabled NOTIFY soundEffectsEnabledChanged)
     Q_PROPERTY(QVariantList parentLibrary READ parentLibrary NOTIFY parentLibraryChanged)
 
@@ -97,6 +99,8 @@ public:
     [[nodiscard]] QString pictureMode() const;
     [[nodiscard]] QString displayResolution() const;
     [[nodiscard]] QString crtEffectLevel() const;
+    [[nodiscard]] QString tvBorderStyle() const;
+    [[nodiscard]] int videoDistortion() const;
     [[nodiscard]] bool soundEffectsEnabled() const;
     [[nodiscard]] QVariantList parentLibrary() const;
 
@@ -115,6 +119,8 @@ public:
     Q_INVOKABLE void cyclePictureMode(int direction);
     Q_INVOKABLE void cycleDisplayResolution(int direction);
     Q_INVOKABLE void cycleCrtEffectLevel(int direction);
+    Q_INVOKABLE void cycleTvBorderStyle(int direction);
+    Q_INVOKABLE void adjustVideoDistortion(int direction);
     Q_INVOKABLE void toggleSoundEffects();
     Q_INVOKABLE void toggleVolumeLimit();
     Q_INVOKABLE void adjustMaximumVolume(int direction);
@@ -142,6 +148,8 @@ signals:
     void pictureModeChanged();
     void displayResolutionChanged();
     void crtEffectLevelChanged();
+    void tvBorderStyleChanged();
+    void videoDistortionChanged();
     void soundEffectsEnabledChanged();
     void parentLibraryChanged();
 
@@ -215,6 +223,8 @@ private:
     QString m_pictureMode = QStringLiteral("channel");
     QString m_displayResolution = QStringLiteral("720p");
     QString m_crtEffectLevel = QStringLiteral("low");
+    QString m_tvBorderStyle = QStringLiteral("slim-black");
+    int m_videoDistortion = 20;
     QJsonObject m_settingsRoot;
     QSet<int> m_disabledChannelNumbers;
     QHash<int, QSet<QString>> m_disabledProgrammeNames;

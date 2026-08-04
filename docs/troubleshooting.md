@@ -56,7 +56,7 @@ vcgencmd measure_temp
 vcgencmd get_throttled
 ```
 
-Use H.264/AAC content at 720p, select low/off CRT effects, select 720p display output, use the official-quality power supply, and ensure the Pi has airflow. Software fallback is intentional when a codec cannot be decoded safely in hardware.
+Use H.264/AAC content at 720p, select low/off CRT effects, reduce 90s distortion, select 720p display output, use the official-quality power supply, and ensure the Pi has airflow. Software fallback is intentional when a codec cannot be decoded safely in hardware.
 
 If playback works briefly and then freezes while the service stays active, check
 the descriptor columns recorded by `sudo mabeltv-soak-test`. Debian 13's

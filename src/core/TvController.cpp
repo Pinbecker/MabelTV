@@ -226,6 +226,16 @@ QString TvController::crtEffectLevel() const
     return m_crtEffectLevel;
 }
 
+QString TvController::tvBorderStyle() const
+{
+    return m_tvBorderStyle;
+}
+
+int TvController::videoDistortion() const
+{
+    return m_videoDistortion;
+}
+
 bool TvController::soundEffectsEnabled() const
 {
     return m_soundEffectsEnabled;
@@ -546,6 +556,29 @@ void TvController::cycleCrtEffectLevel(int direction)
     saveSettings();
 }
 
+void TvController::cycleTvBorderStyle(int direction)
+{
+    m_tvBorderStyle = cycleValue({QStringLiteral("slim-black"),
+                                  QStringLiteral("charcoal"),
+                                  QStringLiteral("walnut"),
+                                  QStringLiteral("cream")},
+                                 m_tvBorderStyle,
+                                 direction);
+    emit tvBorderStyleChanged();
+    saveSettings();
+}
+
+void TvController::adjustVideoDistortion(int direction)
+{
+    const int next = std::clamp(m_videoDistortion + (direction < 0 ? -5 : 5), 0, 100);
+    if (next == m_videoDistortion) {
+        return;
+    }
+    m_videoDistortion = next;
+    emit videoDistortionChanged();
+    saveSettings();
+}
+
 void TvController::toggleSoundEffects()
 {
     m_soundEffectsEnabled = !m_soundEffectsEnabled;
@@ -750,6 +783,15 @@ void TvController::loadSettings(const QString &settingsPath)
     m_crtEffectLevel = effectLevel == QStringLiteral("off") || effectLevel == QStringLiteral("high")
         ? effectLevel
         : QStringLiteral("low");
+    const QString borderStyle = m_settingsRoot.value(QStringLiteral("tv_border"))
+                                    .toString(QStringLiteral("slim-black"));
+    m_tvBorderStyle = borderStyle == QStringLiteral("charcoal")
+            || borderStyle == QStringLiteral("walnut")
+            || borderStyle == QStringLiteral("cream")
+        ? borderStyle
+        : QStringLiteral("slim-black");
+    m_videoDistortion = std::clamp(
+        m_settingsRoot.value(QStringLiteral("video_distortion")).toInt(20), 0, 100);
     m_soundEffectsEnabled = m_settingsRoot.value(QStringLiteral("sound_effects_enabled")).toBool(true);
 
     const QJsonObject librarySettings = m_settingsRoot.value(QStringLiteral("library")).toObject();
@@ -794,6 +836,8 @@ void TvController::saveSettings()
     m_settingsRoot.insert(QStringLiteral("picture_mode"), m_pictureMode);
     m_settingsRoot.insert(QStringLiteral("display_resolution"), m_displayResolution);
     m_settingsRoot.insert(QStringLiteral("crt_effect"), m_crtEffectLevel);
+    m_settingsRoot.insert(QStringLiteral("tv_border"), m_tvBorderStyle);
+    m_settingsRoot.insert(QStringLiteral("video_distortion"), m_videoDistortion);
     m_settingsRoot.insert(QStringLiteral("sound_effects_enabled"), m_soundEffectsEnabled);
     m_settingsRoot.remove(QStringLiteral("parent_pin"));
     m_settingsRoot.insert(

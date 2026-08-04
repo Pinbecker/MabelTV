@@ -10,7 +10,7 @@ Item {
     property int selectedChannel: 0
     property int selectedProgramme: 0
     property bool programmePane: false
-    readonly property int rowCount: 13
+    readonly property int rowCount: 15
 
     visible: controller.parentAccessState !== TvController.ParentClosed
 
@@ -19,6 +19,10 @@ Item {
         if (value === "resume") return "RESUME WHEN RETURNING"
         if (value === "restart") return "NEW EPISODE FROM START"
         if (value === "channel") return "PER CHANNEL"
+        if (value === "slim-black") return "SLIM BLACK"
+        if (value === "charcoal") return "CLASSIC CHARCOAL"
+        if (value === "walnut") return "WARM WALNUT"
+        if (value === "cream") return "CREAM 90s"
         return value.toUpperCase()
     }
 
@@ -26,17 +30,19 @@ Item {
         switch (index) {
         case 0: return pretty(controller.playbackMode)
         case 1: return pretty(controller.pictureMode)
-        case 2: return controller.crtEffectLevel.toUpperCase()
-        case 3: return controller.displayResolution.toUpperCase()
-        case 4: return controller.volumeLimitEnabled ? "ON" : "OFF"
-        case 5: return controller.configuredMaximumVolume + "%"
-        case 6: return controller.soundEffectsEnabled ? "ON" : "OFF"
-        case 7: return "OPEN"
-        case 8: return "RUN NOW"
-        case 9: return controller.libraryStatus.split("\n")[0].toUpperCase()
-        case 10: return "WINDOWS / DEVELOPMENT"
-        case 11: return "RELAUNCH"
-        case 12: return Qt.platform.os === "windows" ? "PI ONLY" : "SAFE POWEROFF"
+        case 2: return pretty(controller.tvBorderStyle)
+        case 3: return controller.crtEffectLevel.toUpperCase()
+        case 4: return controller.videoDistortion + "%"
+        case 5: return controller.displayResolution.toUpperCase()
+        case 6: return controller.volumeLimitEnabled ? "ON" : "OFF"
+        case 7: return controller.configuredMaximumVolume + "%"
+        case 8: return controller.soundEffectsEnabled ? "ON" : "OFF"
+        case 9: return "OPEN"
+        case 10: return "RUN NOW"
+        case 11: return controller.libraryStatus.split("\n")[0].toUpperCase()
+        case 12: return "WINDOWS / DEVELOPMENT"
+        case 13: return "RELAUNCH"
+        case 14: return Qt.platform.os === "windows" ? "PI ONLY" : "SAFE POWEROFF"
         }
         return ""
     }
@@ -45,28 +51,30 @@ Item {
         switch (index) {
         case 0: controller.cyclePlaybackMode(direction); break
         case 1: controller.cyclePictureMode(direction); break
-        case 2: controller.cycleCrtEffectLevel(direction); break
-        case 3: controller.cycleDisplayResolution(direction); break
-        case 4: controller.toggleVolumeLimit(); break
-        case 5: controller.adjustMaximumVolume(direction); break
-        case 6: controller.toggleSoundEffects(); break
+        case 2: controller.cycleTvBorderStyle(direction); break
+        case 3: controller.cycleCrtEffectLevel(direction); break
+        case 4: controller.adjustVideoDistortion(direction); break
+        case 5: controller.cycleDisplayResolution(direction); break
+        case 6: controller.toggleVolumeLimit(); break
+        case 7: controller.adjustMaximumVolume(direction); break
+        case 8: controller.toggleSoundEffects(); break
         }
     }
 
     function activateRow(index) {
-        if (index <= 6) {
+        if (index <= 8) {
             adjustRow(index, 1)
-        } else if (index === 7) {
+        } else if (index === 9) {
             page = "library"
             programmePane = false
             clampLibrarySelection()
-        } else if (index === 8) {
-            controller.reloadLibrary()
         } else if (index === 10) {
+            controller.reloadLibrary()
+        } else if (index === 12) {
             controller.requestParentCommand("exit")
-        } else if (index === 11) {
+        } else if (index === 13) {
             controller.requestParentCommand("restart")
-        } else if (index === 12 && Qt.platform.os !== "windows") {
+        } else if (index === 14 && Qt.platform.os !== "windows") {
             controller.requestParentCommand("shutdown")
         }
     }
@@ -285,16 +293,17 @@ Item {
                 spacing: 2
 
                 Repeater {
-                    model: ["PLAYBACK MODE", "PICTURE MODE", "CRT EFFECTS", "DISPLAY OUTPUT",
-                            "VOLUME LIMIT", "MAXIMUM VOLUME", "TV SOUNDS",
-                            "CHANNELS & PROGRAMMES", "RELOAD LIBRARY", "DIAGNOSTICS",
-                            "EXIT MABEL TV", "RESTART MABEL TV", "SHUT DOWN PI"]
+                    model: ["PLAYBACK MODE", "PICTURE MODE", "TV BORDER", "CRT GLASS",
+                            "90s DISTORTION", "DISPLAY OUTPUT", "VOLUME LIMIT",
+                            "MAXIMUM VOLUME", "TV SOUNDS", "CHANNELS & PROGRAMMES",
+                            "RELOAD LIBRARY", "DIAGNOSTICS", "EXIT MABEL TV",
+                            "RESTART MABEL TV", "SHUT DOWN PI"]
 
                     Rectangle {
                         required property int index
                         required property string modelData
                         width: parent.width
-                        height: 35
+                        height: 32
                         color: index === overlay.selectedRow ? "#334d34" : "transparent"
                         border.color: index === overlay.selectedRow ? "#709372" : "transparent"
 
@@ -320,7 +329,52 @@ Item {
                             font.family: "Consolas"
                             font.pixelSize: 14
                             horizontalAlignment: Text.AlignRight
+                            visible: index !== 4
                             text: overlay.valueForRow(index)
+                        }
+
+                        Item {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.leftMargin: parent.width * 0.58
+                            anchors.rightMargin: 12
+                            height: 22
+                            visible: index === 4
+
+                            Rectangle {
+                                anchors.left: parent.left
+                                anchors.right: distortionValue.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.rightMargin: 12
+                                height: 9
+                                radius: 4.5
+                                color: "#263529"
+                                border.color: "#658066"
+                                antialiasing: true
+
+                                Rectangle {
+                                    anchors.left: parent.left
+                                    anchors.top: parent.top
+                                    anchors.bottom: parent.bottom
+                                    width: parent.width * controller.videoDistortion / 100
+                                    radius: parent.radius
+                                    color: index === overlay.selectedRow ? "#a6d49d" : "#6d936b"
+                                    antialiasing: true
+                                }
+                            }
+
+                            Text {
+                                id: distortionValue
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 50
+                                color: index === overlay.selectedRow ? "#b9e0ad" : "#718a71"
+                                font.family: "Consolas"
+                                font.pixelSize: 14
+                                horizontalAlignment: Text.AlignRight
+                                text: controller.videoDistortion + "%"
+                            }
                         }
                     }
                 }

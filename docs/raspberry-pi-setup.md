@@ -124,7 +124,7 @@ Mabel TV then owns tty1 and launches directly through Qt EGLFS/KMS without a des
 - Hold Previous (`B`) for 3.5 seconds, then press OK three times, for parent controls.
 - Display output changes take effect after selecting **Restart Mabel TV**.
 
-The parent panel can select continuous/resume/restart playback, per-channel/crop/fit/stretch picture handling, CRT strength, 720p/1080p/native display output, volume-limit policy, TV sounds, library reload, restart, exit, or shutdown.
+The parent panel can select continuous/resume/restart playback, per-channel/crop/fit/stretch picture handling, four TV borders, CRT glass strength, 0–100 analogue distortion, 720p/1080p/native display output, volume-limit policy, TV sounds, library reload, restart, exit, or shutdown.
 
 ## 7. Back up and update
 

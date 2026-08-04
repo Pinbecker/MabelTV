@@ -445,8 +445,14 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
     QCOMPARE(controller.parentAccessState(), TvController::ParentOpen);
 
     controller.cyclePlaybackMode(1);
+    controller.cycleTvBorderStyle(1);
+    for (int count = 0; count < 30; ++count) {
+        controller.adjustVideoDistortion(1);
+    }
     controller.toggleVolumeLimit();
     QCOMPARE(controller.playbackMode(), QStringLiteral("resume"));
+    QCOMPARE(controller.tvBorderStyle(), QStringLiteral("charcoal"));
+    QCOMPARE(controller.videoDistortion(), 100);
     QVERIFY(!controller.volumeLimitEnabled());
 
     QFile savedSettings(settings.fileName());
@@ -454,12 +460,24 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
     const QJsonDocument savedDocument = QJsonDocument::fromJson(savedSettings.readAll());
     QCOMPARE(savedDocument.object().value(QStringLiteral("playback_mode")).toString(),
              QStringLiteral("resume"));
+    QCOMPARE(savedDocument.object().value(QStringLiteral("tv_border")).toString(),
+             QStringLiteral("charcoal"));
+    QCOMPARE(savedDocument.object().value(QStringLiteral("video_distortion")).toInt(), 100);
     QVERIFY(!savedDocument.object().contains(QStringLiteral("parent_pin")));
     QVERIFY(!savedDocument.object()
                  .value(QStringLiteral("volume"))
                  .toObject()
                  .value(QStringLiteral("limit_enabled"))
                  .toBool(true));
+
+    TvController restored;
+    QVERIFY(restored.initialize(configuration.fileName(),
+                                settings.fileName(),
+                                directory.filePath(QStringLiteral("media")),
+                                directory.filePath(QStringLiteral("restored-state.json")),
+                                [](const QString &) { return MediaInspection{}; }));
+    QCOMPARE(restored.tvBorderStyle(), QStringLiteral("charcoal"));
+    QCOMPARE(restored.videoDistortion(), 100);
 }
 
 void CoreTests::parentLibraryControlsPersistAndAffectPlayback()

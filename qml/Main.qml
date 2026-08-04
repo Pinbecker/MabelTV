@@ -15,6 +15,7 @@ Window {
     property bool warmingUp: true
     property real warmProgress: 0
     property real flickerAmount: 0
+    property real distortionPhase: 0
     property bool previousHeldForParent: false
     property bool powerHeldForShutdown: false
     property bool muteHeldForLock: false
@@ -114,22 +115,77 @@ Window {
     Rectangle {
         id: cabinet
 
+        readonly property string styleName: tvController.tvBorderStyle
+        readonly property real sideInset: styleName === "slim-black" ? 18
+            : (styleName === "charcoal" ? 26 : (styleName === "walnut" ? 32 : 28))
+        readonly property real lipWidth: styleName === "slim-black" ? 5
+            : (styleName === "walnut" ? 8 : 7)
+        readonly property color lipColor: styleName === "slim-black" ? "#060807"
+            : (styleName === "charcoal" ? "#171b18"
+               : (styleName === "walnut" ? "#24170f" : "#554d40"))
+
         anchors.centerIn: parent
         width: Math.min(root.width - 48, (root.height - 48) * 4 / 3)
         height: width * 3 / 4
-        radius: Math.max(24, width * 0.035)
+        radius: styleName === "slim-black" ? Math.max(30, width * 0.041)
+            : Math.max(34, width * 0.052)
         color: "#151a16"
-        border.color: "#293029"
+        border.color: styleName === "slim-black" ? "#454c46"
+            : (styleName === "charcoal" ? "#646a62"
+               : (styleName === "walnut" ? "#a2774e" : "#f0e4c8"))
         border.width: 2
+        antialiasing: true
+
+        gradient: Gradient {
+            GradientStop {
+                position: 0
+                color: cabinet.styleName === "slim-black" ? "#252a26"
+                    : (cabinet.styleName === "charcoal" ? "#4a4e48"
+                       : (cabinet.styleName === "walnut" ? "#875c3a" : "#e0d4b8"))
+            }
+            GradientStop {
+                position: 1
+                color: cabinet.styleName === "slim-black" ? "#0d100e"
+                    : (cabinet.styleName === "charcoal" ? "#181b18"
+                       : (cabinet.styleName === "walnut" ? "#3b2518" : "#a99d82"))
+            }
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: 3
+            radius: Math.max(0, cabinet.radius - 3)
+            color: "transparent"
+            border.color: cabinet.styleName === "walnut" ? "#55e0b77e"
+                : (cabinet.styleName === "cream" ? "#66fff8dc" : "#36ffffff")
+            border.width: 1
+            antialiasing: true
+        }
+
+        Rectangle {
+            id: bezelLip
+
+            anchors.centerIn: parent
+            width: screen.width + cabinet.lipWidth * 2
+            height: screen.height + cabinet.lipWidth * 2
+            radius: screen.radius + cabinet.lipWidth
+            color: cabinet.lipColor
+            border.color: cabinet.styleName === "cream" ? "#877d69" : "#050605"
+            border.width: 2
+            antialiasing: true
+        }
 
         Rectangle {
             id: screen
 
-            anchors.fill: parent
-            anchors.margins: Math.max(12, cabinet.width * 0.016)
-            radius: Math.max(18, cabinet.radius - anchors.margins)
+            anchors.centerIn: parent
+            width: cabinet.width - cabinet.sideInset * 2
+            height: width * 3 / 4
+            radius: cabinet.styleName === "slim-black" ? Math.max(25, width * 0.032)
+                : Math.max(28, width * 0.039)
             color: "#010201"
             clip: true
+            antialiasing: true
             layer.enabled: true
             layer.smooth: true
             layer.effect: ShaderEffect {
@@ -137,6 +193,10 @@ Window {
                 property real flicker: root.flickerAmount
                 property real effectStrength: tvController.crtEffectLevel === "off" ? 0
                     : (tvController.crtEffectLevel === "high" ? 1.65 : 1)
+                property real distortion: tvController.videoDistortion / 100
+                property real phase: root.distortionPhase
+                property real cornerRadius: screen.radius
+                property real maskSoftness: 1.65
                 property vector2d resolution: Qt.vector2d(screen.width, screen.height)
                 fragmentShader: "qrc:/shaders/crt.frag.qsb"
             }
@@ -216,9 +276,11 @@ Window {
 
             Rectangle {
                 anchors.fill: parent
+                radius: screen.radius
                 color: "transparent"
                 border.color: "#30000000"
-                border.width: 9
+                border.width: 6
+                antialiasing: true
 
                 gradient: Gradient {
                     GradientStop { position: 0.0; color: "#18ffffff" }
@@ -517,6 +579,15 @@ Window {
         id: remoteLockOsdTimer
         interval: 2200
         onTriggered: remoteLockOsd.opacity = 0
+    }
+
+    Timer {
+        interval: 50
+        repeat: true
+        running: tvController.videoDistortion > 0
+                 && player.status === "Playing"
+                 && !tvController.standby
+        onTriggered: root.distortionPhase = (root.distortionPhase + 0.05) % 1000
     }
 
     Connections {

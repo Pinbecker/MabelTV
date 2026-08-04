@@ -10,6 +10,8 @@
     "playback_mode": "continuous",
     "schema_version": 1,
     "sound_effects_enabled": true,
+    "tv_border": "slim-black",
+    "video_distortion": 20,
     "volume": {
         "initial": 20,
         "limit_enabled": true,
