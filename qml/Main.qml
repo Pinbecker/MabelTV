@@ -97,8 +97,15 @@ Window {
     }
 
     function beginPowerOff(shutDownPi) {
-        if (poweringOff || tvController.standby)
+        if (poweringOff)
             return
+        if (tvController.standby) {
+            if (shutDownPi)
+                tvController.requestSafeShutdown()
+            else
+                tvController.dispatch(TvController.ToggleStandby)
+            return
+        }
         syncPlaybackPosition()
         if (player.status === "Playing" && !player.paused)
             player.togglePause()
