@@ -23,6 +23,7 @@
 #include <mpv/client.h>
 
 #include <algorithm>
+#include <locale.h>
 
 namespace
 {
@@ -62,6 +63,7 @@ bool hasArgument(int argc, char *argv[], const char *argument)
 int runLibmpvSelfTest(int argc, char *argv[])
 {
     QCoreApplication application(argc, argv);
+    setlocale(LC_NUMERIC, "C");
 
     mpv_handle *handle = mpv_create();
     if (handle == nullptr) {
@@ -87,6 +89,9 @@ int main(int argc, char *argv[])
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
 
     QGuiApplication application(argc, argv);
+    // Qt adopts the user's regional locale during application construction,
+    // while libmpv requires the process-wide numeric locale to remain C.
+    setlocale(LC_NUMERIC, "C");
     QCoreApplication::setApplicationName(QStringLiteral("Mabel TV"));
     QCoreApplication::setApplicationVersion(QStringLiteral(MABELTV_VERSION));
     QCoreApplication::setOrganizationName(QStringLiteral("MabelTV"));
