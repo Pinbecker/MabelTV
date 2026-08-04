@@ -38,6 +38,11 @@ float analogueNoise(vec2 point)
                  * 43758.5453);
 }
 
+float frameNoise(vec2 point)
+{
+    return fract(sin(dot(point, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
 void main()
 {
     vec2 centered = qt_TexCoord0 * 2.0 - 1.0;
@@ -62,12 +67,17 @@ void main()
 
     float paused = clamp(uniforms.pausedEffect, 0.0, 1.0);
     if (paused > 0.001) {
-        float verticalJitter = sin(sampleUv.x * 24.0 + uniforms.phase * 9.0);
-        float tearWave = sin(sampleUv.y * 61.0 - uniforms.phase * 7.5);
-        float tearBand = pow(max(0.0, tearWave), 11.0);
-        sampleUv.y += verticalJitter * 0.0032 * paused;
-        sampleUv.x += (0.004 + 0.015 * tearBand)
-            * sin(uniforms.phase * 13.0 + sampleUv.y * 19.0) * paused;
+        // A paused tape should look electrically unstable without making the
+        // whole picture swim. Quantise the noise to broad horizontal rows and
+        // a low frame rate, then reserve the larger offset for one fixed
+        // head-switching band near the bottom of the picture.
+        float pauseFrame = floor(uniforms.phase * 8.0);
+        float pauseRow = floor(sampleUv.y * uniforms.resolution.y / 4.0);
+        float rowOffset = frameNoise(vec2(pauseRow, pauseFrame)) - 0.5;
+        float trackingBand = 1.0 - smoothstep(
+            0.008, 0.026, abs(sampleUv.y - 0.855));
+        sampleUv.x += rowOffset
+            * (0.00045 + 0.0032 * trackingBand) * paused;
     }
 
     if (mask <= 0.0) {
@@ -121,14 +131,35 @@ void main()
     }
 
     if (paused > 0.001) {
-        float pauseNoise = analogueNoise(
-            floor(sampleUv * uniforms.resolution * vec2(0.35, 1.0))
-            + vec2(uniforms.phase * 43.0));
-        float pauseStreak = pow(0.5 + 0.5
-            * sin(sampleUv.y * uniforms.resolution.y * 0.44
-                  + uniforms.phase * 18.0), 10.0);
-        colour += (pauseNoise - 0.5) * 0.11 * paused;
-        colour += vec3(0.13, 0.11, 0.14) * pauseStreak * paused;
+        float pauseFrame = floor(uniforms.phase * 8.0);
+        float pauseRow = floor(sampleUv.y * uniforms.resolution.y / 3.0);
+        float pauseNoise = frameNoise(vec2(pauseRow, pauseFrame));
+        float trackingBand = 1.0 - smoothstep(
+            0.008, 0.026, abs(sampleUv.y - 0.855));
+
+        // VHS colour resolution was much softer than luminance. A restrained
+        // red/blue delay reads as tape smear while the frozen picture remains
+        // firmly in place.
+        float pauseChromaOffset = (1.8 + 2.2 * trackingBand) * pixel.x;
+        vec3 pauseColour = vec3(
+            texture(source,
+                    clamp(sampleUv + vec2(pauseChromaOffset, 0.0),
+                          sampleMinimum,
+                          sampleMaximum)).r,
+            centreSample.g,
+            texture(source,
+                    clamp(sampleUv - vec2(pauseChromaOffset, 0.0),
+                          sampleMinimum,
+                          sampleMaximum)).b);
+        colour = mix(colour, pauseColour, 0.42 * paused);
+
+        float fineLine = pow(0.5 + 0.5 * sin(
+            sampleUv.y * uniforms.resolution.y * 1.45
+            + pauseNoise * 5.0), 18.0);
+        float dropout = trackingBand * smoothstep(0.68, 0.96, pauseNoise);
+        colour += (pauseNoise - 0.5) * 0.052 * paused;
+        colour += vec3(0.075, 0.065, 0.085) * fineLine * paused;
+        colour += vec3(0.12) * dropout * paused;
     }
 
     float scanline = 1.0 - (0.018 * glass + 0.055 * distortion)

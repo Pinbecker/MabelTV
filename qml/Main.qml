@@ -154,40 +154,51 @@ Window {
         id: cabinet
 
         readonly property string styleName: tvController.tvBorderStyle
-        readonly property real sideInset: Math.max(54, width * (
-            styleName === "slim-black" ? 0.070
-            : (styleName === "charcoal" ? 0.085
-               : (styleName === "walnut" ? 0.095 : 0.082))))
+        readonly property bool isSlim: styleName === "slim-black"
+        readonly property bool isSilver: styleName === "silver-90s"
+        readonly property bool isCharcoal: styleName === "charcoal-90s"
+        readonly property bool isVintage: styleName === "vintage-black"
+        // Keep Slim Black's original proportions exactly. The three physical
+        // sets have a smaller tube so there is room for their real cabinet
+        // furniture beneath it.
+        readonly property real sideInset: Math.max(54, width * 0.070)
+        readonly property real tubeWidth: isSlim ? width - sideInset * 2
+            : (isSilver ? width * 0.790
+               : (isCharcoal ? width * 0.770 : width * 0.740))
+        readonly property real tubeHeight: tubeWidth * 3 / 4
+        readonly property real tubeTop: isSlim ? (height - tubeHeight) / 2
+            : (isVintage ? width * 0.052 : width * 0.044)
         readonly property real lipWidth: Math.max(12, width * (
-            styleName === "walnut" ? 0.018 : 0.015))
-        readonly property color lipColor: styleName === "slim-black" ? "#060807"
-            : (styleName === "charcoal" ? "#171b18"
-               : (styleName === "walnut" ? "#24170f" : "#554d40"))
+            isSlim ? 0.015 : (isVintage ? 0.020 : 0.017)))
+        readonly property color lipColor: isSlim ? "#060807"
+            : (isSilver ? "#484a47"
+               : (isCharcoal ? "#111311" : "#080908"))
+        readonly property real fasciaTop: tubeTop + tubeHeight + lipWidth
 
         anchors.centerIn: parent
         width: Math.min(root.width - 48, (root.height - 48) * 4 / 3)
         height: width * 3 / 4
-        radius: styleName === "slim-black" ? Math.max(38, width * 0.055)
+        radius: isSlim ? Math.max(38, width * 0.055)
             : Math.max(44, width * 0.067)
         color: "#151a16"
-        border.color: styleName === "slim-black" ? "#454c46"
-            : (styleName === "charcoal" ? "#646a62"
-               : (styleName === "walnut" ? "#a2774e" : "#f0e4c8"))
+        border.color: isSlim ? "#454c46"
+            : (isSilver ? "#f5f3eb"
+               : (isCharcoal ? "#555a55" : "#333632"))
         border.width: 2
         antialiasing: true
 
         gradient: Gradient {
             GradientStop {
                 position: 0
-                color: cabinet.styleName === "slim-black" ? "#252a26"
-                    : (cabinet.styleName === "charcoal" ? "#4a4e48"
-                       : (cabinet.styleName === "walnut" ? "#875c3a" : "#e0d4b8"))
+                color: cabinet.isSlim ? "#252a26"
+                    : (cabinet.isSilver ? "#deded7"
+                       : (cabinet.isCharcoal ? "#3f433f" : "#2d302d"))
             }
             GradientStop {
                 position: 1
-                color: cabinet.styleName === "slim-black" ? "#0d100e"
-                    : (cabinet.styleName === "charcoal" ? "#181b18"
-                       : (cabinet.styleName === "walnut" ? "#3b2518" : "#a99d82"))
+                color: cabinet.isSlim ? "#0d100e"
+                    : (cabinet.isSilver ? "#979992"
+                       : (cabinet.isCharcoal ? "#171a18" : "#101210"))
             }
         }
 
@@ -196,21 +207,273 @@ Window {
             anchors.margins: 3
             radius: Math.max(0, cabinet.radius - 3)
             color: "transparent"
-            border.color: cabinet.styleName === "walnut" ? "#55e0b77e"
-                : (cabinet.styleName === "cream" ? "#66fff8dc" : "#36ffffff")
+            border.color: cabinet.isSilver ? "#70ffffff" : "#36ffffff"
             border.width: 1
             antialiasing: true
+        }
+
+        // White/silver plastic set: a deep 1990s control shelf with the small
+        // rectangular buttons and large power switch from the reference.
+        Item {
+            id: silverFascia
+
+            visible: cabinet.isSilver
+            x: cabinet.width * 0.11
+            y: cabinet.fasciaTop + cabinet.width * 0.016
+            width: cabinet.width * 0.78
+            height: cabinet.height - y - cabinet.width * 0.035
+
+            Text {
+                text: "MABEL"
+                color: "#454743"
+                font.pixelSize: Math.max(10, silverFascia.height * 0.15)
+                font.bold: true
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.leftMargin: parent.width * 0.02
+            }
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: parent.height * 0.58
+                radius: height * 0.22
+                color: "#aaaca6"
+                border.color: "#777a75"
+                border.width: 1
+            }
+
+            Item {
+                x: parent.width * 0.18
+                y: parent.height * 0.52
+                width: parent.width * 0.60
+                height: parent.height * 0.34
+
+                Repeater {
+                    model: 6
+
+                    delegate: Rectangle {
+                        required property int index
+                        x: index * parent.width / 6
+                            + (parent.width / 6 - width) / 2
+                        width: parent.width * 0.075
+                        height: parent.height * 0.42
+                        radius: 2
+                        color: index < 2 ? "#797c77" : "#666965"
+                        border.color: "#c9cac5"
+                        border.width: 1
+                    }
+                }
+            }
+
+            Rectangle {
+                width: parent.height * 0.27
+                height: width
+                radius: width / 2
+                anchors.right: parent.right
+                anchors.rightMargin: parent.width * 0.035
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: parent.height * 0.12
+                color: "#555854"
+                border.color: "#d4d5cf"
+                border.width: 2
+            }
+        }
+
+        // Dark late-90s set: twin speaker grilles and a compact central control
+        // cluster give it the broad, heavy lower chin seen in the reference.
+        Item {
+            id: charcoalFascia
+
+            visible: cabinet.isCharcoal
+            x: cabinet.width * 0.095
+            y: cabinet.fasciaTop + cabinet.width * 0.012
+            width: cabinet.width * 0.81
+            height: cabinet.height - y - cabinet.width * 0.03
+
+            Rectangle {
+                id: leftSpeaker
+                width: parent.width * 0.32
+                height: parent.height * 0.66
+                anchors.left: parent.left
+                anchors.bottom: parent.bottom
+                radius: height * 0.08
+                color: "#222522"
+                border.color: "#4f544f"
+                border.width: 1
+
+                Repeater {
+                    model: 6
+
+                    delegate: Rectangle {
+                        required property int index
+                        x: 0
+                        y: index * parent.height / 6
+                        width: parent.width
+                        height: Math.max(2, parent.height * 0.028)
+                        radius: height / 2
+                        color: "#080a09"
+                        opacity: 0.78
+                    }
+                }
+            }
+
+            Rectangle {
+                width: leftSpeaker.width
+                height: leftSpeaker.height
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                radius: height * 0.08
+                color: "#222522"
+                border.color: "#4f544f"
+                border.width: 1
+
+                Repeater {
+                    model: 6
+
+                    delegate: Rectangle {
+                        required property int index
+                        x: 0
+                        y: index * parent.height / 6
+                        width: parent.width
+                        height: Math.max(2, parent.height * 0.028)
+                        radius: height / 2
+                        color: "#080a09"
+                        opacity: 0.78
+                    }
+                }
+            }
+
+            Text {
+                text: "MABEL"
+                color: "#aaada8"
+                font.pixelSize: Math.max(9, parent.height * 0.16)
+                font.bold: true
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: parent.top
+            }
+
+            Rectangle {
+                width: parent.width * 0.19
+                height: parent.height * 0.27
+                radius: height * 0.28
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: parent.height * 0.12
+                color: "#0b0d0c"
+                border.color: "#626762"
+                border.width: 1
+            }
+        }
+
+        // Older box set: wide speaker vents, two physical dials and small feet.
+        Item {
+            id: vintageFascia
+
+            visible: cabinet.isVintage
+            x: cabinet.width * 0.12
+            y: cabinet.fasciaTop + cabinet.width * 0.012
+            width: cabinet.width * 0.76
+            height: cabinet.height - y - cabinet.width * 0.025
+
+            Rectangle {
+                id: vintageSpeaker
+                width: parent.width * 0.52
+                height: parent.height * 0.63
+                anchors.left: parent.left
+                anchors.bottom: parent.bottom
+                radius: height * 0.08
+                color: "#090b09"
+                border.color: "#414440"
+                border.width: 1
+
+                Repeater {
+                    model: 8
+
+                    delegate: Rectangle {
+                        required property int index
+                        x: vintageSpeaker.width * 0.07
+                        y: vintageSpeaker.height * (0.09 + index * 0.105)
+                        width: vintageSpeaker.width * 0.86
+                        height: Math.max(2, vintageSpeaker.height * 0.025)
+                        radius: height / 2
+                        color: "#4d514c"
+                    }
+                }
+            }
+
+            Text {
+                text: "MABEL TV"
+                color: "#a3a69f"
+                font.pixelSize: Math.max(9, parent.height * 0.14)
+                font.bold: true
+                anchors.left: vintageSpeaker.left
+                anchors.bottom: vintageSpeaker.top
+                anchors.bottomMargin: parent.height * 0.08
+            }
+
+            Column {
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                spacing: parent.height * 0.07
+
+                Repeater {
+                    model: 2
+
+                    delegate: Rectangle {
+                        required property int index
+                        width: vintageFascia.height * 0.27
+                        height: width
+                        radius: width / 2
+                        color: "#151815"
+                        border.color: "#777b74"
+                        border.width: 2
+
+                        Rectangle {
+                            width: parent.width * 0.08
+                            height: parent.height * 0.35
+                            radius: width / 2
+                            color: "#94988f"
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.top: parent.top
+                            anchors.topMargin: parent.height * 0.08
+                        }
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            visible: cabinet.isVintage
+            x: cabinet.width * 0.16
+            y: cabinet.height - height * 0.35
+            width: cabinet.width * 0.10
+            height: cabinet.width * 0.022
+            radius: height / 2
+            color: "#080a08"
+        }
+
+        Rectangle {
+            visible: cabinet.isVintage
+            x: cabinet.width * 0.74
+            y: cabinet.height - height * 0.35
+            width: cabinet.width * 0.10
+            height: cabinet.width * 0.022
+            radius: height / 2
+            color: "#080a08"
         }
 
         Rectangle {
             id: bezelLip
 
-            anchors.centerIn: parent
+            x: screen.x - cabinet.lipWidth
+            y: screen.y - cabinet.lipWidth
             width: screen.width + cabinet.lipWidth * 2
             height: screen.height + cabinet.lipWidth * 2
             radius: screen.radius + cabinet.lipWidth
             color: cabinet.lipColor
-            border.color: cabinet.styleName === "cream" ? "#877d69" : "#050605"
+            border.color: cabinet.isSilver ? "#757872" : "#050605"
             border.width: 2
             antialiasing: true
         }
@@ -218,10 +481,11 @@ Window {
         Rectangle {
             id: screen
 
-            anchors.centerIn: parent
-            width: cabinet.width - cabinet.sideInset * 2
+            x: (cabinet.width - width) / 2
+            y: cabinet.tubeTop
+            width: cabinet.tubeWidth
             height: width * 3 / 4
-            radius: cabinet.styleName === "slim-black" ? Math.max(38, width * 0.065)
+            radius: cabinet.isSlim ? Math.max(38, width * 0.065)
                 : Math.max(42, width * 0.075)
             color: "#010201"
             clip: true

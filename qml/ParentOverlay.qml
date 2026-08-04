@@ -20,9 +20,9 @@ Item {
         if (value === "resume") return "RESUME WHEN RETURNING"
         if (value === "channel") return "PER CHANNEL"
         if (value === "slim-black") return "SLIM BLACK"
-        if (value === "charcoal") return "CLASSIC CHARCOAL"
-        if (value === "walnut") return "WARM WALNUT"
-        if (value === "cream") return "CREAM 90s"
+        if (value === "silver-90s") return "SILVER 90s"
+        if (value === "charcoal-90s") return "CHARCOAL 90s"
+        if (value === "vintage-black") return "VINTAGE BLACK"
         return value.toUpperCase()
     }
 

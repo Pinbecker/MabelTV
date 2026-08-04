@@ -484,7 +484,7 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
     }
     controller.toggleVolumeLimit();
     QCOMPARE(controller.playbackMode(), QStringLiteral("resume"));
-    QCOMPARE(controller.tvBorderStyle(), QStringLiteral("charcoal"));
+    QCOMPARE(controller.tvBorderStyle(), QStringLiteral("silver-90s"));
     QCOMPARE(controller.crtGlass(), 100);
     QCOMPARE(controller.videoDistortion(), 100);
     QVERIFY(!controller.volumeLimitEnabled());
@@ -495,7 +495,7 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
     QCOMPARE(savedDocument.object().value(QStringLiteral("playback_mode")).toString(),
              QStringLiteral("resume"));
     QCOMPARE(savedDocument.object().value(QStringLiteral("tv_border")).toString(),
-             QStringLiteral("charcoal"));
+             QStringLiteral("silver-90s"));
     QCOMPARE(savedDocument.object().value(QStringLiteral("crt_glass")).toInt(), 100);
     QVERIFY(!savedDocument.object().contains(QStringLiteral("crt_effect")));
     QCOMPARE(savedDocument.object().value(QStringLiteral("video_distortion")).toInt(), 100);
@@ -512,7 +512,7 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
                                 directory.filePath(QStringLiteral("media")),
                                 directory.filePath(QStringLiteral("restored-state.json")),
                                 [](const QString &) { return MediaInspection{}; }));
-    QCOMPARE(restored.tvBorderStyle(), QStringLiteral("charcoal"));
+    QCOMPARE(restored.tvBorderStyle(), QStringLiteral("silver-90s"));
     QCOMPARE(restored.crtGlass(), 100);
     QCOMPARE(restored.videoDistortion(), 100);
 }

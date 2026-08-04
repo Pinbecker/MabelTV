@@ -81,7 +81,7 @@ Keyboard controls:
 Hold `B` for 3.5 seconds, then press Enter three times, to reveal parent access. Open
 **Channels & Programmes** there to switch entire channels or individual episodes and films on or off.
 Every programme keeps its own position when navigating with Left/Right. To deliberately restart the current item, hold `B` for parent confirmation, then press Left, Right, Enter.
-`TV Border` cycles between thick Slim Black, Classic Charcoal, Warm Walnut and Cream 90s CRT cabinets.
+`TV Border` cycles between the original Slim Black surround and three reference-inspired CRT cabinets: Silver 90s with a full control strip, Charcoal 90s with twin speaker grilles, and Vintage Black with vents and physical dials.
 `CRT Glass` is a 0–100 slider for picture curvature, corner depth and reflective sheen.
 `90s Distortion` is a separate 0–100 haze, grain, softness, scanline and colour-bleed slider. It remains steady below 95 and adds only a tiny wobble at the very top. Use Left/Right to adjust either slider in five-point steps.
 

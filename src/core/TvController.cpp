@@ -601,9 +601,9 @@ void TvController::adjustCrtGlass(int direction)
 void TvController::cycleTvBorderStyle(int direction)
 {
     m_tvBorderStyle = cycleValue({QStringLiteral("slim-black"),
-                                  QStringLiteral("charcoal"),
-                                  QStringLiteral("walnut"),
-                                  QStringLiteral("cream")},
+                                  QStringLiteral("silver-90s"),
+                                  QStringLiteral("charcoal-90s"),
+                                  QStringLiteral("vintage-black")},
                                  m_tvBorderStyle,
                                  direction);
     emit tvBorderStyleChanged();
@@ -836,11 +836,21 @@ void TvController::loadSettings(const QString &settingsPath)
     }
     const QString borderStyle = m_settingsRoot.value(QStringLiteral("tv_border"))
                                     .toString(QStringLiteral("slim-black"));
-    m_tvBorderStyle = borderStyle == QStringLiteral("charcoal")
-            || borderStyle == QStringLiteral("walnut")
-            || borderStyle == QStringLiteral("cream")
-        ? borderStyle
-        : QStringLiteral("slim-black");
+    // Migrate the three early colour-only cabinets to their more convincing
+    // reference-inspired replacements. Slim Black intentionally stays exact.
+    if (borderStyle == QStringLiteral("cream")) {
+        m_tvBorderStyle = QStringLiteral("silver-90s");
+    } else if (borderStyle == QStringLiteral("charcoal")) {
+        m_tvBorderStyle = QStringLiteral("charcoal-90s");
+    } else if (borderStyle == QStringLiteral("walnut")) {
+        m_tvBorderStyle = QStringLiteral("vintage-black");
+    } else if (borderStyle == QStringLiteral("silver-90s")
+               || borderStyle == QStringLiteral("charcoal-90s")
+               || borderStyle == QStringLiteral("vintage-black")) {
+        m_tvBorderStyle = borderStyle;
+    } else {
+        m_tvBorderStyle = QStringLiteral("slim-black");
+    }
     m_videoDistortion = std::clamp(
         m_settingsRoot.value(QStringLiteral("video_distortion")).toInt(20), 0, 100);
     m_soundEffectsEnabled = m_settingsRoot.value(QStringLiteral("sound_effects_enabled")).toBool(true);
