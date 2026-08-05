@@ -30,6 +30,8 @@ Window {
     property bool televisionStarted: false
     property double lastChannelRepeatMs: 0
     property double lastVolumeRepeatMs: 0
+    readonly property real playbackOsdInsetX: Math.max(30, screen.width * 0.055)
+    readonly property real playbackOsdInsetY: Math.max(28, screen.height * 0.065)
 
     function acceptRepeat(kind, isAutoRepeat) {
         const now = Date.now()
@@ -129,6 +131,14 @@ Window {
         volumeLevel.width = isMuted ? 0 : volumeTrack.width * value / 100
         volumeOsd.opacity = 1
         volumeOsdTimer.restart()
+    }
+
+    function showProgramme(name) {
+        if (name.length === 0)
+            return
+        programmeName.text = name.toUpperCase()
+        programmeName.opacity = 1
+        programmeOsdTimer.restart()
     }
 
     function showRemoteLockState() {
@@ -620,7 +630,8 @@ Window {
             Text {
                 anchors.left: parent.left
                 anchors.top: parent.top
-                anchors.margins: Math.max(18, screen.width * 0.035)
+                anchors.leftMargin: root.playbackOsdInsetX
+                anchors.topMargin: root.playbackOsdInsetY
                 z: 70
                 visible: player.paused && !root.introPlaying && !root.poweringOff
                 color: "#e8e4d0"
@@ -630,6 +641,28 @@ Window {
                 font.bold: true
                 font.pixelSize: Math.max(19, screen.height * 0.045)
                 text: "Ⅱ  PAUSE"
+            }
+
+            Text {
+                id: programmeName
+
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.rightMargin: root.playbackOsdInsetX
+                anchors.topMargin: root.playbackOsdInsetY
+                z: 70
+                width: screen.width * 0.55
+                opacity: 0
+                color: "#e8e4d0"
+                style: Text.Outline
+                styleColor: "#5f5360"
+                elide: Text.ElideRight
+                horizontalAlignment: Text.AlignRight
+                font.family: "Consolas"
+                font.bold: true
+                font.pixelSize: Math.max(16, screen.height * 0.028)
+
+                Behavior on opacity { NumberAnimation { duration: 120 } }
             }
 
             Item {
@@ -972,6 +1005,12 @@ Window {
     }
 
     Timer {
+        id: programmeOsdTimer
+        interval: 2200
+        onTriggered: programmeName.opacity = 0
+    }
+
+    Timer {
         id: volumeOsdTimer
         interval: 1300
         onTriggered: volumeOsd.opacity = 0
@@ -1005,6 +1044,9 @@ Window {
             root.showChannel(number, name)
             if (tvController.soundEffectsEnabled)
                 soundEffects.playTuningNoise()
+        }
+        function onProgrammeDisplayRequested(name) {
+            root.showProgramme(name)
         }
         function onVolumeDisplayRequested(value, isMuted) {
             root.showVolume(value, isMuted)

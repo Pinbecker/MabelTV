@@ -7,6 +7,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QRegularExpression>
 #include <QSaveFile>
 
 #include <algorithm>
@@ -356,6 +357,7 @@ void TvController::dispatch(Action action)
             runtime.anchorPositionSeconds = runtime.currentEpisode >= 0
                 ? runtime.programmePositions[runtime.currentEpisode]
                 : 0.0;
+            emit programmeDisplayRequested(programmeDisplayName(runtime));
             requestTune(m_currentChannelIndex, false, false);
         }
         break;
@@ -431,6 +433,7 @@ void TvController::playbackEnded()
     runtime.anchorPositionSeconds = runtime.currentEpisode >= 0
         ? runtime.programmePositions[runtime.currentEpisode]
         : 0.0;
+    emit programmeDisplayRequested(programmeDisplayName(runtime));
     requestTune(m_currentChannelIndex, false, false);
 }
 
@@ -1186,7 +1189,32 @@ void TvController::changeProgramme(int direction)
     runtime.currentEpisode = nextEpisode;
     runtime.anchorMilliseconds = m_broadcastClock.elapsed();
     runtime.anchorPositionSeconds = runtime.programmePositions[nextEpisode];
+    emit programmeDisplayRequested(programmeDisplayName(runtime));
     requestTune(m_currentChannelIndex, false, false);
+}
+
+QString TvController::programmeDisplayName(const ChannelRuntime &runtime) const
+{
+    if (!episodeIsUsable(runtime, runtime.currentEpisode)) {
+        return {};
+    }
+
+    QString name = QFileInfo(runtime.channel.episodes[runtime.currentEpisode].path).completeBaseName();
+    name.replace(QLatin1Char('_'), QLatin1Char(' '));
+    name = name.simplified();
+
+    static const QRegularExpression episodePattern(
+        QStringLiteral("^S(\\d{1,2})E(\\d{1,3})\\s*-\\s*(.+)$"),
+        QRegularExpression::CaseInsensitiveOption);
+    const QRegularExpressionMatch match = episodePattern.match(name);
+    if (!match.hasMatch()) {
+        return name;
+    }
+
+    return QStringLiteral("S%1  E%2  ·  %3")
+        .arg(match.captured(1).rightJustified(2, QLatin1Char('0')),
+             match.captured(2).rightJustified(2, QLatin1Char('0')),
+             match.captured(3));
 }
 
 void TvController::setVolume(int value)

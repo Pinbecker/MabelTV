@@ -24,6 +24,7 @@ private slots:
     void controllerClearsNoSignalWhenReturningToPopulatedChannel();
     void controllerSkipsAnEpisodeAfterPlaybackFailure();
     void controllerMovesBetweenProgrammesInFilenameOrder();
+    void controllerDisplaysSeasonEpisodeOrFilmNameWhenProgrammeChanges();
     void standbyWakeWaitsForWelcomeBeforeResumingPlayback();
     void remoteLockBlocksActionsAndPersists();
     void parentControlsRequireThreeConfirmationsAndPersistSettings();
@@ -336,6 +337,60 @@ void CoreTests::controllerMovesBetweenProgrammesInFilenameOrder()
     QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 4, 1000);
     QCOMPARE(playbackRequests.at(3).at(0).toUrl().fileName(), firstFile);
     QVERIFY(playbackRequests.at(3).at(1).toDouble() < 0.2);
+}
+
+void CoreTests::controllerDisplaysSeasonEpisodeOrFilmNameWhenProgrammeChanges()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/one")));
+
+    const QString episodeName = QStringLiteral("S01E02 - Making Friends.mp4");
+    const QString filmName = QStringLiteral("Finding Nemo.mp4");
+    for (const QString &name : {episodeName, filmName}) {
+        QFile media(directory.filePath(QStringLiteral("media/one/") + name));
+        QVERIFY(media.open(QIODevice::WriteOnly));
+        media.close();
+    }
+
+    QFile configuration(directory.filePath(QStringLiteral("channels.json")));
+    QVERIFY(configuration.open(QIODevice::WriteOnly));
+    configuration.write(R"({
+        "schema_version": 1,
+        "channels": [{"number": 1, "name": "One", "folder": "one"}]
+    })");
+    configuration.close();
+
+    TvController controller;
+    QVERIFY(controller.initialize(configuration.fileName(),
+                                  directory.filePath(QStringLiteral("settings.json")),
+                                  directory.filePath(QStringLiteral("media")),
+                                  directory.filePath(QStringLiteral("state.json")),
+                                  [](const QString &) {
+                                      return MediaInspection{true, true, 42.0,
+                                                             QStringLiteral("h264"), {}};
+                                  }));
+    QSignalSpy playbackRequests(&controller, &TvController::playbackRequested);
+    QSignalSpy programmeDisplays(&controller, &TvController::programmeDisplayRequested);
+    controller.start();
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 1, 1000);
+
+    const auto expectedLabel = [&](const QString &fileName) {
+        return fileName == episodeName ? QStringLiteral("S01  E02  ·  Making Friends")
+                                       : QStringLiteral("Finding Nemo");
+    };
+
+    controller.dispatch(TvController::NextProgramme);
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 2, 1000);
+    QCOMPARE(programmeDisplays.count(), 1);
+    QCOMPARE(programmeDisplays.at(0).at(0).toString(),
+             expectedLabel(playbackRequests.at(1).at(0).toUrl().fileName()));
+
+    controller.dispatch(TvController::NextProgramme);
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 3, 1000);
+    QCOMPARE(programmeDisplays.count(), 2);
+    QCOMPARE(programmeDisplays.at(1).at(0).toString(),
+             expectedLabel(playbackRequests.at(2).at(0).toUrl().fileName()));
 }
 
 void CoreTests::standbyWakeWaitsForWelcomeBeforeResumingPlayback()

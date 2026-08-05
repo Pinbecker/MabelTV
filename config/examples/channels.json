@@ -9,14 +9,14 @@
     },
     {
       "number": 2,
-      "name": "Fireman Sam",
-      "folder": "fireman-sam",
+      "name": "Puffin Rock",
+      "folder": "puffin-rock",
       "aspect": "crop"
     },
     {
       "number": 3,
-      "name": "Thomas the Tank Engine",
-      "folder": "thomas",
+      "name": "Teletubbies",
+      "folder": "teletubbies",
       "aspect": "crop"
     },
     {

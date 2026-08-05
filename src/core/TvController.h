@@ -158,6 +158,7 @@ signals:
     void playbackRequested(const QUrl &source, double startPositionSeconds);
     void stopPlaybackRequested();
     void channelDisplayRequested(int channelNumber, const QString &channelName);
+    void programmeDisplayRequested(const QString &programmeName);
     void volumeDisplayRequested(int volume, bool muted);
     void parentCommandRequested(const QString &command);
 
@@ -204,6 +205,7 @@ private:
     bool episodeIsUsable(const ChannelRuntime &runtime, int episodeIndex) const;
     int takeUsableEpisode(ChannelRuntime &runtime);
     int adjacentUsableEpisode(const ChannelRuntime &runtime, int direction) const;
+    QString programmeDisplayName(const ChannelRuntime &runtime) const;
     double resolveBroadcastPosition(ChannelRuntime &runtime);
     void freezeTimeline(ChannelRuntime &runtime);
     void setParentMessage(const QString &message);
