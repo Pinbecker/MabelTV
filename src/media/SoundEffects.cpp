@@ -16,6 +16,19 @@
 namespace
 {
 constexpr double pi = 3.14159265358979323846;
+constexpr int childSafeVolume = 60;
+constexpr int boostedMaximumVolume = 160;
+
+int outputVolume(int visibleVolume)
+{
+    visibleVolume = std::clamp(visibleVolume, 0, 100);
+    if (visibleVolume <= childSafeVolume) {
+        return visibleVolume;
+    }
+    return childSafeVolume
+        + (visibleVolume - childSafeVolume) * (boostedMaximumVolume - childSafeVolume)
+            / (100 - childSafeVolume);
+}
 
 QByteArray makeSamples(int sampleRate, double durationSeconds, const auto &sampleGenerator)
 {
@@ -68,6 +81,7 @@ SoundEffects::SoundEffects(QObject *parent)
     mpv_set_option_string(m_state->handle, "audio-display", "no");
     mpv_set_option_string(m_state->handle, "idle", "yes");
     mpv_set_option_string(m_state->handle, "keep-open", "no");
+    mpv_set_option_string(m_state->handle, "volume-max", "160");
     if (mpv_initialize(m_state->handle) < 0) {
         mpv_terminate_destroy(m_state->handle);
         m_state->handle = nullptr;
@@ -136,7 +150,7 @@ void SoundEffects::setVolume(int volume)
     volume = std::clamp(volume, 0, 100);
     const bool changed = m_volume != volume;
     m_volume = volume;
-    const QByteArray value = QByteArray::number(volume);
+    const QByteArray value = QByteArray::number(outputVolume(volume));
     const char *command[] = {"set", "volume", value.constData(), nullptr};
     runCommand(m_state->handle, command);
     if (changed) {

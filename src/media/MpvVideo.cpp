@@ -19,6 +19,20 @@
 
 namespace
 {
+constexpr int childSafeVolume = 60;
+constexpr int boostedMaximumVolume = 160;
+
+int outputVolume(int visibleVolume)
+{
+    visibleVolume = std::clamp(visibleVolume, 0, 100);
+    if (visibleVolume <= childSafeVolume) {
+        return visibleVolume;
+    }
+    return childSafeVolume
+        + (visibleVolume - childSafeVolume) * (boostedMaximumVolume - childSafeVolume)
+            / (100 - childSafeVolume);
+}
+
 void checkMpv(int result, const char *operation)
 {
     if (result < 0) {
@@ -197,6 +211,8 @@ MpvVideo::MpvVideo(QQuickItem *parent)
     checkMpv(mpv_set_option_string(m_state->handle, "keep-open", "no"),
              "Configuring mpv end-of-file behaviour");
     checkMpv(mpv_set_option_string(m_state->handle, "idle", "yes"), "Configuring mpv idle mode");
+    checkMpv(mpv_set_option_string(m_state->handle, "volume-max", "160"),
+             "Allowing amplified Mabel TV playback volume");
     checkMpv(mpv_set_option_string(m_state->handle, "volume", "20"), "Setting initial mpv volume");
 
     const QByteArray logFile = qEnvironmentVariable("MABELTV_MPV_LOG").toUtf8();
@@ -277,7 +293,7 @@ void MpvVideo::setVolume(int volume)
     }
 
     m_volume = volume;
-    const QByteArray value = QByteArray::number(volume);
+    const QByteArray value = QByteArray::number(outputVolume(volume));
     const char *command[] = {"set", "volume", value.constData(), nullptr};
     checkMpv(mpv_command_async(m_state->handle, 0, command), "Setting volume");
     emit volumeChanged();
