@@ -20,6 +20,7 @@ Window {
     property bool powerOffShutsDown: false
     property real powerOffProgress: 0
     property bool previousHeldForParent: false
+    property bool previousHeldForRestart: false
     property bool powerHeldForShutdown: false
     property bool muteHeldForLock: false
     readonly property bool showStatic: !directMediaMode
@@ -921,6 +922,17 @@ Window {
     }
 
     Timer {
+        id: emergencyRestartTimer
+        interval: 6000
+        onTriggered: {
+            if (root.previousHeldForParent && parentOverlay.visible) {
+                root.previousHeldForRestart = true
+                tvController.requestParentCommand("restart")
+            }
+        }
+    }
+
+    Timer {
         id: powerHoldTimer
         interval: 5000
         onTriggered: {
@@ -1105,7 +1117,9 @@ Window {
             } else if (event.key === Qt.Key_B) {
                 if (!event.isAutoRepeat) {
                     root.previousHeldForParent = false
+                    root.previousHeldForRestart = false
                     parentHoldTimer.restart()
+                    emergencyRestartTimer.restart()
                 }
                 event.accepted = true
             } else if (event.key === Qt.Key_P) {
@@ -1195,6 +1209,8 @@ Window {
                 root.muteHeldForLock = false
                 event.accepted = true
             } else if (event.key === Qt.Key_B && !event.isAutoRepeat) {
+                if (emergencyRestartTimer.running)
+                    emergencyRestartTimer.stop()
                 if (parentHoldTimer.running) {
                     parentHoldTimer.stop()
                     if (!root.previousHeldForParent && !parentOverlay.visible) {
@@ -1203,6 +1219,7 @@ Window {
                     }
                 }
                 root.previousHeldForParent = false
+                root.previousHeldForRestart = false
                 event.accepted = true
             } else if (event.key === Qt.Key_P && !event.isAutoRepeat) {
                 if (powerHoldTimer.running) {

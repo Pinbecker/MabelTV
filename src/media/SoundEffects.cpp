@@ -5,6 +5,7 @@
 #include <QFileInfo>
 #include <QSaveFile>
 #include <QStandardPaths>
+#include <QtGlobal>
 
 #include <mpv/client.h>
 
@@ -82,6 +83,13 @@ SoundEffects::SoundEffects(QObject *parent)
     mpv_set_option_string(m_state->handle, "idle", "yes");
     mpv_set_option_string(m_state->handle, "keep-open", "no");
     mpv_set_option_string(m_state->handle, "volume-max", "160");
+#ifdef Q_OS_LINUX
+    mpv_set_option_string(m_state->handle, "ao", "alsa");
+    const QByteArray audioDevice = qEnvironmentVariable("MABELTV_AUDIO_DEVICE").toUtf8();
+    if (!audioDevice.isEmpty()) {
+        mpv_set_option_string(m_state->handle, "audio-device", audioDevice.constData());
+    }
+#endif
     if (mpv_initialize(m_state->handle) < 0) {
         mpv_terminate_destroy(m_state->handle);
         m_state->handle = nullptr;

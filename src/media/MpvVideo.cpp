@@ -188,6 +188,18 @@ MpvVideo::MpvVideo(QQuickItem *parent)
              "Disabling mpv input bindings");
     checkMpv(mpv_set_option_string(m_state->handle, "input-vo-keyboard", "no"),
              "Disabling mpv keyboard input");
+#ifdef Q_OS_LINUX
+    // The appliance runs as a system user without a PipeWire session. Sending
+    // every programme change through PipeWire makes its missing-client errors
+    // accumulate, so use the HDMI ALSA device directly instead.
+    checkMpv(mpv_set_option_string(m_state->handle, "ao", "alsa"),
+             "Selecting ALSA audio output");
+    const QByteArray audioDevice = qEnvironmentVariable("MABELTV_AUDIO_DEVICE").toUtf8();
+    if (!audioDevice.isEmpty()) {
+        checkMpv(mpv_set_option_string(m_state->handle, "audio-device", audioDevice.constData()),
+                 "Selecting Mabel TV audio device");
+    }
+#endif
     QByteArray hardwareDecoder = qEnvironmentVariable("MABELTV_HWDEC").toUtf8();
     if (hardwareDecoder.isEmpty()) {
 #ifdef Q_OS_LINUX
