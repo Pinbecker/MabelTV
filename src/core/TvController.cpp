@@ -1102,6 +1102,8 @@ void TvController::requestTune(int channelIndex,
         return;
     }
 
+    const bool changingChannel = channelIndex != m_currentChannelIndex;
+
     if (preserveCurrentPosition && m_playbackMode == QStringLiteral("resume")
         && m_currentChannelIndex >= 0) {
         freezeTimeline(m_channels[m_currentChannelIndex]);
@@ -1119,7 +1121,9 @@ void TvController::requestTune(int channelIndex,
     m_playbackPaused = false;
     qInfo().noquote() << "Tuning channel" << currentChannelNumber() << "-" << currentChannelName();
     emit channelChanged();
-    emit channelDisplayRequested(currentChannelNumber(), currentChannelName());
+    if (changingChannel) {
+        emit channelDisplayRequested(currentChannelNumber(), currentChannelName());
+    }
     emit stopPlaybackRequested();
     setNoSignal(false);
     setTuning(true);

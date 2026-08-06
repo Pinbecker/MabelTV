@@ -293,8 +293,10 @@ void CoreTests::controllerMovesBetweenProgrammesInFilenameOrder()
                                   }));
 
     QSignalSpy playbackRequests(&controller, &TvController::playbackRequested);
+    QSignalSpy channelDisplays(&controller, &TvController::channelDisplayRequested);
     controller.start();
     QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 1, 1000);
+    QCOMPARE(channelDisplays.count(), 1);
 
     const QString firstFile = playbackRequests.at(0).at(0).toUrl().fileName();
     const QStringList orderedFiles{QStringLiteral("a.mp4"),
@@ -310,12 +312,14 @@ void CoreTests::controllerMovesBetweenProgrammesInFilenameOrder()
     QCOMPARE(playbackRequests.at(1).at(0).toUrl().fileName(),
              orderedFiles[(firstIndex + 1) % orderedFiles.size()]);
     QVERIFY(playbackRequests.at(1).at(1).toDouble() < 1.0);
+    QCOMPARE(channelDisplays.count(), 1);
 
     controller.updatePlaybackPosition(9.25, false);
     controller.dispatch(TvController::PreviousProgramme);
     QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 3, 1000);
     QCOMPARE(playbackRequests.at(2).at(0).toUrl().fileName(), firstFile);
     QVERIFY(std::abs(playbackRequests.at(2).at(1).toDouble() - 23.5) < 0.2);
+    QCOMPARE(channelDisplays.count(), 1);
 
     TvController restored;
     QVERIFY(restored.initialize(configuration.fileName(),
