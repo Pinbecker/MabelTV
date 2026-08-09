@@ -1,2 +1,2 @@
-# Mabel TV may only request an orderly systemd poweroff.
-mabeltv ALL=(root) NOPASSWD: /usr/bin/systemctl poweroff
+# Mabel TV can request only an orderly shutdown and a controlled media refresh.
+mabeltv ALL=(root) NOPASSWD: /usr/bin/systemctl poweroff, /usr/local/libexec/mabeltv-library-refresh

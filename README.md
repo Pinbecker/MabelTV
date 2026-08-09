@@ -21,6 +21,7 @@ Mabel TV is a native, child-friendly recreation of watching television in the 19
 - Raspberry Pi OS Lite installer using Qt EGLFS/KMS, safe libmpv hardware decoding, systemd restart/recovery and a 1 GB memory budget
 - KY-022 `gpio-ir` integration with an interactive EZClicker keymap utility
 - safe long-hold shutdown, HDMI-CEC suppression, config backup, atomic updates, rollback, diagnostics and soak-test tooling
+- a parent-protected local Mabel TV Library page for resumable computer/phone uploads, channel management and recoverable deletion
 
 The software is complete for Windows validation. Pi-only behaviour is scripted and must be commissioned against the actual Raspberry Pi, display, audio path, KY-022 and media library using the acceptance checklist.
 
@@ -133,6 +134,7 @@ Useful operational documents:
 - [Architecture and data layout](docs/architecture.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Acceptance checklist](docs/acceptance-checklist.md)
+- [Mabel TV Library](docs/media-library.md)
 
 ## Licence
 

@@ -1,0 +1,26 @@
+[Unit]
+Description=Mabel TV local media library
+After=network-online.target local-fs.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mabeltv
+Group=mabeltv
+WorkingDirectory=/var/lib/mabeltv
+Environment=HOME=/var/lib/mabeltv
+ExecStart=/opt/mabeltv/current/mabeltv-library --bind 0.0.0.0 --port 8080
+Restart=on-failure
+RestartSec=2
+MemoryMax=180M
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ReadWritePaths=/srv/mabeltv/media /var/lib/mabeltv
+
+[Install]
+WantedBy=multi-user.target

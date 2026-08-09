@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+
+# The native player indexes its media when it starts.  Publishing an upload is
+# atomic; this small privileged helper makes it visible to the running TV.
+systemctl try-restart mabeltv.service

@@ -33,6 +33,13 @@ fi
 ln -sfn "$target" /opt/mabeltv/current.new
 mv -Tf /opt/mabeltv/current.new /opt/mabeltv/current
 systemctl restart mabeltv.service
+if [[ -x "$target/mabeltv-library" ]]; then
+    systemctl enable --now mabeltv-library.service
+else
+    # Releases before the local Library did not ship its server.  Do not leave
+    # a failed helper service behind when returning to one of those releases.
+    systemctl disable --now mabeltv-library.service || true
+fi
 sleep 5
 if ! systemctl is-active --quiet mabeltv.service; then
     printf 'Rollback selected %s, but the service is not healthy.\n' "$target" >&2

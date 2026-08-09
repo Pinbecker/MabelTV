@@ -56,6 +56,21 @@ install -d -o root -g root -m 0755 /opt/mabeltv/releases /usr/local/libexec
 install -d -o mabeltv -g mabeltv -m 0750 \
     /var/lib/mabeltv /var/cache/mabeltv /var/log/mabeltv /srv/mabeltv/media
 install -d -o root -g root -m 0755 /etc/rc_keymaps /usr/share/doc/mabeltv
+install -d -o root -g mabeltv -m 0750 /etc/mabeltv
+
+# Keep an operator-restorable snapshot of the mutable appliance state before
+# this installer changes services or configuration.  Media files are never
+# copied here: releases are atomic and the media library has its own recycle
+# bin, so an update must not consume the SD card duplicating films.
+backup_dir=/var/backups/mabeltv
+install -d -o root -g root -m 0700 "$backup_dir"
+preinstall_backup="$backup_dir/preinstall-$(date +%Y%m%d-%H%M%S).tar.gz"
+backup_paths=(var/lib/mabeltv etc/systemd/system/mabeltv.service etc/systemd/system/mabeltv-ir.service)
+[[ -f /etc/systemd/system/mabeltv-library.service ]] && backup_paths+=(etc/systemd/system/mabeltv-library.service)
+[[ -f /etc/mabeltv/library.conf ]] && backup_paths+=(etc/mabeltv/library.conf)
+[[ -f /etc/sudoers.d/mabeltv ]] && backup_paths+=(etc/sudoers.d/mabeltv)
+tar -C / -czf "$preinstall_backup" --ignore-failed-read "${backup_paths[@]}"
+chmod 0600 "$preinstall_backup"
 
 build_dir="$(mktemp -d /tmp/mabeltv-build.XXXXXX)"
 incoming_dir=""
@@ -82,6 +97,7 @@ install -d -o root -g root -m 0755 "$incoming_dir"
 install -o root -g root -m 0755 "$build_dir/mabeltv" "$incoming_dir/mabeltv"
 install -o root -g root -m 0755 "$build_dir/mabeltv_media_check" "$incoming_dir/mabeltv_media_check"
 install -o root -g root -m 0755 "$source_root/scripts/pi/mabeltv-launch.sh" "$incoming_dir/mabeltv-launch"
+install -o root -g root -m 0755 "$source_root/scripts/pi/mabeltv-library.py" "$incoming_dir/mabeltv-library"
 mv "$incoming_dir" "$release_dir"
 incoming_dir=""
 ln -sfn "$release_dir" /opt/mabeltv/current.new
@@ -110,10 +126,17 @@ install -o root -g root -m 0755 "$source_root/scripts/pi/rollback.sh" /usr/local
 install -o root -g root -m 0755 "$source_root/scripts/pi/diagnostics.sh" /usr/local/sbin/mabeltv-diagnostics
 install -o root -g root -m 0755 "$source_root/scripts/pi/soak-test.sh" /usr/local/sbin/mabeltv-soak-test
 install -o root -g root -m 0755 "$source_root/scripts/pi/fence-check.sh" /usr/local/sbin/mabeltv-fence-check
+install -o root -g root -m 0755 "$source_root/packaging/linux/mabeltv-library-refresh" /usr/local/libexec/mabeltv-library-refresh
 install -o root -g root -m 0644 "$source_root/packaging/linux/mabeltv-logrotate" /etc/logrotate.d/mabeltv
 install -d -o root -g root -m 0755 /etc/systemd/journald.conf.d
 install -o root -g root -m 0644 "$source_root/packaging/linux/mabeltv-journald.conf" /etc/systemd/journald.conf.d/mabeltv.conf
 install -o root -g root -m 0440 "$source_root/packaging/linux/mabeltv-sudoers" /etc/sudoers.d/mabeltv
+install -o root -g root -m 0644 "$source_root/packaging/linux/mabeltv-library.service" /etc/systemd/system/mabeltv-library.service
+if [[ ! -e /etc/mabeltv/library.conf ]]; then
+    printf 'MABELTV_LIBRARY_PIN=0973\n' > /etc/mabeltv/library.conf
+fi
+chown root:mabeltv /etc/mabeltv/library.conf
+chmod 0640 /etc/mabeltv/library.conf
 visudo -c -f /etc/sudoers.d/mabeltv
 install -o root -g root -m 0644 "$source_root/README.md" "$source_root/LICENSE" /usr/share/doc/mabeltv/
 if [[ -d "$source_root/docs" ]]; then
@@ -122,6 +145,7 @@ fi
 
 systemctl daemon-reload
 systemctl try-restart systemd-journald.service || true
+systemctl enable --now mabeltv-library.service
 if [[ "$configure_boot" == "true" ]]; then
     bash "$source_root/scripts/pi/configure-boot.sh" --display 720p --ir-gpio 18
 fi
@@ -135,4 +159,6 @@ else
     printf 'Installed but not enabled. Run: sudo systemctl enable --now mabeltv.service\n'
 fi
 printf 'Installed release %s. Current release: %s\n' "$release_id" "$(readlink -f /opt/mabeltv/current)"
+printf 'Pre-install backup: %s\n' "$preinstall_backup"
 printf 'Media belongs under /srv/mabeltv/media/<channel-folder>/.\n'
+printf 'Mabel TV Library is available on this home network at http://%s.local:8080\n' "$(hostname)"
