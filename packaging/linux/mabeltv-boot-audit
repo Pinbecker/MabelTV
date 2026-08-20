@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Preserve a compact, easy-to-find record of each reboot and flag a previous
+# boot that lacks an orderly shutdown sequence.
+set -Eeuo pipefail
+
+readonly recovery_dir="/var/lib/mabeltv/recovery"
+readonly boot_id="$(cat /proc/sys/kernel/random/boot_id)"
+readonly stamp="$(date +%Y%m%d-%H%M%S)"
+readonly destination="$recovery_dir/$stamp-boot-$boot_id"
+
+install -d -o mabeltv -g mabeltv -m 0750 "$destination"
+journalctl --list-boots --no-pager > "$destination/boot-history.txt" 2>&1 || true
+journalctl -k -b --no-pager -n 500 > "$destination/current-kernel.txt" 2>&1 || true
+
+if journalctl -b -1 --no-pager -n 2000 > "$destination/previous-boot-journal.txt" 2>&1; then
+    if grep -Eqi 'Reached target (Shutdown|Reboot)|systemd-shutdown|Powering Off|Rebooting' "$destination/previous-boot-journal.txt"; then
+        printf 'Previous boot has an orderly shutdown record.\n' > "$destination/reboot-assessment.txt"
+        logger -t mabeltv-boot-audit -- 'previous boot ended orderly'
+    else
+        printf 'Previous boot has no orderly shutdown record; this can indicate a power loss, kernel crash, watchdog reset, or incomplete historical journal.\n' > "$destination/reboot-assessment.txt"
+        logger -p daemon.warning -t mabeltv-boot-audit -- 'previous boot has no orderly shutdown record'
+    fi
+else
+    printf 'No previous boot journal is available yet.\n' > "$destination/reboot-assessment.txt"
+fi
+
+if command -v vcgencmd >/dev/null 2>&1; then
+    vcgencmd measure_temp > "$destination/temperature.txt" 2>&1 || true
+    vcgencmd get_throttled > "$destination/throttled.txt" 2>&1 || true
+fi
+chown -R mabeltv:mabeltv "$destination"

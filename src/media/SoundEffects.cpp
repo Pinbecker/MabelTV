@@ -47,7 +47,16 @@ QByteArray makeSamples(int sampleRate, double durationSeconds, const auto &sampl
 void runCommand(mpv_handle *handle, const char **command)
 {
     if (handle != nullptr) {
-        const int result = mpv_command_async(handle, 0, command);
+        // This dedicated effects handle has no event loop. Async commands
+        // therefore accumulate reply events until libmpv's queue fills, which
+        // used to make clicks/noise silently stop after sustained remote use.
+        // These local property/load commands return promptly and synchronously
+        // without creating undrained reply events.
+        while (mpv_wait_event(handle, 0)->event_id != MPV_EVENT_NONE) {
+        }
+        const int result = mpv_command(handle, command);
+        while (mpv_wait_event(handle, 0)->event_id != MPV_EVENT_NONE) {
+        }
         if (result < 0) {
             qWarning() << "Sound effect command failed:" << mpv_error_string(result);
         }

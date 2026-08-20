@@ -1,0 +1,17 @@
+* text=auto
+
+# Appliance files are copied directly onto Linux systems and must never gain
+# CRLF line endings when a release is assembled from a Windows checkout.
+*.sh text eol=lf
+*.py text eol=lf
+*.service text eol=lf
+*.timer text eol=lf
+*.conf text eol=lf
+*.toml text eol=lf
+*.json text eol=lf
+CMakeLists.txt text eol=lf
+packaging/linux/* text eol=lf
+scripts/pi/* text eol=lf
+
+# Keep the native Windows entry points comfortable to edit and execute there.
+*.ps1 text eol=crlf

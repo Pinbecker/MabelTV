@@ -4,6 +4,7 @@
 #include <QString>
 #include <QUrl>
 
+#include <cstdint>
 #include <memory>
 
 class MpvRenderer;
@@ -40,6 +41,8 @@ public:
     Q_INVOKABLE void stop();
     Q_INVOKABLE void togglePause();
     Q_INVOKABLE double positionSeconds() const;
+    [[nodiscard]] std::uint64_t renderedFrameCount() const;
+    [[nodiscard]] bool available() const;
 
 signals:
     void sourceChanged();
@@ -50,6 +53,7 @@ signals:
     void aspectModeChanged();
     void playbackFinished();
     void playbackFailed(const QString &message);
+    void fatalPlayerFailure(const QString &message);
 
 private slots:
     void handleRenderContextReady();
@@ -62,6 +66,7 @@ private:
     static void wakeup(void *context);
     void loadCurrentSource();
     void setStatus(QString status);
+    void reportFatalFailure(const QString &message);
 
     std::shared_ptr<SharedState> m_state;
     QUrl m_source;

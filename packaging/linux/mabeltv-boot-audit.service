@@ -1,0 +1,11 @@
+[Unit]
+Description=Record evidence from the previous Mabel TV boot
+After=local-fs.target systemd-journald.service
+Wants=systemd-journald.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/mabeltv-boot-audit
+
+[Install]
+WantedBy=multi-user.target

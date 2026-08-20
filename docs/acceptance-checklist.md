@@ -1,49 +1,22 @@
-# Acceptance checklist
+# Appliance acceptance checklist
 
-Do not treat the Pi as a finished child appliance until every applicable item passes.
+Use this shorter checklist after every installation. The full release gate is [Commercial release readiness](release-readiness.md).
 
-## Windows release
-
-- [ ] `scripts/windows/build.ps1` passes all CTest tests.
-- [ ] `scripts/windows/package.ps1` produces and clean-PATH tests the portable ZIP.
-- [ ] Six populated channels, including Waffle Dog and Films, tune correctly; channel 99 shows no signal.
-- [ ] Corrupt media is skipped and a runtime decoder failure selects a replacement.
-- [ ] Continuous broadcast advances while away; Resume preserves every programme position and legacy restart mode migrates to Resume.
-- [ ] Crop, fit, stretch and low/high/off CRT choices work.
-- [ ] All four TV borders have smooth outer and inner corners and survive restart.
-- [ ] The CRT glass slider spans 0–100, increases curvature, corner depth and reflective sheen, and survives restart.
-- [ ] The 90s distortion slider spans 0–100, increases haze and grain without picture movement below 95, and survives restart.
-- [ ] Volume begins low and cannot exceed 60 until a parent changes policy.
-- [ ] Holding Back and pressing OK three times opens parent mode.
-- [ ] The parent library screen can disable and restore a channel, episode and film, and the choices survive restart.
-
-## Pi commissioning
-
-- [ ] Pi reports `aarch64` and the expected Pi 4 model.
-- [ ] EGLFS/KMS starts without a desktop or visible login prompt.
-- [ ] The central screen stays 4:3 at 720p, 1080p and native output settings.
-- [ ] HDMI picture and audio survive ten channel changes.
-- [ ] `Active hardware decoder` is logged for at least the primary H.264 test media, or software fallback is measured as smooth and cool enough.
-- [ ] Remote buttons perform only their mapped actions; none unexpectedly controls the LG TV.
-- [ ] Holding Mute for three seconds locks every other remote button; holding it again unlocks them.
-- [ ] OK pauses/plays with a VHS freeze effect; Left/Right never rewinds an item; hold Back then Left, Right, OK deliberately restarts it.
-- [ ] Standby and full shutdown begin with the CRT outside-in collapse and power-down sound.
-- [ ] HDMI-CEC is disabled and booting the Pi does not wake/switch/control the TV.
-- [ ] Short Power enters standby; the next short press plays the welcome intro before returning to the channel.
-- [ ] Long Power causes an orderly Pi shutdown.
-- [ ] Parent access requires a Back hold followed by three deliberate OK presses.
-- [ ] Removing one media folder leaves a stable no-signal channel rather than crashing.
-- [ ] Killing the process once makes systemd restart it.
-- [ ] Five rapid forced failures create a recovery log instead of an unbounded restart storm.
-- [ ] A config backup is created and a previous release rollback succeeds.
-
-## Soak and handover
-
-- [ ] `sudo mabeltv-soak-test 8` completes with zero inactive samples.
-- [ ] Temperature and `get_throttled` remain healthy through the soak.
-- [ ] RSS remains below the service memory high-water mark and does not grow continually.
-- [ ] Open file descriptors and GPU sync fences remain bounded during video playback.
-- [ ] `sudo mabeltv-fence-check` reports `PASS` before the longer soak test.
-- [ ] Reboot with the TV on, TV off, and HDMI temporarily disconnected all recover sensibly.
-- [ ] A real power interruption causes no config/state corruption on the next boot.
-- [ ] Caregiver knows media paths, parent gesture, long-power shutdown, backup, rollback, and diagnostic commands.
+- [ ] `sudo mabeltv-doctor` has no failures.
+- [ ] TV welcome screen shows QR, `.local` URL, IP fallback, and the installer’s setup code.
+- [ ] Wrong setup code is rejected at step one; correct code completes setup.
+- [ ] New PIN works; repeated wrong PINs are throttled; Lock revokes the session.
+- [ ] Generic channels appear and add/edit/renumber/delete-empty flows remain in sync.
+- [ ] USB keyboard-style control works for channel, programme, volume, mute, pause, standby, and safe shutdown.
+- [ ] Adult shortcut opens the on-TV panel and the CRT appearance matches the accepted reference/settings.
+- [ ] Both crop and fit channels render correctly at 720p.
+- [ ] HDMI audio uses the connector currently attached.
+- [ ] Ordinary MP4 upload publishes unchanged and appears without blocking playback.
+- [ ] High-frame-rate/MOV uploads queue one at a time, survive a Library restart, stop at the heat threshold, and finish at 30 fps.
+- [ ] Interrupted upload resumes at the durable offset.
+- [ ] Rename, hide/show, recycle, restore, and permanent delete behave as labelled.
+- [ ] Browser health, restart, support download, reboot, and shutdown work with confirmations.
+- [ ] Main-loop, Loading, and rendered-frame failure tests produce controlled service recovery and evidence.
+- [ ] Update changes both player and Library PIDs/version; rollback restores matching release assets.
+- [ ] Retained-data uninstall leaves media/settings; boot settings are restored or a changed-cmdline warning is explicit.
+- [ ] A 24-hour installation soak has stable memory, file descriptors, temperature, and restart count before handoff.

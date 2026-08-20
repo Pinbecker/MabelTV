@@ -33,11 +33,13 @@ int outputVolume(int visibleVolume)
             / (100 - childSafeVolume);
 }
 
-void checkMpv(int result, const char *operation)
+bool checkMpv(int result, const char *operation)
 {
     if (result < 0) {
-        qFatal("%s failed: %s", operation, mpv_error_string(result));
+        qCritical("%s failed: %s", operation, mpv_error_string(result));
+        return false;
     }
+    return true;
 }
 
 void *resolveOpenGlSymbol(void *, const char *name)
@@ -63,6 +65,8 @@ struct MpvVideo::SharedState
     mpv_handle *handle = nullptr;
     std::atomic<mpv_render_context *> renderContext = nullptr;
     std::atomic_bool renderReady = false;
+    std::atomic_bool fatalFailure = false;
+    std::atomic<std::uint64_t> renderedFrames = 0;
 
     ~SharedState()
     {
@@ -132,7 +136,19 @@ public:
             {MPV_RENDER_PARAM_INVALID, nullptr},
         };
 
-        mpv_render_context_render(context, parameters);
+        const int result = mpv_render_context_render(context, parameters);
+        if (result < 0) {
+            qCritical("Rendering a libmpv frame failed: %s", mpv_error_string(result));
+            const QString message = QStringLiteral("The video renderer stopped unexpectedly");
+            QMetaObject::invokeMethod(m_item,
+                                      [item = m_item, message]() {
+                                          item->reportFatalFailure(message);
+                                      },
+                                      Qt::QueuedConnection);
+            QQuickOpenGLUtils::resetOpenGLState();
+            return;
+        }
+        m_state->renderedFrames.fetch_add(1, std::memory_order_relaxed);
         QQuickOpenGLUtils::resetOpenGLState();
     }
 
@@ -140,6 +156,9 @@ private:
     void ensureRenderContext()
     {
         if (m_state->renderContext.load() != nullptr) {
+            return;
+        }
+        if (m_state->handle == nullptr) {
             return;
         }
 
@@ -156,8 +175,17 @@ private:
         };
 
         mpv_render_context *context = nullptr;
-        checkMpv(mpv_render_context_create(&context, m_state->handle, parameters),
-                 "Creating the libmpv OpenGL render context");
+        const int result = mpv_render_context_create(&context, m_state->handle, parameters);
+        if (!checkMpv(result, "Creating the libmpv OpenGL render context")
+            || context == nullptr) {
+            const QString message = QStringLiteral("The video renderer could not start");
+            QMetaObject::invokeMethod(m_item,
+                                      [item = m_item, message]() {
+                                          item->reportFatalFailure(message);
+                                      },
+                                      Qt::QueuedConnection);
+            return;
+        }
         m_state->renderContext.store(context);
         m_state->renderReady.store(true);
         mpv_render_context_set_update_callback(context, requestFrame, m_item);
@@ -178,7 +206,10 @@ MpvVideo::MpvVideo(QQuickItem *parent)
 
     m_state->handle = mpv_create();
     if (m_state->handle == nullptr) {
-        qFatal("Creating the libmpv client failed");
+        qCritical() << "Creating the libmpv client failed";
+        m_state->fatalFailure.store(true);
+        setStatus(QStringLiteral("The video player could not start"));
+        return;
     }
 
     checkMpv(mpv_set_option_string(m_state->handle, "vo", "libmpv"), "Setting mpv video output");
@@ -234,7 +265,13 @@ MpvVideo::MpvVideo(QQuickItem *parent)
         checkMpv(mpv_set_option_string(m_state->handle, "msg-level", "all=v"),
                  "Configuring mpv diagnostic verbosity");
     }
-    checkMpv(mpv_initialize(m_state->handle), "Initialising libmpv");
+    if (!checkMpv(mpv_initialize(m_state->handle), "Initialising libmpv")) {
+        mpv_terminate_destroy(m_state->handle);
+        m_state->handle = nullptr;
+        m_state->fatalFailure.store(true);
+        setStatus(QStringLiteral("The video player could not start"));
+        return;
+    }
     qInfo().noquote() << "libmpv hardware decoding:" << hardwareDecoder;
 
     checkMpv(mpv_observe_property(m_state->handle, 1, "pause", MPV_FORMAT_FLAG),
@@ -274,6 +311,10 @@ void MpvVideo::setSource(const QUrl &source)
         setStatus(QStringLiteral("No media selected"));
         return;
     }
+    if (m_state->handle == nullptr) {
+        reportFatalFailure(QStringLiteral("The video player is unavailable"));
+        return;
+    }
 
     if (m_state->renderReady.load()) {
         loadCurrentSource();
@@ -305,6 +346,10 @@ void MpvVideo::setVolume(int volume)
     }
 
     m_volume = volume;
+    if (m_state->handle == nullptr) {
+        emit volumeChanged();
+        return;
+    }
     const QByteArray value = QByteArray::number(outputVolume(volume));
     const char *command[] = {"set", "volume", value.constData(), nullptr};
     checkMpv(mpv_command_async(m_state->handle, 0, command), "Setting volume");
@@ -323,6 +368,10 @@ void MpvVideo::setMuted(bool muted)
     }
 
     m_muted = muted;
+    if (m_state->handle == nullptr) {
+        emit mutedChanged();
+        return;
+    }
     const char *command[] = {"set", "mute", muted ? "yes" : "no", nullptr};
     checkMpv(mpv_command_async(m_state->handle, 0, command), "Setting mute");
     emit mutedChanged();
@@ -341,6 +390,12 @@ void MpvVideo::setAspectMode(const QString &aspectMode)
                                : QStringLiteral("crop");
     const bool changed = m_aspectMode != normalised;
     m_aspectMode = normalised;
+    if (m_state->handle == nullptr) {
+        if (changed) {
+            emit aspectModeChanged();
+        }
+        return;
+    }
     const char *panscan[] = {"set", "panscan", normalised == QStringLiteral("crop") ? "1" : "0", nullptr};
     checkMpv(mpv_command_async(m_state->handle, 0, panscan), "Setting picture crop mode");
     const char *aspect[] = {
@@ -358,6 +413,10 @@ void MpvVideo::setAspectMode(const QString &aspectMode)
 void MpvVideo::play(const QUrl &source, double startPositionSeconds)
 {
     m_pendingStartPosition = std::max(0.0, startPositionSeconds);
+    if (m_state->handle == nullptr) {
+        setSource(source);
+        return;
+    }
     if (m_source == source && !source.isEmpty()) {
         if (m_state->renderReady.load()) {
             loadCurrentSource();
@@ -371,6 +430,10 @@ void MpvVideo::play(const QUrl &source, double startPositionSeconds)
 
 void MpvVideo::stop()
 {
+    if (m_state->handle == nullptr) {
+        setStatus(QStringLiteral("Stopped"));
+        return;
+    }
     const char *command[] = {"stop", nullptr};
     checkMpv(mpv_command_async(m_state->handle, 0, command), "Stopping playback");
     setStatus(QStringLiteral("Stopped"));
@@ -378,6 +441,9 @@ void MpvVideo::stop()
 
 void MpvVideo::togglePause()
 {
+    if (m_state->handle == nullptr) {
+        return;
+    }
     const char *command[] = {"cycle", "pause", nullptr};
     checkMpv(mpv_command_async(m_state->handle, 0, command), "Toggling pause");
 }
@@ -395,6 +461,25 @@ double MpvVideo::positionSeconds() const
     return std::max(0.0, position);
 }
 
+std::uint64_t MpvVideo::renderedFrameCount() const
+{
+    return m_state->renderedFrames.load(std::memory_order_relaxed);
+}
+
+bool MpvVideo::available() const
+{
+    return m_state->handle != nullptr && !m_state->fatalFailure.load();
+}
+
+void MpvVideo::reportFatalFailure(const QString &message)
+{
+    const bool wasFatal = m_state->fatalFailure.exchange(true);
+    setStatus(message);
+    if (!wasFatal) {
+        emit fatalPlayerFailure(message);
+    }
+}
+
 void MpvVideo::wakeup(void *context)
 {
     auto *item = static_cast<MpvVideo *>(context);
@@ -403,25 +488,44 @@ void MpvVideo::wakeup(void *context)
 
 void MpvVideo::handleRenderContextReady()
 {
-    if (!m_source.isEmpty()) {
+    if (m_state->handle != nullptr && !m_source.isEmpty()) {
         loadCurrentSource();
     }
 }
 
 void MpvVideo::loadCurrentSource()
 {
+    if (m_state->handle == nullptr) {
+        const QString message = QStringLiteral("The video player is unavailable");
+        reportFatalFailure(message);
+        return;
+    }
     const QString localPath = m_source.isLocalFile() ? m_source.toLocalFile() : m_source.toString();
     const QByteArray encodedPath = QFileInfo(localPath).absoluteFilePath().toUtf8();
     qInfo().noquote() << "Loading media:" << QDir::toNativeSeparators(QString::fromUtf8(encodedPath));
     const char *unpause[] = {"set", "pause", "no", nullptr};
-    checkMpv(mpv_command_async(m_state->handle, 0, unpause), "Clearing pause for new media");
+    if (!checkMpv(mpv_command_async(m_state->handle, 0, unpause),
+                  "Clearing pause for new media")) {
+        const QString message = QStringLiteral("The video player did not accept a new programme");
+        setStatus(message);
+        emit playbackFailed(message);
+        return;
+    }
     const char *command[] = {"loadfile", encodedPath.constData(), "replace", nullptr};
-    checkMpv(mpv_command_async(m_state->handle, 0, command), "Loading media");
+    if (!checkMpv(mpv_command_async(m_state->handle, 1001, command), "Loading media")) {
+        const QString message = QStringLiteral("The programme could not be opened");
+        setStatus(message);
+        emit playbackFailed(message);
+        return;
+    }
     setStatus(QStringLiteral("Loading"));
 }
 
 void MpvVideo::processMpvEvents()
 {
+    if (m_state->handle == nullptr) {
+        return;
+    }
     while (true) {
         mpv_event *event = mpv_wait_event(m_state->handle, 0.0);
         if (event == nullptr || event->event_id == MPV_EVENT_NONE) {
@@ -429,6 +533,20 @@ void MpvVideo::processMpvEvents()
         }
 
         switch (event->event_id) {
+        case MPV_EVENT_COMMAND_REPLY:
+            if (event->reply_userdata == 1001 && event->error < 0) {
+                const QString message = QStringLiteral("The programme could not be loaded: %1")
+                                            .arg(QString::fromUtf8(mpv_error_string(event->error)));
+                setStatus(message);
+                emit playbackFailed(message);
+            }
+            break;
+        case MPV_EVENT_SHUTDOWN: {
+            const QString message = QStringLiteral("The video player stopped unexpectedly");
+            qCritical().noquote() << message;
+            reportFatalFailure(message);
+            break;
+        }
         case MPV_EVENT_START_FILE:
             setStatus(QStringLiteral("Loading"));
             break;

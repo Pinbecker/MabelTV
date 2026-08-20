@@ -9,6 +9,7 @@
 #include <QJsonObject>
 #include <QRegularExpression>
 #include <QSaveFile>
+#include <QtConcurrentRun>
 
 #include <algorithm>
 #include <cmath>
@@ -38,6 +39,45 @@ TvController::TvController(QObject *parent)
     m_numericTimer.setSingleShot(true);
     m_numericTimer.setInterval(1200);
     connect(&m_numericTimer, &QTimer::timeout, this, &TvController::tuneNumericEntry);
+
+    connect(&m_libraryReloadWatcher,
+            &QFutureWatcher<ChannelLibraryResult>::finished,
+            this,
+            [this]() {
+                if (m_libraryReloadRequested) {
+                    // A newer filesystem event arrived while this snapshot was
+                    // being built. Never interrupt playback to apply stale
+                    // paths; discard it and immediately scan the newest state.
+                    m_libraryReloadRequested = false;
+                    QTimer::singleShot(0, this, &TvController::reloadLibrary);
+                    return;
+                }
+                ChannelLibraryResult library = m_libraryReloadWatcher.result();
+                if (!library.isValid()) {
+                    m_libraryStatus = library.error;
+                    emit libraryStatusChanged();
+                    setParentMessage(QStringLiteral("Library check failed; continuing with the previous channels"));
+                    qCritical().noquote() << library.error;
+                    if (m_libraryReloadRequested) {
+                        m_libraryReloadRequested = false;
+                        QTimer::singleShot(0, this, &TvController::reloadLibrary);
+                    }
+                    return;
+                }
+                emit stopPlaybackRequested();
+                saveState();
+                loadSettings(m_settingsPath);
+                const bool loaded = applyLibrary(std::move(library));
+                setParentMessage(loaded ? QStringLiteral("Channel library reloaded")
+                                        : m_libraryStatus);
+                if (loaded) {
+                    start();
+                }
+                if (m_libraryReloadRequested) {
+                    m_libraryReloadRequested = false;
+                    QTimer::singleShot(0, this, &TvController::reloadLibrary);
+                }
+            });
 }
 
 TvController::~TvController()
@@ -51,6 +91,35 @@ bool TvController::initialize(const QString &channelsPath,
                               const QString &statePath,
                               ChannelLibrary::MediaInspector mediaInspector)
 {
+    m_channelsPath = QFileInfo(channelsPath).absoluteFilePath();
+    m_settingsPath = QFileInfo(settingsPath).absoluteFilePath();
+    m_mediaRoot = QFileInfo(mediaRoot).absoluteFilePath();
+    m_statePath = QFileInfo(statePath).absoluteFilePath();
+    loadSettings(m_settingsPath);
+
+    ChannelLibraryResult library;
+    bool pendingInspections = false;
+    if (mediaInspector) {
+        library = ChannelLibrary::load(m_channelsPath, m_mediaRoot, std::move(mediaInspector));
+    } else {
+        const QString cachePath = QDir(QFileInfo(m_statePath).absolutePath())
+                                      .filePath(QStringLiteral("media-index.json"));
+        MediaIndex mediaIndex(cachePath);
+        library = ChannelLibrary::load(m_channelsPath, m_mediaRoot, [&mediaIndex](const QString &path) {
+            return mediaIndex.inspectCached(path);
+        });
+        pendingInspections = mediaIndex.hasPendingInspections();
+    }
+    const bool loaded = applyLibrary(std::move(library));
+    if (loaded && pendingInspections) {
+        qInfo() << "Uncached media will be validated in the background";
+        QTimer::singleShot(0, this, &TvController::reloadLibrary);
+    }
+    return loaded;
+}
+
+bool TvController::applyLibrary(ChannelLibraryResult library)
+{
     m_tuningTimer.stop();
     m_numericTimer.stop();
     m_channels.clear();
@@ -60,27 +129,6 @@ bool TvController::initialize(const QString &channelsPath,
     m_started = false;
     m_noSignal = false;
 
-    m_channelsPath = QFileInfo(channelsPath).absoluteFilePath();
-    m_settingsPath = QFileInfo(settingsPath).absoluteFilePath();
-    m_mediaRoot = QFileInfo(mediaRoot).absoluteFilePath();
-    m_statePath = QFileInfo(statePath).absoluteFilePath();
-    loadSettings(m_settingsPath);
-
-    ChannelLibraryResult library;
-    if (mediaInspector) {
-        library = ChannelLibrary::load(m_channelsPath, m_mediaRoot, std::move(mediaInspector));
-    } else {
-        const QString cachePath = QDir(QFileInfo(m_statePath).absolutePath())
-                                      .filePath(QStringLiteral("media-index.json"));
-        MediaIndex mediaIndex(cachePath);
-        library = ChannelLibrary::load(m_channelsPath, m_mediaRoot, [&mediaIndex](const QString &path) {
-            return mediaIndex.inspect(path);
-        });
-        if (!mediaIndex.save()) {
-            library.warnings.append(QStringLiteral("Could not save the media validation cache: %1")
-                                        .arg(QDir::toNativeSeparators(cachePath)));
-        }
-    }
     if (!library.isValid()) {
         m_libraryStatus = library.error;
         qCritical().noquote() << library.error;
@@ -494,6 +542,7 @@ void TvController::playbackFailed(const QString &message)
         emit stopPlaybackRequested();
         setTuning(false);
         setNoSignal(true);
+        saveState();
         return;
     }
 
@@ -501,6 +550,27 @@ void TvController::playbackFailed(const QString &message)
     runtime.anchorMilliseconds = m_broadcastClock.elapsed();
     runtime.anchorPositionSeconds = runtime.programmePositions[replacement];
     requestTune(m_currentChannelIndex, false, false);
+    saveState();
+}
+
+void TvController::prepareForPlaybackRestart(const QString &message)
+{
+    if (m_currentChannelIndex < 0) {
+        return;
+    }
+
+    ChannelRuntime &runtime = m_channels[m_currentChannelIndex];
+    qCritical().noquote() << "Quarantining stalled programme before restart on channel"
+                          << runtime.channel.number << ":" << message;
+    if (runtime.currentEpisode >= 0) {
+        runtime.failedEpisodes.insert(runtime.currentEpisode);
+    }
+    runtime.currentEpisode = takeUsableEpisode(runtime);
+    runtime.anchorMilliseconds = m_broadcastClock.elapsed();
+    runtime.anchorPositionSeconds = runtime.currentEpisode >= 0
+        ? runtime.programmePositions[runtime.currentEpisode]
+        : 0.0;
+    saveState();
 }
 
 void TvController::requestParentAccess()
@@ -657,13 +727,29 @@ void TvController::adjustMaximumVolume(int direction)
 
 void TvController::reloadLibrary()
 {
-    emit stopPlaybackRequested();
-    saveState();
-    const bool loaded = initialize(m_channelsPath, m_settingsPath, m_mediaRoot, m_statePath);
-    setParentMessage(loaded ? QStringLiteral("Channel library reloaded") : m_libraryStatus);
-    if (loaded) {
-        start();
+    if (m_libraryReloadWatcher.isRunning()) {
+        m_libraryReloadRequested = true;
+        return;
     }
+    setParentMessage(QStringLiteral("Checking channel library in the background"));
+    const QString channelsPath = m_channelsPath;
+    const QString mediaRoot = m_mediaRoot;
+    const QString cachePath = QDir(QFileInfo(m_statePath).absolutePath())
+                                  .filePath(QStringLiteral("media-index.json"));
+    m_libraryReloadWatcher.setFuture(QtConcurrent::run(
+        [channelsPath, mediaRoot, cachePath]() {
+            MediaIndex mediaIndex(cachePath);
+            ChannelLibraryResult library = ChannelLibrary::load(
+                channelsPath,
+                mediaRoot,
+                [&mediaIndex](const QString &path) { return mediaIndex.inspect(path); });
+            if (!mediaIndex.save()) {
+                library.warnings.append(
+                    QStringLiteral("Could not save the media validation cache: %1")
+                        .arg(QDir::toNativeSeparators(cachePath)));
+            }
+            return library;
+        }));
 }
 
 void TvController::toggleChannelEnabled(int channelNumber)
@@ -992,6 +1078,17 @@ void TvController::loadState()
 
     for (ChannelRuntime &runtime : m_channels) {
         const QJsonObject timeline = timelines.value(QString::number(runtime.channel.number)).toObject();
+        const QJsonObject failedProgrammes =
+            timeline.value(QStringLiteral("failed_programmes")).toObject();
+        for (int index = 0; index < runtime.channel.episodes.size(); ++index) {
+            const QFileInfo episodeFile(runtime.channel.episodes[index].path);
+            const qint64 failedModified = static_cast<qint64>(
+                failedProgrammes.value(episodeFile.fileName()).toDouble(-1.0));
+            if (failedModified >= 0
+                && failedModified == episodeFile.lastModified().toMSecsSinceEpoch()) {
+                runtime.failedEpisodes.insert(index);
+            }
+        }
         const QJsonObject savedProgrammePositions =
             timeline.value(QStringLiteral("programme_positions")).toObject();
         for (int index = 0; index < runtime.channel.episodes.size(); ++index) {
@@ -1045,7 +1142,7 @@ void TvController::saveState() const
     }
 
     QJsonObject object{
-        {QStringLiteral("schema_version"), 1},
+        {QStringLiteral("schema_version"), 2},
         {QStringLiteral("saved_at_utc_ms"),
          static_cast<double>(QDateTime::currentMSecsSinceEpoch())},
         {QStringLiteral("current_channel"), currentChannelNumber()},
@@ -1058,21 +1155,20 @@ void TvController::saveState() const
     QJsonObject timelines;
     const qint64 elapsedNow = m_broadcastClock.isValid() ? m_broadcastClock.elapsed() : 0;
     for (const ChannelRuntime &runtime : m_channels) {
-        if (runtime.currentEpisode < 0 || runtime.currentEpisode >= runtime.channel.episodes.size()) {
-            continue;
-        }
-
+        const bool hasCurrent = runtime.currentEpisode >= 0
+            && runtime.currentEpisode < runtime.channel.episodes.size();
         const bool isPausedCurrent = m_playbackPaused && m_currentChannelIndex >= 0
             && &runtime == &m_channels[m_currentChannelIndex];
-        const double position = runtime.anchorPositionSeconds
-            + (isPausedCurrent
-                   ? 0.0
-                   : std::max<qint64>(0, elapsedNow - runtime.anchorMilliseconds) / 1000.0);
-        const Episode &episode = runtime.channel.episodes[runtime.currentEpisode];
+        const double position = hasCurrent
+            ? runtime.anchorPositionSeconds
+                + (isPausedCurrent
+                       ? 0.0
+                       : std::max<qint64>(0, elapsedNow - runtime.anchorMilliseconds) / 1000.0)
+            : 0.0;
         QJsonObject programmePositions;
         for (int index = 0; index < runtime.channel.episodes.size(); ++index) {
             double savedPosition = runtime.programmePositions[index];
-            if (index == runtime.currentEpisode) {
+            if (hasCurrent && index == runtime.currentEpisode) {
                 savedPosition = position;
             }
             if (savedPosition > 0.05) {
@@ -1081,12 +1177,27 @@ void TvController::saveState() const
                     savedPosition);
             }
         }
-        timelines.insert(
-            QString::number(runtime.channel.number),
-            QJsonObject{{QStringLiteral("episode_index"), runtime.currentEpisode},
-                        {QStringLiteral("episode_name"), QFileInfo(episode.path).fileName()},
-                        {QStringLiteral("position_seconds"), position},
-                        {QStringLiteral("programme_positions"), programmePositions}});
+        QJsonObject failedProgrammes;
+        for (int index : runtime.failedEpisodes) {
+            if (index < 0 || index >= runtime.channel.episodes.size()) {
+                continue;
+            }
+            const QFileInfo episodeFile(runtime.channel.episodes[index].path);
+            failedProgrammes.insert(
+                episodeFile.fileName(),
+                static_cast<double>(episodeFile.lastModified().toMSecsSinceEpoch()));
+        }
+        QJsonObject timeline{
+            {QStringLiteral("episode_index"), runtime.currentEpisode},
+            {QStringLiteral("programme_positions"), programmePositions},
+            {QStringLiteral("failed_programmes"), failedProgrammes},
+        };
+        if (hasCurrent) {
+            const Episode &episode = runtime.channel.episodes[runtime.currentEpisode];
+            timeline.insert(QStringLiteral("episode_name"), QFileInfo(episode.path).fileName());
+            timeline.insert(QStringLiteral("position_seconds"), position);
+        }
+        timelines.insert(QString::number(runtime.channel.number), timeline);
     }
     object.insert(QStringLiteral("channel_timelines"), timelines);
     state.write(QJsonDocument(object).toJson(QJsonDocument::Indented));

@@ -501,7 +501,14 @@ Window {
             color: "#010201"
             clip: true
             antialiasing: true
-            layer.enabled: true
+            // Preserve the full CRT appearance whenever any CRT control is in
+            // use. Only bypass the off-screen texture and shader when the user
+            // has explicitly turned both effects off and playback is not
+            // paused; the normal Mabel TV picture remains pixel-for-pixel the
+            // same as before this optimisation.
+            layer.enabled: tvController.crtGlass > 0
+                           || tvController.videoDistortion > 0
+                           || player.paused
             layer.smooth: true
             layer.effect: ShaderEffect {
                 property variant source
@@ -518,6 +525,7 @@ Window {
 
             MpvVideo {
                 id: player
+                objectName: "mabeltvPlayer"
 
                 anchors.fill: parent
                 volume: tvController.volume
@@ -586,6 +594,7 @@ Window {
             Text {
                 anchors.centerIn: parent
                 visible: root.showStatic && tvController.noSignal && !tvController.tuning
+                         && !firstRunSetupRequired
                 color: "#e6e3c4"
                 style: Text.Outline
                 styleColor: "#4b4b40"
@@ -593,6 +602,98 @@ Window {
                 font.bold: true
                 font.pixelSize: Math.max(24, cabinet.height * 0.055)
                 text: "NO SIGNAL"
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                visible: firstRunSetupRequired
+                color: "#e9e2c8"
+
+                Column {
+                    width: parent.width * 0.78
+                    spacing: Math.max(8, parent.height * 0.025)
+                    anchors.centerIn: parent
+
+                    Text {
+                        width: parent.width
+                        color: "#16221e"
+                        font.family: "Georgia"
+                        font.bold: true
+                        font.pixelSize: Math.max(27, screen.height * 0.085)
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
+                        text: "WELCOME TO MABEL TV"
+                    }
+
+                    Text {
+                        width: parent.width
+                        color: "#40534b"
+                        font.pixelSize: Math.max(15, screen.height * 0.035)
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
+                        text: "On a phone or computer connected to this Wi-Fi, open"
+                    }
+
+                    Text {
+                        width: parent.width
+                        color: "#176554"
+                        font.family: "Consolas"
+                        font.bold: true
+                        font.pixelSize: Math.max(18, screen.height * 0.045)
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WrapAnywhere
+                        text: firstRunLibraryUrl
+                    }
+
+                    Image {
+                        width: Math.min(parent.width * 0.28, screen.height * 0.24)
+                        height: visible ? width : 0
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        visible: firstRunSetupQrUrl.toString().length > 0
+                        source: firstRunSetupQrUrl
+                        fillMode: Image.PreserveAspectFit
+                        cache: false
+                    }
+
+                    Text {
+                        width: parent.width
+                        visible: firstRunLibraryIpUrl.length > 0
+                        color: "#40534b"
+                        font.pixelSize: Math.max(12, screen.height * 0.026)
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WrapAnywhere
+                        text: "If .local does not open: " + firstRunLibraryIpUrl
+                    }
+
+                    Text {
+                        width: parent.width
+                        color: "#40534b"
+                        font.pixelSize: Math.max(14, screen.height * 0.031)
+                        horizontalAlignment: Text.AlignHCenter
+                        text: "Then enter this one-time setup code:"
+                    }
+
+                    Rectangle {
+                        width: parent.width * 0.62
+                        height: codeText.implicitHeight + 18
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        radius: 9
+                        color: "#ffffff"
+                        border.color: "#b7b39f"
+                        border.width: 2
+
+                        Text {
+                            id: codeText
+                            anchors.centerIn: parent
+                            color: "#17221e"
+                            font.family: "Consolas"
+                            font.bold: true
+                            font.letterSpacing: 7
+                            font.pixelSize: Math.max(28, screen.height * 0.075)
+                            text: firstRunSetupCode
+                        }
+                    }
+                }
             }
 
             Rectangle {

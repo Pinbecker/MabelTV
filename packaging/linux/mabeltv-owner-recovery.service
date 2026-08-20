@@ -1,0 +1,11 @@
+[Unit]
+Description=Apply a physical Mabel TV parent PIN reset request
+After=local-fs.target
+Before=mabeltv-library.service mabeltv.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/mabeltv-owner-recovery
+
+[Install]
+WantedBy=multi-user.target

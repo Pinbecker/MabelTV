@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Preserve evidence for crashes, watchdog resets, resource-limit failures, and
+# unexpected signals. Clean operator-initiated stops do not create noise.
+set -Eeuo pipefail
+
+readonly result="${1:-unknown}"
+readonly exit_code="${2:-unknown}"
+readonly exit_status="${3:-unknown}"
+[[ "$result" == "success" ]] && exit 0
+
+readonly recovery_dir="/var/lib/mabeltv/recovery"
+readonly stamp="$(date +%Y%m%d-%H%M%S)"
+readonly destination="$recovery_dir/$stamp-service-$result"
+install -d -o mabeltv -g mabeltv -m 0750 "$destination"
+printf 'service_result=%s\nexit_code=%s\nexit_status=%s\n' \
+    "$result" "$exit_code" "$exit_status" > "$destination/reason.txt"
+journalctl -u mabeltv.service -b --no-pager -n 1200 > "$destination/service-journal.txt" 2>&1 || true
+journalctl -k -b --no-pager -n 1200 > "$destination/kernel-journal.txt" 2>&1 || true
+ps -eo pid,ppid,stat,etime,%cpu,%mem,rss,nlwp,cmd > "$destination/processes.txt" 2>&1 || true
+free -h > "$destination/memory.txt" 2>&1 || true
+df -h > "$destination/filesystems.txt" 2>&1 || true
+if command -v vcgencmd >/dev/null 2>&1; then
+    vcgencmd measure_temp > "$destination/temperature.txt" 2>&1 || true
+    vcgencmd get_throttled > "$destination/throttled.txt" 2>&1 || true
+fi
+chown -R mabeltv:mabeltv "$destination"
+logger -p daemon.warning -t mabeltv-health -- \
+    "saved $destination after mabeltv.service result=$result exit=$exit_code/$exit_status"

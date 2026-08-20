@@ -1,0 +1,7 @@
+[Unit]
+Description=Mabel TV thermal and power monitor
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/mabeltv-health

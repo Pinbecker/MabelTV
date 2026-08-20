@@ -118,7 +118,10 @@ ChannelLibraryResult ChannelLibrary::load(const QString &configurationPath,
         const QFileInfoList files = channelDirectory.entryInfoList(QDir::Files | QDir::Readable,
                                                                     QDir::Name | QDir::IgnoreCase);
         for (const QFileInfo &file : files) {
-            if (!supportedExtensions.contains(file.suffix().toLower())) {
+            const QString lowerName = file.fileName().toLower();
+            if (!supportedExtensions.contains(file.suffix().toLower())
+                || lowerName.contains(QStringLiteral(".optimising."))
+                || lowerName.contains(QStringLiteral(".pre-fps30."))) {
                 continue;
             }
 

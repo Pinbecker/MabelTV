@@ -10,7 +10,10 @@ tr -d '\0' < /proc/device-tree/model > "$destination/pi-model.txt" 2>/dev/null |
 free -h > "$destination/memory.txt"
 df -h > "$destination/filesystems.txt"
 systemctl status mabeltv.service --no-pager > "$destination/service-status.txt" 2>&1 || true
-journalctl -u mabeltv.service -b --no-pager -n 500 > "$destination/journal.txt" 2>&1 || true
+journalctl --list-boots --no-pager > "$destination/boot-history.txt" 2>&1 || true
+journalctl -u mabeltv.service -u mabeltv-library.service --no-pager -n 1000 > "$destination/journal.txt" 2>&1 || true
+journalctl -k --no-pager -p warning..alert -n 500 > "$destination/kernel-warnings.txt" 2>&1 || true
+journalctl -b -1 --no-pager -n 1000 > "$destination/previous-boot-journal.txt" 2>&1 || true
 pid="$(systemctl show -p MainPID --value mabeltv.service)"
 if [[ "$pid" =~ ^[1-9][0-9]*$ && -d "/proc/$pid/fd" ]]; then
     find "/proc/$pid/fd" -maxdepth 1 -type l -printf '%l\n' 2>/dev/null \
@@ -26,7 +29,17 @@ if command -v vcgencmd >/dev/null; then
     vcgencmd get_throttled > "$destination/throttled.txt" 2>&1 || true
     vcgencmd measure_temp > "$destination/temperature.txt" 2>&1 || true
 fi
-cp -a /var/lib/mabeltv/recovery "$destination/" 2>/dev/null || true
+systemctl status mabeltv-health.timer --no-pager > "$destination/health-monitor-status.txt" 2>&1 || true
+timeout 180 /usr/local/sbin/mabeltv-media-report --summary \
+    > "$destination/media-compatibility.txt" 2>&1 || true
+mkdir -p "$destination/recovery"
+if [[ -d /var/lib/mabeltv/recovery ]]; then
+    while IFS= read -r snapshot; do
+        [[ -n "$snapshot" ]] || continue
+        cp -a -- "$snapshot" "$destination/recovery/" 2>/dev/null || true
+    done < <(find /var/lib/mabeltv/recovery -mindepth 1 -maxdepth 1 \
+        -printf '%T@ %p\n' | sort -nr | head -n 10 | cut -d' ' -f2-)
+fi
 
 archive="$destination.tar.gz"
 tar -C "$(dirname "$destination")" -czf "$archive" "$(basename "$destination")"

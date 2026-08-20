@@ -1,0 +1,7 @@
+[Unit]
+Description=Bound old Mabel TV recovery and update data
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/mabeltv-retention

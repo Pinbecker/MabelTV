@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Record thermal and power conditions independently from the player. Application
+# hangs are handled by systemd's native watchdog, avoiding a second restart
+# mechanism that can mistake a deployment mismatch for a frozen application.
+set -Eeuo pipefail
+
+readonly service="mabeltv.service"
+readonly state_dir="/run/mabeltv-health"
+readonly recovery_dir="/var/lib/mabeltv/recovery"
+readonly hot_millidegrees=78000
+readonly recovered_millidegrees=72000
+
+log() {
+    logger -t mabeltv-health -- "$*"
+}
+
+capture_thermal_snapshot() {
+    local reason="$1"
+    local stamp destination
+    stamp="$(date +%Y%m%d-%H%M%S)"
+    destination="$recovery_dir/$stamp-$reason"
+    install -d -o mabeltv -g mabeltv -m 0750 "$destination"
+    printf '%s\n' "$reason" > "$destination/reason.txt"
+    systemctl status "$service" --no-pager > "$destination/service-status.txt" 2>&1 || true
+    journalctl -u "$service" -b --no-pager -n 1000 > "$destination/service-journal.txt" 2>&1 || true
+    journalctl -k -b --no-pager -n 1000 > "$destination/kernel-journal.txt" 2>&1 || true
+    ps -eo pid,ppid,stat,etime,%cpu,%mem,cmd > "$destination/processes.txt" 2>&1 || true
+    if command -v vcgencmd >/dev/null 2>&1; then
+        vcgencmd measure_temp > "$destination/temperature.txt" 2>&1 || true
+        vcgencmd get_throttled > "$destination/throttled.txt" 2>&1 || true
+    fi
+    chown -R mabeltv:mabeltv "$destination"
+    log "saved diagnostic snapshot $destination (reason=$reason)"
+}
+
+install -d -m 0755 "$state_dir"
+
+if command -v vcgencmd >/dev/null 2>&1; then
+    temperature="$(vcgencmd measure_temp 2>/dev/null || true)"
+    throttled="$(vcgencmd get_throttled 2>/dev/null || true)"
+    previous_throttled="$(cat "$state_dir/throttled-state" 2>/dev/null || true)"
+    if [[ "$throttled" != "$previous_throttled" ]] && [[ "$throttled" != "throttled=0x0" ]]; then
+        log "thermal or power-throttle state changed: $temperature $throttled"
+    fi
+    printf '%s\n' "$temperature $throttled" > "$state_dir/thermal-state"
+    printf '%s\n' "$throttled" > "$state_dir/throttled-state"
+
+    raw_temperature="$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || printf '0')"
+    hot_marker="$state_dir/too-hot"
+    if [[ "$raw_temperature" =~ ^[0-9]+$ ]] && (( raw_temperature >= hot_millidegrees )); then
+        if [[ ! -e "$hot_marker" ]]; then
+            printf '%s\n' "$raw_temperature" > "$hot_marker"
+            capture_thermal_snapshot "thermal-high-$((raw_temperature / 1000))c"
+            log "temperature reached $((raw_temperature / 1000))C; background conversions will pause"
+        fi
+    elif [[ "$raw_temperature" =~ ^[0-9]+$ ]] \
+        && (( raw_temperature <= recovered_millidegrees )) && [[ -e "$hot_marker" ]]; then
+        rm -f -- "$hot_marker"
+        log "temperature recovered to $((raw_temperature / 1000))C; background conversions may resume"
+    fi
+fi

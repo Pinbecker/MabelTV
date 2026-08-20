@@ -2,16 +2,18 @@ cmake_minimum_required(VERSION 3.24)
 
 project(
     MabelTV
-    VERSION 0.1.0
+    VERSION 0.2.0
     DESCRIPTION "A child-friendly 1990s television experience"
     LANGUAGES CXX
 )
+
+option(MABELTV_PI_APPLIANCE "Build the systemd-notify Raspberry Pi appliance" OFF)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Qml Quick OpenGL ShaderTools)
+find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Qml Quick OpenGL ShaderTools Concurrent Network)
 set(MPV_INCLUDE_DIRS "")
 set(MPV_LINK_LIBRARIES "")
 if(WIN32 AND DEFINED ENV{MABELTV_MSYS2_ROOT})
@@ -31,6 +33,11 @@ if(WIN32 AND DEFINED ENV{MABELTV_MSYS2_ROOT})
 else()
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(MPV REQUIRED mpv)
+    pkg_check_modules(SYSTEMD QUIET libsystemd)
+endif()
+
+if(MABELTV_PI_APPLIANCE AND NOT SYSTEMD_FOUND)
+    message(FATAL_ERROR "A Raspberry Pi appliance build requires libsystemd development files")
 endif()
 
 qt_standard_project_setup(REQUIRES 6.4)
@@ -47,7 +54,7 @@ add_library(mabeltv_core STATIC
 )
 
 target_include_directories(mabeltv_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
-target_link_libraries(mabeltv_core PUBLIC Qt6::Core)
+target_link_libraries(mabeltv_core PUBLIC Qt6::Core Qt6::Concurrent)
 
 if(MSVC)
     target_compile_options(mabeltv_core PRIVATE /W4 /permissive-)
@@ -91,6 +98,7 @@ target_link_libraries(mabeltv PRIVATE
     Qt6::Qml
     Qt6::Quick
     Qt6::OpenGL
+    Qt6::Network
     ${MPV_LINK_LIBRARIES}
     ${MPV_LIBRARY}
 )
@@ -100,6 +108,12 @@ target_include_directories(mabeltv PRIVATE
     ${MPV_INCLUDE_DIRS}
     ${MPV_INCLUDE_DIR}
 )
+
+if(SYSTEMD_FOUND)
+    target_compile_definitions(mabeltv PRIVATE MABELTV_HAVE_SYSTEMD=1)
+    target_include_directories(mabeltv PRIVATE ${SYSTEMD_INCLUDE_DIRS})
+    target_link_libraries(mabeltv PRIVATE ${SYSTEMD_LINK_LIBRARIES})
+endif()
 
 target_compile_definitions(mabeltv PRIVATE
     MABELTV_VERSION="${PROJECT_VERSION}"
@@ -114,6 +128,7 @@ endif()
 include(CTest)
 if(BUILD_TESTING)
     find_package(Qt6 6.4 REQUIRED COMPONENTS Test)
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
     qt_add_executable(mabeltv_core_tests
         tests/unit/CoreTests.cpp
@@ -121,6 +136,12 @@ if(BUILD_TESTING)
     target_link_libraries(mabeltv_core_tests PRIVATE mabeltv_core Qt6::Test)
 
     add_test(NAME mabeltv_core_tests COMMAND mabeltv_core_tests)
+    add_test(
+        NAME mabeltv_library_service_tests
+        COMMAND "${Python3_EXECUTABLE}" -m unittest discover
+                -s "${CMAKE_CURRENT_SOURCE_DIR}/tests/python"
+                -p "test_*.py"
+    )
     add_test(NAME milestone0_libmpv_self_test COMMAND mabeltv --self-test)
     set_tests_properties(milestone0_libmpv_self_test PROPERTIES TIMEOUT 15)
 endif()

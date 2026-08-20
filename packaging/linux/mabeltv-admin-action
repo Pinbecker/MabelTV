@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Root-only boundary for the small set of appliance actions exposed by the
+# local parent dashboard. The dashboard service itself remains unprivileged.
+set -Eeuo pipefail
+
+action="${1:-}"
+
+case "$action" in
+    restart-player)
+        systemctl restart mabeltv.service
+        printf 'The TV player restarted successfully.\n'
+        ;;
+    reboot)
+        systemctl reboot --no-block
+        printf 'The Raspberry Pi is restarting. Reopen this page in about a minute.\n'
+        ;;
+    poweroff)
+        systemctl poweroff --no-block
+        printf 'The Raspberry Pi is shutting down safely.\n'
+        ;;
+    diagnostics)
+        support_root=/var/lib/mabeltv/support
+        bundle="$support_root/mabeltv-support.tar.gz"
+        install -d -o mabeltv -g mabeltv -m 0750 "$support_root"
+        exec 9> /run/lock/mabeltv-support.lock
+        if ! flock -w 10 9; then
+            printf 'Another support bundle is already being prepared. Try again shortly.\n' >&2
+            exit 1
+        fi
+        work="$(mktemp -d "$support_root/.work.XXXXXX")"
+        cleanup() {
+            case "$work" in
+                "$support_root"/.work.*) rm -rf -- "$work" "$work.tar.gz" ;;
+            esac
+        }
+        trap cleanup EXIT
+        /usr/local/sbin/mabeltv-diagnostics "$work" >/dev/null
+        install -o mabeltv -g mabeltv -m 0640 "$work.tar.gz" "$bundle.new"
+        mv -f -- "$bundle.new" "$bundle"
+        printf '%s\n' "$bundle"
+        ;;
+    *)
+        printf 'Unsupported Mabel TV system action.\n' >&2
+        exit 2
+        ;;
+esac

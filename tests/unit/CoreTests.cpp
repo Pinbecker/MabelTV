@@ -23,6 +23,7 @@ private slots:
     void controllerTunesNumericChannelsAndHonoursVolumeLimit();
     void controllerClearsNoSignalWhenReturningToPopulatedChannel();
     void controllerSkipsAnEpisodeAfterPlaybackFailure();
+    void controllerPersistsWatchdogQuarantineUntilFileChanges();
     void controllerMovesBetweenProgrammesInFilenameOrder();
     void controllerDisplaysSeasonEpisodeOrFilmNameWhenProgrammeChanges();
     void standbyWakeWaitsForWelcomeBeforeResumingPlayback();
@@ -67,6 +68,10 @@ void CoreTests::channelLibraryLoadsAndSortsValidChannels()
     QFile ignoredFile(directory.filePath(QStringLiteral("media/one/notes.txt")));
     QVERIFY(ignoredFile.open(QIODevice::WriteOnly));
     ignoredFile.close();
+    QFile partialConversion(
+        directory.filePath(QStringLiteral("media/one/a.optimising.mp4")));
+    QVERIFY(partialConversion.open(QIODevice::WriteOnly));
+    partialConversion.close();
 
     QFile configuration(directory.filePath(QStringLiteral("channels.json")));
     QVERIFY(configuration.open(QIODevice::WriteOnly));
@@ -251,6 +256,70 @@ void CoreTests::controllerSkipsAnEpisodeAfterPlaybackFailure()
     QVERIFY(!replacementSource.isEmpty());
     QVERIFY(firstSource != replacementSource);
     QVERIFY(!controller.noSignal());
+}
+
+void CoreTests::controllerPersistsWatchdogQuarantineUntilFileChanges()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/one")));
+
+    const QString episodePath = directory.filePath(QStringLiteral("media/one/stuck.mp4"));
+    QFile episode(episodePath);
+    QVERIFY(episode.open(QIODevice::WriteOnly));
+    episode.write("first");
+    episode.close();
+
+    QFile configuration(directory.filePath(QStringLiteral("channels.json")));
+    QVERIFY(configuration.open(QIODevice::WriteOnly));
+    configuration.write(R"({
+        "schema_version": 1,
+        "channels": [{"number": 1, "name": "One", "folder": "one"}]
+    })");
+    configuration.close();
+    const QString statePath = directory.filePath(QStringLiteral("state.json"));
+    const auto inspector = [](const QString &) {
+        return MediaInspection{true, true, 42.0, QStringLiteral("h264"), {}};
+    };
+
+    TvController controller;
+    QVERIFY(controller.initialize(configuration.fileName(),
+                                  directory.filePath(QStringLiteral("settings.json")),
+                                  directory.filePath(QStringLiteral("media")),
+                                  statePath,
+                                  inspector));
+    QSignalSpy firstRequests(&controller, &TvController::playbackRequested);
+    controller.start();
+    QTRY_COMPARE_WITH_TIMEOUT(firstRequests.count(), 1, 1000);
+    controller.prepareForPlaybackRestart(QStringLiteral("synthetic frame stall"));
+
+    TvController restored;
+    QVERIFY(restored.initialize(configuration.fileName(),
+                                directory.filePath(QStringLiteral("settings.json")),
+                                directory.filePath(QStringLiteral("media")),
+                                statePath,
+                                inspector));
+    QSignalSpy restoredRequests(&restored, &TvController::playbackRequested);
+    restored.start();
+    QTest::qWait(550);
+    QCOMPARE(restoredRequests.count(), 0);
+    QVERIFY(restored.noSignal());
+
+    // Replacing/re-encoding the file changes its mtime and automatically makes
+    // that programme eligible again; owners are never forced to edit state.
+    QTest::qWait(20);
+    QVERIFY(episode.open(QIODevice::Append));
+    episode.write("fixed");
+    episode.close();
+    TvController repaired;
+    QVERIFY(repaired.initialize(configuration.fileName(),
+                                directory.filePath(QStringLiteral("settings.json")),
+                                directory.filePath(QStringLiteral("media")),
+                                statePath,
+                                inspector));
+    QSignalSpy repairedRequests(&repaired, &TvController::playbackRequested);
+    repaired.start();
+    QTRY_COMPARE_WITH_TIMEOUT(repairedRequests.count(), 1, 1000);
 }
 
 void CoreTests::controllerMovesBetweenProgrammesInFilenameOrder()

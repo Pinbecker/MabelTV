@@ -2,6 +2,8 @@
 Description=Mabel TV local media library
 After=network-online.target local-fs.target
 Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
 
 [Service]
 Type=simple
@@ -12,8 +14,18 @@ Environment=HOME=/var/lib/mabeltv
 ExecStart=/opt/mabeltv/current/mabeltv-library --bind 0.0.0.0 --port 8080
 Restart=on-failure
 RestartSec=2
-MemoryMax=180M
-NoNewPrivileges=yes
+TimeoutStopSec=30
+KillMode=mixed
+UMask=0027
+MemoryHigh=220M
+MemoryMax=400M
+TasksMax=64
+LimitNOFILE=1024
+Nice=10
+CPUQuota=125%
+IOSchedulingClass=idle
+# The service may invoke only the tightly scoped, passwordless refresh helper
+# permitted in mabeltv-sudoers. NoNewPrivileges would block that sudo step.
 PrivateTmp=yes
 ProtectSystem=strict
 ProtectHome=yes

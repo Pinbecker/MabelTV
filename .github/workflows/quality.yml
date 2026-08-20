@@ -1,0 +1,78 @@
+name: Source quality
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ubuntu-source-quality:
+    name: Ubuntu source build and tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config python3 \
+            qt6-base-dev qt6-declarative-dev qt6-shadertools-dev \
+            libqt6opengl6-dev libegl1-mesa-dev libgl1-mesa-dev libdrm-dev \
+            libmpv-dev libsystemd-dev
+
+      - name: Check Python syntax
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          import py_compile
+          import tempfile
+
+          paths = sorted(pathlib.Path("scripts").rglob("*.py"))
+          paths += sorted(pathlib.Path("tests").rglob("*.py"))
+          with tempfile.TemporaryDirectory() as target:
+              for index, path in enumerate(paths):
+                  py_compile.compile(
+                      str(path),
+                      cfile=str(pathlib.Path(target) / f"{index}.pyc"),
+                      doraise=True,
+                  )
+          print(f"Python syntax passed for {len(paths)} file(s)")
+          PY
+
+      - name: Check every Bash entry point
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          checked=0
+          while IFS= read -r -d '' script; do
+            bash -n "$script"
+            checked=$((checked + 1))
+          done < <(git grep -Ilz -e '^#!/usr/bin/env bash' -e '^#!/bin/bash')
+          if ((checked == 0)); then
+            printf 'No Bash entry points were discovered; refusing a false pass.\n' >&2
+            exit 1
+          fi
+          printf 'Bash syntax passed for %s entry point(s).\n' "$checked"
+
+      - name: Configure appliance-capable source build
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=ON \
+            -DMABELTV_PI_APPLIANCE=ON
+
+      - name: Build
+        run: cmake --build build --parallel 2
+
+      - name: Run automated tests
+        run: ctest --test-dir build --output-on-failure
+
+      # This x86_64 job catches source regressions. It deliberately does not
+      # produce a customer artifact or replace clean-image ARM64 Pi testing.

@@ -67,6 +67,31 @@ MediaInspection MediaIndex::inspect(const QString &mediaPath)
     return inspection;
 }
 
+MediaInspection MediaIndex::inspectCached(const QString &mediaPath)
+{
+    const QFileInfo file(mediaPath);
+    const QString key = file.absoluteFilePath();
+    const QJsonObject cached = m_entries.value(key).toObject();
+    const qint64 cachedSize = static_cast<qint64>(cached.value(QStringLiteral("size")).toDouble(-1.0));
+    const qint64 cachedModified = static_cast<qint64>(
+        cached.value(QStringLiteral("modified_utc_ms")).toDouble(-1.0));
+    if (!cached.isEmpty() && cachedSize == file.size()
+        && cachedModified == file.lastModified().toUTC().toMSecsSinceEpoch()) {
+        return inspectionFromJson(cached);
+    }
+
+    // Startup must never wait several seconds per file before systemd receives
+    // READY. Admit a readable video provisionally, then let the controller's
+    // background validation publish the fully checked library atomically.
+    m_pendingInspections = true;
+    return MediaInspection{true, false, 0.0, QString(), QStringLiteral("validation pending")};
+}
+
+bool MediaIndex::hasPendingInspections() const
+{
+    return m_pendingInspections;
+}
+
 bool MediaIndex::save()
 {
     if (m_cachePath.isEmpty() || !m_dirty) {

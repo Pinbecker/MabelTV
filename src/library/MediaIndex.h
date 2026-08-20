@@ -18,6 +18,8 @@ public:
     explicit MediaIndex(QString cachePath = QString());
 
     [[nodiscard]] MediaInspection inspect(const QString &mediaPath);
+    [[nodiscard]] MediaInspection inspectCached(const QString &mediaPath);
+    [[nodiscard]] bool hasPendingInspections() const;
     [[nodiscard]] bool save();
     [[nodiscard]] QString cachePath() const;
 
@@ -29,4 +31,5 @@ private:
     QString m_ffprobePath;
     QJsonObject m_entries;
     bool m_dirty = false;
+    bool m_pendingInspections = false;
 };

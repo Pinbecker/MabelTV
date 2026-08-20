@@ -8,7 +8,10 @@ StartLimitIntervalSec=60
 StartLimitBurst=5
 
 [Service]
-Type=simple
+Type=notify
+NotifyAccess=main
+WatchdogSec=90s
+TimeoutStartSec=300s
 User=mabeltv
 Group=mabeltv
 SupplementaryGroups=audio video render input
@@ -31,8 +34,9 @@ Environment=QT_QPA_EGLFS_KMS_CONFIG=/run/mabeltv/kms.json
 Environment=QT_QPA_EGLFS_ALWAYS_SET_MODE=1
 Environment=QT_QPA_EGLFS_KMS_ATOMIC=1
 Environment=MABELTV_HIDE_CURSOR=1
-Environment=MABELTV_HWDEC=auto-safe
-Environment="MABELTV_AUDIO_DEVICE=alsa/hdmi:CARD=vc4hdmi0,DEV=0"
+# The launcher selects the connected HDMI socket, matching ALSA device, and a
+# Pi-model-appropriate decoder. Environment overrides remain available for
+# unusual display or audio hardware.
 # Debian 13 libmpv 0.40/0.41 leaks one GL sync-file descriptor for every
 # embedded OpenGL frame (mpv #17217). Request the compatible renderer and mask
 # Mesa's sync extensions so libmpv cannot enter the affected path until a
@@ -42,8 +46,10 @@ Environment=MESA_GLES_VERSION_OVERRIDE=2.0
 Environment=MESA_GL_VERSION_OVERRIDE=2.1
 Environment="MESA_EXTENSION_OVERRIDE=-GL_ARB_sync -GL_APPLE_sync"
 ExecStart=/opt/mabeltv/current/mabeltv-launch
+ExecStopPost=+/usr/local/libexec/mabeltv-stop-report ${SERVICE_RESULT} ${EXIT_CODE} ${EXIT_STATUS}
 Restart=on-failure
 RestartSec=2
+RestartPreventExitStatus=0
 TimeoutStopSec=15
 KillSignal=SIGTERM
 StandardInput=tty
@@ -57,6 +63,8 @@ StandardError=journal
 OOMScoreAdjust=-300
 MemoryHigh=700M
 MemoryMax=850M
+TasksMax=128
+LimitNOFILE=4096
 ProtectSystem=strict
 ProtectHome=yes
 PrivateTmp=yes

@@ -1,5 +1,6 @@
 param(
     [string]$MediaFile,
+    [string]$MediaRoot,
     [switch]$Fullscreen,
     [switch]$NoBuild
 )
@@ -20,11 +21,13 @@ $arguments = @()
 if ($MediaFile) {
     $arguments += [System.IO.Path]::GetFullPath($MediaFile)
 } else {
-    $mediaRoot = & (Join-Path $PSScriptRoot 'generate-dev-library.ps1')
+    if (-not $MediaRoot) {
+        $MediaRoot = & (Join-Path $PSScriptRoot 'generate-dev-library.ps1')
+    }
     $arguments += @(
         '--channels', (Join-Path $repositoryRoot 'config\examples\channels.json'),
         '--settings', (Join-Path $repositoryRoot 'config\examples\settings.json'),
-        '--media-root', $mediaRoot,
+        '--media-root', ([System.IO.Path]::GetFullPath($MediaRoot)),
         '--state', (Join-Path $repositoryRoot 'dev-data\state.json'),
         '--log-dir', (Join-Path $repositoryRoot 'dev-data\logs')
     )

@@ -1,42 +1,67 @@
-# Mabel TV Library
+# Browser dashboard and media library
 
-The Mabel TV Library is the simple way to add programmes after the appliance
-has been installed. It is only for devices connected to the same home network
-as the Raspberry Pi; it is not exposed to the internet.
+Mabel TV’s browser dashboard is the normal grown-up entry point after installation. It runs only on the Raspberry Pi and listens on the home network; it is not a cloud service.
 
-Open the address printed by the installer, normally:
+Open the address shown on the TV, normally:
 
 ```text
-http://Mabel-TV.local:8080
+http://mabeltv.local:8080
 ```
 
-Enter the parent PIN (`0973` unless an owner has changed it), choose the
-channel, choose a video, and select **Upload & publish**. Keep the browser page
-open until the progress bar completes. An interrupted upload is kept in a safe
-inbox and resumes when the same file is selected again.
+If `.local` discovery is blocked by the router or phone, use the numeric IP address shown directly underneath it on the welcome screen.
 
-Files are validated before being moved into the live media folder. Once a file
-is published, the television refreshes its library. This briefly restarts the
-player so it can see the new programme; media is never deleted or partially
-published during this step.
+## First setup and security
 
-## Library controls
+A fresh installation has no universal PIN. The installer generates a one-time six-digit code stored in a root-controlled configuration file. The TV shows that code beside the QR/address. Setup then requires a new 4–8 digit browser PIN.
 
-The same page can enable or disable whole channels and individual programmes,
-rename programme labels, and move videos into a recycle bin. Restore returns a
-video to its original channel. **Delete forever** only removes items already in
-that recycle bin.
+- The PIN is stored as a salted PBKDF2-HMAC-SHA256 hash, not plaintext.
+- Five failed attempts in five minutes temporarily lock further attempts from that address.
+- Sessions expire after eight hours and are revoked by **Lock** or a PIN change.
+- Browser mutations require the same network origin and cookies use `HttpOnly` and `SameSite=Strict`.
+- Security headers prevent framing, MIME sniffing, referrer leakage, and unapproved script/resource origins.
 
-## Safety and recovery
+HTTP is intentionally local-network-only. Never forward port 8080 through a router or expose it to the internet. Use trusted home Wi-Fi.
 
-Every appliance update creates a timestamped configuration snapshot under
-`/var/backups/mabeltv/` before it changes services or settings. The existing
-release rollback remains the quickest recovery path:
+## Dashboard sections
 
-```sh
-sudo mabeltv-rollback
+### Overview
+
+Shows player state, Pi temperature, storage, uptime, version, current thermal/power limiting, historical limiting since boot, and plain-language warnings. Quick actions add media, manage channels, or request a background TV refresh.
+
+### Add media
+
+Uploads are split into durable 8 MiB parts. A retry asks the Pi for its saved offset instead of restarting. Mabel TV reserves enough room for source plus prepared output and 512 MiB safety space before accepting a file.
+
+The final check uses a 30-second probe deadline:
+
+- ordinary prepared videos publish atomically without conversion;
+- video over 30 fps, or an oversized iPhone MOV, enters one persistent background conversion queue;
+- the queue survives a Library service restart and permits only one encoder at once;
+- conversion uses one thread, 720p/30 fps H.264/AAC, pauses at 78°C, and resumes at 72°C;
+- the browser can be closed during preparation; choosing the same source file later resumes/checks it.
+
+The TV keeps playing while a new library is validated in a worker thread. The checked library replaces the old one only when complete; an invalid update leaves the known-good channels on screen.
+
+### Channels
+
+Create, rename, renumber, hide/show, change crop/fit/stretch mode, and delete an empty channel. Programme controls can hide/show, rename, move to recycle bin, restore, or permanently delete.
+
+Deletion is deliberately two-stage. Recycle-bin items expire after 30 days; this is shown in the interface.
+
+### Help & system
+
+Shows detailed status, changes the browser PIN, restarts the TV player, creates/downloads a redacted support bundle, and safely reboots or shuts down the Pi. Disruptive actions require confirmation.
+
+The on-TV adult panel remains the quickest place to tune CRT appearance, sound, volume policy, display mode, playback behaviour, and remote lock. Hold Back/Previous for 3.5 seconds, then press OK three times. That physical shortcut is separate from the browser PIN.
+
+## File naming
+
+For series, use names such as:
+
+```text
+S01E02 - The Picnic.mp4
 ```
 
-When rolling back to a release older than the Library feature, the rollback
-script automatically stops the Library service as well, leaving the previous
-working TV appliance intact.
+Mabel TV displays that as `S01 E02 · The Picnic`. Films and home videos can use any clear filename supported by the filesystem.
+
+Supported containers are MP4, M4V, MKV, MOV, WebM, AVI, MPG, and MPEG. H.264/AAC at SD or 720p is the safest ready-to-play format for Pi 4.

@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Physical-presence parent PIN recovery. Creating mabeltv-reset-pin on the
+# SD-card boot partition rotates the one-time setup code without touching media.
+set -Eeuo pipefail
+
+boot_root=/boot/firmware
+[[ -d "$boot_root" ]] || boot_root=/boot
+marker="$boot_root/mabeltv-reset-pin"
+[[ -e "$marker" ]] || exit 0
+
+stamp="$(date +%Y%m%d-%H%M%S)"
+recovery="/var/lib/mabeltv/recovery/$stamp-owner-reset"
+install -d -o mabeltv -g mabeltv -m 0750 "$recovery"
+# Record an explicit recovery state before removing the credential. A fresh
+# installation also has a seeded channels.json, so channels alone cannot tell
+# the dashboard whether it must preserve an established line-up verbatim.
+pending="/var/lib/mabeltv/owner-recovery-pending"
+pending_temporary="$(mktemp /var/lib/mabeltv/owner-recovery-pending.XXXXXX)"
+printf '%s\n' "$recovery" > "$pending_temporary"
+chown mabeltv:mabeltv "$pending_temporary"
+chmod 0640 "$pending_temporary"
+mv -f -- "$pending_temporary" "$pending"
+if [[ -f /var/lib/mabeltv/owner.json ]]; then
+    mv /var/lib/mabeltv/owner.json "$recovery/owner.json"
+    chown mabeltv:mabeltv "$recovery/owner.json"
+    chmod 0640 "$recovery/owner.json"
+fi
+if [[ -f /etc/mabeltv/library.conf ]]; then
+    cp -a /etc/mabeltv/library.conf "$recovery/library.conf"
+    chown mabeltv:mabeltv "$recovery/library.conf"
+fi
+
+setup_code_number="$(( $(od -An -N4 -tu4 /dev/urandom) % 1000000 ))"
+temporary="$(mktemp /etc/mabeltv/library.conf.XXXXXX)"
+printf 'MABELTV_SETUP_CODE=%06d\n' "$setup_code_number" > "$temporary"
+chown root:mabeltv "$temporary"
+chmod 0640 "$temporary"
+mv -f -- "$temporary" /etc/mabeltv/library.conf
+rm -f -- "$marker"
+logger -p auth.notice -t mabeltv-owner-recovery -- \
+    "physical parent reset accepted; previous owner record saved in $recovery"

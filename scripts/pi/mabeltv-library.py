@@ -9,14 +9,20 @@ serves a partial upload from the media folders watched by the TV application.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import hmac
 import json
 import mimetypes
 import os
+import queue
 import re
 import secrets
+import signal
 import shutil
+import socket
 import subprocess
+import sys
+import threading
 import time
 import uuid
 from http import HTTPStatus
@@ -24,39 +30,66 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 
 SUPPORTED_EXTENSIONS = {".mp4", ".m4v", ".mkv", ".mov", ".webm", ".avi", ".mpg", ".mpeg"}
 CHUNK_LIMIT = 8 * 1024 * 1024
 MAX_UPLOAD_BYTES = 64 * 1024 * 1024 * 1024
 SESSION_SECONDS = 8 * 60 * 60
+PLAYBACK_WIDTH = 1280
+PLAYBACK_HEIGHT = 720
+PLAYBACK_FPS = 30
+MAX_CONVERSION_TEMP_C = 78.0
+RESUME_CONVERSION_TEMP_C = 72.0
 SAFE_NAME = re.compile(r"[^A-Za-z0-9 ._()&'\-]+")
 EPISODE_NAME = re.compile(r"^s(\d{1,2})e(\d{1,3})\s*-\s*(.+)$", re.IGNORECASE)
+PIN_PATTERN = re.compile(r"\d{4,8}")
+PBKDF2_ITERATIONS = 260_000
+DEFAULT_CHANNELS = [
+    {"number": 1, "name": "Kids TV", "folder": "kids-tv", "aspect": "crop"},
+    {"number": 2, "name": "Cartoons", "folder": "cartoons", "aspect": "crop"},
+    {"number": 3, "name": "Films", "folder": "films", "aspect": "fit"},
+    {"number": 4, "name": "Family Videos", "folder": "family", "aspect": "fit"},
+]
 
 
 INDEX = r"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Mabel TV Library</title><style>
-:root{--ink:#2b221c;--paper:#fff4d6;--red:#bf3d2e;--blue:#277e9b;--line:#d5bd82}*{box-sizing:border-box}body{margin:0;background:#e7c06a;color:var(--ink);font:16px system-ui,sans-serif}main{max-width:1050px;margin:auto;padding:24px}.card{background:var(--paper);border:4px solid var(--ink);box-shadow:7px 7px 0 #916b24;padding:20px;margin:16px 0}h1{font:900 clamp(2rem,7vw,4rem)/.9 Georgia,serif;margin:0 0 8px}h2{margin:0 0 12px}button,input,select{font:inherit;padding:10px;border:2px solid var(--ink);background:#fff}button{cursor:pointer;background:var(--blue);color:white;font-weight:800}button.warn{background:var(--red)}button.plain{background:white;color:var(--ink)}.hidden{display:none}.muted{color:#6d5b46}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.grow{flex:1}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}.channel{border:2px solid var(--line);padding:14px;background:#fffdf5}.programme{border-top:1px solid var(--line);padding:8px 0;display:flex;gap:8px;align-items:center}.programme span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}progress{width:100%;height:22px}#notice{font-weight:bold;white-space:pre-wrap}.danger{color:#9f251d}.small{font-size:.85rem}@media(max-width:520px){main{padding:12px}.card{padding:14px;margin:12px 0}}
+:root{--ink:#2b221c;--paper:#fff4d6;--red:#bf3d2e;--blue:#277e9b;--line:#d5bd82}*{box-sizing:border-box}body{margin:0;background:#e7c06a;color:var(--ink);font:16px system-ui,sans-serif}main{max-width:1400px;margin:auto;padding:24px}.card{background:var(--paper);border:4px solid var(--ink);box-shadow:7px 7px 0 #916b24;padding:20px;margin:16px 0}h1{font:900 clamp(2.25rem,5vw,3.6rem)/.92 Georgia,serif;margin:0 0 8px}h2{margin:0 0 12px}button,input,select{font:inherit;padding:10px;border:2px solid var(--ink);background:#fff}button{cursor:pointer;background:var(--blue);color:white;font-weight:800}button.warn{background:var(--red)}button.plain{background:white;color:var(--ink)}.hidden{display:none}.muted{color:#6d5b46}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.grow{flex:1}.upload-form{display:grid;grid-template-columns:minmax(210px,.7fr) minmax(300px,1.4fr) auto;gap:10px}.upload-form>*{min-width:0}.channel-toolbar{display:flex;gap:14px;align-items:end;flex-wrap:wrap;margin-bottom:14px}.channel-toolbar label{display:grid;gap:5px;font-weight:800}.channel{border:2px solid var(--line);padding:18px;background:#fffdf5}.channel-header{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}.programme-list{max-height:540px;overflow:auto;border-bottom:1px solid var(--line)}.programme{border-top:1px solid var(--line);padding:10px 0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}.programme-name{min-width:0;overflow-wrap:anywhere}.programme-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}progress{width:100%;height:22px}#notice{font-weight:bold;white-space:pre-wrap}.danger{color:#9f251d}.small{font-size:.85rem}@media(max-width:680px){main{padding:12px}.card{padding:14px;margin:12px 0}.upload-form{grid-template-columns:1fr}.programme{grid-template-columns:1fr}.programme-actions{justify-content:flex-start}.programme-actions button{flex:1}h1{font-size:2.4rem}}
 </style></head><body><main>
 <section id="login" class="card"><h1>Mabel TV<br>Library</h1><p>Put new programmes onto Mabel TV from this phone or computer.</p><form id="loginForm" class="row"><input id="pin" class="grow" inputmode="numeric" autocomplete="current-password" type="password" placeholder="Parent PIN" required><button>Open library</button></form><p id="loginError" class="danger"></p></section>
 <section id="app" class="hidden"><div class="card"><div class="row"><div class="grow"><h1>Mabel TV<br>Library</h1><span id="storage" class="muted"></span></div><button id="refresh" class="plain">Refresh TV library</button><button id="logout" class="plain">Lock</button></div><p id="notice"></p></div>
-<section class="card"><h2>Add something new</h2><p class="muted">Choose its channel, choose a video, then leave this page open until the progress bar completes. Large uploads resume if the connection drops.</p><form id="uploadForm" class="row"><select id="channel" required></select><input id="file" class="grow" type="file" accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg" required><button>Upload &amp; publish</button></form><div id="uploadState" class="hidden"><p id="uploadText"></p><progress id="progress" max="1" value="0"></progress></div></section>
-<section class="card"><h2>Channels &amp; programmes</h2><div id="channels" class="grid"></div></section>
+<section class="card"><h2>Add something new</h2><p class="muted">Choose its channel and a video. Large phone videos are automatically optimised to 720p for smooth Mabel TV playback; the final step can take a little longer. Uploads resume safely if the connection drops.</p><form id="uploadForm" class="upload-form"><select id="channel" required></select><input id="file" type="file" accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg" required><button>Upload &amp; publish</button></form><div id="uploadState" class="hidden"><p id="uploadText"></p><progress id="progress" max="1" value="0"></progress></div></section>
+<section class="card"><h2>Channels &amp; programmes</h2><div class="channel-toolbar"><label>Show channel<select id="manageChannel"></select></label><span id="channelSummary" class="muted"></span></div><div id="channels"></div></section>
 <section class="card"><h2>Recycle bin</h2><p class="muted">Deleted programmes are kept here until permanently removed.</p><div id="bin"></div></section></section>
 </main><script>
-let library=null; const $=s=>document.querySelector(s);
+let library=null,selectedManageChannel=null; const $=s=>document.querySelector(s);
 async function api(path,opt={}){const r=await fetch(path,{credentials:'same-origin',headers:{'Content-Type':'application/json',...(opt.headers||{})},...opt});if(r.status===401)throw new Error('Locked');const body=await r.json().catch(()=>({}));if(!r.ok)throw new Error(body.error||'Something went wrong');return body}
 function notice(text,bad=false){$('#notice').textContent=text;$('#notice').className=bad?'danger':''}
-async function load(){library=await api('/api/library');$('#storage').textContent=`${library.storage.free_gb.toFixed(1)} GB free of ${library.storage.total_gb.toFixed(1)} GB`; const select=$('#channel');select.innerHTML='';library.channels.forEach(c=>{let o=document.createElement('option');o.value=c.number;o.textContent=`CH ${c.number} — ${c.name}`;select.append(o)}); render()}
+async function load(preferredUploadChannel=null){library=await api('/api/library');$('#storage').textContent=`${library.storage.free_gb.toFixed(1)} GB free of ${library.storage.total_gb.toFixed(1)} GB`;const upload=$('#channel'),manage=$('#manageChannel');let uploadChoice=String(preferredUploadChannel??upload.value??'');let manageChoice=String(selectedManageChannel??manage.value??uploadChoice);upload.innerHTML='';manage.innerHTML='';library.channels.forEach(c=>{for(let select of [upload,manage]){let o=document.createElement('option');o.value=c.number;o.textContent=`CH ${c.number} — ${c.name}`;select.append(o)}});if(!library.channels.some(c=>String(c.number)===uploadChoice))uploadChoice=String(library.channels[0]?.number??'');if(!library.channels.some(c=>String(c.number)===manageChoice))manageChoice=uploadChoice;upload.value=uploadChoice;manage.value=manageChoice;selectedManageChannel=Number(manageChoice);render()}
 function button(text,fn,kind='plain'){let b=document.createElement('button');b.type='button';b.textContent=text;b.className=kind;b.onclick=fn;return b}
-function render(){const root=$('#channels');root.innerHTML=''; library.channels.forEach(c=>{const box=document.createElement('article');box.className='channel';let title=document.createElement('div');title.className='row';let h=document.createElement('h2');h.className='grow';h.textContent=`CH ${c.number} · ${c.name}`;title.append(h,button(c.enabled?'Disable channel':'Enable channel',()=>manage('toggle-channel',{channel:c.number}),c.enabled?'plain':'warn'));box.append(title);let summary=document.createElement('p');summary.className='muted small';summary.textContent=`${c.enabled_programmes} of ${c.programmes.length} programmes enabled`;box.append(summary);c.programmes.forEach(p=>{let row=document.createElement('div');row.className='programme';let name=document.createElement('span');name.textContent=p.display_name;row.append(name,button(p.enabled?'Disable':'Enable',()=>manage('toggle-programme',{channel:c.number,file:p.name}),p.enabled?'plain':'warn'),button('Rename',()=>renameProgramme(c,p)));row.append(button('Bin',()=>{if(confirm(`Move “${p.display_name}” to the recycle bin?`))manage('trash',{channel:c.number,file:p.name})},'warn'));box.append(row)});root.append(box)}); const bin=$('#bin');bin.innerHTML='';if(!library.recycle.length){bin.textContent='Nothing in the recycle bin.'}library.recycle.forEach(x=>{let r=document.createElement('div');r.className='programme';let n=document.createElement('span');n.textContent=`${x.display_name} · ${x.channel_name}`;r.append(n,button('Restore',()=>manage('restore',{id:x.id})),button('Delete forever',()=>{if(confirm('Permanently delete this video? This cannot be undone.'))manage('delete',{id:x.id})},'warn'));bin.append(r)})}
-async function manage(action,extra={}){try{notice('Working…');await api('/api/manage',{method:'POST',body:JSON.stringify({action,...extra})});await load();notice('Done. Mabel TV is refreshing its library.')}catch(e){notice(e.message,true)}}
+function render(){const root=$('#channels'),channel=library.channels.find(c=>c.number===selectedManageChannel);root.innerHTML='';$('#channelSummary').textContent=channel?`${channel.enabled_programmes} of ${channel.programmes.length} programmes enabled`:'';if(channel){const box=document.createElement('article');box.className='channel';let title=document.createElement('div');title.className='channel-header';let h=document.createElement('h2');h.textContent=`CH ${channel.number} · ${channel.name}`;title.append(h,button(channel.enabled?'Disable channel':'Enable channel',()=>manage('toggle-channel',{channel:channel.number}),channel.enabled?'plain':'warn'));box.append(title);let list=document.createElement('div');list.className='programme-list';channel.programmes.forEach(p=>{let row=document.createElement('div');row.className='programme';let name=document.createElement('span');name.className='programme-name';name.textContent=p.display_name;name.title=p.display_name;let actions=document.createElement('div');actions.className='programme-actions';actions.append(button(p.enabled?'Disable':'Enable',()=>manage('toggle-programme',{channel:channel.number,file:p.name}),p.enabled?'plain':'warn'),button('Rename',()=>renameProgramme(channel,p)),button('Bin',()=>{if(confirm(`Move “${p.display_name}” to the recycle bin?`))manage('trash',{channel:channel.number,file:p.name})},'warn'));row.append(name,actions);list.append(row)});box.append(list);root.append(box)}const bin=$('#bin');bin.innerHTML='';if(!library.recycle.length){bin.textContent='Nothing in the recycle bin.'}library.recycle.forEach(x=>{let r=document.createElement('div');r.className='programme';let n=document.createElement('span');n.className='programme-name';n.textContent=`${x.display_name} · ${x.channel_name}`;let actions=document.createElement('div');actions.className='programme-actions';actions.append(button('Restore',()=>manage('restore',{id:x.id})),button('Delete forever',()=>{if(confirm('Permanently delete this video? This cannot be undone.'))manage('delete',{id:x.id})},'warn'));r.append(n,actions);bin.append(r)})}
+async function manage(action,extra={}){try{notice('Working…');await api('/api/manage',{method:'POST',body:JSON.stringify({action,...extra})});await load();notice('Done.')}catch(e){notice(e.message,true)}}
 async function renameProgramme(c,p){let name=prompt('Programme name (keep S01E02 - at the start for episodes):',p.display_name);if(name&&name.trim())await manage('rename',{channel:c.number,file:p.name,name:name.trim()})}
 $('#loginForm').onsubmit=async e=>{e.preventDefault();try{await api('/api/login',{method:'POST',body:JSON.stringify({pin:$('#pin').value})});$('#login').classList.add('hidden');$('#app').classList.remove('hidden');await load()}catch(e){$('#loginError').textContent=e.message}};
-$('#logout').onclick=async()=>{await api('/api/logout',{method:'POST'});location.reload()}; $('#refresh').onclick=()=>manage('refresh');
-$('#uploadForm').onsubmit=async e=>{e.preventDefault();let f=$('#file').files[0];if(!f)return;let channel=Number($('#channel').value);$('#uploadState').classList.remove('hidden');$('#progress').max=f.size;$('#progress').value=0;try{notice('Preparing upload…');let created=await api('/api/uploads',{method:'POST',body:JSON.stringify({channel,file_name:f.name,size:f.size})});let offset=created.offset||0;while(offset<f.size){let part=f.slice(offset,Math.min(offset+8388608,f.size));let r=await fetch('/api/uploads/'+created.id,{method:'PATCH',credentials:'same-origin',headers:{'Upload-Offset':String(offset),'Content-Type':'application/offset+octet-stream'},body:part});let body=await r.json().catch(()=>({}));if(!r.ok)throw new Error(body.error||'Upload failed');offset=body.offset;$('#progress').value=offset;$('#uploadText').textContent=`Uploading ${(offset/1048576).toFixed(0)} MB of ${(f.size/1048576).toFixed(0)} MB…`} $('#uploadText').textContent='Published. Mabel TV is refreshing its library…';await load();notice('Published successfully.')}catch(e){notice(e.message,true);$('#uploadText').textContent='Upload paused. Choose the same file and upload again to resume.'}}
+$('#logout').onclick=async()=>{await api('/api/logout',{method:'POST'});location.reload()}; $('#refresh').onclick=()=>manage('refresh'); $('#manageChannel').onchange=e=>{selectedManageChannel=Number(e.target.value);render()};
+function uploadChunk(id,offset,part,finalChunk=false){return new Promise((resolve,reject)=>{let request=new XMLHttpRequest();request.open('PATCH','/api/uploads/'+id,true);request.withCredentials=true;request.timeout=finalChunk?2700000:30000;request.setRequestHeader('Upload-Offset',String(offset));request.setRequestHeader('Content-Type','application/offset+octet-stream');request.onload=()=>{let body={};try{body=JSON.parse(request.responseText)}catch(_){}if(request.status<200||request.status>=300){reject(new Error(body.error||'Upload failed'));return}resolve(body)};request.onerror=()=>reject(new Error('The connection to Mabel TV was lost'));request.ontimeout=()=>reject(new Error(finalChunk?'Optimising took too long. Choose the same file to resume.':'The phone did not receive this chunk response'));request.send(part)})}
+async function resilientUploadChunk(id,offset,part,finalChunk=false){try{return await uploadChunk(id,offset,part,finalChunk)}catch(error){if(finalChunk)throw error;let saved=await api('/api/uploads/'+id);if(Number.isFinite(saved.offset)&&saved.offset>offset)return saved;throw error}}
+$('#uploadForm').onsubmit=async e=>{e.preventDefault();let f=$('#file').files[0];if(!f)return;let channel=Number($('#channel').value),finalResult={};$('#uploadState').classList.remove('hidden');$('#progress').max=f.size;$('#progress').value=0;try{notice('Preparing upload…');let created=await api('/api/uploads',{method:'POST',body:JSON.stringify({channel,file_name:f.name,size:f.size})});let offset=created.offset||0;while(offset<f.size){let part=f.slice(offset,Math.min(offset+8388608,f.size)),finalChunk=offset+part.size>=f.size;if(finalChunk)$('#uploadText').textContent='Uploading final chunk, then optimising for smooth Mabel TV playback…';finalResult=await resilientUploadChunk(created.id,offset,part,finalChunk);offset=finalResult.offset;$('#progress').value=offset;if(!finalChunk)$('#uploadText').textContent=`Uploading ${(offset/1048576).toFixed(0)} MB of ${(f.size/1048576).toFixed(0)} MB…`}selectedManageChannel=channel;await load(channel);$('#file').value='';$('#progress').value=0;$('#uploadText').textContent='';$('#uploadState').classList.add('hidden');notice(finalResult.refreshed?`Published${finalResult.optimised?' and optimised':''} to CH ${channel}. Choose another video to upload.`:`Published to CH ${channel}. The TV library refresh is still running.`)}catch(e){notice(e.message,true);$('#uploadText').textContent='Upload paused. Choose the same file and upload again to resume.'}}
 </script></body></html>"""
+
+
+def load_index() -> str:
+    """Load the maintainable product UI, retaining the embedded legacy UI as fallback."""
+    try:
+        return Path(__file__).with_name("mabeltv-library.html").read_text(encoding="utf-8")
+    except OSError:
+        return INDEX
+
+
+INDEX = load_index()
 
 
 class Library:
@@ -64,25 +97,473 @@ class Library:
         self.media_root = Path(args.media_root).resolve()
         self.channels_path = Path(args.channels).resolve()
         self.settings_path = Path(args.settings).resolve()
+        self.owner_path = Path(args.owner).resolve()
+        self.owner_recovery_path = self.owner_path.with_name("owner-recovery-pending")
+        self.config_path = Path(args.config).resolve()
         self.incoming = self.media_root / ".incoming"
         self.bin = self.media_root / ".recycle-bin"
-        self.pin = self.read_pin(Path(args.config))
         self.sessions: dict[str, float] = {}
+        self.login_failures: dict[str, list[float]] = {}
+        self.config_lock = threading.RLock()
+        self.upload_locks: dict[str, threading.Lock] = {}
+        self.conversion_queue: queue.Queue[str | None] = queue.Queue()
+        self.queued_conversions: set[str] = set()
+        self.deferred_retries: set[str] = set()
+        self.cancelled_conversions: set[str] = set()
+        self.conversion_closed = threading.Event()
         self.media_root.mkdir(parents=True, exist_ok=True)
         self.incoming.mkdir(mode=0o750, exist_ok=True)
         self.bin.mkdir(mode=0o750, exist_ok=True)
+        self.reconcile_recycle_items()
+        self.cleanup_stale_temporary_files()
+        self.migrate_legacy_owner()
+        self.recover_final_results()
+        self.resume_conversion_jobs()
+        self.conversion_worker = threading.Thread(
+            target=self.run_conversion_worker,
+            name="mabeltv-conversion",
+            daemon=True,
+        )
+        self.conversion_worker.start()
+
+    def close(self, timeout: float = 10.0) -> None:
+        """Drain and stop the single media worker (primarily for clean tests)."""
+        if self.conversion_closed.is_set():
+            return
+        self.conversion_closed.set()
+        self.conversion_queue.put(None)
+        self.conversion_worker.join(timeout=timeout)
+        if self.conversion_worker.is_alive():
+            raise RuntimeError("The media worker did not stop cleanly")
+
+    def cleanup_stale_temporary_files(self) -> None:
+        """Remove abandoned encoder outputs, never active or recent work."""
+        result_cutoff = time.time() - 7 * 24 * 60 * 60
+        upload_cutoff = result_cutoff
+        # No encoder exists yet while Library is starting. Every temporary
+        # encoder output in .incoming is therefore an orphan from a crash and
+        # can be removed immediately before a resumed job reserves space again.
+        # Restrict this to .incoming so a customer video with a similar name is
+        # never mistaken for our private temporary file.
+        for candidate in self.incoming.glob("*.optimising.mp4"):
+            try:
+                if candidate.is_file():
+                    candidate.unlink()
+                    print(f"Removed interrupted conversion file: {candidate}",
+                          file=sys.stderr, flush=True)
+            except OSError as error:
+                print(f"Could not remove interrupted conversion file {candidate}: {error}",
+                      file=sys.stderr, flush=True)
+        for candidate in self.incoming.glob("*.ffmpeg.log"):
+            try:
+                candidate.unlink()
+            except OSError:
+                pass
+        for manifest in self.incoming.glob("*.json"):
+            if manifest.name.endswith(".result.json"):
+                try:
+                    if manifest.stat().st_mtime < result_cutoff:
+                        manifest.unlink()
+                except OSError:
+                    pass
+                continue
+            metadata = self.read_json(manifest, {})
+            try:
+                status = str(metadata.get("status", "uploading"))
+                part = self.incoming / f"{manifest.stem}.part"
+                activity = max(
+                    float(metadata.get("created", 0)),
+                    float(metadata.get("updated", 0)),
+                    manifest.stat().st_mtime,
+                    part.stat().st_mtime if part.is_file() else 0,
+                )
+            except (OSError, TypeError, ValueError):
+                activity = time.time()
+                status = "uploading"
+            # Once all source bytes have entered validation/preparation, never
+            # discard the owner's only copy based on its original creation
+            # date. It remains visible for explicit retry/cancel and recovery.
+            if status != "uploading" or activity >= upload_cutoff:
+                continue
+            upload_id = manifest.stem
+            (self.incoming / f"{upload_id}.part").unlink(missing_ok=True)
+            manifest.unlink(missing_ok=True)
+            print(f"Removed abandoned upload: {upload_id}", file=sys.stderr, flush=True)
+
+    def resume_conversion_jobs(self) -> None:
+        for manifest in self.incoming.glob("*.json"):
+            if manifest.name.endswith(".result.json"):
+                continue
+            metadata = self.read_json(manifest, {})
+            upload_id = manifest.stem
+            part = self.incoming / f"{upload_id}.part"
+            result = self.read_json(self.incoming / f"{upload_id}.result.json", None)
+            if isinstance(result, dict) and result.get("complete"):
+                part.unlink(missing_ok=True)
+                manifest.unlink(missing_ok=True)
+                continue
+            try:
+                ready = part.is_file() and part.stat().st_size == int(metadata.get("size", -1))
+            except (OSError, TypeError, ValueError):
+                ready = False
+            destination_ready = False
+            try:
+                channel = self.channel(int(metadata.get("channel")))
+                destination = self.safe_media_path(channel, str(metadata.get("file_name", "")))
+                if metadata.get("conversion_required"):
+                    destination = destination.with_suffix(".mp4")
+                destination_ready = destination.is_file()
+            except (TypeError, ValueError):
+                pass
+            resumable_statuses = {
+                "uploading", "validating", "queued", "processing", "publishing",
+                "finalising", "error"
+            }
+            if (ready or destination_ready) and metadata.get("status") in resumable_statuses:
+                metadata["resume_from_status"] = metadata.get("status")
+                metadata["status"] = "queued"
+                metadata.pop("error", None)
+                self.write_json(manifest, metadata)
+                self.queue_conversion(upload_id)
+
+    def recover_final_results(self) -> None:
+        """Promote a publication interrupted only during final bookkeeping."""
+        for result_path in self.incoming.glob("*.result.json"):
+            result = self.read_json(result_path, {})
+            if not isinstance(result, dict) or result.get("complete") \
+                or result.get("status") != "finalising":
+                continue
+            try:
+                channel = self.channel(int(result.get("channel")))
+                destination = self.safe_media_path(channel, str(result.get("file_name", "")))
+                if result.get("optimised"):
+                    destination = destination.with_suffix(".mp4")
+            except (TypeError, ValueError):
+                continue
+            if destination.is_file():
+                result["complete"] = True
+                result["refreshed"] = self.refresh_tv()
+                result["status"] = "complete" if result["refreshed"] else "refresh-error"
+                self.write_json(result_path, result)
+
+    def queue_conversion(self, upload_id: str) -> None:
+        with self.config_lock:
+            if self.conversion_closed.is_set():
+                raise RuntimeError("The media worker is stopping")
+            if upload_id in self.queued_conversions:
+                return
+            self.queued_conversions.add(upload_id)
+            self.conversion_queue.put(upload_id)
+
+    def run_conversion_worker(self) -> None:
+        while True:
+            upload_id = self.conversion_queue.get()
+            if upload_id is None:
+                self.conversion_queue.task_done()
+                return
+            try:
+                self.process_conversion(upload_id)
+            except Exception as error:
+                with self.config_lock:
+                    was_cancelled = upload_id in self.cancelled_conversions
+                if not was_cancelled:
+                    try:
+                        self.unexpected_conversion_error(upload_id, error)
+                    except Exception as report_error:
+                        # ENOSPC/read-only media can make both the job and its
+                        # status write fail. Never let that kill the only worker.
+                        print(f"Could not persist conversion failure {upload_id}: {report_error}",
+                              file=sys.stderr, flush=True)
+            finally:
+                self.finish_conversion_job(upload_id)
+                self.conversion_queue.task_done()
+
+    def finish_conversion_job(self, upload_id: str) -> None:
+        """Release the queue slot and honour a retry requested during teardown."""
+        with self.config_lock:
+            self.queued_conversions.discard(upload_id)
+            retry = upload_id in self.deferred_retries
+            self.deferred_retries.discard(upload_id)
+            self.cancelled_conversions.discard(upload_id)
+        if retry and not self.conversion_closed.is_set():
+            self.queue_conversion(upload_id)
+
+    def unexpected_conversion_error(self, upload_id: str, error: Exception) -> None:
+        print(f"Conversion {upload_id} failed: {error}", file=sys.stderr, flush=True)
+        manifest = self.incoming / f"{upload_id}.json"
+        metadata = self.read_json(manifest, {})
+        if isinstance(metadata, dict) and metadata:
+            if metadata.get("status") == "validating":
+                # A fully received but unreadable file cannot become valid by
+                # retrying the same bytes. Free its reserved space but retain a
+                # result record so the waiting browser sees the real error.
+                (self.incoming / f"{upload_id}.part").unlink(missing_ok=True)
+                result = {
+                    "id": upload_id,
+                    "file_name": str(metadata.get("file_name", "Video")),
+                    "channel": metadata.get("channel"),
+                    "offset": int(metadata.get("size", 0)),
+                    "complete": False,
+                    "processing": False,
+                    "status": "error",
+                    "error": str(error) if isinstance(error, ValueError)
+                    else "Mabel TV could not check this video",
+                    "finished": time.time(),
+                }
+                self.write_json(self.incoming / f"{upload_id}.result.json", result)
+                manifest.unlink(missing_ok=True)
+                return
+            metadata["status"] = "error"
+            metadata["error"] = str(error) if isinstance(error, ValueError) \
+                else "Mabel TV could not prepare this video"
+            metadata["updated"] = time.time()
+            self.write_json(manifest, metadata)
+
+    def process_conversion(self, upload_id: str) -> None:
+        with self.config_lock:
+            lock = self.upload_locks.setdefault(upload_id, threading.Lock())
+        with lock:
+            metadata = self.upload_meta(upload_id)
+            part = self.incoming / f"{upload_id}.part"
+            channel = self.channel(int(metadata["channel"]))
+            source_name = str(metadata["file_name"])
+            original_destination = self.safe_media_path(channel, source_name)
+            previous_status = str(metadata.pop(
+                "resume_from_status", metadata.get("status", "queued")))
+
+            part_ready = part.is_file() and part.stat().st_size == int(metadata["size"])
+            conversion_required = metadata.get("conversion_required")
+            if conversion_required is None:
+                if not part_ready:
+                    raise ValueError("The uploaded file is incomplete")
+                metadata["status"] = "validating"
+                metadata["updated"] = time.time()
+                metadata.pop("error", None)
+                self.write_json(self.incoming / f"{upload_id}.json", metadata)
+                stream = self.video_info(part)
+                conversion_required = self.needs_playback_optimisation(
+                    Path(source_name), stream)
+                metadata["conversion_required"] = bool(conversion_required)
+                previous_status = "validated"
+
+            destination = original_destination.with_suffix(".mp4") \
+                if conversion_required else original_destination
+            published_recovery = (destination.is_file()
+                                  and previous_status in {
+                                      "processing", "publishing", "finalising", "error"
+                                  })
+            if destination.exists() and not published_recovery:
+                raise ValueError("A file with that name already exists in this channel")
+
+            if published_recovery:
+                # The process may have died after the atomic media rename but
+                # before recording completion. Validate and finish, rather
+                # than rejecting a file this very job already published.
+                self.video_info(destination)
+            elif conversion_required:
+                metadata["status"] = "processing"
+                metadata["updated"] = time.time()
+                self.write_json(self.incoming / f"{upload_id}.json", metadata)
+                self.optimise_for_playback(part, destination)
+            else:
+                metadata["status"] = "publishing"
+                metadata["updated"] = time.time()
+                self.write_json(self.incoming / f"{upload_id}.json", metadata)
+                os.replace(part, destination)
+
+            metadata["status"] = "finalising"
+            metadata["updated"] = time.time()
+            self.write_json(self.incoming / f"{upload_id}.json", metadata)
+            refreshed = self.refresh_tv()
+            result = {
+                "id": upload_id,
+                "offset": int(metadata["size"]),
+                "complete": False,
+                "optimised": bool(conversion_required),
+                "refreshed": refreshed,
+                "status": "finalising",
+                "file_name": source_name,
+                "channel": int(metadata["channel"]),
+                "finished": time.time(),
+            }
+            result_path = self.incoming / f"{upload_id}.result.json"
+            self.write_json(result_path, result)
+            self.unlink_with_retry(part)
+            result["complete"] = True
+            result["status"] = "complete" if refreshed else "refresh-error"
+            self.write_json(result_path, result)
+            # Keep the manifest until the complete result is durably visible.
+            # A status request can otherwise land between the manifest unlink
+            # and result replacement and incorrectly report "Upload not found".
+            self.unlink_with_retry(self.incoming / f"{upload_id}.json")
+            with self.config_lock:
+                self.upload_locks.pop(upload_id, None)
 
     @staticmethod
-    def read_pin(path: Path) -> str:
+    def read_config(path: Path) -> dict[str, str]:
+        values: dict[str, str] = {}
         try:
             for line in path.read_text(encoding="utf-8").splitlines():
-                if line.startswith("MABELTV_LIBRARY_PIN="):
-                    value = line.partition("=")[2].strip()
-                    if value:
-                        return value
+                key, separator, value = line.partition("=")
+                if separator and key.strip():
+                    values[key.strip()] = value.strip()
         except OSError:
             pass
-        return "0973"
+        return values
+
+    @staticmethod
+    def pin_record(pin: str) -> dict[str, Any]:
+        salt = secrets.token_bytes(16)
+        digest = hashlib.pbkdf2_hmac("sha256", pin.encode(), salt, PBKDF2_ITERATIONS)
+        return {
+            "pin_salt": salt.hex(),
+            "pin_hash": digest.hex(),
+            "pin_iterations": PBKDF2_ITERATIONS,
+        }
+
+    def owner(self) -> dict[str, Any]:
+        value = self.read_json(self.owner_path, {})
+        return value if isinstance(value, dict) else {}
+
+    def configured(self) -> bool:
+        owner = self.owner()
+        return bool(owner.get("setup_complete") and owner.get("pin_hash")
+                    and owner.get("pin_salt"))
+
+    def migrate_legacy_owner(self) -> None:
+        if self.owner_path.exists():
+            return
+        legacy_pin = self.read_config(self.config_path).get("MABELTV_LIBRARY_PIN", "")
+        if not PIN_PATTERN.fullmatch(legacy_pin):
+            return
+        owner = {
+            "schema_version": 1,
+            "setup_complete": True,
+            "owner_name": "Owner",
+            "legacy_default_pin": legacy_pin == "0973",
+            **self.pin_record(legacy_pin),
+        }
+        self.write_json(self.owner_path, owner)
+
+    def verify_pin(self, pin: str) -> bool:
+        owner = self.owner()
+        try:
+            salt = bytes.fromhex(str(owner["pin_salt"]))
+            expected = bytes.fromhex(str(owner["pin_hash"]))
+            iterations = int(owner.get("pin_iterations", PBKDF2_ITERATIONS))
+        except (KeyError, TypeError, ValueError):
+            return False
+        actual = hashlib.pbkdf2_hmac("sha256", pin.encode(), salt, iterations)
+        return hmac.compare_digest(actual, expected)
+
+    def public_setup(self) -> dict[str, Any]:
+        existing_channels = self.channels()
+        try:
+            setup_channels = self.normalise_channels(existing_channels) \
+                if existing_channels else DEFAULT_CHANNELS
+        except ValueError:
+            setup_channels = DEFAULT_CHANNELS
+        return {
+            "configured": self.configured(),
+            "device_name": socket.gethostname(),
+            "setup_code_required": True,
+            # Recovery is an explicit state written by the physical boot-marker
+            # service. A fresh install also seeds channels.json, so the mere
+            # presence of channels cannot distinguish setup from recovery.
+            "default_channels": setup_channels,
+            "recovering_owner": self.owner_recovery_path.is_file(),
+        }
+
+    def verify_setup_code(self, supplied_code: str) -> bool:
+        expected_code = self.read_config(self.config_path).get("MABELTV_SETUP_CODE", "")
+        return bool(expected_code and hmac.compare_digest(supplied_code.strip(), expected_code))
+
+    @staticmethod
+    def normalise_channels(values: Any) -> list[dict[str, Any]]:
+        if not isinstance(values, list) or not values or len(values) > 20:
+            raise ValueError("Create between 1 and 20 channels")
+        channels: list[dict[str, Any]] = []
+        numbers: set[int] = set()
+        folders: set[str] = set()
+        for raw in values:
+            if not isinstance(raw, dict):
+                raise ValueError("A channel entry is invalid")
+            try:
+                number = int(raw.get("number"))
+            except (TypeError, ValueError):
+                raise ValueError("Every channel needs a number") from None
+            name = str(raw.get("name", "")).strip()
+            folder = SAFE_NAME.sub("", str(raw.get("folder", "")).strip()).strip(". ")
+            aspect = str(raw.get("aspect", "crop"))
+            if not 1 <= number <= 999 or number in numbers:
+                raise ValueError("Channel numbers must be unique and between 1 and 999")
+            if not name or len(name) > 60 or not folder or folder in folders:
+                raise ValueError("Every channel needs a unique name and folder")
+            if aspect not in {"crop", "fit", "stretch"}:
+                raise ValueError("Channel picture mode must be crop, fit, or stretch")
+            numbers.add(number)
+            folders.add(folder)
+            channels.append({"number": number, "name": name, "folder": folder,
+                             "aspect": aspect})
+        return sorted(channels, key=lambda channel: channel["number"])
+
+    def complete_setup(self, payload: dict[str, Any]) -> dict[str, Any]:
+        with self.config_lock:
+            if self.configured():
+                raise ValueError("Mabel TV has already been set up")
+            supplied_code = str(payload.get("setup_code", "")).strip()
+            if not self.verify_setup_code(supplied_code):
+                raise ValueError("That setup code is not correct")
+            pin = str(payload.get("pin", "")).strip()
+            if not PIN_PATTERN.fullmatch(pin):
+                raise ValueError("Choose a PIN containing 4 to 8 numbers")
+            existing_channels = self.channels()
+            recovering_owner = self.owner_recovery_path.is_file()
+            # Physical PIN recovery must never reinterpret editable browser
+            # channel fields and accidentally orphan existing media folders.
+            channels = self.normalise_channels(existing_channels) \
+                if recovering_owner else self.normalise_channels(payload.get(
+                    "channels", existing_channels or DEFAULT_CHANNELS))
+            for channel in channels:
+                (self.media_root / channel["folder"]).mkdir(mode=0o750, exist_ok=True)
+            self.write_json(self.channels_path, {"schema_version": 1, "channels": channels})
+            owner_name = str(payload.get("owner_name", "Owner")).strip()[:60] or "Owner"
+            self.write_json(self.owner_path, {
+                "schema_version": 1,
+                "setup_complete": True,
+                "owner_name": owner_name,
+                "legacy_default_pin": False,
+                "created_at": int(time.time()),
+                **self.pin_record(pin),
+            })
+            self.unlink_with_retry(self.owner_recovery_path)
+            self.sessions.clear()
+        try:
+            self.admin_action("restart-player")
+            restarted = True
+        except ValueError as error:
+            # Setup itself is safely committed. A stopped player can be fixed
+            # from the dashboard or by the next boot without making the user
+            # repeat the ownership step.
+            print(f"Setup completed, but the TV player was not restarted: {error}",
+                  file=sys.stderr, flush=True)
+            restarted = False
+        return {"ok": True, "login_required": True, "player_restarted": restarted}
+
+    def change_pin(self, payload: dict[str, Any]) -> None:
+        current = str(payload.get("current_pin", ""))
+        new_pin = str(payload.get("new_pin", ""))
+        if not self.verify_pin(current):
+            raise ValueError("The current PIN is not correct")
+        if not PIN_PATTERN.fullmatch(new_pin):
+            raise ValueError("Choose a PIN containing 4 to 8 numbers")
+        with self.config_lock:
+            owner = self.owner()
+            owner.update(self.pin_record(new_pin))
+            owner["legacy_default_pin"] = False
+            owner["pin_changed_at"] = int(time.time())
+            self.write_json(self.owner_path, owner)
+            self.sessions.clear()
 
     @staticmethod
     def read_json(path: Path, fallback: Any) -> Any:
@@ -93,9 +574,54 @@ class Library:
 
     @staticmethod
     def write_json(path: Path, value: Any) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_name(path.name + ".new")
-        temporary.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        os.replace(temporary, path)
+        with temporary.open("w", encoding="utf-8") as output:
+            output.write(json.dumps(value, indent=2, sort_keys=True) + "\n")
+            output.flush()
+            os.fsync(output.fileno())
+        os.chmod(temporary, 0o640)
+        for attempt in range(10):
+            try:
+                os.replace(temporary, path)
+                break
+            except PermissionError:
+                if attempt == 9:
+                    raise
+                time.sleep(0.02 * (attempt + 1))
+        try:
+            directory = os.open(path.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
+        except OSError:
+            # Directory fsync is unavailable on some development platforms;
+            # the file itself has still been atomically and durably replaced.
+            pass
+
+    @staticmethod
+    def unlink_with_retry(path: Path) -> None:
+        for attempt in range(10):
+            try:
+                path.unlink(missing_ok=True)
+                return
+            except PermissionError:
+                if attempt == 9:
+                    raise
+                time.sleep(0.02 * (attempt + 1))
+
+    def clear_superseded_upload_errors(self, channel: int, file_name: str) -> None:
+        """Dismiss old errors once the owner deliberately retries that file."""
+        for result_path in self.incoming.glob("*.result.json"):
+            value = self.read_json(result_path, {})
+            try:
+                same_channel = int(value.get("channel", -1)) == channel
+            except (TypeError, ValueError):
+                same_channel = False
+            if value.get("status") == "error" and same_channel \
+                and value.get("file_name") == file_name:
+                self.unlink_with_retry(result_path)
 
     def channels(self) -> list[dict[str, Any]]:
         return self.read_json(self.channels_path, {}).get("channels", [])
@@ -130,9 +656,216 @@ class Library:
                 if item.is_file() and item.suffix.lower() in SUPPORTED_EXTENSIONS:
                     disabled = set(disabled_programmes.get(str(channel["number"]), []))
                     programmes.append({"name": item.name, "display_name": self.display_name(item.name), "enabled": item.name not in disabled})
-            response.append({"number": channel["number"], "name": channel["name"], "enabled": channel["number"] not in disabled_channels, "programmes": programmes, "enabled_programmes": sum(p["enabled"] for p in programmes)})
+            response.append({"number": channel["number"], "name": channel["name"],
+                             "aspect": channel.get("aspect", "crop"),
+                             "enabled": channel["number"] not in disabled_channels,
+                             "programmes": programmes,
+                             "enabled_programmes": sum(p["enabled"] for p in programmes)})
         disk = shutil.disk_usage(self.media_root)
-        return {"channels": response, "recycle": self.recycle_items(), "storage": {"free_gb": disk.free / 1024**3, "total_gb": disk.total / 1024**3}}
+        owner = self.owner()
+        return {
+            "channels": response,
+            "recycle": self.recycle_items(),
+            "uploads": self.upload_jobs(),
+            "storage": {"free_gb": disk.free / 1024**3,
+                        "used_gb": disk.used / 1024**3,
+                        "total_gb": disk.total / 1024**3},
+            "system": self.system_status(),
+            "owner": {"name": owner.get("owner_name", "Owner"),
+                      "pin_change_recommended": bool(owner.get("legacy_default_pin"))},
+        }
+
+    def upload_jobs(self) -> list[dict[str, Any]]:
+        """Return durable, non-complete work for the owner dashboard."""
+        jobs: list[dict[str, Any]] = []
+        channel_names = {int(value.get("number", -1)): str(value.get("name", "Channel"))
+                         for value in self.channels()}
+        for manifest in self.incoming.glob("*.json"):
+            if manifest.name.endswith(".result.json"):
+                continue
+            value = self.read_json(manifest, {})
+            if not isinstance(value, dict) or not value.get("id"):
+                continue
+            part = self.incoming / f"{value['id']}.part"
+            try:
+                size = int(value.get("size", 0))
+                status = str(value.get("status", "uploading"))
+                # A create request is durable before its first chunk arrives.
+                # No .part therefore means 0% while uploading, not 100%.
+                # In publishing/finalising the source may already have been
+                # atomically moved, so those later states legitimately count
+                # the upload bytes as fully received.
+                offset = part.stat().st_size if part.exists() \
+                    else (0 if status == "uploading" else size)
+                number = int(value.get("channel", -1))
+            except (OSError, TypeError, ValueError):
+                continue
+            jobs.append({
+                "id": value["id"],
+                "file_name": str(value.get("file_name", "Video")),
+                "channel": number,
+                "channel_name": channel_names.get(number, f"CH {number}"),
+                "size": size,
+                "offset": offset,
+                "status": status,
+                "error": value.get("error"),
+                "created": float(value.get("created", 0)),
+                "cancelable": status in {
+                    "uploading", "queued", "error"
+                },
+                "retryable": (status == "error"
+                              and part.is_file() and offset == size),
+            })
+        for result_path in self.incoming.glob("*.result.json"):
+            value = self.read_json(result_path, {})
+            if not isinstance(value, dict) or value.get("status") not in {
+                    "error", "refresh-error"}:
+                continue
+            number = int(value.get("channel", -1))
+            jobs.append({
+                "id": value.get("id", result_path.name.removesuffix(".result.json")),
+                "file_name": str(value.get("file_name", "Video")),
+                "channel": number,
+                "channel_name": channel_names.get(number, f"CH {number}"),
+                "size": int(value.get("offset", 0)),
+                "offset": int(value.get("offset", 0)),
+                "status": str(value.get("status")),
+                "error": value.get("error"),
+                "created": float(value.get("finished", 0)),
+                "cancelable": value.get("status") == "error",
+                "retryable": False,
+                "refreshable": value.get("status") == "refresh-error",
+            })
+        return sorted(jobs, key=lambda value: value["created"])
+
+    def live_status(self) -> dict[str, Any]:
+        """Small polling payload that cannot overwrite an in-progress form."""
+        disk = shutil.disk_usage(self.media_root)
+        return {
+            "uploads": self.upload_jobs(),
+            "storage": {"free_gb": disk.free / 1024**3,
+                        "used_gb": disk.used / 1024**3,
+                        "total_gb": disk.total / 1024**3},
+            "system": self.system_status(),
+        }
+
+    @staticmethod
+    def command_output(command: list[str], timeout: int = 4) -> str:
+        try:
+            result = subprocess.run(command, check=False, capture_output=True, text=True,
+                                    timeout=timeout)
+            return result.stdout.strip() if result.returncode == 0 else ""
+        except (OSError, subprocess.TimeoutExpired):
+            return ""
+
+    def system_status(self) -> dict[str, Any]:
+        disk = shutil.disk_usage(self.media_root)
+        temperature = self.cpu_temperature_c()
+        player_active = self.command_output(
+            ["systemctl", "is-active", "mabeltv.service"]) == "active"
+        library_active = self.command_output(
+            ["systemctl", "is-active", "mabeltv-library.service"]) in {"active", ""}
+        throttled_text = self.command_output(["vcgencmd", "get_throttled"])
+        try:
+            throttled_value = int(throttled_text.partition("=")[2], 16)
+        except ValueError:
+            throttled_value = 0
+        current_throttle = throttled_value & 0xFFFF
+        version_path = Path(__file__).with_name("VERSION")
+        try:
+            version = version_path.read_text(encoding="utf-8").strip()
+        except OSError:
+            version = "development"
+        try:
+            uptime_seconds = int(float(Path("/proc/uptime").read_text().split()[0]))
+        except (OSError, ValueError, IndexError):
+            uptime_seconds = 0
+        warnings: list[str] = []
+        if not player_active:
+            warnings.append("The TV player is not running")
+        if temperature >= 75:
+            warnings.append("The Raspberry Pi is running hot")
+        if current_throttle:
+            warnings.append("The Pi is currently reducing performance because of heat or power")
+        if disk.free < 2 * 1024**3:
+            warnings.append("Less than 2 GB of storage remains")
+        if self.owner().get("legacy_default_pin"):
+            warnings.append("Change the original default parent PIN")
+        worker_running = self.conversion_worker.is_alive()
+        if not worker_running:
+            warnings.append("The video preparation worker is not running")
+        return {
+            "healthy": player_active and library_active and temperature < 75
+                       and current_throttle == 0 and disk.free >= 2 * 1024**3
+                       and worker_running,
+            "player": "running" if player_active else "stopped",
+            "temperature_c": round(temperature, 1),
+            "currently_throttled": current_throttle != 0,
+            "historical_throttle": throttled_value != 0,
+            "uptime_seconds": uptime_seconds,
+            "version": version,
+            "device_name": socket.gethostname(),
+            "media_worker": "running" if worker_running else "stopped",
+            "warnings": warnings,
+        }
+
+    def admin_action(self, action: str) -> str:
+        if action not in {"restart-player", "reboot", "poweroff", "diagnostics"}:
+            raise ValueError("Unknown system action")
+        timeout = 330 if action == "diagnostics" else 15
+        try:
+            result = subprocess.run(
+                ["sudo", "-n", "/usr/local/libexec/mabeltv-admin-action", action],
+                check=False, capture_output=True, text=True, timeout=timeout)
+        except (OSError, subprocess.TimeoutExpired) as error:
+            raise ValueError("Mabel TV could not complete that system action") from error
+        if result.returncode != 0:
+            details = result.stderr.strip()
+            raise ValueError(details or "Mabel TV could not complete that system action")
+        return result.stdout.strip()
+
+    def support_bundle(self) -> Path:
+        self.admin_action("diagnostics")
+        bundle = Path("/var/lib/mabeltv/support/mabeltv-support.tar.gz")
+        if not bundle.is_file():
+            raise ValueError("The support bundle could not be created")
+        return bundle
+
+    def login_allowed(self, address: str) -> bool:
+        with self.config_lock:
+            now = time.time()
+            attempts = [value for value in self.login_failures.get(address, [])
+                        if value > now - 5 * 60]
+            self.login_failures[address] = attempts
+            return len(attempts) < 5
+
+    def record_login_failure(self, address: str) -> None:
+        with self.config_lock:
+            self.login_failures.setdefault(address, []).append(time.time())
+
+    def clear_login_failures(self, address: str) -> None:
+        with self.config_lock:
+            self.login_failures.pop(address, None)
+
+    def create_session(self) -> str:
+        with self.config_lock:
+            now = time.time()
+            self.sessions = {token: expiry for token, expiry in self.sessions.items()
+                             if expiry > now}
+            token = secrets.token_urlsafe(32)
+            self.sessions[token] = now + SESSION_SECONDS
+            return token
+
+    def valid_session(self, token: str | None) -> bool:
+        if not token:
+            return False
+        with self.config_lock:
+            return self.sessions.get(token, 0) > time.time()
+
+    def revoke_session(self, token: str | None) -> None:
+        if token:
+            with self.config_lock:
+                self.sessions.pop(token, None)
 
     @staticmethod
     def display_name(name: str) -> str:
@@ -142,46 +875,309 @@ class Library:
             return f"S{int(match.group(1)):02} E{int(match.group(2)):02} · {match.group(3).strip()}"
         return stem
 
+    def reconcile_recycle_items(self) -> None:
+        """Resolve a power loss on either side of a recycle-bin move."""
+        for manifest_path in self.bin.glob("*/manifest.json"):
+            item = self.read_json(manifest_path, {})
+            file_name = Path(str(item.get("file_name", ""))).name
+            folder = str(item.get("folder", ""))
+            if not file_name or not folder:
+                continue
+            recycled = manifest_path.parent / file_name
+            original = self.media_root / folder / file_name
+            if recycled.is_file():
+                # The intent record was durable before the atomic move, so a
+                # crash after the move still leaves a visible restorable item.
+                continue
+            if original.is_file():
+                # Crash/failure occurred before the move. The programme never
+                # left its channel, so discard only the empty intent record.
+                try:
+                    shutil.rmtree(manifest_path.parent)
+                except OSError as error:
+                    print(f"Could not clear incomplete recycle item {manifest_path.parent}: {error}",
+                          file=sys.stderr, flush=True)
+
     def recycle_items(self) -> list[dict[str, str]]:
         values = []
         for manifest in self.bin.glob("*/manifest.json"):
             item = self.read_json(manifest, {})
-            if item.get("id") and item.get("file_name"):
+            file_name = Path(str(item.get("file_name", ""))).name
+            if item.get("id") and file_name \
+                and (manifest.parent / file_name).is_file():
                 values.append({"id": item["id"], "display_name": self.display_name(item["file_name"]), "channel_name": item.get("channel_name", "Unknown channel")})
         return sorted(values, key=lambda value: value["id"], reverse=True)
 
     def update_settings(self, mutator: Any) -> None:
-        settings = self.settings()
-        library = settings.setdefault("library", {})
-        library.setdefault("disabled_channels", [])
-        library.setdefault("disabled_programmes", {})
-        mutator(library)
-        self.write_json(self.settings_path, settings)
+        with self.config_lock:
+            settings = self.settings()
+            library = settings.setdefault("library", {})
+            library.setdefault("disabled_channels", [])
+            library.setdefault("disabled_programmes", {})
+            mutator(library)
+            self.write_json(self.settings_path, settings)
+
+    def update_channels(self, mutator: Any) -> None:
+        with self.config_lock:
+            root = self.read_json(self.channels_path, {"schema_version": 1, "channels": []})
+            values = root.get("channels", [])
+            mutator(values)
+            root["schema_version"] = 1
+            root["channels"] = self.normalise_channels(values)
+            self.write_json(self.channels_path, root)
 
     def refresh_tv(self) -> bool:
-        return subprocess.run(["sudo", "-n", "/usr/local/libexec/mabeltv-library-refresh"], check=False, capture_output=True).returncode == 0
+        for attempt in range(3):
+            try:
+                if subprocess.run(
+                        ["sudo", "-n", "/usr/local/libexec/mabeltv-library-refresh"],
+                        check=False, capture_output=True, timeout=15).returncode == 0:
+                    return True
+            except (OSError, subprocess.TimeoutExpired):
+                pass
+            if attempt < 2:
+                time.sleep(0.5 * (attempt + 1))
+        return False
 
-    def probe(self, path: Path) -> None:
-        result = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=codec_type", "-of", "default=nw=1", str(path)], check=False, capture_output=True, text=True)
-        if result.returncode != 0 or "codec_type=video" not in result.stdout:
+    def video_info(self, path: Path) -> dict[str, Any]:
+        try:
+            result = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=codec_type,width,height,avg_frame_rate", "-of", "json", str(path)], check=False, capture_output=True, text=True, timeout=30)
+        except (OSError, subprocess.TimeoutExpired) as error:
+            raise ValueError("Mabel TV could not finish checking that video") from error
+        try:
+            streams = json.loads(result.stdout).get("streams", [])
+        except (TypeError, ValueError):
+            streams = []
+        if result.returncode != 0 or not streams or streams[0].get("codec_type") != "video":
             raise ValueError("Mabel TV could not find a video stream in that file")
+        return streams[0]
+
+    @staticmethod
+    def frame_rate(stream: dict[str, Any]) -> float:
+        try:
+            numerator, denominator = str(stream.get("avg_frame_rate", "0/1")).split("/", 1)
+            return float(numerator) / float(denominator)
+        except (TypeError, ValueError, ZeroDivisionError):
+            return 0.0
+
+    def needs_playback_optimisation(self, source: Path, stream: dict[str, Any]) -> bool:
+        # Preserve ordinary prepared programmes. High-frame-rate footage is an
+        # exception irrespective of container: this Pi software-decodes it and
+        # cannot sustain 50/60fps playback safely. MOV uploads are also
+        # normalised when they exceed the supported playback dimensions.
+        frame_rate = self.frame_rate(stream)
+        return (frame_rate > PLAYBACK_FPS + 0.1
+                or (source.suffix.lower() == ".mov"
+                    and (int(stream.get("width", 0)) > PLAYBACK_WIDTH
+                         or int(stream.get("height", 0)) > PLAYBACK_HEIGHT)))
+
+    def optimise_for_playback(self, source: Path, destination: Path) -> None:
+        token = uuid.uuid4().hex
+        temporary = self.incoming / f"{token}.optimising.mp4"
+        error_log = self.incoming / f"{token}.ffmpeg.log"
+        command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+                   "-threads", "1", "-filter_threads", "1", "-i", str(source),
+                   "-map", "0:v:0", "-map", "0:a:0?", "-vf", "scale=1280:720:force_original_aspect_ratio=decrease:force_divisible_by=2,fps=30",
+                   "-c:v", "h264_v4l2m2m", "-b:v", "2500k", "-maxrate", "3000k", "-bufsize", "5000k",
+                   "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", str(temporary)]
+        process: subprocess.Popen[bytes] | None = None
+        paused = False
+        deadline = time.monotonic() + 45 * 60
+        try:
+            with error_log.open("wb") as errors:
+                process = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=errors,
+                                           start_new_session=True)
+                while process.poll() is None:
+                    if time.monotonic() >= deadline:
+                        os.killpg(process.pid, signal.SIGTERM)
+                        raise ValueError("Mabel TV stopped this optimisation because it took too long")
+                    temperature = self.cpu_temperature_c()
+                    if not paused and temperature >= MAX_CONVERSION_TEMP_C:
+                        os.killpg(process.pid, signal.SIGSTOP)
+                        paused = True
+                        print(f"Paused video optimisation at {temperature:.1f}C", file=sys.stderr,
+                              flush=True)
+                    elif paused and temperature <= RESUME_CONVERSION_TEMP_C:
+                        os.killpg(process.pid, signal.SIGCONT)
+                        paused = False
+                        print(f"Resumed video optimisation at {temperature:.1f}C", file=sys.stderr,
+                              flush=True)
+                    time.sleep(2)
+                if process.returncode != 0:
+                    details = error_log.read_text(encoding="utf-8", errors="replace").strip()
+                    if details:
+                        print(details[-4000:], file=sys.stderr, flush=True)
+                    raise ValueError("Mabel TV could not optimise this video for smooth playback")
+            self.video_info(temporary)
+            os.replace(temporary, destination)
+        finally:
+            if process is not None and process.poll() is None:
+                if paused:
+                    os.killpg(process.pid, signal.SIGCONT)
+                os.killpg(process.pid, signal.SIGTERM)
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    os.killpg(process.pid, signal.SIGKILL)
+            temporary.unlink(missing_ok=True)
+            error_log.unlink(missing_ok=True)
+
+    @staticmethod
+    def cpu_temperature_c() -> float:
+        try:
+            return int(Path("/sys/class/thermal/thermal_zone0/temp").read_text().strip()) / 1000
+        except (OSError, ValueError):
+            return 0.0
 
     def upload_create(self, payload: dict[str, Any]) -> dict[str, Any]:
+        # The HTTP server is threaded. Serialising lookup and creation prevents
+        # two simultaneous requests from reserving duplicate jobs for one file.
+        with self.config_lock:
+            return self._upload_create(payload)
+
+    def _upload_create(self, payload: dict[str, Any]) -> dict[str, Any]:
         number, file_name, size = int(payload.get("channel")), str(payload.get("file_name", "")), int(payload.get("size", 0))
         channel = self.channel(number)
-        self.safe_media_path(channel, file_name)
+        destination = self.safe_media_path(channel, file_name)
         if size <= 0 or size > MAX_UPLOAD_BYTES:
             raise ValueError("That file size is not supported")
-        if shutil.disk_usage(self.media_root).free < size + 256 * 1024 * 1024:
-            raise ValueError("There is not enough free space on Mabel TV")
+
+        # Find resumable work before applying the fresh-upload reservation. The
+        # existing .part has already consumed disk space, so reserving the full
+        # source twice again would reject a perfectly safe interrupted upload.
+        requested_targets = {destination, destination.with_suffix(".mp4")}
         for meta in self.incoming.glob("*.json"):
+            if meta.name.endswith(".result.json"):
+                continue
             value = self.read_json(meta, {})
-            if value.get("channel") == number and value.get("file_name") == file_name and value.get("size") == size:
+            try:
+                existing_channel = self.channel(int(value.get("channel")))
+                existing_destination = self.safe_media_path(
+                    existing_channel, str(value.get("file_name", "")))
+                existing_targets = {
+                    existing_destination, existing_destination.with_suffix(".mp4")
+                }
+            except (TypeError, ValueError):
+                continue
+            if not requested_targets.isdisjoint(existing_targets):
+                if value.get("channel") != number or value.get("file_name") != file_name \
+                    or value.get("size") != size:
+                    raise ValueError(
+                        "A video with that name is already uploading. "
+                        "Resume it with the same original file or cancel it first")
                 part = self.incoming / (value["id"] + ".part")
-                return {"id": value["id"], "offset": part.stat().st_size if part.exists() else 0}
+                saved_result = self.read_json(
+                    self.incoming / f"{value['id']}.result.json", None)
+                if isinstance(saved_result, dict) and saved_result.get("complete"):
+                    return saved_result
+                offset = part.stat().st_size if part.exists() else 0
+                output_reserve = 0 if (destination.exists()
+                                               or destination.with_suffix(".mp4").exists()) \
+                    else size
+                reserve = max(0, size - offset) + output_reserve + 512 * 1024 * 1024
+                if shutil.disk_usage(self.media_root).free < reserve:
+                    raise ValueError("There is not enough free space to safely resume that video")
+                if value.get("status") == "error" and offset == size \
+                    and value.get("conversion_required") is not None:
+                    value["resume_from_status"] = "error"
+                    value["status"] = "queued"
+                    value.pop("error", None)
+                    value["updated"] = time.time()
+                    self.write_json(meta, value)
+                    self.queue_conversion(str(value["id"]))
+                elif offset == size and value.get("status", "uploading") == "uploading":
+                    value["status"] = "validating"
+                    value["updated"] = time.time()
+                    self.write_json(meta, value)
+                    self.queue_conversion(str(value["id"]))
+                else:
+                    value["updated"] = time.time()
+                    self.write_json(meta, value)
+                return {"id": value["id"], "offset": offset,
+                        "processing": value.get("status") in {
+                            "validating", "queued", "processing", "publishing", "finalising"
+                        },
+                        "status": value.get("status", "uploading")}
+
+        if destination.exists() or destination.with_suffix(".mp4").exists():
+            raise ValueError("A file with that name already exists in this channel")
+        reserve = size * 2 + 512 * 1024 * 1024
+        if shutil.disk_usage(self.media_root).free < reserve:
+            raise ValueError("There is not enough free space to upload and safely prepare that video")
+        self.clear_superseded_upload_errors(number, file_name)
         upload_id = uuid.uuid4().hex
         self.write_json(self.incoming / (upload_id + ".json"), {"id": upload_id, "channel": number, "file_name": file_name, "size": size, "created": time.time()})
         return {"id": upload_id, "offset": 0}
+
+    def upload_action(self, upload_id: str, action: str) -> dict[str, Any]:
+        if not re.fullmatch(r"[a-f0-9]{32}", upload_id):
+            raise ValueError("Invalid upload")
+        if action not in {"cancel", "retry", "refresh"}:
+            raise ValueError("Unknown upload action")
+        if action == "refresh":
+            result_path = self.incoming / f"{upload_id}.result.json"
+            result = self.read_json(result_path, None)
+            if not isinstance(result, dict) or result.get("status") != "refresh-error":
+                raise ValueError("This video is not waiting for a TV refresh")
+            if not self.refresh_tv():
+                raise ValueError(
+                    "The video is safe, but the TV still could not refresh. Restart the TV player or try again")
+            with self.config_lock:
+                result = self.read_json(result_path, result)
+                result["refreshed"] = True
+                result["status"] = "complete"
+                result["complete"] = True
+                self.write_json(result_path, result)
+            return {"ok": True, "message": "The TV library was refreshed."}
+        with self.config_lock:
+            lock = self.upload_locks.setdefault(upload_id, threading.Lock())
+            if not lock.acquire(blocking=False):
+                raise ValueError(
+                    "This video is already being prepared. Let it finish, then remove it from its channel if needed")
+            try:
+                manifest = self.incoming / f"{upload_id}.json"
+                result_path = self.incoming / f"{upload_id}.result.json"
+                metadata = self.read_json(manifest, None)
+                result = self.read_json(result_path, None)
+                if action == "retry":
+                    if not isinstance(metadata, dict) or metadata.get("status") != "error":
+                        raise ValueError("This upload is not waiting to be retried")
+                    part = self.incoming / f"{upload_id}.part"
+                    try:
+                        ready = part.is_file() and part.stat().st_size == int(metadata["size"])
+                    except (OSError, KeyError, TypeError, ValueError):
+                        ready = False
+                    if not ready:
+                        raise ValueError("Choose the original file above to retry this upload")
+                    metadata["resume_from_status"] = "error"
+                    metadata["status"] = "queued"
+                    metadata.pop("error", None)
+                    metadata["updated"] = time.time()
+                    self.write_json(manifest, metadata)
+                    # An error becomes visible just before the worker removes
+                    # this ID from its dedupe set. Remember an owner retry in
+                    # that narrow window so the worker requeues it on teardown.
+                    if upload_id in self.queued_conversions:
+                        self.deferred_retries.add(upload_id)
+                    else:
+                        self.queue_conversion(upload_id)
+                    return {"ok": True, "message": "The video is back in the preparation queue."}
+
+                status = str(metadata.get("status", "uploading")) \
+                    if isinstance(metadata, dict) else str(
+                        result.get("status", "") if isinstance(result, dict) else "")
+                if status not in {"uploading", "queued", "error"}:
+                    raise ValueError("This upload is already being prepared and can no longer be cancelled")
+                self.unlink_with_retry(self.incoming / f"{upload_id}.part")
+                self.unlink_with_retry(manifest)
+                self.unlink_with_retry(result_path)
+                self.deferred_retries.discard(upload_id)
+                if upload_id in self.queued_conversions:
+                    self.cancelled_conversions.add(upload_id)
+                self.upload_locks.pop(upload_id, None)
+                return {"ok": True, "message": "The upload was removed and its space was freed."}
+            finally:
+                lock.release()
 
     def upload_meta(self, upload_id: str) -> dict[str, Any]:
         if not re.fullmatch(r"[a-f0-9]{32}", upload_id):
@@ -191,7 +1187,52 @@ class Library:
             raise ValueError("Upload not found")
         return meta
 
+    def upload_status(self, upload_id: str) -> dict[str, Any]:
+        if not re.fullmatch(r"[a-f0-9]{32}", upload_id):
+            raise ValueError("Invalid upload")
+        result_path = self.incoming / f"{upload_id}.result.json"
+        manifest = self.incoming / f"{upload_id}.json"
+        metadata = None
+        # Atomic replacement can briefly make a file unreadable on Windows,
+        # and the worker may remove the manifest during that same request.
+        # Re-check both durable records together to close that reader TOCTOU.
+        for attempt in range(10):
+            result = self.read_json(result_path, None)
+            if isinstance(result, dict):
+                return result
+            metadata = self.read_json(manifest, None)
+            if isinstance(metadata, dict):
+                break
+            if attempt < 9:
+                time.sleep(0.01 * (attempt + 1))
+        if not isinstance(metadata, dict):
+            raise ValueError("Upload not found")
+        part = self.incoming / f"{upload_id}.part"
+        status = str(metadata.get("status", "uploading"))
+        processing_statuses = {
+            "validating", "queued", "processing", "publishing", "finalising"
+        }
+        try:
+            offset = part.stat().st_size if part.is_file() \
+                else (int(metadata.get("size", 0)) if status in processing_statuses else 0)
+        except (OSError, TypeError, ValueError):
+            offset = 0
+        return {
+            "id": upload_id,
+            "offset": offset,
+            "complete": False,
+            "processing": status in processing_statuses,
+            "status": status,
+            "error": metadata.get("error"),
+        }
+
     def append_upload(self, upload_id: str, offset: int, content: bytes) -> dict[str, Any]:
+        with self.config_lock:
+            lock = self.upload_locks.setdefault(upload_id, threading.Lock())
+        with lock:
+            return self._append_upload(upload_id, offset, content)
+
+    def _append_upload(self, upload_id: str, offset: int, content: bytes) -> dict[str, Any]:
         meta = self.upload_meta(upload_id)
         part = self.incoming / (upload_id + ".part")
         current = part.stat().st_size if part.exists() else 0
@@ -201,23 +1242,118 @@ class Library:
             raise ValueError("Invalid upload chunk")
         with part.open("ab") as output:
             output.write(content)
+            output.flush()
+            os.fsync(output.fileno())
         current += len(content)
         result = {"offset": current, "complete": current == int(meta["size"])}
+        meta["updated"] = time.time()
         if result["complete"]:
-            channel = self.channel(int(meta["channel"]))
-            destination = self.safe_media_path(channel, str(meta["file_name"]))
-            if destination.exists():
-                raise ValueError("A file with that name already exists in this channel")
-            self.probe(part)
-            os.replace(part, destination)
-            (self.incoming / (upload_id + ".json")).unlink(missing_ok=True)
-            result["refreshed"] = self.refresh_tv()
+            # Persist receipt before any potentially slow probe. The one media
+            # worker validates, converts if necessary, publishes, then refreshes
+            # the TV. A lost final PATCH response can therefore be polled safely.
+            meta["status"] = "validating"
+            meta["updated"] = time.time()
+            self.write_json(self.incoming / (upload_id + ".json"), meta)
+            self.queue_conversion(upload_id)
+            result["complete"] = False
+            result["processing"] = True
+            result["status"] = "validating"
+            result["id"] = upload_id
+        else:
+            # One small atomic manifest update per 8 MiB chunk makes recent
+            # activity survive a watchdog/service restart and resets the
+            # seven-day abandonment clock.
+            self.write_json(self.incoming / (upload_id + ".json"), meta)
         return result
 
-    def manage(self, payload: dict[str, Any]) -> None:
+    def manage(self, payload: dict[str, Any]) -> bool:
+        # Channel changes and upload admission share the same lock so a channel
+        # cannot be renumbered or deleted between an upload check and creation.
+        if payload.get("action") == "refresh":
+            return self.refresh_tv()
+        with self.config_lock:
+            self._manage(payload)
+        return self.refresh_tv()
+
+    def _manage(self, payload: dict[str, Any]) -> None:
         action = payload.get("action")
-        if action == "refresh":
-            self.refresh_tv(); return
+        if action == "add-channel":
+            new_channel = {
+                "number": payload.get("number"),
+                "name": payload.get("name"),
+                "folder": payload.get("folder"),
+                "aspect": payload.get("aspect", "crop"),
+            }
+            def add(values: list[dict[str, Any]]) -> None:
+                values.append(new_channel)
+            self.update_channels(add)
+            channel = self.channel(int(payload.get("number")))
+            (self.media_root / str(channel["folder"])).mkdir(mode=0o750, exist_ok=True)
+            return
+        if action == "update-channel":
+            original_number = int(payload.get("original_number"))
+            new_number = int(payload.get("number", original_number))
+            if new_number != original_number and any(
+                    job.get("channel") == original_number
+                    and job.get("status") != "refresh-error"
+                    for job in self.upload_jobs()):
+                raise ValueError(
+                    "Finish or cancel this channel's uploads before changing its number")
+            def update(values: list[dict[str, Any]]) -> None:
+                for value in values:
+                    if int(value.get("number", -1)) == original_number:
+                        value["number"] = new_number
+                        value["name"] = payload.get("name", value.get("name"))
+                        value["aspect"] = payload.get("aspect", value.get("aspect", "crop"))
+                        return
+                raise ValueError("Channel not found")
+            with self.config_lock:
+                self.update_channels(update)
+                if new_number != original_number:
+                    def move_visibility(library: dict[str, Any]) -> None:
+                        disabled_channels = set(library.get("disabled_channels", []))
+                        if original_number in disabled_channels:
+                            disabled_channels.discard(original_number)
+                            disabled_channels.add(new_number)
+                        library["disabled_channels"] = sorted(disabled_channels)
+                        disabled = library.setdefault("disabled_programmes", {})
+                        old_values = set(disabled.pop(str(original_number), []))
+                        if old_values:
+                            old_values.update(disabled.get(str(new_number), []))
+                            disabled[str(new_number)] = sorted(old_values)
+                    self.update_settings(move_visibility)
+            return
+        if action == "delete-channel":
+            number = int(payload.get("channel"))
+            channel = self.channel(number)
+            if any(job.get("channel") == number and job.get("status") != "refresh-error"
+                   for job in self.upload_jobs()):
+                raise ValueError(
+                    "Finish or cancel this channel's uploads before deleting it")
+            folder = self.media_root / str(channel["folder"])
+            if folder.is_dir() and any(item.is_file() and item.suffix.lower() in SUPPORTED_EXTENSIONS
+                                       for item in folder.iterdir()):
+                raise ValueError("Move this channel's programmes to the recycle bin before deleting it")
+            for manifest_path in self.bin.glob("*/manifest.json"):
+                recycled = self.read_json(manifest_path, {})
+                if recycled.get("folder") == channel.get("folder"):
+                    raise ValueError(
+                        "Restore or permanently delete this channel's recycled programmes first")
+            def delete(values: list[dict[str, Any]]) -> None:
+                values[:] = [value for value in values
+                             if int(value.get("number", -1)) != number]
+                if not values:
+                    raise ValueError("Mabel TV must keep at least one channel")
+            self.update_channels(delete)
+            def remove_visibility(library: dict[str, Any]) -> None:
+                disabled_channels = set(library.get("disabled_channels", []))
+                disabled_channels.discard(number)
+                library["disabled_channels"] = sorted(disabled_channels)
+                library.setdefault("disabled_programmes", {}).pop(str(number), None)
+            self.update_settings(remove_visibility)
+            if folder.is_dir() and not any(folder.iterdir()):
+                folder.rmdir()
+            return
         if action in {"toggle-channel", "toggle-programme", "rename", "trash"}:
             channel = self.channel(int(payload.get("channel")))
         if action == "toggle-channel":
@@ -245,8 +1381,17 @@ class Library:
             source = self.safe_media_path(channel, str(payload.get("file", "")))
             if not source.is_file(): raise ValueError("Programme not found")
             item_id = f"{int(time.time())}-{uuid.uuid4().hex[:8]}"; destination_dir = self.bin / item_id; destination_dir.mkdir(mode=0o750)
-            shutil.move(str(source), str(destination_dir / source.name))
-            self.write_json(destination_dir / "manifest.json", {"id": item_id, "file_name": source.name, "folder": channel["folder"], "channel_name": channel["name"]})
+            # Persist recovery metadata before moving the only media copy. A
+            # power loss after the move can then never make the video invisible.
+            self.write_json(destination_dir / "manifest.json", {
+                "id": item_id, "file_name": source.name,
+                "folder": channel["folder"], "channel_name": channel["name"],
+            })
+            try:
+                shutil.move(str(source), str(destination_dir / source.name))
+            except Exception:
+                shutil.rmtree(destination_dir, ignore_errors=True)
+                raise
         elif action in {"restore", "delete"}:
             item_id = str(payload.get("id", "")); directory = self.bin / item_id
             if not re.fullmatch(r"\d+-[a-f0-9]{8}", item_id) or not directory.is_dir(): raise ValueError("Recycle-bin item not found")
@@ -259,72 +1404,206 @@ class Library:
                 shutil.rmtree(directory)
         else:
             raise ValueError("Unknown library action")
-        self.refresh_tv()
 
 
 class Handler(BaseHTTPRequestHandler):
     server: "LibraryServer"
+    # Phone browsers can upload several chunks over one keep-alive connection.
+    # HTTP/1.0 forces a close after every response and caused some phones to
+    # stall before opening the next chunk request.
+    protocol_version = "HTTP/1.1"
+
+    def setup(self) -> None:
+        super().setup()
+        self.connection.settimeout(120)
+
     def log_message(self, fmt: str, *args: Any) -> None: return
+
+    def unexpected(self, operation: str, error: Exception) -> None:
+        print(f"{operation} failed: {error}", file=sys.stderr, flush=True)
+
+    def security_headers(self) -> None:
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("Content-Security-Policy",
+                         "default-src 'self'; style-src 'self' 'unsafe-inline'; "
+                         "script-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+                         "frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+
     def json(self, status: int, value: dict[str, Any], cookie: str | None = None) -> None:
-        data = json.dumps(value).encode(); self.send_response(status); self.send_header("Content-Type", "application/json"); self.send_header("Content-Length", str(len(data))); self.send_header("Cache-Control", "no-store")
+        data = json.dumps(value).encode(); self.send_response(status); self.send_header("Content-Type", "application/json"); self.send_header("Content-Length", str(len(data))); self.send_header("Cache-Control", "no-store"); self.security_headers()
         if cookie: self.send_header("Set-Cookie", cookie)
         self.end_headers(); self.wfile.write(data)
+
+    def file(self, path: Path, download_name: str) -> None:
+        size = path.stat().st_size
+        self.send_response(200)
+        self.send_header("Content-Type", "application/gzip")
+        self.send_header("Content-Disposition", f'attachment; filename="{download_name}"')
+        self.send_header("Content-Length", str(size))
+        self.send_header("Cache-Control", "no-store")
+        self.security_headers()
+        self.end_headers()
+        with path.open("rb") as source:
+            shutil.copyfileobj(source, self.wfile, 1024 * 1024)
+
     def body(self) -> dict[str, Any]:
         length = int(self.headers.get("Content-Length", "0"));
         if length > 64 * 1024: raise ValueError("Request is too large")
-        return json.loads(self.rfile.read(length) or b"{}")
-    def authorised(self) -> bool:
+        value = json.loads(self.rfile.read(length) or b"{}")
+        if not isinstance(value, dict): raise ValueError("Request must be a JSON object")
+        return value
+
+    def session_token(self) -> str | None:
         cookie = SimpleCookie(self.headers.get("Cookie")); token = cookie.get("mabeltv_library")
-        return bool(token and self.server.library.sessions.get(token.value, 0) > time.time())
+        return token.value if token else None
+
+    def authorised(self) -> bool:
+        return self.server.library.valid_session(self.session_token())
+
     def require(self) -> bool:
         if not self.authorised(): self.json(HTTPStatus.UNAUTHORIZED, {"error": "Parent PIN required"}); return False
         return True
+
+    def same_origin(self) -> bool:
+        origin = self.headers.get("Origin", "")
+        if not origin:
+            return True
+        host = self.headers.get("Host", "")
+        try:
+            return urlsplit(origin).netloc == host
+        except ValueError:
+            return False
+
+    def require_same_origin(self) -> bool:
+        if not self.same_origin():
+            self.json(HTTPStatus.FORBIDDEN, {"error": "This request did not come from Mabel TV"})
+            return False
+        return True
+
     def do_GET(self) -> None:
         try:
             if self.path == "/":
-                data = INDEX.encode(); self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8"); self.send_header("Content-Length", str(len(data))); self.end_headers(); self.wfile.write(data); return
+                data = INDEX.encode(); self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8"); self.send_header("Content-Length", str(len(data))); self.send_header("Cache-Control", "no-store"); self.security_headers(); self.end_headers(); self.wfile.write(data); return
+            if self.path == "/api/setup": self.json(200, self.server.library.public_setup()); return
             if not self.require(): return
             if self.path == "/api/library": self.json(200, self.server.library.library()); return
+            if self.path == "/api/status": self.json(200, self.server.library.live_status()); return
+            if self.path == "/api/support":
+                self.file(self.server.library.support_bundle(), "mabeltv-support.tar.gz"); return
             if self.path.startswith("/api/uploads/"):
-                meta = self.server.library.upload_meta(self.path.rsplit("/", 1)[1]); part = self.server.library.incoming / (meta["id"] + ".part"); self.json(200, {"id": meta["id"], "offset": part.stat().st_size if part.exists() else 0}); return
+                self.json(200, self.server.library.upload_status(self.path.rsplit("/", 1)[1])); return
             self.json(404, {"error": "Not found"})
         except ValueError as error: self.json(400, {"error": str(error)})
-        except Exception: self.json(500, {"error": "The library had an unexpected problem"})
+        except Exception as error:
+            self.unexpected("GET", error); self.json(500, {"error": "The library had an unexpected problem"})
     def do_POST(self) -> None:
         try:
+            if not self.require_same_origin(): return
+            address = self.client_address[0]
+            if self.path == "/api/setup/check":
+                if not self.server.library.login_allowed(address):
+                    self.json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "Too many attempts. Wait five minutes and try again."}); return
+                code = str(self.body().get("setup_code", ""))
+                if not self.server.library.verify_setup_code(code):
+                    self.server.library.record_login_failure(address)
+                    self.json(HTTPStatus.FORBIDDEN, {"error": "That setup code is not correct"}); return
+                self.server.library.clear_login_failures(address)
+                self.json(200, {"ok": True}); return
+            if self.path == "/api/setup":
+                if not self.server.library.login_allowed(address):
+                    self.json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "Too many attempts. Wait five minutes and try again."}); return
+                payload = self.body()
+                if not self.server.library.verify_setup_code(str(payload.get("setup_code", ""))):
+                    self.server.library.record_login_failure(address)
+                    self.json(HTTPStatus.FORBIDDEN, {"error": "That setup code is not correct"}); return
+                result = self.server.library.complete_setup(payload)
+                self.server.library.clear_login_failures(address)
+                self.json(200, result); return
             if self.path == "/api/login":
+                if not self.server.library.configured():
+                    self.json(HTTPStatus.CONFLICT, {"error": "Finish first-time setup before signing in"}); return
+                if not self.server.library.login_allowed(address):
+                    self.json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "Too many attempts. Wait five minutes and try again."}); return
                 pin = str(self.body().get("pin", ""))
-                if not hmac.compare_digest(pin, self.server.library.pin): self.json(403, {"error": "That PIN is not correct"}); return
-                token = secrets.token_urlsafe(32); self.server.library.sessions[token] = time.time() + SESSION_SECONDS; self.json(200, {"ok": True}, f"mabeltv_library={token}; HttpOnly; SameSite=Strict; Path=/; Max-Age={SESSION_SECONDS}"); return
-            if self.path == "/api/logout": self.json(200, {"ok": True}, "mabeltv_library=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0"); return
+                if not self.server.library.verify_pin(pin):
+                    self.server.library.record_login_failure(address)
+                    self.json(HTTPStatus.FORBIDDEN, {"error": "That PIN is not correct"}); return
+                self.server.library.clear_login_failures(address)
+                token = self.server.library.create_session(); self.json(200, {"ok": True}, f"mabeltv_library={token}; HttpOnly; SameSite=Strict; Path=/; Max-Age={SESSION_SECONDS}"); return
+            if self.path == "/api/logout":
+                self.server.library.revoke_session(self.session_token())
+                self.json(200, {"ok": True}, "mabeltv_library=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0"); return
             if not self.require(): return
             payload = self.body()
             if self.path == "/api/uploads": self.json(201, self.server.library.upload_create(payload)); return
-            if self.path == "/api/manage": self.server.library.manage(payload); self.json(200, {"ok": True}); return
+            if self.path.startswith("/api/uploads/"):
+                self.json(200, self.server.library.upload_action(
+                    self.path.rsplit("/", 1)[1], str(payload.get("action", "")))); return
+            if self.path == "/api/manage":
+                refreshed = self.server.library.manage(payload)
+                self.json(200, {
+                    "ok": True,
+                    "refreshed": refreshed,
+                    "message": "Done." if refreshed else
+                        "The change was saved, but the TV could not refresh. Use Refresh TV library to try again.",
+                }); return
+            if self.path == "/api/account":
+                self.server.library.change_pin(payload)
+                self.json(200, {"ok": True}, "mabeltv_library=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0"); return
+            if self.path == "/api/system":
+                output = self.server.library.admin_action(str(payload.get("action", "")))
+                self.json(200, {"ok": True, "message": output}); return
             self.json(404, {"error": "Not found"})
         except ValueError as error: self.json(400, {"error": str(error)})
-        except Exception: self.json(500, {"error": "The library had an unexpected problem"})
+        except Exception as error:
+            self.unexpected("POST", error); self.json(500, {"error": "The library had an unexpected problem"})
     def do_PATCH(self) -> None:
         try:
+            if not self.require_same_origin(): return
             if not self.require(): return
             if not self.path.startswith("/api/uploads/"): self.json(404, {"error": "Not found"}); return
             length = int(self.headers.get("Content-Length", "0"));
             if length <= 0 or length > CHUNK_LIMIT: raise ValueError("Invalid upload chunk")
             result = self.server.library.append_upload(self.path.rsplit("/", 1)[1], int(self.headers.get("Upload-Offset", "-1")), self.rfile.read(length)); self.json(200, result)
         except ValueError as error: self.json(400, {"error": str(error)})
-        except Exception: self.json(500, {"error": "The upload could not be completed"})
+        except Exception as error:
+            self.unexpected("PATCH", error); self.json(500, {"error": "The upload could not be completed"})
 
 
 class LibraryServer(ThreadingHTTPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+    request_queue_size = 16
+
     def __init__(self, address: tuple[str, int], library: Library) -> None:
-        super().__init__(address, Handler); self.library = library
+        super().__init__(address, Handler)
+        self.library = library
+        self.worker_slots = threading.BoundedSemaphore(12)
+
+    def process_request(self, request: Any, client_address: Any) -> None:
+        if not self.worker_slots.acquire(blocking=False):
+            self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, client_address)
+        except Exception:
+            self.worker_slots.release()
+            raise
+
+    def process_request_thread(self, request: Any, client_address: Any) -> None:
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self.worker_slots.release()
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Mabel TV local media library")
     parser.add_argument("--bind", default="0.0.0.0"); parser.add_argument("--port", type=int, default=8080)
     parser.add_argument("--media-root", default="/srv/mabeltv/media"); parser.add_argument("--channels", default="/var/lib/mabeltv/channels.json")
-    parser.add_argument("--settings", default="/var/lib/mabeltv/settings.json"); parser.add_argument("--config", default="/etc/mabeltv/library.conf")
+    parser.add_argument("--settings", default="/var/lib/mabeltv/settings.json"); parser.add_argument("--owner", default="/var/lib/mabeltv/owner.json"); parser.add_argument("--config", default="/etc/mabeltv/library.conf")
     args = parser.parse_args(); LibraryServer((args.bind, args.port), Library(args)).serve_forever()
 
 

@@ -1,163 +1,208 @@
-# Raspberry Pi installation
+# Raspberry Pi installation and lifecycle
 
-This runbook targets a Raspberry Pi 4 Model B with 1 GB RAM and Raspberry Pi OS Lite 64-bit. Complete the Windows acceptance checks first, then use a fresh microSD card for the appliance.
+This document is for installers, support staff, and owners who want the detail behind the one-command release bundle. Most owners should use [Quick start](quick-start.md).
 
-## 1. Prepare the Pi
+## Supported release target
 
-1. In Raspberry Pi Imager, select **Raspberry Pi OS Lite (64-bit)**.
-2. In the Imager customisation screen, set a hostname, username, password, Wi-Fi and locale; enable SSH while commissioning the unit.
-3. Write and verify the card, insert it, connect the Pi's HDMI 0 port (the micro-HDMI socket nearest USB-C power), then boot.
-4. Connect over SSH and bring the base system current:
+| Component | Supported baseline |
+| --- | --- |
+| Board | Raspberry Pi 4 Model B |
+| Memory | 2 GB or more |
+| OS | Raspberry Pi OS Lite 64-bit; `ID` and `VERSION_ID` must match the bundle's `SUPPORTED-OS.txt` and build manifest |
+| Display | either Pi 4 micro-HDMI connector; detected at launch |
+| Audio | matching HDMI ALSA device, selected at launch |
+| Storage | at least 4 GB free for installation, plus media capacity |
+| Cooling | ventilated case; a fan is strongly recommended behind a TV |
+| Input | USB keyboard/keyboard-style remote, or optional GPIO IR receiver |
 
-   ```bash
-   sudo apt update
-   sudo apt full-upgrade -y
-   sudo reboot
-   ```
+Pi 3, Pi Zero, 32-bit OS images, and machines with less than 2 GB RAM are refused because pretending to support them produces an unstable product. Pi 5 requires a separately qualified build and is not accepted by this release’s preflight.
 
-5. Copy this complete repository to the Pi, for example to `~/MabelTV`. Do not copy `out`, `dev-data`, or any Windows package.
+## Prepare Raspberry Pi OS
 
-## 2. Install Mabel TV
+Read the `SUPPORTED-OS.txt` published beside the chosen release before flashing. In Raspberry Pi Imager select **Raspberry Pi OS (other) → Raspberry Pi OS Lite (64-bit)** whose Debian version/codename matches it exactly. Do not use a Bookworm bundle on Trixie, a Trixie bundle on Bookworm, or a Pi 4 bundle on another board. The product installer verifies OS ID/version and stops before activation on a mismatch.
 
-From the repository root on the Pi:
+In Imager customisation:
 
-```bash
-sudo bash scripts/pi/install.sh --configure-boot
-```
+- set hostname, Wi-Fi, locale, username, and a strong password;
+- enable SSH for installation and support;
+- do not expose SSH or port 8080 to the internet.
 
-The installer confirms that it is running on an aarch64 Raspberry Pi, installs Debian/Raspberry Pi OS packages, compiles the native ARM64 release, runs its tests, and atomically selects the new release. It does not enable the television service yet.
-
-`--configure-boot` makes timestamped backups of `/boot/firmware/config.txt` and `cmdline.txt`, then:
-
-- enables the KY-022 receiver on BCM GPIO 18;
-- disables HDMI-CEC, including active-source messages;
-- selects quiet 1280×720 output for the initial 1 GB Pi setup.
-
-Review the reported backup paths. If the television is connected to the Pi's other HDMI socket, change `HDMI-A-1` to `HDMI-A-2` in `/boot/firmware/cmdline.txt`; Mabel TV is designed and tested around HDMI 0.
-
-Reboot before attempting remote setup:
+Connect the display and a keyboard, boot, then update the base OS. Installation needs internet access for package downloads:
 
 ```bash
+sudo apt update
+sudo apt full-upgrade -y
 sudo reboot
 ```
 
-## 3. Add media
+## Install a customer release bundle
 
-The Pi media root is:
-
-```text
-/srv/mabeltv/media
-```
-
-The supplied channel configuration expects:
+Release bundles are named for the qualified OS, for example:
 
 ```text
-/srv/mabeltv/media/
-├── postman-pat/
-├── fireman-sam/
-├── thomas/
-├── Waffle Dog/
-├── films/
-├── family/
-└── empty-channel/
+MabelTV-0.2.0-pi4-trixie-arm64.tar.gz
+MabelTV-0.2.0-pi4-trixie-arm64.tar.gz.sha256
 ```
 
-Copy your episodes and films into the corresponding folders. Leave `empty-channel` empty to retain the no-signal test on channel 99. Media never belongs inside the Git repository.
-
-One convenient transfer method from Windows PowerShell is:
-
-```powershell
-scp -r 'C:\Users\danco\Videos\MabelTV\*' pi-user@mabeltv.local:/tmp/mabeltv-media/
-```
-
-Then, on the Pi:
+Copy both files to the Pi. [Quick start](quick-start.md#2-copy-the-two-installation-files) gives complete Windows, macOS, and Linux `scp` examples. Verify the checksum supplied through the release channel, extract the archive, read its supported target, then run its only customer entry point:
 
 ```bash
-sudo mkdir -p /srv/mabeltv/media
-sudo cp -a /tmp/mabeltv-media/. /srv/mabeltv/media/
-sudo chown -R mabeltv:mabeltv /srv/mabeltv/media
-sudo -u mabeltv /opt/mabeltv/current/mabeltv_media_check \
-  --channels /var/lib/mabeltv/channels.json \
-  --media-root /srv/mabeltv/media \
-  --cache /var/lib/mabeltv/media-index.json
+sha256sum -c MabelTV-0.2.0-pi4-trixie-arm64.tar.gz.sha256
+tar -xzf MabelTV-0.2.0-pi4-trixie-arm64.tar.gz
+cd MabelTV-0.2.0-pi4-trixie-arm64
+less SUPPORTED-OS.txt
+sudo ./install-mabeltv
 ```
 
-An existing installation keeps its live `channels.json` during updates. Add the new Waffle Dog channel once with:
+Those are example Trixie names; substitute the one exact binary filename supplied for the chosen supported image. Do not use a wildcard when a corresponding-source archive is in the same directory.
+
+The product installer:
+
+1. checks Pi model, RAM, architecture, OS, storage, and recorded heat/power state;
+2. verifies the build manifest and both binary SHA-256 values;
+3. installs runtime dependencies and Avahi network discovery;
+4. runs the native libmpv self-test;
+5. stages a complete immutable release, including matching units/helpers/docs;
+6. preserves channels, settings, owner record, media, and a pre-install backup;
+7. validates Python, sudoers, and staged systemd units;
+8. activates the release last, starts or restarts the Library and player, waits for stable process identities, and restores the previous release and matching global assets if readiness fails;
+9. enables bounded logs, crash/boot evidence, retention, physical PIN recovery, and appliance mode.
+
+Reboot after the installer finishes. First-run instructions appear on the TV and in [Quick start](quick-start.md).
+
+## Source-tree installation for development
+
+A maintainer can still build on a Pi from a clean source checkout:
 
 ```bash
-sudo mabeltv-add-channel --number 4 --name "Waffle Dog" --folder "Waffle Dog" --aspect crop
+sudo bash scripts/pi/install.sh --product-install
 ```
 
-The command is safe to repeat and will not overwrite another channel using number 4 or the same folder.
+This installs the compiler/toolchain, builds with `MABELTV_PI_APPLIANCE=ON`, requires libsystemd, and runs every C++ and Python test before staging the release. It takes longer and can make the Pi warm, so it is not the customer distribution path.
 
-Supported containers are MP4, M4V, MKV, MOV, WebM, AVI, MPG, and MPEG. H.264 video with AAC audio at SD or 720p is the safest starting format for the 2 GB Pi 4. The validator rejects unreadable files before the child-facing player sees them.
-
-## 4. Wire and map the remote
-
-Follow [remote-setup.md](remote-setup.md). The system can be tested with a USB keyboard before the remote is ready.
-
-## 5. First appliance boot
-
-Validate the service manually while SSH remains available:
+Use `--enable-ir` only when a GPIO IR receiver is already wired to BCM 18:
 
 ```bash
-sudo systemctl start mabeltv.service
-systemctl status mabeltv.service --no-pager
-journalctl -u mabeltv.service -f
+sudo bash scripts/pi/install.sh --product-install --enable-ir
 ```
 
-On the TV, confirm picture, HDMI audio, channel changes, volume cap and standby. Stop it with `sudo systemctl stop mabeltv` if adjustments are needed.
+Then follow [Remote setup](remote-setup.md).
 
-When those checks pass:
+## Updates
+
+An update uses the same command from a newer, OS-matched release bundle:
 
 ```bash
-sudo systemctl enable mabeltv.service
-sudo reboot
+sudo ./install-mabeltv
 ```
 
-Mabel TV then owns tty1 and launches directly through Qt EGLFS/KMS without a desktop or login prompt. Keep SSH enabled until the soak test and acceptance checklist are complete; it can be disabled afterwards with `sudo raspi-config` if desired.
+The installer never replaces `/var/lib/mabeltv/channels.json`, `/var/lib/mabeltv/settings.json`, `/var/lib/mabeltv/owner.json`, or `/srv/mabeltv/media`. A running installation is restarted and checked. The exact previous release is recorded at `/opt/mabeltv/previous`.
 
-## 6. Parent mode and daily operation
-
-- Tap Power (`P` on a keyboard) for standby; tap it again to wake through the welcome intro.
-- Hold Power for five seconds for an orderly Pi shutdown. Wait until activity has stopped before removing power.
-- Hold Previous (`B`) for 3.5 seconds, then press OK three times, for parent controls.
-- Display output changes take effect after selecting **Restart Mabel TV**.
-
-The parent panel can select continuous/resume playback, per-channel/crop/fit/stretch picture handling, four thick TV cabinets, independent 0–100 CRT glass and steady analogue-ageing controls, 720p/1080p/native display output, volume-limit policy, TV sounds, library reload, application restart, exit, or shutdown. The removed rewind-on-return mode migrates safely to Resume.
-
-## 7. Back up and update
-
-Before changing media configuration or deploying a new build:
-
-```bash
-sudo mabeltv-backup
-```
-
-To deploy a newer checkout, run its installer again. The build is tested in a temporary directory, installed as a new timestamped release, and only then switches `/opt/mabeltv/current`. It does not overwrite channels or settings.
-
-To return to the previous installed release:
+Rollback both binaries and their matching system assets:
 
 ```bash
 sudo mabeltv-rollback
 ```
 
-Never interrupt an `apt` operation or the final release switch. Do not delete old releases until the new one has passed the soak test.
+A release that failed activation is marked and cannot accidentally become the default rollback target.
 
-## Maintenance console
+## Backups and retention
 
-SSH is the normal maintenance path. If local keyboard maintenance is needed, stop the appliance from SSH first:
-
-```bash
-sudo systemctl stop mabeltv.service
-sudo systemctl start getty@tty1.service
-```
-
-Log in on tty1, perform the maintenance, then restore appliance mode:
+Create an on-demand configuration backup:
 
 ```bash
-sudo systemctl stop getty@tty1.service
-sudo systemctl start mabeltv.service
+sudo mabeltv-backup
 ```
 
-Do not leave the login prompt enabled on a child-facing finished unit.
+Automatic retention keeps:
+
+- current and previous releases plus two additional recent releases;
+- eight recent pre-install backups;
+- twenty recent recovery snapshots, with a 30-day maximum;
+- recycle-bin programmes for 30 days;
+- incomplete uploads for seven days;
+- generated support bundles for seven days.
+
+Live programmes are never removed by retention.
+
+## Health and support
+
+Run the friendly read-only check:
+
+```bash
+sudo mabeltv-doctor
+```
+
+Create a support archive from the dashboard, or in a terminal:
+
+```bash
+sudo mabeltv-diagnostics
+```
+
+The bundle includes recent service/kernel evidence, model, OS, memory, storage, HDMI/IR state, temperature/throttle state, process limits, and media compatibility summary. It excludes the parent PIN and video contents. Filenames can appear in media/error reports, so an owner should review that before sending it to support.
+
+## Forgotten parent PIN
+
+This recovery requires physical access to the boot microSD card or USB drive. It preserves media, channels, settings, and a recovery copy of the previous owner record.
+
+1. Hold the remote's `P` key for five seconds, or run `sudo poweroff` over SSH. Wait for shutdown, then remove the boot microSD card/USB drive.
+2. Insert it into another computer and open the small FAT boot partition (usually labelled `bootfs`).
+3. Create an empty file named exactly `mabeltv-reset-pin` (no `.txt` suffix).
+4. Return the card and boot the Pi.
+5. The TV shows a new one-time setup code. Complete setup and choose a new PIN.
+
+On Windows PowerShell, replace `E:` with the boot partition's drive letter:
+
+```powershell
+New-Item -ItemType File -Path 'E:\mabeltv-reset-pin'
+```
+
+In Windows File Explorer, the equivalent is to show filename extensions, create a new text document, and rename the whole file to `mabeltv-reset-pin` with no `.txt`. On macOS, when the partition is mounted as `bootfs`:
+
+```bash
+touch /Volumes/bootfs/mabeltv-reset-pin
+```
+
+On Linux, use the boot partition's actual mount path, for example:
+
+```bash
+touch "/media/$USER/bootfs/mabeltv-reset-pin"
+```
+
+The marker is consumed once. The previous owner record is retained in `/var/lib/mabeltv/recovery/` for support recovery.
+
+## Uninstall
+
+Read the choices first:
+
+```bash
+sudo mabeltv-uninstall --help
+```
+
+Remove software while retaining videos, settings, and backups:
+
+```bash
+sudo mabeltv-uninstall --yes
+```
+
+Only the explicit destructive option removes owner data:
+
+```bash
+sudo mabeltv-uninstall --yes --purge-data
+```
+
+The uninstaller removes the marked Mabel TV `config.txt` block and only the exact command-line tokens recorded as Mabel TV additions. Unrelated tokens added later stay in place. If Mabel TV removed a pre-existing forced HDMI mode, that mode is restored only when the owner has not since chosen another one. Older hash-only installations retain a changed command line rather than risk discarding owner edits. Timestamped boot backups remain beside the originals.
+
+## Build a release bundle
+
+On the exact clean Pi/OS image used for qualification:
+
+```bash
+bash scripts/pi/make-release-bundle.sh
+```
+
+The production builder refuses dirty product source, verifies the recorded commit contains no known owner-specific maintenance helper, compiles an immutable export of that commit, runs all tests, records version/commit/build OS/binary checksums, and writes `SUPPORTED-OS.txt`. It produces the binary archive and an exact `git archive` source tarball from the same clean commit, each with its own checksum. `SECURITY.md`, `THIRD_PARTY_NOTICES.md`, `CHANGELOG.md`, privacy information, and a corresponding-source notice are included. Set `MABELTV_SIGNING_KEY` to add an ASCII-armoured detached GPG signature to both archives.
+
+`MABELTV_ALLOW_DIRTY_RELEASE=true` exists only to exercise the builder during development. Its filenames and manifest say `UNPUBLISHED-DIRTY`, and it must never be supplied to a customer.
+
+Do not publish a bundle until it passes [Release readiness](release-readiness.md) on real hardware.

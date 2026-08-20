@@ -16,15 +16,14 @@ if (-not $OutputRoot) {
 $OutputRoot = [System.IO.Path]::GetFullPath($OutputRoot)
 
 $episodes = @(
-    @{ Path = 'postman-pat\pat-01.mp4'; Hue = 0; Frequency = 440 },
-    @{ Path = 'postman-pat\pat-02.mp4'; Hue = 35; Frequency = 494 },
-    @{ Path = 'fireman-sam\sam-01.mp4'; Hue = 90; Frequency = 523 },
-    @{ Path = 'fireman-sam\sam-02.mp4'; Hue = 125; Frequency = 587 },
-    @{ Path = 'thomas\thomas-01.mp4'; Hue = 180; Frequency = 659 },
-    @{ Path = 'thomas\thomas-02.mp4'; Hue = 215; Frequency = 698 },
-    @{ Path = 'Waffle Dog\waffle-01.mp4'; Hue = 235; Frequency = 392 },
-    @{ Path = 'films\film-01.mp4'; Hue = 255; Frequency = 370 },
-    @{ Path = 'family\family-01.mp4'; Hue = 275; Frequency = 330 }
+    @{ Path = 'kids-tv\kids-01.mp4'; Hue = 0; Frequency = 440 },
+    @{ Path = 'kids-tv\kids-02.mp4'; Hue = 35; Frequency = 494 },
+    @{ Path = 'cartoons\cartoon-01.mp4'; Hue = 90; Frequency = 523 },
+    @{ Path = 'cartoons\cartoon-02.mp4'; Hue = 125; Frequency = 587 },
+    @{ Path = 'films\film-01.mp4'; Hue = 180; Frequency = 659 },
+    @{ Path = 'films\film-02.mp4'; Hue = 215; Frequency = 698 },
+    @{ Path = 'family\family-01.mp4'; Hue = 260; Frequency = 349 },
+    @{ Path = 'family\family-02.mp4'; Hue = 325; Frequency = 294 }
 )
 
 foreach ($episode in $episodes) {
@@ -49,5 +48,4 @@ foreach ($episode in $episodes) {
     }
 }
 
-New-Item -ItemType Directory -Force -Path (Join-Path $OutputRoot 'empty-channel') | Out-Null
 Write-Output $OutputRoot

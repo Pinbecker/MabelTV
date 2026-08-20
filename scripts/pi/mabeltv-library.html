@@ -1,0 +1,868 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#14352f">
+  <title>Mabel TV</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17221e;
+      --soft-ink: #52625b;
+      --cream: #fff8e8;
+      --paper: #fffdf7;
+      --green: #14352f;
+      --green-2: #236859;
+      --mint: #dff2df;
+      --amber: #f1b653;
+      --amber-soft: #fff0c9;
+      --red: #a9392d;
+      --red-soft: #f9dfda;
+      --line: #d8d8ca;
+      --shadow: 0 10px 30px #14352f17;
+    }
+    * { box-sizing: border-box; }
+    html { background: #ede8d8; }
+    body { margin: 0; color: var(--ink); background: linear-gradient(150deg, #f8edcf 0, #e7eddf 52%, #dce8e2 100%); font: 16px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; min-height: 100vh; }
+    button, input, select { font: inherit; }
+    button, .button { min-height: 44px; border: 0; border-radius: 10px; padding: 10px 16px; background: var(--green-2); color: white; font-weight: 750; cursor: pointer; text-align: center; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+    button:hover, .button:hover { filter: brightness(.94); }
+    button:focus-visible, input:focus-visible, select:focus-visible, .button:focus-visible { outline: 4px solid #f1b65388; outline-offset: 2px; }
+    button.secondary, .button.secondary { background: #e6ece8; color: var(--green); }
+    button.danger { background: var(--red); }
+    button.link { min-height: auto; background: transparent; color: var(--green-2); padding: 4px; text-decoration: underline; }
+    button:disabled { opacity: .55; cursor: wait; }
+    input, select { width: 100%; min-height: 46px; border: 2px solid #bdc8c0; border-radius: 9px; padding: 9px 11px; color: var(--ink); background: white; }
+    label { display: grid; gap: 6px; font-weight: 700; }
+    label small { font-weight: 450; color: var(--soft-ink); }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 7px; font: 850 clamp(2.1rem, 6vw, 3.6rem)/.95 Georgia, serif; letter-spacing: -.04em; }
+    h2 { margin-bottom: 8px; font-size: clamp(1.35rem, 4vw, 1.8rem); }
+    h3 { margin-bottom: 6px; font-size: 1.05rem; }
+    .hidden { display: none !important; }
+    .muted { color: var(--soft-ink); }
+    .small { font-size: .88rem; }
+    .eyebrow { margin: 0 0 5px; color: var(--green-2); font-size: .78rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+    .shell { width: min(1180px, calc(100% - 28px)); margin: 0 auto; padding: 24px 0 54px; }
+    .card { background: var(--paper); border: 1px solid #ffffff; border-radius: 19px; box-shadow: var(--shadow); padding: clamp(18px, 4vw, 28px); margin: 16px 0; }
+    .narrow { width: min(700px, 100%); margin: min(8vh, 70px) auto 0; }
+    .row { display: flex; gap: 11px; align-items: center; flex-wrap: wrap; }
+    .row > .grow { flex: 1 1 240px; }
+    .field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .field-grid .wide { grid-column: 1 / -1; }
+    .callout { border-radius: 12px; padding: 14px 16px; margin: 15px 0; background: var(--mint); border-left: 5px solid var(--green-2); }
+    .callout.warn { background: var(--amber-soft); border-left-color: var(--amber); }
+    .callout.bad { background: var(--red-soft); border-left-color: var(--red); }
+    .brand-mark { width: 48px; height: 39px; border: 5px solid currentColor; border-radius: 11px; display: inline-block; position: relative; margin-bottom: 15px; }
+    .brand-mark:after { content: ""; position: absolute; width: 8px; height: 8px; border-radius: 50%; background: currentColor; right: 5px; bottom: 5px; }
+    .step-list { display: flex; gap: 8px; padding: 0; margin: 22px 0; list-style: none; counter-reset: setup; }
+    .step-list li { flex: 1; border-top: 5px solid #c9d3cc; padding-top: 8px; color: var(--soft-ink); font-size: .82rem; font-weight: 750; }
+    .step-list li.active { border-color: var(--green-2); color: var(--green); }
+    .channel-setup { border: 1px solid var(--line); border-radius: 12px; padding: 13px; margin: 10px 0; }
+    .channel-setup-fields { display: grid; grid-template-columns: 90px minmax(150px, 1fr) minmax(130px, .65fr) auto; gap: 9px; align-items: end; }
+    .setup-actions { justify-content: space-between; margin-top: 22px; }
+    .topbar { display: flex; gap: 16px; align-items: center; margin-bottom: 14px; }
+    .topbar .brand-mark { width: 39px; height: 32px; border-width: 4px; margin: 0; flex: none; }
+    .topbar strong { font: 800 1.32rem Georgia, serif; }
+    .topbar .spacer { flex: 1; }
+    .health-pill { border-radius: 99px; padding: 7px 12px; background: var(--mint); color: #174b3e; font-size: .86rem; font-weight: 800; }
+    .health-pill.bad { background: var(--amber-soft); color: #724b09; }
+    nav { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; background: #fff9; border-radius: 14px; padding: 6px; position: sticky; top: 7px; z-index: 4; backdrop-filter: blur(10px); box-shadow: 0 6px 18px #14352f12; }
+    nav button { min-width: 0; background: transparent; color: var(--soft-ink); padding: 10px 8px; }
+    nav button.active { background: var(--green); color: white; }
+    .view { display: none; }
+    .view.active { display: block; }
+    .hero { display: grid; grid-template-columns: 1.4fr .8fr; gap: 18px; align-items: stretch; }
+    .hero .card { margin: 16px 0 0; }
+    .hero-health { color: white; background: var(--green); position: relative; overflow: hidden; }
+    .hero-health:after { content: ""; width: 220px; height: 220px; position: absolute; right: -80px; bottom: -100px; border: 35px solid #ffffff12; border-radius: 50%; }
+    .hero-health .eyebrow, .hero-health .muted { color: #c9ded7; }
+    .hero-health h2 { font-size: clamp(1.8rem, 5vw, 2.7rem); }
+    .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 17px; }
+    .stat { border-radius: 11px; background: #ffffff12; padding: 12px; min-width: 0; }
+    .stat strong { display: block; font-size: 1.18rem; overflow-wrap: anywhere; }
+    .stat span { font-size: .78rem; color: #c9ded7; }
+    .quick { display: grid; gap: 10px; margin-top: 15px; }
+    .quick button { width: 100%; justify-content: flex-start; }
+    .programme { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 2px; border-top: 1px solid var(--line); }
+    .programme-name { overflow-wrap: anywhere; }
+    .programme-actions { display: flex; gap: 7px; flex-wrap: wrap; justify-content: end; }
+    .programme-actions button { min-height: 38px; padding: 7px 11px; font-size: .88rem; }
+    .empty { border: 2px dashed #cbd2cc; border-radius: 12px; padding: 24px; text-align: center; color: var(--soft-ink); }
+    .upload-box { border: 2px dashed #afc4b7; border-radius: 15px; padding: clamp(16px, 4vw, 25px); background: #f7fbf5; }
+    .upload-form { display: grid; grid-template-columns: minmax(180px, .7fr) minmax(230px, 1.25fr) auto; align-items: end; gap: 12px; }
+    progress { width: 100%; height: 22px; accent-color: var(--green-2); }
+    .notice { min-height: 24px; font-weight: 750; white-space: pre-wrap; }
+    .notice.bad { color: var(--red); }
+    .toolbar { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; margin: 15px 0; }
+    .toolbar label { min-width: 230px; flex: 1; }
+    .channel-heading { display: flex; justify-content: space-between; gap: 12px; align-items: start; flex-wrap: wrap; }
+    details { border: 1px solid var(--line); border-radius: 12px; padding: 13px 15px; margin: 10px 0; background: white; }
+    summary { cursor: pointer; font-weight: 800; }
+    .system-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .system-grid > .card { margin: 16px 0 0; }
+    .definition { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; margin: 16px 0 0; }
+    .definition dt { color: var(--soft-ink); }
+    .definition dd { margin: 0; text-align: right; font-weight: 750; overflow-wrap: anywhere; }
+    .danger-zone { border: 1px solid #e4b6ad; }
+    footer { text-align: center; color: var(--soft-ink); font-size: .85rem; margin-top: 24px; }
+    @media (max-width: 760px) {
+      .field-grid, .hero, .system-grid { grid-template-columns: 1fr; }
+      .channel-setup-fields, .upload-form { grid-template-columns: 1fr; }
+      .field-grid .wide { grid-column: auto; }
+      .stat-grid { grid-template-columns: 1fr 1fr; }
+      .programme { grid-template-columns: 1fr; }
+      .programme-actions { justify-content: start; }
+      nav button { font-size: .78rem; padding: 10px 4px; }
+      .health-pill { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section id="setup" class="card narrow hidden" aria-labelledby="setupTitle">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <p id="setupEyebrow" class="eyebrow">First-time setup</p>
+      <h1 id="setupTitle">Welcome to Mabel TV</h1>
+      <p id="setupIntro" class="muted">You only need to do this once. We’ll secure your TV, create its channels, and show you how to add programmes.</p>
+      <ol class="step-list" aria-label="Setup progress">
+        <li class="active" data-step-marker="1">Connect</li>
+        <li data-step-marker="2">Secure</li>
+        <li data-step-marker="3">Channels</li>
+      </ol>
+      <form id="setupForm">
+        <div class="setup-step" data-step="1">
+          <h2>Connect this TV</h2>
+          <p>Enter the six-digit setup code shown on the Mabel TV screen or at the end of installation. It proves you are beside the Raspberry Pi.</p>
+          <label>Setup code
+            <input id="setupCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="123456" required>
+          </label>
+        </div>
+        <div class="setup-step hidden" data-step="2">
+          <h2>Choose your parent PIN</h2>
+          <p>This locks the grown-up browser dashboard. The television’s physical adult shortcut is separate, so children cannot stumble into it while watching. Use 4–8 numbers they will not guess.</p>
+          <div class="field-grid">
+            <label>Your name <small>Used only on this Mabel TV</small>
+              <input id="ownerName" autocomplete="name" maxlength="60" placeholder="Alex">
+            </label>
+            <span></span>
+            <label>New parent PIN
+              <input id="setupPin" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required>
+            </label>
+            <label>Repeat parent PIN
+              <input id="setupPinAgain" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required>
+            </label>
+          </div>
+        </div>
+        <div class="setup-step hidden" data-step="3">
+          <h2>Start with a few channels</h2>
+          <p>You can rename, add, or remove channels later. “Fill screen” gives the familiar edge-to-edge TV look; “Show whole picture” keeps every part of the video visible.</p>
+          <div id="setupChannels"></div>
+          <button id="addSetupChannel" type="button" class="secondary">+ Add another channel</button>
+        </div>
+        <p id="setupError" class="notice bad" role="alert"></p>
+        <div class="row setup-actions">
+          <button id="setupBack" type="button" class="secondary hidden">Back</button>
+          <span class="grow"></span>
+          <button id="setupNext" type="button">Continue</button>
+          <button id="setupFinish" type="submit" class="hidden">Finish setup</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="login" class="card narrow hidden" aria-labelledby="loginTitle">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <p class="eyebrow">Grown-ups only</p>
+      <h1 id="loginTitle">Mabel TV</h1>
+      <p class="muted">Add programmes, manage channels, and check that your Raspberry Pi is happy.</p>
+      <form id="loginForm">
+        <label>Parent PIN
+          <input id="pin" inputmode="numeric" autocomplete="current-password" type="password" pattern="[0-9]{4,8}" maxlength="8" required autofocus>
+        </label>
+        <p id="loginError" class="notice bad" role="alert"></p>
+        <button type="submit">Open Mabel TV</button>
+      </form>
+      <details style="margin-top:18px">
+        <summary>Forgot the parent PIN?</summary>
+        <p class="muted small">Shut down the Raspberry Pi, connect its boot microSD card or USB drive to a computer, and create an empty file named <code>mabeltv-reset-pin</code> on the visible boot drive. Put it back and start Mabel TV. A new setup code will appear; your videos and channels stay untouched.</p>
+      </details>
+    </section>
+
+    <section id="app" class="hidden">
+      <header class="topbar">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <h1 style="font:800 1.32rem Georgia,serif;margin:0">Mabel TV</h1>
+        <span class="spacer"></span>
+        <span id="topHealth" class="health-pill">Checking…</span>
+        <button id="logout" class="secondary">Lock</button>
+      </header>
+      <nav aria-label="Mabel TV sections">
+        <button class="active" data-view-button="overview" aria-current="page">Overview</button>
+        <button data-view-button="add">Add media</button>
+        <button data-view-button="channels">Channels</button>
+        <button data-view-button="system">Help &amp; system</button>
+      </nav>
+      <p id="notice" class="notice" role="status" aria-live="polite"></p>
+
+      <section id="view-overview" class="view active">
+        <div class="hero">
+          <article class="card hero-health">
+            <p class="eyebrow">This Mabel TV</p>
+            <h2 id="healthTitle">Checking everything…</h2>
+            <p id="healthSummary" class="muted">One moment while Mabel TV checks the player, temperature, power, and storage.</p>
+            <div class="stat-grid">
+              <div class="stat"><strong id="temperature">—</strong><span>Pi temperature</span></div>
+              <div class="stat"><strong id="storageFree">—</strong><span>Storage free</span></div>
+              <div class="stat"><strong id="uptime">—</strong><span>Time running</span></div>
+            </div>
+          </article>
+          <article class="card">
+            <p class="eyebrow">Quick actions</p>
+            <h2>What would you like to do?</h2>
+            <div class="quick">
+              <button data-go="add">＋ Add a programme</button>
+              <button data-go="channels" class="secondary">☰ Manage channels</button>
+              <button id="refreshLibrary" class="secondary">↻ Refresh TV library</button>
+            </div>
+          </article>
+        </div>
+        <article id="warningsCard" class="card hidden">
+          <p class="eyebrow">Needs attention</p>
+          <h2>A small job will keep things running well</h2>
+          <div id="warnings"></div>
+        </article>
+        <article class="card">
+          <p class="eyebrow">At a glance</p>
+          <h2>Your television library</h2>
+          <div id="librarySummary" class="stat-grid"></div>
+        </article>
+      </section>
+
+      <section id="view-add" class="view">
+        <article class="card">
+          <p class="eyebrow">Add media</p>
+          <h2>Put a programme on Mabel TV</h2>
+          <p>Choose a channel and a video from this phone or computer. Large or high-frame-rate phone videos are prepared automatically for smooth Raspberry Pi playback. Prepared TV episodes and ordinary MP4 files are left alone.</p>
+          <div class="callout">Uploads safely resume if Wi-Fi drops. Once the upload reaches 100%, you may close this page while Mabel TV checks or prepares the video.</div>
+          <form id="uploadForm" class="upload-box upload-form">
+            <label>Put it on
+              <select id="channel" required></select>
+            </label>
+            <label>Choose a video
+              <input id="file" type="file" accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg" required>
+            </label>
+            <button id="uploadButton" type="submit">Upload</button>
+          </form>
+          <div id="uploadState" class="hidden callout" aria-live="polite">
+            <p id="uploadText">Preparing…</p>
+            <progress id="progress" max="1" value="0"></progress>
+          </div>
+        </article>
+        <article class="card">
+          <h2>Uploads and preparation</h2>
+          <p class="muted">You can close this page after the upload reaches 100%. Mabel TV keeps checking and preparing it in the background.</p>
+          <div id="uploadJobs" aria-live="polite">No videos are waiting.</div>
+        </article>
+        <article class="card">
+          <h2>Good file names make a tidy TV guide</h2>
+          <p class="muted">For a series, name episodes like <strong>S01E02 - The Picnic.mp4</strong>. Mabel TV turns that into a friendly episode label. Films and home videos can use any clear name.</p>
+        </article>
+      </section>
+
+      <section id="view-channels" class="view">
+        <article class="card">
+          <p class="eyebrow">Channels</p>
+          <h2>Channels and programmes</h2>
+          <div class="toolbar">
+            <label>Show channel
+              <select id="manageChannel"></select>
+            </label>
+            <span id="channelSummary" class="muted"></span>
+          </div>
+          <div id="channels"></div>
+        </article>
+        <article class="card">
+          <h2>Edit this channel</h2>
+          <form id="editChannelForm" class="field-grid">
+            <label>Channel number
+              <input id="editChannelNumber" type="number" min="1" max="999" required>
+            </label>
+            <label>Channel name
+              <input id="editChannelName" maxlength="60" required>
+            </label>
+            <label>Picture mode
+              <select id="editChannelAspect"><option value="crop">Fill screen</option><option value="fit">Show whole picture</option><option value="stretch">Stretch to screen</option></select>
+            </label>
+            <span></span>
+            <div class="row wide">
+              <button type="submit">Save channel</button>
+              <button id="deleteChannel" type="button" class="danger">Delete empty channel</button>
+            </div>
+          </form>
+        </article>
+        <article class="card">
+          <h2>Add a new channel</h2>
+          <form id="addChannelForm" class="field-grid">
+            <label>Channel number
+              <input id="newChannelNumber" type="number" min="1" max="999" required>
+            </label>
+            <label>Channel name
+              <input id="newChannelName" maxlength="60" placeholder="Nature" required>
+            </label>
+            <label>Picture mode
+              <select id="newChannelAspect"><option value="crop">Fill screen</option><option value="fit">Show whole picture</option><option value="stretch">Stretch to screen</option></select>
+            </label>
+            <span></span>
+            <button type="submit">Add channel</button>
+          </form>
+        </article>
+        <article class="card">
+          <h2>Recycle bin</h2>
+          <p class="muted">Binned programmes stay here for 30 days unless you restore or permanently remove them sooner.</p>
+          <div id="bin"></div>
+        </article>
+      </section>
+
+      <section id="view-system" class="view">
+        <div class="system-grid">
+          <article class="card">
+            <p class="eyebrow">System</p>
+            <h2>Raspberry Pi status</h2>
+            <dl id="systemDetails" class="definition"></dl>
+            <div class="quick">
+              <button id="checkAgain" class="secondary">Check again</button>
+              <button id="restartPlayer" class="secondary">Restart TV player</button>
+              <a class="button secondary" href="/api/support" download>Download support bundle</a>
+            </div>
+            <p class="small muted">The support bundle contains diagnostics and recent logs, but never your parent PIN or video files.</p>
+          </article>
+          <article class="card">
+            <p class="eyebrow">Security</p>
+            <h2>Change parent PIN</h2>
+            <form id="pinForm">
+              <label>Current PIN<input id="currentPin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" required></label><br>
+              <label>New PIN<input id="newPin" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required></label><br>
+              <label>Repeat new PIN<input id="newPinAgain" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required></label><br>
+              <button type="submit">Change PIN</button>
+            </form>
+          </article>
+        </div>
+        <article class="card">
+          <p class="eyebrow">Everyday help</p>
+          <h2>Using Mabel TV</h2>
+          <details><summary>How do I add a programme?</summary><p>Open <strong>Add media</strong>, choose its channel, choose a video, then tap Upload. It appears on the TV as soon as publishing finishes.</p></details>
+          <details><summary>How do I open the grown-up menu on the TV?</summary><p>Hold <strong>Back / Previous</strong> for 3.5 seconds, then press OK three times. This physical shortcut is separate from the browser PIN. The on-TV menu controls the CRT look, sound, remote lock, and playback settings.</p></details>
+          <details><summary>Which remote can I use?</summary><p>A USB keyboard or keyboard-style USB remote works immediately. The keys are listed in the owner guide. A GPIO infrared receiver and almost any IR remote can also be added, but it must be wired and learned using the optional IR setup guide.</p></details>
+          <details><summary>What if the picture freezes?</summary><p>First use <strong>Restart TV player</strong> above. If it happens again, download a support bundle immediately; it preserves the temperature, power, service, and crash evidence needed to identify the cause.</p></details>
+          <details><summary>Why is a phone video taking a while?</summary><p>Videos over 30 fps and large iPhone MOV files are converted to a Pi-friendly 720p/30 fps copy. Mabel TV pauses conversion if the Pi gets too hot, then resumes automatically after it cools.</p></details>
+        </article>
+        <article class="card danger-zone">
+          <p class="eyebrow">Power</p>
+          <h2>Restart or shut down the Raspberry Pi</h2>
+          <p class="muted">Use these controls instead of pulling the power cable. A safe shutdown protects the SD card.</p>
+          <div class="row">
+            <button id="rebootPi" class="secondary">Restart Raspberry Pi</button>
+            <button id="poweroffPi" class="danger">Shut down Raspberry Pi</button>
+          </div>
+        </article>
+      </section>
+      <footer>Mabel TV <span id="footerVersion"></span> · Local to your home network</footer>
+    </section>
+  </main>
+
+  <script>
+    const $ = selector => document.querySelector(selector)
+    const $$ = selector => [...document.querySelectorAll(selector)]
+    let library = null
+    let selectedManageChannel = null
+    let setupStep = 1
+    let setupChannels = []
+    let recoveringOwner = false
+
+    async function api(path, options = {}) {
+      const response = await fetch(path, {
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+        ...options
+      })
+      const body = await response.json().catch(() => ({}))
+      if (response.status === 401) {
+        showOnly('login')
+        $('#loginError').classList.add('bad')
+        $('#loginError').textContent = 'Your session was locked. Enter the parent PIN to continue.'
+        $('#pin').focus()
+        throw new Error('Your session was locked')
+      }
+      if (!response.ok) throw new Error(body.error || 'Mabel TV could not complete that request')
+      return body
+    }
+
+    function showOnly(id) {
+      for (const name of ['setup', 'login', 'app']) $('#' + name).classList.toggle('hidden', name !== id)
+    }
+
+    function notice(message = '', bad = false) {
+      $('#notice').textContent = message
+      $('#notice').classList.toggle('bad', bad)
+      if (message) window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+
+    function slug(value) {
+      return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'channel'
+    }
+
+    function setupMarker() {
+      const finalStep = recoveringOwner ? 2 : 3
+      $$('.setup-step').forEach(section => section.classList.toggle('hidden', Number(section.dataset.step) !== setupStep))
+      $$('[data-step-marker]').forEach(marker => {
+        marker.classList.toggle('active', Number(marker.dataset.stepMarker) <= setupStep)
+        if (Number(marker.dataset.stepMarker) === setupStep) marker.setAttribute('aria-current', 'step')
+        else marker.removeAttribute('aria-current')
+      })
+      $('#setupBack').classList.toggle('hidden', setupStep === 1)
+      $('#setupNext').classList.toggle('hidden', setupStep === finalStep)
+      $('#setupFinish').classList.toggle('hidden', setupStep !== finalStep)
+      $('#setupError').textContent = ''
+      const heading = document.querySelector(`.setup-step[data-step="${setupStep}"] h2`)
+      if (heading) { heading.tabIndex = -1; heading.focus() }
+    }
+
+    function renderSetupChannels() {
+      const root = $('#setupChannels')
+      root.innerHTML = ''
+      setupChannels.forEach((channel, index) => {
+        const box = document.createElement('div')
+        box.className = 'channel-setup'
+        box.innerHTML = `<div class="channel-setup-fields" role="group" aria-label="Channel ${channel.number} ${escapeHtml(channel.name)}">
+          <label>Number<input type="number" min="1" max="999" data-setup-field="number" value="${channel.number}" required></label>
+          <label>Name<input maxlength="60" data-setup-field="name" value="${escapeHtml(channel.name)}" required></label>
+          <label>Picture<select data-setup-field="aspect"><option value="crop">Fill screen</option><option value="fit">Whole picture</option><option value="stretch">Stretch</option></select></label>
+          <button type="button" class="secondary" data-remove-channel="${index}" aria-label="Remove channel ${channel.number} ${escapeHtml(channel.name)}">Remove</button>
+        </div>`
+        box.querySelector('select').value = channel.aspect
+        box.querySelectorAll('[data-setup-field]').forEach(input => input.addEventListener('change', event => {
+          const field = event.target.dataset.setupField
+          setupChannels[index][field] = field === 'number' ? Number(event.target.value) : event.target.value
+          if (field === 'name') setupChannels[index].folder = slug(event.target.value)
+        }))
+        root.append(box)
+      })
+      $$('[data-remove-channel]').forEach(button => button.onclick = () => {
+        if (setupChannels.length === 1) { $('#setupError').textContent = 'Keep at least one channel.'; return }
+        setupChannels.splice(Number(button.dataset.removeChannel), 1)
+        renderSetupChannels()
+      })
+    }
+
+    function escapeHtml(value) {
+      const span = document.createElement('span')
+      span.textContent = String(value)
+      return span.innerHTML
+    }
+
+    async function initialise() {
+      try {
+        const state = await api('/api/setup')
+        if (!state.configured) {
+          recoveringOwner = Boolean(state.recovering_owner)
+          setupChannels = state.default_channels.map(channel => ({ ...channel }))
+          if (recoveringOwner) {
+            $('#setupEyebrow').textContent = 'Parent PIN recovery'
+            $('#setupTitle').textContent = 'Reset your parent PIN'
+            $('#setupIntro').textContent = 'Your existing channels and videos will stay exactly as they are. Confirm the setup code, then choose a new parent PIN.'
+            $('[data-step-marker="3"]').classList.add('hidden')
+            $('#setupFinish').textContent = 'Reset parent PIN'
+          } else {
+            renderSetupChannels()
+          }
+          setupMarker()
+          showOnly('setup')
+        } else {
+          showOnly('login')
+        }
+      } catch (error) {
+        showOnly('login')
+        $('#loginError').textContent = 'Mabel TV is starting up. Refresh this page in a moment.'
+      }
+    }
+
+    $('#setupNext').onclick = async () => {
+      if (setupStep === 1 && !$('#setupCode').checkValidity()) { $('#setupCode').reportValidity(); return }
+      if (setupStep === 1) {
+        const button = $('#setupNext')
+        button.disabled = true
+        try {
+          await api('/api/setup/check', { method: 'POST', body: JSON.stringify({ setup_code: $('#setupCode').value }) })
+        } catch (error) {
+          $('#setupError').textContent = error.message
+          $('#setupCode').focus()
+          button.disabled = false
+          return
+        }
+        button.disabled = false
+      }
+      if (setupStep === 2) {
+        if (!$('#setupPin').checkValidity()) { $('#setupPin').reportValidity(); return }
+        if ($('#setupPin').value !== $('#setupPinAgain').value) { $('#setupError').textContent = 'The two PINs do not match.'; return }
+      }
+      setupStep++
+      setupMarker()
+    }
+    $('#setupBack').onclick = () => { setupStep--; setupMarker() }
+    $('#addSetupChannel').onclick = () => {
+      const used = new Set(setupChannels.map(channel => Number(channel.number)))
+      let number = 1
+      while (used.has(number)) number++
+      setupChannels.push({ number, name: 'New channel', folder: `channel-${number}`, aspect: 'crop' })
+      renderSetupChannels()
+    }
+    $('#setupForm').onsubmit = async event => {
+      event.preventDefault()
+      if ($('#setupPin').value !== $('#setupPinAgain').value) { setupStep = 2; setupMarker(); $('#setupError').textContent = 'The two PINs do not match.'; return }
+      const button = $('#setupFinish')
+      button.disabled = true
+      button.textContent = 'Setting up…'
+      try {
+        const setupPayload = { setup_code: $('#setupCode').value, owner_name: $('#ownerName').value, pin: $('#setupPin').value }
+        if (!recoveringOwner) setupPayload.channels = setupChannels
+        await api('/api/setup', { method: 'POST', body: JSON.stringify(setupPayload) })
+        showOnly('login')
+        $('#loginError').classList.remove('bad')
+        $('#loginError').textContent = recoveringOwner
+          ? 'Your parent PIN was reset. Your channels and videos were not changed.'
+          : 'Setup complete. Enter your new parent PIN to open Mabel TV.'
+        $('#pin').focus()
+      } catch (error) {
+        if (error.message.toLowerCase().includes('setup code')) { setupStep = 1; setupMarker() }
+        $('#setupError').textContent = error.message
+      } finally {
+        button.disabled = false
+        button.textContent = recoveringOwner ? 'Reset parent PIN' : 'Finish setup'
+      }
+    }
+
+    $('#loginForm').onsubmit = async event => {
+      event.preventDefault()
+      const button = event.submitter
+      button.disabled = true
+      try {
+        await api('/api/login', { method: 'POST', body: JSON.stringify({ pin: $('#pin').value }) })
+        $('#pin').value = ''
+        await load()
+        showOnly('app')
+      } catch (error) {
+        $('#loginError').classList.add('bad')
+        $('#loginError').textContent = error.message
+      } finally { button.disabled = false }
+    }
+    $('#logout').onclick = async () => { await api('/api/logout', { method: 'POST' }); location.reload() }
+
+    function openView(name) {
+      $$('.view').forEach(view => view.classList.toggle('active', view.id === `view-${name}`))
+      $$('[data-view-button]').forEach(button => {
+        const active = button.dataset.viewButton === name
+        button.classList.toggle('active', active)
+        if (active) button.setAttribute('aria-current', 'page')
+        else button.removeAttribute('aria-current')
+      })
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+    $$('[data-view-button]').forEach(button => button.onclick = () => openView(button.dataset.viewButton))
+    $$('[data-go]').forEach(button => button.onclick = () => openView(button.dataset.go))
+
+    function duration(seconds) {
+      if (!seconds) return 'Just started'
+      const days = Math.floor(seconds / 86400)
+      const hours = Math.floor((seconds % 86400) / 3600)
+      return days ? `${days}d ${hours}h` : `${hours}h ${Math.floor((seconds % 3600) / 60)}m`
+    }
+
+    async function load(preferredUploadChannel = null) {
+      library = await api('/api/library')
+      const channels = library.channels || []
+      const upload = $('#channel'), manageSelect = $('#manageChannel')
+      let uploadChoice = String(preferredUploadChannel ?? upload.value ?? '')
+      let manageChoice = String(selectedManageChannel ?? manageSelect.value ?? uploadChoice)
+      upload.innerHTML = ''
+      manageSelect.innerHTML = ''
+      channels.forEach(channel => {
+        for (const select of [upload, manageSelect]) {
+          const option = document.createElement('option')
+          option.value = channel.number
+          option.textContent = `CH ${channel.number} — ${channel.name}`
+          select.append(option)
+        }
+      })
+      if (!channels.some(channel => String(channel.number) === uploadChoice)) uploadChoice = String(channels[0]?.number ?? '')
+      if (!channels.some(channel => String(channel.number) === manageChoice)) manageChoice = uploadChoice
+      upload.value = uploadChoice
+      manageSelect.value = manageChoice
+      selectedManageChannel = Number(manageChoice)
+      renderStatus()
+      renderUploads()
+      renderChannels()
+    }
+
+    function renderStatus() {
+      const system = library.system || {}, storage = library.storage || {}, warnings = system.warnings || []
+      $('#topHealth').textContent = system.healthy ? 'Everything looks good' : `${warnings.length || 1} item needs attention`
+      $('#topHealth').classList.toggle('bad', !system.healthy)
+      $('#healthTitle').textContent = system.healthy ? 'Everything looks good' : 'Mabel TV needs a little attention'
+      $('#healthSummary').textContent = system.healthy ? 'The player, temperature, power, and storage checks are all healthy.' : (warnings[0] || 'Check the system details below.')
+      $('#temperature').textContent = system.temperature_c ? `${system.temperature_c.toFixed(1)}°C` : 'Unknown'
+      $('#storageFree').textContent = `${Number(storage.free_gb || 0).toFixed(1)} GB`
+      $('#uptime').textContent = duration(system.uptime_seconds)
+      $('#warningsCard').classList.toggle('hidden', warnings.length === 0)
+      $('#warnings').innerHTML = warnings.map(warning => `<div class="callout warn">${escapeHtml(warning)}</div>`).join('')
+      const enabled = library.channels.filter(channel => channel.enabled).length
+      const programmes = library.channels.reduce((total, channel) => total + channel.programmes.length, 0)
+      $('#librarySummary').innerHTML = `<div class="stat" style="background:#eef3ef"><strong>${enabled}</strong><span style="color:#52625b">active channels</span></div><div class="stat" style="background:#eef3ef"><strong>${programmes}</strong><span style="color:#52625b">programmes</span></div><div class="stat" style="background:#eef3ef"><strong>${Number(storage.used_gb || 0).toFixed(1)} GB</strong><span style="color:#52625b">storage used</span></div>`
+      $('#footerVersion').textContent = system.version || ''
+      $('#systemDetails').innerHTML = `<dt>TV player</dt><dd>${escapeHtml(system.player || 'unknown')}</dd><dt>Video preparation</dt><dd>${escapeHtml(system.media_worker || 'unknown')}</dd><dt>Temperature</dt><dd>${system.temperature_c ? `${system.temperature_c.toFixed(1)}°C` : 'unavailable'}</dd><dt>Power / heat limiting now</dt><dd>${system.currently_throttled ? 'Yes' : 'No'}</dd><dt>Since last boot</dt><dd>${system.historical_throttle ? 'A power or heat event occurred' : 'No limiting recorded'}</dd><dt>Storage</dt><dd>${Number(storage.free_gb || 0).toFixed(1)} GB free of ${Number(storage.total_gb || 0).toFixed(1)} GB</dd><dt>Uptime</dt><dd>${duration(system.uptime_seconds)}</dd><dt>Device</dt><dd>${escapeHtml(system.device_name || 'Mabel TV')}</dd><dt>Version</dt><dd>${escapeHtml(system.version || 'development')}</dd><dt>Last checked</dt><dd>${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</dd>`
+      if (library.owner?.pin_change_recommended) {
+        $('#warningsCard').classList.remove('hidden')
+      }
+    }
+
+    function renderUploads() {
+      const root = $('#uploadJobs'), jobs = library.uploads || []
+      if (!jobs.length) { root.innerHTML = '<p class="muted">No videos are waiting.</p>'; return }
+      const labels = {
+        uploading: 'Uploading', validating: 'Checking the video', queued: 'Waiting in the preparation queue',
+        processing: 'Preparing for smooth playback', publishing: 'Publishing', finalising: 'Refreshing the TV',
+        error: 'Needs attention', 'refresh-error': 'TV refresh needed'
+      }
+      root.innerHTML = jobs.map(job => {
+        const percent = job.size ? Math.min(100, Math.round((job.offset || 0) * 100 / job.size)) : 0
+        const detail = job.status === 'error'
+          ? `${escapeHtml(job.error || 'This video could not be prepared.')} Choose the original file above to try again.`
+          : job.status === 'refresh-error'
+            ? 'The video is safely stored, but the TV did not refresh. Retry it here.'
+            : `${escapeHtml(labels[job.status] || job.status)}${job.status === 'uploading' ? ` · ${percent}%` : ''}`
+        const actions = `${job.refreshable ? `<button type="button" class="secondary" data-upload-action="refresh" data-upload-id="${job.id}">Retry TV refresh</button>` : ''}${job.retryable ? `<button type="button" class="secondary" data-upload-action="retry" data-upload-id="${job.id}">Retry now</button>` : ''}${job.cancelable ? `<button type="button" class="secondary" data-upload-action="cancel" data-upload-id="${job.id}">${job.status === 'error' ? 'Dismiss' : 'Cancel upload'}</button>` : ''}`
+        return `<div class="callout ${['error', 'refresh-error'].includes(job.status) ? 'warn' : ''}"><strong>${escapeHtml(job.file_name)}</strong><br><span class="small muted">${escapeHtml(job.channel_name)} · ${detail}</span>${actions ? `<div class="row" style="margin-top:10px">${actions}</div>` : ''}</div>`
+      }).join('')
+      $$('[data-upload-action]').forEach(button => button.onclick = () => uploadQueueAction(
+        button.dataset.uploadId, button.dataset.uploadAction))
+    }
+
+    async function uploadQueueAction(id, action) {
+      if (action === 'cancel' && !confirm('Remove this upload and free the space it is using?')) return
+      try {
+        const result = await api('/api/uploads/' + id, {
+          method: 'POST', body: JSON.stringify({ action })
+        })
+        await refreshLiveStatus()
+        notice(result.message || 'Done.')
+      } catch (error) { notice(error.message, true) }
+    }
+
+    async function refreshLiveStatus() {
+      const fresh = await api('/api/status')
+      if (!library) return
+      library = { ...library, ...fresh }
+      renderStatus()
+      renderUploads()
+    }
+
+    function actionButton(text, action, kind = 'secondary') {
+      const button = document.createElement('button')
+      button.type = 'button'; button.textContent = text; button.className = kind; button.onclick = action
+      return button
+    }
+
+    function renderChannels() {
+      const channel = library.channels.find(value => value.number === selectedManageChannel)
+      const root = $('#channels')
+      root.innerHTML = ''
+      $('#channelSummary').textContent = channel ? `${channel.enabled_programmes} of ${channel.programmes.length} programmes enabled` : ''
+      if (channel) {
+        $('#editChannelNumber').value = channel.number
+        $('#editChannelName').value = channel.name
+        $('#editChannelAspect').value = channel.aspect || 'crop'
+        const heading = document.createElement('div')
+        heading.className = 'channel-heading'
+        const title = document.createElement('div')
+        title.innerHTML = `<h2>CH ${channel.number} · ${escapeHtml(channel.name)}</h2><p class="muted">${channel.enabled ? 'Shown on the TV' : 'Hidden from the TV'}</p>`
+        heading.append(title, actionButton(channel.enabled ? 'Hide channel' : 'Show channel', () => manage('toggle-channel', { channel: channel.number }), 'secondary'))
+        root.append(heading)
+        const list = document.createElement('div')
+        if (!channel.programmes.length) list.innerHTML = '<div class="empty">No programmes yet. Use Add media to put the first one here.</div>'
+        channel.programmes.forEach(programme => {
+          const row = document.createElement('div')
+          row.className = 'programme'
+          const name = document.createElement('span')
+          name.className = 'programme-name'; name.textContent = programme.display_name
+          const actions = document.createElement('div')
+          actions.className = 'programme-actions'
+          actions.append(actionButton(programme.enabled ? 'Hide' : 'Show', () => manage('toggle-programme', { channel: channel.number, file: programme.name })), actionButton('Rename', () => renameProgramme(channel, programme)), actionButton('Bin', () => { if (confirm(`Move “${programme.display_name}” to the recycle bin?`)) manage('trash', { channel: channel.number, file: programme.name }) }, 'danger'))
+          row.append(name, actions); list.append(row)
+        })
+        root.append(list)
+      }
+      const bin = $('#bin')
+      bin.innerHTML = ''
+      if (!library.recycle.length) bin.innerHTML = '<div class="empty">Nothing in the recycle bin.</div>'
+      library.recycle.forEach(item => {
+        const row = document.createElement('div'); row.className = 'programme'
+        const name = document.createElement('span'); name.textContent = `${item.display_name} · ${item.channel_name}`
+        const actions = document.createElement('div'); actions.className = 'programme-actions'
+        actions.append(actionButton('Restore', () => manage('restore', { id: item.id })), actionButton('Delete forever', () => { if (confirm('Permanently delete this video? This cannot be undone.')) manage('delete', { id: item.id }) }, 'danger'))
+        row.append(name, actions); bin.append(row)
+      })
+    }
+
+    let managementBusy = false
+    async function manage(action, extra = {}, preferredChannel = null) {
+      if (managementBusy) return
+      managementBusy = true
+      try {
+        notice('Working…')
+        const result = await api('/api/manage', { method: 'POST', body: JSON.stringify({ action, ...extra }) })
+        if (preferredChannel !== null) selectedManageChannel = Number(preferredChannel)
+        await load(preferredChannel)
+        notice(result.message || 'Done.', result.refreshed === false)
+      } catch (error) { notice(error.message, true) }
+      finally { managementBusy = false }
+    }
+
+    async function renameProgramme(channel, programme) {
+      const name = prompt('Programme name (keep S01E02 - at the start for episodes):', programme.display_name)
+      if (name && name.trim()) await manage('rename', { channel: channel.number, file: programme.name, name: name.trim() })
+    }
+
+    $('#manageChannel').onchange = event => { selectedManageChannel = Number(event.target.value); renderChannels() }
+    $('#refreshLibrary').onclick = () => manage('refresh')
+    $('#editChannelForm').onsubmit = async event => {
+      event.preventDefault()
+      const number = Number($('#editChannelNumber').value)
+      await manage('update-channel', { original_number: selectedManageChannel, number, name: $('#editChannelName').value, aspect: $('#editChannelAspect').value }, number)
+    }
+    $('#deleteChannel').onclick = () => {
+      const channel = library.channels.find(value => value.number === selectedManageChannel)
+      if (channel && confirm(`Delete the empty channel “${channel.name}”?`)) manage('delete-channel', { channel: channel.number })
+    }
+    $('#addChannelForm').onsubmit = async event => {
+      event.preventDefault()
+      const number = Number($('#newChannelNumber').value), name = $('#newChannelName').value.trim()
+      await manage('add-channel', { number, name, folder: slug(name), aspect: $('#newChannelAspect').value }, number)
+      event.target.reset()
+    }
+
+    function uploadChunk(id, offset, part, finalChunk = false) {
+      return new Promise((resolve, reject) => {
+        const request = new XMLHttpRequest()
+        request.open('PATCH', '/api/uploads/' + id, true)
+        request.withCredentials = true
+        request.timeout = finalChunk ? 2700000 : 30000
+        request.setRequestHeader('Upload-Offset', String(offset))
+        request.setRequestHeader('Content-Type', 'application/offset+octet-stream')
+        request.onload = () => {
+          let body = {}; try { body = JSON.parse(request.responseText) } catch (_) {}
+          if (request.status < 200 || request.status >= 300) { reject(new Error(body.error || 'Upload failed')); return }
+          resolve(body)
+        }
+        request.onerror = () => reject(new Error('The connection to Mabel TV was lost'))
+        request.ontimeout = () => reject(new Error(finalChunk ? 'Preparation is still taking a long time. Choose the same file to check or resume it.' : 'Mabel TV did not receive this upload part.'))
+        request.send(part)
+      })
+    }
+
+    async function resilientUploadChunk(id, offset, part, finalChunk = false) {
+      try { return await uploadChunk(id, offset, part, finalChunk) }
+      catch (error) {
+        const saved = await api('/api/uploads/' + id)
+        if (saved.status === 'error') throw new Error(saved.error || 'Mabel TV could not check this video')
+        if (saved.complete || saved.processing || saved.status === 'validating' ||
+            (Number.isFinite(saved.offset) && saved.offset > offset)) return saved
+        throw error
+      }
+    }
+
+    async function waitForPreparation(id) {
+      while (true) {
+        const state = await api('/api/uploads/' + id)
+        if (state.complete) return state
+        if (state.status === 'error') throw new Error(state.error || 'Mabel TV could not prepare this video')
+        const messages = {
+          validating: 'Checking that this is a playable video…',
+          queued: 'Waiting behind another video in the preparation queue…',
+          processing: 'Preparing the video for smooth Raspberry Pi playback…',
+          publishing: 'Publishing the prepared video…',
+          finalising: 'Refreshing the TV library…'
+        }
+        $('#uploadText').textContent = `${messages[state.status] || 'Finishing the video…'} You may close this page and return later.`
+        await new Promise(resolve => setTimeout(resolve, 2500))
+      }
+    }
+
+    $('#uploadForm').onsubmit = async event => {
+      event.preventDefault()
+      const file = $('#file').files[0]
+      if (!file) return
+      const channel = Number($('#channel').value), button = $('#uploadButton')
+      let finalResult = {}
+      button.disabled = true
+      $('#uploadState').classList.remove('hidden')
+      $('#progress').max = file.size; $('#progress').value = 0
+      try {
+        notice('Preparing upload…')
+        const created = await api('/api/uploads', { method: 'POST', body: JSON.stringify({ channel, file_name: file.name, size: file.size }) })
+        finalResult = created
+        let offset = created.offset || 0
+        while (offset < file.size) {
+          const part = file.slice(offset, Math.min(offset + 8388608, file.size))
+          const finalChunk = offset + part.size >= file.size
+          $('#uploadText').textContent = finalChunk ? 'Uploading the final part, then checking the video for smooth playback…' : `Uploading ${(offset / 1048576).toFixed(0)} MB of ${(file.size / 1048576).toFixed(0)} MB…`
+          finalResult = await resilientUploadChunk(created.id, offset, part, finalChunk)
+          offset = finalResult.offset; $('#progress').value = offset
+        }
+        if (!finalResult.complete) finalResult = await waitForPreparation(created.id)
+        selectedManageChannel = channel
+        await load(channel)
+        $('#file').value = ''; $('#uploadState').classList.add('hidden')
+        notice(finalResult.refreshed
+          ? `Published${finalResult.optimised ? ' and prepared' : ''} on CH ${channel}.`
+          : `The video is safely stored on CH ${channel}, but the TV could not refresh. Use Retry TV refresh below.`,
+          !finalResult.refreshed)
+      } catch (error) {
+        notice(error.message, true)
+        $('#uploadText').textContent = 'Choose the same file and tap Upload to resume or try again.'
+        await load(channel).catch(() => {})
+      } finally { button.disabled = false }
+    }
+
+    async function systemAction(action, waitingText) {
+      notice(waitingText)
+      try {
+        const result = await api('/api/system', { method: 'POST', body: JSON.stringify({ action }) })
+        notice(result.message || 'Done.')
+        if (action === 'restart-player') setTimeout(() => refreshLiveStatus().catch(() => {}), 2500)
+      } catch (error) { notice(error.message, true) }
+    }
+    $('#checkAgain').onclick = async () => { try { notice('Checking…'); await refreshLiveStatus(); notice('Checks updated.') } catch (error) { notice(error.message, true) } }
+    $('#restartPlayer').onclick = () => { if (confirm('Restart the TV player now? The picture will disappear briefly.')) systemAction('restart-player', 'Restarting the TV player…') }
+    $('#rebootPi').onclick = () => { if (confirm('Restart the Raspberry Pi now? Mabel TV will be unavailable for about a minute.')) systemAction('reboot', 'Restarting the Raspberry Pi…') }
+    $('#poweroffPi').onclick = () => { if (confirm('Shut down the Raspberry Pi now? You will need to switch its power back on afterwards.')) systemAction('poweroff', 'Shutting down safely…') }
+    $('#pinForm').onsubmit = async event => {
+      event.preventDefault()
+      if ($('#newPin').value !== $('#newPinAgain').value) { notice('The two new PINs do not match.', true); return }
+      try {
+        await api('/api/account', { method: 'POST', body: JSON.stringify({ current_pin: $('#currentPin').value, new_pin: $('#newPin').value }) })
+        $('#currentPin').value = ''; $('#newPin').value = ''; $('#newPinAgain').value = ''
+        showOnly('login')
+        $('#loginError').classList.remove('bad')
+        $('#loginError').textContent = 'Your parent PIN was changed. Sign in again with the new PIN.'
+        $('#pin').focus()
+      } catch (error) { notice(error.message, true) }
+    }
+
+    initialise()
+    setInterval(() => {
+      if (!$('#app').classList.contains('hidden')) refreshLiveStatus().catch(() => {})
+    }, 60000)
+  </script>
+</body>
+</html>

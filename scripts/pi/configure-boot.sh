@@ -4,9 +4,11 @@ set -Eeuo pipefail
 display="720p"
 ir_gpio="18"
 force_video="false"
+enable_ir="false"
+remove_forced_video="false"
 
 usage() {
-    printf 'Usage: sudo bash configure-boot.sh [--display 720p|1080p|native] [--ir-gpio N] [--force-video]\n'
+    printf 'Usage: sudo bash configure-boot.sh [--display 720p|1080p|native] [--enable-ir] [--ir-gpio N] [--force-video] [--remove-forced-video]\n'
 }
 
 while (($#)); do
@@ -19,8 +21,16 @@ while (($#)); do
             ir_gpio="${2:-}"
             shift 2
             ;;
+        --enable-ir)
+            enable_ir="true"
+            shift
+            ;;
         --force-video)
             force_video="true"
+            shift
+            ;;
+        --remove-forced-video)
+            remove_forced_video="true"
             shift
             ;;
         -h|--help)
@@ -43,7 +53,8 @@ if [[ "$display" != "720p" && "$display" != "1080p" && "$display" != "native" ]]
     printf 'Display must be 720p, 1080p, or native.\n' >&2
     exit 2
 fi
-if [[ ! "$ir_gpio" =~ ^[0-9]+$ ]] || ((ir_gpio < 0 || ir_gpio > 27)); then
+if [[ "$enable_ir" == "true" ]] \
+    && { [[ ! "$ir_gpio" =~ ^[0-9]+$ ]] || ((ir_gpio < 0 || ir_gpio > 27)); }; then
     printf 'IR GPIO must be a BCM pin number from 0 to 27.\n' >&2
     exit 2
 fi
@@ -58,6 +69,14 @@ if [[ ! -f "$config_path" || ! -f "$cmdline_path" ]]; then
 fi
 
 stamp="$(date +%Y%m%d-%H%M%S)"
+boot_state=/var/lib/mabeltv/install/boot-original
+install -d -o root -g root -m 0700 "$boot_state"
+if [[ ! -f "$boot_state/config.txt" ]]; then
+    cp --preserve=all "$config_path" "$boot_state/config.txt"
+fi
+if [[ ! -f "$boot_state/cmdline.txt" ]]; then
+    cp --preserve=all "$cmdline_path" "$boot_state/cmdline.txt"
+fi
 cp --preserve=all "$config_path" "$config_path.mabeltv-$stamp.bak"
 cp --preserve=all "$cmdline_path" "$cmdline_path.mabeltv-$stamp.bak"
 
@@ -73,7 +92,9 @@ awk -v begin="$begin_marker" -v end="$end_marker" '
 ' "$config_path" > "$temporary_config"
 {
     printf '\n%s\n' "$begin_marker"
-    printf 'dtoverlay=gpio-ir,gpio_pin=%s\n' "$ir_gpio"
+    if [[ "$enable_ir" == "true" ]]; then
+        printf 'dtoverlay=gpio-ir,gpio_pin=%s\n' "$ir_gpio"
+    fi
     printf 'hdmi_ignore_cec_init=1\n'
     printf 'hdmi_ignore_cec=1\n'
     printf 'disable_splash=1\n'
@@ -86,12 +107,13 @@ new_tokens=()
 existing_video=""
 for token in "${cmdline_tokens[@]}"; do
     case "$token" in
-        video=HDMI-A-1:*) existing_video="$token" ;;
+        video=HDMI-A-1:*|video=HDMI-A-2:*) existing_video="$token" ;;
         quiet|loglevel=3|logo.nologo|vt.global_cursor_default=0|consoleblank=0) ;;
         *) new_tokens+=("$token") ;;
     esac
 done
-if [[ -n "$existing_video" && "$force_video" != "true" ]]; then
+if [[ -n "$existing_video" && "$force_video" != "true" \
+    && "$remove_forced_video" != "true" ]]; then
     printf 'Existing %s was preserved. Use --force-video to replace it.\n' "$existing_video"
     new_tokens+=("$existing_video")
 elif [[ "$display" == "720p" ]]; then
@@ -101,7 +123,32 @@ elif [[ "$display" == "1080p" ]]; then
 fi
 new_tokens+=(quiet loglevel=3 logo.nologo vt.global_cursor_default=0 consoleblank=0)
 printf '%s\n' "${new_tokens[*]}" > "$cmdline_path"
+sha256sum "$cmdline_path" | awk '{print $1}' > "$boot_state/managed-cmdline.sha256"
 
-printf 'Configured GPIO %s IR input, disabled HDMI-CEC, and selected %s output.\n' "$ir_gpio" "$display"
+# Record only the exact boot arguments Mabel TV introduced relative to the
+# owner's original command line. Uninstall can then remove those arguments
+# without replacing the whole line or discarding edits made after setup.
+read -r -a original_tokens < "$boot_state/cmdline.txt"
+declare -A original_token_set=()
+for token in "${original_tokens[@]}"; do original_token_set["$token"]=1; done
+managed_tokens_file="$boot_state/managed-cmdline.tokens"
+temporary_tokens="$(mktemp)"
+for token in "${new_tokens[@]}"; do
+    case "$token" in
+        quiet|loglevel=3|logo.nologo|vt.global_cursor_default=0|consoleblank=0|video=HDMI-A-1:*|video=HDMI-A-2:*)
+            if [[ -z "${original_token_set[$token]+present}" ]]; then
+                printf '%s\n' "$token" >> "$temporary_tokens"
+            fi
+            ;;
+    esac
+done
+install -o root -g root -m 0600 "$temporary_tokens" "$managed_tokens_file"
+rm -f -- "$temporary_tokens"
+
+if [[ "$enable_ir" == "true" ]]; then
+    printf 'Configured GPIO %s IR input, disabled HDMI-CEC, and selected %s output.\n' "$ir_gpio" "$display"
+else
+    printf 'Configured appliance display settings without an IR receiver, disabled HDMI-CEC, and selected %s output.\n' "$display"
+fi
 printf 'Backups: %s and %s\n' "$config_path.mabeltv-$stamp.bak" "$cmdline_path.mabeltv-$stamp.bak"
 printf 'Reboot is required.\n'

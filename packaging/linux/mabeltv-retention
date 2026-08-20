@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Bound appliance-generated storage without touching live programmes. Recycle
+# bin items are deliberately recoverable for 30 days, then expire.
+set -Eeuo pipefail
+
+prune_newest() {
+    local root="$1" pattern="$2" keep="$3" kind="$4"
+    [[ -d "$root" ]] || return 0
+    local -a entries=()
+    mapfile -t entries < <(find "$root" -mindepth 1 -maxdepth 1 -name "$pattern" \
+        -printf '%T@ %p\n' | sort -nr | cut -d' ' -f2-)
+    local index path
+    for ((index = keep; index < ${#entries[@]}; ++index)); do
+        path="${entries[index]}"
+        case "$path" in
+            "$root"/*)
+                if [[ "$kind" == "file" ]]; then rm -f -- "$path"
+                else rm -rf -- "$path"
+                fi
+                ;;
+        esac
+    done
+}
+
+# Keep current and previous releases, plus the newest three release folders.
+current="$(readlink -f /opt/mabeltv/current 2>/dev/null || true)"
+previous="$(readlink -f /opt/mabeltv/previous 2>/dev/null || true)"
+if [[ -d /opt/mabeltv/releases ]]; then
+    kept=0
+    while IFS= read -r candidate; do
+        [[ -n "$candidate" ]] || continue
+        if [[ "$candidate" == "$current" || "$candidate" == "$previous" ]]; then
+            continue
+        fi
+        if ((kept < 2)); then
+            kept=$((kept + 1))
+            continue
+        fi
+        case "$candidate" in
+            /opt/mabeltv/releases/*) rm -rf -- "$candidate" ;;
+        esac
+    done < <(find /opt/mabeltv/releases -mindepth 1 -maxdepth 1 -type d \
+        ! -name '.incoming-*' -printf '%T@ %p\n' | sort -nr | cut -d' ' -f2-)
+    find /opt/mabeltv/releases -mindepth 1 -maxdepth 1 -type d \
+        -name '.incoming-*' -mtime +1 -exec rm -rf -- {} +
+fi
+
+prune_newest /var/backups/mabeltv 'preinstall-*.tar.gz' 8 file
+prune_newest /var/lib/mabeltv/recovery '*' 20 directory
+find /var/lib/mabeltv/recovery -mindepth 1 -maxdepth 1 -mtime +30 \
+    -exec rm -rf -- {} + 2>/dev/null || true
+find /srv/mabeltv/media/.recycle-bin -mindepth 1 -maxdepth 1 -type d -mtime +30 \
+    -exec rm -rf -- {} + 2>/dev/null || true
+find /var/lib/mabeltv/support -type f -mtime +7 -delete 2>/dev/null || true
+
+logger -t mabeltv-retention -- 'bounded old releases, backups, recovery evidence, recycle-bin items and support bundles'

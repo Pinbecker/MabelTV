@@ -4,6 +4,7 @@
 #include "library/ShuffleBag.h"
 
 #include <QElapsedTimer>
+#include <QFutureWatcher>
 #include <QHash>
 #include <QJsonObject>
 #include <QObject>
@@ -112,6 +113,7 @@ public:
     Q_INVOKABLE void confirmNumericEntry();
     Q_INVOKABLE void playbackEnded();
     Q_INVOKABLE void playbackFailed(const QString &message);
+    Q_INVOKABLE void prepareForPlaybackRestart(const QString &message);
     Q_INVOKABLE void updatePlaybackPosition(double positionSeconds, bool paused);
     Q_INVOKABLE void restartCurrentProgramme();
     Q_INVOKABLE void requestParentAccess();
@@ -211,6 +213,7 @@ private:
     void setParentMessage(const QString &message);
     void updateLibraryStatus();
     void enterNoChannelsState();
+    bool applyLibrary(ChannelLibraryResult library);
 
     QVector<ChannelRuntime> m_channels;
     QTimer m_tuningTimer;
@@ -244,6 +247,8 @@ private:
     bool m_tuning = false;
     bool m_noSignal = false;
     bool m_standby = false;
+    QFutureWatcher<ChannelLibraryResult> m_libraryReloadWatcher;
+    bool m_libraryReloadRequested = false;
     bool m_remoteLocked = false;
     bool m_playbackPaused = false;
     bool m_started = false;

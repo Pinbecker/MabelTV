@@ -3,45 +3,27 @@
   "channels": [
     {
       "number": 1,
-      "name": "Postman Pat",
-      "folder": "postman-pat",
+      "name": "Kids TV",
+      "folder": "kids-tv",
       "aspect": "crop"
     },
     {
       "number": 2,
-      "name": "Puffin Rock",
-      "folder": "puffin-rock",
+      "name": "Cartoons",
+      "folder": "cartoons",
       "aspect": "crop"
     },
     {
       "number": 3,
-      "name": "Teletubbies",
-      "folder": "teletubbies",
-      "aspect": "crop"
-    },
-    {
-      "number": 4,
-      "name": "Waffle Dog",
-      "folder": "Waffle Dog",
-      "aspect": "crop"
-    },
-    {
-      "number": 5,
       "name": "Films",
       "folder": "films",
       "aspect": "fit"
     },
     {
-      "number": 8,
+      "number": 4,
       "name": "Family Videos",
       "folder": "family",
       "aspect": "fit"
-    },
-    {
-      "number": 99,
-      "name": "No Signal Test",
-      "folder": "empty-channel",
-      "aspect": "crop"
     }
   ]
 }
