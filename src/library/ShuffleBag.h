@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QVector>
-#include <QtTypes>
+#include <QtGlobal>
 
 #include <random>
 
