@@ -5,25 +5,29 @@
       "number": 1,
       "name": "Kids TV",
       "folder": "kids-tv",
-      "aspect": "crop"
+      "aspect": "crop",
+      "content_type": "shows"
     },
     {
       "number": 2,
       "name": "Cartoons",
       "folder": "cartoons",
-      "aspect": "crop"
+      "aspect": "crop",
+      "content_type": "shows"
     },
     {
       "number": 3,
       "name": "Films",
       "folder": "films",
-      "aspect": "fit"
+      "aspect": "fit",
+      "content_type": "films"
     },
     {
       "number": 4,
       "name": "Family Videos",
       "folder": "family",
-      "aspect": "fit"
+      "aspect": "fit",
+      "content_type": "films"
     }
   ]
 }

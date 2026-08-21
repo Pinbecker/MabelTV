@@ -2,7 +2,7 @@
 
 A successful build is not permission to call a release customer-ready. Every published Raspberry Pi bundle must satisfy this gate and retain its evidence.
 
-**Current 0.2.0 status:** productisation release candidate, not yet approved for paid or general-availability distribution. A passing Ubuntu CI job, a successful Windows development build, or one working existing Pi does not satisfy the clean-image ARM64 matrix, endurance, dependency-licence, or commercial/legal gates below.
+**Current 0.2.2 status:** productisation release candidate, not yet approved for paid or general-availability distribution. A passing Ubuntu CI job, a successful Windows development build, or one working existing Pi does not satisfy the clean-image ARM64 matrix, endurance, dependency-licence, or commercial/legal gates below.
 
 Create a release evidence folder keyed by version and full Git commit. Record the tester, date, exact Raspberry Pi Imager image/checksum, Pi revision/RAM, storage/power/cooling/display hardware, bundle/source checksums, command outputs, failures, fixes, and final sign-offs. No unchecked item can be treated as implicitly passed.
 
@@ -25,6 +25,8 @@ Create a release evidence folder keyed by version and full Git commit. Record th
 - Every shell entry point passes `bash -n`; Python passes bytecode/AST compilation.
 - `visudo` and `systemd-analyze verify` pass against staged assets.
 - Fresh install, update of a running system, rollback, retained-data uninstall, and purge uninstall pass in disposable test images.
+- The Imager manifest's compressed and extracted SHA-256 values match the published image, and Imager offers the intended `cloudinit-rpi` Wi-Fi/user/SSH customisation.
+- A Pi installed from the SD image updates through the normal newer `install-mabeltv` bundle without reflashing or losing owner data/media.
 - The fresh-install test starts from the exact advertised Raspberry Pi Imager image with no Mabel TV files, users, packages, or configuration preloaded.
 - Failure injection after staging, asset install, symlink switch, Library restart, and player restart restores the exact previous release/assets.
 - Concurrent/retried upload tests prove offsets, `fsync`, one conversion worker, duplicate-final protection, and power-loss recovery.

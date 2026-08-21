@@ -57,10 +57,24 @@ class LibraryUnitTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.fixture.close()
 
+    def test_browser_upload_form_supports_resumable_multi_file_batches(self) -> None:
+        index = mabeltv_library.INDEX
+        self.assertRegex(index, r'id="file"[^>]+\bmultiple\b')
+        self.assertIn("let selectedUploadFiles = []", index)
+        self.assertIn("$('#file').onchange", index)
+        self.assertIn("selectedUploadFiles.push(file)", index)
+        self.assertIn("const files = selectedUploadFiles.slice()", index)
+        self.assertIn("for (let index = 0; index < files.length; index += 1)", index)
+        self.assertIn("await sendSelectedFile(files[index]", index)
+        self.assertIn("failures.push({ file: files[index], message: error.message })", index)
+        self.assertIn('id="childName"', index)
+        self.assertIn("/api/identity", index)
+
     def test_first_run_hashes_pin_and_creates_generic_channels(self) -> None:
         result = self.fixture.library.complete_setup({
             "setup_code": "135790",
             "owner_name": "Sam",
+            "child_name": "Mabel",
             "pin": "2468",
             "channels": mabeltv_library.DEFAULT_CHANNELS,
         })
@@ -70,9 +84,13 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertNotEqual(owner["pin_hash"], "2468")
         self.assertTrue(self.fixture.library.verify_pin("2468"))
         self.assertFalse(self.fixture.library.verify_pin("0000"))
+        self.assertEqual(owner["child_name"], "Mabel")
+        self.assertEqual(owner["tv_name"], "MabelTV")
         channels = json.loads(self.fixture.channels.read_text(encoding="utf-8"))["channels"]
         self.assertEqual([channel["name"] for channel in channels],
                          ["Kids TV", "Cartoons", "Films", "Family Videos"])
+        self.assertEqual([channel["content_type"] for channel in channels],
+                         ["shows", "shows", "films", "films"])
         for channel in channels:
             self.assertTrue((self.fixture.media / channel["folder"]).is_dir())
 
@@ -92,6 +110,22 @@ class LibraryUnitTests(unittest.TestCase):
             {"number": 7, "name": "Nature", "folder": "../../Nature", "aspect": "fit"}
         ])
         self.assertEqual(channels[0]["folder"], "Nature")
+        self.assertEqual(channels[0]["content_type"], "shows")
+        inferred_film = self.fixture.library.normalise_channels([
+            {"number": 8, "name": "Movies", "folder": "movies", "aspect": "fit"}
+        ])
+        self.assertEqual(inferred_film[0]["content_type"], "films")
+
+    def test_tv_name_adds_tv_suffix_and_can_be_changed_later(self) -> None:
+        self.fixture.library.complete_setup({
+            "setup_code": "135790", "pin": "2468", "child_name": "Mabel TV",
+            "channels": mabeltv_library.DEFAULT_CHANNELS,
+        })
+        self.assertEqual(self.fixture.library.library()["owner"]["tv_name"], "MabelTV")
+        with mock.patch.object(self.fixture.library, "admin_action", return_value=""):
+            result = self.fixture.library.change_tv_name({"child_name": "John"})
+        self.assertEqual(result["tv_name"], "JohnTV")
+        self.assertEqual(self.fixture.library.library()["owner"]["child_name"], "John")
 
     def test_login_attempts_are_rate_limited(self) -> None:
         address = "192.0.2.1"
@@ -172,13 +206,14 @@ class LibraryUnitTests(unittest.TestCase):
         self.fixture.library.owner_recovery_path.touch()
         setup = self.fixture.library.public_setup()
         self.assertTrue(setup["recovering_owner"])
-        self.assertEqual(setup["default_channels"], custom)
+        expected = [{**custom[0], "content_type": "shows"}]
+        self.assertEqual(setup["default_channels"], expected)
         self.fixture.library.complete_setup({
             "setup_code": "135790", "pin": "2468",
             "channels": [{"number": 9, "name": "Wrong", "folder": "wrong",
                           "aspect": "crop"}],
         })
-        self.assertEqual(self.fixture.library.channels(), custom)
+        self.assertEqual(self.fixture.library.channels(), expected)
         self.assertFalse(self.fixture.library.owner_recovery_path.exists())
 
     def test_channel_renumber_keeps_visibility_and_recycle_blocks_delete(self) -> None:
@@ -193,12 +228,14 @@ class LibraryUnitTests(unittest.TestCase):
         self.fixture.library.manage({"action": "toggle-programme", "channel": 1,
                                      "file": "episode.mp4"})
         self.fixture.library.manage({"action": "update-channel", "original_number": 1,
-                                     "number": 9, "name": "Kids TV", "aspect": "crop"})
+                                     "number": 9, "name": "Kids TV", "aspect": "crop",
+                                     "content_type": "films"})
         settings = self.fixture.library.settings()["library"]
         self.assertIn(9, settings["disabled_channels"])
         self.assertNotIn(1, settings["disabled_channels"])
         self.assertEqual(settings["disabled_programmes"]["9"], ["episode.mp4"])
         self.assertNotIn("1", settings["disabled_programmes"])
+        self.assertEqual(self.fixture.library.channel(9)["content_type"], "films")
 
         self.fixture.library.manage({"action": "trash", "channel": 9,
                                      "file": "episode.mp4"})
@@ -588,7 +625,8 @@ class LibraryHttpTests(unittest.TestCase):
         self.assertNotIn("setup_code", state)
 
         status, _ = self.request("/api/setup", {
-            "setup_code": "135790", "owner_name": "Taylor", "pin": "8642",
+            "setup_code": "135790", "owner_name": "Taylor", "child_name": "Taylor",
+            "pin": "8642",
             "channels": mabeltv_library.DEFAULT_CHANNELS,
         })
         self.assertEqual(status, 200)
@@ -599,6 +637,11 @@ class LibraryHttpTests(unittest.TestCase):
         status, dashboard = self.request("/api/library")
         self.assertEqual(status, 200)
         self.assertEqual(dashboard["owner"]["name"], "Taylor")
+        self.assertEqual(dashboard["owner"]["tv_name"], "TaylorTV")
+        with mock.patch.object(self.server.library, "admin_action", return_value=""):
+            status, identity = self.request("/api/identity", {"child_name": "Mabel"})
+        self.assertEqual(status, 200)
+        self.assertEqual(identity["tv_name"], "MabelTV")
         self.assertEqual(len(dashboard["channels"]), 4)
         status, live = self.request("/api/status")
         self.assertEqual(status, 200)

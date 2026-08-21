@@ -21,10 +21,10 @@ Persistent Pi paths:
 | --- | --- | --- |
 | `/opt/mabeltv/releases/*` | immutable timestamped binaries | installer only |
 | `/opt/mabeltv/current` | atomically selected release link | installer/rollback |
-| `/var/lib/mabeltv/channels.json` | channel numbers, names, folders, aspect | browser dashboard/operator |
+| `/var/lib/mabeltv/channels.json` | channel numbers, names, folders, aspect, show/film type | browser dashboard/operator |
 | `/var/lib/mabeltv/owner.json` | first-run state and salted parent-PIN verifier | browser dashboard |
 | `/var/lib/mabeltv/settings.json` | parent choices | application |
-| `/var/lib/mabeltv/state.json` | volume, channel and broadcast timeline | application |
+| `/var/lib/mabeltv/state.json` | volume, channel, broadcast timeline, and current-uptime episode inactivity markers | application |
 | `/var/lib/mabeltv/media-index.json` | ffprobe result cache | application/tools |
 | `/var/log/mabeltv` | rotating application and soak logs | application/tools |
 | `/srv/mabeltv/media` | user-supplied programmes | operator |

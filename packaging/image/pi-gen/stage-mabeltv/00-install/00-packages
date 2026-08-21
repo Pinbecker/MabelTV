@@ -1,0 +1,16 @@
+qt6-qpa-plugins
+qml6-module-qtquick
+qml6-module-qtquick-window
+libqt6opengl6
+libmpv-dev
+ffmpeg
+ir-keytable
+python3
+sudo
+logrotate
+avahi-daemon
+alsa-utils
+ca-certificates
+curl
+util-linux
+qrencode

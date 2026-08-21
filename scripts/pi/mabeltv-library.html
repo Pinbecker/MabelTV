@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#14352f">
-  <title>Mabel TV</title>
+  <title>KidsTV</title>
   <style>
     :root {
       color-scheme: light;
@@ -60,7 +60,7 @@
     .step-list li { flex: 1; border-top: 5px solid #c9d3cc; padding-top: 8px; color: var(--soft-ink); font-size: .82rem; font-weight: 750; }
     .step-list li.active { border-color: var(--green-2); color: var(--green); }
     .channel-setup { border: 1px solid var(--line); border-radius: 12px; padding: 13px; margin: 10px 0; }
-    .channel-setup-fields { display: grid; grid-template-columns: 90px minmax(150px, 1fr) minmax(130px, .65fr) auto; gap: 9px; align-items: end; }
+    .channel-setup-fields { display: grid; grid-template-columns: 82px minmax(140px, 1fr) minmax(125px, .65fr) minmax(160px, .8fr) auto; gap: 9px; align-items: end; }
     .setup-actions { justify-content: space-between; margin-top: 22px; }
     .topbar { display: flex; gap: 16px; align-items: center; margin-bottom: 14px; }
     .topbar .brand-mark { width: 39px; height: 32px; border-width: 4px; margin: 0; flex: none; }
@@ -125,7 +125,7 @@
     <section id="setup" class="card narrow hidden" aria-labelledby="setupTitle">
       <span class="brand-mark" aria-hidden="true"></span>
       <p id="setupEyebrow" class="eyebrow">First-time setup</p>
-      <h1 id="setupTitle">Welcome to Mabel TV</h1>
+      <h1 id="setupTitle">Welcome to KidsTV</h1>
       <p id="setupIntro" class="muted">You only need to do this once. We’ll secure your TV, create its channels, and show you how to add programmes.</p>
       <ol class="step-list" aria-label="Setup progress">
         <li class="active" data-step-marker="1">Connect</li>
@@ -135,7 +135,7 @@
       <form id="setupForm">
         <div class="setup-step" data-step="1">
           <h2>Connect this TV</h2>
-          <p>Enter the six-digit setup code shown on the Mabel TV screen or at the end of installation. It proves you are beside the Raspberry Pi.</p>
+          <p>Enter the six-digit setup code shown on the KidsTV screen or at the end of installation. It proves you are beside the Raspberry Pi.</p>
           <label>Setup code
             <input id="setupCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="123456" required>
           </label>
@@ -144,7 +144,10 @@
           <h2>Choose your parent PIN</h2>
           <p>This locks the grown-up browser dashboard. The television’s physical adult shortcut is separate, so children cannot stumble into it while watching. Use 4–8 numbers they will not guess.</p>
           <div class="field-grid">
-            <label>Your name <small>Used only on this Mabel TV</small>
+            <label id="childNameSetupLabel">Child’s name <small>This TV will be called MabelTV or JohnTV</small>
+              <input id="childName" autocomplete="name" maxlength="40" placeholder="Mabel" required>
+            </label>
+            <label>Your name <small>Used only on this KidsTV</small>
               <input id="ownerName" autocomplete="name" maxlength="60" placeholder="Alex">
             </label>
             <span></span>
@@ -158,7 +161,7 @@
         </div>
         <div class="setup-step hidden" data-step="3">
           <h2>Start with a few channels</h2>
-          <p>You can rename, add, or remove channels later. “Fill screen” gives the familiar edge-to-edge TV look; “Show whole picture” keeps every part of the video visible.</p>
+          <p>You can rename, add, or remove channels later. Mark film or long-video channels so they always keep their resume positions; episode channels can use the optional inactivity reset in Parent Control.</p>
           <div id="setupChannels"></div>
           <button id="addSetupChannel" type="button" class="secondary">+ Add another channel</button>
         </div>
@@ -175,30 +178,30 @@
     <section id="login" class="card narrow hidden" aria-labelledby="loginTitle">
       <span class="brand-mark" aria-hidden="true"></span>
       <p class="eyebrow">Grown-ups only</p>
-      <h1 id="loginTitle">Mabel TV</h1>
+      <h1 id="loginTitle">KidsTV</h1>
       <p class="muted">Add programmes, manage channels, and check that your Raspberry Pi is happy.</p>
       <form id="loginForm">
         <label>Parent PIN
           <input id="pin" inputmode="numeric" autocomplete="current-password" type="password" pattern="[0-9]{4,8}" maxlength="8" required autofocus>
         </label>
         <p id="loginError" class="notice bad" role="alert"></p>
-        <button type="submit">Open Mabel TV</button>
+        <button type="submit">Open KidsTV</button>
       </form>
       <details style="margin-top:18px">
         <summary>Forgot the parent PIN?</summary>
-        <p class="muted small">Shut down the Raspberry Pi, connect its boot microSD card or USB drive to a computer, and create an empty file named <code>mabeltv-reset-pin</code> on the visible boot drive. Put it back and start Mabel TV. A new setup code will appear; your videos and channels stay untouched.</p>
+        <p class="muted small">Shut down the Raspberry Pi, connect its boot microSD card or USB drive to a computer, and create an empty file named <code>mabeltv-reset-pin</code> on the visible boot drive. Put it back and start KidsTV. A new setup code will appear; your videos and channels stay untouched.</p>
       </details>
     </section>
 
     <section id="app" class="hidden">
       <header class="topbar">
         <span class="brand-mark" aria-hidden="true"></span>
-        <h1 style="font:800 1.32rem Georgia,serif;margin:0">Mabel TV</h1>
+        <h1 id="topTvName" style="font:800 1.32rem Georgia,serif;margin:0">KidsTV</h1>
         <span class="spacer"></span>
         <span id="topHealth" class="health-pill">Checking…</span>
         <button id="logout" class="secondary">Lock</button>
       </header>
-      <nav aria-label="Mabel TV sections">
+      <nav aria-label="KidsTV sections">
         <button class="active" data-view-button="overview" aria-current="page">Overview</button>
         <button data-view-button="add">Add media</button>
         <button data-view-button="channels">Channels</button>
@@ -209,9 +212,9 @@
       <section id="view-overview" class="view active">
         <div class="hero">
           <article class="card hero-health">
-            <p class="eyebrow">This Mabel TV</p>
+            <p class="eyebrow">This <span data-tv-name>KidsTV</span></p>
             <h2 id="healthTitle">Checking everything…</h2>
-            <p id="healthSummary" class="muted">One moment while Mabel TV checks the player, temperature, power, and storage.</p>
+            <p id="healthSummary" class="muted">One moment while KidsTV checks the player, temperature, power, and storage.</p>
             <div class="stat-grid">
               <div class="stat"><strong id="temperature">—</strong><span>Pi temperature</span></div>
               <div class="stat"><strong id="storageFree">—</strong><span>Storage free</span></div>
@@ -243,18 +246,20 @@
       <section id="view-add" class="view">
         <article class="card">
           <p class="eyebrow">Add media</p>
-          <h2>Put a programme on Mabel TV</h2>
-          <p>Choose a channel and a video from this phone or computer. Large or high-frame-rate phone videos are prepared automatically for smooth Raspberry Pi playback. Prepared TV episodes and ordinary MP4 files are left alone.</p>
-          <div class="callout">Uploads safely resume if Wi-Fi drops. Once the upload reaches 100%, you may close this page while Mabel TV checks or prepares the video.</div>
+          <h2>Put programmes on KidsTV</h2>
+          <p>Choose a channel and one or more videos from this phone or computer. Large or high-frame-rate phone videos are prepared automatically for smooth Raspberry Pi playback. Prepared TV episodes and ordinary MP4 files are left alone.</p>
+          <div class="callout">Uploads safely resume if Wi-Fi drops. Once the upload reaches 100%, you may close this page while KidsTV checks or prepares the video.</div>
           <form id="uploadForm" class="upload-box upload-form">
             <label>Put it on
               <select id="channel" required></select>
             </label>
-            <label>Choose a video
-              <input id="file" type="file" accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg" required>
+            <label>Add videos to the list
+              <input id="file" type="file" accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg" multiple>
+              <small>Select several together, or open this picker again to add more.</small>
             </label>
-            <button id="uploadButton" type="submit">Upload</button>
+            <button id="uploadButton" type="submit" disabled>Upload selected</button>
           </form>
+          <div id="selectedFiles" class="callout" aria-live="polite">No videos selected yet.</div>
           <div id="uploadState" class="hidden callout" aria-live="polite">
             <p id="uploadText">Preparing…</p>
             <progress id="progress" max="1" value="0"></progress>
@@ -262,12 +267,12 @@
         </article>
         <article class="card">
           <h2>Uploads and preparation</h2>
-          <p class="muted">You can close this page after the upload reaches 100%. Mabel TV keeps checking and preparing it in the background.</p>
+          <p class="muted">You can close this page after the upload reaches 100%. KidsTV keeps checking and preparing it in the background.</p>
           <div id="uploadJobs" aria-live="polite">No videos are waiting.</div>
         </article>
         <article class="card">
           <h2>Good file names make a tidy TV guide</h2>
-          <p class="muted">For a series, name episodes like <strong>S01E02 - The Picnic.mp4</strong>. Mabel TV turns that into a friendly episode label. Films and home videos can use any clear name.</p>
+          <p class="muted">For a series, name episodes like <strong>S01E02 - The Picnic.mp4</strong>. KidsTV turns that into a friendly episode label. Films and home videos can use any clear name.</p>
         </article>
       </section>
 
@@ -295,7 +300,9 @@
             <label>Picture mode
               <select id="editChannelAspect"><option value="crop">Fill screen</option><option value="fit">Show whole picture</option><option value="stretch">Stretch to screen</option></select>
             </label>
-            <span></span>
+            <label>What plays here?
+              <select id="editChannelContentType"><option value="shows">Shows / episodes</option><option value="films">Films / long videos</option></select>
+            </label>
             <div class="row wide">
               <button type="submit">Save channel</button>
               <button id="deleteChannel" type="button" class="danger">Delete empty channel</button>
@@ -314,7 +321,9 @@
             <label>Picture mode
               <select id="newChannelAspect"><option value="crop">Fill screen</option><option value="fit">Show whole picture</option><option value="stretch">Stretch to screen</option></select>
             </label>
-            <span></span>
+            <label>What plays here?
+              <select id="newChannelContentType"><option value="shows">Shows / episodes</option><option value="films">Films / long videos</option></select>
+            </label>
             <button type="submit">Add channel</button>
           </form>
         </article>
@@ -348,15 +357,24 @@
               <button type="submit">Change PIN</button>
             </form>
           </article>
+          <article class="card">
+            <p class="eyebrow">Identity</p>
+            <h2>Name this TV</h2>
+            <p class="muted">Enter just the child’s name. KidsTV adds “TV”, for example MabelTV.</p>
+            <form id="tvNameForm">
+              <label>Child’s name<input id="tvNameChild" autocomplete="name" maxlength="40" placeholder="Mabel" required></label><br>
+              <button type="submit">Save TV name</button>
+            </form>
+          </article>
         </div>
         <article class="card">
           <p class="eyebrow">Everyday help</p>
-          <h2>Using Mabel TV</h2>
+          <h2>Using KidsTV</h2>
           <details><summary>How do I add a programme?</summary><p>Open <strong>Add media</strong>, choose its channel, choose a video, then tap Upload. It appears on the TV as soon as publishing finishes.</p></details>
           <details><summary>How do I open the grown-up menu on the TV?</summary><p>Hold <strong>Back / Previous</strong> for 3.5 seconds, then press OK three times. This physical shortcut is separate from the browser PIN. The on-TV menu controls the CRT look, sound, remote lock, and playback settings.</p></details>
           <details><summary>Which remote can I use?</summary><p>A USB keyboard or keyboard-style USB remote works immediately. The keys are listed in the owner guide. A GPIO infrared receiver and almost any IR remote can also be added, but it must be wired and learned using the optional IR setup guide.</p></details>
           <details><summary>What if the picture freezes?</summary><p>First use <strong>Restart TV player</strong> above. If it happens again, download a support bundle immediately; it preserves the temperature, power, service, and crash evidence needed to identify the cause.</p></details>
-          <details><summary>Why is a phone video taking a while?</summary><p>Videos over 30 fps and large iPhone MOV files are converted to a Pi-friendly 720p/30 fps copy. Mabel TV pauses conversion if the Pi gets too hot, then resumes automatically after it cools.</p></details>
+          <details><summary>Why is a phone video taking a while?</summary><p>Videos over 30 fps and large iPhone MOV files are converted to a Pi-friendly 720p/30 fps copy. KidsTV pauses conversion if the Pi gets too hot, then resumes automatically after it cools.</p></details>
         </article>
         <article class="card danger-zone">
           <p class="eyebrow">Power</p>
@@ -368,7 +386,7 @@
           </div>
         </article>
       </section>
-      <footer>Mabel TV <span id="footerVersion"></span> · Local to your home network</footer>
+      <footer><span data-tv-name>KidsTV</span> <span id="footerVersion"></span> · Local to your home network</footer>
     </section>
   </main>
 
@@ -395,12 +413,25 @@
         $('#pin').focus()
         throw new Error('Your session was locked')
       }
-      if (!response.ok) throw new Error(body.error || 'Mabel TV could not complete that request')
+      if (!response.ok) throw new Error(body.error || 'KidsTV could not complete that request')
       return body
     }
 
     function showOnly(id) {
       for (const name of ['setup', 'login', 'app']) $('#' + name).classList.toggle('hidden', name !== id)
+    }
+
+    function tvName() {
+      const value = library?.owner?.tv_name
+      return typeof value === 'string' && value.trim() ? value.trim() : 'KidsTV'
+    }
+
+    function applyTvName() {
+      const name = tvName()
+      document.title = `${name} · KidsTV`
+      $('#topTvName').textContent = name
+      $$('[data-tv-name]').forEach(element => { element.textContent = name })
+      $('#tvNameChild').value = library?.owner?.child_name || ''
     }
 
     function notice(message = '', bad = false) {
@@ -439,9 +470,11 @@
           <label>Number<input type="number" min="1" max="999" data-setup-field="number" value="${channel.number}" required></label>
           <label>Name<input maxlength="60" data-setup-field="name" value="${escapeHtml(channel.name)}" required></label>
           <label>Picture<select data-setup-field="aspect"><option value="crop">Fill screen</option><option value="fit">Whole picture</option><option value="stretch">Stretch</option></select></label>
+          <label>Content<select data-setup-field="content_type"><option value="shows">Shows / episodes</option><option value="films">Films / long videos</option></select></label>
           <button type="button" class="secondary" data-remove-channel="${index}" aria-label="Remove channel ${channel.number} ${escapeHtml(channel.name)}">Remove</button>
         </div>`
-        box.querySelector('select').value = channel.aspect
+        box.querySelector('[data-setup-field="aspect"]').value = channel.aspect || 'crop'
+        box.querySelector('[data-setup-field="content_type"]').value = channel.content_type || 'shows'
         box.querySelectorAll('[data-setup-field]').forEach(input => input.addEventListener('change', event => {
           const field = event.target.dataset.setupField
           setupChannels[index][field] = field === 'number' ? Number(event.target.value) : event.target.value
@@ -474,7 +507,11 @@
             $('#setupIntro').textContent = 'Your existing channels and videos will stay exactly as they are. Confirm the setup code, then choose a new parent PIN.'
             $('[data-step-marker="3"]').classList.add('hidden')
             $('#setupFinish').textContent = 'Reset parent PIN'
+            $('#childNameSetupLabel').classList.add('hidden')
+            $('#childName').required = false
           } else {
+            $('#childNameSetupLabel').classList.remove('hidden')
+            $('#childName').required = true
             renderSetupChannels()
           }
           setupMarker()
@@ -484,7 +521,7 @@
         }
       } catch (error) {
         showOnly('login')
-        $('#loginError').textContent = 'Mabel TV is starting up. Refresh this page in a moment.'
+        $('#loginError').textContent = 'KidsTV is starting up. Refresh this page in a moment.'
       }
     }
 
@@ -504,6 +541,7 @@
         button.disabled = false
       }
       if (setupStep === 2) {
+        if (!recoveringOwner && !$('#childName').checkValidity()) { $('#childName').reportValidity(); return }
         if (!$('#setupPin').checkValidity()) { $('#setupPin').reportValidity(); return }
         if ($('#setupPin').value !== $('#setupPinAgain').value) { $('#setupError').textContent = 'The two PINs do not match.'; return }
       }
@@ -515,7 +553,7 @@
       const used = new Set(setupChannels.map(channel => Number(channel.number)))
       let number = 1
       while (used.has(number)) number++
-      setupChannels.push({ number, name: 'New channel', folder: `channel-${number}`, aspect: 'crop' })
+      setupChannels.push({ number, name: 'New channel', folder: `channel-${number}`, aspect: 'crop', content_type: 'shows' })
       renderSetupChannels()
     }
     $('#setupForm').onsubmit = async event => {
@@ -526,13 +564,14 @@
       button.textContent = 'Setting up…'
       try {
         const setupPayload = { setup_code: $('#setupCode').value, owner_name: $('#ownerName').value, pin: $('#setupPin').value }
+        if (!recoveringOwner) setupPayload.child_name = $('#childName').value
         if (!recoveringOwner) setupPayload.channels = setupChannels
         await api('/api/setup', { method: 'POST', body: JSON.stringify(setupPayload) })
         showOnly('login')
         $('#loginError').classList.remove('bad')
         $('#loginError').textContent = recoveringOwner
           ? 'Your parent PIN was reset. Your channels and videos were not changed.'
-          : 'Setup complete. Enter your new parent PIN to open Mabel TV.'
+          : 'Setup complete. Enter your new parent PIN to open KidsTV.'
         $('#pin').focus()
       } catch (error) {
         if (error.message.toLowerCase().includes('setup code')) { setupStep = 1; setupMarker() }
@@ -581,6 +620,7 @@
 
     async function load(preferredUploadChannel = null) {
       library = await api('/api/library')
+      applyTvName()
       const channels = library.channels || []
       const upload = $('#channel'), manageSelect = $('#manageChannel')
       let uploadChoice = String(preferredUploadChannel ?? upload.value ?? '')
@@ -609,7 +649,7 @@
       const system = library.system || {}, storage = library.storage || {}, warnings = system.warnings || []
       $('#topHealth').textContent = system.healthy ? 'Everything looks good' : `${warnings.length || 1} item needs attention`
       $('#topHealth').classList.toggle('bad', !system.healthy)
-      $('#healthTitle').textContent = system.healthy ? 'Everything looks good' : 'Mabel TV needs a little attention'
+      $('#healthTitle').textContent = system.healthy ? 'Everything looks good' : `${tvName()} needs a little attention`
       $('#healthSummary').textContent = system.healthy ? 'The player, temperature, power, and storage checks are all healthy.' : (warnings[0] || 'Check the system details below.')
       $('#temperature').textContent = system.temperature_c ? `${system.temperature_c.toFixed(1)}°C` : 'Unknown'
       $('#storageFree').textContent = `${Number(storage.free_gb || 0).toFixed(1)} GB`
@@ -620,7 +660,7 @@
       const programmes = library.channels.reduce((total, channel) => total + channel.programmes.length, 0)
       $('#librarySummary').innerHTML = `<div class="stat" style="background:#eef3ef"><strong>${enabled}</strong><span style="color:#52625b">active channels</span></div><div class="stat" style="background:#eef3ef"><strong>${programmes}</strong><span style="color:#52625b">programmes</span></div><div class="stat" style="background:#eef3ef"><strong>${Number(storage.used_gb || 0).toFixed(1)} GB</strong><span style="color:#52625b">storage used</span></div>`
       $('#footerVersion').textContent = system.version || ''
-      $('#systemDetails').innerHTML = `<dt>TV player</dt><dd>${escapeHtml(system.player || 'unknown')}</dd><dt>Video preparation</dt><dd>${escapeHtml(system.media_worker || 'unknown')}</dd><dt>Temperature</dt><dd>${system.temperature_c ? `${system.temperature_c.toFixed(1)}°C` : 'unavailable'}</dd><dt>Power / heat limiting now</dt><dd>${system.currently_throttled ? 'Yes' : 'No'}</dd><dt>Since last boot</dt><dd>${system.historical_throttle ? 'A power or heat event occurred' : 'No limiting recorded'}</dd><dt>Storage</dt><dd>${Number(storage.free_gb || 0).toFixed(1)} GB free of ${Number(storage.total_gb || 0).toFixed(1)} GB</dd><dt>Uptime</dt><dd>${duration(system.uptime_seconds)}</dd><dt>Device</dt><dd>${escapeHtml(system.device_name || 'Mabel TV')}</dd><dt>Version</dt><dd>${escapeHtml(system.version || 'development')}</dd><dt>Last checked</dt><dd>${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</dd>`
+      $('#systemDetails').innerHTML = `<dt>TV player</dt><dd>${escapeHtml(system.player || 'unknown')}</dd><dt>Video preparation</dt><dd>${escapeHtml(system.media_worker || 'unknown')}</dd><dt>Temperature</dt><dd>${system.temperature_c ? `${system.temperature_c.toFixed(1)}°C` : 'unavailable'}</dd><dt>Power / heat limiting now</dt><dd>${system.currently_throttled ? 'Yes' : 'No'}</dd><dt>Since last boot</dt><dd>${system.historical_throttle ? 'A power or heat event occurred' : 'No limiting recorded'}</dd><dt>Storage</dt><dd>${Number(storage.free_gb || 0).toFixed(1)} GB free of ${Number(storage.total_gb || 0).toFixed(1)} GB</dd><dt>Uptime</dt><dd>${duration(system.uptime_seconds)}</dd><dt>Device</dt><dd>${escapeHtml(system.device_name || tvName())}</dd><dt>Version</dt><dd>${escapeHtml(system.version || 'development')}</dd><dt>Last checked</dt><dd>${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</dd>`
       if (library.owner?.pin_change_recommended) {
         $('#warningsCard').classList.remove('hidden')
       }
@@ -682,6 +722,7 @@
         $('#editChannelNumber').value = channel.number
         $('#editChannelName').value = channel.name
         $('#editChannelAspect').value = channel.aspect || 'crop'
+        $('#editChannelContentType').value = channel.content_type || 'shows'
         const heading = document.createElement('div')
         heading.className = 'channel-heading'
         const title = document.createElement('div')
@@ -738,7 +779,7 @@
     $('#editChannelForm').onsubmit = async event => {
       event.preventDefault()
       const number = Number($('#editChannelNumber').value)
-      await manage('update-channel', { original_number: selectedManageChannel, number, name: $('#editChannelName').value, aspect: $('#editChannelAspect').value }, number)
+      await manage('update-channel', { original_number: selectedManageChannel, number, name: $('#editChannelName').value, aspect: $('#editChannelAspect').value, content_type: $('#editChannelContentType').value }, number)
     }
     $('#deleteChannel').onclick = () => {
       const channel = library.channels.find(value => value.number === selectedManageChannel)
@@ -747,7 +788,7 @@
     $('#addChannelForm').onsubmit = async event => {
       event.preventDefault()
       const number = Number($('#newChannelNumber').value), name = $('#newChannelName').value.trim()
-      await manage('add-channel', { number, name, folder: slug(name), aspect: $('#newChannelAspect').value }, number)
+      await manage('add-channel', { number, name, folder: slug(name), aspect: $('#newChannelAspect').value, content_type: $('#newChannelContentType').value }, number)
       event.target.reset()
     }
 
@@ -764,8 +805,8 @@
           if (request.status < 200 || request.status >= 300) { reject(new Error(body.error || 'Upload failed')); return }
           resolve(body)
         }
-        request.onerror = () => reject(new Error('The connection to Mabel TV was lost'))
-        request.ontimeout = () => reject(new Error(finalChunk ? 'Preparation is still taking a long time. Choose the same file to check or resume it.' : 'Mabel TV did not receive this upload part.'))
+        request.onerror = () => reject(new Error('The connection to KidsTV was lost'))
+        request.ontimeout = () => reject(new Error(finalChunk ? 'Preparation is still taking a long time. Choose the same file to check or resume it.' : 'KidsTV did not receive this upload part.'))
         request.send(part)
       })
     }
@@ -774,7 +815,7 @@
       try { return await uploadChunk(id, offset, part, finalChunk) }
       catch (error) {
         const saved = await api('/api/uploads/' + id)
-        if (saved.status === 'error') throw new Error(saved.error || 'Mabel TV could not check this video')
+        if (saved.status === 'error') throw new Error(saved.error || 'KidsTV could not check this video')
         if (saved.complete || saved.processing || saved.status === 'validating' ||
             (Number.isFinite(saved.offset) && saved.offset > offset)) return saved
         throw error
@@ -785,7 +826,7 @@
       while (true) {
         const state = await api('/api/uploads/' + id)
         if (state.complete) return state
-        if (state.status === 'error') throw new Error(state.error || 'Mabel TV could not prepare this video')
+        if (state.status === 'error') throw new Error(state.error || 'KidsTV could not prepare this video')
         const messages = {
           validating: 'Checking that this is a playable video…',
           queued: 'Waiting behind another video in the preparation queue…',
@@ -798,40 +839,115 @@
       }
     }
 
+    let selectedUploadFiles = []
+
+    function selectedFileKey(file) {
+      return `${file.name}\u0000${file.size}\u0000${file.lastModified}`
+    }
+
+    function renderSelectedUploadFiles() {
+      const root = $('#selectedFiles'), button = $('#uploadButton')
+      root.innerHTML = ''
+      if (!selectedUploadFiles.length) {
+        root.textContent = 'No videos selected yet.'
+        button.disabled = true
+        return
+      }
+      const heading = document.createElement('strong')
+      heading.textContent = `${selectedUploadFiles.length} video${selectedUploadFiles.length === 1 ? '' : 's'} ready to upload`
+      root.append(heading)
+      selectedUploadFiles.forEach((file, index) => {
+        const row = document.createElement('div')
+        row.className = 'row'; row.style.marginTop = '8px'
+        const name = document.createElement('span')
+        name.className = 'grow'; name.textContent = file.name
+        const remove = document.createElement('button')
+        remove.type = 'button'; remove.className = 'link'; remove.textContent = 'Remove'
+        remove.onclick = () => {
+          selectedUploadFiles.splice(index, 1)
+          renderSelectedUploadFiles()
+        }
+        row.append(name, remove); root.append(row)
+      })
+      button.disabled = false
+    }
+
+    $('#file').onchange = event => {
+      const existing = new Set(selectedUploadFiles.map(selectedFileKey))
+      Array.from(event.target.files || []).forEach(file => {
+        const key = selectedFileKey(file)
+        if (!existing.has(key)) { selectedUploadFiles.push(file); existing.add(key) }
+      })
+      event.target.value = ''
+      renderSelectedUploadFiles()
+    }
+
+    async function sendSelectedFile(file, channel, position, total, waitUntilPublished) {
+      let finalResult = {}
+      const prefix = total > 1 ? `Video ${position} of ${total}: ` : ''
+      $('#progress').max = file.size; $('#progress').value = 0
+      $('#uploadText').textContent = `${prefix}preparing ${file.name}…`
+      const created = await api('/api/uploads', { method: 'POST', body: JSON.stringify({ channel, file_name: file.name, size: file.size }) })
+      finalResult = created
+      let offset = Number(created.offset) || 0
+      $('#progress').value = offset
+      while (offset < file.size) {
+        const part = file.slice(offset, Math.min(offset + 8388608, file.size))
+        const finalChunk = offset + part.size >= file.size
+        $('#uploadText').textContent = finalChunk
+          ? `${prefix}uploading the final part of ${file.name}…`
+          : `${prefix}${file.name} · ${(offset / 1048576).toFixed(0)} MB of ${(file.size / 1048576).toFixed(0)} MB`
+        finalResult = await resilientUploadChunk(created.id, offset, part, finalChunk)
+        offset = Number(finalResult.offset) || offset
+        $('#progress').value = offset
+      }
+      if (waitUntilPublished && !finalResult.complete) finalResult = await waitForPreparation(created.id)
+      return finalResult
+    }
+
     $('#uploadForm').onsubmit = async event => {
       event.preventDefault()
-      const file = $('#file').files[0]
-      if (!file) return
+      const files = selectedUploadFiles.slice()
+      if (!files.length) return
       const channel = Number($('#channel').value), button = $('#uploadButton')
-      let finalResult = {}
+      const failures = []
+      let accepted = 0, singleResult = null
       button.disabled = true
+      $('#channel').disabled = true
+      $('#file').disabled = true
       $('#uploadState').classList.remove('hidden')
-      $('#progress').max = file.size; $('#progress').value = 0
-      try {
-        notice('Preparing upload…')
-        const created = await api('/api/uploads', { method: 'POST', body: JSON.stringify({ channel, file_name: file.name, size: file.size }) })
-        finalResult = created
-        let offset = created.offset || 0
-        while (offset < file.size) {
-          const part = file.slice(offset, Math.min(offset + 8388608, file.size))
-          const finalChunk = offset + part.size >= file.size
-          $('#uploadText').textContent = finalChunk ? 'Uploading the final part, then checking the video for smooth playback…' : `Uploading ${(offset / 1048576).toFixed(0)} MB of ${(file.size / 1048576).toFixed(0)} MB…`
-          finalResult = await resilientUploadChunk(created.id, offset, part, finalChunk)
-          offset = finalResult.offset; $('#progress').value = offset
+      notice(files.length === 1 ? 'Preparing upload…' : `Uploading ${files.length} videos one at a time…`)
+      for (let index = 0; index < files.length; index += 1) {
+        try {
+          const result = await sendSelectedFile(files[index], channel, index + 1, files.length, files.length === 1)
+          accepted += 1
+          singleResult = result
+        } catch (error) {
+          failures.push({ file: files[index], message: error.message })
         }
-        if (!finalResult.complete) finalResult = await waitForPreparation(created.id)
-        selectedManageChannel = channel
-        await load(channel)
-        $('#file').value = ''; $('#uploadState').classList.add('hidden')
-        notice(finalResult.refreshed
-          ? `Published${finalResult.optimised ? ' and prepared' : ''} on CH ${channel}.`
-          : `The video is safely stored on CH ${channel}, but the TV could not refresh. Use Retry TV refresh below.`,
-          !finalResult.refreshed)
-      } catch (error) {
-        notice(error.message, true)
-        $('#uploadText').textContent = 'Choose the same file and tap Upload to resume or try again.'
-        await load(channel).catch(() => {})
-      } finally { button.disabled = false }
+      }
+      selectedManageChannel = channel
+      await load(channel).catch(() => {})
+      selectedUploadFiles = failures.map(failure => failure.file)
+      renderSelectedUploadFiles()
+      $('#progress').value = 0
+      if (failures.length) {
+        notice(`${accepted} of ${files.length} videos were accepted.\n${failures.map(failure => `${failure.file.name}: ${failure.message}`).join('\n')}`, true)
+        $('#uploadText').textContent = 'Failed or interrupted files remain selected. Tap Upload selected to resume them safely.'
+      } else {
+        $('#uploadState').classList.add('hidden')
+        if (files.length > 1) {
+          notice(`${accepted} videos uploaded to CH ${channel}. KidsTV is checking and preparing them in the background.`)
+        } else {
+          notice(singleResult?.refreshed
+            ? `Published${singleResult.optimised ? ' and prepared' : ''} on CH ${channel}.`
+            : `The video is safely stored on CH ${channel}, but the TV could not refresh. Use Retry TV refresh below.`,
+            !singleResult?.refreshed)
+        }
+      }
+      $('#channel').disabled = false
+      $('#file').disabled = false
+      button.disabled = selectedUploadFiles.length === 0
     }
 
     async function systemAction(action, waitingText) {
@@ -844,7 +960,7 @@
     }
     $('#checkAgain').onclick = async () => { try { notice('Checking…'); await refreshLiveStatus(); notice('Checks updated.') } catch (error) { notice(error.message, true) } }
     $('#restartPlayer').onclick = () => { if (confirm('Restart the TV player now? The picture will disappear briefly.')) systemAction('restart-player', 'Restarting the TV player…') }
-    $('#rebootPi').onclick = () => { if (confirm('Restart the Raspberry Pi now? Mabel TV will be unavailable for about a minute.')) systemAction('reboot', 'Restarting the Raspberry Pi…') }
+    $('#rebootPi').onclick = () => { if (confirm('Restart the Raspberry Pi now? KidsTV will be unavailable for about a minute.')) systemAction('reboot', 'Restarting the Raspberry Pi…') }
     $('#poweroffPi').onclick = () => { if (confirm('Shut down the Raspberry Pi now? You will need to switch its power back on afterwards.')) systemAction('poweroff', 'Shutting down safely…') }
     $('#pinForm').onsubmit = async event => {
       event.preventDefault()
@@ -856,6 +972,18 @@
         $('#loginError').classList.remove('bad')
         $('#loginError').textContent = 'Your parent PIN was changed. Sign in again with the new PIN.'
         $('#pin').focus()
+      } catch (error) { notice(error.message, true) }
+    }
+    $('#tvNameForm').onsubmit = async event => {
+      event.preventDefault()
+      if (!$('#tvNameChild').checkValidity()) { $('#tvNameChild').reportValidity(); return }
+      try {
+        const identity = await api('/api/identity', { method: 'POST', body: JSON.stringify({ child_name: $('#tvNameChild').value }) })
+        library.owner = { ...(library.owner || {}), ...identity }
+        applyTvName()
+        notice(identity.player_restarted
+          ? `${identity.tv_name} is saved. The TV picture will refresh briefly.`
+          : `${identity.tv_name} is saved. Restart the TV player to show the new name on screen.`)
       } catch (error) { notice(error.message, true) }
     }
 

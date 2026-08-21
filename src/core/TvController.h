@@ -15,6 +15,7 @@
 #include <QVariantList>
 #include <QVector>
 
+#include <functional>
 #include <utility>
 
 class TvController final : public QObject
@@ -38,6 +39,7 @@ class TvController final : public QObject
     Q_PROPERTY(int parentConfirmationCount READ parentConfirmationCount NOTIFY parentConfirmationCountChanged)
     Q_PROPERTY(QString parentMessage READ parentMessage NOTIFY parentMessageChanged)
     Q_PROPERTY(QString playbackMode READ playbackMode NOTIFY playbackModeChanged)
+    Q_PROPERTY(int episodeResetMinutes READ episodeResetMinutes NOTIFY episodeResetMinutesChanged)
     Q_PROPERTY(QString pictureMode READ pictureMode NOTIFY pictureModeChanged)
     Q_PROPERTY(QString displayResolution READ displayResolution NOTIFY displayResolutionChanged)
     Q_PROPERTY(int crtGlass READ crtGlass NOTIFY crtGlassChanged)
@@ -77,7 +79,8 @@ public:
                     const QString &settingsPath,
                     const QString &mediaRoot,
                     const QString &statePath,
-                    ChannelLibrary::MediaInspector mediaInspector = {});
+                    ChannelLibrary::MediaInspector mediaInspector = {},
+                    std::function<qint64()> uptimeClock = {});
 
     [[nodiscard]] int currentChannelNumber() const;
     [[nodiscard]] QString currentChannelName() const;
@@ -97,6 +100,7 @@ public:
     [[nodiscard]] int parentConfirmationCount() const;
     [[nodiscard]] QString parentMessage() const;
     [[nodiscard]] QString playbackMode() const;
+    [[nodiscard]] int episodeResetMinutes() const;
     [[nodiscard]] QString pictureMode() const;
     [[nodiscard]] QString displayResolution() const;
     [[nodiscard]] int crtGlass() const;
@@ -120,6 +124,7 @@ public:
     Q_INVOKABLE void parentConfirm();
     Q_INVOKABLE void closeParent();
     Q_INVOKABLE void cyclePlaybackMode(int direction);
+    Q_INVOKABLE void cycleEpisodeResetMinutes(int direction);
     Q_INVOKABLE void cyclePictureMode(int direction);
     Q_INVOKABLE void cycleDisplayResolution(int direction);
     Q_INVOKABLE void adjustCrtGlass(int direction);
@@ -149,6 +154,7 @@ signals:
     void parentConfirmationCountChanged();
     void parentMessageChanged();
     void playbackModeChanged();
+    void episodeResetMinutesChanged();
     void pictureModeChanged();
     void displayResolutionChanged();
     void crtGlassChanged();
@@ -171,12 +177,14 @@ private:
             : channel(std::move(value))
             , shuffle(channel.episodes.size(), seed)
             , programmePositions(channel.episodes.size(), 0.0)
+            , programmeLastLeftMilliseconds(channel.episodes.size(), -1)
         {
         }
 
         Channel channel;
         ShuffleBag shuffle;
         QVector<double> programmePositions;
+        QVector<qint64> programmeLastLeftMilliseconds;
         int currentEpisode = -1;
         qint64 anchorMilliseconds = 0;
         double anchorPositionSeconds = 0.0;
@@ -210,6 +218,9 @@ private:
     QString programmeDisplayName(const ChannelRuntime &runtime) const;
     double resolveBroadcastPosition(ChannelRuntime &runtime);
     void freezeTimeline(ChannelRuntime &runtime);
+    void markCurrentEpisodeLeft(ChannelRuntime &runtime);
+    void prepareCurrentEpisodeForVisit(ChannelRuntime &runtime);
+    [[nodiscard]] qint64 episodeUptimeMilliseconds() const;
     void setParentMessage(const QString &message);
     void updateLibraryStatus();
     void enterNoChannelsState();
@@ -219,6 +230,7 @@ private:
     QTimer m_tuningTimer;
     QTimer m_numericTimer;
     QElapsedTimer m_broadcastClock;
+    QElapsedTimer m_processUptimeClock;
     QString m_statePath;
     QString m_channelsPath;
     QString m_settingsPath;
@@ -229,6 +241,7 @@ private:
     int m_parentConfirmationCount = 0;
     QString m_parentMessage;
     QString m_playbackMode = QStringLiteral("continuous");
+    int m_episodeResetMinutes = 0;
     QString m_pictureMode = QStringLiteral("channel");
     QString m_displayResolution = QStringLiteral("720p");
     int m_crtGlass = 35;
@@ -253,5 +266,7 @@ private:
     bool m_playbackPaused = false;
     bool m_started = false;
     bool m_soundEffectsEnabled = true;
+    QString m_sessionId;
+    std::function<qint64()> m_episodeUptimeClock;
     ParentAccessState m_parentAccessState = ParentClosed;
 };

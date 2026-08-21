@@ -39,6 +39,27 @@ QString normaliseAspectMode(QString mode)
     }
     return QStringLiteral("crop");
 }
+
+QString normaliseContentType(QString type, const QString &name, const QString &folder)
+{
+    type = type.trimmed().toLower();
+    if (type == QStringLiteral("films")) {
+        return type;
+    }
+    if (type == QStringLiteral("shows")) {
+        return type;
+    }
+
+    // Releases before content types existed already created a channel called
+    // Films. Preserve its resume behaviour without requiring an owner edit.
+    const QString lowerName = name.trimmed().toLower();
+    const QString lowerFolder = folder.trimmed().toLower();
+    if (lowerName == QStringLiteral("films") || lowerName == QStringLiteral("movies")
+        || lowerFolder == QStringLiteral("films") || lowerFolder == QStringLiteral("movies")) {
+        return QStringLiteral("films");
+    }
+    return QStringLiteral("shows");
+}
 } // namespace
 
 ChannelLibraryResult ChannelLibrary::load(const QString &configurationPath,
@@ -92,6 +113,10 @@ ChannelLibraryResult ChannelLibrary::load(const QString &configurationPath,
         channel.name = object.value(QStringLiteral("name")).toString().trimmed();
         channel.folder = object.value(QStringLiteral("folder")).toString().trimmed();
         channel.aspectMode = normaliseAspectMode(object.value(QStringLiteral("aspect")).toString());
+        channel.contentType = normaliseContentType(
+            object.value(QStringLiteral("content_type")).toString(),
+            channel.name,
+            channel.folder);
 
         if (channel.number < 0 || channel.number > 999 || usedNumbers.contains(channel.number)) {
             result.warnings.append(QStringLiteral("Ignored invalid or duplicate channel number %1")

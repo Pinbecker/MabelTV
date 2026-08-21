@@ -2,6 +2,28 @@
 
 All notable Mabel TV product changes are recorded here.
 
+## 0.2.2 - release candidate
+
+### Added
+
+- KidsTV is now the generic product identity. First setup asks for the child’s name and turns it into the friendly on-screen identity (for example `MabelTV` or `JohnTV`); parents can change it later in the dashboard.
+- A reproducible Raspberry Pi Imager delivery path: a pinned Raspberry Pi OS Lite image recipe, verified one-time first-boot bootstrap, local/hosted Imager manifest generator, and Windows manifest launcher.
+- One shared release input for both fresh SD images and the existing in-place updater, so an image-installed Pi never needs reflashing to receive a newer Mabel TV release.
+- Multi-file selection in the browser library. Files upload sequentially to keep Raspberry Pi load predictable, while completed transfers enter the existing persistent background preparation queue.
+- A visible cross-device selection list: files can be chosen together or accumulated over several picker openings, removed before upload, and retained for one-tap resume after a partial failure.
+- Clear per-file batch progress and partial-failure reporting; interrupted files remain resumable without blocking the rest of the selected batch.
+
+## 0.2.1 - release candidate
+
+### Added
+
+- Parent-controlled show-episode inactivity resets with Off, 5-minute, 20-minute, 1-hour, and 3-hour choices.
+- Explicit **Shows / episodes** and **Films / long videos** channel types; films always retain their resume position and existing `Films`/`Movies` channels are recognised automatically.
+
+### Safety
+
+- Inactivity uses the current player process uptime only. Power-off time and a later player session never silently expire a saved episode position.
+
 ## 0.2.0 - release candidate
 
 This release turns the original family installation into a generic Raspberry Pi 4 appliance foundation. It is not cleared for paid or general-availability distribution until every item in `docs/release-readiness.md` has evidence and sign-off.

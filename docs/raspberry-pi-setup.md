@@ -2,6 +2,13 @@
 
 This document is for installers, support staff, and owners who want the detail behind the one-command release bundle. Most owners should use [Quick start](quick-start.md).
 
+## Choose fresh install or update
+
+- For a new card, the preferred route is the [KidsTV SD-card installer](sd-card-installer.md): Raspberry Pi Imager writes an image that completes the normal product installation on first boot.
+- For an existing KidsTV, do not reflash. Download the newer, OS-matched release bundle and run `sudo ./install-mabeltv`. Videos, channels, owner details, settings, and the previous rollback release are retained.
+
+Both routes are produced from the same qualified release bundle. The image is only a first-install wrapper around the normal installer; it does not create a second update system.
+
 ## Supported release target
 
 | Component | Supported baseline |
@@ -40,16 +47,16 @@ sudo reboot
 Release bundles are named for the qualified OS, for example:
 
 ```text
-MabelTV-0.2.0-pi4-trixie-arm64.tar.gz
-MabelTV-0.2.0-pi4-trixie-arm64.tar.gz.sha256
+KidsTV-0.2.2-pi4-trixie-arm64.tar.gz
+KidsTV-0.2.2-pi4-trixie-arm64.tar.gz.sha256
 ```
 
 Copy both files to the Pi. [Quick start](quick-start.md#2-copy-the-two-installation-files) gives complete Windows, macOS, and Linux `scp` examples. Verify the checksum supplied through the release channel, extract the archive, read its supported target, then run its only customer entry point:
 
 ```bash
-sha256sum -c MabelTV-0.2.0-pi4-trixie-arm64.tar.gz.sha256
-tar -xzf MabelTV-0.2.0-pi4-trixie-arm64.tar.gz
-cd MabelTV-0.2.0-pi4-trixie-arm64
+sha256sum -c KidsTV-0.2.2-pi4-trixie-arm64.tar.gz.sha256
+tar -xzf KidsTV-0.2.2-pi4-trixie-arm64.tar.gz
+cd KidsTV-0.2.2-pi4-trixie-arm64
 less SUPPORTED-OS.txt
 sudo ./install-mabeltv
 ```
@@ -95,6 +102,8 @@ An update uses the same command from a newer, OS-matched release bundle:
 ```bash
 sudo ./install-mabeltv
 ```
+
+This is equally true when the original installation came from the KidsTV SD image. Reflashing is never an update step.
 
 The installer never replaces `/var/lib/mabeltv/channels.json`, `/var/lib/mabeltv/settings.json`, `/var/lib/mabeltv/owner.json`, or `/srv/mabeltv/media`. A running installation is restarted and checked. The exact previous release is recorded at `/opt/mabeltv/previous`.
 
@@ -191,7 +200,7 @@ Only the explicit destructive option removes owner data:
 sudo mabeltv-uninstall --yes --purge-data
 ```
 
-The uninstaller removes the marked Mabel TV `config.txt` block and only the exact command-line tokens recorded as Mabel TV additions. Unrelated tokens added later stay in place. If Mabel TV removed a pre-existing forced HDMI mode, that mode is restored only when the owner has not since chosen another one. Older hash-only installations retain a changed command line rather than risk discarding owner edits. Timestamped boot backups remain beside the originals.
+The uninstaller removes the marked KidsTV `config.txt` block and only the exact command-line tokens recorded as KidsTV additions. Unrelated tokens added later stay in place. If KidsTV removed a pre-existing forced HDMI mode, that mode is restored only when the owner has not since chosen another one. Older hash-only installations retain a changed command line rather than risk discarding owner edits. Timestamped boot backups remain beside the originals.
 
 ## Build a release bundle
 
@@ -206,3 +215,5 @@ The production builder refuses dirty product source, verifies the recorded commi
 `MABELTV_ALLOW_DIRTY_RELEASE=true` exists only to exercise the builder during development. Its filenames and manifest say `UNPUBLISHED-DIRTY`, and it must never be supplied to a customer.
 
 Do not publish a bundle until it passes [Release readiness](release-readiness.md) on real hardware.
+
+Derive the fresh-install image and Raspberry Pi Imager manifest from that exact qualified bundle using [SD-card installer](sd-card-installer.md). Publish the normal bundle alongside the image so existing installations can update to the identical release without reflashing.

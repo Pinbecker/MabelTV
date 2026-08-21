@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Installs the release embedded in a KidsTV SD image. The same release entry
+# point remains the supported in-place updater after this one-time bootstrap.
+set -Eeuo pipefail
+umask 077
+
+archive=/usr/lib/mabeltv-bootstrap/release.tar.gz
+checksum_file=/usr/lib/mabeltv-bootstrap/release.sha256
+state_dir=/var/lib/mabeltv-image
+marker="$state_dir/provisioned"
+
+[[ $EUID -eq 0 ]] || { printf 'KidsTV image provisioning must run as root.\n' >&2; exit 1; }
+[[ -f "$marker" ]] && exit 0
+[[ -r "$archive" && -r "$checksum_file" ]] \
+    || { printf 'The embedded KidsTV release is missing.\n' >&2; exit 1; }
+
+expected="$(awk 'NR == 1 { print $1 }' "$checksum_file")"
+actual="$(sha256sum "$archive" | awk '{ print $1 }')"
+[[ "$expected" =~ ^[0-9a-f]{64}$ && "$actual" == "$expected" ]] \
+    || { printf 'The embedded KidsTV release failed its checksum.\n' >&2; exit 1; }
+
+work="$(mktemp -d /run/mabeltv-image-firstboot.XXXXXX)"
+cleanup() { rm -rf -- "$work"; }
+trap cleanup EXIT
+
+python3 - "$archive" <<'PY'
+import pathlib
+import sys
+import tarfile
+
+archive = pathlib.Path(sys.argv[1])
+roots = set()
+with tarfile.open(archive, "r:gz") as bundle:
+    for member in bundle.getmembers():
+        path = pathlib.PurePosixPath(member.name)
+        if path.is_absolute() or ".." in path.parts:
+            raise SystemExit("Unsafe path in embedded release")
+        if path.parts:
+            roots.add(path.parts[0])
+if len(roots) != 1:
+    raise SystemExit("Embedded release must contain one top-level directory")
+PY
+
+tar --no-same-owner -xzf "$archive" -C "$work"
+mapfile -t installers < <(find "$work" -mindepth 2 -maxdepth 2 -type f \
+    -name install-mabeltv -print)
+[[ ${#installers[@]} -eq 1 ]] \
+    || { printf 'The embedded KidsTV installer is incomplete.\n' >&2; exit 1; }
+
+chmod 0755 "${installers[0]}"
+"${installers[0]}" --enable-ir --skip-packages
+
+install -d -m 0755 "$state_dir"
+printf 'installed_at_utc=%s\nrelease_sha256=%s\n' \
+    "$(date --utc +%Y-%m-%dT%H:%M:%SZ)" "$actual" > "$marker.new"
+chmod 0644 "$marker.new"
+mv -f -- "$marker.new" "$marker"
+systemctl disable mabeltv-image-firstboot.service
+rm -f -- "$archive" "$checksum_file"
+
+# GPIO IR boot settings take effect after a reboot. Queue it only after the
+# product installer and marker have completed successfully.
+systemctl --no-block reboot

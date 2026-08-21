@@ -30,7 +30,7 @@ Shows player state, Pi temperature, storage, uptime, version, current thermal/po
 
 ### Add media
 
-Uploads are split into durable 8 MiB parts. A retry asks the Pi for its saved offset instead of restarting. Mabel TV reserves enough room for source plus prepared output and 512 MiB safety space before accepting a file.
+One or several files can be selected together, and reopening the picker adds to a visible list instead of replacing the earlier choice. This supports phone pickers that offer only one video at a time. Items can be removed before upload. The browser transfers a batch sequentially so Raspberry Pi and Wi-Fi load stay predictable, while completed transfers enter the persistent background preparation queue. Uploads are split into durable 8 MiB parts. A retry asks the Pi for its saved offset instead of restarting. Mabel TV reserves enough room for source plus prepared output and 512 MiB safety space before accepting each file.
 
 The final check uses a 30-second probe deadline:
 
@@ -44,7 +44,7 @@ The TV keeps playing while a new library is validated in a worker thread. The ch
 
 ### Channels
 
-Create, rename, renumber, hide/show, change crop/fit/stretch mode, and delete an empty channel. Programme controls can hide/show, rename, move to recycle bin, restore, or permanently delete.
+Create, rename, renumber, hide/show, change crop/fit/stretch mode, choose **Shows / episodes** or **Films / long videos**, and delete an empty channel. Programme controls can hide/show, rename, move to recycle bin, restore, or permanently delete. Film and long-video channels are always exempt from episode inactivity resets.
 
 Deletion is deliberately two-stage. Recycle-bin items expire after 30 days; this is shown in the interface.
 

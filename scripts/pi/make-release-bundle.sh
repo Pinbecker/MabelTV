@@ -72,7 +72,7 @@ if [[ "$dirty_source" == "false" ]]; then
     git -C "$source_root" archive "$commit" | tar -x -C "$build_source"
 fi
 build="$work/build"
-stage="$work/MabelTV-$version$release_qualifier-pi4-$os_slug-arm64"
+stage="$work/KidsTV-$version$release_qualifier-pi4-$os_slug-arm64"
 
 cmake -S "$build_source" -B "$build" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DMABELTV_PI_APPLIANCE=ON
@@ -119,7 +119,7 @@ for name in ("mabeltv", "mabeltv_media_check"):
     }
 manifest = {
     "schema_version": 1,
-    "product": "Mabel TV",
+    "product": "KidsTV",
     "version": sys.argv[2],
     "commit": sys.argv[3],
     "dirty_source": sys.argv[4] == "true",
@@ -135,7 +135,7 @@ output = json.dumps(manifest, indent=2, sort_keys=True) + "\n"
 (stage / "prebuilt" / "BUILD-MANIFEST.json").write_text(output, encoding="utf-8")
 (stage / "BUILD-MANIFEST.json").write_text(output, encoding="utf-8")
 
-supported_os = f"""Mabel TV {sys.argv[2]} supported installation target
+supported_os = f"""KidsTV {sys.argv[2]} supported installation target
 
 Hardware: Raspberry Pi 4 Model B with at least 2 GB RAM
 Architecture: aarch64 (Raspberry Pi OS Lite 64-bit)
@@ -156,9 +156,9 @@ describing the bundle as qualified for customers.
 """
 (stage / "SUPPORTED-OS.txt").write_text(supported_os, encoding="utf-8")
 
-source_name = f"MabelTV-{sys.argv[2]}-source.tar.gz"
+source_name = f"KidsTV-{sys.argv[2]}-source.tar.gz"
 if sys.argv[4] == "true":
-    source_name = f"MabelTV-{sys.argv[2]}-UNPUBLISHED-DIRTY-source.tar.gz"
+    source_name = f"KidsTV-{sys.argv[2]}-UNPUBLISHED-DIRTY-source.tar.gz"
 source_notice = f"""Corresponding source
 
 The source snapshot corresponding to this bundle is distributed beside it as:
@@ -172,20 +172,20 @@ provide. See LICENSE and THIRD_PARTY_NOTICES.md.
 PY
 
 install -d -m 0755 "$output_root"
-archive="$output_root/MabelTV-$version$release_qualifier-pi4-$os_slug-arm64.tar.gz"
+archive="$output_root/KidsTV-$version$release_qualifier-pi4-$os_slug-arm64.tar.gz"
 tar -C "$work" -czf "$archive.new" "$(basename "$stage")"
 mv -f -- "$archive.new" "$archive"
 
 if [[ "$dirty_source" == "false" ]]; then
-    source_archive="$output_root/MabelTV-$version-source.tar.gz"
+    source_archive="$output_root/KidsTV-$version-source.tar.gz"
     git -C "$source_root" archive --format=tar.gz \
-        --prefix="MabelTV-$version-source/" \
+        --prefix="KidsTV-$version-source/" \
         --output="$source_archive.new" "$commit"
 else
     # The override exists only so maintainers can exercise the bundle builder
     # before committing. Snapshot tracked and non-ignored untracked files so
     # even this clearly labelled developer artifact has matching source.
-    source_stage="$work/MabelTV-$version-UNPUBLISHED-DIRTY-source"
+    source_stage="$work/KidsTV-$version-UNPUBLISHED-DIRTY-source"
     install -d -m 0755 "$source_stage"
     while IFS= read -r -d '' relative; do
         [[ -e "$source_root/$relative" ]] || continue
@@ -199,7 +199,7 @@ else
         'UNPUBLISHED developer snapshot built from a dirty working tree.' \
         'It has not passed the commercial release gate.' \
         > "$source_stage/DIRTY-BUILD-NOTICE.txt"
-    source_archive="$output_root/MabelTV-$version-UNPUBLISHED-DIRTY-source.tar.gz"
+    source_archive="$output_root/KidsTV-$version-UNPUBLISHED-DIRTY-source.tar.gz"
     tar -C "$work" -czf "$source_archive.new" "$(basename "$source_stage")"
 fi
 mv -f -- "$source_archive.new" "$source_archive"

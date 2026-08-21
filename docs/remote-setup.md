@@ -66,7 +66,7 @@ Start Mabel TV again with `sudo systemctl start mabeltv.service`.
 
 One-shot actions (digits, pause/play, mute, random, standby, parent access and shutdown) ignore Linux auto-repeat events. Channel and volume holds are allowed but rate-limited, so a noisy receiver or a long press cannot generate an uncontrolled burst of actions. While the remote is locked, every button except the three-second Mute hold is ignored; a small on-screen label remains as a reminder.
 
-Left/Right navigation always resumes the saved position for that individual episode or film. Restarting is deliberately hidden behind the adult sequence: hold Back for the parent-confirmation screen, then press Left, Right, OK. The normal playback-mode setting never rewinds content.
+Left/Right navigation normally resumes the saved position for each individual programme. In Parent Control, **Reset unvisited episodes** can be set to Off, 5 minutes, 20 minutes, 1 hour, or 3 hours. In Resume mode, a partly watched show restarts when it is next selected after that much inactivity during the current Mabel TV uptime. Time while the player is stopped never counts, and channels marked **Films / long videos** are never reset. A one-off deliberate restart remains available by holding Back and then pressing Left, Right, OK on the confirmation screen.
 
 ## TV interaction
 

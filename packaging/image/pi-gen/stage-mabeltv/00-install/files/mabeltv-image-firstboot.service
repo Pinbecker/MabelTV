@@ -1,0 +1,16 @@
+[Unit]
+Description=Complete the KidsTV first-boot installation
+Documentation=file:/usr/lib/mabeltv-bootstrap/image-build.json
+Wants=cloud-final.service
+After=local-fs.target rpi-resize.service cloud-final.service systemd-user-sessions.service
+ConditionPathExists=!/var/lib/mabeltv-image/provisioned
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/mabeltv-image-firstboot
+StandardOutput=journal+console
+StandardError=journal+console
+TimeoutStartSec=20min
+
+[Install]
+WantedBy=multi-user.target

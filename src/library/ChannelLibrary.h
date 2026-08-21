@@ -20,6 +20,7 @@ struct Channel
     QString name;
     QString folder;
     QString aspectMode = QStringLiteral("crop");
+    QString contentType = QStringLiteral("shows");
     QVector<Episode> episodes;
 };
 

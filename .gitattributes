@@ -12,6 +12,9 @@
 CMakeLists.txt text eol=lf
 packaging/linux/* text eol=lf
 scripts/pi/* text eol=lf
+scripts/imaging/*.sh text eol=lf
+scripts/imaging/*.py text eol=lf
+packaging/image/** text eol=lf
 
 # Keep the native Windows entry points comfortable to edit and execute there.
 *.ps1 text eol=crlf

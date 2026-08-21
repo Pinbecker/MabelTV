@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local, parent-protected media library for a Mabel TV appliance.
+"""Local, parent-protected media library for a KidsTV appliance.
 
 The service deliberately uses only Python's standard library.  It is bound to
 the home network by systemd, runs as the unprivileged mabeltv user, and never
@@ -46,11 +46,16 @@ SAFE_NAME = re.compile(r"[^A-Za-z0-9 ._()&'\-]+")
 EPISODE_NAME = re.compile(r"^s(\d{1,2})e(\d{1,3})\s*-\s*(.+)$", re.IGNORECASE)
 PIN_PATTERN = re.compile(r"\d{4,8}")
 PBKDF2_ITERATIONS = 260_000
+PRODUCT_NAME = "KidsTV"
 DEFAULT_CHANNELS = [
-    {"number": 1, "name": "Kids TV", "folder": "kids-tv", "aspect": "crop"},
-    {"number": 2, "name": "Cartoons", "folder": "cartoons", "aspect": "crop"},
-    {"number": 3, "name": "Films", "folder": "films", "aspect": "fit"},
-    {"number": 4, "name": "Family Videos", "folder": "family", "aspect": "fit"},
+    {"number": 1, "name": "Kids TV", "folder": "kids-tv", "aspect": "crop",
+     "content_type": "shows"},
+    {"number": 2, "name": "Cartoons", "folder": "cartoons", "aspect": "crop",
+     "content_type": "shows"},
+    {"number": 3, "name": "Films", "folder": "films", "aspect": "fit",
+     "content_type": "films"},
+    {"number": 4, "name": "Family Videos", "folder": "family", "aspect": "fit",
+     "content_type": "films"},
 ]
 
 
@@ -425,6 +430,32 @@ class Library:
         value = self.read_json(self.owner_path, {})
         return value if isinstance(value, dict) else {}
 
+    @staticmethod
+    def normalise_tv_identity(value: Any) -> tuple[str, str]:
+        """Return the child's plain name and the friendly TV name.
+
+        The setup form asks for "Mabel", rather than asking a grown-up to
+        decide whether a space belongs before TV. Be forgiving if they type
+        "Mabel TV" or "MabelTV" anyway, but never accept an empty/control
+        character name into the owner record or QML display.
+        """
+        child_name = " ".join(str(value or "").split())
+        if child_name.casefold().endswith("tv"):
+            child_name = child_name[:-2].rstrip()
+        if not 1 <= len(child_name) <= 40 or any(ord(char) < 32 for char in child_name):
+            raise ValueError("Enter the child's name, up to 40 characters")
+        return child_name, f"{child_name}TV"
+
+    def tv_identity(self) -> tuple[str, str]:
+        owner = self.owner()
+        try:
+            return self.normalise_tv_identity(owner.get("child_name", ""))
+        except ValueError:
+            # Existing MabelTV installations have no child-name field. Their
+            # internal service/update identity stays untouched, while their
+            # owner-facing display starts from the generic product name.
+            return "", PRODUCT_NAME
+
     def configured(self) -> bool:
         owner = self.owner()
         return bool(owner.get("setup_complete") and owner.get("pin_hash")
@@ -440,6 +471,7 @@ class Library:
             "schema_version": 1,
             "setup_complete": True,
             "owner_name": "Owner",
+            "tv_name": PRODUCT_NAME,
             "legacy_default_pin": legacy_pin == "0973",
             **self.pin_record(legacy_pin),
         }
@@ -466,6 +498,7 @@ class Library:
         return {
             "configured": self.configured(),
             "device_name": socket.gethostname(),
+            "product_name": PRODUCT_NAME,
             "setup_code_required": True,
             # Recovery is an explicit state written by the physical boot-marker
             # service. A fresh install also seeds channels.json, so the mere
@@ -477,6 +510,16 @@ class Library:
     def verify_setup_code(self, supplied_code: str) -> bool:
         expected_code = self.read_config(self.config_path).get("MABELTV_SETUP_CODE", "")
         return bool(expected_code and hmac.compare_digest(supplied_code.strip(), expected_code))
+
+    @staticmethod
+    def channel_content_type(value: dict[str, Any]) -> str:
+        content_type = str(value.get("content_type", "")).strip().lower()
+        if content_type:
+            return content_type
+        name = str(value.get("name", "")).strip().lower()
+        folder = str(value.get("folder", "")).strip().lower()
+        return "films" if name in {"films", "movies"} \
+            or folder in {"films", "movies"} else "shows"
 
     @staticmethod
     def normalise_channels(values: Any) -> list[dict[str, Any]]:
@@ -495,16 +538,19 @@ class Library:
             name = str(raw.get("name", "")).strip()
             folder = SAFE_NAME.sub("", str(raw.get("folder", "")).strip()).strip(". ")
             aspect = str(raw.get("aspect", "crop"))
+            content_type = Library.channel_content_type(raw)
             if not 1 <= number <= 999 or number in numbers:
                 raise ValueError("Channel numbers must be unique and between 1 and 999")
             if not name or len(name) > 60 or not folder or folder in folders:
                 raise ValueError("Every channel needs a unique name and folder")
             if aspect not in {"crop", "fit", "stretch"}:
                 raise ValueError("Channel picture mode must be crop, fit, or stretch")
+            if content_type not in {"shows", "films"}:
+                raise ValueError("Channel content must be shows or films")
             numbers.add(number)
             folders.add(folder)
             channels.append({"number": number, "name": name, "folder": folder,
-                             "aspect": aspect})
+                             "aspect": aspect, "content_type": content_type})
         return sorted(channels, key=lambda channel: channel["number"])
 
     def complete_setup(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -528,10 +574,17 @@ class Library:
                 (self.media_root / channel["folder"]).mkdir(mode=0o750, exist_ok=True)
             self.write_json(self.channels_path, {"schema_version": 1, "channels": channels})
             owner_name = str(payload.get("owner_name", "Owner")).strip()[:60] or "Owner"
+            if recovering_owner:
+                child_name, tv_name = self.tv_identity()
+            else:
+                child_name, tv_name = self.normalise_tv_identity(
+                    payload.get("child_name", "Kids"))
             self.write_json(self.owner_path, {
                 "schema_version": 1,
                 "setup_complete": True,
                 "owner_name": owner_name,
+                "child_name": child_name,
+                "tv_name": tv_name,
                 "legacy_default_pin": False,
                 "created_at": int(time.time()),
                 **self.pin_record(pin),
@@ -564,6 +617,24 @@ class Library:
             owner["pin_changed_at"] = int(time.time())
             self.write_json(self.owner_path, owner)
             self.sessions.clear()
+
+    def change_tv_name(self, payload: dict[str, Any]) -> dict[str, str | bool]:
+        child_name, tv_name = self.normalise_tv_identity(payload.get("child_name"))
+        with self.config_lock:
+            owner = self.owner()
+            if not self.configured():
+                raise ValueError("Finish first-time setup before naming this TV")
+            owner["child_name"] = child_name
+            owner["tv_name"] = tv_name
+            owner["tv_name_changed_at"] = int(time.time())
+            self.write_json(self.owner_path, owner)
+        try:
+            self.admin_action("restart-player")
+            restarted = True
+        except ValueError:
+            restarted = False
+        return {"child_name": child_name, "tv_name": tv_name,
+                "player_restarted": restarted}
 
     @staticmethod
     def read_json(path: Path, fallback: Any) -> Any:
@@ -658,6 +729,7 @@ class Library:
                     programmes.append({"name": item.name, "display_name": self.display_name(item.name), "enabled": item.name not in disabled})
             response.append({"number": channel["number"], "name": channel["name"],
                              "aspect": channel.get("aspect", "crop"),
+                             "content_type": self.channel_content_type(channel),
                              "enabled": channel["number"] not in disabled_channels,
                              "programmes": programmes,
                              "enabled_programmes": sum(p["enabled"] for p in programmes)})
@@ -672,6 +744,8 @@ class Library:
                         "total_gb": disk.total / 1024**3},
             "system": self.system_status(),
             "owner": {"name": owner.get("owner_name", "Owner"),
+                      "child_name": self.tv_identity()[0],
+                      "tv_name": self.tv_identity()[1],
                       "pin_change_recommended": bool(owner.get("legacy_default_pin"))},
         }
 
@@ -1283,6 +1357,7 @@ class Library:
                 "name": payload.get("name"),
                 "folder": payload.get("folder"),
                 "aspect": payload.get("aspect", "crop"),
+                "content_type": payload.get("content_type", "shows"),
             }
             def add(values: list[dict[str, Any]]) -> None:
                 values.append(new_channel)
@@ -1305,6 +1380,8 @@ class Library:
                         value["number"] = new_number
                         value["name"] = payload.get("name", value.get("name"))
                         value["aspect"] = payload.get("aspect", value.get("aspect", "crop"))
+                        value["content_type"] = payload.get(
+                            "content_type", value.get("content_type", "shows"))
                         return
                 raise ValueError("Channel not found")
             with self.config_lock:
@@ -1552,6 +1629,8 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == "/api/account":
                 self.server.library.change_pin(payload)
                 self.json(200, {"ok": True}, "mabeltv_library=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0"); return
+            if self.path == "/api/identity":
+                self.json(200, self.server.library.change_tv_name(payload)); return
             if self.path == "/api/system":
                 output = self.server.library.admin_action(str(payload.get("action", "")))
                 self.json(200, {"ok": True, "message": output}); return

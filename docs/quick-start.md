@@ -1,6 +1,12 @@
 # Quick start for owners
 
-This is the shortest supported path from a new Raspberry Pi to the first programme. Installation needs an internet connection to download Raspberry Pi OS packages; normal television playback is local and can work without the internet afterwards.
+This is the shortest supported path from a new Raspberry Pi to the first programme. The prepared SD image contains its runtime packages. The manual bundle route needs an internet connection to download Raspberry Pi OS packages; normal television playback is local and can work without the internet afterwards.
+
+## The no-command SD-card route
+
+When a qualified KidsTV image is supplied, install the official Raspberry Pi Imager, open `KidsTV.rpi-imager-manifest`, choose Wi-Fi/login details and the microSD card, then write it and boot the Pi. KidsTV completes setup and reboots once; during setup, enter the child’s name to make the TV MabelTV, JohnTV, or another chosen name. Continue at [Complete the three setup steps](#4-complete-the-three-setup-steps). See [SD-card installer](sd-card-installer.md) for the six-step owner journey.
+
+The numbered instructions below are the supported manual route for a release bundle. They also remain useful for support and existing-Pi updates.
 
 ## 1. Check the hardware and release
 
@@ -27,7 +33,7 @@ On Windows, open PowerShell:
 
 ```powershell
 Set-Location "$HOME\Downloads"
-scp .\MabelTV-0.2.0-pi4-trixie-arm64.tar.gz .\MabelTV-0.2.0-pi4-trixie-arm64.tar.gz.sha256 mabel@raspberrypi.local:/home/mabel/
+scp .\KidsTV-0.2.2-pi4-trixie-arm64.tar.gz .\KidsTV-0.2.2-pi4-trixie-arm64.tar.gz.sha256 mabel@raspberrypi.local:/home/mabel/
 ssh mabel@raspberrypi.local
 ```
 
@@ -35,7 +41,7 @@ On macOS or Linux, open Terminal:
 
 ```bash
 cd "$HOME/Downloads"
-scp MabelTV-0.2.0-pi4-trixie-arm64.tar.gz MabelTV-0.2.0-pi4-trixie-arm64.tar.gz.sha256 mabel@raspberrypi.local:/home/mabel/
+scp KidsTV-0.2.2-pi4-trixie-arm64.tar.gz KidsTV-0.2.2-pi4-trixie-arm64.tar.gz.sha256 mabel@raspberrypi.local:/home/mabel/
 ssh mabel@raspberrypi.local
 ```
 
@@ -47,9 +53,9 @@ The following commands run in the Pi SSH session. Use the exact filename you dow
 
 ```bash
 cd /home/mabel
-sha256sum -c MabelTV-0.2.0-pi4-trixie-arm64.tar.gz.sha256
-tar -xzf MabelTV-0.2.0-pi4-trixie-arm64.tar.gz
-cd MabelTV-0.2.0-pi4-trixie-arm64
+sha256sum -c KidsTV-0.2.2-pi4-trixie-arm64.tar.gz.sha256
+tar -xzf KidsTV-0.2.2-pi4-trixie-arm64.tar.gz
+cd KidsTV-0.2.2-pi4-trixie-arm64
 less SUPPORTED-OS.txt
 sudo ./install-mabeltv
 sudo reboot
@@ -72,19 +78,21 @@ Scan the QR code or enter either address on a phone/computer connected to the sa
 2. Choose a 4–8 digit parent PIN for the browser dashboard.
 3. Keep, rename, remove, or add starter channels.
 
-Mabel TV restarts the player once, returns the browser to sign-in, and asks you to enter the new PIN once to open the grown-up dashboard.
+KidsTV restarts the player once, returns the browser to sign-in, and asks you to enter the new PIN once to open the grown-up dashboard. At this point the TV carries the child’s chosen name, such as MabelTV.
 
 ## 5. Add the first programme
 
-Open **Add media**, choose a channel, choose a video, then select **Upload**.
+Open **Add media**, choose a channel, then add one or several videos to the visible selection list. You can reopen the picker to add more before selecting **Upload selected**, which also supports phones whose picker offers only one video at a time. A group is uploaded one file at a time so the Pi and home Wi-Fi are not overloaded; completed transfers move into the persistent preparation queue automatically.
 
 - Wi-Fi interruptions resume from the last durable 8 MiB block.
 - Ordinary prepared MP4 files publish unchanged.
 - High-frame-rate and large iPhone MOV files enter a single background queue and become Pi-friendly 720p/30 fps MP4 files.
 - Once upload reaches 100%, you can close the page while background preparation runs. Reopen **Add media** to see the persistent queue. Use **Retry**, **Cancel**, or **Dismiss** when offered; if the file is safely published but the television could not refresh, use **Retry TV refresh**.
-- Mabel TV pauses conversion if the Pi becomes hot and resumes after it cools.
+- KidsTV pauses conversion if the Pi becomes hot and resumes after it cools.
 
 Use names such as `S01E02 - The Picnic.mp4` for tidy series labels.
+
+When creating or editing a channel, choose **Shows / episodes** or **Films / long videos**. This keeps films permanently exempt from the optional episode-reset timer.
 
 ## Everyday controls
 

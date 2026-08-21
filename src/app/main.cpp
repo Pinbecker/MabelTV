@@ -63,9 +63,9 @@ QUrl findStartupIntro(const QString &mediaRoot)
     const QFileInfoList candidates = introDirectory.entryInfoList(
         QDir::Files | QDir::Readable, QDir::Name | QDir::IgnoreCase);
     for (const QFileInfo &candidate : candidates) {
-        if (candidate.completeBaseName().compare(QStringLiteral("MabelTV"),
-                                                 Qt::CaseInsensitive)
-                == 0
+        const QString baseName = candidate.completeBaseName();
+        if ((baseName.compare(QStringLiteral("KidsTV"), Qt::CaseInsensitive) == 0
+             || baseName.compare(QStringLiteral("MabelTV"), Qt::CaseInsensitive) == 0)
             && supportedExtensions.contains(candidate.suffix().toLower())) {
             return QUrl::fromLocalFile(candidate.absoluteFilePath());
         }
@@ -82,6 +82,23 @@ bool ownerSetupComplete(const QString &path)
     const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
     return document.isObject()
         && document.object().value(QStringLiteral("setup_complete")).toBool(false);
+}
+
+QString ownerTvName(const QString &path)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return QStringLiteral("KidsTV");
+    }
+    const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
+    if (!document.isObject()) {
+        return QStringLiteral("KidsTV");
+    }
+    const QString tvName = document.object().value(QStringLiteral("tv_name"))
+                               .toString().trimmed();
+    return tvName.isEmpty() || tvName.size() > 42
+        ? QStringLiteral("KidsTV")
+        : tvName;
 }
 
 QString configurationValue(const QString &path, const QString &wantedKey)
@@ -207,12 +224,12 @@ int main(int argc, char *argv[])
     // Qt adopts the user's regional locale during application construction,
     // while libmpv requires the process-wide numeric locale to remain C.
     setlocale(LC_NUMERIC, "C");
-    QCoreApplication::setApplicationName(QStringLiteral("Mabel TV"));
+    QCoreApplication::setApplicationName(QStringLiteral("KidsTV"));
     QCoreApplication::setApplicationVersion(QStringLiteral(MABELTV_VERSION));
     QCoreApplication::setOrganizationName(QStringLiteral("MabelTV"));
 
     QCommandLineParser parser;
-    parser.setApplicationDescription(QStringLiteral("Mabel TV child-friendly television player"));
+    parser.setApplicationDescription(QStringLiteral("KidsTV child-friendly television player"));
     parser.addHelpOption();
     parser.addVersionOption();
     const QCommandLineOption fullscreenOption(QStringLiteral("fullscreen"),
@@ -282,6 +299,7 @@ int main(int argc, char *argv[])
               .filePath(QStringLiteral("logs"));
     const QString ownerPath = qEnvironmentVariable(
         "MABELTV_OWNER", QStringLiteral("/var/lib/mabeltv/owner.json"));
+    const QString tvDisplayName = ownerTvName(ownerPath);
     const QString libraryConfigurationPath = qEnvironmentVariable(
         "MABELTV_LIBRARY_CONFIG", QStringLiteral("/etc/mabeltv/library.conf"));
     const QString setupCode = configurationValue(libraryConfigurationPath,
@@ -299,7 +317,8 @@ int main(int argc, char *argv[])
         : QUrl();
 
     Logging::initialize(logDirectory);
-    qInfo().noquote() << "Starting Mabel TV" << QCoreApplication::applicationVersion();
+    qInfo().noquote() << "Starting KidsTV" << tvDisplayName
+                      << QCoreApplication::applicationVersion();
     qInfo().noquote() << "Channels:" << QDir::toNativeSeparators(channelsPath);
     qInfo().noquote() << "Settings:" << QDir::toNativeSeparators(settingsPath);
     qInfo().noquote() << "Media root:" << QDir::toNativeSeparators(mediaRoot);
@@ -360,7 +379,7 @@ int main(int argc, char *argv[])
                                      return;
                                  }
                                  if (shouldReload) {
-                                     qInfo() << "Reloading the media library without restarting Mabel TV";
+                                     qInfo() << "Reloading the media library without restarting KidsTV";
                                      television.reloadLibrary();
                                  }
                              });
@@ -411,6 +430,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("firstRunLibraryUrl"), libraryUrl);
     engine.rootContext()->setContextProperty(QStringLiteral("firstRunLibraryIpUrl"), libraryIpUrl);
     engine.rootContext()->setContextProperty(QStringLiteral("firstRunSetupQrUrl"), setupQrUrl);
+    engine.rootContext()->setContextProperty(QStringLiteral("tvDisplayName"), tvDisplayName);
     engine.rootContext()->setContextProperty(QStringLiteral("tvController"), &television);
     engine.load(QUrl(QStringLiteral("qrc:/qml/Main.qml")));
     if (engine.rootObjects().isEmpty()) {
@@ -430,7 +450,7 @@ int main(int argc, char *argv[])
     auto *video = engine.rootObjects().constFirst()->findChild<MpvVideo *>(
         QStringLiteral("mabeltvPlayer"));
     if (video == nullptr) {
-        qCritical() << "The QML scene did not create the Mabel TV video player";
+        qCritical() << "The QML scene did not create the KidsTV video player";
         return 45;
     }
     if (!video->available()) {
@@ -511,7 +531,7 @@ int main(int argc, char *argv[])
 
     const int result = application.exec();
     notifyService("STOPPING=1\nSTATUS=Stopping television");
-    qInfo() << "Mabel TV exited with code" << result;
+    qInfo() << "KidsTV exited with code" << result;
     Logging::shutdown();
     return result;
 }

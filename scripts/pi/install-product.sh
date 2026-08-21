@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Customer entry point included at the root of a Mabel TV Pi release bundle.
+# Customer entry point included at the root of a KidsTV Pi release bundle.
 set -Eeuo pipefail
 
 script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"

@@ -11,7 +11,7 @@ Item {
     property int selectedProgramme: 0
     property bool programmePane: false
     property int restartSequenceStep: 0
-    readonly property int rowCount: 15
+    readonly property int rowCount: 16
 
     visible: controller.parentAccessState !== TvController.ParentClosed
 
@@ -26,23 +26,31 @@ Item {
         return value.toUpperCase()
     }
 
+    function episodeResetLabel(minutes) {
+        if (minutes === 0) return "OFF"
+        if (minutes === 60) return "1 HOUR"
+        if (minutes === 180) return "3 HOURS"
+        return minutes + " MINUTES"
+    }
+
     function valueForRow(index) {
         switch (index) {
         case 0: return pretty(controller.playbackMode)
-        case 1: return pretty(controller.pictureMode)
-        case 2: return pretty(controller.tvBorderStyle)
-        case 3: return controller.crtGlass + "%"
-        case 4: return controller.videoDistortion + "%"
-        case 5: return controller.displayResolution.toUpperCase()
-        case 6: return controller.volumeLimitEnabled ? "ON" : "OFF"
-        case 7: return controller.configuredMaximumVolume + "%"
-        case 8: return controller.soundEffectsEnabled ? "ON" : "OFF"
-        case 9: return "OPEN"
-        case 10: return "RUN NOW"
-        case 11: return controller.libraryStatus.split("\n")[0].toUpperCase()
-        case 12: return "WINDOWS / DEVELOPMENT"
-        case 13: return "RELAUNCH"
-        case 14: return Qt.platform.os === "windows" ? "PI ONLY" : "SAFE POWEROFF"
+        case 1: return episodeResetLabel(controller.episodeResetMinutes)
+        case 2: return pretty(controller.pictureMode)
+        case 3: return pretty(controller.tvBorderStyle)
+        case 4: return controller.crtGlass + "%"
+        case 5: return controller.videoDistortion + "%"
+        case 6: return controller.displayResolution.toUpperCase()
+        case 7: return controller.volumeLimitEnabled ? "ON" : "OFF"
+        case 8: return controller.configuredMaximumVolume + "%"
+        case 9: return controller.soundEffectsEnabled ? "ON" : "OFF"
+        case 10: return "OPEN"
+        case 11: return "RUN NOW"
+        case 12: return controller.libraryStatus.split("\n")[0].toUpperCase()
+        case 13: return "WINDOWS / DEVELOPMENT"
+        case 14: return "RELAUNCH"
+        case 15: return Qt.platform.os === "windows" ? "PI ONLY" : "SAFE POWEROFF"
         }
         return ""
     }
@@ -50,31 +58,32 @@ Item {
     function adjustRow(index, direction) {
         switch (index) {
         case 0: controller.cyclePlaybackMode(direction); break
-        case 1: controller.cyclePictureMode(direction); break
-        case 2: controller.cycleTvBorderStyle(direction); break
-        case 3: controller.adjustCrtGlass(direction); break
-        case 4: controller.adjustVideoDistortion(direction); break
-        case 5: controller.cycleDisplayResolution(direction); break
-        case 6: controller.toggleVolumeLimit(); break
-        case 7: controller.adjustMaximumVolume(direction); break
-        case 8: controller.toggleSoundEffects(); break
+        case 1: controller.cycleEpisodeResetMinutes(direction); break
+        case 2: controller.cyclePictureMode(direction); break
+        case 3: controller.cycleTvBorderStyle(direction); break
+        case 4: controller.adjustCrtGlass(direction); break
+        case 5: controller.adjustVideoDistortion(direction); break
+        case 6: controller.cycleDisplayResolution(direction); break
+        case 7: controller.toggleVolumeLimit(); break
+        case 8: controller.adjustMaximumVolume(direction); break
+        case 9: controller.toggleSoundEffects(); break
         }
     }
 
     function activateRow(index) {
-        if (index <= 8) {
+        if (index <= 9) {
             adjustRow(index, 1)
-        } else if (index === 9) {
+        } else if (index === 10) {
             page = "library"
             programmePane = false
             clampLibrarySelection()
-        } else if (index === 10) {
+        } else if (index === 11) {
             controller.reloadLibrary()
-        } else if (index === 12) {
-            controller.requestParentCommand("exit")
         } else if (index === 13) {
+            controller.requestParentCommand("exit")
+        } else if (index === 14) {
             controller.requestParentCommand("restart")
-        } else if (index === 14 && Qt.platform.os !== "windows") {
+        } else if (index === 15 && Qt.platform.os !== "windows") {
             controller.requestParentCommand("shutdown")
         }
     }
@@ -313,11 +322,11 @@ Item {
                 anchors.right: parent.right
                 anchors.top: parentTitle.bottom
                 anchors.topMargin: 18
-                spacing: 2
+                spacing: 1
 
                 Repeater {
-                    model: ["PLAYBACK MODE", "PICTURE MODE", "TV BORDER", "CRT GLASS",
-                            "90s DISTORTION", "DISPLAY OUTPUT", "VOLUME LIMIT",
+                    model: ["PLAYBACK MODE", "RESET UNVISITED EPISODES", "PICTURE MODE",
+                            "TV BORDER", "CRT GLASS", "90s DISTORTION", "DISPLAY OUTPUT", "VOLUME LIMIT",
                             "MAXIMUM VOLUME", "TV SOUNDS", "CHANNELS & PROGRAMMES",
                             "RELOAD LIBRARY", "DIAGNOSTICS", "EXIT MABEL TV",
                             "RESTART MABEL TV", "SHUT DOWN PI"]
@@ -326,7 +335,7 @@ Item {
                         required property int index
                         required property string modelData
                         width: parent.width
-                        height: 32
+                        height: 30
                         color: index === overlay.selectedRow ? "#334d34" : "transparent"
                         border.color: index === overlay.selectedRow ? "#709372" : "transparent"
 
@@ -352,7 +361,7 @@ Item {
                             font.family: "Consolas"
                             font.pixelSize: 14
                             horizontalAlignment: Text.AlignRight
-                            visible: index !== 3 && index !== 4
+                            visible: index !== 4 && index !== 5
                             text: overlay.valueForRow(index)
                         }
 
@@ -363,7 +372,7 @@ Item {
                             anchors.leftMargin: parent.width * 0.58
                             anchors.rightMargin: 12
                             height: 22
-                            visible: index === 3 || index === 4
+                            visible: index === 4 || index === 5
 
                             Rectangle {
                                 anchors.left: parent.left
@@ -380,7 +389,7 @@ Item {
                                     anchors.left: parent.left
                                     anchors.top: parent.top
                                     anchors.bottom: parent.bottom
-                                    width: parent.width * (index === 3
+                                    width: parent.width * (index === 4
                                         ? controller.crtGlass
                                         : controller.videoDistortion) / 100
                                     radius: parent.radius
@@ -398,7 +407,7 @@ Item {
                                 font.family: "Consolas"
                                 font.pixelSize: 14
                                 horizontalAlignment: Text.AlignRight
-                                text: (index === 3 ? controller.crtGlass
+                                text: (index === 4 ? controller.crtGlass
                                                    : controller.videoDistortion) + "%"
                             }
                         }

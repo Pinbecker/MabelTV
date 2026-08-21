@@ -25,6 +25,7 @@ private slots:
     void controllerSkipsAnEpisodeAfterPlaybackFailure();
     void controllerPersistsWatchdogQuarantineUntilFileChanges();
     void controllerMovesBetweenProgrammesInFilenameOrder();
+    void controllerRestartsStaleShowsButNeverFilms();
     void controllerDisplaysSeasonEpisodeOrFilmNameWhenProgrammeChanges();
     void standbyWakeWaitsForWelcomeBeforeResumingPlayback();
     void remoteLockBlocksActionsAndPersists();
@@ -96,6 +97,7 @@ void CoreTests::channelLibraryLoadsAndSortsValidChannels()
     QCOMPARE(result.channels[0].episodes[0].durationSeconds, 42.0);
     QCOMPARE(result.channels[1].number, 7);
     QCOMPARE(result.channels[1].aspectMode, QStringLiteral("fit"));
+    QCOMPARE(result.channels[1].contentType, QStringLiteral("shows"));
 }
 
 void CoreTests::channelLibraryKeepsMissingFoldersAsNoSignalChannels()
@@ -412,6 +414,89 @@ void CoreTests::controllerMovesBetweenProgrammesInFilenameOrder()
     QVERIFY(playbackRequests.at(3).at(1).toDouble() < 0.2);
 }
 
+void CoreTests::controllerRestartsStaleShowsButNeverFilms()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/shows")));
+    QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/films")));
+    for (const QString &path : {QStringLiteral("media/shows/a.mp4"),
+                                QStringLiteral("media/shows/b.mp4"),
+                                QStringLiteral("media/films/c.mp4"),
+                                QStringLiteral("media/films/d.mp4")}) {
+        QFile media(directory.filePath(path));
+        QVERIFY(media.open(QIODevice::WriteOnly));
+        media.close();
+    }
+
+    QFile configuration(directory.filePath(QStringLiteral("channels.json")));
+    QVERIFY(configuration.open(QIODevice::WriteOnly));
+    configuration.write(R"({
+        "schema_version": 1,
+        "channels": [
+            {"number": 1, "name": "Shows", "folder": "shows", "content_type": "shows"},
+            {"number": 2, "name": "Films", "folder": "films"}
+        ]
+    })");
+    configuration.close();
+
+    QFile settings(directory.filePath(QStringLiteral("settings.json")));
+    QVERIFY(settings.open(QIODevice::WriteOnly));
+    settings.write(R"({
+        "schema_version": 1,
+        "playback_mode": "resume",
+        "episode_reset_minutes": 5
+    })");
+    settings.close();
+
+    qint64 uptimeMilliseconds = 0;
+    TvController controller;
+    QVERIFY(controller.initialize(
+        configuration.fileName(),
+        settings.fileName(),
+        directory.filePath(QStringLiteral("media")),
+        directory.filePath(QStringLiteral("state.json")),
+        [](const QString &) {
+            return MediaInspection{true, true, 120.0, QStringLiteral("h264"), {}};
+        },
+        [&uptimeMilliseconds]() { return uptimeMilliseconds; }));
+    QCOMPARE(controller.episodeResetMinutes(), 5);
+
+    QSignalSpy playbackRequests(&controller, &TvController::playbackRequested);
+    controller.start();
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 1, 1000);
+    const QString firstShow = playbackRequests.at(0).at(0).toUrl().fileName();
+
+    controller.updatePlaybackPosition(23.5, true);
+    controller.dispatch(TvController::NextProgramme);
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 2, 1000);
+    uptimeMilliseconds = 4 * 60 * 1000;
+    controller.dispatch(TvController::PreviousProgramme);
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 3, 1000);
+    QCOMPARE(playbackRequests.at(2).at(0).toUrl().fileName(), firstShow);
+    QVERIFY(std::abs(playbackRequests.at(2).at(1).toDouble() - 23.5) < 0.8);
+
+    controller.dispatch(TvController::NextProgramme);
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 4, 1000);
+    uptimeMilliseconds = 9 * 60 * 1000;
+    controller.dispatch(TvController::PreviousProgramme);
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 5, 1000);
+    QCOMPARE(playbackRequests.at(4).at(0).toUrl().fileName(), firstShow);
+    QVERIFY(playbackRequests.at(4).at(1).toDouble() < 0.2);
+
+    controller.dispatch(TvController::ChannelUp);
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 6, 1000);
+    const QString firstFilm = playbackRequests.at(5).at(0).toUrl().fileName();
+    controller.updatePlaybackPosition(31.25, true);
+    controller.dispatch(TvController::NextProgramme);
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 7, 1000);
+    uptimeMilliseconds = 14 * 60 * 1000;
+    controller.dispatch(TvController::PreviousProgramme);
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 8, 1000);
+    QCOMPARE(playbackRequests.at(7).at(0).toUrl().fileName(), firstFilm);
+    QVERIFY(std::abs(playbackRequests.at(7).at(1).toDouble() - 31.25) < 0.2);
+}
+
 void CoreTests::controllerDisplaysSeasonEpisodeOrFilmNameWhenProgrammeChanges()
 {
     QTemporaryDir directory;
@@ -602,6 +687,18 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
     QCOMPARE(controller.parentAccessState(), TvController::ParentOpen);
 
     controller.cyclePlaybackMode(1);
+    QCOMPARE(controller.episodeResetMinutes(), 0);
+    controller.cycleEpisodeResetMinutes(1);
+    QCOMPARE(controller.episodeResetMinutes(), 5);
+    controller.cycleEpisodeResetMinutes(1);
+    QCOMPARE(controller.episodeResetMinutes(), 20);
+    controller.cycleEpisodeResetMinutes(1);
+    QCOMPARE(controller.episodeResetMinutes(), 60);
+    controller.cycleEpisodeResetMinutes(1);
+    QCOMPARE(controller.episodeResetMinutes(), 180);
+    controller.cycleEpisodeResetMinutes(1);
+    QCOMPARE(controller.episodeResetMinutes(), 0);
+    controller.cycleEpisodeResetMinutes(1);
     controller.cycleTvBorderStyle(1);
     QCOMPARE(controller.crtGlass(), 35);
     for (int count = 0; count < 20; ++count) {
@@ -612,6 +709,7 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
     }
     controller.toggleVolumeLimit();
     QCOMPARE(controller.playbackMode(), QStringLiteral("resume"));
+    QCOMPARE(controller.episodeResetMinutes(), 5);
     QCOMPARE(controller.tvBorderStyle(), QStringLiteral("silver-90s"));
     QCOMPARE(controller.crtGlass(), 100);
     QCOMPARE(controller.videoDistortion(), 100);
@@ -622,6 +720,7 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
     const QJsonDocument savedDocument = QJsonDocument::fromJson(savedSettings.readAll());
     QCOMPARE(savedDocument.object().value(QStringLiteral("playback_mode")).toString(),
              QStringLiteral("resume"));
+    QCOMPARE(savedDocument.object().value(QStringLiteral("episode_reset_minutes")).toInt(), 5);
     QCOMPARE(savedDocument.object().value(QStringLiteral("tv_border")).toString(),
              QStringLiteral("silver-90s"));
     QCOMPARE(savedDocument.object().value(QStringLiteral("crt_glass")).toInt(), 100);
@@ -641,6 +740,7 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
                                 directory.filePath(QStringLiteral("restored-state.json")),
                                 [](const QString &) { return MediaInspection{}; }));
     QCOMPARE(restored.tvBorderStyle(), QStringLiteral("silver-90s"));
+    QCOMPARE(restored.episodeResetMinutes(), 5);
     QCOMPARE(restored.crtGlass(), 100);
     QCOMPARE(restored.videoDistortion(), 100);
 }

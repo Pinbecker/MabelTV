@@ -11,7 +11,7 @@ Window {
     minimumHeight: 450
     visible: true
     color: "#030403"
-    title: "Mabel TV"
+    title: tvDisplayName
     property bool warmingUp: true
     property real warmProgress: 0
     property real flickerAmount: 0
@@ -415,7 +415,7 @@ Window {
             }
 
             Text {
-                text: "MABEL TV"
+                text: tvDisplayName.toUpperCase()
                 color: "#a3a69f"
                 font.pixelSize: Math.max(9, parent.height * 0.14)
                 font.bold: true
@@ -504,7 +504,7 @@ Window {
             // Preserve the full CRT appearance whenever any CRT control is in
             // use. Only bypass the off-screen texture and shader when the user
             // has explicitly turned both effects off and playback is not
-            // paused; the normal Mabel TV picture remains pixel-for-pixel the
+            // paused; the normal KidsTV picture remains pixel-for-pixel the
             // same as before this optimisation.
             layer.enabled: tvController.crtGlass > 0
                            || tvController.videoDistortion > 0
@@ -622,7 +622,7 @@ Window {
                         font.pixelSize: Math.max(27, screen.height * 0.085)
                         horizontalAlignment: Text.AlignHCenter
                         wrapMode: Text.WordWrap
-                        text: "WELCOME TO MABEL TV"
+                        text: "WELCOME TO " + tvDisplayName.toUpperCase()
                     }
 
                     Text {
@@ -842,7 +842,7 @@ Window {
                     font.family: "Consolas"
                     font.bold: true
                     font.pixelSize: 17
-                    text: "MABEL TV"
+                    text: tvDisplayName.toUpperCase()
                 }
             }
 
