@@ -102,7 +102,10 @@ awk -v begin="$begin_marker" -v end="$end_marker" '
 } >> "$temporary_config"
 install -m "$config_mode" "$temporary_config" "$config_path"
 
-read -r -a cmdline_tokens < "$cmdline_path"
+# Raspberry Pi's cmdline.txt commonly has no trailing newline.  Bash still
+# supplies the final line, but read returns non-zero at EOF; do not mistake
+# that normal file format for a failed boot configuration.
+read -r -a cmdline_tokens < "$cmdline_path" || true
 new_tokens=()
 existing_video=""
 for token in "${cmdline_tokens[@]}"; do
@@ -128,7 +131,7 @@ sha256sum "$cmdline_path" | awk '{print $1}' > "$boot_state/managed-cmdline.sha2
 # Record only the exact boot arguments Mabel TV introduced relative to the
 # owner's original command line. Uninstall can then remove those arguments
 # without replacing the whole line or discarding edits made after setup.
-read -r -a original_tokens < "$boot_state/cmdline.txt"
+read -r -a original_tokens < "$boot_state/cmdline.txt" || true
 declare -A original_token_set=()
 for token in "${original_tokens[@]}"; do original_token_set["$token"]=1; done
 managed_tokens_file="$boot_state/managed-cmdline.tokens"
