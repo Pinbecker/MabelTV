@@ -70,9 +70,18 @@ class ImagerManifestTests(unittest.TestCase):
             / "packaging/image/pi-gen/stage-mabeltv/00-install/files/mabeltv-image-firstboot"
         ).read_text(encoding="utf-8")
         installer = (ROOT / "scripts/pi/install-product.sh").read_text(encoding="utf-8")
+        shared_installer = (ROOT / "scripts/pi/install.sh").read_text(encoding="utf-8")
         self.assertIn('"${installers[0]}" --enable-ir --skip-packages', firstboot)
         self.assertIn("scripts/pi/install.sh", installer)
         self.assertIn("--product-install", installer)
+        self.assertIn('-f /etc/rc_keymaps/mabeltv.toml', shared_installer)
+
+    def test_boot_configuration_preserves_existing_ir_unless_explicitly_disabled(self):
+        configure_boot = (ROOT / "scripts" / "pi" / "configure-boot.sh").read_text(
+            encoding="utf-8")
+        self.assertIn('ir_mode="preserve"', configure_boot)
+        self.assertIn('--disable-ir', configure_boot)
+        self.assertIn('existing_ir_line=', configure_boot)
 
 
 if __name__ == "__main__":

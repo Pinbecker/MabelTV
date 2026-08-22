@@ -388,7 +388,9 @@ if [[ "$configure_boot" == "true" ]]; then
     # Do not pin Linux to HDMI socket 1. The launcher detects either connector
     # and still requests the safe 720p application mode from settings.
     boot_arguments=(--display native --remove-forced-video)
-    if [[ "$enable_ir" == "true" ]]; then
+    # A mapped remote proves this appliance already uses GPIO IR. Preserve it
+    # across normal product updates even when --enable-ir is not repeated.
+    if [[ "$enable_ir" == "true" || -f /etc/rc_keymaps/mabeltv.toml ]]; then
         boot_arguments+=(--enable-ir --ir-gpio 18)
     fi
     bash "$source_root/scripts/pi/configure-boot.sh" "${boot_arguments[@]}"

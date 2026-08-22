@@ -4,11 +4,11 @@ set -Eeuo pipefail
 display="720p"
 ir_gpio="18"
 force_video="false"
-enable_ir="false"
+ir_mode="preserve"
 remove_forced_video="false"
 
 usage() {
-    printf 'Usage: sudo bash configure-boot.sh [--display 720p|1080p|native] [--enable-ir] [--ir-gpio N] [--force-video] [--remove-forced-video]\n'
+    printf 'Usage: sudo bash configure-boot.sh [--display 720p|1080p|native] [--enable-ir|--disable-ir] [--ir-gpio N] [--force-video] [--remove-forced-video]\n'
 }
 
 while (($#)); do
@@ -22,7 +22,11 @@ while (($#)); do
             shift 2
             ;;
         --enable-ir)
-            enable_ir="true"
+            ir_mode="enable"
+            shift
+            ;;
+        --disable-ir)
+            ir_mode="disable"
             shift
             ;;
         --force-video)
@@ -53,7 +57,7 @@ if [[ "$display" != "720p" && "$display" != "1080p" && "$display" != "native" ]]
     printf 'Display must be 720p, 1080p, or native.\n' >&2
     exit 2
 fi
-if [[ "$enable_ir" == "true" ]] \
+if [[ "$ir_mode" == "enable" ]] \
     && { [[ ! "$ir_gpio" =~ ^[0-9]+$ ]] || ((ir_gpio < 0 || ir_gpio > 27)); }; then
     printf 'IR GPIO must be a BCM pin number from 0 to 27.\n' >&2
     exit 2
@@ -82,6 +86,7 @@ cp --preserve=all "$cmdline_path" "$cmdline_path.mabeltv-$stamp.bak"
 
 begin_marker='# BEGIN MABELTV MANAGED SETTINGS'
 end_marker='# END MABELTV MANAGED SETTINGS'
+existing_ir_line="$(grep -m1 -E '^dtoverlay=gpio-ir(,gpio_pin=[0-9]+)?$' "$config_path" || true)"
 temporary_config="$(mktemp)"
 trap 'rm -f "$temporary_config"' EXIT
 config_mode="$(stat -c '%a' "$config_path")"
@@ -92,8 +97,15 @@ awk -v begin="$begin_marker" -v end="$end_marker" '
 ' "$config_path" > "$temporary_config"
 {
     printf '\n%s\n' "$begin_marker"
-    if [[ "$enable_ir" == "true" ]]; then
-        printf 'dtoverlay=gpio-ir,gpio_pin=%s\n' "$ir_gpio"
+    ir_line=""
+    if [[ "$ir_mode" == "enable" ]]; then
+        ir_line="dtoverlay=gpio-ir,gpio_pin=$ir_gpio"
+    elif [[ "$ir_mode" == "preserve" ]]; then
+        ir_line="$existing_ir_line"
+    fi
+    if [[ -n "$ir_line" ]] \
+        && ! grep -q -E '^dtoverlay=gpio-ir(,gpio_pin=[0-9]+)?$' "$temporary_config"; then
+        printf '%s\n' "$ir_line"
     fi
     printf 'hdmi_ignore_cec_init=1\n'
     printf 'hdmi_ignore_cec=1\n'
@@ -148,8 +160,8 @@ done
 install -o root -g root -m 0600 "$temporary_tokens" "$managed_tokens_file"
 rm -f -- "$temporary_tokens"
 
-if [[ "$enable_ir" == "true" ]]; then
-    printf 'Configured GPIO %s IR input, disabled HDMI-CEC, and selected %s output.\n' "$ir_gpio" "$display"
+if grep -q -E '^dtoverlay=gpio-ir(,gpio_pin=[0-9]+)?$' "$config_path"; then
+    printf 'Configured GPIO IR input, disabled HDMI-CEC, and selected %s output.\n' "$display"
 else
     printf 'Configured appliance display settings without an IR receiver, disabled HDMI-CEC, and selected %s output.\n' "$display"
 fi
