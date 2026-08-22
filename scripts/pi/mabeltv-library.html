@@ -2,399 +2,112 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#14352f">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#151b19">
   <title>KidsTV</title>
   <style>
-    :root {
-      color-scheme: light;
-      --ink: #17221e;
-      --soft-ink: #52625b;
-      --cream: #fff8e8;
-      --paper: #fffdf7;
-      --green: #14352f;
-      --green-2: #236859;
-      --mint: #dff2df;
-      --amber: #f1b653;
-      --amber-soft: #fff0c9;
-      --red: #a9392d;
-      --red-soft: #f9dfda;
-      --line: #d8d8ca;
-      --shadow: 0 10px 30px #14352f17;
-    }
-    * { box-sizing: border-box; }
-    html { background: #ede8d8; }
-    body { margin: 0; color: var(--ink); background: linear-gradient(150deg, #f8edcf 0, #e7eddf 52%, #dce8e2 100%); font: 16px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; min-height: 100vh; }
-    button, input, select { font: inherit; }
-    button, .button { min-height: 44px; border: 0; border-radius: 10px; padding: 10px 16px; background: var(--green-2); color: white; font-weight: 750; cursor: pointer; text-align: center; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
-    button:hover, .button:hover { filter: brightness(.94); }
-    button:focus-visible, input:focus-visible, select:focus-visible, .button:focus-visible { outline: 4px solid #f1b65388; outline-offset: 2px; }
-    button.secondary, .button.secondary { background: #e6ece8; color: var(--green); }
-    button.danger { background: var(--red); }
-    button.link { min-height: auto; background: transparent; color: var(--green-2); padding: 4px; text-decoration: underline; }
-    button:disabled { opacity: .55; cursor: wait; }
-    input, select { width: 100%; min-height: 46px; border: 2px solid #bdc8c0; border-radius: 9px; padding: 9px 11px; color: var(--ink); background: white; }
-    label { display: grid; gap: 6px; font-weight: 700; }
-    label small { font-weight: 450; color: var(--soft-ink); }
-    h1, h2, h3, p { margin-top: 0; }
-    h1 { margin-bottom: 7px; font: 850 clamp(2.1rem, 6vw, 3.6rem)/.95 Georgia, serif; letter-spacing: -.04em; }
-    h2 { margin-bottom: 8px; font-size: clamp(1.35rem, 4vw, 1.8rem); }
-    h3 { margin-bottom: 6px; font-size: 1.05rem; }
-    .hidden { display: none !important; }
-    .muted { color: var(--soft-ink); }
-    .small { font-size: .88rem; }
-    .eyebrow { margin: 0 0 5px; color: var(--green-2); font-size: .78rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
-    .shell { width: min(1180px, calc(100% - 28px)); margin: 0 auto; padding: 24px 0 54px; }
-    .card { background: var(--paper); border: 1px solid #ffffff; border-radius: 19px; box-shadow: var(--shadow); padding: clamp(18px, 4vw, 28px); margin: 16px 0; }
-    .narrow { width: min(700px, 100%); margin: min(8vh, 70px) auto 0; }
-    .row { display: flex; gap: 11px; align-items: center; flex-wrap: wrap; }
-    .row > .grow { flex: 1 1 240px; }
-    .field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-    .field-grid .wide { grid-column: 1 / -1; }
-    .callout { border-radius: 12px; padding: 14px 16px; margin: 15px 0; background: var(--mint); border-left: 5px solid var(--green-2); }
-    .callout.warn { background: var(--amber-soft); border-left-color: var(--amber); }
-    .callout.bad { background: var(--red-soft); border-left-color: var(--red); }
-    .brand-mark { width: 48px; height: 39px; border: 5px solid currentColor; border-radius: 11px; display: inline-block; position: relative; margin-bottom: 15px; }
-    .brand-mark:after { content: ""; position: absolute; width: 8px; height: 8px; border-radius: 50%; background: currentColor; right: 5px; bottom: 5px; }
-    .step-list { display: flex; gap: 8px; padding: 0; margin: 22px 0; list-style: none; counter-reset: setup; }
-    .step-list li { flex: 1; border-top: 5px solid #c9d3cc; padding-top: 8px; color: var(--soft-ink); font-size: .82rem; font-weight: 750; }
-    .step-list li.active { border-color: var(--green-2); color: var(--green); }
-    .channel-setup { border: 1px solid var(--line); border-radius: 12px; padding: 13px; margin: 10px 0; }
-    .channel-setup-fields { display: grid; grid-template-columns: 82px minmax(140px, 1fr) minmax(125px, .65fr) minmax(160px, .8fr) auto; gap: 9px; align-items: end; }
-    .setup-actions { justify-content: space-between; margin-top: 22px; }
-    .topbar { display: flex; gap: 16px; align-items: center; margin-bottom: 14px; }
-    .topbar .brand-mark { width: 39px; height: 32px; border-width: 4px; margin: 0; flex: none; }
-    .topbar strong { font: 800 1.32rem Georgia, serif; }
-    .topbar .spacer { flex: 1; }
-    .health-pill { border-radius: 99px; padding: 7px 12px; background: var(--mint); color: #174b3e; font-size: .86rem; font-weight: 800; }
-    .health-pill.bad { background: var(--amber-soft); color: #724b09; }
-    nav { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; background: #fff9; border-radius: 14px; padding: 6px; position: sticky; top: 7px; z-index: 4; backdrop-filter: blur(10px); box-shadow: 0 6px 18px #14352f12; }
-    nav button { min-width: 0; background: transparent; color: var(--soft-ink); padding: 10px 8px; }
-    nav button.active { background: var(--green); color: white; }
-    .view { display: none; }
-    .view.active { display: block; }
-    .hero { display: grid; grid-template-columns: 1.4fr .8fr; gap: 18px; align-items: stretch; }
-    .hero .card { margin: 16px 0 0; }
-    .hero-health { color: white; background: var(--green); position: relative; overflow: hidden; }
-    .hero-health:after { content: ""; width: 220px; height: 220px; position: absolute; right: -80px; bottom: -100px; border: 35px solid #ffffff12; border-radius: 50%; }
-    .hero-health .eyebrow, .hero-health .muted { color: #c9ded7; }
-    .hero-health h2 { font-size: clamp(1.8rem, 5vw, 2.7rem); }
-    .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 17px; }
-    .stat { border-radius: 11px; background: #ffffff12; padding: 12px; min-width: 0; }
-    .stat strong { display: block; font-size: 1.18rem; overflow-wrap: anywhere; }
-    .stat span { font-size: .78rem; color: #c9ded7; }
-    .quick { display: grid; gap: 10px; margin-top: 15px; }
-    .quick button { width: 100%; justify-content: flex-start; }
-    .programme { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 2px; border-top: 1px solid var(--line); }
-    .programme-name { overflow-wrap: anywhere; }
-    .programme-actions { display: flex; gap: 7px; flex-wrap: wrap; justify-content: end; }
-    .programme-actions button { min-height: 38px; padding: 7px 11px; font-size: .88rem; }
-    .empty { border: 2px dashed #cbd2cc; border-radius: 12px; padding: 24px; text-align: center; color: var(--soft-ink); }
-    .upload-box { border: 2px dashed #afc4b7; border-radius: 15px; padding: clamp(16px, 4vw, 25px); background: #f7fbf5; }
-    .upload-form { display: grid; grid-template-columns: minmax(180px, .7fr) minmax(230px, 1.25fr) auto; align-items: end; gap: 12px; }
-    progress { width: 100%; height: 22px; accent-color: var(--green-2); }
-    .notice { min-height: 24px; font-weight: 750; white-space: pre-wrap; }
-    .notice.bad { color: var(--red); }
-    .toolbar { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; margin: 15px 0; }
-    .toolbar label { min-width: 230px; flex: 1; }
-    .channel-heading { display: flex; justify-content: space-between; gap: 12px; align-items: start; flex-wrap: wrap; }
-    details { border: 1px solid var(--line); border-radius: 12px; padding: 13px 15px; margin: 10px 0; background: white; }
-    summary { cursor: pointer; font-weight: 800; }
-    .system-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .system-grid > .card { margin: 16px 0 0; }
-    .definition { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; margin: 16px 0 0; }
-    .definition dt { color: var(--soft-ink); }
-    .definition dd { margin: 0; text-align: right; font-weight: 750; overflow-wrap: anywhere; }
-    .danger-zone { border: 1px solid #e4b6ad; }
-    footer { text-align: center; color: var(--soft-ink); font-size: .85rem; margin-top: 24px; }
-    @media (max-width: 760px) {
-      .field-grid, .hero, .system-grid { grid-template-columns: 1fr; }
-      .channel-setup-fields, .upload-form { grid-template-columns: 1fr; }
-      .field-grid .wide { grid-column: auto; }
-      .stat-grid { grid-template-columns: 1fr 1fr; }
-      .programme { grid-template-columns: 1fr; }
-      .programme-actions { justify-content: start; }
-      nav button { font-size: .78rem; padding: 10px 4px; }
-      .health-pill { display: none; }
-    }
-    @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+    :root{color-scheme:light;--ink:#18201d;--muted:#69716d;--faint:#8e9692;--canvas:#f3f4f1;--surface:#fff;--soft:#f7f8f5;--rail:#151b19;--rail2:#222b28;--line:#dfe3de;--accent:#ed6a4d;--accent2:#ce4f34;--accent-soft:#fff0eb;--green:#27735d;--green-soft:#e6f3ee;--amber:#a96811;--amber-soft:#fff4da;--red:#b74339;--red-soft:#fff0ee;--r:14px;--rs:9px;--shadow:0 1px 2px #121c180d,0 10px 28px #121c180f;--font:"Segoe UI Variable","Segoe UI",-apple-system,BlinkMacSystemFont,Arial,sans-serif}
+    *{box-sizing:border-box}html{min-height:100%;background:var(--canvas);scroll-behavior:smooth}body{min-height:100%;margin:0;color:var(--ink);background:var(--canvas);font:15px/1.5 var(--font);-webkit-font-smoothing:antialiased}button,input,select{font:inherit}button,.button{touch-action:manipulation}button:focus-visible,.button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #ed6a4d52;outline-offset:2px}h1,h2,h3,p{margin-top:0}h1{margin-bottom:12px;font-size:clamp(2rem,4vw,3.35rem);font-weight:740;letter-spacing:-.045em;line-height:1.03}h2{margin-bottom:8px;font-size:clamp(1.25rem,2vw,1.65rem);font-weight:720;letter-spacing:-.025em;line-height:1.16}h3{margin-bottom:6px;font-size:1.04rem;font-weight:700}p{margin-bottom:14px}small,.small{font-size:.82rem}code{padding:2px 5px;border-radius:5px;background:#edf0ec;font:.9em ui-monospace,"Cascadia Code",monospace}.hidden{display:none!important}.muted{color:var(--muted)}.grow{flex:1}.row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.eyebrow{margin-bottom:8px;color:var(--accent2);font-size:.72rem;font-weight:760;letter-spacing:.12em;text-transform:uppercase}.section-kicker{margin:0;color:var(--muted);font-size:.86rem}.section-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:18px}.section-heading>div{max-width:680px}.section-heading p:last-child{margin-bottom:0}
+    button,.button{display:inline-flex;min-height:42px;align-items:center;justify-content:center;gap:8px;border:1px solid var(--ink);border-radius:var(--rs);padding:9px 15px;background:var(--ink);color:#fff;font-weight:680;text-decoration:none;cursor:pointer;transition:.15s}button:hover,.button:hover{background:#2b3632;border-color:#2b3632}button:active,.button:active{transform:translateY(1px)}button:disabled{opacity:.45;cursor:not-allowed;transform:none}button.primary{border-color:var(--accent);background:var(--accent);color:#23120e}button.primary:hover{border-color:#f27b60;background:#f27b60}button.secondary,.button.secondary{border-color:var(--line);background:var(--surface);color:var(--ink)}button.secondary:hover,.button.secondary:hover{border-color:#bbc2bd;background:var(--soft)}button.danger{border-color:#e3bbb6;background:#fff;color:var(--red)}button.danger:hover{border-color:var(--red);background:var(--red-soft)}button.link{min-height:32px;border:0;padding:4px 6px;background:transparent;color:var(--accent2)}button.link:hover{background:var(--accent-soft)}.icon{width:20px;height:20px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:1.8}
+    label{display:grid;gap:7px;color:#3d4743;font-size:.86rem;font-weight:660}label small{color:var(--muted);font-weight:450}input,select{width:100%;min-height:46px;border:1px solid #cbd1cc;border-radius:var(--rs);padding:10px 12px;background:#fff;color:var(--ink);outline:none}input:hover,select:hover{border-color:#abb4ae}input:focus,select:focus{border-color:var(--accent2);box-shadow:0 0 0 3px #ed6a4d21}progress{width:100%;height:8px;overflow:hidden;border:0;border-radius:99px;background:#dfe4df}progress::-webkit-progress-bar{background:#dfe4df}progress::-webkit-progress-value{border-radius:99px;background:var(--accent)}progress::-moz-progress-bar{border-radius:99px;background:var(--accent)}
+    .auth-shell{min-height:100vh;display:grid;grid-template-columns:minmax(300px,.86fr) minmax(0,1.14fr);background:#fff}.auth-brand{display:flex;min-height:100vh;flex-direction:column;justify-content:space-between;padding:clamp(30px,6vw,76px);background:var(--rail);color:#fff}.auth-brand h2{max-width:520px;margin-bottom:16px;font-size:clamp(2.1rem,5vw,4.8rem);letter-spacing:-.055em;line-height:.98}.auth-brand p{max-width:470px;color:#aeb9b4;font-size:1.02rem}.auth-brand .eyebrow{color:#ff9c83}.auth-panel{display:grid;min-height:100vh;align-items:center;padding:clamp(28px,7vw,96px)}.auth-content{width:min(620px,100%);margin:auto}.auth-content>form{margin-top:30px}.auth-foot{color:#7f8d87;font-size:.78rem}.logo{display:inline-flex;align-items:center;gap:11px;color:inherit;font-weight:740}.logo-mark{position:relative;width:35px;height:28px;flex:0 0 auto;border:2px solid currentColor;border-radius:7px}.logo-mark:before,.logo-mark:after{content:"";position:absolute;top:7px;width:4px;height:10px;border-radius:3px;background:var(--accent)}.logo-mark:before{left:8px}.logo-mark:after{right:8px}.step-list{display:flex;gap:6px;margin:24px 0 34px;padding:0;list-style:none}.step-list li{flex:1;padding-top:9px;border-top:3px solid var(--line);color:var(--faint);font-size:.78rem;font-weight:680}.step-list li.active{border-color:var(--accent);color:var(--ink)}.setup-step{min-height:250px}.setup-step>p{max-width:660px;color:var(--muted)}.setup-actions{margin-top:28px;padding-top:20px;border-top:1px solid var(--line)}.channel-setup{margin:0 0 10px;padding:14px;border:1px solid var(--line);border-radius:var(--rs);background:var(--soft)}.channel-setup-fields{display:grid;grid-template-columns:.45fr 1.2fr 1fr 1.15fr auto;gap:10px;align-items:end}
+    .app-shell{min-height:100vh}.rail{position:fixed;z-index:20;inset:0 auto 0 0;width:248px;display:flex;flex-direction:column;padding:26px 16px 18px;background:var(--rail);color:#fff}.rail-head{padding:0 10px 28px}.rail-tv{margin:12px 0 0;color:#8f9b96;font-size:.76rem}.rail-tv strong{display:block;overflow:hidden;color:#fff;font-size:1rem;font-weight:650;text-overflow:ellipsis;white-space:nowrap}nav{display:grid;gap:5px}nav button{width:100%;min-height:48px;justify-content:flex-start;border:0;padding:11px 12px;background:transparent;color:#aeb8b4;font-weight:610}nav button:hover{background:var(--rail2);color:#fff}nav button.active{background:#fff;color:var(--ink)}.nav-dot{width:7px;height:7px;margin-left:auto;border-radius:50%;background:transparent}nav button.active .nav-dot{background:var(--accent)}.rail-foot{display:grid;gap:10px;margin-top:auto;padding-top:18px}.health-pill{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid #313b37;border-radius:var(--rs);color:#bdc6c2;font-size:.78rem;line-height:1.25}.health-pill:before{content:"";width:8px;height:8px;flex:0 0 auto;border-radius:50%;background:#57bc92;box-shadow:0 0 0 4px #57bc921f}.health-pill.bad:before{background:#eda74d;box-shadow:0 0 0 4px #eda74d1f}.rail #logout{width:100%;border-color:#313b37;background:transparent;color:#cad1ce}.rail #logout:hover{background:var(--rail2);color:#fff}
+    .app-main{min-height:100vh;margin-left:248px}.mobile-head{display:none}.page{width:min(1120px,calc(100% - 64px));margin:0 auto;padding:54px 0 80px}.view{display:none}.view.active{display:block;animation:reveal .18s ease-out}@keyframes reveal{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:28px;margin-bottom:34px}.page-head>div:first-child{max-width:700px}.page-head p{margin-bottom:0;color:var(--muted);font-size:1.01rem}.notice{position:fixed;z-index:50;top:18px;right:22px;max-width:min(430px,calc(100% - 40px));margin:0;border:0;border-radius:11px;padding:0;background:var(--ink);color:#fff;box-shadow:0 14px 40px #0e161338;font-weight:600;white-space:pre-line}.notice:not(:empty){padding:13px 16px}.notice.bad{background:#8f3029;color:#fff}#setupError,#loginError{position:static;max-width:none;margin:14px 0 0;background:transparent;box-shadow:none;color:var(--red);font-weight:620}#setupError:not(:empty),#loginError:not(:empty){padding:0}.surface{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);box-shadow:var(--shadow)}.surface-pad{padding:clamp(20px,3vw,30px)}
+    .home-intro{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,.65fr);gap:18px;margin-bottom:26px}.home-greeting{min-height:278px;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;padding:clamp(24px,4vw,42px);background:var(--rail);color:#fff}.home-greeting .eyebrow{color:#ff9c83}.home-greeting h1{max-width:690px;margin-bottom:14px;font-size:clamp(2.25rem,5vw,4rem)}.home-greeting p{max-width:590px;color:#b6c0bc;font-size:1.02rem}.home-status{padding:28px}.status-top{display:flex;align-items:flex-start;gap:13px}.status-icon{width:38px;height:38px;display:grid;flex:0 0 auto;place-items:center;border-radius:50%;background:var(--green-soft);color:var(--green)}.status-icon.warn{background:var(--amber-soft);color:var(--amber)}.home-status h2{margin-top:4px}.health-summary{min-height:62px;color:var(--muted)}.quick-stats{display:grid;margin-top:18px;border-top:1px solid var(--line)}.quick-stat{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}.quick-stat span{color:var(--muted);font-size:.83rem}.quick-stat strong{font-size:.97rem}.home-status #refreshLibrary{width:100%;margin-top:18px}.attention{margin-bottom:26px;border-color:#edd59f;background:#fffaf0;box-shadow:none}.attention-head{display:flex;gap:12px}.attention #warnings{display:grid;gap:8px;margin-top:14px}.callout{border:1px solid var(--line);border-radius:var(--rs);padding:13px 15px;background:var(--soft)}.callout.warn{border-color:#e9c981;background:var(--amber-soft);color:#6e470d}.library-bar{display:grid;grid-template-columns:repeat(3,1fr);margin-bottom:26px;overflow:hidden}.library-stat{padding:20px 24px;border-right:1px solid var(--line)}.library-stat:last-child{border-right:0}.library-stat strong{display:block;font-size:1.55rem;font-weight:730}.library-stat span{color:var(--muted);font-size:.82rem}#librarySummary{display:contents}
+    .channel-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.channel-card{width:100%;min-height:176px;display:flex;flex-direction:column;align-items:stretch;gap:0;border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;background:#fff;color:var(--ink);text-align:left;box-shadow:none}.channel-card:hover{border-color:#b7c0ba;background:#fbfcfa;transform:translateY(-1px)}.channel-card-top{display:flex;align-items:center;gap:9px}.channel-number{color:var(--accent2);font-size:.74rem;font-weight:760;letter-spacing:.08em;text-transform:uppercase}.channel-status{margin-left:auto;display:inline-flex;align-items:center;gap:7px;color:var(--green);font-size:.75rem;font-weight:680}.channel-status:before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}.hidden-channel .channel-status{color:var(--faint)}.channel-card h3{margin:18px 0 2px;font-size:1.22rem}.channel-meta{color:var(--muted);font-size:.8rem}.channel-preview{display:grid;gap:3px;margin:13px 0 0;padding-top:12px;border-top:1px solid var(--line);color:#4e5853;font-size:.79rem}.channel-preview span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.channel-preview .more{color:var(--accent2);font-weight:650}.channel-card-footer{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:13px;color:var(--ink);font-size:.78rem;font-weight:680}.channel-card-footer:after{content:"→";color:var(--accent2);font-size:1rem}
+    .upload-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(290px,.65fr);gap:18px;align-items:start}.upload-panel{padding:clamp(22px,4vw,36px)}.upload-form{display:grid;gap:18px}.drop-field{position:relative;min-height:190px;display:grid;place-items:center;border:1.5px dashed #aeb8b1;border-radius:12px;background:var(--soft);text-align:center;cursor:pointer}.drop-field:hover{border-color:var(--accent2);background:#fffaf8}.drop-field input{position:absolute;width:1px;height:1px;opacity:0}.drop-copy{padding:28px}.drop-icon{width:46px;height:46px;display:grid;margin:0 auto 14px;place-items:center;border-radius:50%;background:var(--accent-soft);color:var(--accent2)}.drop-copy strong{display:block;margin-bottom:4px;color:var(--ink);font-size:1rem}.drop-copy small{color:var(--muted);font-weight:450}#selectedFiles{display:grid;gap:6px}#selectedFiles .row{padding:7px 0;border-top:1px solid var(--line)}#uploadState{margin-top:14px}.upload-side{position:sticky;top:28px}.upload-side>section{padding:24px}.upload-side>section+section{margin-top:12px}#uploadJobs{display:grid;gap:9px;margin-top:15px}#uploadJobs .callout{padding:12px}.tip-list{margin:14px 0 0;padding:0;list-style:none}.tip-list li{padding:10px 0 10px 24px;border-top:1px solid var(--line);color:var(--muted);font-size:.84rem}.tip-list li:before{content:"✓";float:left;margin-left:-24px;color:var(--green);font-weight:760}
+    .compact-details{margin-top:11px;border:1px solid var(--line);border-radius:var(--r);background:#fff}.compact-details summary{padding:17px 20px;cursor:pointer;font-weight:680}.compact-details[open] summary{border-bottom:1px solid var(--line)}.compact-details>form,.compact-details>p,.compact-details>div{margin-right:20px;margin-left:20px}.compact-details>form,.compact-details>div:last-child{margin-bottom:20px}.recycle-summary{display:flex;align-items:center;gap:9px}.count-badge{min-width:25px;display:inline-grid;height:23px;place-items:center;border-radius:99px;padding:0 7px;background:#ecefeb;color:var(--muted);font-size:.74rem}.field-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.field-grid .wide{grid-column:1/-1}.channel-workspace{display:grid;gap:14px}.workspace-back{justify-self:start;border:0!important;padding-left:3px!important;background:transparent!important;color:var(--accent2)!important}.workspace-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding-bottom:24px;border-bottom:1px solid var(--line)}.workspace-titleline{display:flex;align-items:center;gap:13px}.workspace-channel-number{min-width:50px;height:50px;display:grid;place-items:center;border-radius:12px;background:var(--rail);color:#fff;font-size:.78rem;font-weight:740}.workspace-head h1{margin:0;font-size:clamp(1.9rem,4vw,2.8rem)}.workspace-head p{margin:4px 0 0}.channel-facts{display:flex;gap:20px;margin-top:22px}.channel-fact{min-width:100px}.channel-fact strong{display:block;font-size:1.1rem}.channel-fact span{color:var(--muted);font-size:.75rem}.workspace-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(290px,.64fr);gap:14px;align-items:start}.workspace-main,.workspace-side>section{padding:24px}.workspace-side{position:sticky;top:24px}.library-toolbar{display:grid;grid-template-columns:minmax(190px,1fr) minmax(160px,.45fr);gap:10px;margin:18px 0 12px}.programme-list{border-top:1px solid var(--line)}.programme{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:68px;padding:11px 3px;border-bottom:1px solid var(--line)}.programme.is-hidden{opacity:.56}.programme-main{min-width:0;display:flex;align-items:center;gap:11px}.programme-index{min-width:48px;display:inline-flex;height:32px;align-items:center;justify-content:center;border-radius:7px;background:#eef1ed;color:var(--muted);font:650 .72rem ui-monospace,"Cascadia Code",monospace}.programme-copy{min-width:0}.programme-copy strong{display:block;overflow-wrap:anywhere}.programme-copy small{color:var(--muted)}.programme-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}.programme-actions button{min-height:34px;padding:6px 9px;font-size:.76rem}.pager{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px}.pager button{min-height:36px;padding:6px 10px}.zero-state,.empty{padding:42px 20px;border:1px dashed #cbd1cc;border-radius:11px;background:var(--soft);color:var(--muted);text-align:center}.zero-state strong,.empty strong{display:block;margin-bottom:5px;color:var(--ink)}
+    .settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;align-items:start}.settings-section{padding:24px}.settings-section.full{grid-column:1/-1}.definition{display:grid;grid-template-columns:1fr auto;margin:18px 0 22px}.definition dt,.definition dd{margin:0;padding:9px 0;border-bottom:1px solid var(--line)}.definition dt{color:var(--muted)}.definition dd{font-weight:650;text-align:right}.settings-section form{display:grid;gap:13px;margin-top:18px}details.help{border-top:1px solid var(--line)}details.help summary{padding:14px 0;cursor:pointer;font-weight:650}details.help p{padding:0 0 14px;color:var(--muted)}.danger-zone{border-color:#e8c3be}footer{margin-top:34px;color:var(--faint);font-size:.76rem;text-align:center}
+    @media(max-width:940px){.rail{width:210px}.app-main{margin-left:210px}.page{width:min(100% - 38px,1120px);padding-top:36px}.home-intro,.upload-layout,.workspace-layout{grid-template-columns:1fr}.home-greeting{min-height:240px}.upload-side,.workspace-side{position:static}.channel-setup-fields{grid-template-columns:1fr 1fr}}
+    @media(max-width:720px){body{padding-bottom:calc(72px + env(safe-area-inset-bottom))}h1{font-size:2.15rem}.auth-shell{display:block}.auth-brand{min-height:210px;padding:28px 24px}.auth-brand h2{max-width:320px;margin-top:28px;font-size:2.45rem}.auth-brand p,.auth-foot{display:none}.auth-panel{min-height:auto;padding:32px 22px 50px}.setup-step{min-height:0}.channel-setup-fields,.field-grid{grid-template-columns:1fr}.field-grid .wide{grid-column:auto}.rail{position:fixed;inset:auto 0 0;width:auto;height:calc(68px + env(safe-area-inset-bottom));display:block;padding:7px 8px env(safe-area-inset-bottom);border-top:1px solid var(--line);background:#fffffff7;color:var(--ink);backdrop-filter:blur(16px)}.rail-head,.rail-foot{display:none}nav{grid-template-columns:repeat(4,1fr);gap:2px}nav button{min-height:54px;flex-direction:column;justify-content:center;gap:2px;padding:4px 2px;border-radius:8px;color:var(--muted);font-size:.68rem}nav button:hover{background:var(--soft);color:var(--ink)}nav button.active{background:var(--accent-soft);color:var(--accent2)}nav button .icon{width:21px;height:21px}.nav-dot{display:none}.app-main{margin-left:0}.mobile-head{position:sticky;z-index:15;top:0;display:flex;height:58px;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid var(--line);background:#f3f4f1f0;backdrop-filter:blur(14px)}.mobile-head .logo{font-size:.9rem}.mobile-head .logo-mark{width:29px;height:24px}.mobile-head button{min-height:34px;margin-left:auto;padding:5px 10px}.page{width:min(100% - 28px,1120px);padding:25px 0 32px}.page-head{align-items:flex-start;flex-direction:column;gap:16px;margin-bottom:24px}.page-head button{width:100%}.notice{top:68px;right:14px;left:14px;max-width:none}.home-intro{gap:11px;margin-bottom:18px}.home-greeting{min-height:260px;padding:25px 22px}.home-greeting h1{font-size:2.35rem}.home-status{padding:21px}.library-bar{margin-bottom:20px}.library-stat{padding:15px 12px}.library-stat strong{font-size:1.25rem}.channel-grid{grid-template-columns:1fr}.channel-card{min-height:162px}.section-heading{align-items:stretch;flex-direction:column;gap:13px}.section-heading button{width:100%}.upload-panel{padding:21px 17px}.drop-field{min-height:160px}.workspace-head{flex-direction:column}.workspace-head .row,.workspace-head .row button{width:100%}.channel-facts{gap:12px}.channel-fact{min-width:0;flex:1}.workspace-main,.workspace-side>section{padding:19px 16px}.library-toolbar{grid-template-columns:1fr}.programme{align-items:flex-start;flex-direction:column}.programme-actions{width:100%;justify-content:flex-start;padding-left:59px}.settings-grid{grid-template-columns:1fr}.settings-section.full{grid-column:auto}.definition{grid-template-columns:1fr}.definition dt{padding-bottom:0;border:0}.definition dd{padding-top:1px;text-align:left}.pager{align-items:flex-start;flex-direction:column}}
+    @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
   </style>
 </head>
 <body>
-  <main class="shell">
-    <section id="setup" class="card narrow hidden" aria-labelledby="setupTitle">
-      <span class="brand-mark" aria-hidden="true"></span>
-      <p id="setupEyebrow" class="eyebrow">First-time setup</p>
-      <h1 id="setupTitle">Welcome to KidsTV</h1>
-      <p id="setupIntro" class="muted">You only need to do this once. We’ll secure your TV, create its channels, and show you how to add programmes.</p>
-      <ol class="step-list" aria-label="Setup progress">
-        <li class="active" data-step-marker="1">Connect</li>
-        <li data-step-marker="2">Secure</li>
-        <li data-step-marker="3">Channels</li>
-      </ol>
+  <section id="setup" class="auth-shell hidden" aria-labelledby="setupTitle">
+    <aside class="auth-brand"><div class="logo"><span class="logo-mark"></span><span>KidsTV</span></div><div><p id="setupEyebrow" class="eyebrow">First-time setup</p><h2 id="setupTitle">Make this TV yours.</h2><p id="setupIntro">Connect the Raspberry Pi, choose a private parent PIN, then shape the channels around what your family watches.</p></div><span class="auth-foot">Private by design · Everything stays on your home network</span></aside>
+    <main class="auth-panel"><div class="auth-content">
+      <ol class="step-list" aria-label="Setup progress"><li class="active" data-step-marker="1">Connect</li><li data-step-marker="2">Secure</li><li data-step-marker="3">Channels</li></ol>
       <form id="setupForm">
-        <div class="setup-step" data-step="1">
-          <h2>Connect this TV</h2>
-          <p>Enter the six-digit setup code shown on the KidsTV screen or at the end of installation. It proves you are beside the Raspberry Pi.</p>
-          <label>Setup code
-            <input id="setupCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="123456" required>
-          </label>
-        </div>
-        <div class="setup-step hidden" data-step="2">
-          <h2>Choose your parent PIN</h2>
-          <p>This locks the grown-up browser dashboard. The television’s physical adult shortcut is separate, so children cannot stumble into it while watching. Use 4–8 numbers they will not guess.</p>
-          <div class="field-grid">
-            <label id="childNameSetupLabel">Child’s name <small>This TV will be called MabelTV or JohnTV</small>
-              <input id="childName" autocomplete="name" maxlength="40" placeholder="Mabel" required>
-            </label>
-            <label>Your name <small>Used only on this KidsTV</small>
-              <input id="ownerName" autocomplete="name" maxlength="60" placeholder="Alex">
-            </label>
-            <span></span>
-            <label>New parent PIN
-              <input id="setupPin" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required>
-            </label>
-            <label>Repeat parent PIN
-              <input id="setupPinAgain" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required>
-            </label>
-          </div>
-        </div>
-        <div class="setup-step hidden" data-step="3">
-          <h2>Start with a few channels</h2>
-          <p>You can rename, add, or remove channels later. Mark film or long-video channels so they always keep their resume positions; episode channels can use the optional inactivity reset in Parent Control.</p>
-          <div id="setupChannels"></div>
-          <button id="addSetupChannel" type="button" class="secondary">+ Add another channel</button>
-        </div>
-        <p id="setupError" class="notice bad" role="alert"></p>
-        <div class="row setup-actions">
-          <button id="setupBack" type="button" class="secondary hidden">Back</button>
-          <span class="grow"></span>
-          <button id="setupNext" type="button">Continue</button>
-          <button id="setupFinish" type="submit" class="hidden">Finish setup</button>
-        </div>
+        <div class="setup-step" data-step="1"><p class="eyebrow">Step one</p><h1>Connect this TV</h1><p>Enter the six-digit code shown on the television. This proves you are setting up the Raspberry Pi in front of you.</p><label>Setup code<input id="setupCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="123456" required></label></div>
+        <div class="setup-step hidden" data-step="2"><p class="eyebrow">Step two</p><h1>Secure the grown-up controls</h1><p>Use a 4–8 digit PIN that children will not guess. It only unlocks this management app.</p><div class="field-grid"><label id="childNameSetupLabel">Child’s name <small>Used to name the TV, for example MabelTV</small><input id="childName" autocomplete="name" maxlength="40" placeholder="Mabel" required></label><label>Your name <small>Stored only on this TV</small><input id="ownerName" autocomplete="name" maxlength="60" placeholder="Alex"></label><label>New parent PIN<input id="setupPin" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required></label><label>Repeat parent PIN<input id="setupPinAgain" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required></label></div></div>
+        <div class="setup-step hidden" data-step="3"><p class="eyebrow">Step three</p><h1>Build the first channels</h1><p>Start simple. You can add, rename, reorder, or hide channels whenever you like.</p><div id="setupChannels"></div><button id="addSetupChannel" type="button" class="secondary">Add another channel</button></div>
+        <p id="setupError" class="notice bad" role="alert"></p><div class="row setup-actions"><button id="setupBack" type="button" class="secondary hidden">Back</button><span class="grow"></span><button id="setupNext" type="button">Continue</button><button id="setupFinish" type="submit" class="hidden">Finish setup</button></div>
       </form>
-    </section>
+    </div></main>
+  </section>
 
-    <section id="login" class="card narrow hidden" aria-labelledby="loginTitle">
-      <span class="brand-mark" aria-hidden="true"></span>
-      <p class="eyebrow">Grown-ups only</p>
-      <h1 id="loginTitle">KidsTV</h1>
-      <p class="muted">Add programmes, manage channels, and check that your Raspberry Pi is happy.</p>
-      <form id="loginForm">
-        <label>Parent PIN
-          <input id="pin" inputmode="numeric" autocomplete="current-password" type="password" pattern="[0-9]{4,8}" maxlength="8" required autofocus>
-        </label>
-        <p id="loginError" class="notice bad" role="alert"></p>
-        <button type="submit">Open KidsTV</button>
-      </form>
-      <details style="margin-top:18px">
-        <summary>Forgot the parent PIN?</summary>
-        <p class="muted small">Shut down the Raspberry Pi, connect its boot microSD card or USB drive to a computer, and create an empty file named <code>mabeltv-reset-pin</code> on the visible boot drive. Put it back and start KidsTV. A new setup code will appear; your videos and channels stay untouched.</p>
-      </details>
-    </section>
+  <section id="login" class="auth-shell hidden" aria-labelledby="loginTitle">
+    <aside class="auth-brand"><div class="logo"><span class="logo-mark"></span><span>KidsTV</span></div><div><p class="eyebrow">Parent controls</p><h2>Your family’s TV, organised your way.</h2><p>Add videos, shape the channels, and keep the Raspberry Pi running smoothly from one private app.</p></div><span class="auth-foot">Local to your home network</span></aside>
+    <main class="auth-panel"><div class="auth-content"><p class="eyebrow">Welcome back</p><h1 id="loginTitle">Unlock KidsTV</h1><p class="muted">Enter the parent PIN to manage the television.</p><form id="loginForm"><label>Parent PIN<input id="pin" inputmode="numeric" autocomplete="current-password" type="password" pattern="[0-9]{4,8}" maxlength="8" required autofocus></label><p id="loginError" class="notice bad" role="alert"></p><button type="submit">Open controls</button></form><details class="help" style="margin-top:28px"><summary>Forgot the parent PIN?</summary><p>Shut down the Raspberry Pi, put its boot card or USB drive in a computer, and create an empty file called <code>mabeltv-reset-pin</code> on the visible boot drive. Put it back and start KidsTV. Your videos and channels will stay untouched.</p></details></div></main>
+  </section>
 
-    <section id="app" class="hidden">
-      <header class="topbar">
-        <span class="brand-mark" aria-hidden="true"></span>
-        <h1 id="topTvName" style="font:800 1.32rem Georgia,serif;margin:0">KidsTV</h1>
-        <span class="spacer"></span>
-        <span id="topHealth" class="health-pill">Checking…</span>
-        <button id="logout" class="secondary">Lock</button>
-      </header>
+  <section id="app" class="app-shell hidden">
+    <aside class="rail">
+      <div class="rail-head"><div class="logo"><span class="logo-mark"></span><span>KidsTV</span></div><p class="rail-tv">Controlling<strong id="topTvName">KidsTV</strong></p></div>
       <nav aria-label="KidsTV sections">
-        <button class="active" data-view-button="overview" aria-current="page">Overview</button>
-        <button data-view-button="add">Add media</button>
-        <button data-view-button="channels">Channels</button>
-        <button data-view-button="system">Help &amp; system</button>
+        <button class="active" data-view-button="overview" aria-current="page"><svg class="icon" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5V20H4Z"/><path d="M9 20v-6h6v6"/></svg>Home<span class="nav-dot"></span></button>
+        <button data-view-button="add"><svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add videos<span class="nav-dot"></span></button>
+        <button data-view-button="channels"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="m9 9 6 3-6 3Z"/></svg>Library<span class="nav-dot"></span></button>
+        <button data-view-button="system"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.5 1A7 7 0 0 0 14.3 5L14 2h-4l-.4 3A7 7 0 0 0 7.5 7L5 6 3 9.3l2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.5-1a7 7 0 0 0 2.1 1.9l.4 3h4l.4-3a7 7 0 0 0 2.1-1.9l2.5 1 2-3.4-2-1.5c0-.4.1-.8.1-1.2Z"/></svg>Settings<span class="nav-dot"></span></button>
       </nav>
+      <div class="rail-foot"><span id="topHealth" class="health-pill">Checking TV…</span><button id="logout" class="secondary">Lock controls</button></div>
+    </aside>
+    <header class="mobile-head"><div class="logo"><span class="logo-mark"></span><span data-tv-name>KidsTV</span></div><button class="secondary" onclick="document.getElementById('logout').click()">Lock</button></header>
+    <main class="app-main">
       <p id="notice" class="notice" role="status" aria-live="polite"></p>
-
-      <section id="view-overview" class="view active">
-        <div class="hero">
-          <article class="card hero-health">
-            <p class="eyebrow">This <span data-tv-name>KidsTV</span></p>
-            <h2 id="healthTitle">Checking everything…</h2>
-            <p id="healthSummary" class="muted">One moment while KidsTV checks the player, temperature, power, and storage.</p>
-            <div class="stat-grid">
-              <div class="stat"><strong id="temperature">—</strong><span>Pi temperature</span></div>
-              <div class="stat"><strong id="storageFree">—</strong><span>Storage free</span></div>
-              <div class="stat"><strong id="uptime">—</strong><span>Time running</span></div>
-            </div>
-          </article>
-          <article class="card">
-            <p class="eyebrow">Quick actions</p>
-            <h2>What would you like to do?</h2>
-            <div class="quick">
-              <button data-go="add">＋ Add a programme</button>
-              <button data-go="channels" class="secondary">☰ Manage channels</button>
-              <button id="refreshLibrary" class="secondary">↻ Refresh TV library</button>
-            </div>
-          </article>
+      <section id="view-overview" class="view active"><div class="page">
+        <div class="home-intro">
+          <article class="home-greeting surface"><div><p class="eyebrow">Parent controls</p><h1><span data-tv-name>KidsTV</span> is ready when you are.</h1><p>Add something new, or jump straight into a channel to tidy what appears on the television.</p></div><button class="primary" data-go="add"><svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add videos</button></article>
+          <article class="home-status surface"><div class="status-top"><span id="homeStatusIcon" class="status-icon"><svg class="icon" viewBox="0 0 24 24"><path d="m6 12 4 4 8-9"/></svg></span><div><p class="section-kicker">TV status</p><h2 id="healthTitle">Checking everything…</h2></div></div><p id="healthSummary" class="health-summary">Checking the player, temperature, power, and storage.</p><div class="quick-stats"><div class="quick-stat"><span>Temperature</span><strong id="temperature">—</strong></div><div class="quick-stat"><span>Storage available</span><strong id="storageFree">—</strong></div><div class="quick-stat"><span>Running for</span><strong id="uptime">—</strong></div></div><button id="refreshLibrary" class="secondary">Refresh TV library</button></article>
         </div>
-        <article id="warningsCard" class="card hidden">
-          <p class="eyebrow">Needs attention</p>
-          <h2>A small job will keep things running well</h2>
-          <div id="warnings"></div>
-        </article>
-        <article class="card">
-          <p class="eyebrow">At a glance</p>
-          <h2>Your television library</h2>
-          <div id="librarySummary" class="stat-grid"></div>
-        </article>
-      </section>
-
-      <section id="view-add" class="view">
-        <article class="card">
-          <p class="eyebrow">Add media</p>
-          <h2>Put programmes on KidsTV</h2>
-          <p>Choose a channel and one or more videos from this phone or computer. Large or high-frame-rate phone videos are prepared automatically for smooth Raspberry Pi playback. Prepared TV episodes and ordinary MP4 files are left alone.</p>
-          <div class="callout">Uploads safely resume if Wi-Fi drops. Once the upload reaches 100%, you may close this page while KidsTV checks or prepares the video.</div>
-          <form id="uploadForm" class="upload-box upload-form">
-            <label>Put it on
-              <select id="channel" required></select>
-            </label>
-            <label>Add videos to the list
-              <input id="file" type="file" accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg" multiple>
-              <small>Select several together, or open this picker again to add more.</small>
-            </label>
-            <button id="uploadButton" type="submit" disabled>Upload selected</button>
-          </form>
-          <div id="selectedFiles" class="callout" aria-live="polite">No videos selected yet.</div>
-          <div id="uploadState" class="hidden callout" aria-live="polite">
-            <p id="uploadText">Preparing…</p>
-            <progress id="progress" max="1" value="0"></progress>
-          </div>
-        </article>
-        <article class="card">
-          <h2>Uploads and preparation</h2>
-          <p class="muted">You can close this page after the upload reaches 100%. KidsTV keeps checking and preparing it in the background.</p>
-          <div id="uploadJobs" aria-live="polite">No videos are waiting.</div>
-        </article>
-        <article class="card">
-          <h2>Good file names make a tidy TV guide</h2>
-          <p class="muted">For a series, name episodes like <strong>S01E02 - The Picnic.mp4</strong>. KidsTV turns that into a friendly episode label. Films and home videos can use any clear name.</p>
-        </article>
-      </section>
-
-      <section id="view-channels" class="view">
-        <article class="card">
-          <p class="eyebrow">Channels</p>
-          <h2>Channels and programmes</h2>
-          <div class="toolbar">
-            <label>Show channel
-              <select id="manageChannel"></select>
-            </label>
-            <span id="channelSummary" class="muted"></span>
-          </div>
-          <div id="channels"></div>
-        </article>
-        <article class="card">
-          <h2>Edit this channel</h2>
-          <form id="editChannelForm" class="field-grid">
-            <label>Channel number
-              <input id="editChannelNumber" type="number" min="1" max="999" required>
-            </label>
-            <label>Channel name
-              <input id="editChannelName" maxlength="60" required>
-            </label>
-            <label>Picture mode
-              <select id="editChannelAspect"><option value="crop">Fill screen</option><option value="fit">Show whole picture</option><option value="stretch">Stretch to screen</option></select>
-            </label>
-            <label>What plays here?
-              <select id="editChannelContentType"><option value="shows">Shows / episodes</option><option value="films">Films / long videos</option></select>
-            </label>
-            <div class="row wide">
-              <button type="submit">Save channel</button>
-              <button id="deleteChannel" type="button" class="danger">Delete empty channel</button>
-            </div>
-          </form>
-        </article>
-        <article class="card">
-          <h2>Add a new channel</h2>
-          <form id="addChannelForm" class="field-grid">
-            <label>Channel number
-              <input id="newChannelNumber" type="number" min="1" max="999" required>
-            </label>
-            <label>Channel name
-              <input id="newChannelName" maxlength="60" placeholder="Nature" required>
-            </label>
-            <label>Picture mode
-              <select id="newChannelAspect"><option value="crop">Fill screen</option><option value="fit">Show whole picture</option><option value="stretch">Stretch to screen</option></select>
-            </label>
-            <label>What plays here?
-              <select id="newChannelContentType"><option value="shows">Shows / episodes</option><option value="films">Films / long videos</option></select>
-            </label>
-            <button type="submit">Add channel</button>
-          </form>
-        </article>
-        <article class="card">
-          <h2>Recycle bin</h2>
-          <p class="muted">Binned programmes stay here for 30 days unless you restore or permanently remove them sooner.</p>
-          <div id="bin"></div>
-        </article>
-      </section>
-
-      <section id="view-system" class="view">
-        <div class="system-grid">
-          <article class="card">
-            <p class="eyebrow">System</p>
-            <h2>Raspberry Pi status</h2>
-            <dl id="systemDetails" class="definition"></dl>
-            <div class="quick">
-              <button id="checkAgain" class="secondary">Check again</button>
-              <button id="restartPlayer" class="secondary">Restart TV player</button>
-              <a class="button secondary" href="/api/support" download>Download support bundle</a>
-            </div>
-            <p class="small muted">The support bundle contains diagnostics and recent logs, but never your parent PIN or video files.</p>
-          </article>
-          <article class="card">
-            <p class="eyebrow">Security</p>
-            <h2>Change parent PIN</h2>
-            <form id="pinForm">
-              <label>Current PIN<input id="currentPin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" required></label><br>
-              <label>New PIN<input id="newPin" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required></label><br>
-              <label>Repeat new PIN<input id="newPinAgain" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required></label><br>
-              <button type="submit">Change PIN</button>
-            </form>
-          </article>
-          <article class="card">
-            <p class="eyebrow">Identity</p>
-            <h2>Name this TV</h2>
-            <p class="muted">Enter just the child’s name. KidsTV adds “TV”, for example MabelTV.</p>
-            <form id="tvNameForm">
-              <label>Child’s name<input id="tvNameChild" autocomplete="name" maxlength="40" placeholder="Mabel" required></label><br>
-              <button type="submit">Save TV name</button>
-            </form>
-          </article>
+        <article id="warningsCard" class="attention surface surface-pad hidden"><div class="attention-head"><span class="status-icon warn">!</span><div><p class="section-kicker">Needs attention</p><h2>There’s a small job to do</h2></div></div><div id="warnings"></div></article>
+        <section class="library-bar surface" aria-label="Library summary"><div id="librarySummary"></div></section>
+        <section><div class="section-heading"><div><p class="eyebrow">On the television</p><h2>Your channels</h2><p class="muted">Open a channel to see its programmes and decide exactly what shows up on TV.</p></div><button type="button" class="secondary" data-go="channels">Open full library</button></div><div id="overviewChannels" class="channel-grid"></div></section>
+        <footer><span data-tv-name>KidsTV</span> <span data-version></span> · Local to your home network</footer>
+      </div></section>
+      <section id="view-add" class="view"><div class="page">
+        <header class="page-head"><div><p class="eyebrow">Add videos</p><h1>Choose it. Send it. Done.</h1><p>Pick a channel, choose one or more videos, and KidsTV will take care of the rest.</p></div></header>
+        <div class="upload-layout">
+          <section class="upload-panel surface"><form id="uploadForm" class="upload-form"><label>Destination channel<select id="channel" required></select></label><label class="drop-field" for="file"><input id="file" type="file" accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg" multiple><span class="drop-copy"><span class="drop-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 14v5h14v-5"/></svg></span><strong>Choose videos</strong><small>Select several at once, or come back to add more</small></span></label><div id="selectedFiles" class="callout" aria-live="polite">No videos selected yet.</div><button id="uploadButton" type="submit" class="primary" disabled>Upload selected videos</button></form><div id="uploadState" class="hidden callout" aria-live="polite"><p id="uploadText">Preparing…</p><progress id="progress" max="1" value="0"></progress></div></section>
+          <aside class="upload-side"><section class="surface"><p class="section-kicker">In progress</p><h2>Upload activity</h2><div id="uploadJobs" aria-live="polite">No videos are waiting.</div></section><section class="surface"><p class="section-kicker">Good to know</p><ul class="tip-list"><li>Uploads safely resume if Wi-Fi drops.</li><li>You can close this page after upload reaches 100%.</li><li>iPhone MOV videos are prepared only when the Pi needs it.</li><li>Use S01E02 - The Picnic.mp4 for tidy episodes.</li></ul></section></aside>
+        </div><footer><span data-tv-name>KidsTV</span> · Private and local</footer>
+      </div></section>
+      <section id="view-channels" class="view"><div class="page">
+        <div id="channelHub">
+          <header class="page-head"><div><p class="eyebrow">Library</p><h1>Everything on the TV</h1><p>Open a channel to search, rename, hide, or remove programmes without digging through technical controls.</p></div><button id="showAddChannel" type="button">New channel</button></header>
+          <div id="channelCards" class="channel-grid"></div>
+          <details id="addChannelPanel" class="compact-details"><summary>Add a new channel</summary><form id="addChannelForm" class="field-grid"><label>Channel number<input id="newChannelNumber" type="number" min="1" max="999" required></label><label>Channel name<input id="newChannelName" maxlength="60" placeholder="Nature" required></label><label>Picture mode<select id="newChannelAspect"><option value="crop">Fill screen</option><option value="fit">Show whole picture</option><option value="stretch">Stretch to screen</option></select></label><label>What plays here?<select id="newChannelContentType"><option value="shows">Shows / episodes</option><option value="films">Films / long videos</option></select></label><div class="wide"><button type="submit">Create channel</button></div></form></details>
+          <details class="compact-details"><summary class="recycle-summary">Recycle bin <span id="recycleCount" class="count-badge">0</span></summary><p class="muted">Binned programmes stay here for 30 days unless you restore or remove them sooner.</p><div id="bin"></div></details>
         </div>
-        <article class="card">
-          <p class="eyebrow">Everyday help</p>
-          <h2>Using KidsTV</h2>
-          <details><summary>How do I add a programme?</summary><p>Open <strong>Add media</strong>, choose its channel, choose a video, then tap Upload. It appears on the TV as soon as publishing finishes.</p></details>
-          <details><summary>How do I open the grown-up menu on the TV?</summary><p>Hold <strong>Back / Previous</strong> for 3.5 seconds, then press OK three times. This physical shortcut is separate from the browser PIN. The on-TV menu controls the CRT look, sound, remote lock, and playback settings.</p></details>
-          <details><summary>Which remote can I use?</summary><p>A USB keyboard or keyboard-style USB remote works immediately. The keys are listed in the owner guide. A GPIO infrared receiver and almost any IR remote can also be added, but it must be wired and learned using the optional IR setup guide.</p></details>
-          <details><summary>What if the picture freezes?</summary><p>First use <strong>Restart TV player</strong> above. If it happens again, download a support bundle immediately; it preserves the temperature, power, service, and crash evidence needed to identify the cause.</p></details>
-          <details><summary>Why is a phone video taking a while?</summary><p>Videos over 30 fps and large iPhone MOV files are converted to a Pi-friendly 720p/30 fps copy. KidsTV pauses conversion if the Pi gets too hot, then resumes automatically after it cools.</p></details>
-        </article>
-        <article class="card danger-zone">
-          <p class="eyebrow">Power</p>
-          <h2>Restart or shut down the Raspberry Pi</h2>
-          <p class="muted">Use these controls instead of pulling the power cable. A safe shutdown protects the SD card.</p>
-          <div class="row">
-            <button id="rebootPi" class="secondary">Restart Raspberry Pi</button>
-            <button id="poweroffPi" class="danger">Shut down Raspberry Pi</button>
-          </div>
-        </article>
-      </section>
-      <footer><span data-tv-name>KidsTV</span> <span id="footerVersion"></span> · Local to your home network</footer>
-    </section>
-  </main>
+        <div id="channelWorkspace" class="channel-workspace hidden">
+          <button id="backToChannels" type="button" class="workspace-back">← Back to all channels</button>
+          <section class="surface surface-pad"><div class="workspace-head"><div><div class="workspace-titleline"><span id="workspaceChannelBadge" class="workspace-channel-number">CH</span><div><p id="workspaceEyebrow" class="eyebrow">Channel</p><h1 id="workspaceChannelName">Channel</h1></div></div><p id="workspaceChannelStatus" class="muted"></p></div><div class="row"><button id="workspaceAddMedia" type="button">Add videos</button><button id="workspaceToggleChannel" type="button" class="secondary">Hide channel</button></div></div><div class="channel-facts"><div class="channel-fact"><strong id="workspaceProgrammeCount">0</strong><span>programmes</span></div><div class="channel-fact"><strong id="workspaceVisibleCount">0</strong><span>shown on TV</span></div><div class="channel-fact"><strong id="workspacePictureMode">—</strong><span>picture mode</span></div></div></section>
+          <div class="workspace-layout"><section class="workspace-main surface"><div class="section-heading"><div><p class="section-kicker">Programme library</p><h2 id="channelSummary">Everything in this channel</h2></div></div><div class="library-toolbar"><label>Find a programme<input id="programmeSearch" type="search" placeholder="Search titles…" autocomplete="off"></label><label>Show<select id="programmeVisibility"><option value="all">All programmes</option><option value="enabled">Shown on TV</option><option value="disabled">Hidden from TV</option></select></label></div><div id="channels"></div><div id="programmePager" class="pager hidden"></div></section><aside class="workspace-side"><section class="surface"><p class="section-kicker">Channel settings</p><h2>Edit this channel</h2><form id="editChannelForm" class="field-grid"><label>Channel number<input id="editChannelNumber" type="number" min="1" max="999" required></label><label>Channel name<input id="editChannelName" maxlength="60" required></label><label>Picture mode<select id="editChannelAspect"><option value="crop">Fill screen</option><option value="fit">Show whole picture</option><option value="stretch">Stretch to screen</option></select></label><label>What plays here?<select id="editChannelContentType"><option value="shows">Shows / episodes</option><option value="films">Films / long videos</option></select></label><div class="row wide"><button type="submit">Save changes</button><button id="deleteChannel" type="button" class="danger">Delete channel</button></div></form></section></aside></div>
+        </div><footer><span data-tv-name>KidsTV</span> · Library</footer>
+      </div></section>
+      <section id="view-system" class="view"><div class="page">
+        <header class="page-head"><div><p class="eyebrow">Settings</p><h1>TV and account</h1><p>Health checks, identity, security, help, and power controls live here.</p></div></header>
+        <div class="settings-grid">
+          <section class="settings-section surface"><p class="section-kicker">Raspberry Pi</p><h2>System status</h2><dl id="systemDetails" class="definition"></dl><div class="row"><button id="checkAgain" class="secondary">Check again</button><button id="restartPlayer" class="secondary">Restart TV player</button><a class="button secondary" href="/api/support" download>Support bundle</a></div><p class="small muted" style="margin-top:14px">Diagnostics never include the parent PIN or video files.</p></section>
+          <section class="settings-section surface"><p class="section-kicker">Identity</p><h2>Name this TV</h2><p class="muted">Enter the child’s name. KidsTV adds “TV”, for example MabelTV.</p><form id="tvNameForm"><label>Child’s name<input id="tvNameChild" autocomplete="name" maxlength="40" placeholder="Mabel" required></label><button type="submit">Save TV name</button></form></section>
+          <section class="settings-section surface"><p class="section-kicker">Security</p><h2>Change parent PIN</h2><form id="pinForm"><label>Current PIN<input id="currentPin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" required></label><label>New PIN<input id="newPin" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required></label><label>Repeat new PIN<input id="newPinAgain" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required></label><button type="submit">Change PIN</button></form></section>
+          <section class="settings-section surface"><p class="section-kicker">Everyday help</p><h2>Using KidsTV</h2><details class="help"><summary>How do I add a programme?</summary><p>Open Add videos, choose its channel, choose one or more files, then upload.</p></details><details class="help"><summary>How do I open the grown-up menu on TV?</summary><p>Hold Back / Previous for 3.5 seconds, then press OK three times.</p></details><details class="help"><summary>What if the picture freezes?</summary><p>Use Restart TV player. If it happens again, download a support bundle immediately.</p></details><details class="help"><summary>Why is a phone video taking a while?</summary><p>Large or high-frame-rate iPhone MOV files are converted to a Pi-friendly copy. Normal MP4 programmes are left untouched.</p></details></section>
+          <section class="settings-section surface danger-zone full"><div class="section-heading"><div><p class="section-kicker">Power</p><h2>Restart or shut down safely</h2><p class="muted">Use these controls instead of pulling the cable. A safe shutdown protects the SD card.</p></div><div class="row"><button id="rebootPi" class="secondary">Restart Raspberry Pi</button><button id="poweroffPi" class="danger">Shut down Raspberry Pi</button></div></div></section>
+        </div><footer><span data-tv-name>KidsTV</span> <span data-version></span> · Local to your home network</footer>
+      </div></section>
+    </main>
+  </section>
 
   <script>
     const $ = selector => document.querySelector(selector)
     const $$ = selector => [...document.querySelectorAll(selector)]
     let library = null
     let selectedManageChannel = null
+    let programmeSearch = ''
+    let programmeVisibility = 'all'
+    let programmePage = 1
+    const PROGRAMMES_PER_PAGE = 12
     let setupStep = 1
     let setupChannels = []
     let recoveringOwner = false
@@ -437,7 +150,6 @@
     function notice(message = '', bad = false) {
       $('#notice').textContent = message
       $('#notice').classList.toggle('bad', bad)
-      if (message) window.scrollTo({ top: 0, behavior: 'smooth' })
     }
 
     function slug(value) {
@@ -608,8 +320,14 @@
       })
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
-    $$('[data-view-button]').forEach(button => button.onclick = () => openView(button.dataset.viewButton))
-    $$('[data-go]').forEach(button => button.onclick = () => openView(button.dataset.go))
+    $$('[data-view-button]').forEach(button => button.onclick = () => {
+      if (button.dataset.viewButton === 'channels') showChannelHub()
+      openView(button.dataset.viewButton)
+    })
+    $$('[data-go]').forEach(button => button.onclick = () => {
+      if (button.dataset.go === 'channels') showChannelHub()
+      openView(button.dataset.go)
+    })
 
     function duration(seconds) {
       if (!seconds) return 'Just started'
@@ -622,33 +340,31 @@
       library = await api('/api/library')
       applyTvName()
       const channels = library.channels || []
-      const upload = $('#channel'), manageSelect = $('#manageChannel')
+      const upload = $('#channel')
       let uploadChoice = String(preferredUploadChannel ?? upload.value ?? '')
-      let manageChoice = String(selectedManageChannel ?? manageSelect.value ?? uploadChoice)
       upload.innerHTML = ''
-      manageSelect.innerHTML = ''
       channels.forEach(channel => {
-        for (const select of [upload, manageSelect]) {
-          const option = document.createElement('option')
-          option.value = channel.number
-          option.textContent = `CH ${channel.number} — ${channel.name}`
-          select.append(option)
-        }
+        const option = document.createElement('option')
+        option.value = channel.number
+        option.textContent = `CH ${channel.number} — ${channel.name}`
+        upload.append(option)
       })
       if (!channels.some(channel => String(channel.number) === uploadChoice)) uploadChoice = String(channels[0]?.number ?? '')
-      if (!channels.some(channel => String(channel.number) === manageChoice)) manageChoice = uploadChoice
       upload.value = uploadChoice
-      manageSelect.value = manageChoice
-      selectedManageChannel = Number(manageChoice)
+      if (selectedManageChannel !== null && !channels.some(channel => channel.number === selectedManageChannel)) selectedManageChannel = null
       renderStatus()
       renderUploads()
+      renderOverviewChannels()
       renderChannels()
     }
 
     function renderStatus() {
       const system = library.system || {}, storage = library.storage || {}, warnings = system.warnings || []
-      $('#topHealth').textContent = system.healthy ? 'Everything looks good' : `${warnings.length || 1} item needs attention`
+      const warningCount = warnings.length || 1
+      $('#topHealth').textContent = system.healthy ? 'Everything looks good' : `${warningCount} item${warningCount === 1 ? '' : 's'} need attention`
       $('#topHealth').classList.toggle('bad', !system.healthy)
+      $('#homeStatusIcon').textContent = system.healthy ? '✓' : '!'
+      $('#homeStatusIcon').classList.toggle('warn', !system.healthy)
       $('#healthTitle').textContent = system.healthy ? 'Everything looks good' : `${tvName()} needs a little attention`
       $('#healthSummary').textContent = system.healthy ? 'The player, temperature, power, and storage checks are all healthy.' : (warnings[0] || 'Check the system details below.')
       $('#temperature').textContent = system.temperature_c ? `${system.temperature_c.toFixed(1)}°C` : 'Unknown'
@@ -658,8 +374,8 @@
       $('#warnings').innerHTML = warnings.map(warning => `<div class="callout warn">${escapeHtml(warning)}</div>`).join('')
       const enabled = library.channels.filter(channel => channel.enabled).length
       const programmes = library.channels.reduce((total, channel) => total + channel.programmes.length, 0)
-      $('#librarySummary').innerHTML = `<div class="stat" style="background:#eef3ef"><strong>${enabled}</strong><span style="color:#52625b">active channels</span></div><div class="stat" style="background:#eef3ef"><strong>${programmes}</strong><span style="color:#52625b">programmes</span></div><div class="stat" style="background:#eef3ef"><strong>${Number(storage.used_gb || 0).toFixed(1)} GB</strong><span style="color:#52625b">storage used</span></div>`
-      $('#footerVersion').textContent = system.version || ''
+      $('#librarySummary').innerHTML = `<div class="library-stat"><strong>${enabled}</strong><span>active channels</span></div><div class="library-stat"><strong>${programmes}</strong><span>programmes</span></div><div class="library-stat"><strong>${Number(storage.used_gb || 0).toFixed(1)} GB</strong><span>storage used</span></div>`
+      $$('[data-version]').forEach(element => { element.textContent = system.version || '' })
       $('#systemDetails').innerHTML = `<dt>TV player</dt><dd>${escapeHtml(system.player || 'unknown')}</dd><dt>Video preparation</dt><dd>${escapeHtml(system.media_worker || 'unknown')}</dd><dt>Temperature</dt><dd>${system.temperature_c ? `${system.temperature_c.toFixed(1)}°C` : 'unavailable'}</dd><dt>Power / heat limiting now</dt><dd>${system.currently_throttled ? 'Yes' : 'No'}</dd><dt>Since last boot</dt><dd>${system.historical_throttle ? 'A power or heat event occurred' : 'No limiting recorded'}</dd><dt>Storage</dt><dd>${Number(storage.free_gb || 0).toFixed(1)} GB free of ${Number(storage.total_gb || 0).toFixed(1)} GB</dd><dt>Uptime</dt><dd>${duration(system.uptime_seconds)}</dd><dt>Device</dt><dd>${escapeHtml(system.device_name || tvName())}</dd><dt>Version</dt><dd>${escapeHtml(system.version || 'development')}</dd><dt>Last checked</dt><dd>${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</dd>`
       if (library.owner?.pin_change_recommended) {
         $('#warningsCard').classList.remove('hidden')
@@ -713,46 +429,161 @@
       return button
     }
 
-    function renderChannels() {
-      const channel = library.channels.find(value => value.number === selectedManageChannel)
-      const root = $('#channels')
-      root.innerHTML = ''
-      $('#channelSummary').textContent = channel ? `${channel.enabled_programmes} of ${channel.programmes.length} programmes enabled` : ''
-      if (channel) {
-        $('#editChannelNumber').value = channel.number
-        $('#editChannelName').value = channel.name
-        $('#editChannelAspect').value = channel.aspect || 'crop'
-        $('#editChannelContentType').value = channel.content_type || 'shows'
-        const heading = document.createElement('div')
-        heading.className = 'channel-heading'
-        const title = document.createElement('div')
-        title.innerHTML = `<h2>CH ${channel.number} · ${escapeHtml(channel.name)}</h2><p class="muted">${channel.enabled ? 'Shown on the TV' : 'Hidden from the TV'}</p>`
-        heading.append(title, actionButton(channel.enabled ? 'Hide channel' : 'Show channel', () => manage('toggle-channel', { channel: channel.number }), 'secondary'))
-        root.append(heading)
-        const list = document.createElement('div')
-        if (!channel.programmes.length) list.innerHTML = '<div class="empty">No programmes yet. Use Add media to put the first one here.</div>'
-        channel.programmes.forEach(programme => {
-          const row = document.createElement('div')
-          row.className = 'programme'
-          const name = document.createElement('span')
-          name.className = 'programme-name'; name.textContent = programme.display_name
-          const actions = document.createElement('div')
-          actions.className = 'programme-actions'
-          actions.append(actionButton(programme.enabled ? 'Hide' : 'Show', () => manage('toggle-programme', { channel: channel.number, file: programme.name })), actionButton('Rename', () => renameProgramme(channel, programme)), actionButton('Bin', () => { if (confirm(`Move “${programme.display_name}” to the recycle bin?`)) manage('trash', { channel: channel.number, file: programme.name }) }, 'danger'))
-          row.append(name, actions); list.append(row)
-        })
-        root.append(list)
-      }
+    function aspectLabel(value) {
+      return { crop: 'Fill screen', fit: 'Whole picture', stretch: 'Stretch' }[value] || 'Fill screen'
+    }
+
+    function contentLabel(value) {
+      return value === 'films' ? 'Films / long videos' : 'Shows / episodes'
+    }
+
+    function channelCardMarkup(channel, overview = false) {
+      const total = channel.programmes.length
+      const shown = channel.enabled ? channel.enabled_programmes : 0
+      const previewLimit = overview ? 2 : 3
+      const previews = channel.programmes.slice(0, previewLimit)
+        .map(programme => `<span>${escapeHtml(programme.display_name)}</span>`).join('')
+      const remainder = Math.max(0, total - previewLimit)
+      const preview = total
+        ? `${previews}${remainder ? `<span class="more">＋ ${remainder} more</span>` : ''}`
+        : '<span class="muted">Ready for its first programme</span>'
+      return `<button type="button" class="channel-card ${overview ? 'overview-channel-card' : ''} ${channel.enabled ? '' : 'hidden-channel'}" data-open-channel="${channel.number}" aria-label="Manage channel ${channel.number}, ${escapeHtml(channel.name)}">
+        <span class="channel-card-top"><span class="channel-number">CH ${channel.number}</span><span class="channel-status">${channel.enabled ? 'On TV' : 'Hidden'}</span></span>
+        <h3>${escapeHtml(channel.name)}</h3>
+        <span class="channel-meta">${escapeHtml(contentLabel(channel.content_type))} · ${shown} of ${total} on TV</span>
+        <span class="channel-preview">${preview}</span>
+        <span class="channel-card-footer">Manage channel</span>
+      </button>`
+    }
+
+    function bindChannelCards(root) {
+      root.querySelectorAll('[data-open-channel]').forEach(button => {
+        button.onclick = () => openChannel(Number(button.dataset.openChannel))
+      })
+    }
+
+    function renderOverviewChannels() {
+      const root = $('#overviewChannels')
+      const channels = library.channels || []
+      root.innerHTML = channels.length
+        ? channels.map(channel => channelCardMarkup(channel, true)).join('')
+        : '<div class="zero-state"><strong>No channels yet</strong>Create a channel to start building this television.</div>'
+      bindChannelCards(root)
+    }
+
+    function showChannelHub() {
+      selectedManageChannel = null
+      programmePage = 1
+      $('#channelHub').classList.remove('hidden')
+      $('#channelWorkspace').classList.add('hidden')
+    }
+
+    function openChannel(number) {
+      selectedManageChannel = Number(number)
+      programmeSearch = ''
+      programmeVisibility = 'all'
+      programmePage = 1
+      openView('channels')
+      renderChannels()
+    }
+
+    function renderBin() {
+      const items = library.recycle || []
+      $('#recycleCount').textContent = items.length
       const bin = $('#bin')
       bin.innerHTML = ''
-      if (!library.recycle.length) bin.innerHTML = '<div class="empty">Nothing in the recycle bin.</div>'
-      library.recycle.forEach(item => {
+      if (!items.length) {
+        bin.innerHTML = '<div class="zero-state"><strong>Nothing in the recycle bin</strong>Removed programmes will be kept here for 30 days.</div>'
+        return
+      }
+      items.forEach(item => {
         const row = document.createElement('div'); row.className = 'programme'
         const name = document.createElement('span'); name.textContent = `${item.display_name} · ${item.channel_name}`
         const actions = document.createElement('div'); actions.className = 'programme-actions'
         actions.append(actionButton('Restore', () => manage('restore', { id: item.id })), actionButton('Delete forever', () => { if (confirm('Permanently delete this video? This cannot be undone.')) manage('delete', { id: item.id }) }, 'danger'))
         row.append(name, actions); bin.append(row)
       })
+    }
+
+    function renderProgrammeList(channel) {
+      const search = programmeSearch.trim().toLowerCase()
+      const filtered = channel.programmes.filter(programme => {
+        const matchesSearch = !search || programme.display_name.toLowerCase().includes(search) || programme.name.toLowerCase().includes(search)
+        const matchesVisibility = programmeVisibility === 'all' || (programmeVisibility === 'enabled' ? programme.enabled : !programme.enabled)
+        return matchesSearch && matchesVisibility
+      })
+      const pages = Math.max(1, Math.ceil(filtered.length / PROGRAMMES_PER_PAGE))
+      programmePage = Math.min(programmePage, pages)
+      const start = (programmePage - 1) * PROGRAMMES_PER_PAGE
+      const visible = filtered.slice(start, start + PROGRAMMES_PER_PAGE)
+      const root = $('#channels')
+      root.innerHTML = ''
+      $('#channelSummary').textContent = search || programmeVisibility !== 'all'
+        ? `${filtered.length} matching programme${filtered.length === 1 ? '' : 's'}`
+        : `${channel.programmes.length} programme${channel.programmes.length === 1 ? '' : 's'}`
+      if (!visible.length) {
+        root.innerHTML = channel.programmes.length
+          ? '<div class="zero-state"><strong>No programmes match</strong>Try a different search or filter.</div>'
+          : '<div class="zero-state"><strong>This channel is ready</strong>Add its first programme when you are ready.</div>'
+      } else {
+        const list = document.createElement('div')
+        list.className = 'programme-list'
+        visible.forEach((programme, index) => {
+          const row = document.createElement('div')
+          row.className = `programme ${programme.enabled ? '' : 'is-hidden'}`
+          const main = document.createElement('div')
+          main.className = 'programme-main'
+          const episode = programme.name.match(/^(S\d+E\d+)/i)?.[1]?.toUpperCase() || String(start + index + 1).padStart(2, '0')
+          const marker = document.createElement('span'); marker.className = 'programme-index'; marker.textContent = episode
+          const copy = document.createElement('span'); copy.className = 'programme-copy'
+          const name = document.createElement('strong'); name.textContent = programme.display_name
+          const status = document.createElement('small'); status.textContent = programme.enabled ? 'Available in channel' : 'Hidden in channel'
+          copy.append(name, status); main.append(marker, copy)
+          const actions = document.createElement('div')
+          actions.className = 'programme-actions'
+          actions.append(actionButton(programme.enabled ? 'Hide' : 'Show', () => manage('toggle-programme', { channel: channel.number, file: programme.name })), actionButton('Rename', () => renameProgramme(channel, programme)), actionButton('Bin', () => { if (confirm(`Move “${programme.display_name}” to the recycle bin?`)) manage('trash', { channel: channel.number, file: programme.name }) }, 'danger'))
+          row.append(main, actions); list.append(row)
+        })
+        root.append(list)
+      }
+      const pager = $('#programmePager')
+      pager.classList.toggle('hidden', pages <= 1)
+      pager.innerHTML = pages <= 1 ? '' : `<span class="muted small">Showing ${start + 1}–${Math.min(start + PROGRAMMES_PER_PAGE, filtered.length)} of ${filtered.length}</span><div class="row"><button id="previousProgrammePage" type="button" class="secondary" ${programmePage === 1 ? 'disabled' : ''}>Previous</button><span class="small">Page ${programmePage} of ${pages}</span><button id="nextProgrammePage" type="button" class="secondary" ${programmePage === pages ? 'disabled' : ''}>Next</button></div>`
+      if (pages > 1) {
+        $('#previousProgrammePage').onclick = () => { programmePage -= 1; renderProgrammeList(channel) }
+        $('#nextProgrammePage').onclick = () => { programmePage += 1; renderProgrammeList(channel) }
+      }
+    }
+
+    function renderChannels() {
+      const cards = $('#channelCards')
+      const channels = library.channels || []
+      cards.innerHTML = channels.length
+        ? channels.map(channel => channelCardMarkup(channel)).join('')
+        : '<div class="zero-state"><strong>No channels yet</strong>Create the first channel below.</div>'
+      bindChannelCards(cards)
+      renderBin()
+      const channel = channels.find(value => value.number === selectedManageChannel)
+      if (!channel) { showChannelHub(); return }
+      $('#channelHub').classList.add('hidden')
+      $('#channelWorkspace').classList.remove('hidden')
+      $('#editChannelNumber').value = channel.number
+      $('#editChannelName').value = channel.name
+      $('#editChannelAspect').value = channel.aspect || 'crop'
+      $('#editChannelContentType').value = channel.content_type || 'shows'
+      $('#workspaceEyebrow').textContent = `Channel ${channel.number} · ${contentLabel(channel.content_type)}`
+      $('#workspaceChannelBadge').textContent = `CH ${channel.number}`
+      $('#workspaceChannelName').textContent = channel.name
+      $('#workspaceChannelStatus').textContent = channel.enabled ? 'Available on the television now' : 'Currently hidden from the television'
+      $('#workspaceProgrammeCount').textContent = channel.programmes.length
+      $('#workspaceVisibleCount').textContent = channel.enabled ? channel.enabled_programmes : 0
+      $('#workspacePictureMode').textContent = aspectLabel(channel.aspect)
+      $('#workspaceToggleChannel').textContent = channel.enabled ? 'Hide channel' : 'Show channel'
+      $('#workspaceToggleChannel').onclick = () => manage('toggle-channel', { channel: channel.number })
+      $('#workspaceAddMedia').onclick = () => { $('#channel').value = String(channel.number); openView('add') }
+      $('#programmeSearch').value = programmeSearch
+      $('#programmeVisibility').value = programmeVisibility
+      renderProgrammeList(channel)
     }
 
     let managementBusy = false
@@ -774,7 +605,25 @@
       if (name && name.trim()) await manage('rename', { channel: channel.number, file: programme.name, name: name.trim() })
     }
 
-    $('#manageChannel').onchange = event => { selectedManageChannel = Number(event.target.value); renderChannels() }
+    $('#backToChannels').onclick = () => { showChannelHub(); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+    $('#showAddChannel').onclick = () => {
+      const panel = $('#addChannelPanel')
+      panel.open = true
+      panel.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      $('#newChannelNumber').focus({ preventScroll: true })
+    }
+    $('#programmeSearch').oninput = event => {
+      programmeSearch = event.target.value
+      programmePage = 1
+      const channel = library.channels.find(value => value.number === selectedManageChannel)
+      if (channel) renderProgrammeList(channel)
+    }
+    $('#programmeVisibility').onchange = event => {
+      programmeVisibility = event.target.value
+      programmePage = 1
+      const channel = library.channels.find(value => value.number === selectedManageChannel)
+      if (channel) renderProgrammeList(channel)
+    }
     $('#refreshLibrary').onclick = () => manage('refresh')
     $('#editChannelForm').onsubmit = async event => {
       event.preventDefault()
@@ -790,6 +639,7 @@
       const number = Number($('#newChannelNumber').value), name = $('#newChannelName').value.trim()
       await manage('add-channel', { number, name, folder: slug(name), aspect: $('#newChannelAspect').value, content_type: $('#newChannelContentType').value }, number)
       event.target.reset()
+      $('#addChannelPanel').open = false
     }
 
     function uploadChunk(id, offset, part, finalChunk = false) {
