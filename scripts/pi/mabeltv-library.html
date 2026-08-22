@@ -116,6 +116,7 @@
     let setupChannels = []
     let recoveringOwner = false
     let configuredTvName = 'Your TV'
+    let noticeTimer = null
 
     async function api(path, options = {}) {
       const response = await fetch(path, {
@@ -154,8 +155,19 @@
     }
 
     function notice(message = '', bad = false) {
+      if (noticeTimer !== null) {
+        clearTimeout(noticeTimer)
+        noticeTimer = null
+      }
       $('#notice').textContent = message
       $('#notice').classList.toggle('bad', bad)
+      if (message && !bad && !message.endsWith('…')) {
+        noticeTimer = setTimeout(() => {
+          $('#notice').textContent = ''
+          $('#notice').classList.remove('bad')
+          noticeTimer = null
+        }, 5000)
+      }
     }
 
     function slug(value) {
