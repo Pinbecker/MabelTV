@@ -101,6 +101,7 @@ Build, dependency-check, smoke-test, and package the Windows development build:
 
 ## Architecture and operations
 
+- [Project principles](docs/project-principles.md)
 - [Architecture and data layout](docs/architecture.md)
 - [SD-card installer and update model](docs/sd-card-installer.md)
 - [KidsTV Library](docs/media-library.md)
