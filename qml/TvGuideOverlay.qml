@@ -9,6 +9,7 @@ Item {
     property var rows: []
     property int selectedRow: 0
     property string clockText: ""
+    readonly property bool classicStyle: controller.parentOverlayStyle === "classic"
 
     visible: false
 
@@ -75,12 +76,14 @@ Item {
 
     Rectangle {
         anchors.fill: parent
+        visible: !guide.classicStyle
         color: "#09110e"
         opacity: 0.42
     }
 
     Rectangle {
         id: guidePanel
+        visible: !guide.classicStyle
         anchors.centerIn: parent
         width: Math.min(parent.width - 72, 1520)
         height: Math.min(parent.height - 58, 790)
@@ -91,6 +94,7 @@ Item {
     }
 
     Rectangle {
+        visible: !guide.classicStyle
         anchors.left: guidePanel.left
         anchors.right: guidePanel.right
         anchors.top: guidePanel.top
@@ -168,6 +172,7 @@ Item {
     }
 
     Item {
+        visible: !guide.classicStyle
         anchors.left: guidePanel.left
         anchors.right: guidePanel.right
         anchors.top: guidePanel.top
@@ -365,6 +370,7 @@ Item {
     }
 
     Rectangle {
+        visible: !guide.classicStyle
         anchors.left: guidePanel.left
         anchors.right: guidePanel.right
         anchors.bottom: guidePanel.bottom
@@ -379,6 +385,205 @@ Item {
             font.family: "DejaVu Sans"
             font.pixelSize: 15
             text: "↑ ↓ choose a channel     ·     OK watch     ·     Back close"
+        }
+    }
+
+    Item {
+        id: classicGuide
+        anchors.fill: parent
+        visible: guide.classicStyle
+
+        Rectangle {
+            anchors.fill: parent
+            color: "#071007"
+            opacity: 0.56
+        }
+
+        Rectangle {
+            id: classicGuidePanel
+            anchors.centerIn: parent
+            width: Math.min(parent.width * 0.82, 1060)
+            height: Math.min(parent.height * 0.86, 640)
+            color: "#f20b130d"
+            border.color: "#6f9971"
+            border.width: 2
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                height: 78
+                color: "#d50b130d"
+                border.color: "#658066"
+                border.width: 1
+
+                Text {
+                    anchors.left: parent.left
+                    anchors.leftMargin: 24
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: "#dce9cd"
+                    font.family: "Consolas"
+                    font.bold: true
+                    font.pixelSize: 23
+                    text: "[ TV GUIDE ]"
+                }
+
+                Text {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 24
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: "#a6d49d"
+                    font.family: "Consolas"
+                    font.pixelSize: 16
+                    text: guide.clockText
+                }
+            }
+
+            Text {
+                anchors.left: parent.left
+                anchors.leftMargin: 24
+                anchors.top: parent.top
+                anchors.topMargin: 95
+                color: "#8dbf88"
+                font.family: "Consolas"
+                font.bold: true
+                font.pixelSize: 14
+                text: "CHANNEL                 NOW / NEXT"
+            }
+
+            ListView {
+                id: classicScheduleRows
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.bottom: classicGuideFooter.top
+                anchors.leftMargin: 18
+                anchors.rightMargin: 18
+                anchors.topMargin: 124
+                anchors.bottomMargin: 12
+                clip: true
+                spacing: 6
+                model: guide.rows
+                currentIndex: guide.selectedRow
+                boundsBehavior: Flickable.StopAtBounds
+                interactive: false
+
+                onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
+
+                delegate: Item {
+                    id: classicChannelRow
+                    required property var modelData
+                    required property int index
+                    width: classicScheduleRows.width
+                    height: 76
+
+                    Rectangle {
+                        anchors.fill: parent
+                        color: classicChannelRow.index === guide.selectedRow
+                               ? "#3d683b" : "#0b130d"
+                        opacity: classicChannelRow.index === guide.selectedRow ? 0.82 : 0.7
+                        border.color: classicChannelRow.index === guide.selectedRow
+                                      ? "#c4e8b9" : "#466c49"
+                        border.width: classicChannelRow.index === guide.selectedRow ? 2 : 1
+                    }
+
+                    Text {
+                        anchors.left: parent.left
+                        anchors.leftMargin: 15
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 172
+                        elide: Text.ElideRight
+                        color: classicChannelRow.modelData.current ? "#e1f1cf" : "#b1d7aa"
+                        font.family: "Consolas"
+                        font.bold: true
+                        font.pixelSize: 16
+                        text: "CH " + classicChannelRow.modelData.number + "  "
+                              + classicChannelRow.modelData.name
+                    }
+
+                    Row {
+                        id: classicProgrammeSlots
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.leftMargin: 196
+                        anchors.rightMargin: 12
+                        anchors.verticalCenter: parent.verticalCenter
+                        height: 54
+                        spacing: 8
+
+                        Repeater {
+                            model: classicChannelRow.modelData.programmes
+
+                            Rectangle {
+                                id: classicProgrammeCard
+                                required property var modelData
+                                required property int index
+                                width: (classicProgrammeSlots.width
+                                        - classicProgrammeSlots.spacing * 3) / 4
+                                height: classicProgrammeSlots.height
+                                color: classicProgrammeCard.index === 0 ? "#315a34" : "#142716"
+                                border.color: classicProgrammeCard.index === 0 ? "#b5ddb0" : "#547b56"
+                                border.width: 1
+
+                                Text {
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    anchors.margins: 7
+                                    color: classicProgrammeCard.index === 0 ? "#dff3d3" : "#9ac194"
+                                    elide: Text.ElideRight
+                                    font.family: "Consolas"
+                                    font.bold: true
+                                    font.pixelSize: 12
+                                    text: classicProgrammeCard.index === 0 ? "NOW"
+                                                                          : classicProgrammeCard.modelData.start
+                                }
+
+                                Text {
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.bottom: parent.bottom
+                                    anchors.margins: 7
+                                    color: "#d0e6c6"
+                                    elide: Text.ElideRight
+                                    font.family: "Consolas"
+                                    font.pixelSize: 12
+                                    text: classicProgrammeCard.modelData.name
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Text {
+                visible: guide.rows.length === 0
+                anchors.centerIn: parent
+                color: "#a6d49d"
+                font.family: "Consolas"
+                font.pixelSize: 19
+                text: "NO CHANNELS AVAILABLE"
+            }
+
+            Rectangle {
+                id: classicGuideFooter
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: 48
+                color: "#d50b130d"
+                border.color: "#658066"
+                border.width: 1
+
+                Text {
+                    anchors.centerIn: parent
+                    color: "#a6d49d"
+                    font.family: "Consolas"
+                    font.bold: true
+                    font.pixelSize: 14
+                    text: "↑ ↓ SELECT CHANNEL     OK WATCH     BACK CLOSE"
+                }
+            }
         }
     }
 }

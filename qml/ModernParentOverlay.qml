@@ -10,8 +10,12 @@ Item {
     property int selectedChannel: 0
     property int selectedProgramme: 0
     property bool programmePane: false
+    property bool sidebarFocused: false
+    property int sidebarSelection: 0
     property int restartSequenceStep: 0
     readonly property int rowCount: 16
+    readonly property int settingsColumns: 2
+    readonly property int settingsRows: rowCount / settingsColumns
 
     visible: controller.parentAccessState !== TvController.ParentClosed
 
@@ -86,6 +90,27 @@ Item {
         } else if (index === 15 && Qt.platform.os !== "windows") {
             controller.requestParentCommand("shutdown")
         }
+    }
+
+    function moveSettingsSelection(horizontal, vertical) {
+        const column = selectedRow % settingsColumns
+        const row = Math.floor(selectedRow / settingsColumns)
+        const nextColumn = (column + horizontal + settingsColumns) % settingsColumns
+        const nextRow = (row + vertical + settingsRows) % settingsRows
+        selectedRow = nextRow * settingsColumns + nextColumn
+    }
+
+    function openSidebar() {
+        sidebarFocused = true
+        sidebarSelection = page === "library" ? 1 : 0
+    }
+
+    function activateSidebarSelection() {
+        page = sidebarSelection === 0 ? "settings" : "library"
+        programmePane = false
+        if (page === "library")
+            clampLibrarySelection()
+        sidebarFocused = false
     }
 
     function currentChannel() {
@@ -165,13 +190,31 @@ Item {
             return true
         }
 
+        if (sidebarFocused) {
+            if (key === Qt.Key_Up || key === Qt.Key_Down) {
+                sidebarSelection = sidebarSelection === 0 ? 1 : 0
+            } else if (key === Qt.Key_Right || key === Qt.Key_Return
+                       || key === Qt.Key_Enter) {
+                activateSidebarSelection()
+            } else if (key === Qt.Key_Escape || key === Qt.Key_Backspace
+                       || key === Qt.Key_B) {
+                controller.closeParent()
+            } else {
+                return false
+            }
+            return true
+        }
+
         if (page === "library") {
             if (key === Qt.Key_Up) {
                 moveLibrarySelection(-1)
             } else if (key === Qt.Key_Down) {
                 moveLibrarySelection(1)
             } else if (key === Qt.Key_Left) {
-                programmePane = false
+                if (programmePane)
+                    programmePane = false
+                else
+                    openSidebar()
             } else if (key === Qt.Key_Right) {
                 if (currentProgrammes().length > 0)
                     programmePane = true
@@ -188,13 +231,16 @@ Item {
         }
 
         if (key === Qt.Key_Up) {
-            selectedRow = (selectedRow + rowCount - 1) % rowCount
+            moveSettingsSelection(0, -1)
         } else if (key === Qt.Key_Down) {
-            selectedRow = (selectedRow + 1) % rowCount
+            moveSettingsSelection(0, 1)
         } else if (key === Qt.Key_Left) {
-            adjustRow(selectedRow, -1)
+            if (selectedRow % settingsColumns === 0)
+                openSidebar()
+            else
+                moveSettingsSelection(-1, 0)
         } else if (key === Qt.Key_Right) {
-            adjustRow(selectedRow, 1)
+            moveSettingsSelection(1, 0)
         } else if (key === Qt.Key_Return || key === Qt.Key_Enter) {
             activateRow(selectedRow)
         } else if (key === Qt.Key_Escape || key === Qt.Key_Backspace || key === Qt.Key_B) {
@@ -212,10 +258,11 @@ Item {
             overlay.clampLibrarySelection()
         }
         function onParentAccessStateChanged() {
-            overlay.restartSequenceStep = 0
+                overlay.restartSequenceStep = 0
             if (controller.parentAccessState !== TvController.ParentOpen) {
                 overlay.page = "settings"
                 overlay.programmePane = false
+                overlay.sidebarFocused = false
             }
         }
     }
@@ -345,8 +392,8 @@ Item {
         Item {
             id: parentPanel
             anchors.centerIn: parent
-            width: Math.min(parent.width - 72, 1200)
-            height: Math.min(parent.height - 58, 680)
+            width: Math.min(parent.width * 0.82, 1040)
+            height: Math.min(parent.height * 0.82, 600)
 
             Rectangle {
                 anchors.fill: parent
@@ -363,7 +410,6 @@ Item {
             anchors.top: parentPanel.top
             anchors.bottom: parentPanel.bottom
             width: Math.max(220, parentPanel.width * 0.2)
-            radius: 24
             color: "#151b19"
 
             Item {
@@ -435,13 +481,15 @@ Item {
                     width: parent.width
                     height: 58
                     radius: 11
-                    color: overlay.page === "settings" ? "#ffffff" : "transparent"
+                    color: (overlay.sidebarFocused ? overlay.sidebarSelection === 0
+                            : overlay.page === "settings") ? "#ffffff" : "transparent"
 
                     Text {
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
                         anchors.leftMargin: 16
-                        color: overlay.page === "settings" ? "#18201d" : "#b6c0bc"
+                        color: (overlay.sidebarFocused ? overlay.sidebarSelection === 0
+                                : overlay.page === "settings") ? "#18201d" : "#b6c0bc"
                         font.family: "DejaVu Sans"
                         font.bold: overlay.page === "settings"
                         font.pixelSize: 16
@@ -453,13 +501,15 @@ Item {
                     width: parent.width
                     height: 58
                     radius: 11
-                    color: overlay.page === "library" ? "#ffffff" : "transparent"
+                    color: (overlay.sidebarFocused ? overlay.sidebarSelection === 1
+                            : overlay.page === "library") ? "#ffffff" : "transparent"
 
                     Text {
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
                         anchors.leftMargin: 16
-                        color: overlay.page === "library" ? "#18201d" : "#b6c0bc"
+                        color: (overlay.sidebarFocused ? overlay.sidebarSelection === 1
+                                : overlay.page === "library") ? "#18201d" : "#b6c0bc"
                         font.family: "DejaVu Sans"
                         font.bold: overlay.page === "library"
                         font.pixelSize: 16

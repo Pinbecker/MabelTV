@@ -1219,6 +1219,11 @@ Window {
                 event.accepted = true
             } else if (tvController.remoteLocked) {
                 event.accepted = true
+            } else if (guideOverlay.visible && root.okHeldForGuide
+                       && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
+                // Ignore the repeat tail of the same OK hold that opened the
+                // guide. Otherwise it immediately tunes and closes the guide.
+                event.accepted = true
             } else if (guideOverlay.visible) {
                 event.accepted = guideOverlay.handleKey(event.key)
             } else if (parentOverlay.visible && event.key === Qt.Key_B
@@ -1340,8 +1345,10 @@ Window {
                 root.muteHeldForLock = false
                 event.accepted = true
             } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
-                       && !event.isAutoRepeat && guideHoldTimer.running) {
-                guideHoldTimer.stop()
+                       && !event.isAutoRepeat
+                       && (guideHoldTimer.running || root.okHeldForGuide)) {
+                if (guideHoldTimer.running)
+                    guideHoldTimer.stop()
                 if (!root.okHeldForGuide && !tvController.remoteLocked
                         && !guideOverlay.visible && !directMediaMode)
                     root.togglePlaybackPause()
