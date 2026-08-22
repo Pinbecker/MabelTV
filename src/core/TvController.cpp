@@ -28,6 +28,26 @@ QString cycleValue(const QStringList &values, const QString &current, int direct
     index = (index + (direction < 0 ? -1 : 1) + count) % count;
     return values[index];
 }
+
+QString displayNameForEpisodePath(const QString &path)
+{
+    QString name = QFileInfo(path).completeBaseName();
+    name.replace(QLatin1Char('_'), QLatin1Char(' '));
+    name = name.simplified();
+
+    static const QRegularExpression episodePattern(
+        QStringLiteral("^S(\\d{1,2})E(\\d{1,3})\\s*-\\s*(.+)$"),
+        QRegularExpression::CaseInsensitiveOption);
+    const QRegularExpressionMatch match = episodePattern.match(name);
+    if (!match.hasMatch()) {
+        return name;
+    }
+
+    return QStringLiteral("S%1  E%2  ·  %3")
+        .arg(match.captured(1).rightJustified(2, QLatin1Char('0')),
+             match.captured(2).rightJustified(2, QLatin1Char('0')),
+             match.captured(3));
+}
 } // namespace
 
 TvController::TvController(QObject *parent)
@@ -265,6 +285,11 @@ QString TvController::parentOverlayStyle() const
     return m_parentOverlayStyle;
 }
 
+bool TvController::tvGuideEnabled() const
+{
+    return m_tvGuideEnabled;
+}
+
 QString TvController::playbackMode() const
 {
     return m_playbackMode;
@@ -335,6 +360,96 @@ QVariantList TvController::parentLibrary() const
         });
     }
     return channels;
+}
+
+QVariantList TvController::guideSchedule() const
+{
+    QVariantList rows;
+    if (!m_tvGuideEnabled) {
+        return rows;
+    }
+
+    const qint64 elapsedNow = m_broadcastClock.isValid() ? m_broadcastClock.elapsed() : 0;
+    const QDateTime now = QDateTime::currentDateTime();
+    for (int channelIndex = 0; channelIndex < static_cast<int>(m_channels.size());
+         ++channelIndex) {
+        const ChannelRuntime &runtime = m_channels[channelIndex];
+        if (!runtime.enabled || runtime.channel.episodes.isEmpty()) {
+            continue;
+        }
+
+        int episodeIndex = episodeIsUsable(runtime, runtime.currentEpisode)
+            ? runtime.currentEpisode
+            : nextUsableEpisode(runtime, -1);
+        if (episodeIndex < 0) {
+            continue;
+        }
+
+        const bool isCurrentChannel = channelIndex == m_currentChannelIndex;
+        const bool advances = m_playbackMode == QStringLiteral("continuous")
+            || (isCurrentChannel && !m_playbackPaused);
+        double position = std::max(0.0, runtime.anchorPositionSeconds);
+        if (advances) {
+            position += std::max<qint64>(0, elapsedNow - runtime.anchorMilliseconds) / 1000.0;
+        }
+
+        int safety = std::max(1, static_cast<int>(runtime.channel.episodes.size()) * 3);
+        double duration = std::max(60.0,
+                                   runtime.channel.episodes[episodeIndex].durationSeconds);
+        while (position >= duration && safety-- > 0) {
+            position -= duration;
+            episodeIndex = nextUsableEpisode(runtime, episodeIndex);
+            if (episodeIndex < 0) {
+                break;
+            }
+            duration = std::max(60.0,
+                                runtime.channel.episodes[episodeIndex].durationSeconds);
+        }
+        if (episodeIndex < 0) {
+            continue;
+        }
+
+        QVariantList programmes;
+        QDateTime start = now.addMSecs(-static_cast<qint64>(position * 1000.0));
+        int scheduledEpisode = episodeIndex;
+        for (int slot = 0; slot < 4 && scheduledEpisode >= 0; ++slot) {
+            const Episode &episode = runtime.channel.episodes[scheduledEpisode];
+            const double slotDuration = std::max(60.0, episode.durationSeconds);
+            const QDateTime end = start.addMSecs(
+                static_cast<qint64>(slotDuration * 1000.0));
+            programmes.append(QVariantMap{
+                {QStringLiteral("name"), displayNameForEpisodePath(episode.path)},
+                {QStringLiteral("start"), start.toString(QStringLiteral("HH:mm"))},
+                {QStringLiteral("end"), end.toString(QStringLiteral("HH:mm"))},
+                {QStringLiteral("now"), slot == 0},
+                {QStringLiteral("progress"), slot == 0
+                     ? std::clamp(position / slotDuration, 0.0, 1.0)
+                     : 0.0},
+            });
+            start = end;
+            scheduledEpisode = nextUsableEpisode(runtime, scheduledEpisode);
+        }
+
+        rows.append(QVariantMap{
+            {QStringLiteral("number"), runtime.channel.number},
+            {QStringLiteral("name"), runtime.channel.name},
+            {QStringLiteral("current"), isCurrentChannel},
+            {QStringLiteral("programmes"), programmes},
+        });
+    }
+    return rows;
+}
+
+void TvController::tuneGuideChannel(int channelNumber)
+{
+    if (!m_tvGuideEnabled || m_remoteLocked || m_standby
+        || m_parentAccessState != ParentClosed) {
+        return;
+    }
+    const int index = findChannelByNumber(channelNumber);
+    if (index >= 0) {
+        requestTune(index);
+    }
 }
 
 void TvController::start()
@@ -942,6 +1057,12 @@ void TvController::loadSettings(const QString &settingsPath)
         m_parentOverlayStyle = validatedParentOverlayStyle;
         emit parentOverlayStyleChanged();
     }
+    const bool tvGuideEnabled =
+        m_settingsRoot.value(QStringLiteral("tv_guide_enabled")).toBool(false);
+    if (tvGuideEnabled != m_tvGuideEnabled) {
+        m_tvGuideEnabled = tvGuideEnabled;
+        emit tvGuideEnabledChanged();
+    }
     const QJsonObject volumeSettings = m_settingsRoot.value(QStringLiteral("volume")).toObject();
     m_volume = std::clamp(volumeSettings.value(QStringLiteral("initial")).toInt(20), 0, 100);
     m_maximumVolume = std::clamp(volumeSettings.value(QStringLiteral("maximum")).toInt(60), 0, 100);
@@ -1047,6 +1168,7 @@ void TvController::saveSettings()
 
     m_settingsRoot.insert(QStringLiteral("schema_version"), 1);
     m_settingsRoot.insert(QStringLiteral("parent_overlay_style"), m_parentOverlayStyle);
+    m_settingsRoot.insert(QStringLiteral("tv_guide_enabled"), m_tvGuideEnabled);
     m_settingsRoot.insert(QStringLiteral("playback_mode"), m_playbackMode);
     m_settingsRoot.insert(QStringLiteral("episode_reset_minutes"), m_episodeResetMinutes);
     m_settingsRoot.insert(QStringLiteral("picture_mode"), m_pictureMode);
@@ -1410,22 +1532,7 @@ QString TvController::programmeDisplayName(const ChannelRuntime &runtime) const
         return {};
     }
 
-    QString name = QFileInfo(runtime.channel.episodes[runtime.currentEpisode].path).completeBaseName();
-    name.replace(QLatin1Char('_'), QLatin1Char(' '));
-    name = name.simplified();
-
-    static const QRegularExpression episodePattern(
-        QStringLiteral("^S(\\d{1,2})E(\\d{1,3})\\s*-\\s*(.+)$"),
-        QRegularExpression::CaseInsensitiveOption);
-    const QRegularExpressionMatch match = episodePattern.match(name);
-    if (!match.hasMatch()) {
-        return name;
-    }
-
-    return QStringLiteral("S%1  E%2  ·  %3")
-        .arg(match.captured(1).rightJustified(2, QLatin1Char('0')),
-             match.captured(2).rightJustified(2, QLatin1Char('0')),
-             match.captured(3));
+    return displayNameForEpisodePath(runtime.channel.episodes[runtime.currentEpisode].path);
 }
 
 void TvController::setVolume(int value)
@@ -1652,8 +1759,27 @@ bool TvController::episodeIsUsable(const ChannelRuntime &runtime, int episodeInd
         && !runtime.disabledEpisodes.contains(episodeIndex);
 }
 
+int TvController::nextUsableEpisode(const ChannelRuntime &runtime, int episodeIndex) const
+{
+    const int episodeCount = static_cast<int>(runtime.channel.episodes.size());
+    if (episodeCount == 0) {
+        return -1;
+    }
+    int candidate = episodeIndex;
+    for (int attempt = 0; attempt < episodeCount; ++attempt) {
+        candidate = (candidate + 1 + episodeCount) % episodeCount;
+        if (episodeIsUsable(runtime, candidate)) {
+            return candidate;
+        }
+    }
+    return -1;
+}
+
 int TvController::takeUsableEpisode(ChannelRuntime &runtime)
 {
+    if (m_tvGuideEnabled) {
+        return nextUsableEpisode(runtime, runtime.currentEpisode);
+    }
     const int episodeCount = static_cast<int>(runtime.channel.episodes.size());
     for (int attempt = 0; attempt < episodeCount; ++attempt) {
         const int candidate = runtime.shuffle.take();

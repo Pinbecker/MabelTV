@@ -158,7 +158,7 @@ class LibraryUnitTests(unittest.TestCase):
             "setup_code": "135790", "pin": "2468",
             "channels": mabeltv_library.DEFAULT_CHANNELS,
         })
-        self.fixture.library.refresh_tv = lambda: True
+        self.fixture.library.refresh_tv = mock.Mock(return_value=True)
         self.assertEqual(
             self.fixture.library.library()["appearance"]["parent_overlay_style"],
             "classic")
@@ -170,9 +170,22 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertEqual(
             self.fixture.library.library()["appearance"]["parent_overlay_style"],
             "modern")
+        self.assertFalse(
+            self.fixture.library.library()["appearance"]["tv_guide_enabled"])
+        self.fixture.library.manage({
+            "action": "set-tv-guide-enabled", "enabled": True,
+        })
+        self.assertTrue(self.fixture.library.settings()["tv_guide_enabled"])
+        self.assertTrue(
+            self.fixture.library.library()["appearance"]["tv_guide_enabled"])
+        self.assertEqual(self.fixture.library.refresh_tv.call_count, 2)
         with self.assertRaisesRegex(ValueError, "classic or modern"):
             self.fixture.library.manage({
                 "action": "set-parent-overlay-style", "style": "neon",
+            })
+        with self.assertRaisesRegex(ValueError, "on or off"):
+            self.fixture.library.manage({
+                "action": "set-tv-guide-enabled", "enabled": "yes",
             })
 
     def test_high_frame_rate_uploads_use_one_background_conversion_worker(self) -> None:

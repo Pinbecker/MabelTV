@@ -30,6 +30,7 @@ private slots:
     void standbyWakeWaitsForWelcomeBeforeResumingPlayback();
     void remoteLockBlocksActionsAndPersists();
     void parentControlsRequireThreeConfirmationsAndPersistSettings();
+    void tvGuideBuildsOrderedScheduleAndTunesChannels();
     void parentLibraryControlsPersistAndAffectPlayback();
     void longPowerRequestBypassesParentPanelButUsesOnlyShutdownCommand();
 };
@@ -664,6 +665,7 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
         "schema_version": 1,
         "parent_pin": "0973",
         "parent_overlay_style": "modern",
+        "tv_guide_enabled": true,
         "playback_mode": "continuous",
         "crt_effect": "low",
         "volume": {"initial": 20, "maximum": 60, "limit_enabled": true}
@@ -679,6 +681,7 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
 
     controller.requestParentAccess();
     QCOMPARE(controller.parentOverlayStyle(), QStringLiteral("modern"));
+    QVERIFY(controller.tvGuideEnabled());
     QCOMPARE(controller.parentAccessState(), TvController::ParentConfirmation);
     QCOMPARE(controller.parentConfirmationCount(), 0);
     controller.parentConfirm();
@@ -724,6 +727,7 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
              QStringLiteral("resume"));
     QCOMPARE(savedDocument.object().value(QStringLiteral("parent_overlay_style")).toString(),
              QStringLiteral("modern"));
+    QVERIFY(savedDocument.object().value(QStringLiteral("tv_guide_enabled")).toBool());
     QCOMPARE(savedDocument.object().value(QStringLiteral("episode_reset_minutes")).toInt(), 5);
     QCOMPARE(savedDocument.object().value(QStringLiteral("tv_border")).toString(),
              QStringLiteral("silver-90s"));
@@ -745,9 +749,75 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
                                 [](const QString &) { return MediaInspection{}; }));
     QCOMPARE(restored.tvBorderStyle(), QStringLiteral("silver-90s"));
     QCOMPARE(restored.parentOverlayStyle(), QStringLiteral("modern"));
+    QVERIFY(restored.tvGuideEnabled());
     QCOMPARE(restored.episodeResetMinutes(), 5);
     QCOMPARE(restored.crtGlass(), 100);
     QCOMPARE(restored.videoDistortion(), 100);
+}
+
+void CoreTests::tvGuideBuildsOrderedScheduleAndTunesChannels()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/one")));
+    QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/two")));
+    for (const QString &path : {QStringLiteral("media/one/a.mp4"),
+                                QStringLiteral("media/one/b.mp4"),
+                                QStringLiteral("media/two/c.mp4")}) {
+        QFile episode(directory.filePath(path));
+        QVERIFY(episode.open(QIODevice::WriteOnly));
+        episode.close();
+    }
+
+    QFile configuration(directory.filePath(QStringLiteral("channels.json")));
+    QVERIFY(configuration.open(QIODevice::WriteOnly));
+    configuration.write(R"({
+        "schema_version": 1,
+        "channels": [
+            {"number": 1, "name": "One", "folder": "one"},
+            {"number": 2, "name": "Two", "folder": "two"}
+        ]
+    })");
+    configuration.close();
+
+    QFile settings(directory.filePath(QStringLiteral("settings.json")));
+    QVERIFY(settings.open(QIODevice::WriteOnly));
+    settings.write(R"({
+        "schema_version": 1,
+        "tv_guide_enabled": true,
+        "playback_mode": "continuous"
+    })");
+    settings.close();
+
+    TvController controller;
+    QVERIFY(controller.initialize(
+        configuration.fileName(), settings.fileName(),
+        directory.filePath(QStringLiteral("media")),
+        directory.filePath(QStringLiteral("state.json")),
+        [](const QString &path) {
+            const QString name = QFileInfo(path).fileName();
+            return MediaInspection{true, true,
+                                   name == QStringLiteral("a.mp4") ? 600.0
+                                       : (name == QStringLiteral("b.mp4") ? 900.0
+                                                                          : 1200.0),
+                                   QStringLiteral("h264"), {}};
+        }));
+    QVERIFY(controller.tvGuideEnabled());
+    controller.start();
+
+    const QVariantList rows = controller.guideSchedule();
+    QCOMPARE(rows.size(), 2);
+    const QVariantMap firstChannel = rows.at(0).toMap();
+    QCOMPARE(firstChannel.value(QStringLiteral("number")).toInt(), 1);
+    QCOMPARE(firstChannel.value(QStringLiteral("programmes")).toList().size(), 4);
+    const QVariantMap firstProgramme =
+        firstChannel.value(QStringLiteral("programmes")).toList().at(0).toMap();
+    QVERIFY(!firstProgramme.value(QStringLiteral("name")).toString().isEmpty());
+    QCOMPARE(firstProgramme.value(QStringLiteral("start")).toString().size(), 5);
+    QVERIFY(firstProgramme.value(QStringLiteral("now")).toBool());
+
+    controller.tuneGuideChannel(2);
+    QCOMPARE(controller.currentChannelNumber(), 2);
 }
 
 void CoreTests::parentLibraryControlsPersistAndAffectPlayback()

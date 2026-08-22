@@ -718,6 +718,10 @@ class Library:
     def parent_overlay_style(settings: dict[str, Any]) -> str:
         return "modern" if settings.get("parent_overlay_style") == "modern" else "classic"
 
+    @staticmethod
+    def tv_guide_enabled(settings: dict[str, Any]) -> bool:
+        return settings.get("tv_guide_enabled") is True
+
     def library(self) -> dict[str, Any]:
         settings = self.settings()
         rules = settings.get("library", {})
@@ -741,7 +745,10 @@ class Library:
         owner = self.owner()
         return {
             "channels": response,
-            "appearance": {"parent_overlay_style": self.parent_overlay_style(settings)},
+            "appearance": {
+                "parent_overlay_style": self.parent_overlay_style(settings),
+                "tv_guide_enabled": self.tv_guide_enabled(settings),
+            },
             "recycle": self.recycle_items(),
             "uploads": self.upload_jobs(),
             "storage": {"free_gb": disk.free / 1024**3,
@@ -1362,6 +1369,14 @@ class Library:
                 raise ValueError("Choose the classic or modern parent-control design")
             settings = self.settings()
             settings["parent_overlay_style"] = style
+            self.write_json(self.settings_path, settings)
+            return
+        if action == "set-tv-guide-enabled":
+            enabled = payload.get("enabled")
+            if not isinstance(enabled, bool):
+                raise ValueError("Choose whether the TV guide is on or off")
+            settings = self.settings()
+            settings["tv_guide_enabled"] = enabled
             self.write_json(self.settings_path, settings)
             return
         if action == "add-channel":

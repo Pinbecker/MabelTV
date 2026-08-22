@@ -39,6 +39,7 @@ class TvController final : public QObject
     Q_PROPERTY(int parentConfirmationCount READ parentConfirmationCount NOTIFY parentConfirmationCountChanged)
     Q_PROPERTY(QString parentMessage READ parentMessage NOTIFY parentMessageChanged)
     Q_PROPERTY(QString parentOverlayStyle READ parentOverlayStyle NOTIFY parentOverlayStyleChanged)
+    Q_PROPERTY(bool tvGuideEnabled READ tvGuideEnabled NOTIFY tvGuideEnabledChanged)
     Q_PROPERTY(QString playbackMode READ playbackMode NOTIFY playbackModeChanged)
     Q_PROPERTY(int episodeResetMinutes READ episodeResetMinutes NOTIFY episodeResetMinutesChanged)
     Q_PROPERTY(QString pictureMode READ pictureMode NOTIFY pictureModeChanged)
@@ -101,6 +102,7 @@ public:
     [[nodiscard]] int parentConfirmationCount() const;
     [[nodiscard]] QString parentMessage() const;
     [[nodiscard]] QString parentOverlayStyle() const;
+    [[nodiscard]] bool tvGuideEnabled() const;
     [[nodiscard]] QString playbackMode() const;
     [[nodiscard]] int episodeResetMinutes() const;
     [[nodiscard]] QString pictureMode() const;
@@ -138,6 +140,8 @@ public:
     Q_INVOKABLE void reloadLibrary();
     Q_INVOKABLE void toggleChannelEnabled(int channelNumber);
     Q_INVOKABLE void toggleProgrammeEnabled(int channelNumber, const QString &fileName);
+    Q_INVOKABLE QVariantList guideSchedule() const;
+    Q_INVOKABLE void tuneGuideChannel(int channelNumber);
     Q_INVOKABLE void requestParentCommand(const QString &command);
     Q_INVOKABLE void requestSafeShutdown();
 
@@ -156,6 +160,7 @@ signals:
     void parentConfirmationCountChanged();
     void parentMessageChanged();
     void parentOverlayStyleChanged();
+    void tvGuideEnabledChanged();
     void playbackModeChanged();
     void episodeResetMinutesChanged();
     void pictureModeChanged();
@@ -216,6 +221,7 @@ private:
     int findChannelByNumber(int channelNumber, bool includeDisabled = false) const;
     int adjacentEnabledChannel(int channelIndex, int direction) const;
     bool episodeIsUsable(const ChannelRuntime &runtime, int episodeIndex) const;
+    int nextUsableEpisode(const ChannelRuntime &runtime, int episodeIndex) const;
     int takeUsableEpisode(ChannelRuntime &runtime);
     int adjacentUsableEpisode(const ChannelRuntime &runtime, int direction) const;
     QString programmeDisplayName(const ChannelRuntime &runtime) const;
@@ -244,6 +250,7 @@ private:
     int m_parentConfirmationCount = 0;
     QString m_parentMessage;
     QString m_parentOverlayStyle = QStringLiteral("classic");
+    bool m_tvGuideEnabled = false;
     QString m_playbackMode = QStringLiteral("continuous");
     int m_episodeResetMinutes = 0;
     QString m_pictureMode = QStringLiteral("channel");

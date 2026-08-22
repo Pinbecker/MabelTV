@@ -48,6 +48,18 @@ Create, rename, renumber, hide/show, change crop/fit/stretch mode, choose **Show
 
 Deletion is deliberately two-stage. Recycle-bin items expire after 30 days; this is shown in the interface.
 
+### TV guide
+
+The optional TV guide turns each channel's ordered programme files and real video
+lengths into a live-looking schedule. Turning it on also makes automatic programme
+changes follow filename order, so the times in the guide match what will actually
+play. It is off by default and can be turned on or off from the dashboard; the TV
+player refreshes immediately after the setting changes.
+
+The guide remains hidden during normal viewing. Open it with **Channel +, Channel −,
+Volume +, Volume −, OK**, then choose a channel with Up/Down and press OK to watch.
+Back closes it without changing channel.
+
 ### Help & system
 
 Shows detailed status, changes the browser PIN, restarts the TV player, creates/downloads a redacted support bundle, and safely reboots or shuts down the Pi. Disruptive actions require confirmation.
