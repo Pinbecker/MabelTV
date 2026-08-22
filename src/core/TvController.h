@@ -38,6 +38,7 @@ class TvController final : public QObject
     Q_PROPERTY(int parentAccessState READ parentAccessState NOTIFY parentAccessStateChanged)
     Q_PROPERTY(int parentConfirmationCount READ parentConfirmationCount NOTIFY parentConfirmationCountChanged)
     Q_PROPERTY(QString parentMessage READ parentMessage NOTIFY parentMessageChanged)
+    Q_PROPERTY(QString parentOverlayStyle READ parentOverlayStyle NOTIFY parentOverlayStyleChanged)
     Q_PROPERTY(QString playbackMode READ playbackMode NOTIFY playbackModeChanged)
     Q_PROPERTY(int episodeResetMinutes READ episodeResetMinutes NOTIFY episodeResetMinutesChanged)
     Q_PROPERTY(QString pictureMode READ pictureMode NOTIFY pictureModeChanged)
@@ -99,6 +100,7 @@ public:
     [[nodiscard]] int parentAccessState() const;
     [[nodiscard]] int parentConfirmationCount() const;
     [[nodiscard]] QString parentMessage() const;
+    [[nodiscard]] QString parentOverlayStyle() const;
     [[nodiscard]] QString playbackMode() const;
     [[nodiscard]] int episodeResetMinutes() const;
     [[nodiscard]] QString pictureMode() const;
@@ -153,6 +155,7 @@ signals:
     void parentAccessStateChanged();
     void parentConfirmationCountChanged();
     void parentMessageChanged();
+    void parentOverlayStyleChanged();
     void playbackModeChanged();
     void episodeResetMinutesChanged();
     void pictureModeChanged();
@@ -240,6 +243,7 @@ private:
     QString m_numericEntry;
     int m_parentConfirmationCount = 0;
     QString m_parentMessage;
+    QString m_parentOverlayStyle = QStringLiteral("classic");
     QString m_playbackMode = QStringLiteral("continuous");
     int m_episodeResetMinutes = 0;
     QString m_pictureMode = QStringLiteral("channel");

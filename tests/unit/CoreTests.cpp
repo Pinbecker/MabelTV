@@ -663,6 +663,7 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
     settings.write(R"({
         "schema_version": 1,
         "parent_pin": "0973",
+        "parent_overlay_style": "modern",
         "playback_mode": "continuous",
         "crt_effect": "low",
         "volume": {"initial": 20, "maximum": 60, "limit_enabled": true}
@@ -677,6 +678,7 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
                                   [](const QString &) { return MediaInspection{}; }));
 
     controller.requestParentAccess();
+    QCOMPARE(controller.parentOverlayStyle(), QStringLiteral("modern"));
     QCOMPARE(controller.parentAccessState(), TvController::ParentConfirmation);
     QCOMPARE(controller.parentConfirmationCount(), 0);
     controller.parentConfirm();
@@ -720,6 +722,8 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
     const QJsonDocument savedDocument = QJsonDocument::fromJson(savedSettings.readAll());
     QCOMPARE(savedDocument.object().value(QStringLiteral("playback_mode")).toString(),
              QStringLiteral("resume"));
+    QCOMPARE(savedDocument.object().value(QStringLiteral("parent_overlay_style")).toString(),
+             QStringLiteral("modern"));
     QCOMPARE(savedDocument.object().value(QStringLiteral("episode_reset_minutes")).toInt(), 5);
     QCOMPARE(savedDocument.object().value(QStringLiteral("tv_border")).toString(),
              QStringLiteral("silver-90s"));
@@ -740,6 +744,7 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
                                 directory.filePath(QStringLiteral("restored-state.json")),
                                 [](const QString &) { return MediaInspection{}; }));
     QCOMPARE(restored.tvBorderStyle(), QStringLiteral("silver-90s"));
+    QCOMPARE(restored.parentOverlayStyle(), QStringLiteral("modern"));
     QCOMPARE(restored.episodeResetMinutes(), 5);
     QCOMPARE(restored.crtGlass(), 100);
     QCOMPARE(restored.videoDistortion(), 100);

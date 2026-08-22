@@ -260,6 +260,11 @@ QString TvController::parentMessage() const
     return m_parentMessage;
 }
 
+QString TvController::parentOverlayStyle() const
+{
+    return m_parentOverlayStyle;
+}
+
 QString TvController::playbackMode() const
 {
     return m_playbackMode;
@@ -927,6 +932,16 @@ void TvController::loadSettings(const QString &settingsPath)
     }
 
     m_settingsRoot = document.object();
+    const QString parentOverlayStyle =
+        m_settingsRoot.value(QStringLiteral("parent_overlay_style"))
+            .toString(QStringLiteral("classic"));
+    const QString validatedParentOverlayStyle = parentOverlayStyle == QStringLiteral("modern")
+        ? QStringLiteral("modern")
+        : QStringLiteral("classic");
+    if (validatedParentOverlayStyle != m_parentOverlayStyle) {
+        m_parentOverlayStyle = validatedParentOverlayStyle;
+        emit parentOverlayStyleChanged();
+    }
     const QJsonObject volumeSettings = m_settingsRoot.value(QStringLiteral("volume")).toObject();
     m_volume = std::clamp(volumeSettings.value(QStringLiteral("initial")).toInt(20), 0, 100);
     m_maximumVolume = std::clamp(volumeSettings.value(QStringLiteral("maximum")).toInt(60), 0, 100);
@@ -1031,6 +1046,7 @@ void TvController::saveSettings()
     }
 
     m_settingsRoot.insert(QStringLiteral("schema_version"), 1);
+    m_settingsRoot.insert(QStringLiteral("parent_overlay_style"), m_parentOverlayStyle);
     m_settingsRoot.insert(QStringLiteral("playback_mode"), m_playbackMode);
     m_settingsRoot.insert(QStringLiteral("episode_reset_minutes"), m_episodeResetMinutes);
     m_settingsRoot.insert(QStringLiteral("picture_mode"), m_pictureMode);

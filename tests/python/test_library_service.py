@@ -153,6 +153,28 @@ class LibraryUnitTests(unittest.TestCase):
         values = self.fixture.library.settings()["library"]["disabled_channels"]
         self.assertEqual(values, list(range(1, 9)))
 
+    def test_parent_overlay_style_is_validated_persisted_and_exposed(self) -> None:
+        self.fixture.library.complete_setup({
+            "setup_code": "135790", "pin": "2468",
+            "channels": mabeltv_library.DEFAULT_CHANNELS,
+        })
+        self.fixture.library.refresh_tv = lambda: True
+        self.assertEqual(
+            self.fixture.library.library()["appearance"]["parent_overlay_style"],
+            "classic")
+        self.fixture.library.manage({
+            "action": "set-parent-overlay-style", "style": "modern",
+        })
+        self.assertEqual(
+            self.fixture.library.settings()["parent_overlay_style"], "modern")
+        self.assertEqual(
+            self.fixture.library.library()["appearance"]["parent_overlay_style"],
+            "modern")
+        with self.assertRaisesRegex(ValueError, "classic or modern"):
+            self.fixture.library.manage({
+                "action": "set-parent-overlay-style", "style": "neon",
+            })
+
     def test_high_frame_rate_uploads_use_one_background_conversion_worker(self) -> None:
         self.fixture.library.complete_setup({
             "setup_code": "135790", "pin": "2468",

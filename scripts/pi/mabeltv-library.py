@@ -714,6 +714,10 @@ class Library:
     def settings(self) -> dict[str, Any]:
         return self.read_json(self.settings_path, {"schema_version": 1})
 
+    @staticmethod
+    def parent_overlay_style(settings: dict[str, Any]) -> str:
+        return "modern" if settings.get("parent_overlay_style") == "modern" else "classic"
+
     def library(self) -> dict[str, Any]:
         settings = self.settings()
         rules = settings.get("library", {})
@@ -737,6 +741,7 @@ class Library:
         owner = self.owner()
         return {
             "channels": response,
+            "appearance": {"parent_overlay_style": self.parent_overlay_style(settings)},
             "recycle": self.recycle_items(),
             "uploads": self.upload_jobs(),
             "storage": {"free_gb": disk.free / 1024**3,
@@ -1351,6 +1356,14 @@ class Library:
 
     def _manage(self, payload: dict[str, Any]) -> None:
         action = payload.get("action")
+        if action == "set-parent-overlay-style":
+            style = str(payload.get("style", ""))
+            if style not in {"classic", "modern"}:
+                raise ValueError("Choose the classic or modern parent-control design")
+            settings = self.settings()
+            settings["parent_overlay_style"] = style
+            self.write_json(self.settings_path, settings)
+            return
         if action == "add-channel":
             new_channel = {
                 "number": payload.get("number"),

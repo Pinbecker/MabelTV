@@ -8,6 +8,7 @@
         "disabled_programmes": {}
     },
     "picture_mode": "channel",
+    "parent_overlay_style": "classic",
     "playback_mode": "continuous",
     "schema_version": 1,
     "sound_effects_enabled": true,
