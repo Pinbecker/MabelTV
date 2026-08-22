@@ -1592,6 +1592,17 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if self.path == "/":
                 data = INDEX.encode(); self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8"); self.send_header("Content-Length", str(len(data))); self.send_header("Cache-Control", "no-store"); self.security_headers(); self.end_headers(); self.wfile.write(data); return
+            if self.path == "/mabeltv-icon.png":
+                icon_path = Path(__file__).with_name("mabeltv-icon.png")
+                if not icon_path.is_file():
+                    self.json(404, {"error": "Icon not found"}); return
+                data = icon_path.read_bytes(); self.send_response(200); self.send_header("Content-Type", "image/png"); self.send_header("Content-Length", str(len(data))); self.send_header("Cache-Control", "public, max-age=86400"); self.security_headers(); self.end_headers(); self.wfile.write(data); return
+            if self.path == "/manifest.webmanifest":
+                manifest = {"name": "MabelTV", "short_name": "MabelTV", "start_url": "/",
+                            "display": "standalone", "background_color": "#151b19",
+                            "theme_color": "#151b19", "icons": [{"src": "/mabeltv-icon.png",
+                            "sizes": "any", "type": "image/png", "purpose": "any maskable"}]}
+                data = json.dumps(manifest).encode(); self.send_response(200); self.send_header("Content-Type", "application/manifest+json"); self.send_header("Content-Length", str(len(data))); self.send_header("Cache-Control", "no-store"); self.security_headers(); self.end_headers(); self.wfile.write(data); return
             if self.path == "/api/setup": self.json(200, self.server.library.public_setup()); return
             if not self.require(): return
             if self.path == "/api/library": self.json(200, self.server.library.library()); return

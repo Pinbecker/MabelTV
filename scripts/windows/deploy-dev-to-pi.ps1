@@ -43,7 +43,7 @@ try {
         if ($LASTEXITCODE) { throw 'The incremental MabelTV player build or restart failed on the Pi.' }
     }
     if ($needsLibraryRestart) {
-        ssh $PiHost "sudo install -m 0755 '$PiSourceRoot/scripts/pi/mabeltv-library.py' /opt/mabeltv/current/mabeltv-library && sudo install -m 0644 '$PiSourceRoot/scripts/pi/mabeltv-library.html' /opt/mabeltv/current/mabeltv-library.html && sudo systemctl restart mabeltv-library.service"
+        ssh $PiHost "sudo install -m 0755 '$PiSourceRoot/scripts/pi/mabeltv-library.py' /opt/mabeltv/current/mabeltv-library && sudo install -m 0644 '$PiSourceRoot/scripts/pi/mabeltv-library.html' /opt/mabeltv/current/mabeltv-library.html && sudo install -m 0644 '$PiSourceRoot/scripts/pi/mabeltv-icon.png' /opt/mabeltv/current/mabeltv-icon.png && sudo systemctl restart mabeltv-library.service"
         if ($LASTEXITCODE) { throw 'The MabelTV Library update or restart failed on the Pi.' }
     }
     ssh $PiHost 'systemctl is-active mabeltv.service mabeltv-library.service'
