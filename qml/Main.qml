@@ -31,7 +31,7 @@ Window {
     property bool televisionStarted: false
     property double lastChannelRepeatMs: 0
     property double lastVolumeRepeatMs: 0
-    property int guideComboStep: 0
+    property bool okHeldForGuide: false
     readonly property real playbackOsdInsetX: Math.max(30, screen.width * 0.055)
     readonly property real playbackOsdInsetY: Math.max(28, screen.height * 0.065)
 
@@ -53,36 +53,6 @@ Window {
         else
             lastVolumeRepeatMs = now
         return true
-    }
-
-    function trackGuideCombo(key) {
-        if (!tvController.tvGuideEnabled || directMediaMode || tvController.standby) {
-            guideComboStep = 0
-            guideComboTimer.stop()
-            return false
-        }
-        const matches = guideComboStep === 0 ? key === Qt.Key_PageUp
-            : guideComboStep === 1 ? key === Qt.Key_PageDown
-            : guideComboStep === 2 ? (key === Qt.Key_Plus || key === Qt.Key_Equal)
-            : guideComboStep === 3 ? key === Qt.Key_Minus
-            : (key === Qt.Key_Return || key === Qt.Key_Enter)
-        if (matches) {
-            guideComboStep++
-            guideComboTimer.restart()
-            if (guideComboStep === 5) {
-                guideComboStep = 0
-                guideComboTimer.stop()
-                guideOverlay.open()
-                return true
-            }
-        } else {
-            guideComboStep = key === Qt.Key_PageUp ? 1 : 0
-            if (guideComboStep > 0)
-                guideComboTimer.restart()
-            else
-                guideComboTimer.stop()
-        }
-        return false
     }
 
     function startTelevision() {
@@ -1061,9 +1031,16 @@ Window {
     }
 
     Timer {
-        id: guideComboTimer
-        interval: 4500
-        onTriggered: root.guideComboStep = 0
+        id: guideHoldTimer
+        interval: 3500
+        onTriggered: {
+            if (tvController.tvGuideEnabled && !directMediaMode
+                    && !tvController.standby && !root.introPlaying
+                    && !guideOverlay.visible) {
+                root.okHeldForGuide = true
+                guideOverlay.open()
+            }
+        }
     }
 
     Timer {
@@ -1261,7 +1238,12 @@ Window {
                        && !(event.key === Qt.Key_F4
                             && (event.modifiers & Qt.AltModifier) !== 0)) {
                 event.accepted = true
-            } else if (!event.isAutoRepeat && root.trackGuideCombo(event.key)) {
+            } else if (!event.isAutoRepeat && tvController.tvGuideEnabled
+                       && !directMediaMode && !tvController.standby
+                       && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+                       && tvController.numericEntry.length === 0) {
+                root.okHeldForGuide = false
+                guideHoldTimer.restart()
                 event.accepted = true
             } else if (event.key === Qt.Key_B) {
                 if (!event.isAutoRepeat) {
@@ -1356,6 +1338,14 @@ Window {
                         tvController.dispatch(TvController.ToggleMute)
                 }
                 root.muteHeldForLock = false
+                event.accepted = true
+            } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+                       && !event.isAutoRepeat && guideHoldTimer.running) {
+                guideHoldTimer.stop()
+                if (!root.okHeldForGuide && !tvController.remoteLocked
+                        && !guideOverlay.visible && !directMediaMode)
+                    root.togglePlaybackPause()
+                root.okHeldForGuide = false
                 event.accepted = true
             } else if (event.key === Qt.Key_B && !event.isAutoRepeat) {
                 if (emergencyRestartTimer.running)

@@ -56,9 +56,9 @@ changes follow filename order, so the times in the guide match what will actuall
 play. It is off by default and can be turned on or off from the dashboard; the TV
 player refreshes immediately after the setting changes.
 
-The guide remains hidden during normal viewing. Open it with **Channel +, Channel −,
-Volume +, Volume −, OK**, then choose a channel with Up/Down and press OK to watch.
-Back closes it without changing channel.
+The guide remains hidden during normal viewing. Hold **OK / Select** for 3.5 seconds
+to open it, then choose a channel with Up/Down and press OK to watch. Back closes it
+without changing channel.
 
 ### Help & system
 

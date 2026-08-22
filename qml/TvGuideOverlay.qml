@@ -75,15 +75,27 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: "#f3efe7"
-        opacity: 0.99
+        color: "#09110e"
+        opacity: 0.42
     }
 
     Rectangle {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        height: 118
+        id: guidePanel
+        anchors.centerIn: parent
+        width: Math.min(parent.width - 72, 1520)
+        height: Math.min(parent.height - 58, 790)
+        radius: 24
+        color: "#f3efe7"
+        border.color: "#d7dcd6"
+        border.width: 1
+    }
+
+    Rectangle {
+        anchors.left: guidePanel.left
+        anchors.right: guidePanel.right
+        anchors.top: guidePanel.top
+        height: 96
+        radius: guidePanel.radius
         color: "#151b19"
 
         Row {
@@ -156,18 +168,18 @@ Item {
     }
 
     Item {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.topMargin: 118
-        anchors.bottomMargin: 62
+        anchors.left: guidePanel.left
+        anchors.right: guidePanel.right
+        anchors.top: guidePanel.top
+        anchors.bottom: guidePanel.bottom
+        anchors.topMargin: 96
+        anchors.bottomMargin: 54
 
         Rectangle {
             anchors.left: parent.left
             anchors.top: parent.top
             anchors.bottom: parent.bottom
-            width: 220
+            width: 200
             color: "#e9e8e2"
 
             Text {
@@ -185,7 +197,7 @@ Item {
 
         Text {
             anchors.left: parent.left
-            anchors.leftMargin: 244
+            anchors.leftMargin: 224
             anchors.top: parent.top
             anchors.topMargin: 22
             color: "#69716d"
@@ -248,7 +260,7 @@ Item {
                         anchors.left: parent.left
                         anchors.leftMargin: 88
                         anchors.right: parent.left
-                        anchors.rightMargin: -208
+                        anchors.rightMargin: -188
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 2
                         Text {
@@ -272,7 +284,7 @@ Item {
                     Row {
                         id: programmeSlots
                         anchors.left: parent.left
-                        anchors.leftMargin: 220
+                        anchors.leftMargin: 200
                         anchors.right: parent.right
                         anchors.rightMargin: 24
                         anchors.top: parent.top
@@ -304,7 +316,7 @@ Item {
                                         font.bold: true
                                         font.pixelSize: 11
                                         text: programmeCard.index === 0
-                                            ? "NOW  ·  " + programmeCard.modelData.end
+                                            ? "NOW"
                                             : programmeCard.modelData.start
                                     }
                                     Text {
@@ -353,10 +365,11 @@ Item {
     }
 
     Rectangle {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        height: 62
+        anchors.left: guidePanel.left
+        anchors.right: guidePanel.right
+        anchors.bottom: guidePanel.bottom
+        height: 54
+        radius: guidePanel.radius
         color: "#ffffff"
         border.color: "#dfe3de"
 
