@@ -81,6 +81,17 @@ Build and run all automated tests:
 .\scripts\windows\build.ps1
 ```
 
+For your own Pi only, deploy saved local changes quickly (not a releasable install):
+
+```powershell
+.\scripts\windows\deploy-dev-to-pi.ps1
+```
+
+It needs the laptop and Pi on the same home network. C++/QML changes use an
+incremental Pi build; Library page/Python changes restart only the Library
+service. Use the qualified release bundle and SD-image processes for anything
+you intend to keep, share, or sell.
+
 Generate synthetic, non-copyrighted development media and launch:
 
 ```powershell

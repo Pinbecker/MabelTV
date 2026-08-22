@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.24)
 
 project(
     MabelTV
-    VERSION 0.2.4
+    VERSION 0.2.5
     DESCRIPTION "KidsTV: a child-friendly 1990s television experience"
     LANGUAGES CXX
 )
