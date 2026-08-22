@@ -223,8 +223,8 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: "#f4efe7"
-        opacity: 0.985
+        color: "#09110e"
+        opacity: 0.42
     }
 
     Item {
@@ -342,12 +342,28 @@ Item {
         anchors.fill: parent
         visible: controller.parentAccessState === TvController.ParentOpen
 
+        Item {
+            id: parentPanel
+            anchors.centerIn: parent
+            width: Math.min(parent.width - 72, 1200)
+            height: Math.min(parent.height - 58, 680)
+
+            Rectangle {
+                anchors.fill: parent
+                radius: 24
+                color: "#f4efe7"
+                border.color: "#d7dcd6"
+                border.width: 1
+            }
+        }
+
         Rectangle {
             id: sideRail
-            anchors.left: parent.left
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            width: Math.max(220, parent.width * 0.2)
+            anchors.left: parentPanel.left
+            anchors.top: parentPanel.top
+            anchors.bottom: parentPanel.bottom
+            width: Math.max(220, parentPanel.width * 0.2)
+            radius: 24
             color: "#151b19"
 
             Item {
@@ -468,9 +484,9 @@ Item {
         Item {
             id: settingsPage
             anchors.left: sideRail.right
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
+            anchors.right: parentPanel.right
+            anchors.top: parentPanel.top
+            anchors.bottom: parentPanel.bottom
             anchors.margins: 26
             visible: overlay.page === "settings"
 
@@ -606,9 +622,9 @@ Item {
         Item {
             id: libraryPage
             anchors.left: sideRail.right
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
+            anchors.right: parentPanel.right
+            anchors.top: parentPanel.top
+            anchors.bottom: parentPanel.bottom
             anchors.margins: 26
             visible: overlay.page === "library"
 
@@ -830,4 +846,3 @@ Item {
         }
     }
 }
-
