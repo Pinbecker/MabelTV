@@ -499,6 +499,7 @@ class Library:
             "configured": self.configured(),
             "device_name": socket.gethostname(),
             "product_name": PRODUCT_NAME,
+            "tv_name": self.tv_identity()[1],
             "setup_code_required": True,
             # Recovery is an explicit state written by the physical boot-marker
             # service. A fresh install also seeds channels.json, so the mere

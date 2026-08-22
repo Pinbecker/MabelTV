@@ -69,6 +69,8 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("failures.push({ file: files[index], message: error.message })", index)
         self.assertIn('id="childName"', index)
         self.assertIn("/api/identity", index)
+        self.assertNotIn("KidsTV", index)
+        self.assertIn("state.tv_name", index)
 
     def test_first_run_hashes_pin_and_creates_generic_channels(self) -> None:
         result = self.fixture.library.complete_setup({
@@ -86,6 +88,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertFalse(self.fixture.library.verify_pin("0000"))
         self.assertEqual(owner["child_name"], "Mabel")
         self.assertEqual(owner["tv_name"], "MabelTV")
+        self.assertEqual(self.fixture.library.public_setup()["tv_name"], "MabelTV")
         channels = json.loads(self.fixture.channels.read_text(encoding="utf-8"))["channels"]
         self.assertEqual([channel["name"] for channel in channels],
                          ["Kids TV", "Cartoons", "Films", "Family Videos"])
@@ -657,6 +660,7 @@ class LibraryHttpTests(unittest.TestCase):
         status, state = self.request("/api/setup")
         self.assertEqual(status, 200)
         self.assertFalse(state["configured"])
+        self.assertEqual(state["tv_name"], "KidsTV")
         self.assertNotIn("setup_code", state)
 
         status, _ = self.request("/api/setup", {
@@ -673,6 +677,9 @@ class LibraryHttpTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(dashboard["owner"]["name"], "Taylor")
         self.assertEqual(dashboard["owner"]["tv_name"], "TaylorTV")
+        status, state = self.request("/api/setup")
+        self.assertEqual(status, 200)
+        self.assertEqual(state["tv_name"], "TaylorTV")
         with mock.patch.object(self.server.library, "admin_action", return_value=""):
             status, identity = self.request("/api/identity", {"child_name": "Mabel"})
         self.assertEqual(status, 200)

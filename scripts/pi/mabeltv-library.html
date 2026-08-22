@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#151b19">
-  <title>KidsTV</title>
+  <title>Your TV</title>
   <style>
     :root{color-scheme:light;--ink:#18201d;--muted:#69716d;--faint:#8e9692;--canvas:#f3f4f1;--surface:#fff;--soft:#f7f8f5;--rail:#151b19;--rail2:#222b28;--line:#dfe3de;--accent:#ed6a4d;--accent2:#ce4f34;--accent-soft:#fff0eb;--green:#27735d;--green-soft:#e6f3ee;--amber:#a96811;--amber-soft:#fff4da;--red:#b74339;--red-soft:#fff0ee;--r:14px;--rs:9px;--shadow:0 1px 2px #121c180d,0 10px 28px #121c180f;--font:"Segoe UI Variable","Segoe UI",-apple-system,BlinkMacSystemFont,Arial,sans-serif}
     *{box-sizing:border-box}html{min-height:100%;background:var(--canvas);scroll-behavior:smooth}body{min-height:100%;margin:0;color:var(--ink);background:var(--canvas);font:15px/1.5 var(--font);-webkit-font-smoothing:antialiased}button,input,select{font:inherit}button,.button{touch-action:manipulation}button:focus-visible,.button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #ed6a4d52;outline-offset:2px}h1,h2,h3,p{margin-top:0}h1{margin-bottom:12px;font-size:clamp(2rem,4vw,3.35rem);font-weight:740;letter-spacing:-.045em;line-height:1.03}h2{margin-bottom:8px;font-size:clamp(1.25rem,2vw,1.65rem);font-weight:720;letter-spacing:-.025em;line-height:1.16}h3{margin-bottom:6px;font-size:1.04rem;font-weight:700}p{margin-bottom:14px}small,.small{font-size:.82rem}code{padding:2px 5px;border-radius:5px;background:#edf0ec;font:.9em ui-monospace,"Cascadia Code",monospace}.hidden{display:none!important}.muted{color:var(--muted)}.grow{flex:1}.row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.eyebrow{margin-bottom:8px;color:var(--accent2);font-size:.72rem;font-weight:760;letter-spacing:.12em;text-transform:uppercase}.section-kicker{margin:0;color:var(--muted);font-size:.86rem}.section-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:18px}.section-heading>div{max-width:680px}.section-heading p:last-child{margin-bottom:0}
@@ -27,7 +27,7 @@
 </head>
 <body>
   <section id="setup" class="auth-shell hidden" aria-labelledby="setupTitle">
-    <aside class="auth-brand"><div class="logo"><span class="logo-mark"></span><span>KidsTV</span></div><div><p id="setupEyebrow" class="eyebrow">First-time setup</p><h2 id="setupTitle">Make this TV yours.</h2><p id="setupIntro">Connect the Raspberry Pi, choose a private parent PIN, then shape the channels around what your family watches.</p></div><span class="auth-foot">Private by design · Everything stays on your home network</span></aside>
+    <aside class="auth-brand"><div class="logo"><span class="logo-mark"></span><span data-tv-name>Your TV</span></div><div><p id="setupEyebrow" class="eyebrow">First-time setup</p><h2 id="setupTitle">Make this TV yours.</h2><p id="setupIntro">Connect the Raspberry Pi, choose a private parent PIN, then shape the channels around what your family watches.</p></div><span class="auth-foot">Private by design · Everything stays on your home network</span></aside>
     <main class="auth-panel"><div class="auth-content">
       <ol class="step-list" aria-label="Setup progress"><li class="active" data-step-marker="1">Connect</li><li data-step-marker="2">Secure</li><li data-step-marker="3">Channels</li></ol>
       <form id="setupForm">
@@ -40,14 +40,14 @@
   </section>
 
   <section id="login" class="auth-shell hidden" aria-labelledby="loginTitle">
-    <aside class="auth-brand"><div class="logo"><span class="logo-mark"></span><span>KidsTV</span></div><div><p class="eyebrow">Parent controls</p><h2>Your family’s TV, organised your way.</h2><p>Add videos, shape the channels, and keep the Raspberry Pi running smoothly from one private app.</p></div><span class="auth-foot">Local to your home network</span></aside>
-    <main class="auth-panel"><div class="auth-content"><p class="eyebrow">Welcome back</p><h1 id="loginTitle">Unlock KidsTV</h1><p class="muted">Enter the parent PIN to manage the television.</p><form id="loginForm"><label>Parent PIN<input id="pin" inputmode="numeric" autocomplete="current-password" type="password" pattern="[0-9]{4,8}" maxlength="8" required autofocus></label><p id="loginError" class="notice bad" role="alert"></p><button type="submit">Open controls</button></form><details class="help" style="margin-top:28px"><summary>Forgot the parent PIN?</summary><p>Shut down the Raspberry Pi, put its boot card or USB drive in a computer, and create an empty file called <code>mabeltv-reset-pin</code> on the visible boot drive. Put it back and start KidsTV. Your videos and channels will stay untouched.</p></details></div></main>
+    <aside class="auth-brand"><div class="logo"><span class="logo-mark"></span><span data-tv-name>Your TV</span></div><div><p class="eyebrow">Parent controls</p><h2>Your family’s TV, organised your way.</h2><p>Add videos, shape the channels, and keep the Raspberry Pi running smoothly from one private app.</p></div><span class="auth-foot">Local to your home network</span></aside>
+    <main class="auth-panel"><div class="auth-content"><p class="eyebrow">Welcome back</p><h1 id="loginTitle">Unlock <span data-tv-name>your TV</span></h1><p class="muted">Enter the parent PIN to manage the television.</p><form id="loginForm"><label>Parent PIN<input id="pin" inputmode="numeric" autocomplete="current-password" type="password" pattern="[0-9]{4,8}" maxlength="8" required autofocus></label><p id="loginError" class="notice bad" role="alert"></p><button type="submit">Open controls</button></form><details class="help" style="margin-top:28px"><summary>Forgot the parent PIN?</summary><p>Shut down the Raspberry Pi, put its boot card or USB drive in a computer, and create an empty file called <code>mabeltv-reset-pin</code> on the visible boot drive. Put it back and start <span data-tv-name>your TV</span>. Your videos and channels will stay untouched.</p></details></div></main>
   </section>
 
   <section id="app" class="app-shell hidden">
     <aside class="rail">
-      <div class="rail-head"><div class="logo"><span class="logo-mark"></span><span>KidsTV</span></div><p class="rail-tv">Controlling<strong id="topTvName">KidsTV</strong></p></div>
-      <nav aria-label="KidsTV sections">
+      <div class="rail-head"><div class="logo"><span class="logo-mark"></span><span data-tv-name>Your TV</span></div><p class="rail-tv">Controlling<strong id="topTvName">Your TV</strong></p></div>
+      <nav id="mainNav" aria-label="TV sections">
         <button class="active" data-view-button="overview" aria-current="page"><svg class="icon" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5V20H4Z"/><path d="M9 20v-6h6v6"/></svg>Home<span class="nav-dot"></span></button>
         <button data-view-button="add"><svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add videos<span class="nav-dot"></span></button>
         <button data-view-button="channels"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="m9 9 6 3-6 3Z"/></svg>Library<span class="nav-dot"></span></button>
@@ -55,25 +55,25 @@
       </nav>
       <div class="rail-foot"><span id="topHealth" class="health-pill">Checking TV…</span><button id="logout" class="secondary">Lock controls</button></div>
     </aside>
-    <header class="mobile-head"><div class="logo"><span class="logo-mark"></span><span data-tv-name>KidsTV</span></div><button class="secondary" onclick="document.getElementById('logout').click()">Lock</button></header>
+    <header class="mobile-head"><div class="logo"><span class="logo-mark"></span><span data-tv-name>Your TV</span></div><button class="secondary" onclick="document.getElementById('logout').click()">Lock</button></header>
     <main class="app-main">
       <p id="notice" class="notice" role="status" aria-live="polite"></p>
       <section id="view-overview" class="view active"><div class="page">
         <div class="home-intro">
-          <article class="home-greeting surface"><div><p class="eyebrow">Parent controls</p><h1><span data-tv-name>KidsTV</span> is ready when you are.</h1><p>Add something new, or jump straight into a channel to tidy what appears on the television.</p></div><button class="primary" data-go="add"><svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add videos</button></article>
+          <article class="home-greeting surface"><div><p class="eyebrow">Parent controls</p><h1><span data-tv-name>Your TV</span> is ready when you are.</h1><p>Add something new, or jump straight into a channel to tidy what appears on the television.</p></div><button class="primary" data-go="add"><svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add videos</button></article>
           <article class="home-status surface"><div class="status-top"><span id="homeStatusIcon" class="status-icon"><svg class="icon" viewBox="0 0 24 24"><path d="m6 12 4 4 8-9"/></svg></span><div><p class="section-kicker">TV status</p><h2 id="healthTitle">Checking everything…</h2></div></div><p id="healthSummary" class="health-summary">Checking the player, temperature, power, and storage.</p><div class="quick-stats"><div class="quick-stat"><span>Temperature</span><strong id="temperature">—</strong></div><div class="quick-stat"><span>Storage available</span><strong id="storageFree">—</strong></div><div class="quick-stat"><span>Running for</span><strong id="uptime">—</strong></div></div><button id="refreshLibrary" class="secondary">Refresh TV library</button></article>
         </div>
         <article id="warningsCard" class="attention surface surface-pad hidden"><div class="attention-head"><span class="status-icon warn">!</span><div><p class="section-kicker">Needs attention</p><h2>There’s a small job to do</h2></div></div><div id="warnings"></div></article>
         <section class="library-bar surface" aria-label="Library summary"><div id="librarySummary"></div></section>
         <section><div class="section-heading"><div><p class="eyebrow">On the television</p><h2>Your channels</h2><p class="muted">Open a channel to see its programmes and decide exactly what shows up on TV.</p></div><button type="button" class="secondary" data-go="channels">Open full library</button></div><div id="overviewChannels" class="channel-grid"></div></section>
-        <footer><span data-tv-name>KidsTV</span> <span data-version></span> · Local to your home network</footer>
+        <footer><span data-tv-name>Your TV</span> <span data-version></span> · Local to your home network</footer>
       </div></section>
       <section id="view-add" class="view"><div class="page">
-        <header class="page-head"><div><p class="eyebrow">Add videos</p><h1>Choose it. Send it. Done.</h1><p>Pick a channel, choose one or more videos, and KidsTV will take care of the rest.</p></div></header>
+        <header class="page-head"><div><p class="eyebrow">Add videos</p><h1>Choose it. Send it. Done.</h1><p>Pick a channel, choose one or more videos, and <span data-tv-name>your TV</span> will take care of the rest.</p></div></header>
         <div class="upload-layout">
           <section class="upload-panel surface"><form id="uploadForm" class="upload-form"><label>Destination channel<select id="channel" required></select></label><label class="drop-field" for="file"><input id="file" type="file" accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg" multiple><span class="drop-copy"><span class="drop-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 14v5h14v-5"/></svg></span><strong>Choose videos</strong><small>Select several at once, or come back to add more</small></span></label><div id="selectedFiles" class="callout" aria-live="polite">No videos selected yet.</div><button id="uploadButton" type="submit" class="primary" disabled>Upload selected videos</button></form><div id="uploadState" class="hidden callout" aria-live="polite"><p id="uploadText">Preparing…</p><progress id="progress" max="1" value="0"></progress></div></section>
           <aside class="upload-side"><section class="surface"><p class="section-kicker">In progress</p><h2>Upload activity</h2><div id="uploadJobs" aria-live="polite">No videos are waiting.</div></section><section class="surface"><p class="section-kicker">Good to know</p><ul class="tip-list"><li>Uploads safely resume if Wi-Fi drops.</li><li>You can close this page after upload reaches 100%.</li><li>iPhone MOV videos are prepared only when the Pi needs it.</li><li>Use S01E02 - The Picnic.mp4 for tidy episodes.</li></ul></section></aside>
-        </div><footer><span data-tv-name>KidsTV</span> · Private and local</footer>
+        </div><footer><span data-tv-name>Your TV</span> · Private and local</footer>
       </div></section>
       <section id="view-channels" class="view"><div class="page">
         <div id="channelHub">
@@ -86,7 +86,7 @@
           <button id="backToChannels" type="button" class="workspace-back">← Back to all channels</button>
           <section class="surface surface-pad"><div class="workspace-head"><div><div class="workspace-titleline"><span id="workspaceChannelBadge" class="workspace-channel-number">CH</span><div><p id="workspaceEyebrow" class="eyebrow">Channel</p><h1 id="workspaceChannelName">Channel</h1></div></div><p id="workspaceChannelStatus" class="muted"></p></div><div class="row"><button id="workspaceAddMedia" type="button">Add videos</button><button id="workspaceToggleChannel" type="button" class="secondary">Hide channel</button></div></div><div class="channel-facts"><div class="channel-fact"><strong id="workspaceProgrammeCount">0</strong><span>programmes</span></div><div class="channel-fact"><strong id="workspaceVisibleCount">0</strong><span>shown on TV</span></div><div class="channel-fact"><strong id="workspacePictureMode">—</strong><span>picture mode</span></div></div></section>
           <div class="workspace-layout"><section class="workspace-main surface"><div class="section-heading"><div><p class="section-kicker">Programme library</p><h2 id="channelSummary">Everything in this channel</h2></div></div><div class="library-toolbar"><label>Find a programme<input id="programmeSearch" type="search" placeholder="Search titles…" autocomplete="off"></label><label>Show<select id="programmeVisibility"><option value="all">All programmes</option><option value="enabled">Shown on TV</option><option value="disabled">Hidden from TV</option></select></label></div><div id="channels"></div><div id="programmePager" class="pager hidden"></div></section><aside class="workspace-side"><section class="surface"><p class="section-kicker">Channel settings</p><h2>Edit this channel</h2><form id="editChannelForm" class="field-grid"><label>Channel number<input id="editChannelNumber" type="number" min="1" max="999" required></label><label>Channel name<input id="editChannelName" maxlength="60" required></label><label>Picture mode<select id="editChannelAspect"><option value="crop">Fill screen</option><option value="fit">Show whole picture</option><option value="stretch">Stretch to screen</option></select></label><label>What plays here?<select id="editChannelContentType"><option value="shows">Shows / episodes</option><option value="films">Films / long videos</option></select></label><div class="row wide"><button type="submit">Save changes</button><button id="deleteChannel" type="button" class="danger">Delete channel</button></div></form></section></aside></div>
-        </div><footer><span data-tv-name>KidsTV</span> · Library</footer>
+        </div><footer><span data-tv-name>Your TV</span> · Library</footer>
       </div></section>
       <section id="view-system" class="view"><div class="page">
         <header class="page-head"><div><p class="eyebrow">Settings</p><h1>TV and account</h1><p>Health checks, identity, security, help, and power controls live here.</p></div></header>
@@ -94,11 +94,11 @@
           <section class="settings-section surface full"><p class="section-kicker">On-TV parent controls</p><h2>Choose the design shown on the television</h2><p class="muted">This changes the grown-up screen opened by holding Back / Previous. The current design remains available, and the television updates as soon as you choose.</p><div class="design-picker"><button type="button" class="design-option" data-parent-style="classic" aria-pressed="false"><span class="design-preview classic"><span>[ PARENT CONTROL ]<br>CHANNELS &amp; PROGRAMMES<br>CRT GLASS ........ 35%</span></span><span class="design-copy"><strong>Classic console</strong><small>The original green technical design</small></span></button><button type="button" class="design-option" data-parent-style="modern" aria-pressed="false"><span class="design-preview modern"><span class="mini-rail"></span><span class="mini-page"><span class="mini-line"></span><span class="mini-line"></span><span class="mini-line"></span></span></span><span class="design-copy"><strong>Modern family</strong><small>A warmer, clearer app-style design</small></span></button></div></section>
           <section class="settings-section surface full"><p class="section-kicker">Optional feature</p><h2>TV guide</h2><p class="muted">Turn episode filenames and video lengths into a familiar live schedule. It stays hidden during normal viewing until someone enters the secret remote sequence.</p><div class="feature-control"><div><strong id="tvGuideState">TV guide is off</strong><p class="small muted">When it is on, programmes continue in filename order so the times shown in the guide match what plays.</p><div class="combo" aria-label="Secret TV guide button sequence"><span>CH +</span><span>CH −</span><span>VOL +</span><span>VOL −</span><span>OK</span></div></div><button id="tvGuideToggle" type="button" class="feature-toggle" aria-pressed="false">Turn on</button></div></section>
           <section class="settings-section surface"><p class="section-kicker">Raspberry Pi</p><h2>System status</h2><dl id="systemDetails" class="definition"></dl><div class="row"><button id="checkAgain" class="secondary">Check again</button><button id="restartPlayer" class="secondary">Restart TV player</button><a class="button secondary" href="/api/support" download>Support bundle</a></div><p class="small muted" style="margin-top:14px">Diagnostics never include the parent PIN or video files.</p></section>
-          <section class="settings-section surface"><p class="section-kicker">Identity</p><h2>Name this TV</h2><p class="muted">Enter the child’s name. KidsTV adds “TV”, for example MabelTV.</p><form id="tvNameForm"><label>Child’s name<input id="tvNameChild" autocomplete="name" maxlength="40" placeholder="Mabel" required></label><button type="submit">Save TV name</button></form></section>
+          <section class="settings-section surface"><p class="section-kicker">Identity</p><h2>Name this TV</h2><p class="muted">Enter the child’s name and “TV” is added automatically, for example MabelTV.</p><form id="tvNameForm"><label>Child’s name<input id="tvNameChild" autocomplete="name" maxlength="40" placeholder="Mabel" required></label><button type="submit">Save TV name</button></form></section>
           <section class="settings-section surface"><p class="section-kicker">Security</p><h2>Change parent PIN</h2><form id="pinForm"><label>Current PIN<input id="currentPin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" required></label><label>New PIN<input id="newPin" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required></label><label>Repeat new PIN<input id="newPinAgain" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required></label><button type="submit">Change PIN</button></form></section>
-          <section class="settings-section surface"><p class="section-kicker">Everyday help</p><h2>Using KidsTV</h2><details class="help"><summary>How do I add a programme?</summary><p>Open Add videos, choose its channel, choose one or more files, then upload.</p></details><details class="help"><summary>How do I open the grown-up menu on TV?</summary><p>Hold Back / Previous for 3.5 seconds, then press OK three times.</p></details><details class="help"><summary>What if the picture freezes?</summary><p>Use Restart TV player. If it happens again, download a support bundle immediately.</p></details><details class="help"><summary>Why is a phone video taking a while?</summary><p>Large or high-frame-rate iPhone MOV files are converted to a Pi-friendly copy. Normal MP4 programmes are left untouched.</p></details></section>
+          <section class="settings-section surface"><p class="section-kicker">Everyday help</p><h2>Using <span data-tv-name>your TV</span></h2><details class="help"><summary>How do I add a programme?</summary><p>Open Add videos, choose its channel, choose one or more files, then upload.</p></details><details class="help"><summary>How do I open the grown-up menu on TV?</summary><p>Hold Back / Previous for 3.5 seconds, then press OK three times.</p></details><details class="help"><summary>What if the picture freezes?</summary><p>Use Restart TV player. If it happens again, download a support bundle immediately.</p></details><details class="help"><summary>Why is a phone video taking a while?</summary><p>Large or high-frame-rate iPhone MOV files are converted to a Pi-friendly copy. Normal MP4 programmes are left untouched.</p></details></section>
           <section class="settings-section surface danger-zone full"><div class="section-heading"><div><p class="section-kicker">Power</p><h2>Restart or shut down safely</h2><p class="muted">Use these controls instead of pulling the cable. A safe shutdown protects the SD card.</p></div><div class="row"><button id="rebootPi" class="secondary">Restart Raspberry Pi</button><button id="poweroffPi" class="danger">Shut down Raspberry Pi</button></div></div></section>
-        </div><footer><span data-tv-name>KidsTV</span> <span data-version></span> · Local to your home network</footer>
+        </div><footer><span data-tv-name>Your TV</span> <span data-version></span> · Local to your home network</footer>
       </div></section>
     </main>
   </section>
@@ -115,6 +115,7 @@
     let setupStep = 1
     let setupChannels = []
     let recoveringOwner = false
+    let configuredTvName = 'Your TV'
 
     async function api(path, options = {}) {
       const response = await fetch(path, {
@@ -130,7 +131,7 @@
         $('#pin').focus()
         throw new Error('Your session was locked')
       }
-      if (!response.ok) throw new Error(body.error || 'KidsTV could not complete that request')
+      if (!response.ok) throw new Error(body.error || `${tvName()} could not complete that request`)
       return body
     }
 
@@ -140,13 +141,14 @@
 
     function tvName() {
       const value = library?.owner?.tv_name
-      return typeof value === 'string' && value.trim() ? value.trim() : 'KidsTV'
+      return typeof value === 'string' && value.trim() ? value.trim() : configuredTvName
     }
 
     function applyTvName() {
       const name = tvName()
-      document.title = `${name} · KidsTV`
+      document.title = name
       $('#topTvName').textContent = name
+      $('#mainNav').setAttribute('aria-label', `${name} sections`)
       $$('[data-tv-name]').forEach(element => { element.textContent = name })
       $('#tvNameChild').value = library?.owner?.child_name || ''
     }
@@ -214,6 +216,9 @@
     async function initialise() {
       try {
         const state = await api('/api/setup')
+        configuredTvName = typeof state.tv_name === 'string' && state.tv_name.trim()
+          ? state.tv_name.trim() : configuredTvName
+        applyTvName()
         if (!state.configured) {
           recoveringOwner = Boolean(state.recovering_owner)
           setupChannels = state.default_channels.map(channel => ({ ...channel }))
@@ -237,7 +242,7 @@
         }
       } catch (error) {
         showOnly('login')
-        $('#loginError').textContent = 'KidsTV is starting up. Refresh this page in a moment.'
+        $('#loginError').textContent = `${tvName()} is starting up. Refresh this page in a moment.`
       }
     }
 
@@ -287,7 +292,7 @@
         $('#loginError').classList.remove('bad')
         $('#loginError').textContent = recoveringOwner
           ? 'Your parent PIN was reset. Your channels and videos were not changed.'
-          : 'Setup complete. Enter your new parent PIN to open KidsTV.'
+          : `Setup complete. Enter your new parent PIN to open ${tvName()}.`
         $('#pin').focus()
       } catch (error) {
         if (error.message.toLowerCase().includes('setup code')) { setupStep = 1; setupMarker() }
@@ -685,8 +690,8 @@
           if (request.status < 200 || request.status >= 300) { reject(new Error(body.error || 'Upload failed')); return }
           resolve(body)
         }
-        request.onerror = () => reject(new Error('The connection to KidsTV was lost'))
-        request.ontimeout = () => reject(new Error(finalChunk ? 'Preparation is still taking a long time. Choose the same file to check or resume it.' : 'KidsTV did not receive this upload part.'))
+        request.onerror = () => reject(new Error(`The connection to ${tvName()} was lost`))
+        request.ontimeout = () => reject(new Error(finalChunk ? 'Preparation is still taking a long time. Choose the same file to check or resume it.' : `${tvName()} did not receive this upload part.`))
         request.send(part)
       })
     }
@@ -695,7 +700,7 @@
       try { return await uploadChunk(id, offset, part, finalChunk) }
       catch (error) {
         const saved = await api('/api/uploads/' + id)
-        if (saved.status === 'error') throw new Error(saved.error || 'KidsTV could not check this video')
+        if (saved.status === 'error') throw new Error(saved.error || `${tvName()} could not check this video`)
         if (saved.complete || saved.processing || saved.status === 'validating' ||
             (Number.isFinite(saved.offset) && saved.offset > offset)) return saved
         throw error
@@ -706,7 +711,7 @@
       while (true) {
         const state = await api('/api/uploads/' + id)
         if (state.complete) return state
-        if (state.status === 'error') throw new Error(state.error || 'KidsTV could not prepare this video')
+        if (state.status === 'error') throw new Error(state.error || `${tvName()} could not prepare this video`)
         const messages = {
           validating: 'Checking that this is a playable video…',
           queued: 'Waiting behind another video in the preparation queue…',
@@ -817,7 +822,7 @@
       } else {
         $('#uploadState').classList.add('hidden')
         if (files.length > 1) {
-          notice(`${accepted} videos uploaded to CH ${channel}. KidsTV is checking and preparing them in the background.`)
+          notice(`${accepted} videos uploaded to CH ${channel}. ${tvName()} is checking and preparing them in the background.`)
         } else {
           notice(singleResult?.refreshed
             ? `Published${singleResult.optimised ? ' and prepared' : ''} on CH ${channel}.`
@@ -840,7 +845,7 @@
     }
     $('#checkAgain').onclick = async () => { try { notice('Checking…'); await refreshLiveStatus(); notice('Checks updated.') } catch (error) { notice(error.message, true) } }
     $('#restartPlayer').onclick = () => { if (confirm('Restart the TV player now? The picture will disappear briefly.')) systemAction('restart-player', 'Restarting the TV player…') }
-    $('#rebootPi').onclick = () => { if (confirm('Restart the Raspberry Pi now? KidsTV will be unavailable for about a minute.')) systemAction('reboot', 'Restarting the Raspberry Pi…') }
+    $('#rebootPi').onclick = () => { if (confirm(`Restart the Raspberry Pi now? ${tvName()} will be unavailable for about a minute.`)) systemAction('reboot', 'Restarting the Raspberry Pi…') }
     $('#poweroffPi').onclick = () => { if (confirm('Shut down the Raspberry Pi now? You will need to switch its power back on afterwards.')) systemAction('poweroff', 'Shutting down safely…') }
     $('#pinForm').onsubmit = async event => {
       event.preventDefault()
