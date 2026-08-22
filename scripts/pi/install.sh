@@ -204,7 +204,11 @@ install -o root -g root -m 0755 "$source_root/scripts/pi/mabeltv-launch.sh" "$in
 install -o root -g root -m 0755 "$source_root/scripts/pi/mabeltv-library.py" "$incoming_dir/mabeltv-library"
 install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-library.html" "$incoming_dir/mabeltv-library.html"
 install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-icon.png" "$incoming_dir/mabeltv-icon.png"
-install -o root -g root -m 0644 "$source_root/scripts/pi/apple-touch-icon-180x180.png" "$incoming_dir/apple-touch-icon-180x180.png"
+install -o root -g root -m 0644 "$source_root/scripts/pi/apple-touch-icon.png" "$incoming_dir/apple-touch-icon.png"
+install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-manifest.json" "$incoming_dir/mabeltv-manifest.json"
+install -d -o root -g root -m 0755 "$incoming_dir/icons"
+install -o root -g root -m 0644 "$source_root/scripts/pi/icons/icon-192.png" "$incoming_dir/icons/icon-192.png"
+install -o root -g root -m 0644 "$source_root/scripts/pi/icons/icon-512.png" "$incoming_dir/icons/icon-512.png"
 install -d -o root -g root -m 0755 "$incoming_dir/appliance"
 cp -a "$source_root/packaging" "$source_root/scripts" "$source_root/config" \
     "$source_root/docs" "$incoming_dir/appliance/"

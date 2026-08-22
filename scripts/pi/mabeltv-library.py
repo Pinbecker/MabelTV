@@ -1592,21 +1592,22 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if self.path == "/":
                 data = INDEX.encode(); self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8"); self.send_header("Content-Length", str(len(data))); self.send_header("Cache-Control", "no-store"); self.security_headers(); self.end_headers(); self.wfile.write(data); return
-            icon_paths = {"/mabeltv-icon.png": "mabeltv-icon.png",
-                          "/mabeltv-pwa-icon.png": "mabeltv-icon.png",
-                          "/apple-touch-icon.png": "mabeltv-icon.png",
-                          "/apple-touch-icon-180x180.png": "apple-touch-icon-180x180.png"}
-            if self.path in icon_paths:
-                icon_path = Path(__file__).with_name(icon_paths[self.path])
-                if not icon_path.is_file():
-                    self.json(404, {"error": "Icon not found"}); return
-                data = icon_path.read_bytes(); self.send_response(200); self.send_header("Content-Type", "image/png"); self.send_header("Content-Length", str(len(data))); self.send_header("Cache-Control", "no-store"); self.security_headers(); self.end_headers(); self.wfile.write(data); return
-            if self.path == "/manifest.webmanifest":
-                manifest = {"name": "MabelTV", "short_name": "MabelTV", "start_url": "/",
-                            "display": "standalone", "background_color": "#151b19",
-                            "theme_color": "#151b19", "icons": [{"src": "/mabeltv-pwa-icon.png",
-                            "sizes": "any", "type": "image/png", "purpose": "any maskable"}]}
-                data = json.dumps(manifest).encode(); self.send_response(200); self.send_header("Content-Type", "application/manifest+json"); self.send_header("Content-Length", str(len(data))); self.send_header("Cache-Control", "no-store"); self.security_headers(); self.end_headers(); self.wfile.write(data); return
+            static_assets = {
+                "/mabeltv-icon.png": ("mabeltv-icon.png", "image/png"),
+                "/mabeltv-pwa-icon.png": ("icons/icon-512.png", "image/png"),
+                "/apple-touch-icon.png": ("apple-touch-icon.png", "image/png"),
+                "/apple-touch-icon-180x180.png": ("apple-touch-icon.png", "image/png"),
+                "/icons/icon-192.png": ("icons/icon-192.png", "image/png"),
+                "/icons/icon-512.png": ("icons/icon-512.png", "image/png"),
+                "/manifest.json": ("mabeltv-manifest.json", "application/manifest+json"),
+                "/manifest.webmanifest": ("mabeltv-manifest.json", "application/manifest+json"),
+            }
+            if self.path in static_assets:
+                relative_path, content_type = static_assets[self.path]
+                asset_path = Path(__file__).parent / relative_path
+                if not asset_path.is_file():
+                    self.json(404, {"error": "Static asset not found"}); return
+                data = asset_path.read_bytes(); self.send_response(200); self.send_header("Content-Type", content_type); self.send_header("Content-Length", str(len(data))); self.send_header("Cache-Control", "no-store"); self.security_headers(); self.end_headers(); self.wfile.write(data); return
             if self.path == "/api/setup": self.json(200, self.server.library.public_setup()); return
             if not self.require(): return
             if self.path == "/api/library": self.json(200, self.server.library.library()); return
