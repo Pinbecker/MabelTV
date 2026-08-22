@@ -483,6 +483,9 @@ Item {
                     radius: 11
                     color: (overlay.sidebarFocused ? overlay.sidebarSelection === 0
                             : overlay.page === "settings") ? "#ffffff" : "transparent"
+                    border.color: overlay.sidebarFocused && overlay.sidebarSelection === 0
+                                  ? "#ff9c83" : "transparent"
+                    border.width: overlay.sidebarFocused && overlay.sidebarSelection === 0 ? 3 : 0
 
                     Text {
                         anchors.left: parent.left
@@ -491,7 +494,8 @@ Item {
                         color: (overlay.sidebarFocused ? overlay.sidebarSelection === 0
                                 : overlay.page === "settings") ? "#18201d" : "#b6c0bc"
                         font.family: "DejaVu Sans"
-                        font.bold: overlay.page === "settings"
+                        font.bold: overlay.sidebarFocused ? overlay.sidebarSelection === 0
+                                                           : overlay.page === "settings"
                         font.pixelSize: 16
                         text: "⌂   TV settings"
                     }
@@ -503,6 +507,9 @@ Item {
                     radius: 11
                     color: (overlay.sidebarFocused ? overlay.sidebarSelection === 1
                             : overlay.page === "library") ? "#ffffff" : "transparent"
+                    border.color: overlay.sidebarFocused && overlay.sidebarSelection === 1
+                                  ? "#ff9c83" : "transparent"
+                    border.width: overlay.sidebarFocused && overlay.sidebarSelection === 1 ? 3 : 0
 
                     Text {
                         anchors.left: parent.left
@@ -511,7 +518,8 @@ Item {
                         color: (overlay.sidebarFocused ? overlay.sidebarSelection === 1
                                 : overlay.page === "library") ? "#18201d" : "#b6c0bc"
                         font.family: "DejaVu Sans"
-                        font.bold: overlay.page === "library"
+                        font.bold: overlay.sidebarFocused ? overlay.sidebarSelection === 1
+                                                           : overlay.page === "library"
                         font.pixelSize: 16
                         text: "▶   Channels"
                     }
@@ -523,11 +531,14 @@ Item {
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
                 anchors.margins: 26
-                color: "#8e9a95"
+                color: overlay.sidebarFocused ? "#ffb09d" : "#8e9a95"
                 wrapMode: Text.WordWrap
                 font.family: "DejaVu Sans"
+                font.bold: overlay.sidebarFocused
                 font.pixelSize: 13
-                text: "Use the arrow keys to move\nOK to choose · Back to close"
+                text: overlay.sidebarFocused
+                      ? "SIDEBAR FOCUS\n↑ ↓ choose · OK open"
+                      : "Use the arrow keys to move\nOK to choose · Back to close"
             }
         }
 
@@ -539,6 +550,7 @@ Item {
             anchors.bottom: parentPanel.bottom
             anchors.margins: 26
             visible: overlay.page === "settings"
+            opacity: overlay.sidebarFocused ? 0.55 : 1
 
             Text {
                 id: settingsTitle
@@ -607,9 +619,11 @@ Item {
                         height: Math.max(46, (settingsGrid.height
                                - settingsGrid.rowSpacing * 7) / 8)
                         radius: 11
-                        color: index === overlay.selectedRow ? "#fff0eb" : "#ffffff"
-                        border.color: index === overlay.selectedRow ? "#ed6a4d" : "#dfe3de"
-                        border.width: index === overlay.selectedRow ? 2 : 1
+                        color: index === overlay.selectedRow && !overlay.sidebarFocused
+                               ? "#fff0eb" : "#ffffff"
+                        border.color: index === overlay.selectedRow && !overlay.sidebarFocused
+                                      ? "#ed6a4d" : "#dfe3de"
+                        border.width: index === overlay.selectedRow && !overlay.sidebarFocused ? 2 : 1
 
                         Rectangle {
                             anchors.left: parent.left
@@ -633,7 +647,7 @@ Item {
                             color: "#18201d"
                             elide: Text.ElideRight
                             font.family: "DejaVu Sans"
-                            font.bold: index === overlay.selectedRow
+                            font.bold: index === overlay.selectedRow && !overlay.sidebarFocused
                             font.pixelSize: 14
                             text: modelData
                         }
@@ -644,7 +658,8 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             anchors.rightMargin: 13
                             width: parent.width * 0.39
-                            color: index === overlay.selectedRow ? "#ce4f34" : "#69716d"
+                            color: index === overlay.selectedRow && !overlay.sidebarFocused
+                                   ? "#ce4f34" : "#69716d"
                             elide: Text.ElideRight
                             font.family: "DejaVu Sans"
                             font.bold: true
@@ -677,6 +692,7 @@ Item {
             anchors.bottom: parentPanel.bottom
             anchors.margins: 26
             visible: overlay.page === "library"
+            opacity: overlay.sidebarFocused ? 0.55 : 1
 
             Text {
                 id: libraryTitle
