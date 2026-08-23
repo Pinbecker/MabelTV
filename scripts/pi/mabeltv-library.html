@@ -33,7 +33,9 @@
     @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
     @media(max-width:720px){nav{grid-template-columns:repeat(5,1fr)}}
     .live-screen video,.live-screen img{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover;object-position:center;background:#050706}
-</style>
+    .tv-settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.tv-settings-grid .wide{grid-column:1/-1}.range-setting{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 13px;align-items:center;border:1px solid var(--line);border-radius:var(--rs);padding:13px;background:var(--soft)}.range-setting label{grid-column:1/-1}.range-setting input{min-height:auto;padding:0;accent-color:var(--accent2)}.range-setting output{min-width:42px;border-radius:99px;padding:3px 8px;background:#fff;color:var(--ink);font-size:.8rem;font-weight:720;text-align:center}.tv-settings-foot{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:4px}.tv-settings-foot p{margin:0;color:var(--muted);font-size:.82rem}
+    @media(max-width:720px){.tv-settings-grid{grid-template-columns:1fr}.tv-settings-grid .wide{grid-column:auto}.tv-settings-foot{align-items:stretch;flex-direction:column}.tv-settings-foot button{width:100%}}
+  </style>
 </head>
 <body>
   <section id="setup" class="auth-shell hidden" aria-labelledby="setupTitle">
@@ -105,8 +107,9 @@
         </div><footer><span data-tv-name>Your TV</span> · Library</footer>
       </div></section>
       <section id="view-system" class="view"><div class="page">
-        <header class="page-head"><div><p class="eyebrow">Settings</p><h1>TV and account</h1><p>Health checks, identity, security, help, and power controls live here.</p></div></header>
+        <header class="page-head"><div><p class="eyebrow">Settings</p><h1>TV and account</h1><p>Picture, playback, sound, parent controls, identity, and Pi controls live here.</p></div></header>
         <div class="settings-grid">
+          <section class="settings-section surface full"><p class="section-kicker">On-TV picture, playback &amp; sound</p><h2>TV settings</h2><p class="muted">The same settings found in the parent menu on the television. Saving applies them to MabelTV straight away; the picture may refresh briefly.</p><form id="tvSettingsForm"><div class="tv-settings-grid"><label>How programmes play<select id="tvPlaybackMode"><option value="continuous">Continuous broadcast</option><option value="resume">Resume where you left off</option></select><small>Choose whether each channel carries on as a live schedule or remembers your place.</small></label><label>Episode reset<select id="tvEpisodeReset"><option value="0">Never</option><option value="5">After 5 minutes</option><option value="20">After 20 minutes</option><option value="60">After 1 hour</option><option value="180">After 3 hours</option></select><small>After this time away, an episode starts from the beginning.</small></label><label>Picture mode<select id="tvPictureMode"><option value="channel">Use each channel’s setting</option><option value="crop">Fill screen</option><option value="fit">Show whole picture</option><option value="stretch">Stretch to screen</option></select></label><label>TV cabinet<select id="tvBorder"><option value="slim-black">Slim black</option><option value="silver-90s">Silver 90s</option><option value="charcoal-90s">Charcoal 90s</option><option value="vintage-black">Vintage black</option></select></label><div class="range-setting"><label for="tvCrtGlass">CRT glass</label><input id="tvCrtGlass" type="range" min="0" max="100" step="5" value="35"><output id="tvCrtGlassValue" for="tvCrtGlass">35%</output></div><div class="range-setting"><label for="tvDistortion">90s distortion</label><input id="tvDistortion" type="range" min="0" max="100" step="5" value="20"><output id="tvDistortionValue" for="tvDistortion">20%</output></div><label>Display output<select id="tvDisplayResolution"><option value="720p">720p</option><option value="1080p">1080p</option><option value="native">Native display resolution</option></select><small>Changes after the player refreshes.</small></label><label>Volume limit<select id="tvVolumeLimit"><option value="true">On</option><option value="false">Off</option></select><small>Keep the remote volume within the maximum below.</small></label><div class="range-setting"><label for="tvMaximumVolume">Maximum volume</label><input id="tvMaximumVolume" type="range" min="5" max="100" step="5" value="60"><output id="tvMaximumVolumeValue" for="tvMaximumVolume">60%</output></div><label>Button sound effects<select id="tvSoundEffects"><option value="true">On</option><option value="false">Off</option></select><small>The navigation sounds heard on the television.</small></label></div><div class="tv-settings-foot"><p>These controls match the parent settings menu on MabelTV.</p><button type="submit">Save TV settings</button></div></form></section>
           <section class="settings-section surface full"><p class="section-kicker">On-TV parent controls</p><h2>Choose the design shown on the television</h2><p class="muted">This changes the grown-up screen opened by holding Back / Previous. The current design remains available, and the television updates as soon as you choose.</p><div class="design-picker"><button type="button" class="design-option" data-parent-style="classic" aria-pressed="false"><span class="design-preview classic"><span>[ PARENT CONTROL ]<br>CHANNELS &amp; PROGRAMMES<br>CRT GLASS ........ 35%</span></span><span class="design-copy"><strong>Classic console</strong><small>The original green technical design</small></span></button><button type="button" class="design-option" data-parent-style="modern" aria-pressed="false"><span class="design-preview modern"><span class="mini-rail"></span><span class="mini-page"><span class="mini-line"></span><span class="mini-line"></span><span class="mini-line"></span></span></span><span class="design-copy"><strong>Modern family</strong><small>A warmer, clearer app-style design</small></span></button></div></section>
           <section class="settings-section surface full"><p class="section-kicker">Optional feature</p><h2>TV guide</h2><p class="muted">Turn episode filenames and video lengths into a familiar live schedule. It stays hidden during normal viewing until someone holds the remote’s OK / Select button.</p><div class="feature-control"><div><strong id="tvGuideState">TV guide is off</strong><p class="small muted">When it is on, programmes continue in filename order so the times shown in the guide match what plays.</p><div class="combo" aria-label="How to open the TV guide"><span>HOLD OK / SELECT · 3.5 SEC</span></div></div><button id="tvGuideToggle" type="button" class="feature-toggle" aria-pressed="false">Turn on</button></div></section>
           <section class="settings-section surface"><p class="section-kicker">Raspberry Pi</p><h2>System status</h2><dl id="systemDetails" class="definition"></dl><div class="row"><button id="checkAgain" class="secondary">Check again</button><button id="restartPlayer" class="secondary">Restart TV player</button><a class="button secondary" href="/api/support" download>Support bundle</a></div><p class="small muted" style="margin-top:14px">Diagnostics never include the parent PIN or video files.</p></section>
@@ -510,9 +513,34 @@
       renderUploads()
       renderOverviewChannels()
       renderChannels()
+      renderTvSettings()
       renderParentOverlayStyle()
       renderTvGuideSetting()
       renderPortalPinSetting()
+    }
+
+    function renderTvSettings() {
+      const settings = library?.tv_settings || {}
+      const setValue = (selector, value, fallback) => {
+        const control = $(selector)
+        const next = String(value ?? fallback)
+        if ([...control.options].some(option => option.value === next)) control.value = next
+      }
+      setValue('#tvPlaybackMode', settings.playback_mode, 'continuous')
+      setValue('#tvEpisodeReset', settings.episode_reset_minutes, 0)
+      setValue('#tvPictureMode', settings.picture_mode, 'channel')
+      setValue('#tvBorder', settings.tv_border, 'slim-black')
+      setValue('#tvDisplayResolution', settings.display_resolution, '720p')
+      setValue('#tvVolumeLimit', settings.volume_limit_enabled, true)
+      setValue('#tvSoundEffects', settings.sound_effects_enabled, true)
+      const setRange = (input, output, value, fallback) => {
+        const control = $(input)
+        control.value = String(value ?? fallback)
+        $(output).textContent = `${control.value}%`
+      }
+      setRange('#tvCrtGlass', '#tvCrtGlassValue', settings.crt_glass, 35)
+      setRange('#tvDistortion', '#tvDistortionValue', settings.video_distortion, 20)
+      setRange('#tvMaximumVolume', '#tvMaximumVolumeValue', settings.maximum_volume, 60)
     }
 
     function renderParentOverlayStyle() {
@@ -546,6 +574,9 @@
     $('#tvGuideToggle').onclick = () => manage('set-tv-guide-enabled', {
       enabled: !(library?.appearance?.tv_guide_enabled === true)
     })
+
+    ;[['#tvCrtGlass', '#tvCrtGlassValue'], ['#tvDistortion', '#tvDistortionValue'], ['#tvMaximumVolume', '#tvMaximumVolumeValue']]
+      .forEach(([input, output]) => $(input).oninput = () => { $(output).textContent = `${$(input).value}%` })
 
     function renderStatus() {
       const system = library.system || {}, storage = library.storage || {}, warnings = system.warnings || []
@@ -1044,6 +1075,22 @@
           ? `${identity.tv_name} is saved. The TV picture will refresh briefly.`
           : `${identity.tv_name} is saved. Restart the TV player to show the new name on screen.`)
       } catch (error) { notice(error.message, true) }
+    }
+    $('#tvSettingsForm').onsubmit = async event => {
+      event.preventDefault()
+      const settings = {
+        playback_mode: $('#tvPlaybackMode').value,
+        episode_reset_minutes: Number($('#tvEpisodeReset').value),
+        picture_mode: $('#tvPictureMode').value,
+        tv_border: $('#tvBorder').value,
+        crt_glass: Number($('#tvCrtGlass').value),
+        video_distortion: Number($('#tvDistortion').value),
+        display_resolution: $('#tvDisplayResolution').value,
+        volume_limit_enabled: $('#tvVolumeLimit').value === 'true',
+        maximum_volume: Number($('#tvMaximumVolume').value),
+        sound_effects_enabled: $('#tvSoundEffects').value === 'true',
+      }
+      await manage('set-tv-settings', { settings })
     }
 
     initialise()

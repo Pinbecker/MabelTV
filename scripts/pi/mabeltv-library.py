@@ -1032,6 +1032,43 @@ class Library:
     def tv_guide_enabled(settings: dict[str, Any]) -> bool:
         return settings.get("tv_guide_enabled") is True
 
+    @staticmethod
+    def tv_settings(settings: dict[str, Any]) -> dict[str, Any]:
+        """Return the same safe, supported values offered by the TV menu."""
+        volume = settings.get("volume")
+        if not isinstance(volume, dict):
+            volume = {}
+
+        def choice(name: str, allowed: set[str], fallback: str) -> str:
+            value = settings.get(name)
+            return value if isinstance(value, str) and value in allowed else fallback
+
+        def bounded(value: Any, fallback: int, minimum: int = 0) -> int:
+            if isinstance(value, bool):
+                return fallback
+            try:
+                return max(minimum, min(100, int(value)))
+            except (TypeError, ValueError):
+                return fallback
+
+        episode_reset = settings.get("episode_reset_minutes")
+        if (isinstance(episode_reset, bool) or not isinstance(episode_reset, int)
+                or episode_reset not in {0, 5, 20, 60, 180}):
+            episode_reset = 0
+
+        return {
+            "playback_mode": choice("playback_mode", {"continuous", "resume"}, "continuous"),
+            "episode_reset_minutes": episode_reset,
+            "picture_mode": choice("picture_mode", {"channel", "crop", "fit", "stretch"}, "channel"),
+            "tv_border": choice("tv_border", {"slim-black", "silver-90s", "charcoal-90s", "vintage-black"}, "slim-black"),
+            "crt_glass": bounded(settings.get("crt_glass"), 35),
+            "video_distortion": bounded(settings.get("video_distortion"), 20),
+            "display_resolution": choice("display_resolution", {"720p", "1080p", "native"}, "720p"),
+            "volume_limit_enabled": volume.get("limit_enabled") is True,
+            "maximum_volume": bounded(volume.get("maximum"), 60, 5),
+            "sound_effects_enabled": settings.get("sound_effects_enabled") is not False,
+        }
+
     def library(self) -> dict[str, Any]:
         settings = self.settings()
         rules = settings.get("library", {})
@@ -1059,6 +1096,7 @@ class Library:
                 "parent_overlay_style": self.parent_overlay_style(settings),
                 "tv_guide_enabled": self.tv_guide_enabled(settings),
             },
+            "tv_settings": self.tv_settings(settings),
             "recycle": self.recycle_items(),
             "uploads": self.upload_jobs(),
             "storage": {"free_gb": disk.free / 1024**3,
@@ -1724,6 +1762,61 @@ class Library:
                 raise ValueError("Choose whether the TV guide is on or off")
             settings = self.settings()
             settings["tv_guide_enabled"] = enabled
+            self.write_json(self.settings_path, settings)
+            return
+        if action == "set-tv-settings":
+            requested = payload.get("settings")
+            if not isinstance(requested, dict):
+                raise ValueError("Choose the TV settings to save")
+
+            playback_mode = requested.get("playback_mode")
+            picture_mode = requested.get("picture_mode")
+            tv_border = requested.get("tv_border")
+            display_resolution = requested.get("display_resolution")
+            episode_reset_minutes = requested.get("episode_reset_minutes")
+            crt_glass = requested.get("crt_glass")
+            video_distortion = requested.get("video_distortion")
+            maximum_volume = requested.get("maximum_volume")
+            volume_limit_enabled = requested.get("volume_limit_enabled")
+            sound_effects_enabled = requested.get("sound_effects_enabled")
+
+            if playback_mode not in {"continuous", "resume"}:
+                raise ValueError("Choose a playback behaviour")
+            if picture_mode not in {"channel", "crop", "fit", "stretch"}:
+                raise ValueError("Choose a picture mode")
+            if tv_border not in {"slim-black", "silver-90s", "charcoal-90s", "vintage-black"}:
+                raise ValueError("Choose a TV cabinet")
+            if display_resolution not in {"720p", "1080p", "native"}:
+                raise ValueError("Choose a display resolution")
+            if episode_reset_minutes not in {0, 5, 20, 60, 180}:
+                raise ValueError("Choose a valid episode reset time")
+            if any(isinstance(value, bool) or not isinstance(value, int)
+                   for value in (crt_glass, video_distortion, maximum_volume)):
+                raise ValueError("TV setting values must be whole numbers")
+            if not 0 <= crt_glass <= 100 or not 0 <= video_distortion <= 100:
+                raise ValueError("CRT glass and distortion must be between 0 and 100")
+            if not 5 <= maximum_volume <= 100:
+                raise ValueError("Maximum volume must be between 5 and 100")
+            if not isinstance(volume_limit_enabled, bool) or not isinstance(sound_effects_enabled, bool):
+                raise ValueError("Choose whether volume limits and sound effects are on")
+
+            settings = self.settings()
+            volume = settings.get("volume")
+            if not isinstance(volume, dict):
+                volume = {}
+            volume["maximum"] = maximum_volume
+            volume["limit_enabled"] = volume_limit_enabled
+            settings.update({
+                "playback_mode": playback_mode,
+                "episode_reset_minutes": episode_reset_minutes,
+                "picture_mode": picture_mode,
+                "tv_border": tv_border,
+                "crt_glass": crt_glass,
+                "video_distortion": video_distortion,
+                "display_resolution": display_resolution,
+                "sound_effects_enabled": sound_effects_enabled,
+                "volume": volume,
+            })
             self.write_json(self.settings_path, settings)
             return
         if action == "add-channel":
