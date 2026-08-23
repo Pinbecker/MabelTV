@@ -107,10 +107,12 @@ class LiveStream:
         self.process: subprocess.Popen[bytes] | None = None
         self.signature: tuple[str] | None = None
         self.preview_process: subprocess.Popen[bytes] | None = None
-        self.preview_signature: tuple[str] | None = None
+        self.preview_signature: tuple[str, bool] | None = None
         self.preview_frame = b""
         self.preview_generation = 0
         self.preview_error = ""
+        self.preview_start_position = 0.0
+        self.preview_started_at = 0.0
         self.preview_updated = threading.Condition(self.lock)
 
     def source(self) -> dict[str, Any]:
@@ -124,6 +126,11 @@ class LiveStream:
             channel = self.library.channel(number)
             source = self.library.safe_media_path(channel, file_name)
             position = max(0.0, float(timeline.get("position_seconds", 0)))
+            paused = state.get("playback_paused") is True
+            if not paused:
+                saved_at = float(state.get("saved_at_utc_ms", 0))
+                if saved_at > 0:
+                    position += max(0.0, (time.time() * 1000.0 - saved_at) / 1000.0)
         except (TypeError, ValueError):
             return {"available": False, "reason": "Waiting for the TV programme"}
         if not source.is_file():
@@ -132,7 +139,7 @@ class LiveStream:
                 "channel_name": str(channel.get("name", "Channel")),
                 "file_name": file_name, "programme": self.library.display_name(file_name),
                 "source": source, "position": position,
-                "paused": state.get("playback_paused") is True,
+                "paused": paused,
                 "volume": int(state.get("volume", 0)),
                 "muted": state.get("muted") is True}
 
@@ -144,6 +151,8 @@ class LiveStream:
             self.preview_signature = None
             self.preview_frame = b""
             self.preview_error = ""
+            self.preview_start_position = 0.0
+            self.preview_started_at = 0.0
             self.preview_generation += 1
             self.preview_updated.notify_all()
         for candidate in (process, preview_process):
@@ -280,13 +289,20 @@ class LiveStream:
         info = self.source()
         if not info["available"]:
             raise ValueError(str(info["reason"]))
-        signature = (str(info["source"]),)
+        signature = (str(info["source"]), bool(info["paused"]))
         with self.lock:
-            if self.preview_process and self.preview_process.poll() is None \
-                    and self.preview_signature == signature and self.preview_frame:
-                return self.preview_frame
+            needs_restart = False
+            if self.preview_signature == signature and self.preview_frame:
+                projected_position = self.preview_start_position
+                if not info["paused"]:
+                    projected_position += max(0.0, time.monotonic() - self.preview_started_at)
+                if abs(float(info["position"]) - projected_position) <= 4.0 \
+                        and (info["paused"] or (self.preview_process
+                                               and self.preview_process.poll() is None)):
+                    return self.preview_frame
+                needs_restart = True
             generation = self.preview_generation
-            if not self.preview_process or self.preview_process.poll() is not None \
+            if needs_restart or not self.preview_process or self.preview_process.poll() is not None \
                     or self.preview_signature != signature:
                 previous, self.preview_process = self.preview_process, None
                 if previous and previous.poll() is None:
@@ -296,10 +312,16 @@ class LiveStream:
                 command = [
                     "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
                     "-ss", f"{self.playable_position(info['source'], info['position']):.3f}",
-                    "-re", "-i", str(info["source"]), "-map", "0:v:0",
+                ]
+                if not info["paused"]:
+                    command.append("-re")
+                command.extend([
+                    "-i", str(info["source"]), "-map", "0:v:0",
                     "-vf", "scale=854:480:force_original_aspect_ratio=decrease:force_divisible_by=2,fps=10",
                     "-an", "-c:v", "mjpeg", "-q:v", "5", "-f", "mpjpeg", "pipe:1",
-                ]
+                ])
+                if info["paused"]:
+                    command[-3:-3] = ["-frames:v", "1"]
                 try:
                     process = subprocess.Popen(command, stdout=subprocess.PIPE,
                                                stderr=subprocess.PIPE, start_new_session=True)
@@ -307,6 +329,8 @@ class LiveStream:
                     raise ValueError("The Pi could not start the live TV picture") from error
                 self.preview_process = process
                 self.preview_signature = signature
+                self.preview_start_position = float(info["position"])
+                self.preview_started_at = time.monotonic()
                 threading.Thread(target=self._collect_preview_frames, args=(process,),
                                  name="mabeltv-live-preview", daemon=True).start()
             deadline = time.monotonic() + 20
@@ -319,7 +343,9 @@ class LiveStream:
     def status(self) -> dict[str, Any]:
         info = self.source()
         with self.lock:
-            running = self.process is not None and self.process.poll() is None
+            running = ((self.process is not None and self.process.poll() is None)
+                       or (self.preview_process is not None
+                           and self.preview_process.poll() is None))
         return {key: value for key, value in info.items() if key != "source"} | {"streaming": running}
 
 
