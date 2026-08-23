@@ -14,6 +14,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkInterface>
+#include <QLocalServer>
+#include <QLocalSocket>
 #include <QProcess>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -436,6 +438,59 @@ int main(int argc, char *argv[])
     if (engine.rootObjects().isEmpty()) {
         return 3;
     }
+
+#ifdef Q_OS_LINUX
+    // The library service is the only network-facing component.  It forwards
+    // a deliberately small command set over this private, owner-only socket;
+    // the player never opens another TCP port on the home network.
+    QLocalServer portalControlServer;
+    const QString portalControlPath = QStringLiteral("/run/mabeltv/portal-control.sock");
+    QLocalServer::removeServer(portalControlPath);
+    portalControlServer.setSocketOptions(QLocalServer::UserAccessOption);
+    if (!portalControlServer.listen(portalControlPath)) {
+        qWarning().noquote() << "Unable to start portal control socket:"
+                             << portalControlServer.errorString();
+    } else {
+        QObject *rootObject = engine.rootObjects().constFirst();
+        QObject::connect(&portalControlServer,
+                         &QLocalServer::newConnection,
+                         &application,
+                         [&portalControlServer, rootObject]() {
+                             while (portalControlServer.hasPendingConnections()) {
+                                 QLocalSocket *socket = portalControlServer.nextPendingConnection();
+                                 QObject::connect(socket,
+                                                  &QLocalSocket::readyRead,
+                                                  socket,
+                                                  [socket, rootObject]() {
+                                                      const QString command = QString::fromUtf8(
+                                                          socket->readAll()).trimmed();
+                                                      static const QSet<QString> allowed{
+                                                          QStringLiteral("channel-up"),
+                                                          QStringLiteral("channel-down"),
+                                                          QStringLiteral("previous-programme"),
+                                                          QStringLiteral("next-programme"),
+                                                          QStringLiteral("toggle-pause"),
+                                                          QStringLiteral("volume-up"),
+                                                          QStringLiteral("volume-down"),
+                                                          QStringLiteral("toggle-mute"),
+                                                          QStringLiteral("toggle-power"),
+                                                      };
+                                                      if (allowed.contains(command)) {
+                                                          QMetaObject::invokeMethod(
+                                                              rootObject,
+                                                              "portalCommand",
+                                                              Qt::QueuedConnection,
+                                                              Q_ARG(QVariant, command));
+                                                          socket->write("ok\n");
+                                                      } else {
+                                                          socket->write("unsupported\n");
+                                                      }
+                                                      socket->disconnectFromServer();
+                                                  });
+                             }
+                         });
+    }
+#endif
 
     if (parser.isSet(fullscreenOption)) {
         if (auto *window = qobject_cast<QWindow *>(engine.rootObjects().constFirst())) {

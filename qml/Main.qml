@@ -143,6 +143,38 @@ Window {
         programmeOsdTimer.restart()
     }
 
+    // Commands from the parent web portal arrive through the local Unix
+    // socket owned by the player service. They intentionally reuse the same
+    // paths as the physical remote, so locks, standby and channel rules stay
+    // identical whichever remote is used.
+    function portalCommand(command) {
+        if (tvController.remoteLocked)
+            return
+        if (command === "channel-up") {
+            syncPlaybackPosition()
+            tvController.dispatch(TvController.ChannelUp)
+        } else if (command === "channel-down") {
+            syncPlaybackPosition()
+            tvController.dispatch(TvController.ChannelDown)
+        } else if (command === "previous-programme") {
+            syncPlaybackPosition()
+            tvController.dispatch(TvController.PreviousProgramme)
+        } else if (command === "next-programme") {
+            syncPlaybackPosition()
+            tvController.dispatch(TvController.NextProgramme)
+        } else if (command === "toggle-pause") {
+            togglePlaybackPause()
+        } else if (command === "volume-up") {
+            tvController.dispatch(TvController.VolumeUp)
+        } else if (command === "volume-down") {
+            tvController.dispatch(TvController.VolumeDown)
+        } else if (command === "toggle-mute") {
+            tvController.dispatch(TvController.ToggleMute)
+        } else if (command === "toggle-power") {
+            beginPowerOff(false)
+        }
+    }
+
     function showRemoteLockState() {
         remoteLockMessage.text = tvController.remoteLocked
                 ? "REMOTE LOCKED\nHOLD MUTE TO UNLOCK"

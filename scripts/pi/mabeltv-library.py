@@ -97,6 +97,123 @@ def load_index() -> str:
 INDEX = load_index()
 
 
+class LiveStream:
+    """A private, low-latency HLS mirror of the programme currently on TV."""
+
+    def __init__(self, library: "Library") -> None:
+        self.library = library
+        self.root = Path("/var/cache/mabeltv/live-stream")
+        self.lock = threading.RLock()
+        self.process: subprocess.Popen[bytes] | None = None
+        self.signature: tuple[str, int] | None = None
+
+    def source(self) -> dict[str, Any]:
+        state = self.library.read_json(self.library.player_state_path, {})
+        if not isinstance(state, dict) or state.get("standby"):
+            return {"available": False, "reason": "The TV is off"}
+        try:
+            number = int(state.get("current_channel"))
+            timeline = state.get("channel_timelines", {}).get(str(number), {})
+            file_name = str(timeline.get("episode_name", ""))
+            channel = self.library.channel(number)
+            source = self.library.safe_media_path(channel, file_name)
+            position = max(0.0, float(timeline.get("position_seconds", 0)))
+        except (TypeError, ValueError):
+            return {"available": False, "reason": "Waiting for the TV programme"}
+        if not source.is_file():
+            return {"available": False, "reason": "Waiting for the TV programme"}
+        return {"available": True, "channel_number": number,
+                "channel_name": str(channel.get("name", "Channel")),
+                "file_name": file_name, "programme": self.library.display_name(file_name),
+                "source": source, "position": position,
+                "paused": state.get("playback_paused") is True,
+                "volume": int(state.get("volume", 0)),
+                "muted": state.get("muted") is True}
+
+    def stop(self) -> None:
+        with self.lock:
+            process, self.process = self.process, None
+            self.signature = None
+        if process and process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                process.kill()
+
+    def ensure(self) -> dict[str, Any]:
+        info = self.source()
+        if not info["available"]:
+            self.stop()
+            return info
+        signature = (str(info["source"]), int(info["position"] // 20))
+        manifest = self.root / "live.m3u8"
+        with self.lock:
+            if self.process and self.process.poll() is None \
+                    and self.signature == signature and manifest.is_file():
+                return info
+        self.stop()
+        self.root.mkdir(parents=True, exist_ok=True)
+        for path in self.root.glob("*"):
+            if path.is_file():
+                path.unlink(missing_ok=True)
+        command = [
+            "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
+            "-ss", f"{info['position']:.3f}", "-re", "-i", str(info["source"]),
+            "-map", "0:v:0", "-map", "0:a:0?",
+            "-vf", "scale=960:540:force_original_aspect_ratio=decrease:force_divisible_by=2,fps=30",
+            "-c:v", "h264_v4l2m2m", "-b:v", "1200k", "-maxrate", "1400k",
+            "-bufsize", "700k", "-g", "30", "-keyint_min", "30", "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-b:a", "96k", "-ac", "2",
+            "-f", "hls", "-hls_time", "1", "-hls_list_size", "4",
+            "-hls_segment_type", "fmp4", "-hls_fmp4_init_filename", "init.mp4",
+            "-hls_flags", "delete_segments+append_list+independent_segments",
+            "-hls_segment_filename", str(self.root / "segment-%05d.m4s"), str(manifest),
+        ]
+        try:
+            process = subprocess.Popen(command, stdout=subprocess.DEVNULL,
+                                       stderr=subprocess.DEVNULL, start_new_session=True)
+        except OSError as error:
+            raise ValueError("The Pi could not start the live TV stream") from error
+        with self.lock:
+            self.process = process
+            self.signature = signature
+        return info
+
+    def manifest(self) -> Path:
+        info = self.ensure()
+        if not info["available"]:
+            raise ValueError(str(info["reason"]))
+        path = self.root / "live.m3u8"
+        deadline = time.monotonic() + 8
+        while not path.is_file() and time.monotonic() < deadline:
+            with self.lock:
+                failed = self.process is None or self.process.poll() is not None
+            if failed:
+                raise ValueError("The Pi could not prepare the live TV stream")
+            time.sleep(0.1)
+        if not path.is_file():
+            raise ValueError("The live TV stream is taking longer than expected")
+        return path
+
+    def segment(self, name: str) -> Path:
+        if name == "init.mp4":
+            path = self.root / name
+        elif re.fullmatch(r"segment-\d{5}\.m4s", name):
+            path = self.root / name
+        else:
+            raise ValueError("Invalid live TV segment")
+        if not path.is_file():
+            raise ValueError("That part of the live stream has expired")
+        return path
+
+    def status(self) -> dict[str, Any]:
+        info = self.source()
+        with self.lock:
+            running = self.process is not None and self.process.poll() is None
+        return {key: value for key, value in info.items() if key != "source"} | {"streaming": running}
+
+
 class Library:
     def __init__(self, args: argparse.Namespace) -> None:
         self.media_root = Path(args.media_root).resolve()
@@ -105,6 +222,7 @@ class Library:
         self.owner_path = Path(args.owner).resolve()
         self.owner_recovery_path = self.owner_path.with_name("owner-recovery-pending")
         self.config_path = Path(args.config).resolve()
+        self.player_state_path = Path("/var/lib/mabeltv/state.json")
         self.incoming = self.media_root / ".incoming"
         self.bin = self.media_root / ".recycle-bin"
         self.sessions: dict[str, float] = {}
@@ -130,6 +248,7 @@ class Library:
             daemon=True,
         )
         self.conversion_worker.start()
+        self.live_stream = LiveStream(self)
 
     def close(self, timeout: float = 10.0) -> None:
         """Drain and stop the single media worker (primarily for clean tests)."""
@@ -140,6 +259,7 @@ class Library:
         self.conversion_worker.join(timeout=timeout)
         if self.conversion_worker.is_alive():
             raise RuntimeError("The media worker did not stop cleanly")
+        self.live_stream.stop()
 
     def cleanup_stale_temporary_files(self) -> None:
         """Remove abandoned encoder outputs, never active or recent work."""
@@ -935,6 +1055,37 @@ class Library:
             raise ValueError(details or "Mabel TV could not complete that system action")
         return result.stdout.strip()
 
+    def live_tv_status(self) -> dict[str, Any]:
+        return self.live_stream.status()
+
+    def live_tv_manifest(self) -> Path:
+        return self.live_stream.manifest()
+
+    def live_tv_segment(self, name: str) -> Path:
+        return self.live_stream.segment(name)
+
+    def stop_live_tv(self) -> dict[str, Any]:
+        self.live_stream.stop()
+        return {"ok": True}
+
+    def live_tv_control(self, payload: dict[str, Any]) -> dict[str, Any]:
+        command = str(payload.get("command", ""))
+        allowed = {"channel-up", "channel-down", "previous-programme", "next-programme",
+                   "toggle-pause", "volume-up", "volume-down", "toggle-mute", "toggle-power"}
+        if command not in allowed:
+            raise ValueError("Unknown live TV control")
+        try:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+                client.settimeout(2)
+                client.connect("/run/mabeltv/portal-control.sock")
+                client.sendall((command + "\n").encode())
+                reply = client.recv(32).decode(errors="replace").strip()
+        except OSError as error:
+            raise ValueError("The TV player is not ready for portal controls") from error
+        if reply != "ok":
+            raise ValueError("The TV could not accept that control")
+        return {"ok": True, "message": "Command sent"}
+
     def support_bundle(self) -> Path:
         self.admin_action("diagnostics")
         bundle = Path("/var/lib/mabeltv/support/mabeltv-support.tar.gz")
@@ -1578,6 +1729,17 @@ class Handler(BaseHTTPRequestHandler):
         with path.open("rb") as source:
             shutil.copyfileobj(source, self.wfile, 1024 * 1024)
 
+    def stream_file(self, path: Path, content_type: str) -> None:
+        size = path.stat().st_size
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(size))
+        self.send_header("Cache-Control", "no-store")
+        self.security_headers()
+        self.end_headers()
+        with path.open("rb") as source:
+            shutil.copyfileobj(source, self.wfile, 1024 * 1024)
+
     def body(self) -> dict[str, Any]:
         length = int(self.headers.get("Content-Length", "0"));
         if length > 64 * 1024: raise ValueError("Request is too large")
@@ -1625,6 +1787,7 @@ class Handler(BaseHTTPRequestHandler):
                 "/apple-touch-icon-180x180.png": ("apple-touch-icon.png", "image/png"),
                 "/icons/icon-192.png": ("icons/icon-192.png", "image/png"),
                 "/icons/icon-512.png": ("icons/icon-512.png", "image/png"),
+                "/hls.min.js": ("hls.min.js", "text/javascript; charset=utf-8"),
                 "/manifest.json": ("mabeltv-manifest.json", "application/manifest+json"),
                 "/manifest.webmanifest": ("mabeltv-manifest.json", "application/manifest+json"),
             }
@@ -1636,6 +1799,12 @@ class Handler(BaseHTTPRequestHandler):
                 data = asset_path.read_bytes(); self.send_response(200); self.send_header("Content-Type", content_type); self.send_header("Content-Length", str(len(data))); self.send_header("Cache-Control", "no-store"); self.security_headers(); self.end_headers(); self.wfile.write(data); return
             if self.path == "/api/setup": self.json(200, self.server.library.public_setup()); return
             if not self.require(): return
+            if self.path == "/api/live":
+                self.json(200, self.server.library.live_tv_status()); return
+            if self.path == "/api/live/stream.m3u8":
+                self.stream_file(self.server.library.live_tv_manifest(), "application/vnd.apple.mpegurl"); return
+            if self.path.startswith("/api/live/segment-") or self.path == "/api/live/init.mp4":
+                self.stream_file(self.server.library.live_tv_segment(self.path.rsplit("/", 1)[1]), "video/mp4"); return
             if self.path == "/api/library": self.json(200, self.server.library.library()); return
             if self.path == "/api/status": self.json(200, self.server.library.live_status()); return
             if self.path == "/api/support":
@@ -1690,6 +1859,10 @@ class Handler(BaseHTTPRequestHandler):
                 self.json(200, {"ok": True, "portal_pin_required": required}, "mabeltv_library=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0"); return
             if not self.require(): return
             payload = self.body()
+            if self.path == "/api/live/stop":
+                self.json(200, self.server.library.stop_live_tv()); return
+            if self.path == "/api/live/control":
+                self.json(200, self.server.library.live_tv_control(payload)); return
             if self.path == "/api/uploads": self.json(201, self.server.library.upload_create(payload)); return
             if self.path.startswith("/api/uploads/"):
                 self.json(200, self.server.library.upload_action(

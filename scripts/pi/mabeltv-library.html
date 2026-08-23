@@ -11,6 +11,7 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link rel="icon" type="image/png" href="/icons/icon-192.png">
   <title>Your TV</title>
+  <script src="/hls.min.js"></script>
   <style>
     :root{color-scheme:light;--ink:#18201d;--muted:#69716d;--faint:#8e9692;--canvas:#f3f4f1;--surface:#fff;--soft:#f7f8f5;--rail:#151b19;--rail2:#222b28;--line:#dfe3de;--accent:#ed6a4d;--accent2:#ce4f34;--accent-soft:#fff0eb;--green:#27735d;--green-soft:#e6f3ee;--amber:#a96811;--amber-soft:#fff4da;--red:#b74339;--red-soft:#fff0ee;--r:14px;--rs:9px;--shadow:0 1px 2px #121c180d,0 10px 28px #121c180f;--font:"Segoe UI Variable","Segoe UI",-apple-system,BlinkMacSystemFont,Arial,sans-serif}
     *{box-sizing:border-box}html{min-height:100%;background:var(--canvas);scroll-behavior:smooth}body{min-height:100%;margin:0;color:var(--ink);background:var(--canvas);font:15px/1.5 var(--font);-webkit-font-smoothing:antialiased}button,input,select{font:inherit}button,.button{touch-action:manipulation}button:focus-visible,.button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #ed6a4d52;outline-offset:2px}h1,h2,h3,p{margin-top:0}h1{margin-bottom:12px;font-size:clamp(2rem,4vw,3.35rem);font-weight:740;letter-spacing:-.045em;line-height:1.03}h2{margin-bottom:8px;font-size:clamp(1.25rem,2vw,1.65rem);font-weight:720;letter-spacing:-.025em;line-height:1.16}h3{margin-bottom:6px;font-size:1.04rem;font-weight:700}p{margin-bottom:14px}small,.small{font-size:.82rem}code{padding:2px 5px;border-radius:5px;background:#edf0ec;font:.9em ui-monospace,"Cascadia Code",monospace}.hidden{display:none!important}.muted{color:var(--muted)}.grow{flex:1}.row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.eyebrow{margin-bottom:8px;color:var(--accent2);font-size:.72rem;font-weight:760;letter-spacing:.12em;text-transform:uppercase}.section-kicker{margin:0;color:var(--muted);font-size:.86rem}.section-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:18px}.section-heading>div{max-width:680px}.section-heading p:last-child{margin-bottom:0}
@@ -24,12 +25,14 @@
     .upload-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(290px,.65fr);gap:18px;align-items:start}.upload-panel{padding:clamp(22px,4vw,36px)}.upload-form{display:grid;gap:18px}.drop-field{position:relative;min-height:190px;display:grid;place-items:center;border:1.5px dashed #aeb8b1;border-radius:12px;background:var(--soft);text-align:center;cursor:pointer}.drop-field:hover{border-color:var(--accent2);background:#fffaf8}.drop-field input{position:absolute;width:1px;height:1px;opacity:0}.drop-copy{padding:28px}.drop-icon{width:46px;height:46px;display:grid;margin:0 auto 14px;place-items:center;border-radius:50%;background:var(--accent-soft);color:var(--accent2)}.drop-copy strong{display:block;margin-bottom:4px;color:var(--ink);font-size:1rem}.drop-copy small{color:var(--muted);font-weight:450}#selectedFiles{display:grid;gap:6px}#selectedFiles .row{padding:7px 0;border-top:1px solid var(--line)}#uploadState{margin-top:14px}.upload-side{position:sticky;top:28px}.upload-side>section{padding:24px}.upload-side>section+section{margin-top:12px}#uploadJobs{display:grid;gap:9px;margin-top:15px}#uploadJobs .callout{padding:12px}.tip-list{margin:14px 0 0;padding:0;list-style:none}.tip-list li{padding:10px 0 10px 24px;border-top:1px solid var(--line);color:var(--muted);font-size:.84rem}.tip-list li:before{content:"✓";float:left;margin-left:-24px;color:var(--green);font-weight:760}
     .compact-details{margin-top:11px;border:1px solid var(--line);border-radius:var(--r);background:#fff}.compact-details summary{padding:17px 20px;cursor:pointer;font-weight:680}.compact-details[open] summary{border-bottom:1px solid var(--line)}.compact-details>form,.compact-details>p,.compact-details>div{margin-right:20px;margin-left:20px}.compact-details>form,.compact-details>div:last-child{margin-bottom:20px}.recycle-summary{display:flex;align-items:center;gap:9px}.count-badge{min-width:25px;display:inline-grid;height:23px;place-items:center;border-radius:99px;padding:0 7px;background:#ecefeb;color:var(--muted);font-size:.74rem}.field-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.field-grid .wide{grid-column:1/-1}.channel-workspace{display:grid;gap:14px}.workspace-back{justify-self:start;border:0!important;padding-left:3px!important;background:transparent!important;color:var(--accent2)!important}.workspace-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding-bottom:24px;border-bottom:1px solid var(--line)}.workspace-titleline{display:flex;align-items:center;gap:13px}.workspace-channel-number{min-width:50px;height:50px;display:grid;place-items:center;border-radius:12px;background:var(--rail);color:#fff;font-size:.78rem;font-weight:740}.workspace-head h1{margin:0;font-size:clamp(1.9rem,4vw,2.8rem)}.workspace-head p{margin:4px 0 0}.channel-facts{display:flex;gap:20px;margin-top:22px}.channel-fact{min-width:100px}.channel-fact strong{display:block;font-size:1.1rem}.channel-fact span{color:var(--muted);font-size:.75rem}.workspace-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(290px,.64fr);gap:14px;align-items:start}.workspace-main,.workspace-side>section{padding:24px}.workspace-side{position:sticky;top:24px}.library-toolbar{display:grid;grid-template-columns:minmax(190px,1fr) minmax(160px,.45fr);gap:10px;margin:18px 0 12px}.programme-list{border-top:1px solid var(--line)}.programme{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:68px;padding:11px 3px;border-bottom:1px solid var(--line)}.programme.is-hidden{opacity:.56}.programme-main{min-width:0;display:flex;align-items:center;gap:11px}.programme-index{min-width:48px;display:inline-flex;height:32px;align-items:center;justify-content:center;border-radius:7px;background:#eef1ed;color:var(--muted);font:650 .72rem ui-monospace,"Cascadia Code",monospace}.programme-copy{min-width:0}.programme-copy strong{display:block;overflow-wrap:anywhere}.programme-copy small{color:var(--muted)}.programme-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}.programme-actions button{min-height:34px;padding:6px 9px;font-size:.76rem}.pager{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px}.pager button{min-height:36px;padding:6px 10px}.zero-state,.empty{padding:42px 20px;border:1px dashed #cbd1cc;border-radius:11px;background:var(--soft);color:var(--muted);text-align:center}.zero-state strong,.empty strong{display:block;margin-bottom:5px;color:var(--ink)}
     .settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;align-items:start}.settings-section{padding:24px}.settings-section.full{grid-column:1/-1}.design-picker{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:20px}.design-option{min-height:154px;display:block;border:2px solid var(--line);padding:12px;background:#fff;color:var(--ink);text-align:left}.design-option:hover{border-color:#abb4ae;background:var(--soft)}.design-option[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 3px #ed6a4d1f}.design-preview{height:82px;display:flex;align-items:center;gap:8px;margin-bottom:11px;border-radius:8px;padding:10px;overflow:hidden}.design-preview.classic{background:#0b130d;color:#a6d49d;font:700 10px/1.25 ui-monospace,monospace}.design-preview.modern{background:#f3f4f1;color:#18201d}.design-preview .mini-rail{width:25%;height:100%;border-radius:5px;background:#151b19}.design-preview .mini-page{flex:1;height:100%;display:grid;gap:6px}.design-preview .mini-line{height:8px;border-radius:5px;background:currentColor;opacity:.7}.design-preview.modern .mini-line:first-child{width:70%;background:var(--accent);opacity:1}.design-copy strong{display:block;margin-bottom:2px}.design-copy small{display:block;color:var(--muted);font-weight:450}.definition{display:grid;grid-template-columns:1fr auto;margin:18px 0 22px}.definition dt,.definition dd{margin:0;padding:9px 0;border-bottom:1px solid var(--line)}.definition dt{color:var(--muted)}.definition dd{font-weight:650;text-align:right}.settings-section form{display:grid;gap:13px;margin-top:18px}details.help{border-top:1px solid var(--line)}details.help summary{padding:14px 0;cursor:pointer;font-weight:650}details.help p{padding:0 0 14px;color:var(--muted)}.danger-zone{border-color:#e8c3be}footer{margin-top:34px;color:var(--faint);font-size:.76rem;text-align:center}
-    @media(max-width:940px){.rail{width:210px}.app-main{margin-left:210px}.page{width:min(100% - 38px,1120px);padding-top:36px}.home-intro,.upload-layout,.workspace-layout{grid-template-columns:1fr}.home-greeting{min-height:240px}.upload-side,.workspace-side{position:static}.channel-setup-fields{grid-template-columns:1fr 1fr}}
+    .live-layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(290px,.55fr);gap:18px;align-items:start}.live-tv{position:relative;overflow:hidden;border:12px solid #161d1a;border-radius:28px;padding:10px;background:linear-gradient(145deg,#38433d,#0c100e 68%);box-shadow:0 24px 54px #14211b35}.live-screen{position:relative;aspect-ratio:16/9;overflow:hidden;border:3px solid #050706;border-radius:16px;background:#070b09;box-shadow:inset 0 0 38px #000}.live-screen video{width:100%;height:100%;display:block;object-fit:contain;background:#050706}.live-screen:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,#ffffff0b,transparent 16%,transparent 82%,#00000024);mix-blend-mode:screen}.live-off{position:absolute;inset:0;display:grid;place-content:center;gap:8px;padding:30px;color:#dce4de;text-align:center;background:radial-gradient(circle at 50% 40%,#29342f,#080c0a 67%)}.live-off strong{font-size:1.2rem}.live-led{position:absolute;right:17px;bottom:16px;width:9px;height:9px;border-radius:50%;background:#57bc92;box-shadow:0 0 0 4px #57bc9230}.live-led.off{background:#59615c;box-shadow:none}.live-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:15px 7px 1px;color:#dce4de}.live-meta strong{display:block;font-size:1.04rem}.live-meta small{color:#9ba7a0}.live-side{display:grid;gap:13px}.live-side>section{padding:22px}.live-now{display:grid;gap:4px;margin-top:15px;padding:15px;border:1px solid var(--line);border-radius:var(--rs);background:var(--soft)}.live-now strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.remote-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:15px}.remote-grid button{min-height:52px;padding:8px;font-size:.9rem}.remote-grid .wide{grid-column:span 3}.live-note{margin:15px 0 0;color:var(--muted);font-size:.82rem}
+    @media(max-width:940px){.rail{width:210px}.app-main{margin-left:210px}.page{width:min(100% - 38px,1120px);padding-top:36px}.home-intro,.upload-layout,.workspace-layout,.live-layout{grid-template-columns:1fr}.home-greeting{min-height:240px}.upload-side,.workspace-side{position:static}.channel-setup-fields{grid-template-columns:1fr 1fr}}
     @media(max-width:720px){body{padding-bottom:calc(72px + env(safe-area-inset-bottom))}input,select{font-size:16px}h1{font-size:2.15rem}.auth-shell{display:block}.auth-brand{min-height:210px;padding:28px 24px}.auth-brand h2{max-width:320px;margin-top:28px;font-size:2.45rem}.auth-brand p,.auth-foot{display:none}.auth-panel{min-height:auto;padding:32px 22px 50px}.setup-step{min-height:0}.channel-setup-fields,.field-grid{grid-template-columns:1fr}.field-grid .wide{grid-column:auto}.rail{position:fixed;inset:auto 0 0;width:auto;height:calc(68px + env(safe-area-inset-bottom));display:block;padding:7px 8px env(safe-area-inset-bottom);border-top:1px solid var(--line);background:#fffffff7;color:var(--ink);backdrop-filter:blur(16px)}.rail-head,.rail-foot{display:none}nav{grid-template-columns:repeat(4,1fr);gap:2px}nav button{min-height:54px;flex-direction:column;justify-content:center;gap:2px;padding:4px 2px;border-radius:8px;color:var(--muted);font-size:.68rem}nav button:hover{background:var(--soft);color:var(--ink)}nav button.active{background:var(--accent-soft);color:var(--accent2)}nav button .icon{width:21px;height:21px}.nav-dot{display:none}.app-main{margin-left:0}.mobile-head{position:sticky;z-index:15;top:0;display:flex;height:58px;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid var(--line);background:#f3f4f1f0;backdrop-filter:blur(14px)}.mobile-head .logo{font-size:.9rem}.mobile-head .logo-mark{width:29px;height:24px}.mobile-head button{min-height:34px;margin-left:auto;padding:5px 10px}.page{width:min(100% - 28px,1120px);padding:25px 0 32px}.page-head{align-items:flex-start;flex-direction:column;gap:16px;margin-bottom:24px}.page-head button{width:100%}.notice{top:68px;right:14px;left:14px;max-width:none}.home-intro{gap:11px;margin-bottom:18px}.home-greeting{min-height:260px;padding:25px 22px}.home-greeting h1{font-size:2.35rem}.home-status{padding:21px}.library-bar{margin-bottom:20px}.library-stat{padding:15px 12px}.library-stat strong{font-size:1.25rem}.channel-grid{grid-template-columns:1fr}.channel-card{min-height:162px}.section-heading{align-items:stretch;flex-direction:column;gap:13px}.section-heading button{width:100%}.upload-panel{padding:21px 17px}.drop-field{min-height:160px}.workspace-head{flex-direction:column}.workspace-head .row,.workspace-head .row button{width:100%}.channel-facts{gap:12px}.channel-fact{min-width:0;flex:1}.workspace-main,.workspace-side>section{padding:19px 16px}.library-toolbar{grid-template-columns:1fr}.programme{align-items:flex-start;flex-direction:column}.programme-actions{width:100%;justify-content:flex-start;padding-left:59px}.settings-grid,.design-picker{grid-template-columns:1fr}.settings-section.full{grid-column:auto}.definition{grid-template-columns:1fr}.definition dt{padding-bottom:0;border:0}.definition dd{padding-top:1px;text-align:left}.pager{align-items:flex-start;flex-direction:column}}
     .feature-control{display:flex;align-items:center;justify-content:space-between;gap:28px;margin-top:20px;padding:18px;border:1px solid var(--line);border-radius:12px;background:var(--soft)}.feature-control>div{max-width:720px}.feature-control strong{display:block;margin-bottom:5px}.feature-control p{margin:0}.combo{display:flex;gap:6px;flex-wrap:wrap;margin-top:13px}.combo span{display:inline-flex;min-height:29px;align-items:center;border:1px solid #cfd5d0;border-radius:7px;padding:3px 9px;background:#fff;color:#3f4945;font-size:.76rem;font-weight:700}.feature-toggle{min-width:126px}.feature-toggle[aria-pressed="true"]{border-color:var(--green);background:var(--green);color:#fff}
     @media(max-width:720px){.feature-control{display:grid;gap:18px}.feature-toggle{width:100%}}
     @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
-  </style>
+    @media(max-width:720px){nav{grid-template-columns:repeat(5,1fr)}}
+</style>
 </head>
 <body>
   <section id="setup" class="auth-shell hidden" aria-labelledby="setupTitle">
@@ -55,6 +58,7 @@
       <div class="rail-head"><div class="logo"><span class="logo-mark"></span><span data-tv-name>Your TV</span></div><p class="rail-tv">Controlling<strong id="topTvName">Your TV</strong></p></div>
       <nav id="mainNav" aria-label="TV sections">
         <button class="active" data-view-button="overview" aria-current="page"><svg class="icon" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5V20H4Z"/><path d="M9 20v-6h6v6"/></svg>Home<span class="nav-dot"></span></button>
+        <button data-view-button="live"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3Z"/></svg>Live TV<span class="nav-dot"></span></button>
         <button data-view-button="add"><svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add videos<span class="nav-dot"></span></button>
         <button data-view-button="channels"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="m9 9 6 3-6 3Z"/></svg>Library<span class="nav-dot"></span></button>
         <button data-view-button="system"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.5 1A7 7 0 0 0 14.3 5L14 2h-4l-.4 3A7 7 0 0 0 7.5 7L5 6 3 9.3l2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.5-1a7 7 0 0 0 2.1 1.9l.4 3h4l.4-3a7 7 0 0 0 2.1-1.9l2.5 1 2-3.4-2-1.5c0-.4.1-.8.1-1.2Z"/></svg>Settings<span class="nav-dot"></span></button>
@@ -73,6 +77,11 @@
         <section class="library-bar surface" aria-label="Library summary"><div id="librarySummary"></div></section>
         <section><div class="section-heading"><div><p class="eyebrow">On the television</p><h2>Your channels</h2><p class="muted">Open a channel to see its programmes and decide exactly what shows up on TV.</p></div><button type="button" class="secondary" data-go="channels">Open full library</button></div><div id="overviewChannels" class="channel-grid"></div></section>
         <footer><span data-tv-name>Your TV</span> <span data-version></span> · Local to your home network</footer>
+      </div></section>
+      <section id="view-live" class="view"><div class="page">
+        <header class="page-head"><div><p class="eyebrow">Live TV</p><h1>What’s on <span data-tv-name>your TV</span></h1><p>A live, low-latency mirror of the programme on the television. Portal sound stays muted so it never echoes the room.</p></div></header>
+        <div class="live-layout"><section class="live-tv" aria-label="Live television preview"><div class="live-screen"><video id="liveVideo" muted autoplay playsinline preload="none"></video><div id="liveOff" class="live-off"><strong id="liveOffTitle">Connecting to the TV…</strong><span id="liveOffText">Preparing the live picture</span></div></div><span id="liveLed" class="live-led off"></span><div class="live-meta"><div><strong id="liveProgramme">Waiting for MabelTV</strong><small id="liveChannel">Live preview</small></div><small id="liveState">Checking…</small></div></section><aside class="live-side"><section class="surface"><p class="section-kicker">Now on TV</p><h2 id="liveNowTitle">Checking…</h2><div class="live-now"><strong id="liveNowProgramme">Waiting for the player</strong><span id="liveNowDetail" class="small muted">The preview starts as soon as the TV is playing.</span></div><p class="live-note">The preview is intentionally a few seconds behind the television to keep playback smooth on the Pi.</p></section><section class="surface"><p class="section-kicker">Remote control</p><h2>Control the TV</h2><div class="remote-grid"><button type="button" class="secondary" data-live-command="previous-programme">◀ Previous</button><button type="button" class="secondary" data-live-command="toggle-pause">⏯ Pause</button><button type="button" class="secondary" data-live-command="next-programme">Next ▶</button><button type="button" class="secondary" data-live-command="channel-down">CH −</button><button type="button" class="secondary" data-live-command="toggle-power">Power</button><button type="button" class="secondary" data-live-command="channel-up">CH +</button><button type="button" class="secondary" data-live-command="volume-down">VOL −</button><button type="button" class="secondary" data-live-command="toggle-mute">Mute</button><button type="button" class="secondary" data-live-command="volume-up">VOL +</button></div></section></aside></div>
+        <footer><span data-tv-name>Your TV</span> · Live preview stays on your home network</footer>
       </div></section>
       <section id="view-add" class="view"><div class="page">
         <header class="page-head"><div><p class="eyebrow">Add videos</p><h1>Choose it. Send it. Done.</h1><p>Pick a channel, choose one or more videos, and <span data-tv-name>your TV</span> will take care of the rest.</p></div></header>
@@ -123,6 +132,7 @@
     let recoveringOwner = false
     let configuredTvName = 'Your TV'
     let noticeTimer = null
+    let liveRefreshTimer = null
 
     async function api(path, options = {}) {
       const response = await fetch(path, {
@@ -349,6 +359,77 @@
         else button.removeAttribute('aria-current')
       })
       window.scrollTo({ top: 0, behavior: 'smooth' })
+      if (name === 'live') startLiveTv()
+      else stopLiveTv()
+    }
+
+    function setLiveSource() {
+      const video = $('#liveVideo')
+      if (window.liveHls) {
+        window.liveHls.destroy()
+        window.liveHls = null
+      }
+      video.pause()
+      video.removeAttribute('src')
+      video.load()
+      const source = '/api/live/stream.m3u8'
+      if (window.Hls && Hls.isSupported()) {
+        window.liveHls = new Hls({ liveSyncDurationCount: 3, maxLiveSyncPlaybackRate: 1.15 })
+        window.liveHls.loadSource(source)
+        window.liveHls.attachMedia(video)
+        window.liveHls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}))
+      } else {
+        video.src = source
+        video.load()
+        video.play().catch(() => {})
+      }
+    }
+
+    function renderLiveTv(state) {
+      const available = state.available === true
+      $('#liveOff').classList.toggle('hidden', available)
+      $('#liveLed').classList.toggle('off', !available)
+      $('#liveOffTitle').textContent = available ? '' : (state.reason || 'The TV is off')
+      $('#liveOffText').textContent = available ? '' : 'Turn on the television to start the live preview.'
+      $('#liveProgramme').textContent = available ? state.programme : 'Waiting for MabelTV'
+      $('#liveChannel').textContent = available ? `CH ${state.channel_number} · ${state.channel_name}` : 'Live preview'
+      $('#liveNowTitle').textContent = available ? state.channel_name : 'TV is off'
+      $('#liveNowProgramme').textContent = available ? state.programme : 'No programme is playing'
+      $('#liveNowDetail').textContent = available
+        ? `${state.paused ? 'Paused' : 'Playing'} · ${state.muted ? 'Muted' : `Volume ${state.volume}`}`
+        : (state.reason || 'Turn on the TV to begin.')
+      $('#liveState').textContent = available ? (state.paused ? 'Paused' : 'Live') : 'Offline'
+    }
+
+    async function refreshLiveTv(restartStream = false) {
+      try {
+        const state = await api('/api/live')
+        renderLiveTv(state)
+        if (state.available && (restartStream || !$('#liveVideo').src)) setLiveSource()
+      } catch (error) {
+        renderLiveTv({ available: false, reason: error.message })
+      }
+    }
+
+    function startLiveTv() {
+      if (liveRefreshTimer) return
+      refreshLiveTv(true)
+      liveRefreshTimer = setInterval(() => refreshLiveTv(), 2500)
+    }
+
+    function stopLiveTv() {
+      if (!liveRefreshTimer) return
+      clearInterval(liveRefreshTimer)
+      liveRefreshTimer = null
+      const video = $('#liveVideo')
+      video.pause()
+      video.removeAttribute('src')
+      video.load()
+      if (window.liveHls) {
+        window.liveHls.destroy()
+        window.liveHls = null
+      }
+      api('/api/live/stop', { method: 'POST', body: '{}' }).catch(() => {})
     }
     $$('[data-view-button]').forEach(button => button.onclick = () => {
       if (button.dataset.viewButton === 'channels') showChannelHub()
@@ -877,6 +958,15 @@
     $('#restartPlayer').onclick = () => { if (confirm('Restart the TV player now? The picture will disappear briefly.')) systemAction('restart-player', 'Restarting the TV player…') }
     $('#rebootPi').onclick = () => { if (confirm(`Restart the Raspberry Pi now? ${tvName()} will be unavailable for about a minute.`)) systemAction('reboot', 'Restarting the Raspberry Pi…') }
     $('#poweroffPi').onclick = () => { if (confirm('Shut down the Raspberry Pi now? You will need to switch its power back on afterwards.')) systemAction('poweroff', 'Shutting down safely…') }
+    $$('[data-live-command]').forEach(button => button.onclick = async () => {
+      const controls = $$('[data-live-command]')
+      controls.forEach(control => control.disabled = true)
+      try {
+        await api('/api/live/control', { method: 'POST', body: JSON.stringify({ command: button.dataset.liveCommand }) })
+        setTimeout(() => refreshLiveTv(true), 700)
+      } catch (error) { notice(error.message, true) }
+      finally { setTimeout(() => controls.forEach(control => control.disabled = false), 450) }
+    })
     $('#portalPinForm').onsubmit = async event => {
       event.preventDefault()
       const required = library?.owner?.portal_pin_required !== false

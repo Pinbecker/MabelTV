@@ -36,14 +36,14 @@ try {
     }
 
     $needsPlayerBuild = $All -or ($changed | Where-Object { $_ -match '^(CMakeLists\.txt|src/|qml/|shaders/)' })
-    $needsLibraryRestart = $All -or ($changed | Where-Object { $_ -match '^scripts/pi/(mabeltv-library\.(py|html)|mabeltv-manifest\.json|mabeltv-icon\.png|apple-touch-icon\.png|icons/)' })
+    $needsLibraryRestart = $All -or ($changed | Where-Object { $_ -match '^(scripts/pi/(mabeltv-library\.(py|html)|hls\.min\.js|mabeltv-manifest\.json|mabeltv-icon\.png|apple-touch-icon\.png|icons/)|packaging/linux/mabeltv-library\.service$)' })
 
     if ($needsPlayerBuild) {
         ssh $PiHost "cmake -S '$PiSourceRoot' -B '$PiSourceRoot/out/dev-pi' -G Ninja -DMABELTV_PI_APPLIANCE=ON && cmake --build '$PiSourceRoot/out/dev-pi' --parallel 1 && sudo install -m 0755 '$PiSourceRoot/out/dev-pi/mabeltv' /opt/mabeltv/current/mabeltv && sudo systemctl restart mabeltv.service"
         if ($LASTEXITCODE) { throw 'The incremental MabelTV player build or restart failed on the Pi.' }
     }
     if ($needsLibraryRestart) {
-        ssh $PiHost "sudo install -m 0755 '$PiSourceRoot/scripts/pi/mabeltv-library.py' /opt/mabeltv/current/mabeltv-library && sudo install -m 0644 '$PiSourceRoot/scripts/pi/mabeltv-library.html' /opt/mabeltv/current/mabeltv-library.html && sudo install -m 0644 '$PiSourceRoot/scripts/pi/mabeltv-icon.png' /opt/mabeltv/current/mabeltv-icon.png && sudo install -m 0644 '$PiSourceRoot/scripts/pi/apple-touch-icon.png' /opt/mabeltv/current/apple-touch-icon.png && sudo install -m 0644 '$PiSourceRoot/scripts/pi/mabeltv-manifest.json' /opt/mabeltv/current/mabeltv-manifest.json && sudo install -d -m 0755 /opt/mabeltv/current/icons && sudo install -m 0644 '$PiSourceRoot/scripts/pi/icons/icon-192.png' /opt/mabeltv/current/icons/icon-192.png && sudo install -m 0644 '$PiSourceRoot/scripts/pi/icons/icon-512.png' /opt/mabeltv/current/icons/icon-512.png && sudo systemctl restart mabeltv-library.service"
+        ssh $PiHost "sudo install -m 0755 '$PiSourceRoot/scripts/pi/mabeltv-library.py' /opt/mabeltv/current/mabeltv-library && sudo install -m 0644 '$PiSourceRoot/scripts/pi/mabeltv-library.html' /opt/mabeltv/current/mabeltv-library.html && sudo install -m 0644 '$PiSourceRoot/scripts/pi/hls.min.js' /opt/mabeltv/current/hls.min.js && sudo install -m 0644 '$PiSourceRoot/scripts/pi/mabeltv-icon.png' /opt/mabeltv/current/mabeltv-icon.png && sudo install -m 0644 '$PiSourceRoot/scripts/pi/apple-touch-icon.png' /opt/mabeltv/current/apple-touch-icon.png && sudo install -m 0644 '$PiSourceRoot/scripts/pi/mabeltv-manifest.json' /opt/mabeltv/current/mabeltv-manifest.json && sudo install -d -m 0755 /opt/mabeltv/current/icons && sudo install -m 0644 '$PiSourceRoot/scripts/pi/icons/icon-192.png' /opt/mabeltv/current/icons/icon-192.png && sudo install -m 0644 '$PiSourceRoot/scripts/pi/icons/icon-512.png' /opt/mabeltv/current/icons/icon-512.png && sudo install -m 0644 '$PiSourceRoot/packaging/linux/mabeltv-library.service' /etc/systemd/system/mabeltv-library.service && sudo systemctl daemon-reload && sudo systemctl restart mabeltv-library.service"
         if ($LASTEXITCODE) { throw 'The MabelTV Library update or restart failed on the Pi.' }
     }
     ssh $PiHost 'systemctl is-active mabeltv.service mabeltv-library.service'

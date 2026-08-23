@@ -1351,6 +1351,8 @@ void TvController::saveState() const
         {QStringLiteral("volume"), m_volume},
         {QStringLiteral("muted"), m_muted},
         {QStringLiteral("remote_locked"), m_remoteLocked},
+        {QStringLiteral("standby"), m_standby},
+        {QStringLiteral("playback_paused"), m_playbackPaused},
     };
 
     QJsonObject timelines;
