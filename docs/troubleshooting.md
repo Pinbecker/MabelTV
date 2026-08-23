@@ -122,8 +122,9 @@ vcgencmd measure_temp
 vcgencmd get_throttled
 ```
 
-Use H.264/AAC content at 720p and 30fps, select 720p display output, use the
-official-quality power supply, and ensure the Pi has airflow. Upload conversions
+Use H.264/AAC content at 720p and 30fps, use the official-quality power supply,
+and ensure the Pi has airflow. HDMI output follows the connected display's
+preferred mode automatically. Upload conversions
 pause at 78C and resume at 72C. The CRT shader is skipped only when both CRT
 controls are fully off; otherwise the complete visual treatment remains active.
 Software fallback is intentional when a codec cannot be decoded safely in

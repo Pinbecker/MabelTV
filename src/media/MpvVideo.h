@@ -15,6 +15,8 @@ class MpvVideo : public QQuickFramebufferObject
     Q_PROPERTY(QUrl source READ source WRITE setSource NOTIFY sourceChanged)
     Q_PROPERTY(QString status READ status NOTIFY statusChanged)
     Q_PROPERTY(bool paused READ paused NOTIFY pausedChanged)
+    Q_PROPERTY(double playbackPosition READ positionSeconds NOTIFY playbackPositionChanged)
+    Q_PROPERTY(double playbackDuration READ durationSeconds NOTIFY playbackDurationChanged)
     Q_PROPERTY(int volume READ volume WRITE setVolume NOTIFY volumeChanged)
     Q_PROPERTY(bool muted READ muted WRITE setMuted NOTIFY mutedChanged)
     Q_PROPERTY(QString aspectMode READ aspectMode WRITE setAspectMode NOTIFY aspectModeChanged)
@@ -51,6 +53,8 @@ signals:
     void sourceChanged();
     void statusChanged();
     void pausedChanged();
+    void playbackPositionChanged();
+    void playbackDurationChanged();
     void volumeChanged();
     void mutedChanged();
     void aspectModeChanged();
@@ -67,7 +71,12 @@ private:
     friend class MpvRenderer;
 
     static void wakeup(void *context);
+    void beginPlay(const QUrl &source, double startPositionSeconds);
+    void finishPendingStop();
     void loadCurrentSource();
+    void resetPlaybackTelemetry(double positionSeconds = 0.0);
+    void setPlaybackPosition(double positionSeconds);
+    void setPlaybackDuration(double durationSeconds);
     void setStatus(QString status);
     void reportFatalFailure(const QString &message);
 
@@ -79,4 +88,11 @@ private:
     bool m_muted = false;
     QString m_aspectMode = QStringLiteral("crop");
     double m_pendingStartPosition = 0.0;
+    double m_playbackPosition = 0.0;
+    double m_playbackDuration = 0.0;
+    bool m_fileActive = false;
+    bool m_stopPending = false;
+    bool m_hasQueuedPlay = false;
+    QUrl m_queuedSource;
+    double m_queuedStartPosition = 0.0;
 };

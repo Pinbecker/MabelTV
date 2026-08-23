@@ -39,24 +39,10 @@ if [[ -z "${MABELTV_HWDEC:-}" ]]; then
     fi
 fi
 
-display_mode="$(python3 - "$settings_path" <<'PY'
-import json
-import sys
-
-try:
-    with open(sys.argv[1], "r", encoding="utf-8") as settings_file:
-        value = json.load(settings_file).get("display_resolution", "720p")
-except (OSError, ValueError, TypeError):
-    value = "720p"
-print(value if value in {"720p", "1080p", "native"} else "720p")
-PY
-)"
-
-case "$display_mode" in
-    1080p) kms_mode="1920x1080@60" ;;
-    native) kms_mode="preferred" ;;
-    *) kms_mode="1280x720@60" ;;
-esac
+# Prepared video is capped at 720p when needed, but HDMI output is separate.
+# Use the screen's preferred EDID mode so the interface stays crisp while the
+# television and Qt/KMS scale 720p programmes normally.
+kms_mode="preferred"
 
 mkdir -p "$runtime_dir"
 if command -v qrencode >/dev/null 2>&1; then

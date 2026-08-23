@@ -162,10 +162,55 @@ Window {
     // socket owned by the player service. They intentionally reuse the same
     // paths as the physical remote, so locks, standby and channel rules stay
     // identical whichever remote is used.
+    function portalNavigate(key) {
+        if (adultMode.active) {
+            adultMode.handleKey(key, false)
+        } else if (guideOverlay.visible) {
+            guideOverlay.handleKey(key)
+        } else if (parentOverlay.visible) {
+            parentOverlay.handleKey(key, Qt.NoModifier)
+        } else if (key === Qt.Key_Up) {
+            syncPlaybackPosition()
+            tvController.dispatch(TvController.PreviousProgramme)
+        } else if (key === Qt.Key_Down) {
+            syncPlaybackPosition()
+            tvController.dispatch(TvController.NextProgramme)
+        } else if (key === Qt.Key_Left && tvController.scrubbingEnabled && !directMediaMode) {
+            scrubPlayback(-15)
+        } else if (key === Qt.Key_Right && tvController.scrubbingEnabled && !directMediaMode) {
+            scrubPlayback(15)
+        } else if (key === Qt.Key_Return && !directMediaMode) {
+            togglePlaybackPause()
+        }
+    }
+
     function portalCommand(command) {
         if (tvController.remoteLocked)
             return
-        if (command === "enter-adult-mode") {
+        if (command === "open-parent-menu") {
+            if (adultMode.active)
+                adultMode.close()
+            guideOverlay.close()
+            if (tvController.parentAccessState === TvController.ParentClosed)
+                tvController.requestParentAccess()
+            while (tvController.parentAccessState === TvController.ParentConfirmation)
+                tvController.parentConfirm()
+        } else if (command === "open-tv-guide") {
+            if (adultMode.active)
+                adultMode.close()
+            tvController.closeParent()
+            guideOverlay.open()
+        } else if (command === "close-overlay") {
+            if (adultMode.active)
+                adultMode.close()
+            else if (guideOverlay.visible)
+                guideOverlay.close()
+            else
+                tvController.closeParent()
+        } else if (command === "restart-programme") {
+            syncPlaybackPosition()
+            tvController.restartCurrentProgramme()
+        } else if (command === "enter-adult-mode") {
             if (!adultMode.active) {
                 guideOverlay.close()
                 enterAdultMode()
@@ -192,6 +237,16 @@ Window {
             tvController.dispatch(TvController.ToggleMute)
         } else if (command === "toggle-power") {
             beginPowerOff(false)
+        } else if (command === "navigate-up") {
+            portalNavigate(Qt.Key_Up)
+        } else if (command === "navigate-down") {
+            portalNavigate(Qt.Key_Down)
+        } else if (command === "navigate-left") {
+            portalNavigate(Qt.Key_Left)
+        } else if (command === "navigate-right") {
+            portalNavigate(Qt.Key_Right)
+        } else if (command === "select") {
+            portalNavigate(Qt.Key_Return)
         }
     }
 
@@ -1361,6 +1416,12 @@ Window {
                 event.accepted = true
             } else if (parentOverlay.visible) {
                 event.accepted = parentOverlay.handleKey(event.key, event.modifiers)
+            } else if (Qt.platform.os === "windows"
+                       && event.key === Qt.Key_G
+                       && (event.modifiers & Qt.ControlModifier) !== 0
+                       && tvController.tvGuideEnabled && !directMediaMode) {
+                guideOverlay.open()
+                event.accepted = true
             } else if (event.key === Qt.Key_P
                        && (event.modifiers & Qt.ControlModifier) !== 0) {
                 tvController.requestParentAccess()

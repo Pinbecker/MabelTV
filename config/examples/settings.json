@@ -1,7 +1,6 @@
 {
     "crt_glass": 35,
     "default_aspect": "crop",
-    "display_resolution": "720p",
     "episode_reset_minutes": 0,
     "library": {
         "disabled_channels": [],

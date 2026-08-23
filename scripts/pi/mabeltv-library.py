@@ -1313,7 +1313,9 @@ class Library:
         command = str(payload.get("command", ""))
         allowed = {"channel-up", "channel-down", "previous-programme", "next-programme",
                    "toggle-pause", "volume-up", "volume-down", "toggle-mute", "toggle-power",
-                   "enter-adult-mode"}
+                   "open-parent-menu", "open-tv-guide", "close-overlay", "restart-programme",
+                   "enter-adult-mode", "navigate-up", "navigate-down", "navigate-left",
+                   "navigate-right", "select"}
         if command not in allowed:
             raise ValueError("Unknown live TV control")
         try:

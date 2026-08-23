@@ -8,16 +8,85 @@ Item {
     required property var controller
     property var rows: []
     property int selectedRow: 0
+    property int selectedProgramme: 0
+    property int windowStartMinutes: 0
+    property int nowMinutes: 0
     property string clockText: ""
-    readonly property bool classicStyle: controller.parentOverlayStyle === "classic"
+    property string dateText: ""
+    readonly property real uiScale: Math.max(0.66, Math.min(width / 1920, height / 1080))
+    readonly property int scheduleMinutes: 120
 
     visible: false
 
-    function refresh() {
-        rows = controller.guideSchedule()
+    function minutesForTime(value) {
+        const pieces = String(value).split(":")
+        if (pieces.length !== 2)
+            return 0
+        return Number(pieces[0]) * 60 + Number(pieces[1])
+    }
+
+    function displayTime(minutes) {
+        const wrapped = ((minutes % 1440) + 1440) % 1440
+        const hours = Math.floor(wrapped / 60)
+        const mins = wrapped % 60
+        return String(hours).padStart(2, "0") + ":" + String(mins).padStart(2, "0")
+    }
+
+    function programmeOffset(start) {
+        let value = minutesForTime(start)
+        while (value < windowStartMinutes - 720)
+            value += 1440
+        while (value > windowStartMinutes + 720)
+            value -= 1440
+        return value - windowStartMinutes
+    }
+
+    function programmeDuration(start, end) {
+        let duration = minutesForTime(end) - minutesForTime(start)
+        if (duration <= 0)
+            duration += 1440
+        return Math.max(1, duration)
+    }
+
+    function selectedChannelData() {
+        if (rows.length === 0 || selectedRow < 0 || selectedRow >= rows.length)
+            return null
+        return rows[selectedRow]
+    }
+
+    function selectedProgrammeData() {
+        const channel = selectedChannelData()
+        if (!channel || !channel.programmes || channel.programmes.length === 0)
+            return null
+        const index = Math.max(0, Math.min(selectedProgramme,
+                                           channel.programmes.length - 1))
+        return channel.programmes[index]
+    }
+
+    function nowProgrammeIndex(channel) {
+        if (!channel || !channel.programmes)
+            return 0
+        const index = channel.programmes.findIndex(programme => programme.now)
+        return index >= 0 ? index : 0
+    }
+
+    function clampSelection() {
         selectedRow = rows.length === 0
                 ? 0 : Math.max(0, Math.min(selectedRow, rows.length - 1))
-        clockText = Qt.formatDateTime(new Date(), "ddd d MMM  HH:mm")
+        const channel = selectedChannelData()
+        const count = channel && channel.programmes ? channel.programmes.length : 0
+        selectedProgramme = count === 0
+                ? 0 : Math.max(0, Math.min(selectedProgramme, count - 1))
+    }
+
+    function refresh() {
+        rows = controller.guideSchedule()
+        const now = new Date()
+        nowMinutes = now.getHours() * 60 + now.getMinutes()
+        windowStartMinutes = Math.floor(nowMinutes / 30) * 30
+        clockText = Qt.formatDateTime(now, "HH:mm")
+        dateText = Qt.formatDateTime(now, "dddd d MMMM").toUpperCase()
+        clampSelection()
     }
 
     function open() {
@@ -26,6 +95,7 @@ Item {
         refresh()
         const current = rows.findIndex(row => row.current)
         selectedRow = current >= 0 ? current : 0
+        selectedProgramme = nowProgrammeIndex(selectedChannelData())
         visible = true
     }
 
@@ -37,11 +107,20 @@ Item {
         if (!visible)
             return false
         if (key === Qt.Key_Up || key === Qt.Key_PageUp) {
-            if (rows.length > 0)
+            if (rows.length > 0) {
                 selectedRow = (selectedRow + rows.length - 1) % rows.length
+                selectedProgramme = nowProgrammeIndex(selectedChannelData())
+            }
         } else if (key === Qt.Key_Down || key === Qt.Key_PageDown) {
-            if (rows.length > 0)
+            if (rows.length > 0) {
                 selectedRow = (selectedRow + 1) % rows.length
+                selectedProgramme = nowProgrammeIndex(selectedChannelData())
+            }
+        } else if (key === Qt.Key_Left || key === Qt.Key_Right) {
+            // Future programmes are schedule information only. Focus remains
+            // on the live "Now" programme so OK always has one clear meaning:
+            // tune to this channel and start its current programme.
+            selectedProgramme = nowProgrammeIndex(selectedChannelData())
         } else if (key === Qt.Key_Return || key === Qt.Key_Enter) {
             if (rows.length > 0) {
                 controller.tuneGuideChannel(rows[selectedRow].number)
@@ -70,157 +149,171 @@ Item {
         interval: 15000
         repeat: true
         running: guide.visible
-        triggeredOnStart: false
         onTriggered: guide.refresh()
     }
 
     Rectangle {
         anchors.fill: parent
-        visible: !guide.classicStyle
-        color: "#09110e"
-        opacity: 0.42
+        color: "#05070a"
+        opacity: 0.9
     }
 
     Rectangle {
-        id: guidePanel
-        visible: !guide.classicStyle
-        anchors.centerIn: parent
-        width: Math.min(parent.width - 72, 1520)
-        height: Math.min(parent.height - 58, 790)
-        radius: 24
-        color: "#f3efe7"
-        border.color: "#d7dcd6"
-        border.width: 1
-    }
-
-    Rectangle {
-        visible: !guide.classicStyle
-        anchors.left: guidePanel.left
-        anchors.right: guidePanel.right
-        anchors.top: guidePanel.top
-        height: 96
-        radius: guidePanel.radius
-        color: "#151b19"
-
-        Row {
-            anchors.left: parent.left
-            anchors.leftMargin: 34
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 17
-
-            Rectangle {
-                width: 50
-                height: 40
-                radius: 9
-                color: "transparent"
-                border.color: "#ffffff"
-                border.width: 2
-
-                Row {
-                    anchors.centerIn: parent
-                    spacing: 7
-                    Repeater {
-                        model: 2
-                        Rectangle {
-                            width: 5
-                            height: 16
-                            radius: 3
-                            color: "#ed6a4d"
-                        }
-                    }
-                }
-            }
-
-            Column {
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 1
-                Text {
-                    color: "#ffffff"
-                    font.family: "DejaVu Sans"
-                    font.bold: true
-                    font.pixelSize: 29
-                    text: "What's on"
-                }
-                Text {
-                    color: "#aeb8b4"
-                    font.family: "DejaVu Sans"
-                    font.pixelSize: 15
-                    text: "MabelTV programme guide"
-                }
-            }
-        }
-
-        Rectangle {
-            anchors.right: parent.right
-            anchors.rightMargin: 34
-            anchors.verticalCenter: parent.verticalCenter
-            width: guideClock.implicitWidth + 34
-            height: 46
-            radius: 23
-            color: "#26302d"
-
-            Text {
-                id: guideClock
-                anchors.centerIn: parent
-                color: "#ffffff"
-                font.family: "DejaVu Sans"
-                font.bold: true
-                font.pixelSize: 17
-                text: guide.clockText
-            }
+        anchors.fill: parent
+        gradient: Gradient {
+            GradientStop { position: 0; color: "#f20a0e13" }
+            GradientStop { position: 0.65; color: "#fa080b0f" }
+            GradientStop { position: 1; color: "#ff05070a" }
         }
     }
 
     Item {
-        visible: !guide.classicStyle
-        anchors.left: guidePanel.left
-        anchors.right: guidePanel.right
-        anchors.top: guidePanel.top
-        anchors.bottom: guidePanel.bottom
-        anchors.topMargin: 96
-        anchors.bottomMargin: 54
+        id: header
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        height: 116 * guide.uiScale
 
-        Rectangle {
+        Row {
             anchors.left: parent.left
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            width: 200
-            color: "#e9e8e2"
+            anchors.leftMargin: 48 * guide.uiScale
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 18 * guide.uiScale
+
+            Rectangle {
+                width: 48 * guide.uiScale
+                height: 38 * guide.uiScale
+                radius: 10 * guide.uiScale
+                color: "#ff6b57"
+
+                Text {
+                    anchors.centerIn: parent
+                    color: "#101318"
+                    font.family: "DejaVu Sans"
+                    font.bold: true
+                    font.pixelSize: 24 * guide.uiScale
+                    text: "M"
+                }
+            }
 
             Text {
-                anchors.left: parent.left
-                anchors.leftMargin: 32
-                anchors.top: parent.top
-                anchors.topMargin: 22
-                color: "#69716d"
+                anchors.verticalCenter: parent.verticalCenter
+                color: "#f8f5ef"
                 font.family: "DejaVu Sans"
                 font.bold: true
-                font.pixelSize: 13
-                text: "CHANNEL"
+                font.pixelSize: 30 * guide.uiScale
+                text: "MabelTV"
+            }
+
+            Rectangle {
+                anchors.verticalCenter: parent.verticalCenter
+                width: 1
+                height: 42 * guide.uiScale
+                color: "#56606a"
+            }
+
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                color: "#f8f5ef"
+                font.family: "DejaVu Sans"
+                font.bold: true
+                font.pixelSize: 34 * guide.uiScale
+                text: "TV GUIDE"
             }
         }
 
         Text {
-            anchors.left: parent.left
-            anchors.leftMargin: 224
-            anchors.top: parent.top
-            anchors.topMargin: 22
-            color: "#69716d"
+            anchors.centerIn: parent
+            color: "#d8d9d8"
             font.family: "DejaVu Sans"
-            font.bold: true
-            font.pixelSize: 13
-            text: "NOW AND NEXT"
+            font.pixelSize: 22 * guide.uiScale
+            text: guide.dateText
         }
 
-        ListView {
-            id: scheduleRows
+        Text {
+            anchors.right: parent.right
+            anchors.rightMargin: 52 * guide.uiScale
+            anchors.verticalCenter: parent.verticalCenter
+            color: "#f8f5ef"
+            font.family: "DejaVu Sans"
+            font.bold: true
+            font.pixelSize: 31 * guide.uiScale
+            text: guide.clockText
+        }
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.leftMargin: 44 * guide.uiScale
+            anchors.rightMargin: 44 * guide.uiScale
+            height: 1
+            color: "#424950"
+        }
+    }
+
+    Item {
+        id: scheduleArea
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: header.bottom
+        anchors.bottom: detailPanel.top
+        anchors.leftMargin: 44 * guide.uiScale
+        anchors.rightMargin: 44 * guide.uiScale
+
+        readonly property real channelWidth: 330 * guide.uiScale
+        readonly property real timelineWidth: width - channelWidth
+
+        Item {
+            id: timeRuler
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
+            height: 58 * guide.uiScale
+
+            Text {
+                anchors.left: parent.left
+                anchors.leftMargin: 24 * guide.uiScale
+                anchors.verticalCenter: parent.verticalCenter
+                color: "#808991"
+                font.family: "DejaVu Sans"
+                font.bold: true
+                font.pixelSize: 14 * guide.uiScale
+                text: "CHANNELS"
+            }
+
+            Repeater {
+                model: 4
+
+                Item {
+                    required property int index
+                    x: scheduleArea.channelWidth
+                       + index * scheduleArea.timelineWidth / 4
+                    width: scheduleArea.timelineWidth / 4
+                    height: timeRuler.height
+
+                    Text {
+                        anchors.left: parent.left
+                        anchors.leftMargin: 18 * guide.uiScale
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: "#d8d9d8"
+                        font.family: "DejaVu Sans"
+                        font.pixelSize: 19 * guide.uiScale
+                        text: guide.displayTime(guide.windowStartMinutes
+                                                + parent.index * 30)
+                    }
+                }
+            }
+        }
+
+        ListView {
+            id: channelRows
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: timeRuler.bottom
             anchors.bottom: parent.bottom
-            anchors.topMargin: 54
             clip: true
-            spacing: 7
+            spacing: 4 * guide.uiScale
             model: guide.rows
             currentIndex: guide.selectedRow
             boundsBehavior: Flickable.StopAtBounds
@@ -232,357 +325,315 @@ Item {
                 id: channelRow
                 required property var modelData
                 required property int index
-                width: scheduleRows.width
-                height: 92
+                width: channelRows.width
+                height: 112 * guide.uiScale
 
-                    Rectangle {
-                        anchors.fill: parent
-                        color: channelRow.index === guide.selectedRow ? "#fff0eb" : "transparent"
-                        border.color: channelRow.index === guide.selectedRow ? "#ed6a4d" : "transparent"
-                        border.width: 2
-                    }
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: scheduleArea.channelWidth - 4 * guide.uiScale
+                    color: channelRow.index === guide.selectedRow ? "#171c22" : "#101419"
+                    border.color: channelRow.index === guide.selectedRow ? "#ff6b57" : "#293038"
+                    border.width: channelRow.index === guide.selectedRow ? 2 : 1
 
                     Rectangle {
                         anchors.left: parent.left
-                        anchors.leftMargin: 22
+                        anchors.leftMargin: 18 * guide.uiScale
                         anchors.verticalCenter: parent.verticalCenter
-                        width: 54
-                        height: 42
-                        radius: 10
-                        color: channelRow.modelData.current ? "#ed6a4d" : "#151b19"
+                        width: 62 * guide.uiScale
+                        height: 62 * guide.uiScale
+                        radius: 10 * guide.uiScale
+                        color: channelRow.modelData.current ? "#ff6b57" : "#222931"
 
                         Text {
                             anchors.centerIn: parent
-                            color: "#ffffff"
+                            color: channelRow.modelData.current ? "#101318" : "#f8f5ef"
                             font.family: "DejaVu Sans"
                             font.bold: true
-                            font.pixelSize: 15
+                            font.pixelSize: 28 * guide.uiScale
                             text: channelRow.modelData.number
                         }
                     }
 
                     Column {
                         anchors.left: parent.left
-                        anchors.leftMargin: 88
-                        anchors.right: parent.left
-                        anchors.rightMargin: -188
+                        anchors.leftMargin: 98 * guide.uiScale
+                        anchors.right: parent.right
+                        anchors.rightMargin: 16 * guide.uiScale
                         anchors.verticalCenter: parent.verticalCenter
-                        spacing: 2
+                        spacing: 5 * guide.uiScale
+
                         Text {
                             width: parent.width
+                            color: "#f3f1ec"
                             elide: Text.ElideRight
-                            color: "#18201d"
                             font.family: "DejaVu Sans"
                             font.bold: true
-                            font.pixelSize: 17
+                            font.pixelSize: 20 * guide.uiScale
                             text: channelRow.modelData.name
                         }
+
                         Text {
-                            color: channelRow.modelData.current ? "#ce4f34" : "#69716d"
+                            color: channelRow.modelData.current ? "#ff8a78" : "#7f8992"
                             font.family: "DejaVu Sans"
-                            font.pixelSize: 12
-                            text: channelRow.modelData.current
-                                ? "YOU'RE WATCHING" : "CHANNEL " + channelRow.modelData.number
+                            font.bold: true
+                            font.pixelSize: 12 * guide.uiScale
+                            text: channelRow.modelData.current ? "YOU'RE WATCHING" : "CHANNEL " + channelRow.modelData.number
                         }
                     }
+                }
 
-                    Row {
-                        id: programmeSlots
-                        anchors.left: parent.left
-                        anchors.leftMargin: 200
-                        anchors.right: parent.right
-                        anchors.rightMargin: 24
-                        anchors.top: parent.top
-                        anchors.bottom: parent.bottom
-                        anchors.topMargin: 8
-                        anchors.bottomMargin: 8
-                        spacing: 8
+                Item {
+                    id: timelineRow
+                    anchors.left: parent.left
+                    anchors.leftMargin: scheduleArea.channelWidth
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    clip: true
 
-                        Repeater {
-                            model: channelRow.modelData.programmes
+                    Repeater {
+                        model: channelRow.modelData.programmes
 
-                            Rectangle {
-                                id: programmeCard
-                                required property var modelData
-                                required property int index
-                                width: (programmeSlots.width - programmeSlots.spacing * 3) / 4
-                                height: programmeSlots.height
-                                radius: 10
-                                color: programmeCard.index === 0 ? "#ffffff" : "#f8f8f5"
-                                border.color: programmeCard.index === 0 ? "#cfd5d0" : "#e1e4df"
+                        Rectangle {
+                            id: programmeCard
+                            required property var modelData
+                            required property int index
+                            readonly property bool selected: channelRow.index === guide.selectedRow
+                                    && index === guide.selectedProgramme
+                            x: guide.programmeOffset(modelData.start)
+                               * timelineRow.width / guide.scheduleMinutes
+                            width: Math.max(8 * guide.uiScale,
+                                            guide.programmeDuration(modelData.start, modelData.end)
+                                            * timelineRow.width / guide.scheduleMinutes - 4 * guide.uiScale)
+                            height: timelineRow.height
+                            color: selected ? "#1c2229"
+                                            : modelData.now ? "#171c22" : "#12171c"
+                            border.color: selected ? "#ff6b57" : "#303740"
+                            border.width: selected ? 3 : 1
 
-                                Column {
-                                    anchors.fill: parent
-                                    anchors.margins: 11
-                                    spacing: 3
-                                    Text {
-                                        color: programmeCard.index === 0 ? "#ce4f34" : "#69716d"
-                                        font.family: "DejaVu Sans"
-                                        font.bold: true
-                                        font.pixelSize: 11
-                                        text: programmeCard.index === 0
-                                            ? "NOW"
-                                            : programmeCard.modelData.start
-                                    }
-                                    Text {
-                                        width: parent.width
-                                        elide: Text.ElideRight
-                                        color: "#18201d"
-                                        font.family: "DejaVu Sans"
-                                        font.bold: programmeCard.index === 0
-                                        font.pixelSize: 14
-                                        text: programmeCard.modelData.name
-                                    }
+                            Column {
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.leftMargin: 18 * guide.uiScale
+                                anchors.rightMargin: 14 * guide.uiScale
+                                spacing: 5 * guide.uiScale
+
+                                Text {
+                                    color: programmeCard.selected ? "#ff8a78" : "#82909a"
+                                    font.family: "DejaVu Sans"
+                                    font.bold: true
+                                    font.pixelSize: 12 * guide.uiScale
+                                    text: programmeCard.modelData.now ? "NOW" : programmeCard.modelData.start
                                 }
 
+                                Text {
+                                    width: parent.width
+                                    color: "#f4f1ec"
+                                    elide: Text.ElideRight
+                                    font.family: "DejaVu Sans"
+                                    font.bold: programmeCard.selected
+                                    font.pixelSize: 18 * guide.uiScale
+                                    text: programmeCard.modelData.name
+                                }
+                            }
+
+                            Rectangle {
+                                visible: programmeCard.modelData.now
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.bottom: parent.bottom
+                                anchors.leftMargin: 16 * guide.uiScale
+                                anchors.rightMargin: 16 * guide.uiScale
+                                anchors.bottomMargin: 9 * guide.uiScale
+                                height: 3 * guide.uiScale
+                                radius: height / 2
+                                color: "#394149"
+
                                 Rectangle {
-                                    visible: programmeCard.index === 0
-                                    anchors.left: parent.left
-                                    anchors.right: parent.right
-                                    anchors.bottom: parent.bottom
-                                    anchors.leftMargin: 11
-                                    anchors.rightMargin: 11
-                                    anchors.bottomMargin: 7
-                                    height: 3
-                                    radius: 2
-                                    color: "#e2e5e1"
-                                    Rectangle {
-                                        width: parent.width * programmeCard.modelData.progress
-                                        height: parent.height
-                                        radius: parent.radius
-                                        color: "#ed6a4d"
-                                    }
+                                    width: parent.width * programmeCard.modelData.progress
+                                    height: parent.height
+                                    radius: parent.radius
+                                    color: "#ff6b57"
                                 }
                             }
                         }
                     }
+                }
+            }
+        }
+
+        Rectangle {
+            visible: guide.rows.length > 0
+                     && guide.nowMinutes >= guide.windowStartMinutes
+                     && guide.nowMinutes <= guide.windowStartMinutes + guide.scheduleMinutes
+            x: scheduleArea.channelWidth
+               + (guide.nowMinutes - guide.windowStartMinutes)
+               * scheduleArea.timelineWidth / guide.scheduleMinutes
+            anchors.top: timeRuler.bottom
+            anchors.bottom: parent.bottom
+            width: 2 * guide.uiScale
+            color: "#ff6b57"
+            z: 20
+
+            Rectangle {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: parent.top
+                anchors.topMargin: -8 * guide.uiScale
+                width: 12 * guide.uiScale
+                height: 12 * guide.uiScale
+                rotation: 45
+                color: "#ff6b57"
             }
         }
 
         Text {
             visible: guide.rows.length === 0
             anchors.centerIn: parent
-            color: "#69716d"
+            color: "#89929a"
             font.family: "DejaVu Sans"
-            font.pixelSize: 21
+            font.pixelSize: 24 * guide.uiScale
             text: "There aren't any channels to show yet"
         }
     }
 
     Rectangle {
-        visible: !guide.classicStyle
-        anchors.left: guidePanel.left
-        anchors.right: guidePanel.right
-        anchors.bottom: guidePanel.bottom
-        height: 54
-        radius: guidePanel.radius
-        color: "#ffffff"
-        border.color: "#dfe3de"
+        id: detailPanel
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: footer.top
+        anchors.leftMargin: 44 * guide.uiScale
+        anchors.rightMargin: 44 * guide.uiScale
+        height: guide.rows.length > 0 ? 210 * guide.uiScale : 0
+        color: "#d90d1116"
+        border.color: "#343b43"
+        border.width: 1
+        clip: true
 
-        Text {
-            anchors.centerIn: parent
-            color: "#69716d"
-            font.family: "DejaVu Sans"
-            font.pixelSize: 15
-            text: "↑ ↓ choose a channel     ·     OK watch     ·     Back close"
+        Rectangle {
+            id: artwork
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            anchors.margins: 18 * guide.uiScale
+            width: 310 * guide.uiScale
+            radius: 10 * guide.uiScale
+            gradient: Gradient {
+                GradientStop { position: 0; color: "#40231f" }
+                GradientStop { position: 0.52; color: "#222a31" }
+                GradientStop { position: 1; color: "#102d2c" }
+            }
+
+            Text {
+                anchors.centerIn: parent
+                color: "#ff7b68"
+                font.family: "DejaVu Sans"
+                font.bold: true
+                font.pixelSize: 72 * guide.uiScale
+                text: {
+                    const channel = guide.selectedChannelData()
+                    return channel ? channel.number : ""
+                }
+            }
+
+            Text {
+                anchors.left: parent.left
+                anchors.bottom: parent.bottom
+                anchors.margins: 14 * guide.uiScale
+                color: "#d7ddd9"
+                font.family: "DejaVu Sans"
+                font.bold: true
+                font.pixelSize: 12 * guide.uiScale
+                text: "MABELTV"
+            }
+        }
+
+        Column {
+            anchors.left: artwork.right
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.leftMargin: 30 * guide.uiScale
+            anchors.rightMargin: 28 * guide.uiScale
+            spacing: 10 * guide.uiScale
+
+            Text {
+                width: parent.width
+                color: "#f8f5ef"
+                elide: Text.ElideRight
+                font.family: "DejaVu Sans"
+                font.bold: true
+                font.pixelSize: 31 * guide.uiScale
+                text: {
+                    const programme = guide.selectedProgrammeData()
+                    return programme ? programme.name : ""
+                }
+            }
+
+            Text {
+                color: guide.selectedProgramme === 0 ? "#7dd4ca" : "#ff8a78"
+                font.family: "DejaVu Sans"
+                font.bold: true
+                font.pixelSize: 17 * guide.uiScale
+                text: {
+                    const programme = guide.selectedProgrammeData()
+                    if (!programme)
+                        return ""
+                    return (guide.selectedProgramme === 0 ? "NOW" : "UP NEXT")
+                            + "  ·  " + programme.start + "–" + programme.end
+                }
+            }
+
+            Text {
+                width: parent.width
+                color: "#b7bec3"
+                elide: Text.ElideRight
+                font.family: "DejaVu Sans"
+                font.pixelSize: 17 * guide.uiScale
+                text: {
+                    const channel = guide.selectedChannelData()
+                    if (!channel)
+                        return ""
+                    return "On " + channel.name
+                            + "  ·  Press OK to watch this channel"
+                }
+            }
         }
     }
 
-    Item {
-        id: classicGuide
-        anchors.fill: parent
-        visible: guide.classicStyle
+    Rectangle {
+        id: footer
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        height: 76 * guide.uiScale
+        color: "#f7070a0e"
+        border.color: "#30363d"
+        border.width: 1
 
-        Rectangle {
-            anchors.fill: parent
-            color: "#071007"
-            opacity: 0.56
-        }
-
-        Rectangle {
-            id: classicGuidePanel
+        Row {
             anchors.centerIn: parent
-            width: Math.min(parent.width * 0.82, 1060)
-            height: Math.min(parent.height * 0.86, 640)
-            color: "#f20b130d"
-            border.color: "#6f9971"
-            border.width: 2
-
-            Rectangle {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                height: 78
-                color: "#d50b130d"
-                border.color: "#658066"
-                border.width: 1
-
-                Text {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 24
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: "#dce9cd"
-                    font.family: "Consolas"
-                    font.bold: true
-                    font.pixelSize: 23
-                    text: "[ TV GUIDE ]"
-                }
-
-                Text {
-                    anchors.right: parent.right
-                    anchors.rightMargin: 24
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: "#a6d49d"
-                    font.family: "Consolas"
-                    font.pixelSize: 16
-                    text: guide.clockText
-                }
-            }
+            spacing: 56 * guide.uiScale
 
             Text {
-                anchors.left: parent.left
-                anchors.leftMargin: 24
-                anchors.top: parent.top
-                anchors.topMargin: 95
-                color: "#8dbf88"
-                font.family: "Consolas"
+                color: "#d9dcdd"
+                font.family: "DejaVu Sans"
+                font.pixelSize: 17 * guide.uiScale
+                text: "↑  ↓   Channel"
+            }
+            Text {
+                color: "#f8f5ef"
+                font.family: "DejaVu Sans"
                 font.bold: true
-                font.pixelSize: 14
-                text: "CHANNEL                 NOW / NEXT"
+                font.pixelSize: 17 * guide.uiScale
+                text: "OK   Watch now"
             }
-
-            ListView {
-                id: classicScheduleRows
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.bottom: classicGuideFooter.top
-                anchors.leftMargin: 18
-                anchors.rightMargin: 18
-                anchors.topMargin: 124
-                anchors.bottomMargin: 12
-                clip: true
-                spacing: 6
-                model: guide.rows
-                currentIndex: guide.selectedRow
-                boundsBehavior: Flickable.StopAtBounds
-                interactive: false
-
-                onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
-
-                delegate: Item {
-                    id: classicChannelRow
-                    required property var modelData
-                    required property int index
-                    width: classicScheduleRows.width
-                    height: 76
-
-                    Rectangle {
-                        anchors.fill: parent
-                        color: classicChannelRow.index === guide.selectedRow
-                               ? "#3d683b" : "#0b130d"
-                        opacity: classicChannelRow.index === guide.selectedRow ? 0.82 : 0.7
-                        border.color: classicChannelRow.index === guide.selectedRow
-                                      ? "#c4e8b9" : "#466c49"
-                        border.width: classicChannelRow.index === guide.selectedRow ? 2 : 1
-                    }
-
-                    Text {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 15
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 172
-                        elide: Text.ElideRight
-                        color: classicChannelRow.modelData.current ? "#e1f1cf" : "#b1d7aa"
-                        font.family: "Consolas"
-                        font.bold: true
-                        font.pixelSize: 16
-                        text: "CH " + classicChannelRow.modelData.number + "  "
-                              + classicChannelRow.modelData.name
-                    }
-
-                    Row {
-                        id: classicProgrammeSlots
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.leftMargin: 196
-                        anchors.rightMargin: 12
-                        anchors.verticalCenter: parent.verticalCenter
-                        height: 54
-                        spacing: 8
-
-                        Repeater {
-                            model: classicChannelRow.modelData.programmes
-
-                            Rectangle {
-                                id: classicProgrammeCard
-                                required property var modelData
-                                required property int index
-                                width: (classicProgrammeSlots.width
-                                        - classicProgrammeSlots.spacing * 3) / 4
-                                height: classicProgrammeSlots.height
-                                color: classicProgrammeCard.index === 0 ? "#315a34" : "#142716"
-                                border.color: classicProgrammeCard.index === 0 ? "#b5ddb0" : "#547b56"
-                                border.width: 1
-
-                                Text {
-                                    anchors.left: parent.left
-                                    anchors.right: parent.right
-                                    anchors.top: parent.top
-                                    anchors.margins: 7
-                                    color: classicProgrammeCard.index === 0 ? "#dff3d3" : "#9ac194"
-                                    elide: Text.ElideRight
-                                    font.family: "Consolas"
-                                    font.bold: true
-                                    font.pixelSize: 12
-                                    text: classicProgrammeCard.index === 0 ? "NOW"
-                                                                          : classicProgrammeCard.modelData.start
-                                }
-
-                                Text {
-                                    anchors.left: parent.left
-                                    anchors.right: parent.right
-                                    anchors.bottom: parent.bottom
-                                    anchors.margins: 7
-                                    color: "#d0e6c6"
-                                    elide: Text.ElideRight
-                                    font.family: "Consolas"
-                                    font.pixelSize: 12
-                                    text: classicProgrammeCard.modelData.name
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
             Text {
-                visible: guide.rows.length === 0
-                anchors.centerIn: parent
-                color: "#a6d49d"
-                font.family: "Consolas"
-                font.pixelSize: 19
-                text: "NO CHANNELS AVAILABLE"
-            }
-
-            Rectangle {
-                id: classicGuideFooter
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                height: 48
-                color: "#d50b130d"
-                border.color: "#658066"
-                border.width: 1
-
-                Text {
-                    anchors.centerIn: parent
-                    color: "#a6d49d"
-                    font.family: "Consolas"
-                    font.bold: true
-                    font.pixelSize: 14
-                    text: "↑ ↓ SELECT CHANNEL     OK WATCH     BACK CLOSE"
-                }
+                color: "#d9dcdd"
+                font.family: "DejaVu Sans"
+                font.pixelSize: 17 * guide.uiScale
+                text: "Back   Close"
             }
         }
     }

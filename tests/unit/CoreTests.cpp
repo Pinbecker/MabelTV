@@ -881,12 +881,16 @@ void CoreTests::tvGuideBuildsOrderedScheduleAndTunesChannels()
     QCOMPARE(rows.size(), 2);
     const QVariantMap firstChannel = rows.at(0).toMap();
     QCOMPARE(firstChannel.value(QStringLiteral("number")).toInt(), 1);
-    QCOMPARE(firstChannel.value(QStringLiteral("programmes")).toList().size(), 4);
-    const QVariantMap firstProgramme =
-        firstChannel.value(QStringLiteral("programmes")).toList().at(0).toMap();
-    QVERIFY(!firstProgramme.value(QStringLiteral("name")).toString().isEmpty());
-    QCOMPARE(firstProgramme.value(QStringLiteral("start")).toString().size(), 5);
-    QVERIFY(firstProgramme.value(QStringLiteral("now")).toBool());
+    const QVariantList firstProgrammes = firstChannel.value(QStringLiteral("programmes")).toList();
+    QVERIFY(firstProgrammes.size() >= 8);
+    int nowProgrammes = 0;
+    for (const QVariant &value : firstProgrammes) {
+        const QVariantMap programme = value.toMap();
+        QVERIFY(!programme.value(QStringLiteral("name")).toString().isEmpty());
+        QCOMPARE(programme.value(QStringLiteral("start")).toString().size(), 5);
+        nowProgrammes += programme.value(QStringLiteral("now")).toBool() ? 1 : 0;
+    }
+    QCOMPARE(nowProgrammes, 1);
 
     controller.tuneGuideChannel(2);
     QCOMPARE(controller.currentChannelNumber(), 2);

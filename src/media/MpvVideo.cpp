@@ -278,6 +278,10 @@ MpvVideo::MpvVideo(QQuickItem *parent)
              "Observing mpv pause state");
     checkMpv(mpv_observe_property(m_state->handle, 2, "hwdec-current", MPV_FORMAT_STRING),
              "Observing mpv hardware decoder");
+    checkMpv(mpv_observe_property(m_state->handle, 3, "time-pos", MPV_FORMAT_DOUBLE),
+             "Observing mpv playback position");
+    checkMpv(mpv_observe_property(m_state->handle, 4, "duration", MPV_FORMAT_DOUBLE),
+             "Observing mpv programme duration");
     mpv_set_wakeup_callback(m_state->handle, wakeup, this);
 }
 
@@ -412,7 +416,25 @@ void MpvVideo::setAspectMode(const QString &aspectMode)
 
 void MpvVideo::play(const QUrl &source, double startPositionSeconds)
 {
-    m_pendingStartPosition = std::max(0.0, startPositionSeconds);
+    const double safeStartPosition = std::max(0.0, startPositionSeconds);
+    if (m_stopPending) {
+        // stop and loadfile are both asynchronous libmpv commands. Queueing a
+        // replacement load until MPV_EVENT_END_FILE prevents a rapid
+        // Back -> OK sequence from overlapping decoder teardown and startup.
+        m_queuedSource = source;
+        m_queuedStartPosition = safeStartPosition;
+        m_hasQueuedPlay = true;
+        resetPlaybackTelemetry(safeStartPosition);
+        setStatus(QStringLiteral("Waiting for previous playback to stop"));
+        return;
+    }
+    beginPlay(source, safeStartPosition);
+}
+
+void MpvVideo::beginPlay(const QUrl &source, double startPositionSeconds)
+{
+    m_pendingStartPosition = startPositionSeconds;
+    resetPlaybackTelemetry(startPositionSeconds);
     if (m_state->handle == nullptr) {
         setSource(source);
         return;
@@ -430,13 +452,35 @@ void MpvVideo::play(const QUrl &source, double startPositionSeconds)
 
 void MpvVideo::stop()
 {
+    // A second stop (for example closing Adult Mode while a previous stop is
+    // still draining) cancels any queued replay without issuing another
+    // command into the same decoder teardown.
+    m_hasQueuedPlay = false;
+    m_queuedSource = QUrl();
+    m_queuedStartPosition = 0.0;
+    resetPlaybackTelemetry();
     if (m_state->handle == nullptr) {
         setStatus(QStringLiteral("Stopped"));
         return;
     }
+    if (m_stopPending) {
+        setStatus(QStringLiteral("Stopping"));
+        return;
+    }
+    if (!m_fileActive && m_status != QStringLiteral("Loading")
+        && m_status != QStringLiteral("Preparing video")) {
+        setStatus(QStringLiteral("Stopped"));
+        return;
+    }
+
+    m_stopPending = true;
     const char *command[] = {"stop", nullptr};
-    checkMpv(mpv_command_async(m_state->handle, 0, command), "Stopping playback");
-    setStatus(QStringLiteral("Stopped"));
+    if (!checkMpv(mpv_command_async(m_state->handle, 1002, command), "Stopping playback")) {
+        m_stopPending = false;
+        setStatus(QStringLiteral("The video player did not stop cleanly"));
+        return;
+    }
+    setStatus(QStringLiteral("Stopping"));
 }
 
 void MpvVideo::togglePause()
@@ -450,28 +494,14 @@ void MpvVideo::togglePause()
 
 double MpvVideo::positionSeconds() const
 {
-    if (m_state->handle == nullptr) {
-        return std::max(0.0, m_pendingStartPosition);
-    }
-    double position = 0.0;
-    if (mpv_get_property(m_state->handle, "time-pos", MPV_FORMAT_DOUBLE, &position) < 0
-        || !std::isfinite(position)) {
-        return std::max(0.0, m_pendingStartPosition);
-    }
-    return std::max(0.0, position);
+    // Never synchronously query libmpv from the Qt UI thread. Property values
+    // are observed asynchronously and cached by processMpvEvents().
+    return m_playbackPosition;
 }
 
 double MpvVideo::durationSeconds() const
 {
-    if (m_state->handle == nullptr) {
-        return 0.0;
-    }
-    double duration = 0.0;
-    if (mpv_get_property(m_state->handle, "duration", MPV_FORMAT_DOUBLE, &duration) < 0
-        || !std::isfinite(duration)) {
-        return 0.0;
-    }
-    return std::max(0.0, duration);
+    return m_playbackDuration;
 }
 
 void MpvVideo::seekRelative(double seconds)
@@ -554,6 +584,56 @@ void MpvVideo::loadCurrentSource()
     setStatus(QStringLiteral("Loading"));
 }
 
+void MpvVideo::finishPendingStop()
+{
+    if (!m_stopPending) {
+        return;
+    }
+
+    m_stopPending = false;
+    setStatus(QStringLiteral("Stopped"));
+    if (!m_hasQueuedPlay) {
+        return;
+    }
+
+    const QUrl queuedSource = m_queuedSource;
+    const double queuedStartPosition = m_queuedStartPosition;
+    m_hasQueuedPlay = false;
+    m_queuedSource = QUrl();
+    m_queuedStartPosition = 0.0;
+    beginPlay(queuedSource, queuedStartPosition);
+}
+
+void MpvVideo::resetPlaybackTelemetry(double positionSeconds)
+{
+    setPlaybackPosition(positionSeconds);
+    setPlaybackDuration(0.0);
+}
+
+void MpvVideo::setPlaybackPosition(double positionSeconds)
+{
+    const double safePosition = std::isfinite(positionSeconds)
+        ? std::max(0.0, positionSeconds)
+        : 0.0;
+    if (qFuzzyCompare(m_playbackPosition + 1.0, safePosition + 1.0)) {
+        return;
+    }
+    m_playbackPosition = safePosition;
+    emit playbackPositionChanged();
+}
+
+void MpvVideo::setPlaybackDuration(double durationSeconds)
+{
+    const double safeDuration = std::isfinite(durationSeconds)
+        ? std::max(0.0, durationSeconds)
+        : 0.0;
+    if (qFuzzyCompare(m_playbackDuration + 1.0, safeDuration + 1.0)) {
+        return;
+    }
+    m_playbackDuration = safeDuration;
+    emit playbackDurationChanged();
+}
+
 void MpvVideo::processMpvEvents()
 {
     if (m_state->handle == nullptr) {
@@ -572,6 +652,14 @@ void MpvVideo::processMpvEvents()
                                             .arg(QString::fromUtf8(mpv_error_string(event->error)));
                 setStatus(message);
                 emit playbackFailed(message);
+            } else if (event->reply_userdata == 1002) {
+                if (event->error < 0) {
+                    qWarning("Stopping playback failed: %s", mpv_error_string(event->error));
+                    m_fileActive = false;
+                    finishPendingStop();
+                } else if (!m_fileActive) {
+                    finishPendingStop();
+                }
             }
             break;
         case MPV_EVENT_SHUTDOWN: {
@@ -581,6 +669,8 @@ void MpvVideo::processMpvEvents()
             break;
         }
         case MPV_EVENT_START_FILE:
+            m_fileActive = true;
+            resetPlaybackTelemetry(m_pendingStartPosition);
             setStatus(QStringLiteral("Loading"));
             break;
         case MPV_EVENT_FILE_LOADED:
@@ -594,7 +684,11 @@ void MpvVideo::processMpvEvents()
             break;
         case MPV_EVENT_END_FILE: {
             const auto *end = static_cast<mpv_event_end_file *>(event->data);
-            if (end != nullptr && end->reason == MPV_END_FILE_REASON_ERROR) {
+            m_fileActive = false;
+            resetPlaybackTelemetry();
+            if (m_stopPending) {
+                finishPendingStop();
+            } else if (end != nullptr && end->reason == MPV_END_FILE_REASON_ERROR) {
                 const QString message = QString::fromUtf8(mpv_error_string(end->error));
                 qWarning().noquote() << "libmpv playback error:" << message;
                 setStatus(QStringLiteral("Playback error: %1").arg(message));
@@ -616,7 +710,11 @@ void MpvVideo::processMpvEvents()
                 if (pausedNow != m_paused) {
                     m_paused = pausedNow;
                     emit pausedChanged();
-                    setStatus(pausedNow ? QStringLiteral("Paused") : QStringLiteral("Playing"));
+                    if (pausedNow && m_fileActive) {
+                        setStatus(QStringLiteral("Paused"));
+                    } else if (!pausedNow && m_status == QStringLiteral("Paused")) {
+                        setStatus(QStringLiteral("Playing"));
+                    }
                 }
             } else if (QByteArray(change->name) == QByteArrayLiteral("hwdec-current")
                        && change->format == MPV_FORMAT_STRING) {
@@ -625,6 +723,18 @@ void MpvVideo::processMpvEvents()
                     : nullptr;
                 qInfo().noquote() << "Active hardware decoder:"
                                   << (value != nullptr ? value : "none (software fallback)");
+            } else if (QByteArray(change->name) == QByteArrayLiteral("time-pos")) {
+                if (change->format == MPV_FORMAT_DOUBLE && change->data != nullptr) {
+                    setPlaybackPosition(*static_cast<double *>(change->data));
+                } else {
+                    setPlaybackPosition(m_pendingStartPosition);
+                }
+            } else if (QByteArray(change->name) == QByteArrayLiteral("duration")) {
+                if (change->format == MPV_FORMAT_DOUBLE && change->data != nullptr) {
+                    setPlaybackDuration(*static_cast<double *>(change->data));
+                } else {
+                    setPlaybackDuration(0.0);
+                }
             }
             break;
         }

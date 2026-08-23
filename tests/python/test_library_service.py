@@ -615,6 +615,23 @@ class LibraryUnitTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Unknown live TV control"):
             self.fixture.library.live_tv_control({"command": "leave-adult-mode"})
 
+    def test_live_tv_navigation_shortcuts_are_forwarded_to_the_player(self) -> None:
+        commands = ("open-parent-menu", "open-tv-guide", "close-overlay",
+                    "restart-programme", "navigate-up", "navigate-down",
+                    "navigate-left", "navigate-right", "select")
+        with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True):
+            with mock.patch.object(mabeltv_library.socket, "socket") as socket_factory:
+                client = socket_factory.return_value.__enter__.return_value
+                client.recv.return_value = b"ok\n"
+                for command in commands:
+                    self.assertEqual(
+                        self.fixture.library.live_tv_control({"command": command}),
+                        {"ok": True, "message": "Command sent"})
+                self.assertEqual(client.sendall.call_count, len(commands))
+                self.assertEqual(
+                    [call.args[0] for call in client.sendall.call_args_list],
+                    [f"{command}\n".encode() for command in commands])
+
     def test_worker_survives_failure_while_persisting_an_error(self) -> None:
         self.fixture.library.unexpected_conversion_error = mock.Mock(
             side_effect=OSError("read-only filesystem"))

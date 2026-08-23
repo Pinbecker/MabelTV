@@ -474,7 +474,16 @@ int main(int argc, char *argv[])
                                                           QStringLiteral("volume-down"),
                                                           QStringLiteral("toggle-mute"),
                                                           QStringLiteral("toggle-power"),
+                                                          QStringLiteral("open-parent-menu"),
+                                                          QStringLiteral("open-tv-guide"),
+                                                          QStringLiteral("close-overlay"),
+                                                          QStringLiteral("restart-programme"),
                                                           QStringLiteral("enter-adult-mode"),
+                                                          QStringLiteral("navigate-up"),
+                                                          QStringLiteral("navigate-down"),
+                                                          QStringLiteral("navigate-left"),
+                                                          QStringLiteral("navigate-right"),
+                                                          QStringLiteral("select"),
                                                       };
                                                       if (allowed.contains(command)) {
                                                           QMetaObject::invokeMethod(
@@ -499,30 +508,34 @@ int main(int argc, char *argv[])
         }
     }
 
-    // The systemd watchdog proves that the Qt event loop is alive. This
-    // additional heartbeat proves that libmpv is still delivering frames;
-    // otherwise a decoder/render stall could leave a frozen picture while the
-    // main loop continued to report itself healthy forever.
+    // The systemd watchdog proves that the Qt event loop is alive. These
+    // additional checks prove that whichever libmpv player is visible is still
+    // loading or delivering frames; Adult Mode owns a separate player and must
+    // not fall outside the same recovery boundary as ordinary television.
     auto *video = engine.rootObjects().constFirst()->findChild<MpvVideo *>(
         QStringLiteral("mabeltvPlayer"));
-    if (video == nullptr) {
-        qCritical() << "The QML scene did not create the KidsTV video player";
+    auto *adultVideo = engine.rootObjects().constFirst()->findChild<MpvVideo *>(
+        QStringLiteral("mabeltvAdultPlayer"));
+    if (video == nullptr || adultVideo == nullptr) {
+        qCritical() << "The QML scene did not create both Mabel TV video players";
         return 45;
     }
-    if (!video->available()) {
-        qCritical() << "libmpv was unavailable after the QML scene started";
+    if (!video->available() || !adultVideo->available()) {
+        qCritical() << "A libmpv player was unavailable after the QML scene started";
         return 45;
     }
-    QObject::connect(video,
-                     &MpvVideo::fatalPlayerFailure,
-                     &application,
-                     [&application](const QString &message) {
-                         qCritical().noquote() << "Fatal video-player failure:" << message;
-                         notifyService("STATUS=Video engine failed; restarting");
-                         application.exit(45);
-                     });
+    const auto restartAfterFatalPlayerFailure = [&application](const QString &message) {
+        qCritical().noquote() << "Fatal video-player failure:" << message;
+        notifyService("STATUS=Video engine failed; restarting");
+        application.exit(45);
+    };
+    QObject::connect(video, &MpvVideo::fatalPlayerFailure,
+                     &application, restartAfterFatalPlayerFailure);
+    QObject::connect(adultVideo, &MpvVideo::fatalPlayerFailure,
+                     &application, restartAfterFatalPlayerFailure);
     QTimer playbackHealthTimer;
-    std::uint64_t previousFrameCount = video->renderedFrameCount();
+    MpvVideo *monitoredVideo = nullptr;
+    std::uint64_t previousFrameCount = 0;
     int stagnantPlaybackChecks = 0;
     int stagnantLoadingChecks = 0;
     playbackHealthTimer.setInterval(15'000);
@@ -531,16 +544,28 @@ int main(int argc, char *argv[])
                      &application,
                      [&application,
                        video,
+                       adultVideo,
                        &television,
+                       &monitoredVideo,
                       &previousFrameCount,
                       &stagnantPlaybackChecks,
                       &stagnantLoadingChecks]() {
-                         if (video != nullptr
-                             && (video->status() == QStringLiteral("Loading")
-                                 || video->status() == QStringLiteral("Preparing video"))) {
+                         MpvVideo *activeVideo = adultVideo->isVisible() ? adultVideo : video;
+                         if (activeVideo != monitoredVideo) {
+                             monitoredVideo = activeVideo;
+                             previousFrameCount = activeVideo->renderedFrameCount();
+                             stagnantPlaybackChecks = 0;
+                             stagnantLoadingChecks = 0;
+                         }
+
+                         const QString status = activeVideo->status();
+                         const bool waitingForMedia = status == QStringLiteral("Loading")
+                             || status == QStringLiteral("Preparing video")
+                             || status == QStringLiteral("Waiting for previous playback to stop");
+                         if (waitingForMedia) {
                              ++stagnantLoadingChecks;
                              if (stagnantLoadingChecks >= 4) {
-                                  qCritical() << "Playback remained in a loading state for 60 seconds; requesting a controlled restart";
+                                  qCritical() << "Visible playback remained in a loading state for 60 seconds; requesting a controlled restart";
                                   television.prepareForPlaybackRestart(
                                       QStringLiteral("The programme remained stuck while loading"));
                                  notifyService("STATUS=Playback load stalled; restarting");
@@ -549,15 +574,12 @@ int main(int argc, char *argv[])
                              return;
                          }
                          stagnantLoadingChecks = 0;
-                         if (video == nullptr || video->status() != QStringLiteral("Playing")
-                             || video->paused()) {
+                         if (status != QStringLiteral("Playing") || activeVideo->paused()) {
                              stagnantPlaybackChecks = 0;
-                             if (video != nullptr) {
-                                 previousFrameCount = video->renderedFrameCount();
-                             }
+                             previousFrameCount = activeVideo->renderedFrameCount();
                              return;
                          }
-                         const std::uint64_t frameCount = video->renderedFrameCount();
+                         const std::uint64_t frameCount = activeVideo->renderedFrameCount();
                          if (frameCount == previousFrameCount) {
                              ++stagnantPlaybackChecks;
                          } else {

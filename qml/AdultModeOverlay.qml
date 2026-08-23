@@ -8,8 +8,8 @@ Item {
     property bool active: false
     property bool playing: false
     property int selectedIndex: 0
-    property real playbackPosition: 0
-    property real playbackDuration: 0
+    readonly property real playbackPosition: adultPlayer.playbackPosition
+    readonly property real playbackDuration: adultPlayer.playbackDuration
     property real controlsOpacity: 1
     property string errorMessage: ""
 
@@ -326,16 +326,6 @@ Item {
                     text: overlay.formatTime(overlay.playbackDuration)
                 }
             }
-        }
-    }
-
-    Timer {
-        interval: 500
-        repeat: true
-        running: overlay.active && overlay.playing
-        onTriggered: {
-            overlay.playbackPosition = adultPlayer.positionSeconds()
-            overlay.playbackDuration = adultPlayer.durationSeconds()
         }
     }
 

@@ -439,22 +439,61 @@ QVariantList TvController::guideSchedule() const
             continue;
         }
 
-        QVariantList programmes;
+        // The guide is a real, uninterrupted two-hour window, rather than a
+        // fixed number of programme cards. Short children's episodes used to
+        // leave most of the grid blank after just four entries.
+        const int minutesPastHalfHour = now.time().minute() % 30;
+        const QDateTime windowStart = now.addSecs(
+            -((minutesPastHalfHour * 60) + now.time().second()));
+        const QDateTime windowEnd = windowStart.addSecs(2 * 60 * 60);
+        const auto previousUsableEpisode = [this, &runtime](int index) {
+            const int count = static_cast<int>(runtime.channel.episodes.size());
+            if (count == 0) {
+                return -1;
+            }
+            int candidate = index;
+            for (int attempt = 0; attempt < count; ++attempt) {
+                candidate = (candidate - 1 + count) % count;
+                if (episodeIsUsable(runtime, candidate)) {
+                    return candidate;
+                }
+            }
+            return -1;
+        };
+
         QDateTime start = now.addMSecs(-static_cast<qint64>(position * 1000.0));
         int scheduledEpisode = episodeIndex;
-        for (int slot = 0; slot < 4 && scheduledEpisode >= 0; ++slot) {
+        int rewindSafety = std::max(1, static_cast<int>(runtime.channel.episodes.size()) * 3);
+        while (start > windowStart && rewindSafety-- > 0) {
+            const int previous = previousUsableEpisode(scheduledEpisode);
+            if (previous < 0) {
+                break;
+            }
+            scheduledEpisode = previous;
+            const double previousDuration = std::max(
+                60.0, runtime.channel.episodes[scheduledEpisode].durationSeconds);
+            start = start.addMSecs(-static_cast<qint64>(previousDuration * 1000.0));
+        }
+
+        QVariantList programmes;
+        int scheduleSafety = std::max(128,
+            static_cast<int>(runtime.channel.episodes.size()) * 6);
+        while (start < windowEnd && scheduledEpisode >= 0 && scheduleSafety-- > 0) {
             const Episode &episode = runtime.channel.episodes[scheduledEpisode];
             const double slotDuration = std::max(60.0, episode.durationSeconds);
             const QDateTime end = start.addMSecs(
                 static_cast<qint64>(slotDuration * 1000.0));
+            const bool isNow = start <= now && now < end;
+            const double progress = isNow
+                ? std::clamp(static_cast<double>(start.msecsTo(now)) / 1000.0 / slotDuration,
+                             0.0, 1.0)
+                : 0.0;
             programmes.append(QVariantMap{
                 {QStringLiteral("name"), displayNameForEpisodePath(episode.path)},
                 {QStringLiteral("start"), start.toString(QStringLiteral("HH:mm"))},
                 {QStringLiteral("end"), end.toString(QStringLiteral("HH:mm"))},
-                {QStringLiteral("now"), slot == 0},
-                {QStringLiteral("progress"), slot == 0
-                     ? std::clamp(position / slotDuration, 0.0, 1.0)
-                     : 0.0},
+                {QStringLiteral("now"), isNow},
+                {QStringLiteral("progress"), progress},
             });
             start = end;
             scheduledEpisode = nextUsableEpisode(runtime, scheduledEpisode);
@@ -1088,6 +1127,19 @@ void TvController::loadSettings(const QString &settingsPath)
         return;
     }
 
+    const int previousVolume = m_volume;
+    const int previousMaximumVolume = m_maximumVolume;
+    const bool previousVolumeLimitEnabled = m_volumeLimitEnabled;
+    const QString previousPlaybackMode = m_playbackMode;
+    const int previousEpisodeResetMinutes = m_episodeResetMinutes;
+    const QString previousPictureMode = m_pictureMode;
+    const QString previousDisplayResolution = m_displayResolution;
+    const int previousCrtGlass = m_crtGlass;
+    const QString previousTvBorderStyle = m_tvBorderStyle;
+    const int previousVideoDistortion = m_videoDistortion;
+    const bool previousSoundEffectsEnabled = m_soundEffectsEnabled;
+    const bool previousScrubbingEnabled = m_scrubbingEnabled;
+
     m_settingsRoot = document.object();
     const QString parentOverlayStyle =
         m_settingsRoot.value(QStringLiteral("parent_overlay_style"))
@@ -1171,6 +1223,45 @@ void TvController::loadSettings(const QString &settingsPath)
         m_settingsRoot.value(QStringLiteral("video_distortion")).toInt(20), 0, 100);
     m_soundEffectsEnabled = m_settingsRoot.value(QStringLiteral("sound_effects_enabled")).toBool(true);
     m_scrubbingEnabled = m_settingsRoot.value(QStringLiteral("scrubbing_enabled")).toBool(false);
+
+    // A portal save asks the running player to reload this file. These values
+    // were previously assigned silently, leaving QML bound to the old CRT and
+    // cabinet properties until a full player restart. Notify every changed
+    // runtime setting so the on-screen TV updates immediately.
+    if (m_volume != previousVolume) {
+        emit volumeChanged();
+    }
+    if (m_maximumVolume != previousMaximumVolume
+            || m_volumeLimitEnabled != previousVolumeLimitEnabled) {
+        emit volumePolicyChanged();
+    }
+    if (m_playbackMode != previousPlaybackMode) {
+        emit playbackModeChanged();
+    }
+    if (m_episodeResetMinutes != previousEpisodeResetMinutes) {
+        emit episodeResetMinutesChanged();
+    }
+    if (m_pictureMode != previousPictureMode) {
+        emit pictureModeChanged();
+    }
+    if (m_displayResolution != previousDisplayResolution) {
+        emit displayResolutionChanged();
+    }
+    if (m_crtGlass != previousCrtGlass) {
+        emit crtGlassChanged();
+    }
+    if (m_tvBorderStyle != previousTvBorderStyle) {
+        emit tvBorderStyleChanged();
+    }
+    if (m_videoDistortion != previousVideoDistortion) {
+        emit videoDistortionChanged();
+    }
+    if (m_soundEffectsEnabled != previousSoundEffectsEnabled) {
+        emit soundEffectsEnabledChanged();
+    }
+    if (m_scrubbingEnabled != previousScrubbingEnabled) {
+        emit scrubbingEnabledChanged();
+    }
 
     const QJsonObject librarySettings = m_settingsRoot.value(QStringLiteral("library")).toObject();
     const QJsonArray disabledChannels = librarySettings.value(QStringLiteral("disabled_channels"))

@@ -9,29 +9,12 @@ Item {
     visible: controller.parentAccessState !== TvController.ParentClosed
 
     function handleKey(key, modifiers) {
-        return designLoader.item ? designLoader.item.handleKey(key, modifiers) : false
+        return modernDesign.handleKey(key, modifiers)
     }
 
-    Loader {
-        id: designLoader
-        anchors.fill: parent
-        sourceComponent: controller.parentOverlayStyle === "modern"
-            ? modernDesign : classicDesign
-    }
-
-    Component {
-        id: classicDesign
-
-        ClassicParentOverlay {
-            controller: overlay.controller
-        }
-    }
-
-    Component {
+    ModernParentOverlay {
         id: modernDesign
-
-        ModernParentOverlay {
-            controller: overlay.controller
-        }
+        anchors.fill: parent
+        controller: overlay.controller
     }
 }
