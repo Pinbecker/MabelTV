@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Fixed privileged boundary for capturing the active KMS framebuffer. The
+# parent portal remains unprivileged and cannot supply ffmpeg arguments.
+set -Eeuo pipefail
+
+if [[ $# -ne 0 ]]; then
+    printf 'Mabel TV screen capture does not accept arguments.\n' >&2
+    exit 2
+fi
+
+device=/dev/dri/card0
+if [[ ! -c "$device" ]]; then
+    printf 'The Mabel TV display device is unavailable.\n' >&2
+    exit 1
+fi
+
+exec /usr/bin/ffmpeg \
+    -nostdin -hide_banner -loglevel error \
+    -f kmsgrab -framerate 10 -device "$device" -i - \
+    -vf 'hwdownload,format=bgr0,scale=854:480:force_original_aspect_ratio=decrease:force_divisible_by=2' \
+    -an -c:v mjpeg -q:v 5 -f mpjpeg pipe:1

@@ -1,3 +1,3 @@
 # Mabel TV can request only an orderly shutdown, a controlled media refresh,
 # and the fixed allow-list enforced by the root-owned appliance action helper.
-mabeltv ALL=(root) NOPASSWD: /usr/bin/systemctl poweroff, /usr/local/libexec/mabeltv-library-refresh, /usr/local/libexec/mabeltv-admin-action
+mabeltv ALL=(root) NOPASSWD: /usr/bin/systemctl poweroff, /usr/local/libexec/mabeltv-library-refresh, /usr/local/libexec/mabeltv-admin-action, /usr/local/libexec/mabeltv-screen-capture
