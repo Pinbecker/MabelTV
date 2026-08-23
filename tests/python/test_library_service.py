@@ -602,6 +602,19 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertFalse(refreshed)
         self.assertIn(1, self.fixture.library.settings()["library"]["disabled_channels"])
 
+    def test_adult_mode_is_an_allowed_parent_portal_command(self) -> None:
+        with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True):
+            with mock.patch.object(mabeltv_library.socket, "socket") as socket_type:
+                client = socket_type.return_value.__enter__.return_value
+                client.recv.return_value = b"ok\n"
+                self.assertEqual(
+                    self.fixture.library.live_tv_control({"command": "enter-adult-mode"}),
+                    {"ok": True, "message": "Command sent"})
+                client.sendall.assert_called_once_with(b"enter-adult-mode\n")
+
+        with self.assertRaisesRegex(ValueError, "Unknown live TV control"):
+            self.fixture.library.live_tv_control({"command": "leave-adult-mode"})
+
     def test_worker_survives_failure_while_persisting_an_error(self) -> None:
         self.fixture.library.unexpected_conversion_error = mock.Mock(
             side_effect=OSError("read-only filesystem"))

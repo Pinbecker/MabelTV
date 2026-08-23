@@ -165,7 +165,12 @@ Window {
     function portalCommand(command) {
         if (tvController.remoteLocked)
             return
-        if (command === "channel-up") {
+        if (command === "enter-adult-mode") {
+            if (!adultMode.active) {
+                guideOverlay.close()
+                enterAdultMode()
+            }
+        } else if (command === "channel-up") {
             syncPlaybackPosition()
             tvController.dispatch(TvController.ChannelUp)
         } else if (command === "channel-down") {

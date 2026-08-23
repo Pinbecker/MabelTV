@@ -1312,7 +1312,8 @@ class Library:
     def live_tv_control(self, payload: dict[str, Any]) -> dict[str, Any]:
         command = str(payload.get("command", ""))
         allowed = {"channel-up", "channel-down", "previous-programme", "next-programme",
-                   "toggle-pause", "volume-up", "volume-down", "toggle-mute", "toggle-power"}
+                   "toggle-pause", "volume-up", "volume-down", "toggle-mute", "toggle-power",
+                   "enter-adult-mode"}
         if command not in allowed:
             raise ValueError("Unknown live TV control")
         try:

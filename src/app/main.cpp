@@ -474,6 +474,7 @@ int main(int argc, char *argv[])
                                                           QStringLiteral("volume-down"),
                                                           QStringLiteral("toggle-mute"),
                                                           QStringLiteral("toggle-power"),
+                                                          QStringLiteral("enter-adult-mode"),
                                                       };
                                                       if (allowed.contains(command)) {
                                                           QMetaObject::invokeMethod(
