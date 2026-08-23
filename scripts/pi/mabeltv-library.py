@@ -1511,9 +1511,14 @@ class Library:
         temporary = self.incoming / f"{token}.optimising.mp4"
         error_log = self.incoming / f"{token}.ffmpeg.log"
         command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
-                   "-threads", "1", "-filter_threads", "1", "-i", str(source),
+                   "-threads", "2", "-filter_threads", "2", "-i", str(source),
                    "-map", "0:v:0", "-map", "0:a:0?", "-vf", video_filter,
-                   "-c:v", "h264_v4l2m2m", "-b:v", bitrate,
+                   # Debian 13 exposes Pi hardware decode but no usable V4L2
+                   # H.264 encoder node. A bounded two-thread software encode
+                   # is slower, but reliable; the resulting file is then
+                   # hardware-decoded during every actual TV playback.
+                   "-c:v", "libx264", "-preset", "veryfast", "-threads:v", "2",
+                   "-profile:v", "main", "-level:v", "3.1", "-b:v", bitrate,
                    "-maxrate", maximum_bitrate, "-bufsize", buffer_size,
                    "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", str(temporary)]
         process: subprocess.Popen[bytes] | None = None
