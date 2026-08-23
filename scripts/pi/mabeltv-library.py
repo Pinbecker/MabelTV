@@ -461,6 +461,10 @@ class Library:
         return bool(owner.get("setup_complete") and owner.get("pin_hash")
                     and owner.get("pin_salt"))
 
+    def portal_pin_required(self) -> bool:
+        """Keep existing installations private unless their owner opts out."""
+        return bool(self.owner().get("portal_pin_required", True))
+
     def migrate_legacy_owner(self) -> None:
         if self.owner_path.exists():
             return
@@ -473,6 +477,7 @@ class Library:
             "owner_name": "Owner",
             "tv_name": PRODUCT_NAME,
             "legacy_default_pin": legacy_pin == "0973",
+            "portal_pin_required": True,
             **self.pin_record(legacy_pin),
         }
         self.write_json(self.owner_path, owner)
@@ -500,6 +505,7 @@ class Library:
             "device_name": socket.gethostname(),
             "product_name": PRODUCT_NAME,
             "tv_name": self.tv_identity()[1],
+            "portal_pin_required": self.portal_pin_required(),
             "setup_code_required": True,
             # Recovery is an explicit state written by the physical boot-marker
             # service. A fresh install also seeds channels.json, so the mere
@@ -587,6 +593,7 @@ class Library:
                 "child_name": child_name,
                 "tv_name": tv_name,
                 "legacy_default_pin": False,
+                "portal_pin_required": True,
                 "created_at": int(time.time()),
                 **self.pin_record(pin),
             })
@@ -618,6 +625,22 @@ class Library:
             owner["pin_changed_at"] = int(time.time())
             self.write_json(self.owner_path, owner)
             self.sessions.clear()
+
+    def set_portal_pin_required(self, payload: dict[str, Any]) -> bool:
+        """Change the sign-in gate without ever exposing or replacing the PIN."""
+        current = str(payload.get("current_pin", ""))
+        required = payload.get("required")
+        if not self.verify_pin(current):
+            raise ValueError("The current PIN is not correct")
+        if not isinstance(required, bool):
+            raise ValueError("Choose whether the portal should require a PIN")
+        with self.config_lock:
+            owner = self.owner()
+            owner["portal_pin_required"] = required
+            owner["portal_pin_changed_at"] = int(time.time())
+            self.write_json(self.owner_path, owner)
+            self.sessions.clear()
+        return required
 
     def change_tv_name(self, payload: dict[str, Any]) -> dict[str, str | bool]:
         child_name, tv_name = self.normalise_tv_identity(payload.get("child_name"))
@@ -759,6 +782,7 @@ class Library:
             "owner": {"name": owner.get("owner_name", "Owner"),
                       "child_name": self.tv_identity()[0],
                       "tv_name": self.tv_identity()[1],
+                      "portal_pin_required": self.portal_pin_required(),
                       "pin_change_recommended": bool(owner.get("legacy_default_pin"))},
         }
 
@@ -1566,7 +1590,9 @@ class Handler(BaseHTTPRequestHandler):
         return token.value if token else None
 
     def authorised(self) -> bool:
-        return self.server.library.valid_session(self.session_token())
+        return (self.server.library.configured()
+                and not self.server.library.portal_pin_required()) \
+            or self.server.library.valid_session(self.session_token())
 
     def require(self) -> bool:
         if not self.authorised(): self.json(HTTPStatus.UNAUTHORIZED, {"error": "Parent PIN required"}); return False
@@ -1646,6 +1672,8 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == "/api/login":
                 if not self.server.library.configured():
                     self.json(HTTPStatus.CONFLICT, {"error": "Finish first-time setup before signing in"}); return
+                if not self.server.library.portal_pin_required():
+                    self.json(200, {"ok": True}); return
                 if not self.server.library.login_allowed(address):
                     self.json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "Too many attempts. Wait five minutes and try again."}); return
                 pin = str(self.body().get("pin", ""))
@@ -1657,6 +1685,9 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == "/api/logout":
                 self.server.library.revoke_session(self.session_token())
                 self.json(200, {"ok": True}, "mabeltv_library=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0"); return
+            if self.path == "/api/portal-security":
+                required = self.server.library.set_portal_pin_required(self.body())
+                self.json(200, {"ok": True, "portal_pin_required": required}, "mabeltv_library=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0"); return
             if not self.require(): return
             payload = self.body()
             if self.path == "/api/uploads": self.json(201, self.server.library.upload_create(payload)); return

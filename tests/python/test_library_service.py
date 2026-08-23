@@ -677,6 +677,28 @@ class LibraryHttpTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(dashboard["owner"]["name"], "Taylor")
         self.assertEqual(dashboard["owner"]["tv_name"], "TaylorTV")
+        self.assertTrue(dashboard["owner"]["portal_pin_required"])
+        status, security = self.request("/api/portal-security", {
+            "current_pin": "8642", "required": False,
+        })
+        self.assertEqual(status, 200)
+        self.assertFalse(security["portal_pin_required"])
+        status, dashboard = self.request("/api/library")
+        self.assertEqual(status, 200)
+        self.assertFalse(dashboard["owner"]["portal_pin_required"])
+        status, security = self.request("/api/portal-security", {
+            "current_pin": "1111", "required": True,
+        })
+        self.assertEqual(status, 400)
+        status, security = self.request("/api/portal-security", {
+            "current_pin": "8642", "required": True,
+        })
+        self.assertEqual(status, 200)
+        self.assertTrue(security["portal_pin_required"])
+        status, _ = self.request("/api/library")
+        self.assertEqual(status, 401)
+        status, _ = self.request("/api/login", {"pin": "8642"})
+        self.assertEqual(status, 200)
         status, state = self.request("/api/setup")
         self.assertEqual(status, 200)
         self.assertEqual(state["tv_name"], "TaylorTV")
