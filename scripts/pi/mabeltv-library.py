@@ -2144,10 +2144,12 @@ class Handler(BaseHTTPRequestHandler):
                     self.path.rsplit("/", 1)[1], str(payload.get("action", "")))); return
             if self.path == "/api/manage":
                 refreshed = self.server.library.manage(payload)
+                action = payload.get("action")
                 self.json(200, {
                     "ok": True,
                     "refreshed": refreshed,
-                    "message": "Done." if refreshed else
+                    "message": ("TV settings applied on MabelTV now."
+                                if refreshed and action == "set-tv-settings" else "Done.") if refreshed else
                         "The change was saved, but the TV could not refresh. Use Refresh TV library to try again.",
                 }); return
             if self.path == "/api/account":
