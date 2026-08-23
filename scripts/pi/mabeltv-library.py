@@ -100,6 +100,8 @@ INDEX = load_index()
 class LiveStream:
     """A private, low-latency HLS mirror of the programme currently on TV."""
 
+    PREVIEW_IDLE_SECONDS = 12.0
+
     def __init__(self, library: "Library") -> None:
         self.library = library
         self.root = Path("/var/cache/mabeltv/live-stream")
@@ -112,6 +114,56 @@ class LiveStream:
         self.preview_generation = 0
         self.preview_error = ""
         self.preview_updated = threading.Condition(self.lock)
+        self.preview_last_request = 0.0
+        self.preview_idle_timer: threading.Timer | None = None
+
+    @staticmethod
+    def _terminate_process(process: subprocess.Popen[bytes]) -> None:
+        if process.poll() is not None:
+            return
+        try:
+            os.killpg(process.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            return
+        try:
+            process.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+
+    def _schedule_preview_idle_locked(self) -> None:
+        if self.preview_idle_timer:
+            self.preview_idle_timer.cancel()
+        timer = threading.Timer(self.PREVIEW_IDLE_SECONDS, self._stop_idle_preview)
+        timer.daemon = True
+        self.preview_idle_timer = timer
+        timer.start()
+
+    def _touch_preview_locked(self) -> None:
+        self.preview_last_request = time.monotonic()
+        self._schedule_preview_idle_locked()
+
+    def _stop_idle_preview(self) -> None:
+        process: subprocess.Popen[bytes] | None = None
+        with self.lock:
+            remaining = self.PREVIEW_IDLE_SECONDS - (time.monotonic() - self.preview_last_request)
+            if remaining > 0:
+                timer = threading.Timer(remaining, self._stop_idle_preview)
+                timer.daemon = True
+                self.preview_idle_timer = timer
+                timer.start()
+                return
+            process, self.preview_process = self.preview_process, None
+            self.preview_signature = None
+            self.preview_frame = b""
+            self.preview_error = ""
+            self.preview_generation += 1
+            self.preview_idle_timer = None
+            self.preview_updated.notify_all()
+        if process:
+            self._terminate_process(process)
 
     def source(self) -> dict[str, Any]:
         state = self.library.read_json(self.library.player_state_path, {})
@@ -145,6 +197,10 @@ class LiveStream:
         with self.lock:
             process, self.process = self.process, None
             preview_process, self.preview_process = self.preview_process, None
+            if self.preview_idle_timer:
+                self.preview_idle_timer.cancel()
+                self.preview_idle_timer = None
+            self.preview_last_request = 0.0
             self.signature = None
             self.preview_signature = None
             self.preview_frame = b""
@@ -152,18 +208,8 @@ class LiveStream:
             self.preview_generation += 1
             self.preview_updated.notify_all()
         for candidate in (process, preview_process):
-            if candidate and candidate.poll() is None:
-                try:
-                    os.killpg(candidate.pid, signal.SIGTERM)
-                except ProcessLookupError:
-                    continue
-                try:
-                    candidate.wait(timeout=3)
-                except subprocess.TimeoutExpired:
-                    try:
-                        os.killpg(candidate.pid, signal.SIGKILL)
-                    except ProcessLookupError:
-                        pass
+            if candidate:
+                self._terminate_process(candidate)
 
     @staticmethod
     def playable_position(source: Path, position: float) -> float:
@@ -295,13 +341,14 @@ class LiveStream:
         with self.lock:
             if self.preview_signature == signature and self.preview_frame \
                     and self.preview_process and self.preview_process.poll() is None:
+                self._touch_preview_locked()
                 return self.preview_frame
             generation = self.preview_generation
             if not self.preview_process or self.preview_process.poll() is not None \
                     or self.preview_signature != signature:
                 previous, self.preview_process = self.preview_process, None
-                if previous and previous.poll() is None:
-                    previous.terminate()
+                if previous:
+                    self._terminate_process(previous)
                 self.preview_frame = b""
                 self.preview_error = ""
                 command = ["sudo", "-n", "/usr/local/libexec/mabeltv-screen-capture"]
@@ -314,6 +361,7 @@ class LiveStream:
                 self.preview_signature = signature
                 threading.Thread(target=self._collect_preview_frames, args=(process,),
                                  name="mabeltv-live-preview", daemon=True).start()
+            self._touch_preview_locked()
             deadline = time.monotonic() + 20
             while self.preview_generation <= generation and time.monotonic() < deadline:
                 self.preview_updated.wait(timeout=deadline - time.monotonic())
