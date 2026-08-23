@@ -100,8 +100,9 @@ When creating or editing a channel, choose **Shows / episodes** or **Films / lon
 - `+` / `-`: volume
 - Enter: pause/play
 - `P`: standby; hold five seconds for safe shutdown
-- `B`: previous channel
-- Left / Right: previous/next programme
+- `B`: hold for 3.5 seconds to open the parent menu; a short press does nothing
+- Up / Down: previous/next programme
+- Left / Right: seek only when Playback scrubbing is enabled
 - `0`–`9`: channel number
 - `M`: mute; hold three seconds to lock/unlock other buttons
 

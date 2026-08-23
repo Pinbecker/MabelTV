@@ -1406,14 +1406,11 @@ Window {
                 event.accepted = true
             } else if (tvController.scrubbingEnabled && !directMediaMode
                        && !tvController.standby
-                       && (event.key === Qt.Key_Left || event.key === Qt.Key_Right
-                           || event.key === Qt.Key_Up || event.key === Qt.Key_Down)) {
+                       && (event.key === Qt.Key_Left || event.key === Qt.Key_Right)) {
                 if (event.key === Qt.Key_Left) {
                     root.scrubPlayback(event.isAutoRepeat ? -30 : -15)
-                } else if (event.key === Qt.Key_Right) {
+                } else {
                     root.scrubPlayback(event.isAutoRepeat ? 30 : 15)
-                } else if (!event.isAutoRepeat) {
-                    root.scrubPlayback(event.key === Qt.Key_Up ? 300 : -300)
                 }
                 event.accepted = true
             } else if (event.key === Qt.Key_PageUp) {
@@ -1429,15 +1426,15 @@ Window {
                 }
                 event.accepted = true
             } else if (event.key === Qt.Key_Up) {
-                if (root.acceptRepeat("channel", event.isAutoRepeat)) {
+                if (!event.isAutoRepeat) {
                     root.syncPlaybackPosition()
-                    tvController.dispatch(TvController.ChannelUp)
+                    tvController.dispatch(TvController.PreviousProgramme)
                 }
                 event.accepted = true
             } else if (event.key === Qt.Key_Down) {
-                if (root.acceptRepeat("channel", event.isAutoRepeat)) {
+                if (!event.isAutoRepeat) {
                     root.syncPlaybackPosition()
-                    tvController.dispatch(TvController.ChannelDown)
+                    tvController.dispatch(TvController.NextProgramme)
                 }
                 event.accepted = true
             } else if (event.key === Qt.Key_Plus || event.key === Qt.Key_Equal) {
@@ -1448,15 +1445,11 @@ Window {
                 if (root.acceptRepeat("volume", event.isAutoRepeat))
                     tvController.dispatch(TvController.VolumeDown)
                 event.accepted = true
-            } else if (event.key === Qt.Key_Right && !event.isAutoRepeat
+            } else if ((event.key === Qt.Key_Left || event.key === Qt.Key_Right)
                        && !directMediaMode) {
-                root.syncPlaybackPosition()
-                tvController.dispatch(TvController.NextProgramme)
-                event.accepted = true
-            } else if (event.key === Qt.Key_Left && !event.isAutoRepeat
-                       && !directMediaMode) {
-                root.syncPlaybackPosition()
-                tvController.dispatch(TvController.PreviousProgramme)
+                // Left/Right are deliberately inert when scrubbing is off.
+                // Programme navigation lives on Up/Down, so a distant or
+                // accidental press cannot change what Mabel is watching.
                 event.accepted = true
             } else if (event.key === Qt.Key_R && !event.isAutoRepeat && !directMediaMode) {
                 root.syncPlaybackPosition()
@@ -1497,13 +1490,8 @@ Window {
             } else if (event.key === Qt.Key_B && !event.isAutoRepeat) {
                 if (emergencyRestartTimer.running)
                     emergencyRestartTimer.stop()
-                if (parentHoldTimer.running) {
+                if (parentHoldTimer.running)
                     parentHoldTimer.stop()
-                    if (!root.previousHeldForParent && !parentOverlay.visible) {
-                        root.syncPlaybackPosition()
-                        tvController.dispatch(TvController.PreviousChannel)
-                    }
-                }
                 root.previousHeldForParent = false
                 root.previousHeldForRestart = false
                 event.accepted = true
