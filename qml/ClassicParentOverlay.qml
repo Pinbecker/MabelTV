@@ -11,7 +11,7 @@ Item {
     property int selectedProgramme: 0
     property bool programmePane: false
     property int restartSequenceStep: 0
-    readonly property int rowCount: 16
+    readonly property int rowCount: 17
 
     visible: controller.parentAccessState !== TvController.ParentClosed
 
@@ -45,12 +45,13 @@ Item {
         case 7: return controller.volumeLimitEnabled ? "ON" : "OFF"
         case 8: return controller.configuredMaximumVolume + "%"
         case 9: return controller.soundEffectsEnabled ? "ON" : "OFF"
-        case 10: return "OPEN"
-        case 11: return "RUN NOW"
-        case 12: return controller.libraryStatus.split("\n")[0].toUpperCase()
-        case 13: return controller.adultLibrary.length + " FILMS"
-        case 14: return "RELAUNCH"
-        case 15: return Qt.platform.os === "windows" ? "PI ONLY" : "SAFE POWEROFF"
+        case 10: return controller.scrubbingEnabled ? "ON" : "OFF"
+        case 11: return "OPEN"
+        case 12: return "RUN NOW"
+        case 13: return controller.libraryStatus.split("\n")[0].toUpperCase()
+        case 14: return controller.adultLibrary.length + " FILMS"
+        case 15: return "RELAUNCH"
+        case 16: return Qt.platform.os === "windows" ? "PI ONLY" : "SAFE POWEROFF"
         }
         return ""
     }
@@ -67,23 +68,24 @@ Item {
         case 7: controller.toggleVolumeLimit(); break
         case 8: controller.adjustMaximumVolume(direction); break
         case 9: controller.toggleSoundEffects(); break
+        case 10: controller.toggleScrubbing(); break
         }
     }
 
     function activateRow(index) {
-        if (index <= 9) {
+        if (index <= 10) {
             adjustRow(index, 1)
-        } else if (index === 10) {
+        } else if (index === 11) {
             page = "library"
             programmePane = false
             clampLibrarySelection()
-        } else if (index === 11) {
+        } else if (index === 12) {
             controller.reloadLibrary()
-        } else if (index === 13) {
-            controller.requestParentCommand("adult")
         } else if (index === 14) {
+            controller.requestParentCommand("adult")
+        } else if (index === 15) {
             controller.requestParentCommand("restart")
-        } else if (index === 15 && Qt.platform.os !== "windows") {
+        } else if (index === 16 && Qt.platform.os !== "windows") {
             controller.requestParentCommand("shutdown")
         }
     }
@@ -327,8 +329,8 @@ Item {
                 Repeater {
                     model: ["PLAYBACK MODE", "RESET UNVISITED EPISODES", "PICTURE MODE",
                             "TV BORDER", "CRT GLASS", "90s DISTORTION", "DISPLAY OUTPUT", "VOLUME LIMIT",
-                            "MAXIMUM VOLUME", "TV SOUNDS", "CHANNELS & PROGRAMMES",
-                            "RELOAD LIBRARY", "DIAGNOSTICS", "ADULT MODE",
+                            "MAXIMUM VOLUME", "TV SOUNDS", "PLAYBACK SCRUBBING",
+                            "CHANNELS & PROGRAMMES", "RELOAD LIBRARY", "DIAGNOSTICS", "ADULT MODE",
                             "RESTART MABEL TV", "SHUT DOWN PI"]
 
                     Rectangle {

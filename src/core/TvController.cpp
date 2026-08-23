@@ -332,6 +332,11 @@ bool TvController::soundEffectsEnabled() const
     return m_soundEffectsEnabled;
 }
 
+bool TvController::scrubbingEnabled() const
+{
+    return m_scrubbingEnabled;
+}
+
 QVariantList TvController::parentLibrary() const
 {
     QVariantList channels;
@@ -884,6 +889,13 @@ void TvController::toggleSoundEffects()
     saveSettings();
 }
 
+void TvController::toggleScrubbing()
+{
+    m_scrubbingEnabled = !m_scrubbingEnabled;
+    emit scrubbingEnabledChanged();
+    saveSettings();
+}
+
 void TvController::toggleVolumeLimit()
 {
     m_volumeLimitEnabled = !m_volumeLimitEnabled;
@@ -1159,6 +1171,7 @@ void TvController::loadSettings(const QString &settingsPath)
     m_videoDistortion = std::clamp(
         m_settingsRoot.value(QStringLiteral("video_distortion")).toInt(20), 0, 100);
     m_soundEffectsEnabled = m_settingsRoot.value(QStringLiteral("sound_effects_enabled")).toBool(true);
+    m_scrubbingEnabled = m_settingsRoot.value(QStringLiteral("scrubbing_enabled")).toBool(false);
 
     const QJsonObject librarySettings = m_settingsRoot.value(QStringLiteral("library")).toObject();
     const QJsonArray disabledChannels = librarySettings.value(QStringLiteral("disabled_channels"))
@@ -1209,6 +1222,7 @@ void TvController::saveSettings()
     m_settingsRoot.insert(QStringLiteral("tv_border"), m_tvBorderStyle);
     m_settingsRoot.insert(QStringLiteral("video_distortion"), m_videoDistortion);
     m_settingsRoot.insert(QStringLiteral("sound_effects_enabled"), m_soundEffectsEnabled);
+    m_settingsRoot.insert(QStringLiteral("scrubbing_enabled"), m_scrubbingEnabled);
     m_settingsRoot.remove(QStringLiteral("parent_pin"));
     m_settingsRoot.insert(
         QStringLiteral("volume"),

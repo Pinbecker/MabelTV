@@ -191,6 +191,40 @@ class LibraryUnitTests(unittest.TestCase):
                 "action": "set-tv-guide-enabled", "enabled": "yes",
             })
 
+    def test_tv_scrubbing_setting_is_validated_persisted_and_exposed(self) -> None:
+        self.fixture.library.complete_setup({
+            "setup_code": "135790", "pin": "2468",
+            "channels": mabeltv_library.DEFAULT_CHANNELS,
+        })
+        self.fixture.library.refresh_tv = mock.Mock(return_value=True)
+        settings = self.fixture.library.library()["tv_settings"]
+        self.assertFalse(settings["scrubbing_enabled"])
+
+        updated = {
+            **settings,
+            "scrubbing_enabled": True,
+        }
+        self.fixture.library.manage({
+            "action": "set-tv-settings", "settings": updated,
+        })
+
+        self.assertTrue(self.fixture.library.settings()["scrubbing_enabled"])
+        self.assertTrue(self.fixture.library.library()["tv_settings"]["scrubbing_enabled"])
+        self.fixture.library.refresh_tv.assert_called_once()
+
+        legacy_portal_settings = {key: value for key, value in updated.items()
+                                  if key != "scrubbing_enabled"}
+        self.fixture.library.manage({
+            "action": "set-tv-settings", "settings": legacy_portal_settings,
+        })
+        self.assertTrue(self.fixture.library.settings()["scrubbing_enabled"])
+
+        updated["scrubbing_enabled"] = "yes"
+        with self.assertRaisesRegex(ValueError, "scrubbing"):
+            self.fixture.library.manage({
+                "action": "set-tv-settings", "settings": updated,
+            })
+
     def test_high_frame_rate_uploads_use_one_background_conversion_worker(self) -> None:
         self.fixture.library.complete_setup({
             "setup_code": "135790", "pin": "2468",

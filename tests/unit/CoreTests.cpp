@@ -683,6 +683,7 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
     controller.requestParentAccess();
     QCOMPARE(controller.parentOverlayStyle(), QStringLiteral("modern"));
     QVERIFY(controller.tvGuideEnabled());
+    QVERIFY(!controller.scrubbingEnabled());
     QCOMPARE(controller.parentAccessState(), TvController::ParentConfirmation);
     QCOMPARE(controller.parentConfirmationCount(), 0);
     controller.parentConfirm();
@@ -714,12 +715,14 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
         controller.adjustVideoDistortion(1);
     }
     controller.toggleVolumeLimit();
+    controller.toggleScrubbing();
     QCOMPARE(controller.playbackMode(), QStringLiteral("resume"));
     QCOMPARE(controller.episodeResetMinutes(), 5);
     QCOMPARE(controller.tvBorderStyle(), QStringLiteral("silver-90s"));
     QCOMPARE(controller.crtGlass(), 100);
     QCOMPARE(controller.videoDistortion(), 100);
     QVERIFY(!controller.volumeLimitEnabled());
+    QVERIFY(controller.scrubbingEnabled());
 
     QFile savedSettings(settings.fileName());
     QVERIFY(savedSettings.open(QIODevice::ReadOnly));
@@ -735,6 +738,7 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
     QCOMPARE(savedDocument.object().value(QStringLiteral("crt_glass")).toInt(), 100);
     QVERIFY(!savedDocument.object().contains(QStringLiteral("crt_effect")));
     QCOMPARE(savedDocument.object().value(QStringLiteral("video_distortion")).toInt(), 100);
+    QVERIFY(savedDocument.object().value(QStringLiteral("scrubbing_enabled")).toBool());
     QVERIFY(!savedDocument.object().contains(QStringLiteral("parent_pin")));
     QVERIFY(!savedDocument.object()
                  .value(QStringLiteral("volume"))
@@ -754,6 +758,7 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
     QCOMPARE(restored.episodeResetMinutes(), 5);
     QCOMPARE(restored.crtGlass(), 100);
     QCOMPARE(restored.videoDistortion(), 100);
+    QVERIFY(restored.scrubbingEnabled());
 }
 
 void CoreTests::tvGuideBuildsOrderedScheduleAndTunesChannels()

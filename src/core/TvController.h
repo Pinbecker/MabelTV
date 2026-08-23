@@ -48,6 +48,7 @@ class TvController final : public QObject
     Q_PROPERTY(QString tvBorderStyle READ tvBorderStyle NOTIFY tvBorderStyleChanged)
     Q_PROPERTY(int videoDistortion READ videoDistortion NOTIFY videoDistortionChanged)
     Q_PROPERTY(bool soundEffectsEnabled READ soundEffectsEnabled NOTIFY soundEffectsEnabledChanged)
+    Q_PROPERTY(bool scrubbingEnabled READ scrubbingEnabled NOTIFY scrubbingEnabledChanged)
     Q_PROPERTY(QVariantList parentLibrary READ parentLibrary NOTIFY parentLibraryChanged)
     Q_PROPERTY(QVariantList adultLibrary READ adultLibrary NOTIFY adultLibraryChanged)
 
@@ -112,6 +113,7 @@ public:
     [[nodiscard]] QString tvBorderStyle() const;
     [[nodiscard]] int videoDistortion() const;
     [[nodiscard]] bool soundEffectsEnabled() const;
+    [[nodiscard]] bool scrubbingEnabled() const;
     [[nodiscard]] QVariantList parentLibrary() const;
     [[nodiscard]] QVariantList adultLibrary() const;
 
@@ -137,6 +139,7 @@ public:
     Q_INVOKABLE void cycleTvBorderStyle(int direction);
     Q_INVOKABLE void adjustVideoDistortion(int direction);
     Q_INVOKABLE void toggleSoundEffects();
+    Q_INVOKABLE void toggleScrubbing();
     Q_INVOKABLE void toggleVolumeLimit();
     Q_INVOKABLE void adjustMaximumVolume(int direction);
     Q_INVOKABLE void reloadLibrary();
@@ -172,6 +175,7 @@ signals:
     void tvBorderStyleChanged();
     void videoDistortionChanged();
     void soundEffectsEnabledChanged();
+    void scrubbingEnabledChanged();
     void parentLibraryChanged();
     void adultLibraryChanged();
 
@@ -282,6 +286,7 @@ private:
     bool m_playbackPaused = false;
     bool m_started = false;
     bool m_soundEffectsEnabled = true;
+    bool m_scrubbingEnabled = false;
     QString m_sessionId;
     std::function<qint64()> m_episodeUptimeClock;
     ParentAccessState m_parentAccessState = ParentClosed;

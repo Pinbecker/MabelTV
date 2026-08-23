@@ -1093,6 +1093,7 @@ class Library:
             "volume_limit_enabled": volume.get("limit_enabled") is True,
             "maximum_volume": bounded(volume.get("maximum"), 60, 5),
             "sound_effects_enabled": settings.get("sound_effects_enabled") is not False,
+            "scrubbing_enabled": settings.get("scrubbing_enabled") is True,
         }
 
     def library(self) -> dict[str, Any]:
@@ -1848,6 +1849,7 @@ class Library:
             if not isinstance(requested, dict):
                 raise ValueError("Choose the TV settings to save")
 
+            settings = self.settings()
             playback_mode = requested.get("playback_mode")
             picture_mode = requested.get("picture_mode")
             tv_border = requested.get("tv_border")
@@ -1858,6 +1860,11 @@ class Library:
             maximum_volume = requested.get("maximum_volume")
             volume_limit_enabled = requested.get("volume_limit_enabled")
             sound_effects_enabled = requested.get("sound_effects_enabled")
+            # An already-open, older portal page can submit the rest of the
+            # form without this newer field. Retain its current value instead
+            # of rejecting an otherwise valid TV-settings save.
+            scrubbing_enabled = requested.get(
+                "scrubbing_enabled", settings.get("scrubbing_enabled") is True)
 
             if playback_mode not in {"continuous", "resume"}:
                 raise ValueError("Choose a playback behaviour")
@@ -1876,10 +1883,11 @@ class Library:
                 raise ValueError("CRT glass and distortion must be between 0 and 100")
             if not 5 <= maximum_volume <= 100:
                 raise ValueError("Maximum volume must be between 5 and 100")
-            if not isinstance(volume_limit_enabled, bool) or not isinstance(sound_effects_enabled, bool):
-                raise ValueError("Choose whether volume limits and sound effects are on")
+            if (not isinstance(volume_limit_enabled, bool)
+                    or not isinstance(sound_effects_enabled, bool)
+                    or not isinstance(scrubbing_enabled, bool)):
+                raise ValueError("Choose whether volume limits, sound effects, and scrubbing are on")
 
-            settings = self.settings()
             volume = settings.get("volume")
             if not isinstance(volume, dict):
                 volume = {}
@@ -1894,6 +1902,7 @@ class Library:
                 "video_distortion": video_distortion,
                 "display_resolution": display_resolution,
                 "sound_effects_enabled": sound_effects_enabled,
+                "scrubbing_enabled": scrubbing_enabled,
                 "volume": volume,
             })
             self.write_json(self.settings_path, settings)

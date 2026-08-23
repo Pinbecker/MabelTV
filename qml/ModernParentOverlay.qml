@@ -13,9 +13,9 @@ Item {
     property bool sidebarFocused: false
     property int sidebarSelection: 0
     property int restartSequenceStep: 0
-    readonly property int rowCount: 16
+    readonly property int rowCount: 17
     readonly property int settingsColumns: 2
-    readonly property int settingsRows: rowCount / settingsColumns
+    readonly property int settingsRows: Math.ceil(rowCount / settingsColumns)
 
     visible: controller.parentAccessState !== TvController.ParentClosed
 
@@ -49,12 +49,13 @@ Item {
         case 7: return controller.volumeLimitEnabled ? "On" : "Off"
         case 8: return controller.configuredMaximumVolume + "%"
         case 9: return controller.soundEffectsEnabled ? "On" : "Off"
-        case 10: return "Open library"
-        case 11: return "Check now"
-        case 12: return controller.libraryStatus.split("\n")[0].toUpperCase()
-        case 13: return controller.adultLibrary.length + " films"
-        case 14: return "Relaunch"
-        case 15: return Qt.platform.os === "windows" ? "Pi only" : "Safe power off"
+        case 10: return controller.scrubbingEnabled ? "On" : "Off"
+        case 11: return "Open library"
+        case 12: return "Check now"
+        case 13: return controller.libraryStatus.split("\n")[0].toUpperCase()
+        case 14: return controller.adultLibrary.length + " films"
+        case 15: return "Relaunch"
+        case 16: return Qt.platform.os === "windows" ? "Pi only" : "Safe power off"
         }
         return ""
     }
@@ -71,23 +72,24 @@ Item {
         case 7: controller.toggleVolumeLimit(); break
         case 8: controller.adjustMaximumVolume(direction); break
         case 9: controller.toggleSoundEffects(); break
+        case 10: controller.toggleScrubbing(); break
         }
     }
 
     function activateRow(index) {
-        if (index <= 9) {
+        if (index <= 10) {
             adjustRow(index, 1)
-        } else if (index === 10) {
+        } else if (index === 11) {
             page = "library"
             programmePane = false
             clampLibrarySelection()
-        } else if (index === 11) {
+        } else if (index === 12) {
             controller.reloadLibrary()
-        } else if (index === 13) {
-            controller.requestParentCommand("adult")
         } else if (index === 14) {
+            controller.requestParentCommand("adult")
+        } else if (index === 15) {
             controller.requestParentCommand("restart")
-        } else if (index === 15 && Qt.platform.os !== "windows") {
+        } else if (index === 16 && Qt.platform.os !== "windows") {
             controller.requestParentCommand("shutdown")
         }
     }
@@ -97,7 +99,10 @@ Item {
         const row = Math.floor(selectedRow / settingsColumns)
         const nextColumn = (column + horizontal + settingsColumns) % settingsColumns
         const nextRow = (row + vertical + settingsRows) % settingsRows
-        selectedRow = nextRow * settingsColumns + nextColumn
+        const candidate = nextRow * settingsColumns + nextColumn
+        // The final row intentionally has one card, rather than a made-up
+        // setting simply to fill a grid cell.
+        selectedRow = candidate < rowCount ? candidate : rowCount - 1
     }
 
     function openSidebar() {
@@ -608,7 +613,7 @@ Item {
                     model: ["Playback", "Reset unwatched episodes", "Picture size",
                             "TV frame", "CRT glass", "90s picture wobble",
                             "Display quality", "Volume limit", "Maximum volume",
-                            "TV sounds", "Channels & programmes", "Check library",
+                            "TV sounds", "Playback scrubbing", "Channels & programmes", "Check library",
                             "Diagnostics", "Adult mode", "Restart MabelTV",
                             "Shut down Raspberry Pi"]
 
@@ -617,7 +622,8 @@ Item {
                         required property string modelData
                         width: (settingsGrid.width - settingsGrid.columnSpacing) / 2
                         height: Math.max(46, (settingsGrid.height
-                               - settingsGrid.rowSpacing * 7) / 8)
+                               - settingsGrid.rowSpacing * (overlay.settingsRows - 1))
+                               / overlay.settingsRows)
                         radius: 11
                         color: index === overlay.selectedRow && !overlay.sidebarFocused
                                ? "#fff0eb" : "#ffffff"
@@ -634,8 +640,8 @@ Item {
                             radius: 4
                             color: index < 3 ? "#3d6d8a"
                                   : index < 7 ? "#8058a5"
-                                  : index < 10 ? "#27735d"
-                                  : index < 13 ? "#ed6a4d" : "#69716d"
+                                  : index < 11 ? "#27735d"
+                                  : index < 14 ? "#ed6a4d" : "#69716d"
                         }
 
                         Text {

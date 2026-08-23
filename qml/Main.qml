@@ -102,6 +102,19 @@ Window {
         player.togglePause()
     }
 
+    function scrubPlayback(seconds) {
+        if (introPlaying || poweringOff || tvController.standby
+                || (player.status !== "Playing" && !player.paused))
+            return
+        syncPlaybackPosition()
+        player.seekRelative(seconds)
+        scrubLabel.text = (seconds < 0 ? "◀◀ " : "▶▶ ")
+                + (Math.abs(seconds) === 300 ? "5 minutes"
+                                              : Math.abs(seconds) + " seconds")
+        scrubOsd.opacity = 1
+        scrubOsdTimer.restart()
+    }
+
     function beginPowerOff(shutDownPi) {
         if (poweringOff)
             return
@@ -800,6 +813,33 @@ Window {
                 text: "Ⅱ  PAUSE"
             }
 
+            Rectangle {
+                id: scrubOsd
+
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.verticalCenter: parent.verticalCenter
+                width: Math.max(176, scrubLabel.implicitWidth + 46)
+                height: 54
+                radius: 10
+                z: 71
+                color: "#d909100c"
+                border.color: "#8aa789"
+                border.width: 1
+                opacity: 0
+
+                Behavior on opacity { NumberAnimation { duration: 110 } }
+
+                Text {
+                    id: scrubLabel
+                    anchors.centerIn: parent
+                    color: "#e8f0dd"
+                    font.family: "Consolas"
+                    font.bold: true
+                    font.pixelSize: Math.max(17, screen.height * 0.032)
+                    text: "▶▶ 15 seconds"
+                }
+            }
+
             Text {
                 id: programmeName
 
@@ -1207,6 +1247,12 @@ Window {
     }
 
     Timer {
+        id: scrubOsdTimer
+        interval: 900
+        onTriggered: scrubOsd.opacity = 0
+    }
+
+    Timer {
         id: volumeOsdTimer
         interval: 1300
         onTriggered: volumeOsd.opacity = 0
@@ -1352,6 +1398,18 @@ Window {
             } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
                        && !event.isAutoRepeat && !directMediaMode) {
                 root.togglePlaybackPause()
+                event.accepted = true
+            } else if (tvController.scrubbingEnabled && !directMediaMode
+                       && !tvController.standby
+                       && (event.key === Qt.Key_Left || event.key === Qt.Key_Right
+                           || event.key === Qt.Key_Up || event.key === Qt.Key_Down)) {
+                if (event.key === Qt.Key_Left) {
+                    root.scrubPlayback(event.isAutoRepeat ? -30 : -15)
+                } else if (event.key === Qt.Key_Right) {
+                    root.scrubPlayback(event.isAutoRepeat ? 30 : 15)
+                } else if (!event.isAutoRepeat) {
+                    root.scrubPlayback(event.key === Qt.Key_Up ? 300 : -300)
+                }
                 event.accepted = true
             } else if (event.key === Qt.Key_PageUp) {
                 if (root.acceptRepeat("channel", event.isAutoRepeat)) {
