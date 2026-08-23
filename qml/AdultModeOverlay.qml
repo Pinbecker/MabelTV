@@ -7,6 +7,7 @@ Item {
     required property var controller
     property bool active: false
     property bool playing: false
+    property bool closing: false
     property int selectedIndex: 0
     readonly property real playbackPosition: adultPlayer.playbackPosition
     readonly property real playbackDuration: adultPlayer.playbackDuration
@@ -23,14 +24,24 @@ Item {
         selectedIndex = Math.max(0, Math.min(selectedIndex,
                                              controller.adultLibrary.length - 1))
         playing = false
+        closing = false
         errorMessage = ""
         controlsOpacity = 1
         active = true
     }
 
     function close() {
+        if (closing)
+            return
+        closing = true
+        playing = false
+        controlsOpacity = 1
         adultPlayer.stop()
+    }
+
+    function finishClose() {
         active = false
+        closing = false
         playing = false
         closed()
     }
@@ -136,6 +147,10 @@ Item {
         onPlaybackFinished: {
             overlay.playing = false
             overlay.controlsOpacity = 1
+        }
+        onPlaybackStopped: {
+            if (overlay.closing)
+                overlay.finishClose()
         }
         onPlaybackFailed: message => {
             overlay.errorMessage = message

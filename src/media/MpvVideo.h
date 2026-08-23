@@ -59,6 +59,7 @@ signals:
     void mutedChanged();
     void aspectModeChanged();
     void playbackFinished();
+    void playbackStopped();
     void playbackFailed(const QString &message);
     void fatalPlayerFailure(const QString &message);
 

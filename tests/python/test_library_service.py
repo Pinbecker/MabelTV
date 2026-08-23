@@ -271,7 +271,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertTrue(all(state.get("complete") for state in states))
         self.assertEqual(maximum_active, 1)
 
-    def test_adult_upload_is_kept_raw_and_separate_from_channels(self) -> None:
+    def test_incompatible_adult_upload_is_optimised_and_kept_separate(self) -> None:
         self.fixture.library.complete_setup({
             "setup_code": "135790", "pin": "2468",
             "channels": mabeltv_library.DEFAULT_CHANNELS,
@@ -280,8 +280,10 @@ class LibraryUnitTests(unittest.TestCase):
             "codec_type": "video", "width": 3840, "height": 2160,
             "avg_frame_rate": "60/1",
         }
-        self.fixture.library.needs_playback_optimisation = mock.Mock(
-            side_effect=AssertionError("Adult media must never enter child optimisation"))
+        def optimise(source: Path, destination: Path) -> None:
+            destination.write_bytes(source.read_bytes())
+
+        self.fixture.library.optimise_adult_for_playback = mock.Mock(side_effect=optimise)
         self.fixture.library.refresh_tv = mock.Mock(return_value=True)
 
         created = self.fixture.library.adult_upload_create({
@@ -299,15 +301,40 @@ class LibraryUnitTests(unittest.TestCase):
             time.sleep(0.02)
 
         self.assertTrue(state.get("complete"))
-        self.assertFalse(state.get("optimised"))
-        self.assertEqual((self.fixture.library.adult_root / "My Film.mkv").read_bytes(),
+        self.assertTrue(state.get("optimised"))
+        self.assertEqual((self.fixture.library.adult_root / "My Film.mp4").read_bytes(),
                          b"raw-film-content")
         self.assertEqual(self.fixture.library.adult_library()[0]["display_name"],
                          "My Film")
         self.assertFalse(any((self.fixture.media / channel["folder"] / "My Film.mkv").exists()
                              for channel in mabeltv_library.DEFAULT_CHANNELS))
-        self.fixture.library.needs_playback_optimisation.assert_not_called()
+        self.fixture.library.optimise_adult_for_playback.assert_called_once()
         self.fixture.library.refresh_tv.assert_called_once()
+
+    def test_pi_ready_adult_upload_is_kept_without_conversion(self) -> None:
+        self.fixture.library.complete_setup({
+            "setup_code": "135790", "pin": "2468",
+            "channels": mabeltv_library.DEFAULT_CHANNELS,
+        })
+        self.fixture.library.video_info = lambda path: {
+            "codec_type": "video", "codec_name": "h264", "pix_fmt": "yuv420p",
+            "width": 1280, "height": 720, "avg_frame_rate": "24000/1001",
+        }
+        self.fixture.library.optimise_adult_for_playback = mock.Mock()
+        self.fixture.library.refresh_tv = mock.Mock(return_value=True)
+
+        created = self.fixture.library.adult_upload_create({
+            "file_name": "Ready Film.mp4", "size": 5,
+        })
+        self.fixture.library.append_upload(created["id"], 0, b"ready")
+        self.fixture.library.conversion_queue.join()
+        state = self.fixture.library.upload_status(created["id"])
+
+        self.assertTrue(state["complete"])
+        self.assertFalse(state["optimised"])
+        self.assertEqual((self.fixture.library.adult_root / "Ready Film.mp4").read_bytes(),
+                         b"ready")
+        self.fixture.library.optimise_adult_for_playback.assert_not_called()
 
     def test_pin_recovery_keeps_custom_channels(self) -> None:
         custom = [{"number": 7, "name": "Nature", "folder": "nature", "aspect": "fit"}]

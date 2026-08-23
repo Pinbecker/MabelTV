@@ -461,6 +461,7 @@ void MpvVideo::stop()
     resetPlaybackTelemetry();
     if (m_state->handle == nullptr) {
         setStatus(QStringLiteral("Stopped"));
+        emit playbackStopped();
         return;
     }
     if (m_stopPending) {
@@ -470,6 +471,7 @@ void MpvVideo::stop()
     if (!m_fileActive && m_status != QStringLiteral("Loading")
         && m_status != QStringLiteral("Preparing video")) {
         setStatus(QStringLiteral("Stopped"));
+        emit playbackStopped();
         return;
     }
 
@@ -593,6 +595,7 @@ void MpvVideo::finishPendingStop()
     m_stopPending = false;
     setStatus(QStringLiteral("Stopped"));
     if (!m_hasQueuedPlay) {
+        emit playbackStopped();
         return;
     }
 

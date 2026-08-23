@@ -268,7 +268,17 @@ Window {
 
     function leaveAdultMode() {
         restoreChildPauseAfterAdult = childWasPausedBeforeAdult
-        tvController.resumeFromStandby()
+        adultResumeTimer.restart()
+    }
+
+    // MPV's end-file event means the adult decoder has stopped. Give the Pi's
+    // V4L2 device one final render turn to release its buffers before the
+    // children's player asks for the same hardware decoder again.
+    Timer {
+        id: adultResumeTimer
+        interval: 400
+        repeat: false
+        onTriggered: tvController.resumeFromStandby()
     }
 
     Rectangle {

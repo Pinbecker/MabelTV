@@ -41,6 +41,25 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("case MPV_EVENT_END_FILE", source)
         self.assertIn("Waiting for previous playback to stop", source)
 
+    def test_adult_mode_waits_for_decoder_release_before_resuming_tv(self) -> None:
+        source = (PROJECT_ROOT / "src" / "media" / "MpvVideo.cpp").read_text(
+            encoding="utf-8"
+        )
+        header = (PROJECT_ROOT / "src" / "media" / "MpvVideo.h").read_text(
+            encoding="utf-8"
+        )
+        adult_qml = (PROJECT_ROOT / "qml" / "AdultModeOverlay.qml").read_text(
+            encoding="utf-8"
+        )
+        main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+
+        self.assertIn("void playbackStopped();", header)
+        self.assertIn("emit playbackStopped();", source)
+        self.assertIn("onPlaybackStopped", adult_qml)
+        self.assertIn("if (overlay.closing)", adult_qml)
+        self.assertIn("adultResumeTimer.restart()", main_qml)
+        self.assertIn("interval: 400", main_qml)
+
     def test_visible_adult_player_is_inside_stall_monitor(self) -> None:
         source = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
             encoding="utf-8"

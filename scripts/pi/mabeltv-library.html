@@ -118,11 +118,11 @@
         </div><footer><span data-tv-name>Your TV</span> · Library</footer>
       </div></section>
       <section id="view-adult" class="view"><div class="page">
-        <header class="adult-hero surface"><div><p class="eyebrow">Parent library</p><h1>Adult mode</h1><p>Your own films, separate from Mabel’s channels and kept exactly as uploaded.</p></div><div class="adult-hero-stat"><strong id="adultHeroCount">0</strong><span>films ready on TV</span></div></header>
+        <header class="adult-hero surface"><div><p class="eyebrow">Parent library</p><h1>Adult mode</h1><p>Your own films, separate from Mabel’s channels and prepared for smooth HD playback.</p></div><div class="adult-hero-stat"><strong id="adultHeroCount">0</strong><span>films ready on TV</span></div></header>
         <div class="adult-layout">
-          <section class="adult-upload surface"><p class="section-kicker">Add a film</p><h2>Upload without conversion</h2><form id="adultUploadForm" class="upload-form"><label class="drop-field" for="adultFile"><input id="adultFile" type="file" accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg" multiple><span class="drop-copy"><span class="drop-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 14v5h14v-5"/></svg></span><strong>Choose films</strong><small>Files are validated, then kept in their original format and quality</small></span></label><div id="adultSelectedFiles" class="callout" aria-live="polite">No films selected yet.</div><button id="adultUploadButton" type="submit" class="primary" disabled>Upload selected films</button></form><div id="adultUploadState" class="hidden callout" aria-live="polite"><p id="adultUploadText">Uploading…</p><progress id="adultProgress" max="1" value="0"></progress></div></section>
+          <section class="adult-upload surface"><p class="section-kicker">Add a film</p><h2>Upload and prepare for TV</h2><form id="adultUploadForm" class="upload-form"><label class="drop-field" for="adultFile"><input id="adultFile" type="file" accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg" multiple><span class="drop-copy"><span class="drop-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 14v5h14v-5"/></svg></span><strong>Choose films</strong><small>Incompatible or oversized films are prepared automatically as Pi-friendly 720p HD</small></span></label><div id="adultSelectedFiles" class="callout" aria-live="polite">No films selected yet.</div><button id="adultUploadButton" type="submit" class="primary" disabled>Upload selected films</button></form><div id="adultUploadState" class="hidden callout" aria-live="polite"><p id="adultUploadText">Uploading…</p><progress id="adultProgress" max="1" value="0"></progress></div></section>
           <section class="adult-library surface"><div class="section-heading"><div><p class="section-kicker">On the television</p><h2>Adult library</h2></div><span id="adultFilmCount" class="count-badge">0</span></div><p class="adult-library-note">Choose a film here to rename or remove it. To watch, use the Adult shortcut on Live TV or the parent menu on the television.</p><div id="adultFilmList" class="adult-film-list"></div></section>
-        </div><section class="adult-guidance" aria-label="Adult library details"><div><strong>Private library</strong><span>These films never appear in children’s channels.</span></div><div><strong>Original quality</strong><span>Adult uploads are stored without conversion.</span></div><div><strong>Ready on TV</strong><span>Use the Live TV Adult shortcut to open them on screen.</span></div></section><footer><span data-tv-name>Your TV</span> · Adult mode is protected by the on-TV parent menu</footer>
+        </div><section class="adult-guidance" aria-label="Adult library details"><div><strong>Private library</strong><span>These films never appear in children’s channels.</span></div><div><strong>Pi-friendly HD</strong><span>Films are capped at 720p H.264 when preparation is needed.</span></div><div><strong>Ready on TV</strong><span>Use the Live TV Adult shortcut to open them on screen.</span></div></section><footer><span data-tv-name>Your TV</span> · Adult mode is protected by the on-TV parent menu</footer>
       </div></section>
       <section id="view-system" class="view"><div class="page">
         <header class="page-head"><div><p class="eyebrow">Settings</p><h1>TV and account</h1><p>Picture, playback, sound, parent controls, identity, and Pi controls live here.</p></div></header>
@@ -556,7 +556,7 @@
         const title = document.createElement('strong')
         title.textContent = film.display_name
         const size = document.createElement('small')
-        size.textContent = `${(Number(film.size || 0) / 1073741824).toFixed(2)} GB · original file`
+        size.textContent = `${(Number(film.size || 0) / 1073741824).toFixed(2)} GB · ready for TV`
         copy.append(title, size)
         const actions = document.createElement('div')
         actions.className = 'adult-film-actions'
@@ -1120,9 +1120,13 @@
       while (true) {
         const state = await api('/api/uploads/' + id)
         if (state.complete) return state
-        if (state.status === 'error') throw new Error(state.error || 'MabelTV could not validate this film')
-        $('#adultUploadText').textContent = state.status === 'finalising'
-          ? 'Adding the film to Adult mode…' : 'Checking the original film…'
+        if (state.status === 'error') throw new Error(state.error || 'MabelTV could not prepare this film')
+        const messages = {
+          validating: 'Checking the film…', queued: 'Waiting in the preparation queue…',
+          processing: 'Preparing Pi-friendly 720p HD…', publishing: 'Publishing the prepared film…',
+          finalising: 'Adding the film to Adult mode…'
+        }
+        $('#adultUploadText').textContent = messages[state.status] || 'Preparing the film…'
         await new Promise(resolve => setTimeout(resolve, 1500))
       }
     }
@@ -1173,7 +1177,7 @@
         $('#adultUploadText').textContent = 'Interrupted films remain selected so you can resume them.'
         notice(`${files.length - failures.length} of ${files.length} films were added.\n${failures.map(failure => `${failure.file.name}: ${failure.message}`).join('\n')}`, true)
       } else {
-        notice(`${files.length} film${files.length === 1 ? '' : 's'} added to Adult mode without conversion.`)
+        notice(`${files.length} film${files.length === 1 ? '' : 's'} added to Adult mode and prepared for TV.`)
       }
       $('#adultFile').disabled = false
       $('#adultUploadButton').disabled = selectedAdultFiles.length === 0

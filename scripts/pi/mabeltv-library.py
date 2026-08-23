@@ -633,8 +633,9 @@ class Library:
                 metadata.pop("error", None)
                 self.write_json(self.incoming / f"{upload_id}.json", metadata)
                 stream = self.video_info(part)
-                conversion_required = False if adult_upload else self.needs_playback_optimisation(
-                    Path(source_name), stream)
+                conversion_required = self.needs_adult_playback_optimisation(stream) \
+                    if adult_upload else self.needs_playback_optimisation(
+                        Path(source_name), stream)
                 metadata["conversion_required"] = bool(conversion_required)
                 previous_status = "validated"
 
@@ -656,7 +657,10 @@ class Library:
                 metadata["status"] = "processing"
                 metadata["updated"] = time.time()
                 self.write_json(self.incoming / f"{upload_id}.json", metadata)
-                self.optimise_for_playback(part, destination)
+                if adult_upload:
+                    self.optimise_adult_for_playback(part, destination)
+                else:
+                    self.optimise_for_playback(part, destination)
             else:
                 metadata["status"] = "publishing"
                 metadata["updated"] = time.time()
@@ -1447,7 +1451,7 @@ class Library:
 
     def video_info(self, path: Path) -> dict[str, Any]:
         try:
-            result = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=codec_type,width,height,avg_frame_rate", "-of", "json", str(path)], check=False, capture_output=True, text=True, timeout=30)
+            result = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=codec_type,codec_name,profile,pix_fmt,width,height,avg_frame_rate", "-of", "json", str(path)], check=False, capture_output=True, text=True, timeout=30)
         except (OSError, subprocess.TimeoutExpired) as error:
             raise ValueError("Mabel TV could not finish checking that video") from error
         try:
@@ -1477,14 +1481,40 @@ class Library:
                     and (int(stream.get("width", 0)) > PLAYBACK_WIDTH
                          or int(stream.get("height", 0)) > PLAYBACK_HEIGHT)))
 
+    def needs_adult_playback_optimisation(self, stream: dict[str, Any]) -> bool:
+        """Keep Adult Mode inside the Pi 4's reliable decode envelope."""
+        return (str(stream.get("codec_name", "")).lower() != "h264"
+                or str(stream.get("pix_fmt", "")).lower() != "yuv420p"
+                or int(stream.get("width", 0)) > PLAYBACK_WIDTH
+                or int(stream.get("height", 0)) > PLAYBACK_HEIGHT
+                or self.frame_rate(stream) > PLAYBACK_FPS + 0.1)
+
     def optimise_for_playback(self, source: Path, destination: Path) -> None:
+        self._optimise_for_playback(
+            source, destination,
+            "scale=1280:720:force_original_aspect_ratio=decrease:force_divisible_by=2,fps=30",
+            "2500k", "3000k", "5000k")
+
+    def optimise_adult_for_playback(self, source: Path, destination: Path) -> None:
+        # Films are normally 23.976/24/25 fps. Preserve that cadence instead
+        # of manufacturing duplicate 30 fps frames, while capping the stream
+        # at a level the Pi can decode smoothly in hardware.
+        self._optimise_for_playback(
+            source, destination,
+            "scale=1280:720:force_original_aspect_ratio=decrease:force_divisible_by=2",
+            "1800k", "2000k", "4000k")
+
+    def _optimise_for_playback(self, source: Path, destination: Path,
+                               video_filter: str, bitrate: str,
+                               maximum_bitrate: str, buffer_size: str) -> None:
         token = uuid.uuid4().hex
         temporary = self.incoming / f"{token}.optimising.mp4"
         error_log = self.incoming / f"{token}.ffmpeg.log"
         command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
                    "-threads", "1", "-filter_threads", "1", "-i", str(source),
-                   "-map", "0:v:0", "-map", "0:a:0?", "-vf", "scale=1280:720:force_original_aspect_ratio=decrease:force_divisible_by=2,fps=30",
-                   "-c:v", "h264_v4l2m2m", "-b:v", "2500k", "-maxrate", "3000k", "-bufsize", "5000k",
+                   "-map", "0:v:0", "-map", "0:a:0?", "-vf", video_filter,
+                   "-c:v", "h264_v4l2m2m", "-b:v", bitrate,
+                   "-maxrate", maximum_bitrate, "-bufsize", buffer_size,
                    "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", str(temporary)]
         process: subprocess.Popen[bytes] | None = None
         paused = False
@@ -1542,7 +1572,7 @@ class Library:
             return self._upload_create(payload)
 
     def adult_upload_create(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """Reserve a resumable upload that will be validated but never converted."""
+        """Reserve a resumable upload prepared for reliable Pi playback."""
         with self.config_lock:
             file_name = str(payload.get("file_name", ""))
             size = int(payload.get("size", 0))
