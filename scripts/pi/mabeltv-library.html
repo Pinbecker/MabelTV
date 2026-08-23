@@ -31,11 +31,12 @@
     .feature-control{display:flex;align-items:center;justify-content:space-between;gap:28px;margin-top:20px;padding:18px;border:1px solid var(--line);border-radius:12px;background:var(--soft)}.feature-control>div{max-width:720px}.feature-control strong{display:block;margin-bottom:5px}.feature-control p{margin:0}.combo{display:flex;gap:6px;flex-wrap:wrap;margin-top:13px}.combo span{display:inline-flex;min-height:29px;align-items:center;border:1px solid #cfd5d0;border-radius:7px;padding:3px 9px;background:#fff;color:#3f4945;font-size:.76rem;font-weight:700}.feature-toggle{min-width:126px}.feature-toggle[aria-pressed="true"]{border-color:var(--green);background:var(--green);color:#fff}
     @media(max-width:720px){.feature-control{display:grid;gap:18px}.feature-toggle{width:100%}}
     @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
-    @media(max-width:720px){nav{grid-template-columns:repeat(5,1fr)}}
+    @media(max-width:720px){nav{grid-template-columns:repeat(6,1fr)}}
     .live-screen video,.live-screen img{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover;object-position:center;background:#050706}
     .tv-settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.tv-settings-grid .wide{grid-column:1/-1}.range-setting{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 13px;align-items:center;border:1px solid var(--line);border-radius:var(--rs);padding:13px;background:var(--soft)}.range-setting label{grid-column:1/-1}.range-setting input{min-height:auto;padding:0;accent-color:var(--accent2)}.range-setting output{min-width:42px;border-radius:99px;padding:3px 8px;background:#fff;color:var(--ink);font-size:.8rem;font-weight:720;text-align:center}.tv-settings-foot{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:4px}.tv-settings-foot p{margin:0;color:var(--muted);font-size:.82rem}
     @media(max-width:720px){.tv-settings-grid{grid-template-columns:1fr}.tv-settings-grid .wide{grid-column:auto}.tv-settings-foot{align-items:stretch;flex-direction:column}.tv-settings-foot button{width:100%}}
     #view-system .page-head{margin-bottom:20px}#view-system .page-head p:not(.eyebrow),#view-system .settings-section>p.muted,#view-system .settings-section>p.small,#view-system .danger-zone .section-heading p.muted,#view-system .settings-section:has(#tvGuideToggle) .feature-control p,#view-system .tv-settings-foot p{display:none}#view-system .settings-grid{gap:10px}#view-system .settings-section{padding:18px}#view-system .settings-section>h2{margin-bottom:2px}#view-system .settings-section form{gap:10px;margin-top:12px}#view-system .design-picker{margin-top:12px}#view-system .design-option{min-height:126px}#view-system .feature-control{gap:16px;margin-top:12px;padding:13px}#view-system .tv-settings-grid{gap:10px}#view-system .range-setting{padding:10px 12px}
+    .adult-layout{display:grid;grid-template-columns:minmax(290px,.72fr) minmax(0,1.28fr);gap:14px;align-items:start}.adult-upload,.adult-library{padding:24px}.adult-film-list{display:grid;gap:8px;margin-top:16px}.adult-film{display:flex;align-items:center;gap:14px;border:1px solid var(--line);border-radius:11px;padding:13px;background:var(--soft)}.adult-film-copy{min-width:0;flex:1}.adult-film-copy strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.adult-film-copy small{color:var(--muted)}.adult-film-actions{display:flex;gap:6px}.adult-film-actions button{min-height:34px;padding:6px 10px;font-size:.77rem}@media(max-width:820px){.adult-layout{grid-template-columns:1fr}}@media(max-width:720px){.adult-upload,.adult-library{padding:18px}.adult-library .section-heading{align-items:center;flex-direction:row}.adult-library .count-badge{width:auto}.adult-film{align-items:flex-start;flex-direction:column}.adult-film-actions{width:100%}.adult-film-actions button{flex:1}nav button{font-size:.62rem}}
   </style>
 </head>
 <body>
@@ -65,6 +66,7 @@
         <button data-view-button="live"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3Z"/></svg>Live TV<span class="nav-dot"></span></button>
         <button data-view-button="add"><svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add videos<span class="nav-dot"></span></button>
         <button data-view-button="channels"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="m9 9 6 3-6 3Z"/></svg>Library<span class="nav-dot"></span></button>
+        <button data-view-button="adult"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m10 9 5 3-5 3Z"/><path d="M7 4v4M17 4v4"/></svg>Adult<span class="nav-dot"></span></button>
         <button data-view-button="system"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.5 1A7 7 0 0 0 14.3 5L14 2h-4l-.4 3A7 7 0 0 0 7.5 7L5 6 3 9.3l2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.5-1a7 7 0 0 0 2.1 1.9l.4 3h4l.4-3a7 7 0 0 0 2.1-1.9l2.5 1 2-3.4-2-1.5c0-.4.1-.8.1-1.2Z"/></svg>Settings<span class="nav-dot"></span></button>
       </nav>
       <div class="rail-foot"><span id="topHealth" class="health-pill">Checking TV…</span><button id="logout" class="secondary">Lock controls</button></div>
@@ -106,6 +108,13 @@
           <section class="surface surface-pad"><div class="workspace-head"><div><div class="workspace-titleline"><span id="workspaceChannelBadge" class="workspace-channel-number">CH</span><div><p id="workspaceEyebrow" class="eyebrow">Channel</p><h1 id="workspaceChannelName">Channel</h1></div></div><p id="workspaceChannelStatus" class="muted"></p></div><div class="row"><button id="workspaceAddMedia" type="button">Add videos</button><button id="workspaceToggleChannel" type="button" class="secondary">Hide channel</button></div></div><div class="channel-facts"><div class="channel-fact"><strong id="workspaceProgrammeCount">0</strong><span>programmes</span></div><div class="channel-fact"><strong id="workspaceVisibleCount">0</strong><span>shown on TV</span></div><div class="channel-fact"><strong id="workspacePictureMode">—</strong><span>picture mode</span></div></div></section>
           <div class="workspace-layout"><section class="workspace-main surface"><div class="section-heading"><div><p class="section-kicker">Programme library</p><h2 id="channelSummary">Everything in this channel</h2></div></div><div class="library-toolbar"><label>Find a programme<input id="programmeSearch" type="search" placeholder="Search titles…" autocomplete="off"></label><label>Show<select id="programmeVisibility"><option value="all">All programmes</option><option value="enabled">Shown on TV</option><option value="disabled">Hidden from TV</option></select></label></div><div id="channels"></div><div id="programmePager" class="pager hidden"></div></section><aside class="workspace-side"><section class="surface"><p class="section-kicker">Channel settings</p><h2>Edit this channel</h2><form id="editChannelForm" class="field-grid"><label>Channel number<input id="editChannelNumber" type="number" min="1" max="999" required></label><label>Channel name<input id="editChannelName" maxlength="60" required></label><label>Picture mode<select id="editChannelAspect"><option value="crop">Fill screen</option><option value="fit">Show whole picture</option><option value="stretch">Stretch to screen</option></select></label><label>What plays here?<select id="editChannelContentType"><option value="shows">Shows / episodes</option><option value="films">Films / long videos</option></select></label><div class="row wide"><button type="submit">Save changes</button><button id="deleteChannel" type="button" class="danger">Delete channel</button></div></form></section></aside></div>
         </div><footer><span data-tv-name>Your TV</span> · Library</footer>
+      </div></section>
+      <section id="view-adult" class="view"><div class="page">
+        <header class="page-head"><div><p class="eyebrow">Parent library</p><h1>Adult mode</h1><p>Your own films, kept separate from Mabel’s channels and stored exactly as uploaded.</p></div></header>
+        <div class="adult-layout">
+          <section class="adult-upload surface"><p class="section-kicker">Add a film</p><h2>Upload without conversion</h2><form id="adultUploadForm" class="upload-form"><label class="drop-field" for="adultFile"><input id="adultFile" type="file" accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg" multiple><span class="drop-copy"><span class="drop-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 14v5h14v-5"/></svg></span><strong>Choose films</strong><small>Files are validated, then kept in their original format and quality</small></span></label><div id="adultSelectedFiles" class="callout" aria-live="polite">No films selected yet.</div><button id="adultUploadButton" type="submit" class="primary" disabled>Upload selected films</button></form><div id="adultUploadState" class="hidden callout" aria-live="polite"><p id="adultUploadText">Uploading…</p><progress id="adultProgress" max="1" value="0"></progress></div></section>
+          <section class="adult-library surface"><div class="section-heading"><div><p class="section-kicker">On the television</p><h2>Adult library</h2></div><span id="adultFilmCount" class="count-badge">0</span></div><div id="adultFilmList" class="adult-film-list"></div></section>
+        </div><footer><span data-tv-name>Your TV</span> · Adult mode is protected by the on-TV parent menu</footer>
       </div></section>
       <section id="view-system" class="view"><div class="page">
         <header class="page-head"><div><p class="eyebrow">Settings</p><h1>TV and account</h1><p>Picture, playback, sound, parent controls, identity, and Pi controls live here.</p></div></header>
@@ -512,12 +521,52 @@
       if (selectedManageChannel !== null && !channels.some(channel => channel.number === selectedManageChannel)) selectedManageChannel = null
       renderStatus()
       renderUploads()
+      renderAdultLibrary()
       renderOverviewChannels()
       renderChannels()
       renderTvSettings()
       renderParentOverlayStyle()
       renderTvGuideSetting()
       renderPortalPinSetting()
+    }
+
+    function renderAdultLibrary() {
+      const films = library?.adult_library || []
+      $('#adultFilmCount').textContent = String(films.length)
+      const root = $('#adultFilmList')
+      root.innerHTML = ''
+      if (!films.length) {
+        root.innerHTML = '<div class="empty"><strong>No films yet</strong>Upload one here and it will appear in Adult mode on the television.</div>'
+        return
+      }
+      films.forEach(film => {
+        const row = document.createElement('article')
+        row.className = 'adult-film'
+        const copy = document.createElement('div')
+        copy.className = 'adult-film-copy'
+        const title = document.createElement('strong')
+        title.textContent = film.display_name
+        const size = document.createElement('small')
+        size.textContent = `${(Number(film.size || 0) / 1073741824).toFixed(2)} GB · original file`
+        copy.append(title, size)
+        const actions = document.createElement('div')
+        actions.className = 'adult-film-actions'
+        const rename = document.createElement('button')
+        rename.type = 'button'; rename.className = 'secondary'; rename.textContent = 'Rename'
+        rename.onclick = () => {
+          const name = prompt('Film name:', film.display_name)
+          if (name?.trim()) manage('rename-adult', { file: film.name, name: name.trim() })
+        }
+        const remove = document.createElement('button')
+        remove.type = 'button'; remove.className = 'danger'; remove.textContent = 'Remove'
+        remove.onclick = () => {
+          if (confirm(`Move “${film.display_name}” to the recycle bin?`))
+            manage('trash-adult', { file: film.name })
+        }
+        actions.append(rename, remove)
+        row.append(copy, actions)
+        root.append(row)
+      })
     }
 
     function renderTvSettings() {
@@ -1019,6 +1068,105 @@
       $('#channel').disabled = false
       $('#file').disabled = false
       button.disabled = selectedUploadFiles.length === 0
+    }
+
+    let selectedAdultFiles = []
+
+    function renderSelectedAdultFiles() {
+      const root = $('#adultSelectedFiles'), button = $('#adultUploadButton')
+      root.innerHTML = ''
+      if (!selectedAdultFiles.length) {
+        root.textContent = 'No films selected yet.'
+        button.disabled = true
+        return
+      }
+      const heading = document.createElement('strong')
+      heading.textContent = `${selectedAdultFiles.length} film${selectedAdultFiles.length === 1 ? '' : 's'} ready to upload`
+      root.append(heading)
+      selectedAdultFiles.forEach((file, index) => {
+        const row = document.createElement('div')
+        row.className = 'row'; row.style.marginTop = '8px'
+        const name = document.createElement('span')
+        name.className = 'grow'; name.textContent = file.name
+        const remove = document.createElement('button')
+        remove.type = 'button'; remove.className = 'link'; remove.textContent = 'Remove'
+        remove.onclick = () => { selectedAdultFiles.splice(index, 1); renderSelectedAdultFiles() }
+        row.append(name, remove); root.append(row)
+      })
+      button.disabled = false
+    }
+
+    $('#adultFile').onchange = event => {
+      const existing = new Set(selectedAdultFiles.map(selectedFileKey))
+      Array.from(event.target.files || []).forEach(file => {
+        const key = selectedFileKey(file)
+        if (!existing.has(key)) { selectedAdultFiles.push(file); existing.add(key) }
+      })
+      event.target.value = ''
+      renderSelectedAdultFiles()
+    }
+
+    async function waitForAdultPreparation(id) {
+      while (true) {
+        const state = await api('/api/uploads/' + id)
+        if (state.complete) return state
+        if (state.status === 'error') throw new Error(state.error || 'MabelTV could not validate this film')
+        $('#adultUploadText').textContent = state.status === 'finalising'
+          ? 'Adding the film to Adult mode…' : 'Checking the original film…'
+        await new Promise(resolve => setTimeout(resolve, 1500))
+      }
+    }
+
+    async function sendAdultFile(file, position, total) {
+      const prefix = total > 1 ? `Film ${position} of ${total}: ` : ''
+      $('#adultProgress').max = file.size; $('#adultProgress').value = 0
+      const created = await api('/api/adult/uploads', {
+        method: 'POST', body: JSON.stringify({ file_name: file.name, size: file.size })
+      })
+      let offset = Number(created.offset) || 0, result = created
+      while (offset < file.size) {
+        const part = file.slice(offset, Math.min(offset + 8388608, file.size))
+        const finalChunk = offset + part.size >= file.size
+        $('#adultUploadText').textContent = finalChunk
+          ? `${prefix}finishing ${file.name}…`
+          : `${prefix}${file.name} · ${(offset / 1048576).toFixed(0)} MB of ${(file.size / 1048576).toFixed(0)} MB`
+        result = await resilientUploadChunk(created.id, offset, part, finalChunk)
+        offset = Number(result.offset) || offset
+        $('#adultProgress').value = offset
+      }
+      if (!result.complete) result = await waitForAdultPreparation(created.id)
+      return result
+    }
+
+    $('#adultUploadForm').onsubmit = async event => {
+      event.preventDefault()
+      const files = selectedAdultFiles.slice()
+      if (!files.length) return
+      const failures = []
+      $('#adultUploadButton').disabled = true
+      $('#adultFile').disabled = true
+      $('#adultUploadState').classList.remove('hidden')
+      notice(files.length === 1 ? 'Uploading film…' : `Uploading ${files.length} films one at a time…`)
+      for (let index = 0; index < files.length; index += 1) {
+        try {
+          await sendAdultFile(files[index], index + 1, files.length)
+        } catch (error) {
+          failures.push({ file: files[index], message: error.message })
+        }
+      }
+      selectedAdultFiles = failures.map(failure => failure.file)
+      renderSelectedAdultFiles()
+      $('#adultProgress').value = 0
+      $('#adultUploadState').classList.toggle('hidden', failures.length === 0)
+      await load().catch(() => {})
+      if (failures.length) {
+        $('#adultUploadText').textContent = 'Interrupted films remain selected so you can resume them.'
+        notice(`${files.length - failures.length} of ${files.length} films were added.\n${failures.map(failure => `${failure.file.name}: ${failure.message}`).join('\n')}`, true)
+      } else {
+        notice(`${files.length} film${files.length === 1 ? '' : 's'} added to Adult mode without conversion.`)
+      }
+      $('#adultFile').disabled = false
+      $('#adultUploadButton').disabled = selectedAdultFiles.length === 0
     }
 
     async function systemAction(action, waitingText) {

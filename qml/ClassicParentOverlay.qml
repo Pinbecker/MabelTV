@@ -48,7 +48,7 @@ Item {
         case 10: return "OPEN"
         case 11: return "RUN NOW"
         case 12: return controller.libraryStatus.split("\n")[0].toUpperCase()
-        case 13: return "WINDOWS / DEVELOPMENT"
+        case 13: return controller.adultLibrary.length + " FILMS"
         case 14: return "RELAUNCH"
         case 15: return Qt.platform.os === "windows" ? "PI ONLY" : "SAFE POWEROFF"
         }
@@ -80,7 +80,7 @@ Item {
         } else if (index === 11) {
             controller.reloadLibrary()
         } else if (index === 13) {
-            controller.requestParentCommand("exit")
+            controller.requestParentCommand("adult")
         } else if (index === 14) {
             controller.requestParentCommand("restart")
         } else if (index === 15 && Qt.platform.os !== "windows") {
@@ -328,7 +328,7 @@ Item {
                     model: ["PLAYBACK MODE", "RESET UNVISITED EPISODES", "PICTURE MODE",
                             "TV BORDER", "CRT GLASS", "90s DISTORTION", "DISPLAY OUTPUT", "VOLUME LIMIT",
                             "MAXIMUM VOLUME", "TV SOUNDS", "CHANNELS & PROGRAMMES",
-                            "RELOAD LIBRARY", "DIAGNOSTICS", "EXIT MABEL TV",
+                            "RELOAD LIBRARY", "DIAGNOSTICS", "ADULT MODE",
                             "RESTART MABEL TV", "SHUT DOWN PI"]
 
                     Rectangle {

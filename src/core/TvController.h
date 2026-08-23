@@ -49,6 +49,7 @@ class TvController final : public QObject
     Q_PROPERTY(int videoDistortion READ videoDistortion NOTIFY videoDistortionChanged)
     Q_PROPERTY(bool soundEffectsEnabled READ soundEffectsEnabled NOTIFY soundEffectsEnabledChanged)
     Q_PROPERTY(QVariantList parentLibrary READ parentLibrary NOTIFY parentLibraryChanged)
+    Q_PROPERTY(QVariantList adultLibrary READ adultLibrary NOTIFY adultLibraryChanged)
 
 public:
     enum Action
@@ -112,6 +113,7 @@ public:
     [[nodiscard]] int videoDistortion() const;
     [[nodiscard]] bool soundEffectsEnabled() const;
     [[nodiscard]] QVariantList parentLibrary() const;
+    [[nodiscard]] QVariantList adultLibrary() const;
 
     Q_INVOKABLE void start();
     Q_INVOKABLE void dispatch(Action action);
@@ -138,6 +140,7 @@ public:
     Q_INVOKABLE void toggleVolumeLimit();
     Q_INVOKABLE void adjustMaximumVolume(int direction);
     Q_INVOKABLE void reloadLibrary();
+    Q_INVOKABLE void reloadAdultLibrary();
     Q_INVOKABLE void toggleChannelEnabled(int channelNumber);
     Q_INVOKABLE void toggleProgrammeEnabled(int channelNumber, const QString &fileName);
     Q_INVOKABLE QVariantList guideSchedule() const;
@@ -170,6 +173,7 @@ signals:
     void videoDistortionChanged();
     void soundEffectsEnabledChanged();
     void parentLibraryChanged();
+    void adultLibraryChanged();
 
     void playbackRequested(const QUrl &source, double startPositionSeconds);
     void stopPlaybackRequested();
@@ -244,6 +248,7 @@ private:
     QString m_channelsPath;
     QString m_settingsPath;
     QString m_mediaRoot;
+    QString m_adultMediaRoot;
     QString m_libraryStatus;
     QStringList m_libraryWarnings;
     QString m_numericEntry;

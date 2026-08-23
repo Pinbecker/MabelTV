@@ -85,6 +85,7 @@ qt_add_resources(mabeltv "mabeltv_qml"
         qml/ParentOverlay.qml
         qml/ClassicParentOverlay.qml
         qml/ModernParentOverlay.qml
+        qml/AdultModeOverlay.qml
 )
 
 qt_add_shaders(mabeltv "mabeltv_shaders"

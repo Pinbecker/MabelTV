@@ -32,6 +32,7 @@ private slots:
     void parentControlsRequireThreeConfirmationsAndPersistSettings();
     void tvGuideBuildsOrderedScheduleAndTunesChannels();
     void parentLibraryControlsPersistAndAffectPlayback();
+    void adultLibraryIsSeparateAndParentOnly();
     void longPowerRequestBypassesParentPanelButUsesOnlyShutdownCommand();
 };
 
@@ -907,6 +908,50 @@ void CoreTests::parentLibraryControlsPersistAndAffectPlayback()
                  .value(QStringLiteral("enabledProgrammeCount"))
                  .toInt(),
              1);
+}
+
+void CoreTests::adultLibraryIsSeparateAndParentOnly()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/one")));
+    QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/.adult")));
+
+    QFile configuration(directory.filePath(QStringLiteral("channels.json")));
+    QVERIFY(configuration.open(QIODevice::WriteOnly));
+    configuration.write(R"({"schema_version":1,"channels":[{"number":1,"name":"One","folder":"one"}]})");
+    configuration.close();
+    QFile film(directory.filePath(QStringLiteral("media/.adult/Evening Film.mkv")));
+    QVERIFY(film.open(QIODevice::WriteOnly));
+    film.write("raw");
+    film.close();
+
+    TvController controller;
+    QVERIFY(controller.initialize(configuration.fileName(),
+                                  directory.filePath(QStringLiteral("settings.json")),
+                                  directory.filePath(QStringLiteral("media")),
+                                  directory.filePath(QStringLiteral("state.json")),
+                                  [](const QString &) {
+                                      return MediaInspection{true, true, 42.0,
+                                                             QStringLiteral("h264"), {}};
+                                  }));
+    const QVariantList adult = controller.adultLibrary();
+    QCOMPARE(adult.size(), 1);
+    QCOMPARE(adult.constFirst().toMap().value(QStringLiteral("name")).toString(),
+             QStringLiteral("Evening Film"));
+    QCOMPARE(controller.parentLibrary().constFirst().toMap()
+                 .value(QStringLiteral("programmeCount")).toInt(), 0);
+
+    QSignalSpy commands(&controller, &TvController::parentCommandRequested);
+    controller.requestParentCommand(QStringLiteral("adult"));
+    QCOMPARE(commands.count(), 0);
+    controller.requestParentAccess();
+    controller.parentConfirm();
+    controller.parentConfirm();
+    controller.parentConfirm();
+    controller.requestParentCommand(QStringLiteral("adult"));
+    QCOMPARE(commands.count(), 1);
+    QCOMPARE(commands.constFirst().constFirst().toString(), QStringLiteral("adult"));
 }
 
 void CoreTests::longPowerRequestBypassesParentPanelButUsesOnlyShutdownCommand()

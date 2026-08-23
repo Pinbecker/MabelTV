@@ -32,6 +32,8 @@ Window {
     property double lastChannelRepeatMs: 0
     property double lastVolumeRepeatMs: 0
     property bool okHeldForGuide: false
+    property bool childWasPausedBeforeAdult: false
+    property bool restoreChildPauseAfterAdult: false
     readonly property real playbackOsdInsetX: Math.max(30, screen.width * 0.055)
     readonly property real playbackOsdInsetY: Math.max(28, screen.height * 0.065)
 
@@ -181,6 +183,19 @@ Window {
                 : "REMOTE UNLOCKED"
         remoteLockOsd.opacity = 1
         remoteLockOsdTimer.restart()
+    }
+
+    function enterAdultMode() {
+        syncPlaybackPosition()
+        childWasPausedBeforeAdult = player.paused
+        player.stop()
+        tvController.closeParent()
+        adultMode.open()
+    }
+
+    function leaveAdultMode() {
+        restoreChildPauseAfterAdult = childWasPausedBeforeAdult
+        tvController.resumeFromStandby()
     }
 
     Rectangle {
@@ -569,6 +584,13 @@ Window {
                     if (!root.introPlaying && !directMediaMode
                             && (status === "Playing" || status === "Paused"))
                         tvController.updatePlaybackPosition(positionSeconds(), paused)
+                }
+
+                onStatusChanged: {
+                    if (root.restoreChildPauseAfterAdult && status === "Playing") {
+                        root.restoreChildPauseAfterAdult = false
+                        togglePause()
+                    }
                 }
 
                 onPlaybackFinished: {
@@ -1004,6 +1026,14 @@ Window {
         controller: tvController
     }
 
+    AdultModeOverlay {
+        id: adultMode
+        anchors.fill: parent
+        controller: tvController
+        onClosed: root.leaveAdultMode()
+        onPowerRequested: root.beginPowerOff(false)
+    }
+
     Rectangle {
         id: remoteLockOsd
         anchors.centerIn: parent
@@ -1201,7 +1231,8 @@ Window {
         target: tvController
 
         function onPlaybackRequested(source, startPositionSeconds) {
-            player.play(source, startPositionSeconds)
+            if (!adultMode.active)
+                player.play(source, startPositionSeconds)
         }
         function onStopPlaybackRequested() {
             player.stop()
@@ -1234,6 +1265,10 @@ Window {
         function onRemoteLockedChanged() {
             root.showRemoteLockState()
         }
+        function onParentCommandRequested(command) {
+            if (command === "adult")
+                root.enterAdultMode()
+        }
     }
 
     Item {
@@ -1251,6 +1286,16 @@ Window {
                 event.accepted = true
             } else if (tvController.remoteLocked) {
                 event.accepted = true
+            } else if (adultMode.active) {
+                if (event.key === Qt.Key_P) {
+                    if (!event.isAutoRepeat) {
+                        root.powerHeldForShutdown = false
+                        powerHoldTimer.restart()
+                    }
+                    event.accepted = true
+                } else {
+                    event.accepted = adultMode.handleKey(event.key, event.isAutoRepeat)
+                }
             } else if (guideOverlay.visible && root.okHeldForGuide
                        && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
                 // Ignore the repeat tail of the same OK hold that opened the

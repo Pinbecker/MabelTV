@@ -390,6 +390,7 @@ class Library:
         self.config_path = Path(args.config).resolve()
         self.player_state_path = Path("/var/lib/mabeltv/state.json")
         self.incoming = self.media_root / ".incoming"
+        self.adult_root = self.media_root / ".adult"
         self.bin = self.media_root / ".recycle-bin"
         self.sessions: dict[str, float] = {}
         self.login_failures: dict[str, list[float]] = {}
@@ -402,6 +403,7 @@ class Library:
         self.conversion_closed = threading.Event()
         self.media_root.mkdir(parents=True, exist_ok=True)
         self.incoming.mkdir(mode=0o750, exist_ok=True)
+        self.adult_root.mkdir(mode=0o750, exist_ok=True)
         self.bin.mkdir(mode=0o750, exist_ok=True)
         self.reconcile_recycle_items()
         self.cleanup_stale_temporary_files()
@@ -499,8 +501,7 @@ class Library:
                 ready = False
             destination_ready = False
             try:
-                channel = self.channel(int(metadata.get("channel")))
-                destination = self.safe_media_path(channel, str(metadata.get("file_name", "")))
+                destination = self.upload_destination(metadata)
                 if metadata.get("conversion_required"):
                     destination = destination.with_suffix(".mp4")
                 destination_ready = destination.is_file()
@@ -525,8 +526,7 @@ class Library:
                 or result.get("status") != "finalising":
                 continue
             try:
-                channel = self.channel(int(result.get("channel")))
-                destination = self.safe_media_path(channel, str(result.get("file_name", "")))
+                destination = self.upload_destination(result)
                 if result.get("optimised"):
                     destination = destination.with_suffix(".mp4")
             except (TypeError, ValueError):
@@ -593,6 +593,7 @@ class Library:
                     "id": upload_id,
                     "file_name": str(metadata.get("file_name", "Video")),
                     "channel": metadata.get("channel"),
+                    "kind": metadata.get("kind", "channel"),
                     "offset": int(metadata.get("size", 0)),
                     "complete": False,
                     "processing": False,
@@ -616,9 +617,9 @@ class Library:
         with lock:
             metadata = self.upload_meta(upload_id)
             part = self.incoming / f"{upload_id}.part"
-            channel = self.channel(int(metadata["channel"]))
+            adult_upload = metadata.get("kind") == "adult"
             source_name = str(metadata["file_name"])
-            original_destination = self.safe_media_path(channel, source_name)
+            original_destination = self.upload_destination(metadata)
             previous_status = str(metadata.pop(
                 "resume_from_status", metadata.get("status", "queued")))
 
@@ -632,7 +633,7 @@ class Library:
                 metadata.pop("error", None)
                 self.write_json(self.incoming / f"{upload_id}.json", metadata)
                 stream = self.video_info(part)
-                conversion_required = self.needs_playback_optimisation(
+                conversion_required = False if adult_upload else self.needs_playback_optimisation(
                     Path(source_name), stream)
                 metadata["conversion_required"] = bool(conversion_required)
                 previous_status = "validated"
@@ -644,7 +645,7 @@ class Library:
                                       "processing", "publishing", "finalising", "error"
                                   })
             if destination.exists() and not published_recovery:
-                raise ValueError("A file with that name already exists in this channel")
+                raise ValueError("A file with that name already exists in this library")
 
             if published_recovery:
                 # The process may have died after the atomic media rename but
@@ -674,7 +675,8 @@ class Library:
                 "refreshed": refreshed,
                 "status": "finalising",
                 "file_name": source_name,
-                "channel": int(metadata["channel"]),
+                "channel": metadata.get("channel"),
+                "kind": "adult" if adult_upload else "channel",
                 "finished": time.time(),
             }
             result_path = self.incoming / f"{upload_id}.result.json"
@@ -1021,6 +1023,30 @@ class Library:
         folder.mkdir(mode=0o750, exist_ok=True)
         return folder / name
 
+    def safe_adult_path(self, file_name: str) -> Path:
+        name = Path(file_name).name
+        if name != file_name or not name or Path(name).suffix.lower() not in SUPPORTED_EXTENSIONS:
+            raise ValueError("That is not a supported video file")
+        self.adult_root.mkdir(mode=0o750, exist_ok=True)
+        return self.adult_root / name
+
+    def adult_library(self) -> list[dict[str, Any]]:
+        values = []
+        for item in sorted(self.adult_root.glob("*"), key=lambda path: path.name.lower()):
+            if item.is_file() and item.suffix.lower() in SUPPORTED_EXTENSIONS:
+                values.append({
+                    "name": item.name,
+                    "display_name": self.display_name(item.name),
+                    "size": item.stat().st_size,
+                })
+        return values
+
+    def upload_destination(self, metadata: dict[str, Any]) -> Path:
+        if metadata.get("kind") == "adult":
+            return self.safe_adult_path(str(metadata.get("file_name", "")))
+        channel = self.channel(int(metadata.get("channel")))
+        return self.safe_media_path(channel, str(metadata.get("file_name", "")))
+
     def settings(self) -> dict[str, Any]:
         return self.read_json(self.settings_path, {"schema_version": 1})
 
@@ -1097,6 +1123,7 @@ class Library:
                 "tv_guide_enabled": self.tv_guide_enabled(settings),
             },
             "tv_settings": self.tv_settings(settings),
+            "adult_library": self.adult_library(),
             "recycle": self.recycle_items(),
             "uploads": self.upload_jobs(),
             "storage": {"free_gb": disk.free / 1024**3,
@@ -1132,14 +1159,16 @@ class Library:
                 # the upload bytes as fully received.
                 offset = part.stat().st_size if part.exists() \
                     else (0 if status == "uploading" else size)
-                number = int(value.get("channel", -1))
+                adult = value.get("kind") == "adult"
+                number = -1 if adult else int(value.get("channel", -1))
             except (OSError, TypeError, ValueError):
                 continue
             jobs.append({
                 "id": value["id"],
                 "file_name": str(value.get("file_name", "Video")),
                 "channel": number,
-                "channel_name": channel_names.get(number, f"CH {number}"),
+                "channel_name": "Adult mode" if adult else channel_names.get(number, f"CH {number}"),
+                "kind": "adult" if adult else "channel",
                 "size": size,
                 "offset": offset,
                 "status": status,
@@ -1156,12 +1185,14 @@ class Library:
             if not isinstance(value, dict) or value.get("status") not in {
                     "error", "refresh-error"}:
                 continue
-            number = int(value.get("channel", -1))
+            adult = value.get("kind") == "adult"
+            number = -1 if adult else int(value.get("channel", -1))
             jobs.append({
                 "id": value.get("id", result_path.name.removesuffix(".result.json")),
                 "file_name": str(value.get("file_name", "Video")),
                 "channel": number,
-                "channel_name": channel_names.get(number, f"CH {number}"),
+                "channel_name": "Adult mode" if adult else channel_names.get(number, f"CH {number}"),
+                "kind": "adult" if adult else "channel",
                 "size": int(value.get("offset", 0)),
                 "offset": int(value.get("offset", 0)),
                 "status": str(value.get("status")),
@@ -1505,6 +1536,54 @@ class Library:
         # two simultaneous requests from reserving duplicate jobs for one file.
         with self.config_lock:
             return self._upload_create(payload)
+
+    def adult_upload_create(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Reserve a resumable upload that will be validated but never converted."""
+        with self.config_lock:
+            file_name = str(payload.get("file_name", ""))
+            size = int(payload.get("size", 0))
+            destination = self.safe_adult_path(file_name)
+            if size <= 0 or size > MAX_UPLOAD_BYTES:
+                raise ValueError("That file size is not supported")
+
+            for manifest in self.incoming.glob("*.json"):
+                if manifest.name.endswith(".result.json"):
+                    continue
+                value = self.read_json(manifest, {})
+                if value.get("kind") != "adult" or value.get("file_name") != file_name:
+                    continue
+                if value.get("size") != size:
+                    raise ValueError(
+                        "A film with that name is already uploading. Resume it with the same file")
+                part = self.incoming / f"{value['id']}.part"
+                result = self.read_json(self.incoming / f"{value['id']}.result.json", None)
+                if isinstance(result, dict) and result.get("complete"):
+                    return result
+                offset = part.stat().st_size if part.is_file() else 0
+                if offset == size and value.get("status", "uploading") == "uploading":
+                    value["status"] = "validating"
+                    value["updated"] = time.time()
+                    self.write_json(manifest, value)
+                    self.queue_conversion(str(value["id"]))
+                return {"id": value["id"], "offset": offset,
+                        "processing": value.get("status") in {
+                            "validating", "queued", "processing", "publishing", "finalising"
+                        }, "status": value.get("status", "uploading")}
+
+            if destination.exists():
+                raise ValueError("A film with that name already exists in Adult mode")
+            reserve = size + 512 * 1024 * 1024
+            if shutil.disk_usage(self.media_root).free < reserve:
+                raise ValueError("There is not enough free space to upload that film safely")
+            upload_id = uuid.uuid4().hex
+            self.write_json(self.incoming / f"{upload_id}.json", {
+                "id": upload_id,
+                "kind": "adult",
+                "file_name": file_name,
+                "size": size,
+                "created": time.time(),
+            })
+            return {"id": upload_id, "offset": 0}
 
     def _upload_create(self, payload: dict[str, Any]) -> dict[str, Any]:
         number, file_name, size = int(payload.get("channel")), str(payload.get("file_name", "")), int(payload.get("size", 0))
@@ -1899,6 +1978,35 @@ class Library:
             if folder.is_dir() and not any(folder.iterdir()):
                 folder.rmdir()
             return
+        if action == "rename-adult":
+            source = self.safe_adult_path(str(payload.get("file", "")))
+            if not source.is_file():
+                raise ValueError("Film not found")
+            proposed = SAFE_NAME.sub("", str(payload.get("name", "")).strip()).strip(". ")
+            if not proposed:
+                raise ValueError("Enter a film name")
+            destination = self.safe_adult_path(proposed + source.suffix)
+            if destination.exists() and destination != source:
+                raise ValueError("That name is already used in Adult mode")
+            source.rename(destination)
+            return
+        if action == "trash-adult":
+            source = self.safe_adult_path(str(payload.get("file", "")))
+            if not source.is_file():
+                raise ValueError("Film not found")
+            item_id = f"{int(time.time())}-{uuid.uuid4().hex[:8]}"
+            destination_dir = self.bin / item_id
+            destination_dir.mkdir(mode=0o750)
+            self.write_json(destination_dir / "manifest.json", {
+                "id": item_id, "file_name": source.name,
+                "folder": ".adult", "channel_name": "Adult mode",
+            })
+            try:
+                shutil.move(str(source), str(destination_dir / source.name))
+            except Exception:
+                shutil.rmtree(destination_dir, ignore_errors=True)
+                raise
+            return
         if action in {"toggle-channel", "toggle-programme", "rename", "trash"}:
             channel = self.channel(int(payload.get("channel")))
         if action == "toggle-channel":
@@ -2138,6 +2246,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.json(200, self.server.library.stop_live_tv()); return
             if self.path == "/api/live/control":
                 self.json(200, self.server.library.live_tv_control(payload)); return
+            if self.path == "/api/adult/uploads":
+                self.json(201, self.server.library.adult_upload_create(payload)); return
             if self.path == "/api/uploads": self.json(201, self.server.library.upload_create(payload)); return
             if self.path.startswith("/api/uploads/"):
                 self.json(200, self.server.library.upload_action(

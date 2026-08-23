@@ -52,7 +52,7 @@ Item {
         case 10: return "Open library"
         case 11: return "Check now"
         case 12: return controller.libraryStatus.split("\n")[0].toUpperCase()
-        case 13: return "Windows / development"
+        case 13: return controller.adultLibrary.length + " films"
         case 14: return "Relaunch"
         case 15: return Qt.platform.os === "windows" ? "Pi only" : "Safe power off"
         }
@@ -84,7 +84,7 @@ Item {
         } else if (index === 11) {
             controller.reloadLibrary()
         } else if (index === 13) {
-            controller.requestParentCommand("exit")
+            controller.requestParentCommand("adult")
         } else if (index === 14) {
             controller.requestParentCommand("restart")
         } else if (index === 15 && Qt.platform.os !== "windows") {
@@ -609,7 +609,7 @@ Item {
                             "TV frame", "CRT glass", "90s picture wobble",
                             "Display quality", "Volume limit", "Maximum volume",
                             "TV sounds", "Channels & programmes", "Check library",
-                            "Diagnostics", "Exit MabelTV", "Restart MabelTV",
+                            "Diagnostics", "Adult mode", "Restart MabelTV",
                             "Shut down Raspberry Pi"]
 
                     Rectangle {

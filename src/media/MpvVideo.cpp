@@ -461,6 +461,39 @@ double MpvVideo::positionSeconds() const
     return std::max(0.0, position);
 }
 
+double MpvVideo::durationSeconds() const
+{
+    if (m_state->handle == nullptr) {
+        return 0.0;
+    }
+    double duration = 0.0;
+    if (mpv_get_property(m_state->handle, "duration", MPV_FORMAT_DOUBLE, &duration) < 0
+        || !std::isfinite(duration)) {
+        return 0.0;
+    }
+    return std::max(0.0, duration);
+}
+
+void MpvVideo::seekRelative(double seconds)
+{
+    if (m_state->handle == nullptr || !std::isfinite(seconds)) {
+        return;
+    }
+    const QByteArray value = QByteArray::number(seconds, 'f', 3);
+    const char *command[] = {"seek", value.constData(), "relative+exact", nullptr};
+    checkMpv(mpv_command_async(m_state->handle, 0, command), "Seeking within adult media");
+}
+
+void MpvVideo::seekAbsolute(double seconds)
+{
+    if (m_state->handle == nullptr || !std::isfinite(seconds)) {
+        return;
+    }
+    const QByteArray value = QByteArray::number(std::max(0.0, seconds), 'f', 3);
+    const char *command[] = {"seek", value.constData(), "absolute+exact", nullptr};
+    checkMpv(mpv_command_async(m_state->handle, 0, command), "Seeking within adult media");
+}
+
 std::uint64_t MpvVideo::renderedFrameCount() const
 {
     return m_state->renderedFrames.load(std::memory_order_relaxed);

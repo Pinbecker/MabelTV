@@ -237,6 +237,44 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertTrue(all(state.get("complete") for state in states))
         self.assertEqual(maximum_active, 1)
 
+    def test_adult_upload_is_kept_raw_and_separate_from_channels(self) -> None:
+        self.fixture.library.complete_setup({
+            "setup_code": "135790", "pin": "2468",
+            "channels": mabeltv_library.DEFAULT_CHANNELS,
+        })
+        self.fixture.library.video_info = lambda path: {
+            "codec_type": "video", "width": 3840, "height": 2160,
+            "avg_frame_rate": "60/1",
+        }
+        self.fixture.library.needs_playback_optimisation = mock.Mock(
+            side_effect=AssertionError("Adult media must never enter child optimisation"))
+        self.fixture.library.refresh_tv = mock.Mock(return_value=True)
+
+        created = self.fixture.library.adult_upload_create({
+            "file_name": "My Film.mkv", "size": 16,
+        })
+        result = self.fixture.library.append_upload(created["id"], 0, b"raw-film-content")
+        self.assertTrue(result["processing"])
+
+        deadline = time.monotonic() + 3
+        state = {}
+        while time.monotonic() < deadline:
+            state = self.fixture.library.upload_status(created["id"])
+            if state.get("complete"):
+                break
+            time.sleep(0.02)
+
+        self.assertTrue(state.get("complete"))
+        self.assertFalse(state.get("optimised"))
+        self.assertEqual((self.fixture.library.adult_root / "My Film.mkv").read_bytes(),
+                         b"raw-film-content")
+        self.assertEqual(self.fixture.library.adult_library()[0]["display_name"],
+                         "My Film")
+        self.assertFalse(any((self.fixture.media / channel["folder"] / "My Film.mkv").exists()
+                             for channel in mabeltv_library.DEFAULT_CHANNELS))
+        self.fixture.library.needs_playback_optimisation.assert_not_called()
+        self.fixture.library.refresh_tv.assert_called_once()
+
     def test_pin_recovery_keeps_custom_channels(self) -> None:
         custom = [{"number": 7, "name": "Nature", "folder": "nature", "aspect": "fit"}]
         self.fixture.channels.write_text(json.dumps({"schema_version": 1, "channels": custom}),

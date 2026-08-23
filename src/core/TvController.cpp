@@ -118,6 +118,7 @@ bool TvController::initialize(const QString &channelsPath,
     m_channelsPath = QFileInfo(channelsPath).absoluteFilePath();
     m_settingsPath = QFileInfo(settingsPath).absoluteFilePath();
     m_mediaRoot = QFileInfo(mediaRoot).absoluteFilePath();
+    m_adultMediaRoot = QDir(m_mediaRoot).filePath(QStringLiteral(".adult"));
     m_statePath = QFileInfo(statePath).absoluteFilePath();
     m_episodeUptimeClock = std::move(uptimeClock);
     loadSettings(m_settingsPath);
@@ -136,6 +137,7 @@ bool TvController::initialize(const QString &channelsPath,
         pendingInspections = mediaIndex.hasPendingInspections();
     }
     const bool loaded = applyLibrary(std::move(library));
+    reloadAdultLibrary();
     if (loaded && pendingInspections) {
         qInfo() << "Uncached media will be validated in the background";
         QTimer::singleShot(0, this, &TvController::reloadLibrary);
@@ -360,6 +362,29 @@ QVariantList TvController::parentLibrary() const
         });
     }
     return channels;
+}
+
+QVariantList TvController::adultLibrary() const
+{
+    QVariantList films;
+    const QDir directory(m_adultMediaRoot);
+    const QStringList filters{
+        QStringLiteral("*.mp4"), QStringLiteral("*.m4v"), QStringLiteral("*.mkv"),
+        QStringLiteral("*.mov"), QStringLiteral("*.webm"), QStringLiteral("*.avi"),
+        QStringLiteral("*.mpg"), QStringLiteral("*.mpeg"),
+    };
+    const QFileInfoList entries = directory.entryInfoList(
+        filters, QDir::Files | QDir::Readable, QDir::Name | QDir::IgnoreCase);
+    films.reserve(entries.size());
+    for (const QFileInfo &entry : entries) {
+        films.append(QVariantMap{
+            {QStringLiteral("fileName"), entry.fileName()},
+            {QStringLiteral("name"), displayNameForEpisodePath(entry.fileName())},
+            {QStringLiteral("source"), QUrl::fromLocalFile(entry.absoluteFilePath())},
+            {QStringLiteral("size"), entry.size()},
+        });
+    }
+    return films;
 }
 
 QVariantList TvController::guideSchedule() const
@@ -885,6 +910,7 @@ void TvController::adjustMaximumVolume(int direction)
 
 void TvController::reloadLibrary()
 {
+    reloadAdultLibrary();
     if (m_libraryReloadWatcher.isRunning()) {
         m_libraryReloadRequested = true;
         return;
@@ -908,6 +934,11 @@ void TvController::reloadLibrary()
             }
             return library;
         }));
+}
+
+void TvController::reloadAdultLibrary()
+{
+    emit adultLibraryChanged();
 }
 
 void TvController::toggleChannelEnabled(int channelNumber)
@@ -1012,8 +1043,8 @@ void TvController::requestParentCommand(const QString &command)
     if (m_parentAccessState != ParentOpen) {
         return;
     }
-    if (command == QStringLiteral("exit") || command == QStringLiteral("restart")
-        || command == QStringLiteral("shutdown")) {
+    if (command == QStringLiteral("adult") || command == QStringLiteral("exit")
+        || command == QStringLiteral("restart") || command == QStringLiteral("shutdown")) {
         qInfo().noquote() << "Parent command requested:" << command;
         saveState();
         emit parentCommandRequested(command);

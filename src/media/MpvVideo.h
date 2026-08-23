@@ -41,6 +41,9 @@ public:
     Q_INVOKABLE void stop();
     Q_INVOKABLE void togglePause();
     Q_INVOKABLE double positionSeconds() const;
+    Q_INVOKABLE double durationSeconds() const;
+    Q_INVOKABLE void seekRelative(double seconds);
+    Q_INVOKABLE void seekAbsolute(double seconds);
     [[nodiscard]] std::uint64_t renderedFrameCount() const;
     [[nodiscard]] bool available() const;
 
