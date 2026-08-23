@@ -68,6 +68,13 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn('QStringLiteral("mabeltvAdultPlayer")', source)
         self.assertIn("adultVideo->isVisible() ? adultVideo : video", source)
 
+    def test_pi4_tries_both_h264_and_hevc_hardware_decoders(self) -> None:
+        launcher = (PROJECT_ROOT / "scripts" / "pi" / "mabeltv-launch.sh").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('MABELTV_HWDEC="v4l2m2m-copy,drm-copy"', launcher)
+
 
 if __name__ == "__main__":
     unittest.main()
