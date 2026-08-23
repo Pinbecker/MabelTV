@@ -32,6 +32,7 @@
     @media(max-width:720px){.feature-control{display:grid;gap:18px}.feature-toggle{width:100%}}
     @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
     @media(max-width:720px){nav{grid-template-columns:repeat(5,1fr)}}
+    .live-screen video,.live-screen img{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:contain;background:#050706}
 </style>
 </head>
 <body>
@@ -80,7 +81,7 @@
       </div></section>
       <section id="view-live" class="view"><div class="page">
         <header class="page-head"><div><p class="eyebrow">Live TV</p><h1>What’s on <span data-tv-name>your TV</span></h1><p>A live, low-latency mirror of the programme on the television. Portal sound stays muted so it never echoes the room.</p></div></header>
-        <div class="live-layout"><section class="live-tv" aria-label="Live television preview"><div class="live-screen"><video id="liveVideo" muted autoplay playsinline preload="none"></video><div id="liveOff" class="live-off"><strong id="liveOffTitle">Connecting to the TV…</strong><span id="liveOffText">Preparing the live picture</span></div></div><span id="liveLed" class="live-led off"></span><div class="live-meta"><div><strong id="liveProgramme">Waiting for MabelTV</strong><small id="liveChannel">Live preview</small></div><small id="liveState">Checking…</small></div></section><aside class="live-side"><section class="surface"><p class="section-kicker">Remote control</p><h2>Control the TV</h2><div class="remote-grid"><button type="button" class="secondary" data-live-command="previous-programme">◀ Previous</button><button type="button" class="secondary" data-live-command="toggle-pause">⏯ Pause</button><button type="button" class="secondary" data-live-command="next-programme">Next ▶</button><button type="button" class="secondary" data-live-command="channel-down">CH −</button><button type="button" class="secondary" data-live-command="toggle-power">Power</button><button type="button" class="secondary" data-live-command="channel-up">CH +</button><button type="button" class="secondary" data-live-command="volume-down">VOL −</button><button type="button" class="secondary" data-live-command="toggle-mute">Mute</button><button type="button" class="secondary" data-live-command="volume-up">VOL +</button></div><p class="live-note">The preview is intentionally a few seconds behind the television to keep playback smooth on the Pi.</p></section></aside></div>
+        <div class="live-layout"><section class="live-tv" aria-label="Live television preview"><div class="live-screen"><video id="liveVideo" muted autoplay playsinline preload="none"></video><img id="liveMjpeg" class="hidden" alt="Live MabelTV picture"><div id="liveOff" class="live-off"><strong id="liveOffTitle">Connecting to the TV…</strong><span id="liveOffText">Preparing the live picture</span></div></div><span id="liveLed" class="live-led off"></span><div class="live-meta"><div><strong id="liveProgramme">Waiting for MabelTV</strong><small id="liveChannel">Live preview</small></div><small id="liveState">Checking…</small></div></section><aside class="live-side"><section class="surface"><p class="section-kicker">Remote control</p><h2>Control the TV</h2><div class="remote-grid"><button type="button" class="secondary" data-live-command="previous-programme">◀ Previous</button><button type="button" class="secondary" data-live-command="toggle-pause">⏯ Pause</button><button type="button" class="secondary" data-live-command="next-programme">Next ▶</button><button type="button" class="secondary" data-live-command="channel-down">CH −</button><button type="button" class="secondary" data-live-command="toggle-power">Power</button><button type="button" class="secondary" data-live-command="channel-up">CH +</button><button type="button" class="secondary" data-live-command="volume-down">VOL −</button><button type="button" class="secondary" data-live-command="toggle-mute">Mute</button><button type="button" class="secondary" data-live-command="volume-up">VOL +</button></div><p class="live-note">The preview is intentionally a few seconds behind the television to keep playback smooth on the Pi.</p></section></aside></div>
         <footer><span data-tv-name>Your TV</span> · Live preview stays on your home network</footer>
       </div></section>
       <section id="view-add" class="view"><div class="page">
@@ -133,6 +134,8 @@
     let configuredTvName = 'Your TV'
     let noticeTimer = null
     let liveRefreshTimer = null
+    let liveFallbackTimer = null
+    let livePictureVisible = false
 
     async function api(path, options = {}) {
       const response = await fetch(path, {
@@ -363,7 +366,15 @@
       else stopLiveTv()
     }
 
-    function setLiveSource() {
+    function showLivePicture() {
+      livePictureVisible = true
+      clearTimeout(liveFallbackTimer)
+      $('#liveOff').classList.add('hidden')
+    }
+
+    function showLiveFallback() {
+      if (!liveRefreshTimer || $('#liveMjpeg').getAttribute('src')) return
+      clearTimeout(liveFallbackTimer)
       const video = $('#liveVideo')
       if (window.liveHls) {
         window.liveHls.destroy()
@@ -372,25 +383,50 @@
       video.pause()
       video.removeAttribute('src')
       video.load()
+      api('/api/live/stop', { method: 'POST', body: '{}' }).catch(() => {})
+      $('#liveMjpeg').onload = showLivePicture
+      $('#liveMjpeg').src = '/api/live/preview.mjpg'
+      $('#liveMjpeg').classList.remove('hidden')
+    }
+
+    function setLiveSource() {
+      const video = $('#liveVideo')
+      const image = $('#liveMjpeg')
+      livePictureVisible = false
+      clearTimeout(liveFallbackTimer)
+      image.removeAttribute('src')
+      image.classList.add('hidden')
+      if (window.liveHls) {
+        window.liveHls.destroy()
+        window.liveHls = null
+      }
+      video.pause()
+      video.classList.remove('hidden')
+      video.removeAttribute('src')
+      video.load()
+      video.onplaying = showLivePicture
+      video.onerror = showLiveFallback
+      liveFallbackTimer = setTimeout(showLiveFallback, 5000)
       const source = '/api/live/stream.m3u8'
       if (window.Hls && Hls.isSupported()) {
         window.liveHls = new Hls({ liveSyncDurationCount: 3, maxLiveSyncPlaybackRate: 1.15 })
         window.liveHls.loadSource(source)
         window.liveHls.attachMedia(video)
-        window.liveHls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}))
+        window.liveHls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(showLiveFallback))
+        window.liveHls.on(Hls.Events.ERROR, (_event, data) => { if (data.fatal) showLiveFallback() })
       } else {
         video.src = source
         video.load()
-        video.play().catch(() => {})
+        video.play().catch(showLiveFallback)
       }
     }
 
     function renderLiveTv(state) {
       const available = state.available === true
-      $('#liveOff').classList.toggle('hidden', available)
+      $('#liveOff').classList.toggle('hidden', available && livePictureVisible)
       $('#liveLed').classList.toggle('off', !available)
-      $('#liveOffTitle').textContent = available ? '' : (state.reason || 'The TV is off')
-      $('#liveOffText').textContent = available ? '' : 'Turn on the television to start the live preview.'
+      $('#liveOffTitle').textContent = available ? 'Starting live picture…' : (state.reason || 'The TV is off')
+      $('#liveOffText').textContent = available ? 'Connecting to MabelTV' : 'Turn on the television to start the live preview.'
       $('#liveProgramme').textContent = available ? state.programme : 'Waiting for MabelTV'
       $('#liveChannel').textContent = available ? `CH ${state.channel_number} · ${state.channel_name}` : 'Live preview'
       $('#liveState').textContent = available ? (state.paused ? 'Paused' : 'Live') : 'Offline'
@@ -417,9 +453,14 @@
       clearInterval(liveRefreshTimer)
       liveRefreshTimer = null
       const video = $('#liveVideo')
+      clearTimeout(liveFallbackTimer)
+      livePictureVisible = false
       video.pause()
       video.removeAttribute('src')
       video.load()
+      const image = $('#liveMjpeg')
+      image.removeAttribute('src')
+      image.classList.add('hidden')
       if (window.liveHls) {
         window.liveHls.destroy()
         window.liveHls = null

@@ -234,6 +234,24 @@ class LiveStream:
             raise ValueError("That part of the live stream has expired")
         return path
 
+    def mjpeg(self) -> subprocess.Popen[bytes]:
+        """Start a direct continuous-picture stream for browsers without HLS video."""
+        info = self.source()
+        if not info["available"]:
+            raise ValueError(str(info["reason"]))
+        command = [
+            "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
+            "-ss", f"{self.playable_position(info['source'], info['position']):.3f}",
+            "-re", "-i", str(info["source"]), "-map", "0:v:0",
+            "-vf", "scale=854:480:force_original_aspect_ratio=decrease:force_divisible_by=2,fps=12",
+            "-an", "-c:v", "mjpeg", "-q:v", "5", "-f", "mpjpeg", "pipe:1",
+        ]
+        try:
+            return subprocess.Popen(command, stdout=subprocess.PIPE,
+                                    stderr=subprocess.DEVNULL, start_new_session=True)
+        except OSError as error:
+            raise ValueError("The Pi could not start the live TV picture") from error
+
     def status(self) -> dict[str, Any]:
         info = self.source()
         with self.lock:
@@ -1091,6 +1109,9 @@ class Library:
     def live_tv_segment(self, name: str) -> Path:
         return self.live_stream.segment(name)
 
+    def live_tv_mjpeg(self) -> subprocess.Popen[bytes]:
+        return self.live_stream.mjpeg()
+
     def stop_live_tv(self) -> dict[str, Any]:
         self.live_stream.stop()
         return {"ok": True}
@@ -1767,6 +1788,28 @@ class Handler(BaseHTTPRequestHandler):
         with path.open("rb") as source:
             shutil.copyfileobj(source, self.wfile, 1024 * 1024)
 
+    def stream_mjpeg(self) -> None:
+        process = self.server.library.live_tv_mjpeg()
+        try:
+            self.send_response(200)
+            self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=ffmpeg")
+            self.send_header("Cache-Control", "no-store")
+            self.security_headers()
+            self.end_headers()
+            assert process.stdout is not None
+            while chunk := process.stdout.read1(8192):
+                self.wfile.write(chunk)
+                self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError, TimeoutError):
+            pass
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                try:
+                    process.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+
     def body(self) -> dict[str, Any]:
         length = int(self.headers.get("Content-Length", "0"));
         if length > 64 * 1024: raise ValueError("Request is too large")
@@ -1830,6 +1873,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.json(200, self.server.library.live_tv_status()); return
             if self.path == "/api/live/stream.m3u8":
                 self.stream_file(self.server.library.live_tv_manifest(), "application/vnd.apple.mpegurl"); return
+            if self.path == "/api/live/preview.mjpg":
+                self.stream_mjpeg(); return
             if self.path.startswith("/api/live/segment-") or self.path == "/api/live/init.mp4":
                 self.stream_file(self.server.library.live_tv_segment(self.path.rsplit("/", 1)[1]), "video/mp4"); return
             if self.path == "/api/library": self.json(200, self.server.library.library()); return
