@@ -1604,11 +1604,15 @@ class Library:
                             "validating", "queued", "processing", "publishing", "finalising"
                         }, "status": value.get("status", "uploading")}
 
-            if destination.exists():
+            if destination.exists() or destination.with_suffix(".mp4").exists():
                 raise ValueError("A film with that name already exists in Adult mode")
-            reserve = size + 512 * 1024 * 1024
+            # A film that needs preparing temporarily occupies both its full
+            # uploaded source and its new TV-ready copy. Reserve for that
+            # worst case before accepting bytes, just like channel uploads.
+            reserve = size * 2 + 512 * 1024 * 1024
             if shutil.disk_usage(self.media_root).free < reserve:
-                raise ValueError("There is not enough free space to upload that film safely")
+                raise ValueError(
+                    "There is not enough free space to upload and safely prepare that film")
             upload_id = uuid.uuid4().hex
             self.write_json(self.incoming / f"{upload_id}.json", {
                 "id": upload_id,
