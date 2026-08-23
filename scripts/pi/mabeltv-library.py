@@ -106,6 +106,12 @@ class LiveStream:
         self.lock = threading.RLock()
         self.process: subprocess.Popen[bytes] | None = None
         self.signature: tuple[str] | None = None
+        self.preview_process: subprocess.Popen[bytes] | None = None
+        self.preview_signature: tuple[str] | None = None
+        self.preview_frame = b""
+        self.preview_generation = 0
+        self.preview_error = ""
+        self.preview_updated = threading.Condition(self.lock)
 
     def source(self) -> dict[str, Any]:
         state = self.library.read_json(self.library.player_state_path, {})
@@ -133,13 +139,20 @@ class LiveStream:
     def stop(self) -> None:
         with self.lock:
             process, self.process = self.process, None
+            preview_process, self.preview_process = self.preview_process, None
             self.signature = None
-        if process and process.poll() is None:
-            process.terminate()
-            try:
-                process.wait(timeout=3)
-            except subprocess.TimeoutExpired:
-                process.kill()
+            self.preview_signature = None
+            self.preview_frame = b""
+            self.preview_error = ""
+            self.preview_generation += 1
+            self.preview_updated.notify_all()
+        for candidate in (process, preview_process):
+            if candidate and candidate.poll() is None:
+                candidate.terminate()
+                try:
+                    candidate.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    candidate.kill()
 
     @staticmethod
     def playable_position(source: Path, position: float) -> float:
@@ -234,23 +247,74 @@ class LiveStream:
             raise ValueError("That part of the live stream has expired")
         return path
 
-    def mjpeg(self) -> subprocess.Popen[bytes]:
-        """Start a direct continuous-picture stream for browsers without HLS video."""
+    def _collect_preview_frames(self, process: subprocess.Popen[bytes]) -> None:
+        assert process.stdout is not None
+        buffered = bytearray()
+        while chunk := process.stdout.read1(8192):
+            buffered.extend(chunk)
+            while True:
+                start = buffered.find(b"\xff\xd8")
+                end = buffered.find(b"\xff\xd9", start + 2)
+                if start < 0 or end < 0:
+                    if len(buffered) > 2 * 1024 * 1024:
+                        buffered.clear()
+                    break
+                frame = bytes(buffered[start:end + 2])
+                del buffered[:end + 2]
+                with self.lock:
+                    if process is not self.preview_process:
+                        return
+                    self.preview_frame = frame
+                    self.preview_generation += 1
+                    self.preview_updated.notify_all()
+        details = ""
+        if process.stderr:
+            details = process.stderr.read(1024).decode("utf-8", "replace").strip()
+        with self.lock:
+            if process is self.preview_process:
+                self.preview_error = details
+                self.preview_updated.notify_all()
+
+    def preview(self) -> bytes:
+        """Return the current frame from one shared Pi-owned preview encoder."""
         info = self.source()
         if not info["available"]:
             raise ValueError(str(info["reason"]))
-        command = [
-            "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
-            "-ss", f"{self.playable_position(info['source'], info['position']):.3f}",
-            "-re", "-i", str(info["source"]), "-map", "0:v:0",
-            "-vf", "scale=854:480:force_original_aspect_ratio=decrease:force_divisible_by=2,fps=12",
-            "-an", "-c:v", "mjpeg", "-q:v", "5", "-f", "mpjpeg", "pipe:1",
-        ]
-        try:
-            return subprocess.Popen(command, stdout=subprocess.PIPE,
-                                    stderr=subprocess.DEVNULL, start_new_session=True)
-        except OSError as error:
-            raise ValueError("The Pi could not start the live TV picture") from error
+        signature = (str(info["source"]),)
+        with self.lock:
+            if self.preview_process and self.preview_process.poll() is None \
+                    and self.preview_signature == signature and self.preview_frame:
+                return self.preview_frame
+            generation = self.preview_generation
+            if not self.preview_process or self.preview_process.poll() is not None \
+                    or self.preview_signature != signature:
+                previous, self.preview_process = self.preview_process, None
+                if previous and previous.poll() is None:
+                    previous.terminate()
+                self.preview_frame = b""
+                self.preview_error = ""
+                command = [
+                    "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
+                    "-ss", f"{self.playable_position(info['source'], info['position']):.3f}",
+                    "-re", "-i", str(info["source"]), "-map", "0:v:0",
+                    "-vf", "scale=854:480:force_original_aspect_ratio=decrease:force_divisible_by=2,fps=10",
+                    "-an", "-c:v", "mjpeg", "-q:v", "5", "-f", "mpjpeg", "pipe:1",
+                ]
+                try:
+                    process = subprocess.Popen(command, stdout=subprocess.PIPE,
+                                               stderr=subprocess.PIPE, start_new_session=True)
+                except OSError as error:
+                    raise ValueError("The Pi could not start the live TV picture") from error
+                self.preview_process = process
+                self.preview_signature = signature
+                threading.Thread(target=self._collect_preview_frames, args=(process,),
+                                 name="mabeltv-live-preview", daemon=True).start()
+            deadline = time.monotonic() + 20
+            while self.preview_generation <= generation and time.monotonic() < deadline:
+                self.preview_updated.wait(timeout=deadline - time.monotonic())
+            if self.preview_generation > generation and self.preview_frame:
+                return self.preview_frame
+        raise ValueError(self.preview_error or "The live TV picture is taking longer than expected")
 
     def status(self) -> dict[str, Any]:
         info = self.source()
@@ -1109,11 +1173,13 @@ class Library:
     def live_tv_segment(self, name: str) -> Path:
         return self.live_stream.segment(name)
 
-    def live_tv_mjpeg(self) -> subprocess.Popen[bytes]:
-        return self.live_stream.mjpeg()
+    def live_tv_frame(self) -> bytes:
+        return self.live_stream.preview()
 
     def stop_live_tv(self) -> dict[str, Any]:
-        self.live_stream.stop()
+        # Older portal pages still send this when their view closes. The
+        # current live preview is shared, so one stale page must not be able
+        # to tear down the picture another portal is watching.
         return {"ok": True}
 
     def live_tv_control(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -1788,27 +1854,14 @@ class Handler(BaseHTTPRequestHandler):
         with path.open("rb") as source:
             shutil.copyfileobj(source, self.wfile, 1024 * 1024)
 
-    def stream_mjpeg(self) -> None:
-        process = self.server.library.live_tv_mjpeg()
-        try:
-            self.send_response(200)
-            self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=ffmpeg")
-            self.send_header("Cache-Control", "no-store")
-            self.security_headers()
-            self.end_headers()
-            assert process.stdout is not None
-            while chunk := process.stdout.read1(8192):
-                self.wfile.write(chunk)
-                self.wfile.flush()
-        except (BrokenPipeError, ConnectionResetError, TimeoutError):
-            pass
-        finally:
-            if process.poll() is None:
-                process.terminate()
-                try:
-                    process.wait(timeout=3)
-                except subprocess.TimeoutExpired:
-                    process.kill()
+    def stream_bytes(self, data: bytes, content_type: str) -> None:
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-store")
+        self.security_headers()
+        self.end_headers()
+        self.wfile.write(data)
 
     def body(self) -> dict[str, Any]:
         length = int(self.headers.get("Content-Length", "0"));
@@ -1872,11 +1925,11 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == "/api/live":
                 self.json(200, self.server.library.live_tv_status()); return
             if self.path == "/api/live/stream.m3u8":
-                self.stream_file(self.server.library.live_tv_manifest(), "application/vnd.apple.mpegurl"); return
-            if self.path == "/api/live/preview.mjpg":
-                self.stream_mjpeg(); return
+                self.json(410, {"error": "The live picture now uses the portal frame feed"}); return
+            if urlsplit(self.path).path == "/api/live/frame.jpg":
+                self.stream_bytes(self.server.library.live_tv_frame(), "image/jpeg"); return
             if self.path.startswith("/api/live/segment-") or self.path == "/api/live/init.mp4":
-                self.stream_file(self.server.library.live_tv_segment(self.path.rsplit("/", 1)[1]), "video/mp4"); return
+                self.json(410, {"error": "The live picture now uses the portal frame feed"}); return
             if self.path == "/api/library": self.json(200, self.server.library.library()); return
             if self.path == "/api/status": self.json(200, self.server.library.live_status()); return
             if self.path == "/api/support":

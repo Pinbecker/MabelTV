@@ -135,6 +135,7 @@
     let noticeTimer = null
     let liveRefreshTimer = null
     let liveFallbackTimer = null
+    let liveFrameTimer = null
     let livePictureVisible = false
 
     async function api(path, options = {}) {
@@ -375,6 +376,7 @@
     function showLiveFallback() {
       if (!liveRefreshTimer || $('#liveMjpeg').getAttribute('src')) return
       clearTimeout(liveFallbackTimer)
+      clearTimeout(liveFrameTimer)
       const video = $('#liveVideo')
       if (window.liveHls) {
         window.liveHls.destroy()
@@ -383,10 +385,24 @@
       video.pause()
       video.removeAttribute('src')
       video.load()
-      api('/api/live/stop', { method: 'POST', body: '{}' }).catch(() => {})
-      $('#liveMjpeg').onload = showLivePicture
-      $('#liveMjpeg').src = '/api/live/preview.mjpg'
-      $('#liveMjpeg').classList.remove('hidden')
+      video.classList.add('hidden')
+      const image = $('#liveMjpeg')
+      const nextFrame = () => {
+        if (!liveRefreshTimer) return
+        image.src = `/api/live/frame.jpg?frame=${Date.now()}`
+      }
+      image.onload = () => {
+        showLivePicture()
+        clearTimeout(liveFrameTimer)
+        liveFrameTimer = setTimeout(nextFrame, 100)
+      }
+      image.onerror = () => {
+        clearTimeout(liveFrameTimer)
+        liveFrameTimer = setTimeout(nextFrame, 500)
+      }
+      image.classList.remove('hidden')
+      // Each request is made only after the previous JPEG has painted.
+      nextFrame()
     }
 
     function setLiveSource() {
@@ -404,21 +420,9 @@
       video.classList.remove('hidden')
       video.removeAttribute('src')
       video.load()
-      video.onplaying = showLivePicture
-      video.onerror = showLiveFallback
-      liveFallbackTimer = setTimeout(showLiveFallback, 5000)
-      const source = '/api/live/stream.m3u8'
-      if (window.Hls && Hls.isSupported()) {
-        window.liveHls = new Hls({ liveSyncDurationCount: 3, maxLiveSyncPlaybackRate: 1.15 })
-        window.liveHls.loadSource(source)
-        window.liveHls.attachMedia(video)
-        window.liveHls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(showLiveFallback))
-        window.liveHls.on(Hls.Events.ERROR, (_event, data) => { if (data.fatal) showLiveFallback() })
-      } else {
-        video.src = source
-        video.load()
-        video.play().catch(showLiveFallback)
-      }
+      // Use the Pi-owned live-picture feed directly. It is shared by every
+      // portal and avoids each browser opening its own decoder.
+      showLiveFallback()
     }
 
     function renderLiveTv(state) {
@@ -436,7 +440,9 @@
       try {
         const state = await api('/api/live')
         renderLiveTv(state)
-        if (state.available && (restartStream || !$('#liveVideo').src)) setLiveSource()
+        // The video element deliberately has no source when using the reliable
+        // JPEG feed. Checking it here restarted the picture every 2.5 seconds.
+        if (state.available && (restartStream || !$('#liveMjpeg').getAttribute('src'))) setLiveSource()
       } catch (error) {
         renderLiveTv({ available: false, reason: error.message })
       }
@@ -454,6 +460,7 @@
       liveRefreshTimer = null
       const video = $('#liveVideo')
       clearTimeout(liveFallbackTimer)
+      clearTimeout(liveFrameTimer)
       livePictureVisible = false
       video.pause()
       video.removeAttribute('src')
