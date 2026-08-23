@@ -105,7 +105,7 @@ class LiveStream:
         self.root = Path("/var/cache/mabeltv/live-stream")
         self.lock = threading.RLock()
         self.process: subprocess.Popen[bytes] | None = None
-        self.signature: tuple[str, int] | None = None
+        self.signature: tuple[str] | None = None
 
     def source(self) -> dict[str, Any]:
         state = self.library.read_json(self.library.player_state_path, {})
@@ -141,41 +141,68 @@ class LiveStream:
             except subprocess.TimeoutExpired:
                 process.kill()
 
+    @staticmethod
+    def playable_position(source: Path, position: float) -> float:
+        """Keep a stale player timeline from seeking beyond the media file."""
+        try:
+            result = subprocess.run(
+                ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                 "-of", "default=nw=1:nk=1", str(source)],
+                check=False, capture_output=True, text=True, timeout=3,
+            )
+            duration = float(result.stdout.strip()) if result.returncode == 0 else 0.0
+        except (OSError, subprocess.TimeoutExpired, ValueError):
+            duration = 0.0
+        if duration > 1.0:
+            return position % duration
+        return position
+
     def ensure(self) -> dict[str, Any]:
         info = self.source()
         if not info["available"]:
             self.stop()
             return info
-        signature = (str(info["source"]), int(info["position"] // 20))
+        # The encoder follows the programme in real time. Its source changes
+        # only when the programme changes; restarting it as the saved player
+        # position ticks over causes a visible interruption every few seconds.
+        signature = (str(info["source"]),)
         manifest = self.root / "live.m3u8"
         with self.lock:
             if self.process and self.process.poll() is None \
                     and self.signature == signature and manifest.is_file():
                 return info
-        self.stop()
-        self.root.mkdir(parents=True, exist_ok=True)
-        for path in self.root.glob("*"):
-            if path.is_file():
-                path.unlink(missing_ok=True)
-        command = [
-            "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
-            "-ss", f"{info['position']:.3f}", "-re", "-i", str(info["source"]),
-            "-map", "0:v:0", "-map", "0:a:0?",
-            "-vf", "scale=960:540:force_original_aspect_ratio=decrease:force_divisible_by=2,fps=30",
-            "-c:v", "h264_v4l2m2m", "-b:v", "1200k", "-maxrate", "1400k",
-            "-bufsize", "700k", "-g", "30", "-keyint_min", "30", "-pix_fmt", "yuv420p",
-            "-c:a", "aac", "-b:a", "96k", "-ac", "2",
-            "-f", "hls", "-hls_time", "1", "-hls_list_size", "4",
-            "-hls_segment_type", "fmp4", "-hls_fmp4_init_filename", "init.mp4",
-            "-hls_flags", "delete_segments+append_list+independent_segments",
-            "-hls_segment_filename", str(self.root / "segment-%05d.m4s"), str(manifest),
-        ]
-        try:
-            process = subprocess.Popen(command, stdout=subprocess.DEVNULL,
-                                       stderr=subprocess.DEVNULL, start_new_session=True)
-        except OSError as error:
-            raise ValueError("The Pi could not start the live TV stream") from error
-        with self.lock:
+            # A browser may request the playlist more than once while it is
+            # opening. Keep stopping, clearing and launching in this one lock
+            # so those requests share one encoder and one coherent playlist.
+            self.stop()
+            self.root.mkdir(parents=True, exist_ok=True)
+            for path in self.root.glob("*"):
+                if path.is_file():
+                    path.unlink(missing_ok=True)
+            command = [
+                "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
+                "-ss", f"{self.playable_position(info['source'], info['position']):.3f}",
+                "-re", "-i", str(info["source"]),
+                "-map", "0:v:0", "-map", "0:a:0?",
+                "-vf", "scale=960:540:force_original_aspect_ratio=decrease:force_divisible_by=2,fps=30",
+                # The Pi's V4L2 H.264 encoder can hang while the TV player is
+                # active. This bounded software profile is reliable, broadly
+                # compatible with iPhone playback, and leaves room for TV.
+                "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
+                "-profile:v", "baseline", "-level:v", "3.1", "-b:v", "1200k",
+                "-maxrate", "1400k", "-bufsize", "700k", "-g", "30",
+                "-keyint_min", "30", "-pix_fmt", "yuv420p",
+                "-c:a", "aac", "-b:a", "96k", "-ac", "2",
+                "-f", "hls", "-hls_time", "1", "-hls_list_size", "4",
+                "-hls_segment_type", "fmp4", "-hls_fmp4_init_filename", "init.mp4",
+                "-hls_flags", "delete_segments+append_list+independent_segments",
+                "-hls_segment_filename", str(self.root / "segment-%05d.m4s"), str(manifest),
+            ]
+            try:
+                process = subprocess.Popen(command, stdout=subprocess.DEVNULL,
+                                           stderr=subprocess.DEVNULL, start_new_session=True)
+            except OSError as error:
+                raise ValueError("The Pi could not start the live TV stream") from error
             self.process = process
             self.signature = signature
         return info
