@@ -233,6 +233,12 @@ private:
     int takeUsableEpisode(ChannelRuntime &runtime);
     int adjacentUsableEpisode(const ChannelRuntime &runtime, int direction) const;
     QString programmeDisplayName(const ChannelRuntime &runtime) const;
+    double sanitiseStoredPosition(const ChannelRuntime &runtime,
+                                  int episodeIndex,
+                                  double positionSeconds) const;
+    double clampPlaybackPosition(const ChannelRuntime &runtime,
+                                 int episodeIndex,
+                                 double positionSeconds) const;
     double resolveBroadcastPosition(ChannelRuntime &runtime);
     void freezeTimeline(ChannelRuntime &runtime);
     void markCurrentEpisodeLeft(ChannelRuntime &runtime);

@@ -568,7 +568,6 @@ void TvController::dispatch(Action action)
             runtime.anchorPositionSeconds = runtime.currentEpisode >= 0
                 ? runtime.programmePositions[runtime.currentEpisode]
                 : 0.0;
-            emit programmeDisplayRequested(programmeDisplayName(runtime));
             requestTune(m_currentChannelIndex, false, false);
         }
         break;
@@ -647,7 +646,6 @@ void TvController::playbackEnded()
     runtime.anchorPositionSeconds = runtime.currentEpisode >= 0
         ? runtime.programmePositions[runtime.currentEpisode]
         : 0.0;
-    emit programmeDisplayRequested(programmeDisplayName(runtime));
     requestTune(m_currentChannelIndex, false, false);
 }
 
@@ -658,7 +656,8 @@ void TvController::updatePlaybackPosition(double positionSeconds, bool paused)
     }
 
     ChannelRuntime &runtime = m_channels[m_currentChannelIndex];
-    runtime.anchorPositionSeconds = std::max(0.0, positionSeconds);
+    runtime.anchorPositionSeconds = clampPlaybackPosition(
+        runtime, runtime.currentEpisode, positionSeconds);
     runtime.anchorMilliseconds = m_broadcastClock.elapsed();
     if (runtime.currentEpisode >= 0
         && runtime.currentEpisode < runtime.programmePositions.size()) {
@@ -1328,8 +1327,8 @@ void TvController::loadState()
             timeline.value(QStringLiteral("programme_positions")).toObject();
         for (int index = 0; index < runtime.channel.episodes.size(); ++index) {
             const QString episodeName = QFileInfo(runtime.channel.episodes[index].path).fileName();
-            runtime.programmePositions[index] = std::max(
-                0.0, savedProgrammePositions.value(episodeName).toDouble(0.0));
+            runtime.programmePositions[index] = sanitiseStoredPosition(
+                runtime, index, savedProgrammePositions.value(episodeName).toDouble(0.0));
         }
         if (sameUptimeSession) {
             const QJsonObject savedLastLeft =
@@ -1365,7 +1364,8 @@ void TvController::loadState()
             const double savedPosition = timeline.contains(QStringLiteral("position_seconds"))
                 ? timeline.value(QStringLiteral("position_seconds")).toDouble(0.0)
                 : runtime.programmePositions[episodeIndex];
-            runtime.anchorPositionSeconds = std::max(0.0, savedPosition + offlineSeconds);
+            runtime.anchorPositionSeconds = sanitiseStoredPosition(
+                runtime, episodeIndex, savedPosition + offlineSeconds);
             runtime.programmePositions[episodeIndex] = runtime.anchorPositionSeconds;
             runtime.anchorMilliseconds = m_broadcastClock.elapsed();
         } else {
@@ -1405,13 +1405,15 @@ void TvController::saveState() const
     for (const ChannelRuntime &runtime : m_channels) {
         const bool hasCurrent = runtime.currentEpisode >= 0
             && runtime.currentEpisode < runtime.channel.episodes.size();
-        const bool isPausedCurrent = m_playbackPaused && m_currentChannelIndex >= 0
+        const bool isCurrent = m_currentChannelIndex >= 0
             && &runtime == &m_channels[m_currentChannelIndex];
+        const bool advances = m_playbackMode == QStringLiteral("continuous")
+            || (isCurrent && !m_playbackPaused);
         const double position = hasCurrent
             ? runtime.anchorPositionSeconds
-                + (isPausedCurrent
-                       ? 0.0
-                       : std::max<qint64>(0, elapsedNow - runtime.anchorMilliseconds) / 1000.0)
+                + (advances
+                       ? std::max<qint64>(0, elapsedNow - runtime.anchorMilliseconds) / 1000.0
+                       : 0.0)
             : 0.0;
         QJsonObject programmePositions;
         for (int index = 0; index < runtime.channel.episodes.size(); ++index) {
@@ -1536,6 +1538,7 @@ void TvController::finishTune()
     // result left by the channel we just departed.
     setNoSignal(false);
     setTuning(false);
+    emit programmeDisplayRequested(programmeDisplayName(runtime));
     emit playbackRequested(QUrl::fromLocalFile(episode.path), startPosition);
 }
 
@@ -1569,7 +1572,6 @@ void TvController::changeProgramme(int direction)
     prepareCurrentEpisodeForVisit(runtime);
     runtime.anchorMilliseconds = m_broadcastClock.elapsed();
     runtime.anchorPositionSeconds = runtime.programmePositions[nextEpisode];
-    emit programmeDisplayRequested(programmeDisplayName(runtime));
     requestTune(m_currentChannelIndex, false, false);
 }
 
@@ -1580,6 +1582,44 @@ QString TvController::programmeDisplayName(const ChannelRuntime &runtime) const
     }
 
     return displayNameForEpisodePath(runtime.channel.episodes[runtime.currentEpisode].path);
+}
+
+double TvController::sanitiseStoredPosition(const ChannelRuntime &runtime,
+                                            int episodeIndex,
+                                            double positionSeconds) const
+{
+    if (!std::isfinite(positionSeconds) || positionSeconds <= 0.0) {
+        return 0.0;
+    }
+    if (!episodeIsUsable(runtime, episodeIndex)) {
+        return std::max(0.0, positionSeconds);
+    }
+
+    const double duration = runtime.channel.episodes[episodeIndex].durationSeconds;
+    // A resume position at or past the end cannot belong to this programme.
+    // Reset it rather than allowing it to spill into a different file.
+    if (duration > 0.0 && positionSeconds >= duration) {
+        return 0.0;
+    }
+    return positionSeconds;
+}
+
+double TvController::clampPlaybackPosition(const ChannelRuntime &runtime,
+                                           int episodeIndex,
+                                           double positionSeconds) const
+{
+    if (!std::isfinite(positionSeconds) || positionSeconds <= 0.0) {
+        return 0.0;
+    }
+    if (!episodeIsUsable(runtime, episodeIndex)) {
+        return std::max(0.0, positionSeconds);
+    }
+
+    const double duration = runtime.channel.episodes[episodeIndex].durationSeconds;
+    if (duration <= 0.0) {
+        return positionSeconds;
+    }
+    return std::min(positionSeconds, std::max(0.0, duration - 0.05));
 }
 
 void TvController::setVolume(int value)
@@ -1873,6 +1913,17 @@ double TvController::resolveBroadcastPosition(ChannelRuntime &runtime)
 
     if (runtime.currentEpisode < 0) {
         return 0.0;
+    }
+
+    // Resume mode is programme-based, not a continuous broadcast. A selected
+    // film or episode must never be advanced into another file by stale state.
+    if (m_playbackMode == QStringLiteral("resume")) {
+        const double position = sanitiseStoredPosition(
+            runtime, runtime.currentEpisode, runtime.anchorPositionSeconds);
+        runtime.anchorMilliseconds = now;
+        runtime.anchorPositionSeconds = position;
+        runtime.programmePositions[runtime.currentEpisode] = position;
+        return position;
     }
 
     double position = runtime.anchorPositionSeconds

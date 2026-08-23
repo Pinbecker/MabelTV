@@ -27,6 +27,7 @@ private slots:
     void controllerMovesBetweenProgrammesInFilenameOrder();
     void controllerRestartsStaleShowsButNeverFilms();
     void controllerDisplaysSeasonEpisodeOrFilmNameWhenProgrammeChanges();
+    void controllerRestoresCorruptFilmPositionWithoutChangingFilm();
     void standbyWakeWaitsForWelcomeBeforeResumingPlayback();
     void remoteLockBlocksActionsAndPersists();
     void parentControlsRequireThreeConfirmationsAndPersistSettings();
@@ -534,6 +535,7 @@ void CoreTests::controllerDisplaysSeasonEpisodeOrFilmNameWhenProgrammeChanges()
     QSignalSpy programmeDisplays(&controller, &TvController::programmeDisplayRequested);
     controller.start();
     QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 1, 1000);
+    programmeDisplays.clear();
 
     const auto expectedLabel = [&](const QString &fileName) {
         return fileName == episodeName ? QStringLiteral("S01  E02  ·  Making Friends")
@@ -551,6 +553,70 @@ void CoreTests::controllerDisplaysSeasonEpisodeOrFilmNameWhenProgrammeChanges()
     QCOMPARE(programmeDisplays.count(), 2);
     QCOMPARE(programmeDisplays.at(1).at(0).toString(),
              expectedLabel(playbackRequests.at(2).at(0).toUrl().fileName()));
+}
+
+void CoreTests::controllerRestoresCorruptFilmPositionWithoutChangingFilm()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/films")));
+    for (const QString &name : {QStringLiteral("Finding Dory.mp4"),
+                                QStringLiteral("Finding Nemo.mp4"),
+                                QStringLiteral("Snow White.mp4")}) {
+        QFile media(directory.filePath(QStringLiteral("media/films/") + name));
+        QVERIFY(media.open(QIODevice::WriteOnly));
+        media.close();
+    }
+
+    QFile configuration(directory.filePath(QStringLiteral("channels.json")));
+    QVERIFY(configuration.open(QIODevice::WriteOnly));
+    configuration.write(R"({
+        "schema_version": 1,
+        "channels": [{"number": 5, "name": "Films", "folder": "films", "content_type": "films"}]
+    })");
+    configuration.close();
+
+    QFile settings(directory.filePath(QStringLiteral("settings.json")));
+    QVERIFY(settings.open(QIODevice::WriteOnly));
+    settings.write(R"({"schema_version": 1, "playback_mode": "resume"})");
+    settings.close();
+
+    QFile state(directory.filePath(QStringLiteral("state.json")));
+    QVERIFY(state.open(QIODevice::WriteOnly));
+    state.write(R"({
+        "current_channel": 5,
+        "channel_timelines": {
+            "5": {
+                "episode_name": "Finding Dory.mp4",
+                "position_seconds": 91166,
+                "programme_positions": {
+                    "Finding Dory.mp4": 91166,
+                    "Finding Nemo.mp4": 120,
+                    "Snow White.mp4": 240
+                }
+            }
+        }
+    })");
+    state.close();
+
+    TvController controller;
+    QVERIFY(controller.initialize(
+        configuration.fileName(), settings.fileName(), directory.filePath(QStringLiteral("media")),
+        state.fileName(), [](const QString &) {
+            return MediaInspection{true, true, 600.0, QStringLiteral("h264"), {}};
+        }));
+    QSignalSpy playbackRequests(&controller, &TvController::playbackRequested);
+    controller.start();
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 1, 1000);
+    QCOMPARE(playbackRequests.at(0).at(0).toUrl().fileName(), QStringLiteral("Finding Dory.mp4"));
+    QVERIFY(playbackRequests.at(0).at(1).toDouble() < 0.2);
+
+    QVERIFY(state.open(QIODevice::ReadOnly));
+    const QJsonObject saved = QJsonDocument::fromJson(state.readAll()).object();
+    const QJsonObject positions = saved.value(QStringLiteral("channel_timelines")).toObject()
+                                     .value(QStringLiteral("5")).toObject()
+                                     .value(QStringLiteral("programme_positions")).toObject();
+    QVERIFY(!positions.contains(QStringLiteral("Finding Dory.mp4")));
 }
 
 void CoreTests::standbyWakeWaitsForWelcomeBeforeResumingPlayback()
