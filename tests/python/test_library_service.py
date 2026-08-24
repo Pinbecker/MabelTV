@@ -766,6 +766,11 @@ class LibraryUnitTests(unittest.TestCase):
 
 
 class LibraryHttpTests(unittest.TestCase):
+    # A full owner/settings write can take longer than five seconds on the
+    # original single-core Pi.  This is a local test-client timeout only; it
+    # does not alter portal request handling or browser upload timeouts.
+    REQUEST_TIMEOUT_SECONDS = 20
+
     def setUp(self) -> None:
         self.fixture = LibraryFixture()
         self.server = mabeltv_library.LibraryServer(("127.0.0.1", 0),
@@ -801,7 +806,7 @@ class LibraryHttpTests(unittest.TestCase):
         if origin:
             request.add_header("Origin", origin)
         try:
-            with self.opener.open(request, timeout=5) as response:
+            with self.opener.open(request, timeout=self.REQUEST_TIMEOUT_SECONDS) as response:
                 return response.status, json.loads(response.read())
         except urllib.error.HTTPError as error:
             try:
