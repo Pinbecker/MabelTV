@@ -108,6 +108,10 @@ class PlayerSafetyTests(unittest.TestCase):
         adult_qml = (PROJECT_ROOT / "qml" / "AdultModeOverlay.qml").read_text(
             encoding="utf-8"
         )
+        main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+        application = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
+            encoding="utf-8"
+        )
 
         self.assertIn("void requestAdultModeShortcut();", controller_header)
         self.assertIn("Adult mode requested from parent-access shortcut", controller_source)
@@ -116,6 +120,37 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn('"sub-auto",', player_source)
         self.assertIn("subtitleDefaultOn: true", adult_qml)
         self.assertIn("adultPlayer.toggleSubtitles()", adult_qml)
+        self.assertIn('QStringLiteral("toggle-subtitles")', application)
+        self.assertIn('command === "toggle-subtitles"', main_qml)
+
+    def test_adult_back_returns_to_library_before_leaving_adult_mode(self) -> None:
+        adult_qml = (PROJECT_ROOT / "qml" / "AdultModeOverlay.qml").read_text(
+            encoding="utf-8"
+        )
+        main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+
+        self.assertIn("function back(waitForRelease)", adult_qml)
+        self.assertIn("if (playing || stopping)", adult_qml)
+        self.assertIn("ignoreLibraryBackBeforeMs = Date.now() + 750", adult_qml)
+        self.assertIn("function handleKeyReleased", adult_qml)
+        self.assertIn("adultMode.handleKeyReleased(event.key, event.isAutoRepeat)", main_qml)
+        self.assertIn("adultMode.back(false)", main_qml)
+
+    def test_adult_library_is_a_remote_first_media_portal(self) -> None:
+        adult_qml = (PROJECT_ROOT / "qml" / "AdultModeOverlay.qml").read_text(
+            encoding="utf-8"
+        )
+        main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+
+        self.assertIn('text: "Your private film library"', adult_qml)
+        self.assertIn("id: featurePanel", adult_qml)
+        self.assertIn("id: filmStrip", adult_qml)
+        self.assertIn("function selectRelative(offset)", adult_qml)
+        self.assertIn("function togglePause()", adult_qml)
+        self.assertIn("function restartFilm()", adult_qml)
+        self.assertIn("adultMode.restartFilm()", main_qml)
+        self.assertIn("adultMode.togglePause()", main_qml)
+        self.assertIn("adultMode.selectRelative(-1)", main_qml)
 
     def test_film_channels_get_a_skippable_countdown_before_starting(self) -> None:
         controller_header = (PROJECT_ROOT / "src" / "core" / "TvController.h").read_text(
@@ -183,8 +218,11 @@ class PlayerSafetyTests(unittest.TestCase):
 
         self.assertIn("visible: !adultMode.active", main_qml)
         self.assertIn("property bool openingAdultMode", main_qml)
+        self.assertIn("openingAdultMode = true\n        player.stop()", main_qml)
         self.assertIn("onPlaybackStopped", main_qml)
+        self.assertIn("if (root.openingAdultMode)", main_qml)
         self.assertIn("adultMode.open()", main_qml)
+        self.assertIn("if (!adultMode.active && !root.openingAdultMode", main_qml)
         self.assertIn("if (adultMode.active)\n                adultMode.toggleSubtitles()", main_qml)
         self.assertIn("property var filmPositions", adult_qml)
         self.assertIn("rememberCurrentFilmPosition", adult_qml)

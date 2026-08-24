@@ -272,33 +272,56 @@ Window {
             guideOverlay.open()
         } else if (command === "close-overlay") {
             if (adultMode.active)
-                adultMode.close()
+                adultMode.back(false)
             else if (guideOverlay.visible)
                 guideOverlay.close()
             else
                 tvController.closeParent()
         } else if (command === "restart-programme") {
-            syncPlaybackPosition()
-            tvController.restartCurrentProgramme()
+            if (adultMode.active) {
+                adultMode.restartFilm()
+            } else {
+                syncPlaybackPosition()
+                tvController.restartCurrentProgramme()
+            }
         } else if (command === "enter-adult-mode") {
             if (!adultMode.active) {
                 guideOverlay.close()
                 enterAdultMode()
             }
         } else if (command === "channel-up") {
-            syncPlaybackPosition()
-            tvController.dispatch(TvController.ChannelUp)
+            if (adultMode.active)
+                adultMode.selectRelative(-1)
+            else {
+                syncPlaybackPosition()
+                tvController.dispatch(TvController.ChannelUp)
+            }
         } else if (command === "channel-down") {
-            syncPlaybackPosition()
-            tvController.dispatch(TvController.ChannelDown)
+            if (adultMode.active)
+                adultMode.selectRelative(1)
+            else {
+                syncPlaybackPosition()
+                tvController.dispatch(TvController.ChannelDown)
+            }
         } else if (command === "previous-programme") {
-            syncPlaybackPosition()
-            tvController.dispatch(TvController.PreviousProgramme)
+            if (adultMode.active)
+                adultMode.selectRelative(-1)
+            else {
+                syncPlaybackPosition()
+                tvController.dispatch(TvController.PreviousProgramme)
+            }
         } else if (command === "next-programme") {
-            syncPlaybackPosition()
-            tvController.dispatch(TvController.NextProgramme)
+            if (adultMode.active)
+                adultMode.selectRelative(1)
+            else {
+                syncPlaybackPosition()
+                tvController.dispatch(TvController.NextProgramme)
+            }
         } else if (command === "toggle-pause") {
-            togglePlaybackPause()
+            if (adultMode.active)
+                adultMode.togglePause()
+            else
+                togglePlaybackPause()
         } else if (command === "toggle-subtitles") {
             if (adultMode.active)
                 adultMode.toggleSubtitles()
@@ -1762,7 +1785,10 @@ Window {
         }
 
         Keys.onReleased: event => {
-            if (event.key === Qt.Key_M && !event.isAutoRepeat) {
+            if (adultMode.active
+                    && adultMode.handleKeyReleased(event.key, event.isAutoRepeat)) {
+                event.accepted = true
+            } else if (event.key === Qt.Key_M && !event.isAutoRepeat) {
                 if (muteHoldTimer.running) {
                     muteHoldTimer.stop()
                     if (!root.muteHeldForLock && !tvController.remoteLocked)

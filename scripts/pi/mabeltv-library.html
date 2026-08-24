@@ -203,12 +203,12 @@
       }
       $('#notice').textContent = message
       $('#notice').classList.toggle('bad', bad)
-      if (message && !bad && !message.endsWith('…')) {
+      if (message && !message.endsWith('…')) {
         noticeTimer = setTimeout(() => {
           $('#notice').textContent = ''
           $('#notice').classList.remove('bad')
           noticeTimer = null
-        }, 5000)
+        }, bad ? 7000 : 5000)
       }
     }
 

@@ -658,7 +658,8 @@ class LibraryUnitTests(unittest.TestCase):
     def test_live_tv_navigation_shortcuts_are_forwarded_to_the_player(self) -> None:
         commands = ("open-parent-menu", "open-tv-guide", "close-overlay",
                     "restart-programme", "navigate-up", "navigate-down",
-                    "navigate-left", "navigate-right", "select")
+                    "navigate-left", "navigate-right", "select",
+                    "toggle-subtitles")
         with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True):
             with mock.patch.object(mabeltv_library.socket, "socket") as socket_factory:
                 client = socket_factory.return_value.__enter__.return_value
@@ -671,6 +672,15 @@ class LibraryUnitTests(unittest.TestCase):
                 self.assertEqual(
                     [call.args[0] for call in client.sendall.call_args_list],
                     [f"{command}\n".encode() for command in commands])
+
+    def test_portal_error_notices_clear_automatically(self) -> None:
+        portal = (PROJECT_ROOT / "scripts" / "pi" / "mabeltv-library.html").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("if (message && !message.endsWith('…'))", portal)
+        self.assertIn("bad ? 7000 : 5000", portal)
+        self.assertNotIn("message && !bad && !message.endsWith", portal)
 
     def test_worker_survives_failure_while_persisting_an_error(self) -> None:
         self.fixture.library.unexpected_conversion_error = mock.Mock(

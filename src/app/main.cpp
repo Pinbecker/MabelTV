@@ -492,6 +492,7 @@ int main(int argc, char *argv[])
                                                           QStringLiteral("previous-programme"),
                                                           QStringLiteral("next-programme"),
                                                           QStringLiteral("toggle-pause"),
+                                                          QStringLiteral("toggle-subtitles"),
                                                           QStringLiteral("volume-up"),
                                                           QStringLiteral("volume-down"),
                                                           QStringLiteral("toggle-mute"),
