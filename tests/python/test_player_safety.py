@@ -116,6 +116,22 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("function finishFilmCountdown", main_qml)
         self.assertIn("PRESS OK TO SKIP", main_qml)
 
+    def test_adult_transition_uses_one_renderer_and_preserves_film_position(self) -> None:
+        main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+        adult_qml = (PROJECT_ROOT / "qml" / "AdultModeOverlay.qml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("visible: !adultMode.active", main_qml)
+        self.assertIn("property bool openingAdultMode", main_qml)
+        self.assertIn("onPlaybackStopped", main_qml)
+        self.assertIn("adultMode.open()", main_qml)
+        self.assertIn("if (adultMode.active)\n                adultMode.toggleSubtitles()", main_qml)
+        self.assertIn("property var filmPositions", adult_qml)
+        self.assertIn("rememberCurrentFilmPosition", adult_qml)
+        self.assertIn("savedPosition", adult_qml)
+        self.assertIn("HOLD MUTE subtitles", adult_qml)
+
 
 if __name__ == "__main__":
     unittest.main()
