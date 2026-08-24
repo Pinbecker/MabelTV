@@ -5,6 +5,7 @@ import MabelTV 1.0
 
 Item {
     id: overlay
+    objectName: "mabeltvAdultMode"
 
     required property var controller
     property bool active: false
@@ -16,6 +17,7 @@ Item {
     property int selectedIndex: 0
     readonly property real playbackPosition: adultPlayer.playbackPosition
     readonly property real playbackDuration: adultPlayer.playbackDuration
+    readonly property string currentFilmName: currentFilm() ? currentFilm().name : ""
     readonly property real uiScale: Math.max(0.62, Math.min(width / 1920, height / 1080))
     property real controlsOpacity: 1
     property real selectedSavedPosition: 0

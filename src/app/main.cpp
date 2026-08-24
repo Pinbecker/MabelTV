@@ -486,6 +486,32 @@ int main(int argc, char *argv[])
                                                   [socket, rootObject]() {
                                                       const QString command = QString::fromUtf8(
                                                           socket->readAll()).trimmed();
+                                                      if (command == QStringLiteral("status")) {
+                                                          QJsonObject status{
+                                                              {QStringLiteral("mode"), QStringLiteral("kids")},
+                                                          };
+                                                          QObject *adultMode = rootObject->findChild<QObject *>(
+                                                              QStringLiteral("mabeltvAdultMode"));
+                                                          if (adultMode != nullptr
+                                                              && adultMode->property("active").toBool()) {
+                                                              status.insert(QStringLiteral("mode"),
+                                                                            QStringLiteral("adult"));
+                                                              status.insert(QStringLiteral("playing"),
+                                                                            adultMode->property("playing").toBool());
+                                                              status.insert(QStringLiteral("programme"),
+                                                                            adultMode->property("currentFilmName").toString());
+                                                              QObject *adultPlayer = rootObject->findChild<QObject *>(
+                                                                  QStringLiteral("mabeltvAdultPlayer"));
+                                                              status.insert(QStringLiteral("paused"),
+                                                                            adultPlayer != nullptr
+                                                                                && adultPlayer->property("paused").toBool());
+                                                          }
+                                                          socket->write(QJsonDocument(status).toJson(
+                                                              QJsonDocument::Compact));
+                                                          socket->write("\n");
+                                                          socket->disconnectFromServer();
+                                                          return;
+                                                      }
                                                       static const QSet<QString> allowed{
                                                           QStringLiteral("channel-up"),
                                                           QStringLiteral("channel-down"),

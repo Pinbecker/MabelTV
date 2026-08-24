@@ -454,7 +454,9 @@
       $('#liveOffTitle').textContent = available ? 'Starting live picture…' : (state.reason || 'The TV is off')
       $('#liveOffText').textContent = available ? 'Connecting to MabelTV' : 'Turn on the television to start the live preview.'
       $('#liveProgramme').textContent = available ? state.programme : 'Waiting for MabelTV'
-      $('#liveChannel').textContent = available ? `CH ${state.channel_number} · ${state.channel_name}` : 'Live preview'
+      $('#liveChannel').textContent = available
+        ? (state.adult_mode ? 'ADULT TV · PRIVATE LIBRARY' : `CH ${state.channel_number} · ${state.channel_name}`)
+        : 'Live preview'
       $('#liveState').textContent = available ? (state.paused ? 'Paused' : 'Live') : 'Offline'
     }
 

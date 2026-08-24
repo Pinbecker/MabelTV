@@ -673,6 +673,30 @@ class LibraryUnitTests(unittest.TestCase):
                     [call.args[0] for call in client.sendall.call_args_list],
                     [f"{command}\n".encode() for command in commands])
 
+    def test_live_tv_status_reports_adult_mode_instead_of_hidden_kids_playback(self) -> None:
+        self.fixture.library.live_stream.status = mock.Mock(return_value={
+            "available": True, "channel_number": 5, "channel_name": "Films",
+            "programme": "Finding Nemo", "paused": False,
+        })
+        self.fixture.library.player_mode_status = mock.Mock(return_value={
+            "mode": "adult", "playing": True,
+            "programme": "The Fellowship of the Ring", "paused": True,
+        })
+
+        status = self.fixture.library.live_tv_status()
+
+        self.assertTrue(status["adult_mode"])
+        self.assertTrue(status["adult_playing"])
+        self.assertEqual(status["programme"], "The Fellowship of the Ring")
+        self.assertTrue(status["paused"])
+        self.assertEqual(status["channel_name"], "Films")
+
+    def test_player_mode_status_tolerates_an_unavailable_player_socket(self) -> None:
+        with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True):
+            with mock.patch.object(mabeltv_library.socket, "socket",
+                                   side_effect=OSError("not ready")):
+                self.assertEqual(self.fixture.library.player_mode_status(), {})
+
     def test_portal_error_notices_clear_automatically(self) -> None:
         portal = (PROJECT_ROOT / "scripts" / "pi" / "mabeltv-library.html").read_text(
             encoding="utf-8"
@@ -681,6 +705,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("if (message && !message.endsWith('…'))", portal)
         self.assertIn("bad ? 7000 : 5000", portal)
         self.assertNotIn("message && !bad && !message.endsWith", portal)
+        self.assertIn("state.adult_mode ? 'ADULT TV · PRIVATE LIBRARY'", portal)
 
     def test_worker_survives_failure_while_persisting_an_error(self) -> None:
         self.fixture.library.unexpected_conversion_error = mock.Mock(

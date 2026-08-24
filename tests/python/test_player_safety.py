@@ -68,6 +68,9 @@ class PlayerSafetyTests(unittest.TestCase):
             encoding="utf-8"
         )
         main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+        application = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
+            encoding="utf-8"
+        )
 
         self.assertIn("void playbackStopped();", header)
         self.assertIn("emit playbackStopped();", source)
@@ -141,6 +144,9 @@ class PlayerSafetyTests(unittest.TestCase):
             encoding="utf-8"
         )
         main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+        application = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
+            encoding="utf-8"
+        )
 
         self.assertIn('text: "Your private film library"', adult_qml)
         self.assertIn("id: featurePanel", adult_qml)
@@ -151,6 +157,8 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("adultMode.restartFilm()", main_qml)
         self.assertIn("adultMode.togglePause()", main_qml)
         self.assertIn("adultMode.selectRelative(-1)", main_qml)
+        self.assertIn('objectName: "mabeltvAdultMode"', adult_qml)
+        self.assertIn('command == QStringLiteral("status")', application)
 
     def test_film_channels_get_a_skippable_countdown_before_starting(self) -> None:
         controller_header = (PROJECT_ROOT / "src" / "core" / "TvController.h").read_text(

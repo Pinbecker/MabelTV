@@ -1337,7 +1337,29 @@ class Library:
         return result.stdout.strip()
 
     def live_tv_status(self) -> dict[str, Any]:
-        return self.live_stream.status()
+        status = self.live_stream.status()
+        mode = self.player_mode_status()
+        if mode.get("mode") == "adult":
+            playing = mode.get("playing") is True
+            status.update({
+                "adult_mode": True,
+                "adult_playing": playing,
+                "programme": str(mode.get("programme") or "Film library")
+                             if playing else "Film library",
+                "paused": mode.get("paused") is True,
+            })
+        return status
+
+    def player_mode_status(self) -> dict[str, Any]:
+        try:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+                client.settimeout(1)
+                client.connect("/run/mabeltv/portal-control.sock")
+                client.sendall(b"status\n")
+                response = json.loads(client.recv(4096).decode())
+        except (OSError, TimeoutError, UnicodeDecodeError, json.JSONDecodeError):
+            return {}
+        return response if isinstance(response, dict) else {}
 
     def live_tv_manifest(self) -> Path:
         return self.live_stream.manifest()
