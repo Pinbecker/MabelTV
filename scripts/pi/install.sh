@@ -6,16 +6,18 @@ configure_boot="false"
 skip_packages="false"
 enable_ir="false"
 product_install="false"
+pi1_benchmark="false"
 prebuilt_dir=""
 source_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 usage() {
-    printf 'Usage: sudo bash scripts/pi/install.sh [--product-install] [--prebuilt DIR] [--enable-service] [--configure-boot] [--enable-ir] [--skip-packages]\n'
+    printf 'Usage: sudo bash scripts/pi/install.sh [--product-install] [--pi1-benchmark] [--prebuilt DIR] [--enable-service] [--configure-boot] [--enable-ir] [--skip-packages]\n'
 }
 
 while (($#)); do
     case "$1" in
         --product-install) product_install="true"; enable_service="true"; configure_boot="true"; shift ;;
+        --pi1-benchmark) pi1_benchmark="true"; shift ;;
         --enable-service) enable_service="true"; shift ;;
         --configure-boot) configure_boot="true"; shift ;;
         --enable-ir) enable_ir="true"; shift ;;
@@ -30,7 +32,11 @@ if [[ $EUID -ne 0 ]]; then
     printf 'Run this installer with sudo.\n' >&2
     exit 1
 fi
-bash "$source_root/scripts/pi/preflight.sh"
+preflight_arguments=()
+if [[ "$pi1_benchmark" == "true" ]]; then
+    preflight_arguments+=(--pi1-benchmark)
+fi
+bash "$source_root/scripts/pi/preflight.sh" "${preflight_arguments[@]}"
 player_was_active="false"
 if systemctl is-active --quiet mabeltv.service 2>/dev/null; then
     player_was_active="true"

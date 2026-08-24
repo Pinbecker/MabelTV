@@ -2,9 +2,22 @@
 # Fast, read-only checks before package installation or compilation begins.
 set -Eeuo pipefail
 
-if [[ "$(uname -m)" != "aarch64" ]]; then
-    printf 'Mabel TV needs 64-bit Raspberry Pi OS; this system reports %s.\n' "$(uname -m)" >&2
-    exit 1
+pi1_benchmark="false"
+if [[ "${1:-}" == "--pi1-benchmark" ]]; then
+    pi1_benchmark="true"
+    shift
+fi
+if (($#)); then
+    printf 'Usage: %s [--pi1-benchmark]\n' "$0" >&2
+    exit 2
+fi
+
+architecture="$(uname -m)"
+if [[ "$architecture" != "aarch64" ]]; then
+    if [[ "$pi1_benchmark" != "true" || "$architecture" != "armv6l" ]]; then
+        printf 'Mabel TV needs 64-bit Raspberry Pi OS; this system reports %s.\n' "$architecture" >&2
+        exit 1
+    fi
 fi
 if [[ ! -r /proc/device-tree/model ]]; then
     printf 'A Raspberry Pi could not be detected.\n' >&2
@@ -13,12 +26,25 @@ fi
 model="$(tr -d '\0' < /proc/device-tree/model)"
 case "$model" in
     *"Raspberry Pi 4"*) ;;
+    *"Raspberry Pi Model B Plus"*)
+        if [[ "$pi1_benchmark" != "true" ]]; then
+            printf 'This release of Mabel TV is qualified for Raspberry Pi 4 only. Found: %s\n' "$model" >&2
+            exit 1
+        fi
+        ;;
     *) printf 'This release of Mabel TV is qualified for Raspberry Pi 4 only. Found: %s\n' "$model" >&2; exit 1 ;;
 esac
 
 memory_kb="$(awk '/MemTotal:/ {print $2}' /proc/meminfo)"
-if [[ ! "$memory_kb" =~ ^[0-9]+$ ]] || ((memory_kb < 1500 * 1024)); then
-    printf 'Mabel TV needs a Raspberry Pi with at least 2 GB RAM.\n' >&2
+minimum_memory_kb=$((1500 * 1024))
+if [[ "$pi1_benchmark" == "true" ]]; then
+    # This is intentionally an experiment-only floor. It lets a 512 MB Pi 1
+    # run the full application for measurement; it is not a support promise.
+    minimum_memory_kb=$((384 * 1024))
+fi
+if [[ ! "$memory_kb" =~ ^[0-9]+$ ]] || ((memory_kb < minimum_memory_kb)); then
+    printf 'Mabel TV needs a Raspberry Pi with at least %s MB RAM.\n' \
+        "$((minimum_memory_kb / 1024))" >&2
     exit 1
 fi
 
@@ -44,5 +70,10 @@ if command -v vcgencmd >/dev/null 2>&1; then
     fi
 fi
 
-printf 'Preflight passed: %s, %s MB RAM, %s GB free.\n' \
-    "$model" "$((memory_kb / 1024))" "$((root_free_kb / 1024 / 1024))"
+if [[ "$pi1_benchmark" == "true" ]]; then
+    printf 'Pi 1 benchmark preflight passed: %s, %s MB RAM, %s GB free.\n' \
+        "$model" "$((memory_kb / 1024))" "$((root_free_kb / 1024 / 1024))"
+else
+    printf 'Preflight passed: %s, %s MB RAM, %s GB free.\n' \
+        "$model" "$((memory_kb / 1024))" "$((root_free_kb / 1024 / 1024))"
+fi
