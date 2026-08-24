@@ -75,6 +75,31 @@ class PlayerSafetyTests(unittest.TestCase):
 
         self.assertIn('MABELTV_HWDEC="v4l2m2m-copy,drm-copy"', launcher)
 
+    def test_adult_mode_has_a_direct_shortcut_and_subtitle_control(self) -> None:
+        controller_header = (PROJECT_ROOT / "src" / "core" / "TvController.h").read_text(
+            encoding="utf-8"
+        )
+        controller_source = (PROJECT_ROOT / "src" / "core" / "TvController.cpp").read_text(
+            encoding="utf-8"
+        )
+        player_header = (PROJECT_ROOT / "src" / "media" / "MpvVideo.h").read_text(
+            encoding="utf-8"
+        )
+        player_source = (PROJECT_ROOT / "src" / "media" / "MpvVideo.cpp").read_text(
+            encoding="utf-8"
+        )
+        adult_qml = (PROJECT_ROOT / "qml" / "AdultModeOverlay.qml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("void requestAdultModeShortcut();", controller_header)
+        self.assertIn("Adult mode requested from parent-access shortcut", controller_source)
+        self.assertIn("Q_PROPERTY(bool subtitlesVisible", player_header)
+        self.assertIn("Q_INVOKABLE void toggleSubtitles();", player_header)
+        self.assertIn('"sub-auto",', player_source)
+        self.assertIn("subtitleDefaultOn: true", adult_qml)
+        self.assertIn("adultPlayer.toggleSubtitles()", adult_qml)
+
 
 if __name__ == "__main__":
     unittest.main()

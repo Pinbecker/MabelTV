@@ -229,6 +229,9 @@ Window {
             tvController.dispatch(TvController.NextProgramme)
         } else if (command === "toggle-pause") {
             togglePlaybackPause()
+        } else if (command === "toggle-subtitles") {
+            if (adultMode.active)
+                adultMode.toggleSubtitles()
         } else if (command === "volume-up") {
             tvController.dispatch(TvController.VolumeUp)
         } else if (command === "volume-down") {

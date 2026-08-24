@@ -282,6 +282,10 @@ MpvVideo::MpvVideo(QQuickItem *parent)
              "Observing mpv playback position");
     checkMpv(mpv_observe_property(m_state->handle, 4, "duration", MPV_FORMAT_DOUBLE),
              "Observing mpv programme duration");
+    checkMpv(mpv_observe_property(m_state->handle, 5, "sub-visibility", MPV_FORMAT_FLAG),
+             "Observing subtitle visibility");
+    checkMpv(mpv_observe_property(m_state->handle, 6, "sid", MPV_FORMAT_INT64),
+             "Observing subtitle track");
     mpv_set_wakeup_callback(m_state->handle, wakeup, this);
 }
 
@@ -335,6 +339,26 @@ QString MpvVideo::status() const
 bool MpvVideo::paused() const
 {
     return m_paused;
+}
+
+bool MpvVideo::subtitlesVisible() const
+{
+    return m_subtitlesVisible;
+}
+
+bool MpvVideo::subtitlesAvailable() const
+{
+    return m_subtitlesAvailable;
+}
+
+bool MpvVideo::subtitleDefaultOn() const
+{
+    return m_subtitleDefaultOn;
+}
+
+void MpvVideo::setSubtitleDefaultOn(bool enabled)
+{
+    m_subtitleDefaultOn = enabled;
 }
 
 int MpvVideo::volume() const
@@ -494,6 +518,18 @@ void MpvVideo::togglePause()
     checkMpv(mpv_command_async(m_state->handle, 0, command), "Toggling pause");
 }
 
+void MpvVideo::toggleSubtitles()
+{
+    if (m_state->handle == nullptr || !m_subtitlesAvailable) {
+        return;
+    }
+    const bool showSubtitles = !m_subtitlesVisible;
+    const char *command[] = {"set", "sub-visibility", showSubtitles ? "yes" : "no", nullptr};
+    if (checkMpv(mpv_command_async(m_state->handle, 0, command), "Toggling subtitles")) {
+        setSubtitlesVisible(showSubtitles);
+    }
+}
+
 double MpvVideo::positionSeconds() const
 {
     // Never synchronously query libmpv from the Qt UI thread. Property values
@@ -568,6 +604,17 @@ void MpvVideo::loadCurrentSource()
     const QString localPath = m_source.isLocalFile() ? m_source.toLocalFile() : m_source.toString();
     const QByteArray encodedPath = QFileInfo(localPath).absoluteFilePath().toUtf8();
     qInfo().noquote() << "Loading media:" << QDir::toNativeSeparators(QString::fromUtf8(encodedPath));
+    resetSubtitleState();
+    // This is deliberately an Adult Mode choice. Children's channels retain
+    // each file's normal subtitle behaviour, while a film with embedded
+    // subtitles starts with them visible and can immediately be switched off.
+    const char *subtitleSelection[] = {"set", "sub-auto",
+                                       m_subtitleDefaultOn ? "all" : "exact", nullptr};
+    checkMpv(mpv_command_async(m_state->handle, 0, subtitleSelection),
+             "Choosing subtitle default for new media");
+    const char *showSubtitles[] = {"set", "sub-visibility", "yes", nullptr};
+    checkMpv(mpv_command_async(m_state->handle, 0, showSubtitles),
+             "Enabling subtitles for new media");
     const char *unpause[] = {"set", "pause", "no", nullptr};
     if (!checkMpv(mpv_command_async(m_state->handle, 0, unpause),
                   "Clearing pause for new media")) {
@@ -613,6 +660,12 @@ void MpvVideo::resetPlaybackTelemetry(double positionSeconds)
     setPlaybackDuration(0.0);
 }
 
+void MpvVideo::resetSubtitleState()
+{
+    setSubtitlesAvailable(false);
+    setSubtitlesVisible(true);
+}
+
 void MpvVideo::setPlaybackPosition(double positionSeconds)
 {
     const double safePosition = std::isfinite(positionSeconds)
@@ -635,6 +688,24 @@ void MpvVideo::setPlaybackDuration(double durationSeconds)
     }
     m_playbackDuration = safeDuration;
     emit playbackDurationChanged();
+}
+
+void MpvVideo::setSubtitlesVisible(bool visible)
+{
+    if (m_subtitlesVisible == visible) {
+        return;
+    }
+    m_subtitlesVisible = visible;
+    emit subtitlesVisibleChanged();
+}
+
+void MpvVideo::setSubtitlesAvailable(bool available)
+{
+    if (m_subtitlesAvailable == available) {
+        return;
+    }
+    m_subtitlesAvailable = available;
+    emit subtitlesAvailableChanged();
 }
 
 void MpvVideo::processMpvEvents()
@@ -738,6 +809,13 @@ void MpvVideo::processMpvEvents()
                 } else {
                     setPlaybackDuration(0.0);
                 }
+            } else if (QByteArray(change->name) == QByteArrayLiteral("sub-visibility")
+                       && change->format == MPV_FORMAT_FLAG && change->data != nullptr) {
+                setSubtitlesVisible(*static_cast<int *>(change->data) != 0);
+            } else if (QByteArray(change->name) == QByteArrayLiteral("sid")) {
+                const auto subtitleTrack = change->format == MPV_FORMAT_INT64 && change->data != nullptr
+                    ? *static_cast<std::int64_t *>(change->data) : -1;
+                setSubtitlesAvailable(subtitleTrack >= 0);
             }
             break;
         }

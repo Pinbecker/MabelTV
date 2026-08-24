@@ -17,6 +17,9 @@ class MpvVideo : public QQuickFramebufferObject
     Q_PROPERTY(bool paused READ paused NOTIFY pausedChanged)
     Q_PROPERTY(double playbackPosition READ positionSeconds NOTIFY playbackPositionChanged)
     Q_PROPERTY(double playbackDuration READ durationSeconds NOTIFY playbackDurationChanged)
+    Q_PROPERTY(bool subtitlesVisible READ subtitlesVisible NOTIFY subtitlesVisibleChanged)
+    Q_PROPERTY(bool subtitlesAvailable READ subtitlesAvailable NOTIFY subtitlesAvailableChanged)
+    Q_PROPERTY(bool subtitleDefaultOn READ subtitleDefaultOn WRITE setSubtitleDefaultOn)
     Q_PROPERTY(int volume READ volume WRITE setVolume NOTIFY volumeChanged)
     Q_PROPERTY(bool muted READ muted WRITE setMuted NOTIFY mutedChanged)
     Q_PROPERTY(QString aspectMode READ aspectMode WRITE setAspectMode NOTIFY aspectModeChanged)
@@ -32,6 +35,10 @@ public:
 
     [[nodiscard]] QString status() const;
     [[nodiscard]] bool paused() const;
+    [[nodiscard]] bool subtitlesVisible() const;
+    [[nodiscard]] bool subtitlesAvailable() const;
+    [[nodiscard]] bool subtitleDefaultOn() const;
+    void setSubtitleDefaultOn(bool enabled);
     [[nodiscard]] int volume() const;
     void setVolume(int volume);
     [[nodiscard]] bool muted() const;
@@ -42,6 +49,7 @@ public:
     Q_INVOKABLE void play(const QUrl &source, double startPositionSeconds = 0.0);
     Q_INVOKABLE void stop();
     Q_INVOKABLE void togglePause();
+    Q_INVOKABLE void toggleSubtitles();
     Q_INVOKABLE double positionSeconds() const;
     Q_INVOKABLE double durationSeconds() const;
     Q_INVOKABLE void seekRelative(double seconds);
@@ -55,6 +63,8 @@ signals:
     void pausedChanged();
     void playbackPositionChanged();
     void playbackDurationChanged();
+    void subtitlesVisibleChanged();
+    void subtitlesAvailableChanged();
     void volumeChanged();
     void mutedChanged();
     void aspectModeChanged();
@@ -76,8 +86,11 @@ private:
     void finishPendingStop();
     void loadCurrentSource();
     void resetPlaybackTelemetry(double positionSeconds = 0.0);
+    void resetSubtitleState();
     void setPlaybackPosition(double positionSeconds);
     void setPlaybackDuration(double durationSeconds);
+    void setSubtitlesVisible(bool visible);
+    void setSubtitlesAvailable(bool available);
     void setStatus(QString status);
     void reportFatalFailure(const QString &message);
 
@@ -85,6 +98,9 @@ private:
     QUrl m_source;
     QString m_status = QStringLiteral("Ready");
     bool m_paused = false;
+    bool m_subtitlesVisible = true;
+    bool m_subtitlesAvailable = false;
+    bool m_subtitleDefaultOn = false;
     int m_volume = 20;
     bool m_muted = false;
     QString m_aspectMode = QStringLiteral("crop");

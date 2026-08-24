@@ -73,6 +73,12 @@ Item {
         showControls()
     }
 
+    function toggleSubtitles() {
+        if (adultPlayer.subtitlesAvailable)
+            adultPlayer.toggleSubtitles()
+        showControls()
+    }
+
     function formatTime(seconds) {
         const value = Math.max(0, Math.floor(seconds || 0))
         const hours = Math.floor(value / 3600)
@@ -104,6 +110,8 @@ Item {
         if ((key === Qt.Key_Return || key === Qt.Key_Enter) && !isAutoRepeat) {
             adultPlayer.togglePause()
             showControls()
+        } else if ((key === Qt.Key_R || key === Qt.Key_S) && !isAutoRepeat) {
+            toggleSubtitles()
         } else if (key === Qt.Key_Left) {
             seek(isAutoRepeat ? -30 : -15)
         } else if (key === Qt.Key_Right) {
@@ -143,6 +151,7 @@ Item {
         volume: controller.volume
         muted: controller.muted
         aspectMode: "fit"
+        subtitleDefaultOn: true
 
         onPlaybackFinished: {
             overlay.playing = false
@@ -300,7 +309,10 @@ Item {
                     color: "#c1cbc5"
                     font.family: "DejaVu Sans"
                     font.pixelSize: Math.max(13, overlay.height * 0.022)
-                    text: adultPlayer.paused ? "PAUSED" : "OK pause"
+                    text: adultPlayer.paused ? "PAUSED"
+                          : (adultPlayer.subtitlesAvailable
+                             ? "SUBTITLES " + (adultPlayer.subtitlesVisible ? "ON" : "OFF")
+                             : "OK pause")
                 }
             }
 
@@ -331,7 +343,8 @@ Item {
                     color: "#d8dfdb"
                     horizontalAlignment: Text.AlignHCenter
                     font.family: "DejaVu Sans"
-                    text: "↓ −5 min   ← −15 sec   OK   +15 sec →   +5 min ↑"
+                    text: (adultPlayer.subtitlesAvailable ? "SOURCE subtitles   " : "")
+                          + "↓ −5 min   ← −15 sec   OK   +15 sec →   +5 min ↑"
                 }
                 Text {
                     width: parent.width * 0.33

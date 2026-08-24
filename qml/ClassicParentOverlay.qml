@@ -11,6 +11,7 @@ Item {
     property int selectedProgramme: 0
     property bool programmePane: false
     property int restartSequenceStep: 0
+    property bool adultShortcutFocused: false
     readonly property int rowCount: 17
 
     visible: controller.parentAccessState !== TvController.ParentClosed
@@ -145,12 +146,21 @@ Item {
 
     function handleKey(key, modifiers) {
         if (controller.parentAccessState === TvController.ParentConfirmation) {
-            if (key === Qt.Key_Left) {
+            if (key === Qt.Key_Up) {
+                restartSequenceStep = 0
+                adultShortcutFocused = true
+            } else if (key === Qt.Key_Down) {
+                adultShortcutFocused = false
+            } else if (key === Qt.Key_Left) {
+                adultShortcutFocused = false
                 restartSequenceStep = 1
             } else if (key === Qt.Key_Right) {
+                adultShortcutFocused = false
                 restartSequenceStep = restartSequenceStep === 1 ? 2 : 0
             } else if (key === Qt.Key_Return || key === Qt.Key_Enter) {
-                if (restartSequenceStep === 2) {
+                if (adultShortcutFocused) {
+                    controller.requestAdultModeShortcut()
+                } else if (restartSequenceStep === 2) {
                     controller.restartCurrentProgramme()
                     controller.closeParent()
                 } else {
@@ -159,6 +169,7 @@ Item {
                 }
             } else if (key === Qt.Key_Escape || key === Qt.Key_B) {
                 restartSequenceStep = 0
+                adultShortcutFocused = false
                 controller.closeParent()
             } else {
                 restartSequenceStep = 0
@@ -215,6 +226,7 @@ Item {
         }
         function onParentAccessStateChanged() {
             overlay.restartSequenceStep = 0
+            overlay.adultShortcutFocused = false
             if (controller.parentAccessState !== TvController.ParentOpen) {
                 overlay.page = "settings"
                 overlay.programmePane = false
@@ -268,7 +280,29 @@ Item {
                 color: "#bdd0ad"
                 font.family: "Consolas"
                 font.pixelSize: 21
-                text: "PRESS OK THREE TIMES"
+                text: overlay.adultShortcutFocused
+                      ? "ADULT MODE SELECTED: PRESS OK"
+                      : "PRESS OK THREE TIMES"
+            }
+
+            Rectangle {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.verticalCenterOffset: -36
+                width: 360
+                height: 48
+                color: overlay.adultShortcutFocused ? "#334d34" : "#10180f"
+                border.color: overlay.adultShortcutFocused ? "#d4c78e" : "#547054"
+                border.width: overlay.adultShortcutFocused ? 2 : 1
+
+                Text {
+                    anchors.centerIn: parent
+                    color: overlay.adultShortcutFocused ? "#f1e7b7" : "#bdd0ad"
+                    font.family: "Consolas"
+                    font.bold: true
+                    font.pixelSize: 18
+                    text: "↑  ADULT MODE     OK  OPEN"
+                }
             }
 
             Text {

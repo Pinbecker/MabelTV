@@ -29,7 +29,7 @@ BUTTONS = [
     ("NAVIGATION DOWN (optional)", "KEY_DOWN", False),
     ("NAVIGATION LEFT (optional)", "KEY_LEFT", False),
     ("NAVIGATION RIGHT (optional)", "KEY_RIGHT", False),
-    ("RANDOM / SOURCE (optional)", "KEY_R", False),
+    ("SOURCE / SUBTITLES (optional)", "KEY_R", False),
     *[(str(number), f"KEY_{number}", False) for number in range(10)],
 ]
 

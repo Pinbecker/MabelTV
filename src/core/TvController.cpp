@@ -814,6 +814,20 @@ void TvController::parentConfirm()
                                     : QStringLiteral("Press OK two more times"));
 }
 
+void TvController::requestAdultModeShortcut()
+{
+    // Adult Mode deliberately has a short route from the first grown-up
+    // screen. It remains unavailable during normal viewing: the shortcut is
+    // only accepted while that initial parent-access screen is visible.
+    if (m_parentAccessState != ParentConfirmation) {
+        return;
+    }
+    qInfo() << "Adult mode requested from parent-access shortcut";
+    saveState();
+    closeParent();
+    emit parentCommandRequested(QStringLiteral("adult"));
+}
+
 void TvController::closeParent()
 {
     if (m_parentAccessState == ParentClosed) {

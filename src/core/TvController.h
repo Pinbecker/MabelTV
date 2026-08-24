@@ -130,6 +130,7 @@ public:
     Q_INVOKABLE void restartCurrentProgramme();
     Q_INVOKABLE void requestParentAccess();
     Q_INVOKABLE void parentConfirm();
+    Q_INVOKABLE void requestAdultModeShortcut();
     Q_INVOKABLE void closeParent();
     Q_INVOKABLE void cyclePlaybackMode(int direction);
     Q_INVOKABLE void cycleEpisodeResetMinutes(int direction);

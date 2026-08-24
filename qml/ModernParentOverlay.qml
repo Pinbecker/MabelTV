@@ -15,6 +15,7 @@ Item {
     property bool sidebarFocused: false
     property int sidebarSelection: 0
     property int restartSequenceStep: 0
+    property bool adultShortcutFocused: false
     readonly property real uiScale: Math.max(0.66, Math.min(width / 1920, height / 1080))
     readonly property var navPages: ["overview", "playback", "picture", "channels", "system"]
 
@@ -282,12 +283,21 @@ Item {
 
     function handleKey(key, modifiers) {
         if (controller.parentAccessState === TvController.ParentConfirmation) {
-            if (key === Qt.Key_Left) {
+            if (key === Qt.Key_Up) {
+                restartSequenceStep = 0
+                adultShortcutFocused = true
+            } else if (key === Qt.Key_Down) {
+                adultShortcutFocused = false
+            } else if (key === Qt.Key_Left) {
+                adultShortcutFocused = false
                 restartSequenceStep = 1
             } else if (key === Qt.Key_Right) {
+                adultShortcutFocused = false
                 restartSequenceStep = restartSequenceStep === 1 ? 2 : 0
             } else if (key === Qt.Key_Return || key === Qt.Key_Enter) {
-                if (restartSequenceStep === 2) {
+                if (adultShortcutFocused) {
+                    controller.requestAdultModeShortcut()
+                } else if (restartSequenceStep === 2) {
                     controller.restartCurrentProgramme()
                     controller.closeParent()
                 } else {
@@ -296,6 +306,7 @@ Item {
                 }
             } else if (key === Qt.Key_Escape || key === Qt.Key_B) {
                 restartSequenceStep = 0
+                adultShortcutFocused = false
                 controller.closeParent()
             } else {
                 restartSequenceStep = 0
@@ -404,6 +415,7 @@ Item {
 
         function onParentAccessStateChanged() {
             overlay.restartSequenceStep = 0
+            overlay.adultShortcutFocused = false
             if (controller.parentAccessState !== TvController.ParentOpen) {
                 overlay.page = "overview"
                 overlay.selectedRow = 0
@@ -524,13 +536,36 @@ Item {
                 color: "#c0c5c8"
                 font.family: "DejaVu Sans"
                 font.pixelSize: 22 * overlay.uiScale
-                text: "Press OK three times to open Parent Controls"
+                text: overlay.adultShortcutFocused
+                      ? "Adult mode selected — press OK to open"
+                      : "Press OK three times to open Parent Controls"
+            }
+
+            Rectangle {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.verticalCenterOffset: 4 * overlay.uiScale
+                width: 430 * overlay.uiScale
+                height: 62 * overlay.uiScale
+                radius: 12 * overlay.uiScale
+                color: overlay.adultShortcutFocused ? "#fff0eb" : "#171c22"
+                border.color: overlay.adultShortcutFocused ? "#ff6b57" : "#4b535b"
+                border.width: overlay.adultShortcutFocused ? 3 : 1
+
+                Text {
+                    anchors.centerIn: parent
+                    color: overlay.adultShortcutFocused ? "#20252a" : "#f8f5ef"
+                    font.family: "DejaVu Sans"
+                    font.bold: true
+                    font.pixelSize: 19 * overlay.uiScale
+                    text: "↑  Adult mode     OK  Open"
+                }
             }
 
             Row {
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.verticalCenter: parent.verticalCenter
-                anchors.verticalCenterOffset: 78 * overlay.uiScale
+                anchors.verticalCenterOffset: 88 * overlay.uiScale
                 spacing: 18 * overlay.uiScale
 
                 Repeater {

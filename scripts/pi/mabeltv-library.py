@@ -1316,7 +1316,7 @@ class Library:
     def live_tv_control(self, payload: dict[str, Any]) -> dict[str, Any]:
         command = str(payload.get("command", ""))
         allowed = {"channel-up", "channel-down", "previous-programme", "next-programme",
-                   "toggle-pause", "volume-up", "volume-down", "toggle-mute", "toggle-power",
+                   "toggle-pause", "toggle-subtitles", "volume-up", "volume-down", "toggle-mute", "toggle-power",
                    "open-parent-menu", "open-tv-guide", "close-overlay", "restart-programme",
                    "enter-adult-mode", "navigate-up", "navigate-down", "navigate-left",
                    "navigate-right", "select"}
