@@ -26,7 +26,11 @@ SPEC.loader.exec_module(mabeltv_library)
 
 class LibraryFixture:
     def __init__(self) -> None:
-        self.temporary = tempfile.TemporaryDirectory()
+        # Raspberry Pi OS can mount /tmp as a small RAM-backed tmpfs. The
+        # library correctly reserves 512 MB for safe uploads, so a default
+        # tempfile directory there makes otherwise valid tests fail on small
+        # Pi boards. Keep test media on the disk-backed source filesystem.
+        self.temporary = tempfile.TemporaryDirectory(dir=PROJECT_ROOT)
         self.root = Path(self.temporary.name)
         self.media = self.root / "media"
         self.channels = self.root / "channels.json"
