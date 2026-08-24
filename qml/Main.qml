@@ -34,6 +34,7 @@ Window {
     property bool okHeldForGuide: false
     property bool childWasPausedBeforeAdult: false
     property bool restoreChildPauseAfterAdult: false
+    property bool openingAdultMode: false
     property bool filmCountdownActive: false
     property int filmCountdownValue: 10
     property real filmCountdownSpin: 0
@@ -293,11 +294,12 @@ Window {
     }
 
     function enterAdultMode() {
+        if (openingAdultMode || adultMode.active)
+            return
         syncPlaybackPosition()
         childWasPausedBeforeAdult = player.paused
+        openingAdultMode = true
         player.stop()
-        tvController.closeParent()
-        adultMode.open()
     }
 
     function leaveAdultMode() {
@@ -693,6 +695,11 @@ Window {
                 objectName: "mabeltvPlayer"
 
                 anchors.fill: parent
+                // A hidden adult overlay used to leave this framebuffer player
+                // rendering underneath the adult framebuffer player. On the Pi
+                // that can block Qt's render thread inside libmpv, freezing all
+                // remote input during an Adult Mode transition.
+                visible: !adultMode.active
                 volume: tvController.volume
                 muted: tvController.muted
                 aspectMode: tvController.currentAspectMode
@@ -721,6 +728,13 @@ Window {
                         root.finishIntro()
                     else if (!directMediaMode)
                         tvController.playbackFailed(message)
+                }
+                onPlaybackStopped: {
+                    if (root.openingAdultMode) {
+                        root.openingAdultMode = false
+                        tvController.closeParent()
+                        adultMode.open()
+                    }
                 }
             }
 
@@ -1365,7 +1379,10 @@ Window {
         interval: 3000
         onTriggered: {
             root.muteHeldForLock = true
-            tvController.toggleRemoteLock()
+            if (adultMode.active)
+                adultMode.toggleSubtitles()
+            else
+                tvController.toggleRemoteLock()
         }
     }
 

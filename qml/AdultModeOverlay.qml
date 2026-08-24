@@ -7,12 +7,14 @@ Item {
     required property var controller
     property bool active: false
     property bool playing: false
+    property bool stopping: false
     property bool closing: false
     property int selectedIndex: 0
     readonly property real playbackPosition: adultPlayer.playbackPosition
     readonly property real playbackDuration: adultPlayer.playbackDuration
     property real controlsOpacity: 1
     property string errorMessage: ""
+    property var filmPositions: ({})
 
     signal closed()
     signal powerRequested()
@@ -24,6 +26,7 @@ Item {
         selectedIndex = Math.max(0, Math.min(selectedIndex,
                                              controller.adultLibrary.length - 1))
         playing = false
+        stopping = false
         closing = false
         errorMessage = ""
         controlsOpacity = 1
@@ -34,15 +37,15 @@ Item {
         if (closing)
             return
         closing = true
-        playing = false
         controlsOpacity = 1
-        adultPlayer.stop()
+        stopFilm()
     }
 
     function finishClose() {
         active = false
         closing = false
         playing = false
+        stopping = false
         closed()
     }
 
@@ -58,9 +61,26 @@ Item {
             return
         errorMessage = ""
         playing = true
+        stopping = false
         controlsOpacity = 1
-        adultPlayer.play(film.source, 0)
+        const savedPosition = filmPositions[film.source.toString()] || 0
+        adultPlayer.play(film.source, savedPosition)
         controlsTimer.restart()
+    }
+
+    function rememberCurrentFilmPosition() {
+        const film = currentFilm()
+        if (!film || adultPlayer.playbackPosition < 2)
+            return
+        filmPositions[film.source.toString()] = adultPlayer.playbackPosition
+    }
+
+    function stopFilm() {
+        if (stopping)
+            return
+        rememberCurrentFilmPosition()
+        stopping = true
+        adultPlayer.stop()
     }
 
     function showControls() {
@@ -107,6 +127,9 @@ Item {
             return true
         }
 
+        if (stopping)
+            return true
+
         if ((key === Qt.Key_Return || key === Qt.Key_Enter) && !isAutoRepeat) {
             adultPlayer.togglePause()
             showControls()
@@ -128,8 +151,7 @@ Item {
             showControls()
         } else if ((key === Qt.Key_Escape || key === Qt.Key_Backspace
                     || key === Qt.Key_B) && !isAutoRepeat) {
-            adultPlayer.stop()
-            playing = false
+            stopFilm()
             controlsOpacity = 1
         } else {
             showControls()
@@ -154,18 +176,29 @@ Item {
         subtitleDefaultOn: true
 
         onPlaybackFinished: {
+            const film = overlay.currentFilm()
+            if (film)
+                overlay.filmPositions[film.source.toString()] = 0
             overlay.playing = false
+            overlay.stopping = false
             overlay.controlsOpacity = 1
         }
         onPlaybackStopped: {
             if (overlay.closing)
                 overlay.finishClose()
+            else {
+                overlay.playing = false
+                overlay.stopping = false
+                overlay.controlsOpacity = 1
+            }
         }
         onPlaybackFailed: message => {
             overlay.errorMessage = message
             overlay.playing = false
+            overlay.stopping = false
             overlay.controlsOpacity = 1
         }
+        onPlaybackPositionChanged: overlay.rememberCurrentFilmPosition()
         onPausedChanged: overlay.showControls()
     }
 
@@ -344,7 +377,7 @@ Item {
                     horizontalAlignment: Text.AlignHCenter
                     font.family: "DejaVu Sans"
                     text: (adultPlayer.subtitlesAvailable ? "SOURCE subtitles   " : "")
-                          + "↓ −5 min   ← −15 sec   OK   +15 sec →   +5 min ↑"
+                          + "HOLD MUTE subtitles   ↓ −5 min   ← −15 sec   OK   +15 sec →   +5 min ↑"
                 }
                 Text {
                     width: parent.width * 0.33
