@@ -82,12 +82,13 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn('QStringLiteral("mabeltvAdultPlayer")', source)
         self.assertIn("adultVideo->isVisible() ? adultVideo : video", source)
 
-    def test_pi4_tries_both_h264_and_hevc_hardware_decoders(self) -> None:
+    def test_pi4_avoids_wedged_h264_driver_but_keeps_hevc_hardware_decode(self) -> None:
         launcher = (PROJECT_ROOT / "scripts" / "pi" / "mabeltv-launch.sh").read_text(
             encoding="utf-8"
         )
 
-        self.assertIn('MABELTV_HWDEC="v4l2m2m-copy,drm-copy"', launcher)
+        self.assertIn('MABELTV_HWDEC="drm-copy"', launcher)
+        self.assertNotIn('MABELTV_HWDEC="v4l2m2m-copy,drm-copy"', launcher)
 
     def test_adult_mode_has_a_direct_shortcut_and_subtitle_control(self) -> None:
         controller_header = (PROJECT_ROOT / "src" / "core" / "TvController.h").read_text(

@@ -33,10 +33,12 @@ fi
 if [[ -z "${MABELTV_HWDEC:-}" ]]; then
     model="$(tr -d '\0' < /proc/device-tree/model 2>/dev/null || true)"
     if [[ "$model" == *"Raspberry Pi 4"* ]]; then
-        # The Pi 4 exposes H.264 through bcm2835 V4L2 and HEVC Main/Main 10
-        # through the DRM Prime request decoder. Try the established H.264
-        # path first, then fall through to DRM for HD HEVC films.
-        export MABELTV_HWDEC="v4l2m2m-copy,drm-copy"
+        # bcm2835-codec can acknowledge stream-off before its MMAL buffers are
+        # actually returned. Rapid programme and Adult Mode hand-offs then
+        # wedge the kernel with sync timeouts until the whole Pi is rebooted.
+        # Decode H.264 in software (well within Pi 4 headroom) and retain the
+        # separate, reliable DRM Prime hardware path for HD/Main 10 HEVC films.
+        export MABELTV_HWDEC="drm-copy"
     else
         export MABELTV_HWDEC="auto-safe"
     fi
