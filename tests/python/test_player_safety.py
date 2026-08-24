@@ -158,6 +158,14 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn('status == QStringLiteral("Stopping")', source)
         self.assertIn("std::_Exit(exitCode)", source)
 
+    def test_pi_service_bounds_decoder_allocator_arenas(self) -> None:
+        service = (PROJECT_ROOT / "packaging" / "linux" / "mabeltv.service").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("Environment=MALLOC_ARENA_MAX=2", service)
+        self.assertIn("Environment=MALLOC_TRIM_THRESHOLD_=131072", service)
+
     def test_adult_transition_uses_one_renderer_and_preserves_film_position(self) -> None:
         main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
         adult_qml = (PROJECT_ROOT / "qml" / "AdultModeOverlay.qml").read_text(

@@ -34,6 +34,11 @@ Environment=QT_QPA_EGLFS_KMS_CONFIG=/run/mabeltv/kms.json
 Environment=QT_QPA_EGLFS_ALWAYS_SET_MODE=1
 Environment=QT_QPA_EGLFS_KMS_ATOMIC=1
 Environment=MABELTV_HIDE_CURSOR=1
+# libmpv/FFmpeg replaces several worker threads at programme boundaries.
+# Limit glibc's per-thread arenas so freed decoder buffers are reused instead
+# of leaving a new fragmented 16-64 MB heap behind after every hand-off.
+Environment=MALLOC_ARENA_MAX=2
+Environment=MALLOC_TRIM_THRESHOLD_=131072
 # The launcher selects the connected HDMI socket, matching ALSA device, and a
 # Pi-model-appropriate decoder. Environment overrides remain available for
 # unusual display or audio hardware.
