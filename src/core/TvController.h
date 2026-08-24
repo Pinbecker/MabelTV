@@ -23,6 +23,7 @@ class TvController final : public QObject
     Q_OBJECT
     Q_PROPERTY(int currentChannelNumber READ currentChannelNumber NOTIFY channelChanged)
     Q_PROPERTY(QString currentChannelName READ currentChannelName NOTIFY channelChanged)
+    Q_PROPERTY(QString currentContentType READ currentContentType NOTIFY channelChanged)
     Q_PROPERTY(QString currentAspectMode READ currentAspectMode NOTIFY channelChanged)
     Q_PROPERTY(int volume READ volume NOTIFY volumeChanged)
     Q_PROPERTY(int maximumVolume READ maximumVolume NOTIFY volumePolicyChanged)
@@ -88,6 +89,7 @@ public:
 
     [[nodiscard]] int currentChannelNumber() const;
     [[nodiscard]] QString currentChannelName() const;
+    [[nodiscard]] QString currentContentType() const;
     [[nodiscard]] QString currentAspectMode() const;
     [[nodiscard]] int volume() const;
     [[nodiscard]] int maximumVolume() const;

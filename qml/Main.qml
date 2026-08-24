@@ -34,6 +34,12 @@ Window {
     property bool okHeldForGuide: false
     property bool childWasPausedBeforeAdult: false
     property bool restoreChildPauseAfterAdult: false
+    property bool filmCountdownActive: false
+    property int filmCountdownValue: 10
+    property real filmCountdownSpin: 0
+    property real filmCountdownFlicker: 1
+    property url pendingFilmSource: ""
+    property double pendingFilmStart: 0
     readonly property real playbackOsdInsetX: Math.max(30, screen.width * 0.055)
     readonly property real playbackOsdInsetY: Math.max(28, screen.height * 0.065)
 
@@ -96,6 +102,10 @@ Window {
     }
 
     function togglePlaybackPause() {
+        if (filmCountdownActive) {
+            finishFilmCountdown()
+            return
+        }
         if (introPlaying || poweringOff)
             return
         syncPlaybackPosition()
@@ -156,6 +166,27 @@ Window {
         programmeName.text = name.toUpperCase()
         programmeName.opacity = 1
         programmeOsdTimer.restart()
+    }
+
+    function beginFilmCountdown(source, startPositionSeconds) {
+        filmCountdownActive = true
+        filmCountdownValue = 10
+        pendingFilmSource = source
+        pendingFilmStart = startPositionSeconds
+        player.stop()
+        filmCountdownTimer.restart()
+    }
+
+    function finishFilmCountdown() {
+        if (!filmCountdownActive)
+            return
+        filmCountdownActive = false
+        filmCountdownTimer.stop()
+        const source = pendingFilmSource
+        const start = pendingFilmStart
+        pendingFilmSource = ""
+        pendingFilmStart = 0
+        player.play(source, start)
     }
 
     // Commands from the parent web portal arrive through the local Unix
@@ -693,6 +724,74 @@ Window {
                 }
             }
 
+            Rectangle {
+                id: filmCountdownOverlay
+                anchors.fill: parent
+                visible: root.filmCountdownActive
+                color: "#080909"
+                z: 20
+
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: Math.min(parent.width, parent.height) * 0.42
+                    height: width
+                    radius: width / 2
+                    color: "transparent"
+                    border.color: "#d8d8c8"
+                    border.width: Math.max(3, width * 0.018)
+
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: parent.width * 0.92
+                        height: Math.max(2, parent.width * 0.008)
+                        color: "#d8d8c8"
+                        opacity: 0.55
+                    }
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: Math.max(2, parent.width * 0.008)
+                        height: parent.height * 0.92
+                        color: "#d8d8c8"
+                        opacity: 0.55
+                    }
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.bottom: parent.verticalCenter
+                        width: Math.max(3, parent.width * 0.014)
+                        height: parent.height * 0.46
+                        color: "#eeeede"
+                        opacity: 0.76
+                        transformOrigin: Item.Bottom
+                        rotation: root.filmCountdownSpin
+                    }
+
+                    Text {
+                        anchors.centerIn: parent
+                        color: "#eeeede"
+                        text: root.filmCountdownValue
+                        font.family: "Courier New"
+                        font.bold: true
+                        font.pixelSize: parent.width * 0.42
+                    }
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.bottom: parent.bottom
+                        anchors.bottomMargin: parent.height * 0.16
+                        color: "#b8b8aa"
+                        text: "PRESS OK TO SKIP"
+                        font.family: "Courier New"
+                        font.pixelSize: Math.max(12, parent.width * 0.055)
+                        font.bold: true
+                    }
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    color: "#ffffff"
+                    opacity: 0.025 * root.filmCountdownFlicker
+                }
+            }
+
             Item {
                 id: staticNoise
 
@@ -1197,6 +1296,29 @@ Window {
     }
 
     Timer {
+        id: filmCountdownTimer
+        interval: 1000
+        repeat: true
+        onTriggered: {
+            if (root.filmCountdownValue <= 1)
+                root.finishFilmCountdown()
+            else
+                --root.filmCountdownValue
+        }
+    }
+
+    Timer {
+        id: filmCountdownMotionTimer
+        interval: 40
+        repeat: true
+        running: root.filmCountdownActive
+        onTriggered: {
+            root.filmCountdownSpin = (root.filmCountdownSpin + 7) % 360
+            root.filmCountdownFlicker = 0.4 + Math.random() * 1.4
+        }
+    }
+
+    Timer {
         id: parentHoldTimer
         interval: 3500
         onTriggered: {
@@ -1350,8 +1472,13 @@ Window {
         target: tvController
 
         function onPlaybackRequested(source, startPositionSeconds) {
-            if (!adultMode.active)
-                player.play(source, startPositionSeconds)
+            if (!adultMode.active) {
+                if (tvController.currentContentType === "films"
+                        && startPositionSeconds < 1)
+                    root.beginFilmCountdown(source, startPositionSeconds)
+                else
+                    player.play(source, startPositionSeconds)
+            }
         }
         function onStopPlaybackRequested() {
             player.stop()
