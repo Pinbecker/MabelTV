@@ -8,8 +8,9 @@ usage() {
     cat <<'EOF'
 Usage: bash scripts/imaging/build-pi-image.sh --bundle FILE [--output DIR] [--native]
 
-The bundle must be a clean, qualified Trixie Pi 4 arm64 customer archive with
-its matching .sha256 file beside it. Docker is used unless --native is given.
+The bundle must be a clean Trixie Pi 4 arm64 release or the explicit Pi 1
+armhf benchmark release, with its matching .sha256 file beside it. Docker is
+used unless --native is given.
 EOF
 }
 
@@ -78,6 +79,7 @@ with tarfile.open(archive, "r:gz") as bundle:
     if build_os.get("version_id") != "13" or build_os.get("codename") != "trixie":
         raise SystemExit("This image recipe currently accepts only a Trixie release bundle")
     print(json.dumps({"version": version, "commit": manifest.get("commit", ""),
+                      "target": manifest.get("target", ""),
                       "os_id": build_os.get("id", ""),
                       "os_version": build_os.get("version_id", ""),
                       "os_codename": build_os.get("codename", "")}))
@@ -85,6 +87,25 @@ PY
 )"
 version="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])' <<<"$metadata")"
 release_commit="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["commit"])' <<<"$metadata")"
+target="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["target"])' <<<"$metadata")"
+case "$target" in
+    raspberry-pi-4-arm64)
+        target_slug="pi4"
+        target_arch="arm64"
+        target_base="Raspberry Pi OS Lite 64-bit (Trixie)"
+        installer_arguments=""
+        ;;
+    raspberry-pi-1-armv6l-benchmark)
+        target_slug="pi1-benchmark"
+        target_arch="armhf"
+        target_base="Raspberry Pi OS Lite 32-bit (Trixie)"
+        installer_arguments="--pi1-benchmark"
+        ;;
+    *)
+        printf 'This image recipe does not support bundle target %s.\n' "$target" >&2
+        exit 1
+        ;;
+esac
 pi_gen_commit="$(tr -d '[:space:]' < "$source_root/packaging/image/pi-gen/pigen-commit.txt")"
 [[ "$pi_gen_commit" =~ ^[0-9a-f]{40}$ ]] \
     || { printf 'Invalid pinned pi-gen commit.\n' >&2; exit 1; }
@@ -103,10 +124,11 @@ chmod 0755 "$pi_gen/stage-mabeltv/prerun.sh" \
     "$pi_gen/stage-mabeltv/00-install/00-run.sh"
 stage_files="$pi_gen/stage-mabeltv/00-install/files"
 cp "$bundle" "$stage_files/release.tar.gz"
+printf '%s\n' "$installer_arguments" > "$stage_files/install-arguments"
 sha256sum "$stage_files/release.tar.gz" | awk '{print $1}' \
     > "$stage_files/release.sha256"
 python3 - "$stage_files/image-build.json" "$version" "$release_commit" \
-    "$pi_gen_commit" "$(sha256sum "$bundle" | awk '{print $1}')" <<'PY'
+    "$pi_gen_commit" "$(sha256sum "$bundle" | awk '{print $1}')" "$target_base" "$target" <<'PY'
 import datetime
 import json
 import pathlib
@@ -121,8 +143,8 @@ data = {
     "pi_gen_commit": sys.argv[4],
     "release_sha256": sys.argv[5],
     "built_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-    "base": "Raspberry Pi OS Lite 64-bit (Trixie)",
-    "target": "raspberry-pi-4-arm64",
+    "base": sys.argv[6],
+    "target": sys.argv[7],
     "update_entry_point": "install-mabeltv",
 }
 output.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -130,10 +152,10 @@ PY
 
 touch "$pi_gen/stage2/SKIP_IMAGES"
 cat > "$pi_gen/config" <<EOF
-IMG_NAME='KidsTV-${version}-trixie-arm64'
+IMG_NAME='KidsTV-${version}-trixie-${target_slug}-${target_arch}'
 PI_GEN_RELEASE='KidsTV ${version}'
 RELEASE='trixie'
-ARCH='arm64'
+ARCH='${target_arch}'
 DEPLOY_COMPRESSION='xz'
 COMPRESSION_LEVEL='6'
 TARGET_HOSTNAME='mabel-tv'

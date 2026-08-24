@@ -15,6 +15,16 @@ namespace
 {
 constexpr int cacheSchemaVersion = 1;
 
+int ffprobeTimeoutMilliseconds()
+{
+    bool valid = false;
+    const int configured = qEnvironmentVariableIntValue("MABELTV_FFPROBE_TIMEOUT_MS", &valid);
+    // The normal appliance keeps indexing responsive. The Pi 1 benchmark
+    // image opts in to a longer value because its single core can need more
+    // than eight seconds even for a valid H.264 programme.
+    return valid ? qBound(1000, configured, 120000) : 8000;
+}
+
 MediaInspection inspectionFromJson(const QJsonObject &object)
 {
     return MediaInspection{
@@ -173,7 +183,7 @@ MediaInspection MediaIndex::runProbe(const QString &mediaPath) const
                    QStringLiteral("-of"),
                    QStringLiteral("json"),
                    mediaPath});
-    if (!process.waitForStarted(3000) || !process.waitForFinished(8000)) {
+    if (!process.waitForStarted(3000) || !process.waitForFinished(ffprobeTimeoutMilliseconds())) {
         process.kill();
         process.waitForFinished(1000);
         return MediaInspection{false,

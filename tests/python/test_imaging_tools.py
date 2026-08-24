@@ -30,6 +30,7 @@ class ImagerManifestTests(unittest.TestCase):
                 image_url=None,
                 icon_url=None,
                 version="0.2.2",
+                target="pi4",
                 website="https://example.test/mabeltv",
                 release_date="2026-08-20",
             )
@@ -58,6 +59,7 @@ class ImagerManifestTests(unittest.TestCase):
                 image_url="ftp://example.test/image.img",
                 icon_url="https://example.test/icon.svg",
                 version="1.0.0",
+                target="pi4",
                 website="https://example.test",
                 release_date="2026-08-20",
             )
@@ -71,10 +73,26 @@ class ImagerManifestTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         installer = (ROOT / "scripts/pi/install-product.sh").read_text(encoding="utf-8")
         shared_installer = (ROOT / "scripts/pi/install.sh").read_text(encoding="utf-8")
-        self.assertIn('"${installers[0]}" --enable-ir --skip-packages', firstboot)
+        self.assertIn('"${installers[0]}" --enable-ir --skip-packages "${install_arguments[@]}"', firstboot)
         self.assertIn("scripts/pi/install.sh", installer)
         self.assertIn("--product-install", installer)
         self.assertIn('-f /etc/rc_keymaps/mabeltv.toml', shared_installer)
+
+    def test_pi1_manifest_is_armhf_and_cannot_be_shown_for_pi4(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            image = root / "KidsTV.img"
+            image.write_bytes(b"image")
+            icon = root / "icon.svg"
+            icon.write_text("<svg/>", encoding="utf-8")
+            args = argparse.Namespace(image=image, icon=icon, image_url=None,
+                                      icon_url=None, version="0.2.5",
+                                      target="pi1-benchmark",
+                                      website="https://example.test",
+                                      release_date="2026-08-24")
+            entry = MODULE.build_manifest(args)["os_list"][0]
+            self.assertEqual(["pi1-32bit"], entry["devices"])
+            self.assertEqual("armhf", entry["architecture"])
 
     def test_boot_configuration_preserves_existing_ir_unless_explicitly_disabled(self):
         configure_boot = (ROOT / "scripts" / "pi" / "configure-boot.sh").read_text(

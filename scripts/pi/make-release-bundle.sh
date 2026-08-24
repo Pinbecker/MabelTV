@@ -4,10 +4,20 @@
 set -Eeuo pipefail
 
 source_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
+pi1_benchmark="false"
+if [[ "${1:-}" == "--pi1-benchmark" ]]; then
+    pi1_benchmark="true"
+    shift
+fi
+[[ $# -le 1 ]] || { printf 'Usage: %s [--pi1-benchmark] [OUTPUT_DIRECTORY]\n' "$0" >&2; exit 2; }
 output_root="${1:-$source_root/out/release}"
 allow_dirty="${MABELTV_ALLOW_DIRTY_RELEASE:-false}"
 
-bash "$source_root/scripts/pi/preflight.sh"
+preflight_arguments=()
+if [[ "$pi1_benchmark" == "true" ]]; then
+    preflight_arguments+=(--pi1-benchmark)
+fi
+bash "$source_root/scripts/pi/preflight.sh" "${preflight_arguments[@]}"
 git -C "$source_root" rev-parse --is-inside-work-tree >/dev/null 2>&1 \
     || { printf 'A release must be built from a Git checkout.\n' >&2; exit 1; }
 dirty_source="false"
@@ -72,7 +82,15 @@ if [[ "$dirty_source" == "false" ]]; then
     git -C "$source_root" archive "$commit" | tar -x -C "$build_source"
 fi
 build="$work/build"
-stage="$work/KidsTV-$version$release_qualifier-pi4-$os_slug-arm64"
+target="raspberry-pi-4-arm64"
+target_slug="pi4"
+target_arch="arm64"
+if [[ "$pi1_benchmark" == "true" ]]; then
+    target="raspberry-pi-1-armv6l-benchmark"
+    target_slug="pi1-benchmark"
+    target_arch="armhf"
+fi
+stage="$work/KidsTV-$version$release_qualifier-$target_slug-$os_slug-$target_arch"
 
 cmake -S "$build_source" -B "$build" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DMABELTV_PI_APPLIANCE=ON
@@ -96,7 +114,7 @@ install -m 0644 "$build_source/docs/privacy.md" "$stage/PRIVACY.md"
 install -m 0644 "$build_source/docs/quick-start.md" "$stage/QUICK-START.md"
 install -m 0755 "$build_source/scripts/pi/install-product.sh" "$stage/install-mabeltv"
 
-python3 - "$stage" "$version" "$commit" "$dirty_source" <<'PY'
+python3 - "$stage" "$version" "$commit" "$dirty_source" "$target" "$target_slug" "$target_arch" <<'PY'
 import datetime
 import hashlib
 import json
@@ -125,7 +143,7 @@ manifest = {
     "dirty_source": sys.argv[4] == "true",
     "built_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
     "build_machine": platform.platform(),
-    "target": "raspberry-pi-4-arm64",
+    "target": sys.argv[5],
     "build_os": {"id": os_release.get("ID", ""),
                  "version_id": os_release.get("VERSION_ID", ""),
                  "codename": os_release.get("VERSION_CODENAME", "")},
@@ -135,10 +153,16 @@ output = json.dumps(manifest, indent=2, sort_keys=True) + "\n"
 (stage / "prebuilt" / "BUILD-MANIFEST.json").write_text(output, encoding="utf-8")
 (stage / "BUILD-MANIFEST.json").write_text(output, encoding="utf-8")
 
+hardware = "Raspberry Pi 4 Model B with at least 2 GB RAM"
+architecture = "aarch64 (Raspberry Pi OS Lite 64-bit)"
+if sys.argv[5] == "raspberry-pi-1-armv6l-benchmark":
+    hardware = "Raspberry Pi Model B Plus with at least 384 MB RAM (benchmark only)"
+    architecture = "armv6l (Raspberry Pi OS Lite 32-bit)"
+
 supported_os = f"""KidsTV {sys.argv[2]} supported installation target
 
-Hardware: Raspberry Pi 4 Model B with at least 2 GB RAM
-Architecture: aarch64 (Raspberry Pi OS Lite 64-bit)
+Hardware: {hardware}
+Architecture: {architecture}
 OS ID: {os_release.get('ID', '')}
 OS version: {os_release.get('VERSION_ID', '')}
 OS codename: {os_release.get('VERSION_CODENAME', '')}
@@ -172,7 +196,7 @@ provide. See LICENSE and THIRD_PARTY_NOTICES.md.
 PY
 
 install -d -m 0755 "$output_root"
-archive="$output_root/KidsTV-$version$release_qualifier-pi4-$os_slug-arm64.tar.gz"
+archive="$output_root/KidsTV-$version$release_qualifier-$target_slug-$os_slug-$target_arch.tar.gz"
 tar -C "$work" -czf "$archive.new" "$(basename "$stage")"
 mv -f -- "$archive.new" "$archive"
 

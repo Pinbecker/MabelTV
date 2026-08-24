@@ -8,6 +8,7 @@ StartLimitIntervalSec=60
 StartLimitBurst=5
 
 [Service]
+EnvironmentFile=-/etc/mabeltv/runtime.conf
 Type=notify
 NotifyAccess=main
 WatchdogSec=90s

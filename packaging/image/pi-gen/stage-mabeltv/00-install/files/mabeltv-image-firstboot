@@ -48,7 +48,8 @@ mapfile -t installers < <(find "$work" -mindepth 2 -maxdepth 2 -type f \
     || { printf 'The embedded KidsTV installer is incomplete.\n' >&2; exit 1; }
 
 chmod 0755 "${installers[0]}"
-"${installers[0]}" --enable-ir --skip-packages
+mapfile -t install_arguments < "$bootstrap_dir/install-arguments"
+"${installers[0]}" --enable-ir --skip-packages "${install_arguments[@]}"
 
 install -d -m 0755 "$state_dir"
 printf 'installed_at_utc=%s\nrelease_sha256=%s\n' \
@@ -56,7 +57,7 @@ printf 'installed_at_utc=%s\nrelease_sha256=%s\n' \
 chmod 0644 "$marker.new"
 mv -f -- "$marker.new" "$marker"
 systemctl disable mabeltv-image-firstboot.service
-rm -f -- "$archive" "$checksum_file"
+rm -f -- "$archive" "$checksum_file" "$bootstrap_dir/install-arguments"
 
 # GPIO IR boot settings take effect after a reboot. Queue it only after the
 # product installer and marker have completed successfully.

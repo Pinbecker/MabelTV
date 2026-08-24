@@ -138,6 +138,14 @@ install -d -o mabeltv -g mabeltv -m 0750 \
 install -d -o root -g root -m 0755 /etc/rc_keymaps /usr/share/doc/mabeltv
 install -d -o root -g mabeltv -m 0750 /etc/mabeltv
 
+if [[ "$pi1_benchmark" == "true" ]]; then
+    printf 'MABELTV_FFPROBE_TIMEOUT_MS=30000\n' > /etc/mabeltv/runtime.conf
+    chown root:mabeltv /etc/mabeltv/runtime.conf
+    chmod 0640 /etc/mabeltv/runtime.conf
+elif [[ ! -e /etc/mabeltv/runtime.conf ]]; then
+    install -o root -g mabeltv -m 0640 /dev/null /etc/mabeltv/runtime.conf
+fi
+
 # Keep an operator-restorable snapshot of the mutable appliance state before
 # this installer changes services or configuration.  Media files are never
 # copied here: releases are atomic and the media library has its own recycle

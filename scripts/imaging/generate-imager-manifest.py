@@ -52,9 +52,24 @@ def build_manifest(args: argparse.Namespace) -> dict[str, object]:
     if not icon.is_file() and not args.icon_url:
         raise ValueError(f"icon does not exist: {icon}")
     extract_hash, extract_size, download_hash, download_size = image_details(image)
+    targets = {
+        "pi4": {
+            "name": f"KidsTV {args.version}",
+            "description": "A child-friendly television appliance for Raspberry Pi 4",
+            "devices": ["pi4-64bit"],
+            "architecture": "arm64",
+        },
+        "pi1-benchmark": {
+            "name": f"KidsTV {args.version} - Pi 1 benchmark",
+            "description": "Full KidsTV benchmark image for Raspberry Pi 1 (experimental)",
+            "devices": ["pi1-32bit"],
+            "architecture": "armhf",
+        },
+    }
+    target = targets[args.target]
     entry: dict[str, object] = {
-        "name": f"KidsTV {args.version}",
-        "description": "A child-friendly television appliance for Raspberry Pi 4",
+        "name": target["name"],
+        "description": target["description"],
         "icon": uri(args.icon_url, icon),
         "url": uri(args.image_url, image),
         "website": args.website,
@@ -63,9 +78,9 @@ def build_manifest(args: argparse.Namespace) -> dict[str, object]:
         "extract_sha256": extract_hash,
         "image_download_size": download_size,
         "image_download_sha256": download_hash,
-        "devices": ["pi4-64bit"],
+        "devices": target["devices"],
         "init_format": "cloudinit-rpi",
-        "architecture": "arm64",
+        "architecture": target["architecture"],
     }
     return {"os_list": [entry]}
 
@@ -74,6 +89,7 @@ def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser()
     result.add_argument("--image", required=True, type=pathlib.Path)
     result.add_argument("--version", required=True)
+    result.add_argument("--target", choices=("pi4", "pi1-benchmark"), default="pi4")
     result.add_argument("--output", required=True, type=pathlib.Path)
     result.add_argument(
         "--icon",
