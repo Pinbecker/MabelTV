@@ -118,11 +118,11 @@
         </div><footer><span data-tv-name>Your TV</span> · Library</footer>
       </div></section>
       <section id="view-adult" class="view"><div class="page">
-        <header class="adult-hero surface"><div><p class="eyebrow">Parent library</p><h1>Adult mode</h1><p>Your own films, separate from Mabel’s channels and prepared for smooth HD playback.</p></div><div class="adult-hero-stat"><strong id="adultHeroCount">0</strong><span>films ready on TV</span></div></header>
+        <header class="adult-hero surface"><div><p class="eyebrow">Parent library</p><h1>Adult mode</h1><p>Your own films, separate from Mabel’s channels. They arrive in their original quality so you can test them first.</p></div><div class="adult-hero-stat"><strong id="adultHeroCount">0</strong><span>films ready on TV</span></div></header>
         <div class="adult-layout">
-          <section class="adult-upload surface"><p class="section-kicker">Add a film</p><h2>Upload and prepare for TV</h2><form id="adultUploadForm" class="upload-form"><label class="drop-field" for="adultFile"><input id="adultFile" type="file" accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg" multiple><span class="drop-copy"><span class="drop-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 14v5h14v-5"/></svg></span><strong>Choose films</strong><small>Incompatible or oversized films are prepared automatically as Pi-friendly 720p HD</small></span></label><div id="adultSelectedFiles" class="callout" aria-live="polite">No films selected yet.</div><button id="adultUploadButton" type="submit" class="primary" disabled>Upload selected films</button></form><div id="adultUploadState" class="hidden callout" aria-live="polite"><p id="adultUploadText">Uploading…</p><progress id="adultProgress" max="1" value="0"></progress></div></section>
+          <section class="adult-upload surface"><p class="section-kicker">Add a film</p><h2>Upload original quality</h2><form id="adultUploadForm" class="upload-form"><label class="drop-field" for="adultFile"><input id="adultFile" type="file" accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg" multiple><span class="drop-copy"><span class="drop-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 14v5h14v-5"/></svg></span><strong>Choose films</strong><small>Films stay untouched. Test them on TV, then optimise only if one actually struggles.</small></span></label><div id="adultSelectedFiles" class="callout" aria-live="polite">No films selected yet.</div><button id="adultUploadButton" type="submit" class="primary" disabled>Upload selected films</button></form><div id="adultUploadState" class="hidden callout" aria-live="polite"><p id="adultUploadText">Uploading…</p><progress id="adultProgress" max="1" value="0"></progress></div></section>
           <section class="adult-library surface"><div class="section-heading"><div><p class="section-kicker">On the television</p><h2>Adult library</h2></div><span id="adultFilmCount" class="count-badge">0</span></div><p class="adult-library-note">Choose a film here to rename or remove it. To watch, use the Adult shortcut on Live TV or the parent menu on the television.</p><div id="adultFilmList" class="adult-film-list"></div></section>
-        </div><section class="adult-guidance" aria-label="Adult library details"><div><strong>Private library</strong><span>These films never appear in children’s channels.</span></div><div><strong>Pi-friendly HD</strong><span>Films are capped at 720p H.264 when preparation is needed.</span></div><div><strong>Ready on TV</strong><span>Use the Live TV Adult shortcut to open them on screen.</span></div></section><footer><span data-tv-name>Your TV</span> · Adult mode is protected by the on-TV parent menu</footer>
+        </div><section class="adult-guidance" aria-label="Adult library details"><div><strong>Private library</strong><span>These films never appear in children’s channels.</span></div><div><strong>Original first</strong><span>Every new film stays exactly as uploaded until you choose otherwise.</span></div><div><strong>Optimise only if needed</strong><span>If a film stutters, make a Pi-friendly 720p copy from its film card.</span></div></section><footer><span data-tv-name>Your TV</span> · Adult mode is protected by the on-TV parent menu</footer>
       </div></section>
       <section id="view-system" class="view"><div class="page">
         <header class="page-head"><div><p class="eyebrow">Settings</p><h1>TV and account</h1><p>Picture, playback, sound, parent controls, identity, and Pi controls live here.</p></div></header>
@@ -556,7 +556,13 @@
         const title = document.createElement('strong')
         title.textContent = film.display_name
         const size = document.createElement('small')
-        size.textContent = `${(Number(film.size || 0) / 1073741824).toFixed(2)} GB · ready for TV`
+        const state = film.playback_state || 'original'
+        const stateLabel = state === 'optimised' ? 'Optimised for Pi · 720p H.264'
+          : state === 'processing' ? 'Optimising for Pi…'
+          : state === 'queued' ? 'Waiting to optimise…'
+          : state === 'error' ? (film.playback_message || 'Optimisation stopped — try again')
+          : 'Original quality · test on TV first'
+        size.textContent = `${(Number(film.size || 0) / 1073741824).toFixed(2)} GB · ${stateLabel}`
         copy.append(title, size)
         const actions = document.createElement('div')
         actions.className = 'adult-film-actions'
@@ -566,13 +572,22 @@
           const name = prompt('Film name:', film.display_name)
           if (name?.trim()) manage('rename-adult', { file: film.name, name: name.trim() })
         }
+        const optimise = document.createElement('button')
+        optimise.type = 'button'; optimise.className = 'secondary'
+        optimise.textContent = state === 'optimised' ? 'Optimised'
+          : state === 'processing' || state === 'queued' ? 'Optimising…' : 'Optimise for Pi'
+        optimise.disabled = state === 'optimised' || state === 'processing' || state === 'queued'
+        optimise.onclick = () => {
+          if (confirm(`Optimise “${film.display_name}” for the Pi? After a successful check, the original will be replaced by a smaller 720p H.264 version.`))
+            manage('optimise-adult', { file: film.name })
+        }
         const remove = document.createElement('button')
         remove.type = 'button'; remove.className = 'danger'; remove.textContent = 'Remove'
         remove.onclick = () => {
           if (confirm(`Move “${film.display_name}” to the recycle bin?`))
             manage('trash-adult', { file: film.name })
         }
-        actions.append(rename, remove)
+        actions.append(rename, optimise, remove)
         row.append(copy, actions)
         root.append(row)
       })
@@ -1122,8 +1137,8 @@
         if (state.complete) return state
         if (state.status === 'error') throw new Error(state.error || 'MabelTV could not prepare this film')
         const messages = {
-          validating: 'Checking the film…', queued: 'Waiting in the preparation queue…',
-          processing: 'Preparing Pi-friendly 720p HD…', publishing: 'Publishing the prepared film…',
+          validating: 'Checking the film…', queued: 'Waiting in the upload queue…',
+          processing: 'Preparing the film…', publishing: 'Publishing the original film…',
           finalising: 'Adding the film to Adult mode…'
         }
         $('#adultUploadText').textContent = messages[state.status] || 'Preparing the film…'
@@ -1177,7 +1192,7 @@
         $('#adultUploadText').textContent = 'Interrupted films remain selected so you can resume them.'
         notice(`${files.length - failures.length} of ${files.length} films were added.\n${failures.map(failure => `${failure.file.name}: ${failure.message}`).join('\n')}`, true)
       } else {
-        notice(`${files.length} film${files.length === 1 ? '' : 's'} added to Adult mode and prepared for TV.`)
+        notice(`${files.length} film${files.length === 1 ? '' : 's'} added to Adult mode in original quality. Test them on TV first.`)
       }
       $('#adultFile').disabled = false
       $('#adultUploadButton').disabled = selectedAdultFiles.length === 0

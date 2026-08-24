@@ -391,6 +391,7 @@ class Library:
         self.player_state_path = Path("/var/lib/mabeltv/state.json")
         self.incoming = self.media_root / ".incoming"
         self.adult_root = self.media_root / ".adult"
+        self.adult_metadata_path = self.adult_root / ".mabeltv-adult.json"
         self.bin = self.media_root / ".recycle-bin"
         self.sessions: dict[str, float] = {}
         self.login_failures: dict[str, list[float]] = {}
@@ -400,6 +401,9 @@ class Library:
         self.queued_conversions: set[str] = set()
         self.deferred_retries: set[str] = set()
         self.cancelled_conversions: set[str] = set()
+        self.adult_optimisation_active: set[str] = set()
+        self.adult_optimisation_lock = threading.Lock()
+        self.adult_optimisation_serial = threading.Lock()
         self.conversion_closed = threading.Event()
         self.media_root.mkdir(parents=True, exist_ok=True)
         self.incoming.mkdir(mode=0o750, exist_ok=True)
@@ -407,6 +411,7 @@ class Library:
         self.bin.mkdir(mode=0o750, exist_ok=True)
         self.reconcile_recycle_items()
         self.cleanup_stale_temporary_files()
+        self.recover_adult_optimisations()
         self.migrate_legacy_owner()
         self.recover_final_results()
         self.resume_conversion_jobs()
@@ -633,9 +638,8 @@ class Library:
                 metadata.pop("error", None)
                 self.write_json(self.incoming / f"{upload_id}.json", metadata)
                 stream = self.video_info(part)
-                conversion_required = self.needs_adult_playback_optimisation(stream) \
-                    if adult_upload else self.needs_playback_optimisation(
-                        Path(source_name), stream)
+                conversion_required = False if adult_upload else self.needs_playback_optimisation(
+                    Path(source_name), stream)
                 metadata["conversion_required"] = bool(conversion_required)
                 previous_status = "validated"
 
@@ -1034,14 +1038,51 @@ class Library:
         self.adult_root.mkdir(mode=0o750, exist_ok=True)
         return self.adult_root / name
 
+    def adult_media_states(self) -> dict[str, dict[str, Any]]:
+        value = self.read_json(self.adult_metadata_path, {})
+        return value if isinstance(value, dict) else {}
+
+    def write_adult_media_states(self, values: dict[str, dict[str, Any]]) -> None:
+        self.write_json(self.adult_metadata_path, values)
+
+    def set_adult_media_state(self, file_name: str, state: str,
+                              message: str = "") -> None:
+        values = self.adult_media_states()
+        values[file_name] = {"state": state, "message": message, "updated": time.time()}
+        self.write_adult_media_states(values)
+
+    def remove_adult_media_state(self, file_name: str) -> None:
+        values = self.adult_media_states()
+        if file_name in values:
+            values.pop(file_name, None)
+            self.write_adult_media_states(values)
+
+    def recover_adult_optimisations(self) -> None:
+        values = self.adult_media_states()
+        changed = False
+        for value in values.values():
+            if isinstance(value, dict) and value.get("state") in {"queued", "processing"}:
+                value["state"] = "error"
+                value["message"] = "Optimisation was interrupted. Test the film or try again."
+                value["updated"] = time.time()
+                changed = True
+        if changed:
+            self.write_adult_media_states(values)
+
     def adult_library(self) -> list[dict[str, Any]]:
+        states = self.adult_media_states()
         values = []
         for item in sorted(self.adult_root.glob("*"), key=lambda path: path.name.lower()):
             if item.is_file() and item.suffix.lower() in SUPPORTED_EXTENSIONS:
+                state = states.get(item.name, {})
                 values.append({
                     "name": item.name,
                     "display_name": self.display_name(item.name),
                     "size": item.stat().st_size,
+                    "playback_state": state.get("state", "original")
+                    if isinstance(state, dict) else "original",
+                    "playback_message": state.get("message", "")
+                    if isinstance(state, dict) else "",
                 })
         return values
 
@@ -1481,14 +1522,6 @@ class Library:
                     and (int(stream.get("width", 0)) > PLAYBACK_WIDTH
                          or int(stream.get("height", 0)) > PLAYBACK_HEIGHT)))
 
-    def needs_adult_playback_optimisation(self, stream: dict[str, Any]) -> bool:
-        """Keep Adult Mode inside the Pi 4's reliable decode envelope."""
-        return (str(stream.get("codec_name", "")).lower() != "h264"
-                or str(stream.get("pix_fmt", "")).lower() != "yuv420p"
-                or int(stream.get("width", 0)) > PLAYBACK_WIDTH
-                or int(stream.get("height", 0)) > PLAYBACK_HEIGHT
-                or self.frame_rate(stream) > PLAYBACK_FPS + 0.1)
-
     def optimise_for_playback(self, source: Path, destination: Path) -> None:
         self._optimise_for_playback(
             source, destination,
@@ -1503,6 +1536,57 @@ class Library:
             source, destination,
             "scale=1280:720:force_original_aspect_ratio=decrease:force_divisible_by=2",
             "1800k", "2000k", "4000k")
+
+    def request_adult_optimisation(self, file_name: str) -> None:
+        source = self.safe_adult_path(file_name)
+        if not source.is_file():
+            raise ValueError("Film not found")
+        state = self.adult_media_states().get(source.name, {})
+        if isinstance(state, dict) and state.get("state") in {"queued", "processing"}:
+            raise ValueError("This film is already being optimised")
+        # Keep the original until the new copy has passed validation and has
+        # been atomically published. Only then is the original removed.
+        reserve = source.stat().st_size + 512 * 1024 * 1024
+        if shutil.disk_usage(self.media_root).free < reserve:
+            raise ValueError("There is not enough free space to safely optimise this film")
+        with self.adult_optimisation_lock:
+            if source.name in self.adult_optimisation_active:
+                raise ValueError("This film is already being optimised")
+            self.adult_optimisation_active.add(source.name)
+        with self.config_lock:
+            self.set_adult_media_state(source.name, "queued")
+        threading.Thread(target=self.optimise_adult_file, args=(source.name,),
+                         name="mabeltv-adult-optimise", daemon=True).start()
+
+    def optimise_adult_file(self, file_name: str) -> None:
+        source = self.safe_adult_path(file_name)
+        try:
+            # One encoder at a time keeps temperature and memory use inside a
+            # predictable envelope even if two portal buttons are pressed.
+            with self.adult_optimisation_serial:
+                if not source.is_file():
+                    raise ValueError("Film not found")
+                destination = source.with_suffix(".mp4")
+                if destination != source and destination.exists():
+                    raise ValueError("An MP4 with this film name already exists")
+                with self.config_lock:
+                    self.set_adult_media_state(source.name, "processing")
+                self.optimise_adult_for_playback(source, destination)
+                if destination != source:
+                    source.unlink()
+                with self.config_lock:
+                    self.remove_adult_media_state(source.name)
+                    self.set_adult_media_state(destination.name, "optimised")
+                self.refresh_tv()
+        except Exception as error:
+            with self.config_lock:
+                self.set_adult_media_state(
+                    file_name, "error",
+                    str(error) if isinstance(error, ValueError)
+                    else "MabelTV could not optimise this film")
+        finally:
+            with self.adult_optimisation_lock:
+                self.adult_optimisation_active.discard(file_name)
 
     def _optimise_for_playback(self, source: Path, destination: Path,
                                video_filter: str, bitrate: str,
@@ -1611,13 +1695,11 @@ class Library:
 
             if destination.exists() or destination.with_suffix(".mp4").exists():
                 raise ValueError("A film with that name already exists in Adult mode")
-            # A film that needs preparing temporarily occupies both its full
-            # uploaded source and its new TV-ready copy. Reserve for that
-            # worst case before accepting bytes, just like channel uploads.
-            reserve = size * 2 + 512 * 1024 * 1024
+            # Adult films arrive untouched. A later owner-approved conversion
+            # reserves source-and-output space only if it is actually needed.
+            reserve = size + 512 * 1024 * 1024
             if shutil.disk_usage(self.media_root).free < reserve:
-                raise ValueError(
-                    "There is not enough free space to upload and safely prepare that film")
+                raise ValueError("There is not enough free space to upload that film")
             upload_id = uuid.uuid4().hex
             self.write_json(self.incoming / f"{upload_id}.json", {
                 "id": upload_id,
@@ -1866,6 +1948,8 @@ class Library:
             return self.refresh_tv()
         with self.config_lock:
             self._manage(payload)
+        if payload.get("action") == "optimise-adult":
+            return True
         return self.refresh_tv()
 
     def _manage(self, payload: dict[str, Any]) -> None:
@@ -2040,6 +2124,13 @@ class Library:
             if destination.exists() and destination != source:
                 raise ValueError("That name is already used in Adult mode")
             source.rename(destination)
+            state = self.adult_media_states()
+            if source.name in state:
+                state[destination.name] = state.pop(source.name)
+                self.write_adult_media_states(state)
+            return
+        if action == "optimise-adult":
+            self.request_adult_optimisation(str(payload.get("file", "")))
             return
         if action == "trash-adult":
             source = self.safe_adult_path(str(payload.get("file", "")))
@@ -2057,6 +2148,7 @@ class Library:
             except Exception:
                 shutil.rmtree(destination_dir, ignore_errors=True)
                 raise
+            self.remove_adult_media_state(source.name)
             return
         if action in {"toggle-channel", "toggle-programme", "rename", "trash"}:
             channel = self.channel(int(payload.get("channel")))
@@ -2309,7 +2401,9 @@ class Handler(BaseHTTPRequestHandler):
                 self.json(200, {
                     "ok": True,
                     "refreshed": refreshed,
-                    "message": ("TV settings applied on MabelTV now."
+                    "message": ("Optimising the original film in the background. You can leave this page and return later."
+                                if action == "optimise-adult" else
+                                "TV settings applied on MabelTV now."
                                 if refreshed and action == "set-tv-settings" else "Done.") if refreshed else
                         "The change was saved, but the TV could not refresh. Use Refresh TV library to try again.",
                 }); return

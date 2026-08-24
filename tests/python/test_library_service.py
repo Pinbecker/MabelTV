@@ -271,7 +271,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertTrue(all(state.get("complete") for state in states))
         self.assertEqual(maximum_active, 1)
 
-    def test_incompatible_adult_upload_is_optimised_and_kept_separate(self) -> None:
+    def test_adult_upload_stays_original_until_owner_requests_optimisation(self) -> None:
         self.fixture.library.complete_setup({
             "setup_code": "135790", "pin": "2468",
             "channels": mabeltv_library.DEFAULT_CHANNELS,
@@ -301,15 +301,28 @@ class LibraryUnitTests(unittest.TestCase):
             time.sleep(0.02)
 
         self.assertTrue(state.get("complete"))
-        self.assertTrue(state.get("optimised"))
-        self.assertEqual((self.fixture.library.adult_root / "My Film.mp4").read_bytes(),
+        self.assertFalse(state.get("optimised"))
+        self.assertEqual((self.fixture.library.adult_root / "My Film.mkv").read_bytes(),
                          b"raw-film-content")
         self.assertEqual(self.fixture.library.adult_library()[0]["display_name"],
                          "My Film")
         self.assertFalse(any((self.fixture.media / channel["folder"] / "My Film.mkv").exists()
                              for channel in mabeltv_library.DEFAULT_CHANNELS))
-        self.fixture.library.optimise_adult_for_playback.assert_called_once()
+        self.fixture.library.optimise_adult_for_playback.assert_not_called()
         self.fixture.library.refresh_tv.assert_called_once()
+
+        self.fixture.library.manage({"action": "optimise-adult", "file": "My Film.mkv"})
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline:
+            films = self.fixture.library.adult_library()
+            if films and films[0]["playback_state"] == "optimised":
+                break
+            time.sleep(0.02)
+        self.assertEqual((self.fixture.library.adult_root / "My Film.mp4").read_bytes(),
+                         b"raw-film-content")
+        self.assertFalse((self.fixture.library.adult_root / "My Film.mkv").exists())
+        self.assertEqual(self.fixture.library.adult_library()[0]["playback_state"], "optimised")
+        self.fixture.library.optimise_adult_for_playback.assert_called_once()
 
     def test_pi_ready_adult_upload_is_kept_without_conversion(self) -> None:
         self.fixture.library.complete_setup({
