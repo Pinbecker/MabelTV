@@ -166,6 +166,15 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("Environment=MALLOC_ARENA_MAX=2", service)
         self.assertIn("Environment=MALLOC_TRIM_THRESHOLD_=131072", service)
 
+    def test_power_click_releases_hdmi_before_intro_audio_starts(self) -> None:
+        main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+
+        self.assertIn("function schedulePlaybackAfterPowerClick", main_qml)
+        self.assertIn("id: playbackAfterPowerClickTimer", main_qml)
+        self.assertIn("interval: tvController.soundEffectsEnabled ? 250 : 0", main_qml)
+        self.assertIn("root.schedulePlaybackAfterPowerClick(true)", main_qml)
+        self.assertIn("root.schedulePlaybackAfterPowerClick(false)", main_qml)
+
     def test_adult_transition_uses_one_renderer_and_preserves_film_position(self) -> None:
         main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
         adult_qml = (PROJECT_ROOT / "qml" / "AdultModeOverlay.qml").read_text(

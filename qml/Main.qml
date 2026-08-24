@@ -36,6 +36,7 @@ Window {
     property bool restoreChildPauseAfterAdult: false
     property bool openingAdultMode: false
     property string pendingPowerAction: ""
+    property bool pendingPowerOnWake: false
     property bool filmCountdownActive: false
     property int filmCountdownValue: 10
     property real filmCountdownSpin: 0
@@ -89,6 +90,11 @@ Window {
         introCompletesStandbyWake = isStandbyWake
         introPlaying = true
         player.play(startupIntroUrl, 0)
+    }
+
+    function schedulePlaybackAfterPowerClick(isStandbyWake) {
+        pendingPowerOnWake = isStandbyWake
+        playbackAfterPowerClickTimer.restart()
     }
 
     function beginWarmup() {
@@ -356,6 +362,25 @@ Window {
             } else {
                 tvController.resumeFromStandby()
             }
+        }
+    }
+
+    // The generated power click and programme audio both use the Pi's
+    // exclusive HDMI ALSA device. Let the 85 ms click close its audio output
+    // before the intro/player opens the same device.
+    Timer {
+        id: playbackAfterPowerClickTimer
+        interval: tvController.soundEffectsEnabled ? 250 : 0
+        repeat: false
+        onTriggered: {
+            if (directMediaMode)
+                player.play(startupMediaUrl, 0)
+            else if (startupIntroUrl.toString().length > 0)
+                root.playWelcome(root.pendingPowerOnWake)
+            else if (root.pendingPowerOnWake)
+                tvController.resumeFromStandby()
+            else
+                root.startTelevision()
         }
     }
 
@@ -1572,12 +1597,7 @@ Window {
             if (!tvController.standby) {
                 root.poweringOff = false
                 root.beginWarmup()
-                if (directMediaMode)
-                    player.play(startupMediaUrl, 0)
-                else if (startupIntroUrl.toString().length > 0)
-                    root.playWelcome(true)
-                else
-                    tvController.resumeFromStandby()
+                root.schedulePlaybackAfterPowerClick(true)
             }
         }
         function onRemoteLockedChanged() {
@@ -1784,12 +1804,6 @@ Window {
         if (tvController.soundEffectsEnabled)
             soundEffects.playPowerClick()
         root.beginWarmup()
-        if (directMediaMode)
-            player.play(startupMediaUrl, 0)
-        else if (startupIntroUrl.toString().length > 0) {
-            root.playWelcome(false)
-        } else {
-            root.startTelevision()
-        }
+        root.schedulePlaybackAfterPowerClick(false)
     }
 }
