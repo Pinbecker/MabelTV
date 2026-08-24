@@ -773,13 +773,17 @@ void TvController::prepareForPlaybackRestart(const QString &message)
     }
 
     ChannelRuntime &runtime = m_channels[m_currentChannelIndex];
-    qCritical().noquote() << "Quarantining stalled programme before restart on channel"
+    qCritical().noquote() << "Advancing past stalled programme before restart on channel"
                           << runtime.channel.number << ":" << message;
     if (runtime.currentEpisode >= 0) {
         markCurrentEpisodeLeft(runtime);
-        runtime.failedEpisodes.insert(runtime.currentEpisode);
     }
-    runtime.currentEpisode = takeUsableEpisode(runtime);
+    // A frame/load watchdog detects a stuck decoder pipeline, not a proven bad
+    // media file. Permanently quarantining the current episode here hid valid
+    // programmes after Adult Mode hand-off and after global V4L2 failures.
+    // Move on when possible, but reserve persistent quarantine for an explicit
+    // libmpv playback error handled by playbackFailed().
+    runtime.currentEpisode = adjacentUsableEpisode(runtime, 1);
     prepareCurrentEpisodeForVisit(runtime);
     runtime.anchorMilliseconds = m_broadcastClock.elapsed();
     runtime.anchorPositionSeconds = runtime.currentEpisode >= 0
@@ -1419,19 +1423,24 @@ void TvController::loadState()
         : 0.0;
     const bool sameUptimeSession =
         object.value(QStringLiteral("uptime_session_id")).toString() == m_sessionId;
+    const int stateSchemaVersion = object.value(QStringLiteral("schema_version")).toInt(0);
     const QJsonObject timelines = object.value(QStringLiteral("channel_timelines")).toObject();
 
     for (ChannelRuntime &runtime : m_channels) {
         const QJsonObject timeline = timelines.value(QString::number(runtime.channel.number)).toObject();
-        const QJsonObject failedProgrammes =
-            timeline.value(QStringLiteral("failed_programmes")).toObject();
-        for (int index = 0; index < runtime.channel.episodes.size(); ++index) {
-            const QFileInfo episodeFile(runtime.channel.episodes[index].path);
-            const qint64 failedModified = static_cast<qint64>(
-                failedProgrammes.value(episodeFile.fileName()).toDouble(-1.0));
-            if (failedModified >= 0
-                && failedModified == episodeFile.lastModified().toMSecsSinceEpoch()) {
-                runtime.failedEpisodes.insert(index);
+        // Schema 2 could not distinguish a corrupt file from a global player
+        // watchdog failure. Do not carry those false quarantines forward.
+        if (stateSchemaVersion >= 3) {
+            const QJsonObject failedProgrammes =
+                timeline.value(QStringLiteral("failed_programmes")).toObject();
+            for (int index = 0; index < runtime.channel.episodes.size(); ++index) {
+                const QFileInfo episodeFile(runtime.channel.episodes[index].path);
+                const qint64 failedModified = static_cast<qint64>(
+                    failedProgrammes.value(episodeFile.fileName()).toDouble(-1.0));
+                if (failedModified >= 0
+                    && failedModified == episodeFile.lastModified().toMSecsSinceEpoch()) {
+                    runtime.failedEpisodes.insert(index);
+                }
             }
         }
         const QJsonObject savedProgrammePositions =
@@ -1498,7 +1507,7 @@ void TvController::saveState() const
     }
 
     QJsonObject object{
-        {QStringLiteral("schema_version"), 2},
+        {QStringLiteral("schema_version"), 3},
         {QStringLiteral("uptime_session_id"), m_sessionId},
         {QStringLiteral("saved_at_utc_ms"),
          static_cast<double>(QDateTime::currentMSecsSinceEpoch())},

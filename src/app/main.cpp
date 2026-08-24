@@ -44,8 +44,12 @@
 #include <mpv/client.h>
 
 #include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <cstdlib>
 #include <locale.h>
 #include <memory>
+#include <thread>
 
 namespace
 {
@@ -177,6 +181,24 @@ void notifyService(const char *state)
 #else
     Q_UNUSED(state);
 #endif
+}
+
+void requestControlledExit(QCoreApplication &application, int exitCode, const char *serviceStatus)
+{
+    static std::atomic_flag exitRequested = ATOMIC_FLAG_INIT;
+    if (exitRequested.test_and_set()) {
+        return;
+    }
+
+    notifyService(serviceStatus);
+    // A wedged V4L2/MMAL decoder can also wedge mpv_terminate_destroy(). Let
+    // Qt perform its normal cleanup first, but keep the recovery bounded so
+    // systemd never has to wait for TimeoutStopSec and then SIGKILL the Pi.
+    std::thread([exitCode]() {
+        std::this_thread::sleep_for(std::chrono::seconds(6));
+        std::_Exit(exitCode);
+    }).detach();
+    application.exit(exitCode);
 }
 
 int runLibmpvSelfTest(int argc, char *argv[])
@@ -526,8 +548,9 @@ int main(int argc, char *argv[])
     }
     const auto restartAfterFatalPlayerFailure = [&application](const QString &message) {
         qCritical().noquote() << "Fatal video-player failure:" << message;
-        notifyService("STATUS=Video engine failed; restarting");
-        application.exit(45);
+        requestControlledExit(application,
+                              45,
+                              "STATUS=Video engine failed; restarting");
     };
     QObject::connect(video, &MpvVideo::fatalPlayerFailure,
                      &application, restartAfterFatalPlayerFailure);
@@ -535,7 +558,9 @@ int main(int argc, char *argv[])
                      &application, restartAfterFatalPlayerFailure);
     QTimer playbackHealthTimer;
     MpvVideo *monitoredVideo = nullptr;
+    qulonglong monitoredPlaybackGeneration = 0;
     std::uint64_t previousFrameCount = 0;
+    bool renderedFrameForGeneration = false;
     int stagnantPlaybackChecks = 0;
     int stagnantLoadingChecks = 0;
     playbackHealthTimer.setInterval(15'000);
@@ -547,13 +572,19 @@ int main(int argc, char *argv[])
                        adultVideo,
                        &television,
                        &monitoredVideo,
-                      &previousFrameCount,
-                      &stagnantPlaybackChecks,
-                      &stagnantLoadingChecks]() {
+                       &monitoredPlaybackGeneration,
+                       &previousFrameCount,
+                       &renderedFrameForGeneration,
+                       &stagnantPlaybackChecks,
+                       &stagnantLoadingChecks]() {
                          MpvVideo *activeVideo = adultVideo->isVisible() ? adultVideo : video;
-                         if (activeVideo != monitoredVideo) {
+                         const qulonglong activeGeneration = activeVideo->playbackGeneration();
+                         if (activeVideo != monitoredVideo
+                             || activeGeneration != monitoredPlaybackGeneration) {
                              monitoredVideo = activeVideo;
+                             monitoredPlaybackGeneration = activeGeneration;
                              previousFrameCount = activeVideo->renderedFrameCount();
+                             renderedFrameForGeneration = false;
                              stagnantPlaybackChecks = 0;
                              stagnantLoadingChecks = 0;
                          }
@@ -561,15 +592,18 @@ int main(int argc, char *argv[])
                          const QString status = activeVideo->status();
                          const bool waitingForMedia = status == QStringLiteral("Loading")
                              || status == QStringLiteral("Preparing video")
-                             || status == QStringLiteral("Waiting for previous playback to stop");
+                             || status == QStringLiteral("Waiting for previous playback to stop")
+                             || status == QStringLiteral("Stopping");
                          if (waitingForMedia) {
                              ++stagnantLoadingChecks;
                              if (stagnantLoadingChecks >= 4) {
                                   qCritical() << "Visible playback remained in a loading state for 60 seconds; requesting a controlled restart";
                                   television.prepareForPlaybackRestart(
                                       QStringLiteral("The programme remained stuck while loading"));
-                                 notifyService("STATUS=Playback load stalled; restarting");
-                                 application.exit(44);
+                                 requestControlledExit(
+                                     application,
+                                     44,
+                                     "STATUS=Playback load stalled; restarting");
                              }
                              return;
                          }
@@ -584,14 +618,19 @@ int main(int argc, char *argv[])
                              ++stagnantPlaybackChecks;
                          } else {
                              stagnantPlaybackChecks = 0;
+                             renderedFrameForGeneration = true;
                          }
                          previousFrameCount = frameCount;
                          if (stagnantPlaybackChecks >= 4) {
                               qCritical() << "Playback rendered no frames for 60 seconds; requesting a controlled restart";
                               television.prepareForPlaybackRestart(
                                   QStringLiteral("The programme stopped producing video frames"));
-                             notifyService("STATUS=Playback stalled; restarting");
-                             application.exit(43);
+                             qCritical() << "The stalled generation had previously rendered frames:"
+                                         << renderedFrameForGeneration;
+                             requestControlledExit(
+                                 application,
+                                 43,
+                                 "STATUS=Playback stalled; restarting");
                          }
                      });
     playbackHealthTimer.start();

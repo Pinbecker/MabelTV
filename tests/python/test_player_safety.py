@@ -41,6 +41,20 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("case MPV_EVENT_END_FILE", source)
         self.assertIn("Waiting for previous playback to stop", source)
 
+    def test_player_loads_each_playback_generation_once_and_bounds_stop(self) -> None:
+        source = (PROJECT_ROOT / "src" / "media" / "MpvVideo.cpp").read_text(
+            encoding="utf-8"
+        )
+        header = (PROJECT_ROOT / "src" / "media" / "MpvVideo.h").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("Q_PROPERTY(qulonglong playbackGeneration", header)
+        self.assertIn("m_dispatchedPlaybackGeneration == m_playbackGeneration", source)
+        self.assertIn("loadCommandReplyBase + generation", source)
+        self.assertIn("m_stopTimeout.start()", source)
+        self.assertIn("reportFatalFailure", source)
+
     def test_adult_mode_waits_for_decoder_release_before_resuming_tv(self) -> None:
         source = (PROJECT_ROOT / "src" / "media" / "MpvVideo.cpp").read_text(
             encoding="utf-8"
@@ -115,6 +129,31 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("function beginFilmCountdown", main_qml)
         self.assertIn("function finishFilmCountdown", main_qml)
         self.assertIn("PRESS OK TO SKIP", main_qml)
+        self.assertIn("function cancelFilmCountdown", main_qml)
+        self.assertIn("function onStopPlaybackRequested()", main_qml)
+        self.assertIn("root.cancelFilmCountdown()", main_qml)
+
+    def test_power_waits_for_adult_decoder_before_entering_standby(self) -> None:
+        main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+        adult_qml = (PROJECT_ROOT / "qml" / "AdultModeOverlay.qml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('property string pendingPowerAction: ""', main_qml)
+        self.assertIn("if (adultMode.active) {\n            adultMode.close()", main_qml)
+        self.assertIn("root.performPowerOff(action === \"shutdown\")", main_qml)
+        self.assertIn("if (root.pendingPowerAction.length > 0)", main_qml)
+        self.assertIn("if (overlay.closing)\n                overlay.finishClose()", adult_qml)
+
+    def test_health_monitor_resets_for_every_playback_request(self) -> None:
+        source = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("activeVideo->playbackGeneration()", source)
+        self.assertIn("activeGeneration != monitoredPlaybackGeneration", source)
+        self.assertIn('status == QStringLiteral("Stopping")', source)
+        self.assertIn("std::_Exit(exitCode)", source)
 
     def test_adult_transition_uses_one_renderer_and_preserves_film_position(self) -> None:
         main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")

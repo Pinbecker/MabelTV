@@ -23,7 +23,7 @@ private slots:
     void controllerTunesNumericChannelsAndHonoursVolumeLimit();
     void controllerClearsNoSignalWhenReturningToPopulatedChannel();
     void controllerSkipsAnEpisodeAfterPlaybackFailure();
-    void controllerPersistsWatchdogQuarantineUntilFileChanges();
+    void controllerDoesNotPersistWatchdogQuarantine();
     void controllerMovesBetweenProgrammesInFilenameOrder();
     void controllerRestartsStaleShowsButNeverFilms();
     void controllerDisplaysSeasonEpisodeOrFilmNameWhenProgrammeChanges();
@@ -263,7 +263,7 @@ void CoreTests::controllerSkipsAnEpisodeAfterPlaybackFailure()
     QVERIFY(!controller.noSignal());
 }
 
-void CoreTests::controllerPersistsWatchdogQuarantineUntilFileChanges()
+void CoreTests::controllerDoesNotPersistWatchdogQuarantine()
 {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
@@ -306,25 +306,8 @@ void CoreTests::controllerPersistsWatchdogQuarantineUntilFileChanges()
                                 inspector));
     QSignalSpy restoredRequests(&restored, &TvController::playbackRequested);
     restored.start();
-    QTest::qWait(550);
-    QCOMPARE(restoredRequests.count(), 0);
-    QVERIFY(restored.noSignal());
-
-    // Replacing/re-encoding the file changes its mtime and automatically makes
-    // that programme eligible again; owners are never forced to edit state.
-    QTest::qWait(20);
-    QVERIFY(episode.open(QIODevice::Append));
-    episode.write("fixed");
-    episode.close();
-    TvController repaired;
-    QVERIFY(repaired.initialize(configuration.fileName(),
-                                directory.filePath(QStringLiteral("settings.json")),
-                                directory.filePath(QStringLiteral("media")),
-                                statePath,
-                                inspector));
-    QSignalSpy repairedRequests(&repaired, &TvController::playbackRequested);
-    repaired.start();
-    QTRY_COMPARE_WITH_TIMEOUT(repairedRequests.count(), 1, 1000);
+    QTRY_COMPARE_WITH_TIMEOUT(restoredRequests.count(), 1, 1000);
+    QVERIFY(!restored.noSignal());
 }
 
 void CoreTests::controllerMovesBetweenProgrammesInFilenameOrder()

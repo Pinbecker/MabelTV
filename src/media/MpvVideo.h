@@ -2,6 +2,7 @@
 
 #include <QQuickFramebufferObject>
 #include <QString>
+#include <QTimer>
 #include <QUrl>
 
 #include <cstdint>
@@ -23,6 +24,7 @@ class MpvVideo : public QQuickFramebufferObject
     Q_PROPERTY(int volume READ volume WRITE setVolume NOTIFY volumeChanged)
     Q_PROPERTY(bool muted READ muted WRITE setMuted NOTIFY mutedChanged)
     Q_PROPERTY(QString aspectMode READ aspectMode WRITE setAspectMode NOTIFY aspectModeChanged)
+    Q_PROPERTY(qulonglong playbackGeneration READ playbackGeneration NOTIFY playbackGenerationChanged)
 
 public:
     explicit MpvVideo(QQuickItem *parent = nullptr);
@@ -45,6 +47,7 @@ public:
     void setMuted(bool muted);
     [[nodiscard]] QString aspectMode() const;
     void setAspectMode(const QString &aspectMode);
+    [[nodiscard]] qulonglong playbackGeneration() const;
 
     Q_INVOKABLE void play(const QUrl &source, double startPositionSeconds = 0.0);
     Q_INVOKABLE void stop();
@@ -68,6 +71,7 @@ signals:
     void volumeChanged();
     void mutedChanged();
     void aspectModeChanged();
+    void playbackGenerationChanged();
     void playbackFinished();
     void playbackStopped();
     void playbackFailed(const QString &message);
@@ -82,7 +86,9 @@ private:
     friend class MpvRenderer;
 
     static void wakeup(void *context);
-    void beginPlay(const QUrl &source, double startPositionSeconds);
+    void beginPlay(const QUrl &source,
+                   double startPositionSeconds,
+                   std::uint64_t playbackGeneration = 0);
     void finishPendingStop();
     void loadCurrentSource();
     void resetPlaybackTelemetry(double positionSeconds = 0.0);
@@ -112,4 +118,8 @@ private:
     bool m_hasQueuedPlay = false;
     QUrl m_queuedSource;
     double m_queuedStartPosition = 0.0;
+    std::uint64_t m_queuedPlaybackGeneration = 0;
+    std::uint64_t m_playbackGeneration = 0;
+    std::uint64_t m_dispatchedPlaybackGeneration = 0;
+    QTimer m_stopTimeout;
 };

@@ -179,9 +179,13 @@ Item {
             const film = overlay.currentFilm()
             if (film)
                 overlay.filmPositions[film.source.toString()] = 0
-            overlay.playing = false
-            overlay.stopping = false
-            overlay.controlsOpacity = 1
+            if (overlay.closing)
+                overlay.finishClose()
+            else {
+                overlay.playing = false
+                overlay.stopping = false
+                overlay.controlsOpacity = 1
+            }
         }
         onPlaybackStopped: {
             if (overlay.closing)
@@ -194,9 +198,13 @@ Item {
         }
         onPlaybackFailed: message => {
             overlay.errorMessage = message
-            overlay.playing = false
-            overlay.stopping = false
-            overlay.controlsOpacity = 1
+            if (overlay.closing)
+                overlay.finishClose()
+            else {
+                overlay.playing = false
+                overlay.stopping = false
+                overlay.controlsOpacity = 1
+            }
         }
         onPlaybackPositionChanged: overlay.rememberCurrentFilmPosition()
         onPausedChanged: overlay.showControls()

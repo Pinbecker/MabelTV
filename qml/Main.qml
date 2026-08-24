@@ -35,6 +35,7 @@ Window {
     property bool childWasPausedBeforeAdult: false
     property bool restoreChildPauseAfterAdult: false
     property bool openingAdultMode: false
+    property string pendingPowerAction: ""
     property bool filmCountdownActive: false
     property int filmCountdownValue: 10
     property real filmCountdownSpin: 0
@@ -84,6 +85,7 @@ Window {
     }
 
     function playWelcome(isStandbyWake) {
+        cancelFilmCountdown()
         introCompletesStandbyWake = isStandbyWake
         introPlaying = true
         player.play(startupIntroUrl, 0)
@@ -127,7 +129,7 @@ Window {
     }
 
     function beginPowerOff(shutDownPi) {
-        if (poweringOff)
+        if (poweringOff || pendingPowerAction.length > 0)
             return
         if (tvController.standby) {
             if (shutDownPi)
@@ -136,6 +138,22 @@ Window {
                 tvController.dispatch(TvController.ToggleStandby)
             return
         }
+        cancelFilmCountdown()
+        pendingPowerAction = shutDownPi ? "shutdown" : "standby"
+        if (openingAdultMode)
+            return
+        if (adultMode.active) {
+            adultMode.close()
+            return
+        }
+        pendingPowerAction = ""
+        performPowerOff(shutDownPi)
+    }
+
+    function performPowerOff(shutDownPi) {
+        if (poweringOff)
+            return
+        cancelFilmCountdown()
         syncPlaybackPosition()
         if (player.status === "Playing" && !player.paused)
             player.togglePause()
@@ -170,6 +188,7 @@ Window {
     }
 
     function beginFilmCountdown(source, startPositionSeconds) {
+        cancelFilmCountdown()
         filmCountdownActive = true
         filmCountdownValue = 10
         pendingFilmSource = source
@@ -178,9 +197,21 @@ Window {
         filmCountdownTimer.restart()
     }
 
+    function cancelFilmCountdown() {
+        filmCountdownTimer.stop()
+        filmCountdownActive = false
+        pendingFilmSource = ""
+        pendingFilmStart = 0
+    }
+
     function finishFilmCountdown() {
         if (!filmCountdownActive)
             return
+        if (adultMode.active || openingAdultMode || poweringOff
+                || pendingPowerAction.length > 0 || tvController.standby) {
+            cancelFilmCountdown()
+            return
+        }
         filmCountdownActive = false
         filmCountdownTimer.stop()
         const source = pendingFilmSource
@@ -217,7 +248,8 @@ Window {
     }
 
     function portalCommand(command) {
-        if (tvController.remoteLocked)
+        if (tvController.remoteLocked || poweringOff
+                || pendingPowerAction.length > 0)
             return
         if (command === "open-parent-menu") {
             if (adultMode.active)
@@ -296,6 +328,7 @@ Window {
     function enterAdultMode() {
         if (openingAdultMode || adultMode.active)
             return
+        cancelFilmCountdown()
         syncPlaybackPosition()
         childWasPausedBeforeAdult = player.paused
         openingAdultMode = true
@@ -303,7 +336,8 @@ Window {
     }
 
     function leaveAdultMode() {
-        restoreChildPauseAfterAdult = childWasPausedBeforeAdult
+        restoreChildPauseAfterAdult = pendingPowerAction.length === 0
+                && childWasPausedBeforeAdult
         adultResumeTimer.restart()
     }
 
@@ -314,7 +348,15 @@ Window {
         id: adultResumeTimer
         interval: 400
         repeat: false
-        onTriggered: tvController.resumeFromStandby()
+        onTriggered: {
+            if (root.pendingPowerAction.length > 0) {
+                const action = root.pendingPowerAction
+                root.pendingPowerAction = ""
+                root.performPowerOff(action === "shutdown")
+            } else {
+                tvController.resumeFromStandby()
+            }
+        }
     }
 
     Rectangle {
@@ -733,7 +775,13 @@ Window {
                     if (root.openingAdultMode) {
                         root.openingAdultMode = false
                         tvController.closeParent()
-                        adultMode.open()
+                        if (root.pendingPowerAction.length > 0) {
+                            const action = root.pendingPowerAction
+                            root.pendingPowerAction = ""
+                            root.performPowerOff(action === "shutdown")
+                        } else {
+                            adultMode.open()
+                        }
                     }
                 }
             }
@@ -1489,15 +1537,20 @@ Window {
         target: tvController
 
         function onPlaybackRequested(source, startPositionSeconds) {
-            if (!adultMode.active) {
+            if (!adultMode.active && !root.openingAdultMode
+                    && !root.poweringOff && root.pendingPowerAction.length === 0
+                    && !tvController.standby) {
                 if (tvController.currentContentType === "films"
                         && startPositionSeconds < 1)
                     root.beginFilmCountdown(source, startPositionSeconds)
-                else
+                else {
+                    root.cancelFilmCountdown()
                     player.play(source, startPositionSeconds)
+                }
             }
         }
         function onStopPlaybackRequested() {
+            root.cancelFilmCountdown()
             player.stop()
         }
         function onChannelDisplayRequested(number, name) {
@@ -1512,6 +1565,8 @@ Window {
             root.showVolume(value, isMuted)
         }
         function onStandbyChanged() {
+            if (tvController.standby)
+                root.cancelFilmCountdown()
             if (tvController.soundEffectsEnabled && !tvController.standby)
                 soundEffects.playPowerClick()
             if (!tvController.standby) {
@@ -1539,7 +1594,7 @@ Window {
         focus: true
 
         Keys.onPressed: event => {
-            if (root.poweringOff) {
+            if (root.poweringOff || root.pendingPowerAction.length > 0) {
                 event.accepted = true
             } else if (event.key === Qt.Key_M) {
                 if (!event.isAutoRepeat) {

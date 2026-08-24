@@ -21,6 +21,8 @@ namespace
 {
 constexpr int childSafeVolume = 60;
 constexpr int boostedMaximumVolume = 160;
+constexpr int stopTimeoutMilliseconds = 6'000;
+constexpr std::uint64_t loadCommandReplyBase = 0x1'0000'0000ULL;
 
 int outputVolume(int visibleVolume)
 {
@@ -203,6 +205,16 @@ MpvVideo::MpvVideo(QQuickItem *parent)
     , m_state(std::make_shared<SharedState>())
 {
     setMirrorVertically(false);
+    m_stopTimeout.setSingleShot(true);
+    m_stopTimeout.setInterval(stopTimeoutMilliseconds);
+    connect(&m_stopTimeout, &QTimer::timeout, this, [this]() {
+        if (!m_stopPending) {
+            return;
+        }
+        qCritical() << "libmpv did not finish stopping within"
+                    << stopTimeoutMilliseconds << "milliseconds";
+        reportFatalFailure(QStringLiteral("The video player did not stop within six seconds"));
+    });
 
     m_state->handle = mpv_create();
     if (m_state->handle == nullptr) {
@@ -308,27 +320,7 @@ QUrl MpvVideo::source() const
 
 void MpvVideo::setSource(const QUrl &source)
 {
-    if (m_source == source) {
-        return;
-    }
-
-    m_source = source;
-    emit sourceChanged();
-
-    if (source.isEmpty()) {
-        setStatus(QStringLiteral("No media selected"));
-        return;
-    }
-    if (m_state->handle == nullptr) {
-        reportFatalFailure(QStringLiteral("The video player is unavailable"));
-        return;
-    }
-
-    if (m_state->renderReady.load()) {
-        loadCurrentSource();
-    } else {
-        setStatus(QStringLiteral("Preparing video"));
-    }
+    play(source, 0.0);
 }
 
 QString MpvVideo::status() const
@@ -438,6 +430,11 @@ void MpvVideo::setAspectMode(const QString &aspectMode)
     }
 }
 
+qulonglong MpvVideo::playbackGeneration() const
+{
+    return static_cast<qulonglong>(m_playbackGeneration);
+}
+
 void MpvVideo::play(const QUrl &source, double startPositionSeconds)
 {
     const double safeStartPosition = std::max(0.0, startPositionSeconds);
@@ -447,31 +444,48 @@ void MpvVideo::play(const QUrl &source, double startPositionSeconds)
         // Back -> OK sequence from overlapping decoder teardown and startup.
         m_queuedSource = source;
         m_queuedStartPosition = safeStartPosition;
+        m_queuedPlaybackGeneration = ++m_playbackGeneration;
         m_hasQueuedPlay = true;
+        if (m_source != source) {
+            m_source = source;
+            emit sourceChanged();
+        }
+        m_pendingStartPosition = safeStartPosition;
         resetPlaybackTelemetry(safeStartPosition);
+        emit playbackGenerationChanged();
         setStatus(QStringLiteral("Waiting for previous playback to stop"));
         return;
     }
     beginPlay(source, safeStartPosition);
 }
 
-void MpvVideo::beginPlay(const QUrl &source, double startPositionSeconds)
+void MpvVideo::beginPlay(const QUrl &source,
+                         double startPositionSeconds,
+                         std::uint64_t playbackGeneration)
 {
+    if (playbackGeneration == 0) {
+        playbackGeneration = ++m_playbackGeneration;
+        emit playbackGenerationChanged();
+    }
     m_pendingStartPosition = startPositionSeconds;
     resetPlaybackTelemetry(startPositionSeconds);
+    if (m_source != source) {
+        m_source = source;
+        emit sourceChanged();
+    }
+    if (source.isEmpty()) {
+        setStatus(QStringLiteral("No media selected"));
+        return;
+    }
     if (m_state->handle == nullptr) {
-        setSource(source);
+        reportFatalFailure(QStringLiteral("The video player is unavailable"));
         return;
     }
-    if (m_source == source && !source.isEmpty()) {
-        if (m_state->renderReady.load()) {
-            loadCurrentSource();
-        } else {
-            setStatus(QStringLiteral("Preparing video"));
-        }
-        return;
+    if (m_state->renderReady.load()) {
+        loadCurrentSource();
+    } else {
+        setStatus(QStringLiteral("Preparing video"));
     }
-    setSource(source);
 }
 
 void MpvVideo::stop()
@@ -482,6 +496,7 @@ void MpvVideo::stop()
     m_hasQueuedPlay = false;
     m_queuedSource = QUrl();
     m_queuedStartPosition = 0.0;
+    m_queuedPlaybackGeneration = 0;
     resetPlaybackTelemetry();
     if (m_state->handle == nullptr) {
         setStatus(QStringLiteral("Stopped"));
@@ -502,11 +517,11 @@ void MpvVideo::stop()
     m_stopPending = true;
     const char *command[] = {"stop", nullptr};
     if (!checkMpv(mpv_command_async(m_state->handle, 1002, command), "Stopping playback")) {
-        m_stopPending = false;
-        setStatus(QStringLiteral("The video player did not stop cleanly"));
+        reportFatalFailure(QStringLiteral("The video player did not accept the stop request"));
         return;
     }
     setStatus(QStringLiteral("Stopping"));
+    m_stopTimeout.start();
 }
 
 void MpvVideo::togglePause()
@@ -601,6 +616,12 @@ void MpvVideo::loadCurrentSource()
         reportFatalFailure(message);
         return;
     }
+    if (m_playbackGeneration == 0
+        || m_dispatchedPlaybackGeneration == m_playbackGeneration) {
+        return;
+    }
+    const std::uint64_t generation = m_playbackGeneration;
+    m_dispatchedPlaybackGeneration = generation;
     const QString localPath = m_source.isLocalFile() ? m_source.toLocalFile() : m_source.toString();
     const QByteArray encodedPath = QFileInfo(localPath).absoluteFilePath().toUtf8();
     qInfo().noquote() << "Loading media:" << QDir::toNativeSeparators(QString::fromUtf8(encodedPath));
@@ -624,7 +645,10 @@ void MpvVideo::loadCurrentSource()
         return;
     }
     const char *command[] = {"loadfile", encodedPath.constData(), "replace", nullptr};
-    if (!checkMpv(mpv_command_async(m_state->handle, 1001, command), "Loading media")) {
+    if (!checkMpv(mpv_command_async(m_state->handle,
+                                    loadCommandReplyBase + generation,
+                                    command),
+                  "Loading media")) {
         const QString message = QStringLiteral("The programme could not be opened");
         setStatus(message);
         emit playbackFailed(message);
@@ -640,6 +664,7 @@ void MpvVideo::finishPendingStop()
     }
 
     m_stopPending = false;
+    m_stopTimeout.stop();
     setStatus(QStringLiteral("Stopped"));
     if (!m_hasQueuedPlay) {
         emit playbackStopped();
@@ -648,10 +673,12 @@ void MpvVideo::finishPendingStop()
 
     const QUrl queuedSource = m_queuedSource;
     const double queuedStartPosition = m_queuedStartPosition;
+    const std::uint64_t queuedPlaybackGeneration = m_queuedPlaybackGeneration;
     m_hasQueuedPlay = false;
     m_queuedSource = QUrl();
     m_queuedStartPosition = 0.0;
-    beginPlay(queuedSource, queuedStartPosition);
+    m_queuedPlaybackGeneration = 0;
+    beginPlay(queuedSource, queuedStartPosition, queuedPlaybackGeneration);
 }
 
 void MpvVideo::resetPlaybackTelemetry(double positionSeconds)
@@ -721,16 +748,28 @@ void MpvVideo::processMpvEvents()
 
         switch (event->event_id) {
         case MPV_EVENT_COMMAND_REPLY:
-            if (event->reply_userdata == 1001 && event->error < 0) {
+            if (event->reply_userdata >= loadCommandReplyBase) {
+                const std::uint64_t generation = event->reply_userdata - loadCommandReplyBase;
+                if (generation != m_dispatchedPlaybackGeneration) {
+                    qInfo() << "Ignoring a stale media-load reply for playback generation"
+                            << generation;
+                    break;
+                }
+                if (event->error >= 0) {
+                    break;
+                }
                 const QString message = QStringLiteral("The programme could not be loaded: %1")
                                             .arg(QString::fromUtf8(mpv_error_string(event->error)));
                 setStatus(message);
                 emit playbackFailed(message);
             } else if (event->reply_userdata == 1002) {
+                if (!m_stopPending) {
+                    break;
+                }
                 if (event->error < 0) {
                     qWarning("Stopping playback failed: %s", mpv_error_string(event->error));
-                    m_fileActive = false;
-                    finishPendingStop();
+                    m_stopTimeout.stop();
+                    reportFatalFailure(QStringLiteral("The video player could not stop cleanly"));
                 } else if (!m_fileActive) {
                     finishPendingStop();
                 }
