@@ -54,6 +54,8 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("loadCommandReplyBase + generation", source)
         self.assertIn("m_stopTimeout.start()", source)
         self.assertIn("reportFatalFailure", source)
+        self.assertIn("releaseUnusedDecoderMemory();", source)
+        self.assertIn("malloc_trim(0);", source)
 
     def test_adult_mode_waits_for_decoder_release_before_resuming_tv(self) -> None:
         source = (PROJECT_ROOT / "src" / "media" / "MpvVideo.cpp").read_text(

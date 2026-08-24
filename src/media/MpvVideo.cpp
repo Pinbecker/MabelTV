@@ -17,6 +17,10 @@
 #include <algorithm>
 #include <utility>
 
+#ifdef __GLIBC__
+#include <malloc.h>
+#endif
+
 namespace
 {
 constexpr int childSafeVolume = 60;
@@ -59,6 +63,17 @@ void requestFrame(void *context)
 {
     auto *item = static_cast<MpvVideo *>(context);
     QMetaObject::invokeMethod(item, [item]() { item->update(); }, Qt::QueuedConnection);
+}
+
+void releaseUnusedDecoderMemory()
+{
+#ifdef __GLIBC__
+    // FFmpeg/libmpv decoder buffers are large and glibc otherwise retains the
+    // freed arenas after every programme hand-off. On the 2 GB Pi this looked
+    // like a linear leak during rapid navigation and could eventually invite
+    // the OOM killer even though the allocations were no longer live.
+    malloc_trim(0);
+#endif
 }
 } // namespace
 
@@ -665,6 +680,7 @@ void MpvVideo::finishPendingStop()
 
     m_stopPending = false;
     m_stopTimeout.stop();
+    releaseUnusedDecoderMemory();
     setStatus(QStringLiteral("Stopped"));
     if (!m_hasQueuedPlay) {
         emit playbackStopped();
@@ -802,11 +818,13 @@ void MpvVideo::processMpvEvents()
             if (m_stopPending) {
                 finishPendingStop();
             } else if (end != nullptr && end->reason == MPV_END_FILE_REASON_ERROR) {
+                releaseUnusedDecoderMemory();
                 const QString message = QString::fromUtf8(mpv_error_string(end->error));
                 qWarning().noquote() << "libmpv playback error:" << message;
                 setStatus(QStringLiteral("Playback error: %1").arg(message));
                 emit playbackFailed(message);
             } else if (end != nullptr && end->reason == MPV_END_FILE_REASON_EOF) {
+                releaseUnusedDecoderMemory();
                 setStatus(QStringLiteral("Finished"));
                 emit playbackFinished();
             }
