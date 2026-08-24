@@ -100,6 +100,22 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("subtitleDefaultOn: true", adult_qml)
         self.assertIn("adultPlayer.toggleSubtitles()", adult_qml)
 
+    def test_film_channels_get_a_skippable_countdown_before_starting(self) -> None:
+        controller_header = (PROJECT_ROOT / "src" / "core" / "TvController.h").read_text(
+            encoding="utf-8"
+        )
+        controller_source = (PROJECT_ROOT / "src" / "core" / "TvController.cpp").read_text(
+            encoding="utf-8"
+        )
+        main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+
+        self.assertIn("currentContentType", controller_header)
+        self.assertIn("channel.contentType", controller_source)
+        self.assertIn('tvController.currentContentType === "films"', main_qml)
+        self.assertIn("function beginFilmCountdown", main_qml)
+        self.assertIn("function finishFilmCountdown", main_qml)
+        self.assertIn("PRESS OK TO SKIP", main_qml)
+
 
 if __name__ == "__main__":
     unittest.main()

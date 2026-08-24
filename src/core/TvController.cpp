@@ -203,6 +203,12 @@ QString TvController::currentChannelName() const
     return m_currentChannelIndex >= 0 ? m_channels[m_currentChannelIndex].channel.name : QString();
 }
 
+QString TvController::currentContentType() const
+{
+    return m_currentChannelIndex >= 0 ? m_channels[m_currentChannelIndex].channel.contentType
+                                      : QStringLiteral("shows");
+}
+
 QString TvController::currentAspectMode() const
 {
     if (m_pictureMode != QStringLiteral("channel")) {
