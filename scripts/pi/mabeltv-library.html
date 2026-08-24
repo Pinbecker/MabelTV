@@ -148,6 +148,7 @@
     let programmeSearch = ''
     let programmeVisibility = 'all'
     let programmePage = 1
+    let adultOptimisationRefresh = null
     const PROGRAMMES_PER_PAGE = 12
     let setupStep = 1
     let setupChannels = []
@@ -591,6 +592,9 @@
         row.append(copy, actions)
         root.append(row)
       })
+      clearTimeout(adultOptimisationRefresh)
+      if (films.some(film => ['queued', 'processing'].includes(film.playback_state)))
+        adultOptimisationRefresh = setTimeout(() => load().catch(() => {}), 2500)
     }
 
     function renderTvSettings() {
