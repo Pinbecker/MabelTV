@@ -770,6 +770,11 @@ class LibraryHttpTests(unittest.TestCase):
         self.fixture = LibraryFixture()
         self.server = mabeltv_library.LibraryServer(("127.0.0.1", 0),
                                                     self.fixture.library)
+        # The production server detaches request workers so a slow browser
+        # cannot hold up a service shutdown.  In a test, wait for those
+        # workers before removing the temporary on-disk library; on a Pi 1 a
+        # completed HTTP response can otherwise race the fixture cleanup.
+        self.server.daemon_threads = False
         self.port = self.server.server_address[1]
         self.base = f"http://127.0.0.1:{self.port}"
         self.cookies = http.cookiejar.CookieJar()
