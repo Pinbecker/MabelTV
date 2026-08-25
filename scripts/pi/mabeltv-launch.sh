@@ -45,9 +45,10 @@ if [[ -z "${MABELTV_HWDEC:-}" ]]; then
 fi
 
 # Prepared video is capped at 720p when needed, but HDMI output is separate.
-# Use the screen's preferred EDID mode so the interface stays crisp while the
-# television and Qt/KMS scale 720p programmes normally.
-kms_mode="preferred"
+# Cap the appliance UI at 1080p: a 4K television otherwise makes controls too
+# small and asks the Pi 4 to render four times as many pixels.  Keep an
+# explicit override for unusual qualified displays and test rigs.
+kms_mode="${MABELTV_DRM_MODE:-1920x1080}"
 
 mkdir -p "$runtime_dir"
 if command -v qrencode >/dev/null 2>&1; then

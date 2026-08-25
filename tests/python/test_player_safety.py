@@ -95,6 +95,14 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn('MABELTV_HWDEC="drm-copy"', launcher)
         self.assertNotIn('MABELTV_HWDEC="v4l2m2m-copy,drm-copy"', launcher)
 
+    def test_pi_display_defaults_to_1080p_instead_of_native_4k(self) -> None:
+        launcher = (PROJECT_ROOT / "scripts" / "pi" / "mabeltv-launch.sh").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('MABELTV_DRM_MODE:-1920x1080', launcher)
+        self.assertNotIn('kms_mode="preferred"', launcher)
+
     def test_adult_mode_has_a_direct_shortcut_and_subtitle_control(self) -> None:
         controller_header = (PROJECT_ROOT / "src" / "core" / "TvController.h").read_text(
             encoding="utf-8"
