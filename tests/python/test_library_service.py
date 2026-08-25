@@ -887,6 +887,19 @@ class UsbAndMetadataTests(unittest.TestCase):
         persisted = self.fixture.library.adult_media_states()[movie.name]
         self.assertNotIn("api_key", json.dumps(persisted))
 
+    def test_tmdb_read_access_token_uses_bearer_header(self) -> None:
+        token = "eyJ" + "a" * 8 + ".payload.signature"
+        self.fixture.library.tmdb_key = mock.Mock(return_value=token)
+        response = mock.MagicMock()
+        response.__enter__.return_value = response
+        response.__exit__.return_value = False
+        response.read.return_value = b'{"results": []}'
+        with mock.patch.object(mabeltv_library, "urlopen", return_value=response) as request:
+            self.fixture.library.tmdb_request("search/movie", {"query": "Fellowship"})
+        sent = request.call_args.args[0]
+        self.assertEqual(sent.headers["Authorization"], f"Bearer {token}")
+        self.assertNotIn("api_key", sent.full_url)
+
     def test_adult_playback_state_updates_preserve_cached_metadata(self) -> None:
         self.fixture.library.write_adult_media_states({
             "Film.mkv": {"metadata": {"tmdb_id": 1, "title": "Film"}},

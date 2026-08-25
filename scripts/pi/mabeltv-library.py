@@ -1405,11 +1405,18 @@ class Library:
         if not key:
             raise ValueError("TMDB is ready, but its API key has not been added yet")
         query = dict(parameters or {})
-        query["api_key"] = key
+        # TMDB issues JWT-style Read Access Tokens as well as legacy v3 API
+        # keys. The former must be sent as a Bearer token, never as a query
+        # parameter (which produces a 401 and risks leaking the credential).
+        bearer_token = key.count(".") == 2 and key.startswith("eyJ")
+        if not bearer_token:
+            query["api_key"] = key
         url = f"{TMDB_BASE_URL}/{endpoint.lstrip('/')}?{urlencode(query)}"
         try:
-            request = Request(url, headers={"Accept": "application/json",
-                                            "User-Agent": "MabelTV/0.2.5"})
+            headers = {"Accept": "application/json", "User-Agent": "MabelTV/0.2.5"}
+            if bearer_token:
+                headers["Authorization"] = f"Bearer {key}"
+            request = Request(url, headers=headers)
             with urlopen(request, timeout=12) as response:
                 return json.loads(response.read(2 * 1024 * 1024))
         except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as error:
