@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Stop only the root-owned FFmpeg process started by mabeltv-screen-capture.
+set -Eeuo pipefail
+
+if [[ $# -ne 0 ]]; then
+    printf 'Mabel TV screen-capture stop does not accept arguments.\n' >&2
+    exit 2
+fi
+
+pid_path=/run/mabeltv-screen-capture/ffmpeg.pid
+[[ -r "$pid_path" ]] || exit 0
+capture_pid="$(<"$pid_path")"
+if [[ ! "$capture_pid" =~ ^[1-9][0-9]*$ || ! -r "/proc/$capture_pid/cmdline" ]]; then
+    rm -f -- "$pid_path"
+    exit 0
+fi
+if [[ "$(stat -c '%u' "/proc/$capture_pid")" != "0" ]]; then
+    printf 'Refusing to stop a non-root screen-capture process.\n' >&2
+    exit 1
+fi
+command_line="$(tr '\0' ' ' < "/proc/$capture_pid/cmdline")"
+if [[ "$command_line" != /usr/bin/ffmpeg*" -f kmsgrab "* ]]; then
+    printf 'Refusing to stop an unexpected process from the screen-capture PID file.\n' >&2
+    exit 1
+fi
+
+kill -TERM -- "$capture_pid" 2>/dev/null || true
+for _ in {1..30}; do
+    [[ -d "/proc/$capture_pid" ]] || break
+    sleep 0.1
+done
+if [[ -d "/proc/$capture_pid" ]]; then
+    kill -KILL -- "$capture_pid" 2>/dev/null || true
+fi
+rm -f -- "$pid_path"

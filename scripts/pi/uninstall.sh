@@ -121,6 +121,7 @@ helper_paths=(
     /usr/local/libexec/mabeltv-library-refresh
     /usr/local/libexec/mabeltv-admin-action
     /usr/local/libexec/mabeltv-screen-capture
+    /usr/local/libexec/mabeltv-screen-capture-stop
     /usr/local/libexec/mabeltv-retention
     /usr/local/libexec/mabeltv-activate-assets
     /usr/local/libexec/mabeltv-owner-recovery

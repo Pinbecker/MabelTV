@@ -124,13 +124,29 @@ class LiveStream:
         self.preview_idle_timer: threading.Timer | None = None
 
     @staticmethod
-    def _terminate_process(process: subprocess.Popen[bytes]) -> None:
+    def _terminate_process(process: subprocess.Popen[bytes],
+                           privileged: bool = False) -> None:
         if process.poll() is not None:
             return
-        try:
-            os.killpg(process.pid, signal.SIGTERM)
-        except ProcessLookupError:
-            return
+        if privileged:
+            # The preview encoder crosses a sudo boundary because kmsgrab
+            # needs DRM capabilities. An unprivileged killpg can stop sudo
+            # while leaving its root FFmpeg child orphaned and still capturing
+            # at 10 fps. The fixed helper terminates only the validated PID
+            # recorded by mabeltv-screen-capture.
+            try:
+                subprocess.run(
+                    ["sudo", "-n", "/usr/local/libexec/mabeltv-screen-capture-stop"],
+                    check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    timeout=5,
+                )
+            except (OSError, subprocess.TimeoutExpired):
+                pass
+        else:
+            try:
+                os.killpg(process.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                return
         try:
             process.wait(timeout=3)
         except subprocess.TimeoutExpired:
@@ -169,7 +185,7 @@ class LiveStream:
             self.preview_idle_timer = None
             self.preview_updated.notify_all()
         if process:
-            self._terminate_process(process)
+            self._terminate_process(process, privileged=True)
 
     def source(self) -> dict[str, Any]:
         state = self.library.read_json(self.library.player_state_path, {})
@@ -213,9 +229,10 @@ class LiveStream:
             self.preview_error = ""
             self.preview_generation += 1
             self.preview_updated.notify_all()
-        for candidate in (process, preview_process):
-            if candidate:
-                self._terminate_process(candidate)
+        if process:
+            self._terminate_process(process)
+        if preview_process:
+            self._terminate_process(preview_process, privileged=True)
 
     @staticmethod
     def playable_position(source: Path, position: float) -> float:
@@ -354,7 +371,7 @@ class LiveStream:
                     or self.preview_signature != signature:
                 previous, self.preview_process = self.preview_process, None
                 if previous:
-                    self._terminate_process(previous)
+                    self._terminate_process(previous, privileged=True)
                 self.preview_frame = b""
                 self.preview_error = ""
                 command = ["sudo", "-n", "/usr/local/libexec/mabeltv-screen-capture"]

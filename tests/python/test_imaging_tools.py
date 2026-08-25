@@ -103,6 +103,26 @@ class ImagerManifestTests(unittest.TestCase):
         self.assertIn('/lib/firmware/edid/mabeltv-audio-edid.bin', uninstall)
         self.assertIn('update-initramfs -u -k all', uninstall)
 
+        capture = (ROOT / "packaging" / "linux" / "mabeltv-screen-capture").read_text(
+            encoding="utf-8"
+        )
+        capture_stop = (
+            ROOT / "packaging" / "linux" / "mabeltv-screen-capture-stop"
+        ).read_text(encoding="utf-8")
+        activation = (ROOT / "scripts" / "pi" / "activate-assets.sh").read_text(
+            encoding="utf-8"
+        )
+        sudoers = (ROOT / "packaging" / "linux" / "mabeltv-sudoers").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('runtime_dir=/run/mabeltv-screen-capture', capture)
+        self.assertIn('pid_path="$runtime_dir/ffmpeg.pid"', capture)
+        self.assertIn('mabeltv-screen-capture-stop', capture)
+        self.assertIn('Refusing to stop an unexpected process', capture_stop)
+        self.assertIn('mabeltv-screen-capture-stop', activation)
+        self.assertIn('mabeltv-screen-capture-stop', sudoers)
+        self.assertIn('mabeltv-screen-capture-stop', uninstall)
+
     def test_laptop_only_builder_uses_local_arm64_docker_bundle_then_image_recipe(self):
         builder = (ROOT / "scripts" / "imaging" / "build-local-pi-image.sh").read_text(
             encoding="utf-8")

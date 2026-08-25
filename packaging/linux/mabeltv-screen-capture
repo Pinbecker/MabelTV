@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Fixed privileged boundary for capturing the active KMS framebuffer. The
-# parent portal remains unprivileged and cannot supply ffmpeg arguments.
+# parent portal remains unprivileged and cannot supply ffmpeg arguments. Keep
+# FFmpeg as a supervised child so the separate fixed stop helper can end the
+# root process cleanly when the portal preview becomes idle.
 set -Eeuo pipefail
 
 if [[ $# -ne 0 ]]; then
@@ -28,8 +30,25 @@ if [[ -z "$device" ]]; then
     exit 1
 fi
 
-exec /usr/bin/ffmpeg \
+runtime_dir=/run/mabeltv-screen-capture
+pid_path="$runtime_dir/ffmpeg.pid"
+install -d -o root -g root -m 0700 "$runtime_dir"
+/usr/local/libexec/mabeltv-screen-capture-stop || true
+
+/usr/bin/ffmpeg \
     -nostdin -hide_banner -loglevel error \
     -f kmsgrab -framerate 10 -device "$device" -i - \
     -vf 'hwdownload,format=bgr0,scale=854:480:force_original_aspect_ratio=decrease:force_divisible_by=2' \
-    -an -c:v mjpeg -q:v 5 -f mpjpeg pipe:1
+    -an -c:v mjpeg -q:v 5 -f mpjpeg pipe:1 &
+capture_pid=$!
+printf '%s\n' "$capture_pid" > "$pid_path"
+chown root:root "$pid_path"
+chmod 0600 "$pid_path"
+
+cleanup() {
+    if [[ -r "$pid_path" && "$(<"$pid_path")" == "$capture_pid" ]]; then
+        rm -f -- "$pid_path"
+    fi
+}
+trap cleanup EXIT
+wait "$capture_pid"

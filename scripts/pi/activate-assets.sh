@@ -26,6 +26,7 @@ linux_helper_names=(
     mabeltv-library-refresh
     mabeltv-admin-action
     mabeltv-screen-capture
+    mabeltv-screen-capture-stop
     mabeltv-retention
     mabeltv-owner-recovery
 )

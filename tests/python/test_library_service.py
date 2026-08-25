@@ -57,6 +57,24 @@ class LibraryUnitTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.fixture.close()
 
+    def test_privileged_preview_shutdown_uses_fixed_root_stop_helper(self) -> None:
+        process = mock.Mock()
+        process.pid = 1234
+        process.poll.return_value = None
+        with mock.patch.object(mabeltv_library.subprocess, "run") as run, \
+                mock.patch.object(mabeltv_library.os, "killpg", create=True) as killpg:
+            mabeltv_library.LiveStream._terminate_process(process, privileged=True)
+
+        run.assert_called_once_with(
+            ["sudo", "-n", "/usr/local/libexec/mabeltv-screen-capture-stop"],
+            check=False,
+            stdout=mabeltv_library.subprocess.DEVNULL,
+            stderr=mabeltv_library.subprocess.DEVNULL,
+            timeout=5,
+        )
+        killpg.assert_not_called()
+        process.wait.assert_called_once_with(timeout=3)
+
     def test_browser_upload_form_supports_resumable_multi_file_batches(self) -> None:
         index = mabeltv_library.INDEX
         self.assertRegex(index, r'id="file"[^>]+\bmultiple\b')
