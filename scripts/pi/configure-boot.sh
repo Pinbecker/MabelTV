@@ -109,6 +109,9 @@ awk -v begin="$begin_marker" -v end="$end_marker" '
     fi
     printf 'hdmi_ignore_cec_init=1\n'
     printf 'hdmi_ignore_cec=1\n'
+    # Some 4K TVs advertise a 4K60 preferred mode.  Raise the Pi 4 HDMI core
+    # clock so the KMS hand-off from the firmware splash remains valid.
+    printf 'hdmi_enable_4kp60=1\n'
     printf 'disable_splash=1\n'
     printf '%s\n' "$end_marker"
 } >> "$temporary_config"

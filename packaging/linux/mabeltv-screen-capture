@@ -8,9 +8,23 @@ if [[ $# -ne 0 ]]; then
     exit 2
 fi
 
-device=/dev/dri/card0
-if [[ ! -c "$device" ]]; then
-    printf 'The Mabel TV display device is unavailable.\n' >&2
+device=""
+# The render GPU and the KMS display GPU are not guaranteed to keep the same
+# card number across Raspberry Pi OS images. Capture from the DRM card that
+# owns the connected HDMI connector, rather than assuming card0 is display.
+for connector in /sys/class/drm/card*-HDMI-A-*; do
+    [[ -r "$connector/status" ]] || continue
+    [[ "$(<"$connector/status")" == "connected" ]] || continue
+    card_name="$(basename "${connector%%-HDMI-A-*}")"
+    candidate="/dev/dri/$card_name"
+    if [[ -c "$candidate" ]]; then
+        device="$candidate"
+        break
+    fi
+done
+
+if [[ -z "$device" ]]; then
+    printf 'The Mabel TV HDMI display device is unavailable.\n' >&2
     exit 1
 fi
 

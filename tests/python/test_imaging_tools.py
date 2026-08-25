@@ -82,6 +82,7 @@ class ImagerManifestTests(unittest.TestCase):
         self.assertIn('ir_mode="preserve"', configure_boot)
         self.assertIn('--disable-ir', configure_boot)
         self.assertIn('existing_ir_line=', configure_boot)
+        self.assertIn('hdmi_enable_4kp60=1', configure_boot)
 
     def test_laptop_only_builder_uses_local_arm64_docker_bundle_then_image_recipe(self):
         builder = (ROOT / "scripts" / "imaging" / "build-local-pi-image.sh").read_text(
