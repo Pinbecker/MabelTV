@@ -96,6 +96,20 @@ class ImagerManifestTests(unittest.TestCase):
         self.assertIn("debian:trixie-slim", dockerfile)
         self.assertIn("build-local-pi-image.sh", launcher)
 
+    def test_appliance_image_bypasses_pi_os_account_wizard_without_a_retained_login(self):
+        recipe = (ROOT / "scripts" / "imaging" / "build-pi-image.sh").read_text(
+            encoding="utf-8")
+        firstboot = (
+            ROOT
+            / "packaging/image/pi-gen/stage-mabeltv/00-install/files/mabeltv-image-firstboot"
+        ).read_text(encoding="utf-8")
+        self.assertIn("FIRST_USER_NAME='mabeltv-bootstrap'", recipe)
+        self.assertIn("FIRST_USER_PASS='${bootstrap_password}'", recipe)
+        self.assertIn("DISABLE_FIRST_BOOT_USER_RENAME='1'", recipe)
+        self.assertIn("ENABLE_SSH='0'", recipe)
+        self.assertIn("userdel -r mabeltv-bootstrap", firstboot)
+        self.assertIn("passwd -l root", firstboot)
+
 
 if __name__ == "__main__":
     unittest.main()

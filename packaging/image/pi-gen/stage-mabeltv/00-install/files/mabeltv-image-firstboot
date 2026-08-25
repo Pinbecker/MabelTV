@@ -50,6 +50,13 @@ mapfile -t installers < <(find "$work" -mindepth 2 -maxdepth 2 -type f \
 chmod 0755 "${installers[0]}"
 "${installers[0]}" --enable-ir --skip-packages
 
+# This is an appliance image, not a general-purpose Raspberry Pi desktop.
+# pi-gen requires an initial user/password to bypass its mandatory interactive
+# account wizard, so image creation generates a one-time secret for this
+# disposable account.  Remove it (and lock root) before Mabel TV is exposed.
+userdel -r mabeltv-bootstrap 2>/dev/null || true
+passwd -l root >/dev/null 2>&1 || true
+
 install -d -m 0755 "$state_dir"
 printf 'installed_at_utc=%s\nrelease_sha256=%s\n' \
     "$(date --utc +%Y-%m-%dT%H:%M:%SZ)" "$actual" > "$marker.new"

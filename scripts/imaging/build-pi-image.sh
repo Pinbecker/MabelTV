@@ -83,6 +83,18 @@ with tarfile.open(archive, "r:gz") as bundle:
                       "os_codename": build_os.get("codename", "")}))
 PY
 )"
+bootstrap_password="$(python3 - <<'PY'
+import secrets
+import string
+
+# pi-gen requires a password to suppress Raspberry Pi OS's interactive
+# first-boot account wizard.  This per-image secret is never printed or
+# retained; the one-purpose account is removed by Mabel TV's first-boot
+# service before the appliance becomes usable.
+alphabet = string.ascii_letters + string.digits
+print(''.join(secrets.choice(alphabet) for _ in range(48)))
+PY
+)"
 version="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])' <<<"$metadata")"
 release_commit="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["commit"])' <<<"$metadata")"
 pi_gen_commit="$(tr -d '[:space:]' < "$source_root/packaging/image/pi-gen/pigen-commit.txt")"
@@ -143,8 +155,10 @@ KEYBOARD_LAYOUT='English (UK)'
 TIMEZONE_DEFAULT='Europe/London'
 WPA_COUNTRY='GB'
 ENABLE_CLOUD_INIT='1'
-ENABLE_SSH='1'
-FIRST_USER_NAME='mabel'
+ENABLE_SSH='0'
+FIRST_USER_NAME='mabeltv-bootstrap'
+FIRST_USER_PASS='${bootstrap_password}'
+DISABLE_FIRST_BOOT_USER_RENAME='1'
 PASSWORDLESS_SUDO='0'
 STAGE_LIST='stage0 stage1 stage2 stage-mabeltv'
 EOF
