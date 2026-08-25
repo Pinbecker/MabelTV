@@ -367,6 +367,50 @@ class LibraryUnitTests(unittest.TestCase):
                          b"ready")
         self.fixture.library.optimise_adult_for_playback.assert_not_called()
 
+    def test_adult_folders_are_real_shared_collections_and_preserve_identity(self) -> None:
+        self.fixture.library.complete_setup({
+            "setup_code": "135790", "pin": "2468",
+            "channels": mabeltv_library.DEFAULT_CHANNELS,
+        })
+        self.fixture.library.refresh_tv = mock.Mock(return_value=True)
+        source = self.fixture.library.adult_root / "Fellowship.mkv"
+        source.write_bytes(b"film")
+
+        first = self.fixture.library.adult_library()[0]
+        identity = first["library_id"]
+        self.fixture.library.manage({
+            "action": "create-adult-folder", "name": "The Lord of the Rings",
+        })
+        self.fixture.library.manage({
+            "action": "move-adult", "file": first["path"],
+            "folder": "The Lord of the Rings",
+        })
+
+        moved = self.fixture.library.adult_library()[0]
+        self.assertEqual(moved["path"], "The Lord of the Rings/Fellowship.mkv")
+        self.assertEqual(moved["folder"], "The Lord of the Rings")
+        self.assertEqual(moved["library_id"], identity)
+        self.fixture.library.manage({
+            "action": "rename-adult-folder", "folder": "The Lord of the Rings",
+            "name": "Middle-earth",
+        })
+        renamed = self.fixture.library.adult_library()[0]
+        self.assertEqual(renamed["path"], "Middle-earth/Fellowship.mkv")
+        self.assertEqual(renamed["library_id"], identity)
+        self.assertEqual(self.fixture.library.library()["adult_folders"], ["Middle-earth"])
+
+        with self.assertRaisesRegex(ValueError, "Move every film"):
+            self.fixture.library.manage({
+                "action": "delete-adult-folder", "folder": "Middle-earth",
+            })
+        self.fixture.library.manage({
+            "action": "move-adult", "file": renamed["path"], "folder": "",
+        })
+        self.fixture.library.manage({
+            "action": "delete-adult-folder", "folder": "Middle-earth",
+        })
+        self.assertEqual(self.fixture.library.adult_folders(), [])
+
     def test_pin_recovery_keeps_custom_channels(self) -> None:
         custom = [{"number": 7, "name": "Nature", "folder": "nature", "aspect": "fit"}]
         self.fixture.channels.write_text(json.dumps({"schema_version": 1, "channels": custom}),

@@ -15,6 +15,10 @@ Item {
     property bool backPressHeld: false
     property double ignoreLibraryBackBeforeMs: 0
     property int selectedIndex: 0
+    property int selectedCollectionIndex: 0
+    property int navigationZone: 1
+    property var collections: []
+    property var visibleFilms: []
     readonly property real playbackPosition: adultPlayer.playbackPosition
     readonly property real playbackDuration: adultPlayer.playbackDuration
     readonly property string currentFilmName: currentFilm() ? currentFilm().name : ""
@@ -22,7 +26,6 @@ Item {
     property real controlsOpacity: 1
     property real selectedSavedPosition: 0
     property string errorMessage: ""
-    property var filmPositions: ({})
     property bool externalSession: false
     property url externalSource: ""
     property string externalTitle: ""
@@ -38,7 +41,7 @@ Item {
     z: 180
 
     function open() {
-        clampLibrarySelection()
+        rebuildCollections()
         playing = false
         stopping = false
         closing = false
@@ -50,6 +53,7 @@ Item {
         externalSession = false
         externalSource = ""
         externalTitle = ""
+        navigationZone = visibleFilms.length > 0 ? 1 : 0
         refreshSelectedFilmPosition()
     }
 
@@ -124,6 +128,10 @@ Item {
         }
         if (backPressHeld || Date.now() < ignoreLibraryBackBeforeMs)
             return
+        if (navigationZone === 1) {
+            navigationZone = 0
+            return
+        }
         close()
     }
 
@@ -138,21 +146,97 @@ Item {
     function currentFilm() {
         if (externalSession)
             return { "name": externalTitle, "source": externalSource, "size": 0 }
-        const films = controller.adultLibrary
+        const films = visibleFilms
         return selectedIndex >= 0 && selectedIndex < films.length
                 ? films[selectedIndex] : null
     }
 
     function clampLibrarySelection() {
-        selectedIndex = Math.max(0, Math.min(selectedIndex,
-                                             controller.adultLibrary.length - 1))
+        selectedIndex = Math.max(0, Math.min(selectedIndex, visibleFilms.length - 1))
         refreshSelectedFilmPosition()
+    }
+
+    function rebuildCollections() {
+        const films = controller.adultLibrary
+        const previousKey = collections.length > selectedCollectionIndex
+                ? collections[selectedCollectionIndex].key : "all"
+        const folders = []
+        let hasUnfiled = false
+        let hasContinue = false
+        for (let index = 0; index < films.length; ++index) {
+            const film = films[index]
+            const folder = film.folder || ""
+            if (folder.length === 0)
+                hasUnfiled = true
+            else if (folders.indexOf(folder) < 0)
+                folders.push(folder)
+            if (controller.adultPlaybackPosition(film.id) >= 30)
+                hasContinue = true
+        }
+        folders.sort((left, right) => left.localeCompare(right))
+        const next = [{ "key": "all", "name": "All films", "folder": "*" }]
+        if (hasContinue)
+            next.push({ "key": "continue", "name": "Continue watching", "folder": "@continue" })
+        if (hasUnfiled)
+            next.push({ "key": "unfiled", "name": "Unfiled", "folder": "" })
+        for (let folderIndex = 0; folderIndex < folders.length; ++folderIndex)
+            next.push({ "key": "folder:" + folders[folderIndex],
+                        "name": folders[folderIndex], "folder": folders[folderIndex] })
+        collections = next
+        let nextIndex = 0
+        for (let collectionIndex = 0; collectionIndex < next.length; ++collectionIndex) {
+            if (next[collectionIndex].key === previousKey) {
+                nextIndex = collectionIndex
+                break
+            }
+        }
+        selectedCollectionIndex = nextIndex
+        applySelectedCollection()
+    }
+
+    function applySelectedCollection() {
+        const films = controller.adultLibrary
+        const collection = collections.length > selectedCollectionIndex
+                ? collections[selectedCollectionIndex] : null
+        const filtered = []
+        for (let index = 0; index < films.length; ++index) {
+            const film = films[index]
+            if (!collection || collection.folder === "*"
+                    || (collection.folder === "@continue"
+                        && controller.adultPlaybackPosition(film.id) >= 30)
+                    || film.folder === collection.folder)
+                filtered.push(film)
+        }
+        visibleFilms = filtered
+        clampLibrarySelection()
+    }
+
+    function selectCollectionRelative(offset) {
+        if (collections.length === 0)
+            return
+        selectedCollectionIndex = (selectedCollectionIndex + collections.length + offset)
+                % collections.length
+        selectedIndex = 0
+        applySelectedCollection()
+    }
+
+    function collectionFilmCount(collection) {
+        const films = controller.adultLibrary
+        let count = 0
+        for (let index = 0; index < films.length; ++index) {
+            if (collection.folder === "*"
+                    || (collection.folder === "@continue"
+                        && controller.adultPlaybackPosition(films[index].id) >= 30)
+                    || films[index].folder === collection.folder)
+                ++count
+        }
+        return count
     }
 
     function refreshSelectedFilmPosition() {
         const film = currentFilm()
         selectedSavedPosition = film
-                ? (filmPositions[film.source.toString()] || 0) : 0
+                ? controller.adultPlaybackPosition(film.id) : 0
     }
 
     function accentColor(index) {
@@ -179,7 +263,7 @@ Item {
         backPressHeld = false
         ignoreLibraryBackBeforeMs = 0
         controlsOpacity = 1
-        const savedPosition = filmPositions[film.source.toString()] || 0
+        const savedPosition = controller.adultPlaybackPosition(film.id)
         selectedSavedPosition = savedPosition
         adultPlayer.play(film.source, savedPosition)
         controlsTimer.restart()
@@ -191,7 +275,7 @@ Item {
         const film = currentFilm()
         if (!film || adultPlayer.playbackPosition < 2)
             return
-        filmPositions[film.source.toString()] = adultPlayer.playbackPosition
+        controller.setAdultPlaybackPosition(film.id, adultPlayer.playbackPosition)
         selectedSavedPosition = adultPlayer.playbackPosition
     }
 
@@ -209,10 +293,25 @@ Item {
     }
 
     function selectRelative(offset) {
-        const count = controller.adultLibrary.length
+        const count = visibleFilms.length
         if (playing || stopping || count === 0)
             return
         selectedIndex = (selectedIndex + count + offset) % count
+    }
+
+    function navigateGrid(horizontal, vertical) {
+        const count = visibleFilms.length
+        if (count === 0)
+            return
+        const columns = Math.max(1, filmGrid.columns)
+        const column = selectedIndex % columns
+        if (horizontal < 0 && column === 0) {
+            navigationZone = 0
+            return
+        }
+        let next = selectedIndex + horizontal + vertical * columns
+        next = Math.max(0, Math.min(count - 1, next))
+        selectedIndex = next
     }
 
     function togglePause() {
@@ -252,11 +351,27 @@ Item {
 
     function handleKey(key, isAutoRepeat) {
         if (!playing) {
-            const count = controller.adultLibrary.length
-            if ((key === Qt.Key_Up || key === Qt.Key_Left) && count > 0) {
-                selectRelative(-1)
-            } else if ((key === Qt.Key_Down || key === Qt.Key_Right) && count > 0) {
-                selectRelative(1)
+            if (navigationZone === 0) {
+                if (key === Qt.Key_Up)
+                    selectCollectionRelative(-1)
+                else if (key === Qt.Key_Down)
+                    selectCollectionRelative(1)
+                else if ((key === Qt.Key_Right || key === Qt.Key_Return
+                          || key === Qt.Key_Enter) && visibleFilms.length > 0)
+                    navigationZone = 1
+                else if (isBackKey(key)) {
+                    if (!isAutoRepeat)
+                        back(true)
+                } else
+                    return false
+            } else if (key === Qt.Key_Left) {
+                navigateGrid(-1, 0)
+            } else if (key === Qt.Key_Right) {
+                navigateGrid(1, 0)
+            } else if (key === Qt.Key_Up) {
+                navigateGrid(0, -1)
+            } else if (key === Qt.Key_Down) {
+                navigateGrid(0, 1)
             } else if ((key === Qt.Key_Return || key === Qt.Key_Enter) && !isAutoRepeat) {
                 playSelected()
             } else if (isBackKey(key)) {
@@ -316,8 +431,10 @@ Item {
 
         onPlaybackFinished: {
             const film = overlay.currentFilm()
-            if (film && !overlay.externalSession)
-                overlay.filmPositions[film.source.toString()] = 0
+            if (film && !overlay.externalSession) {
+                controller.setAdultPlaybackPosition(film.id, 0)
+                overlay.selectedSavedPosition = 0
+            }
             if (overlay.closing)
                 overlay.finishClose()
             else if (overlay.queuedExternalSource.toString().length > 0) {
@@ -363,7 +480,6 @@ Item {
                 overlay.controlsOpacity = 1
             }
         }
-        onPlaybackPositionChanged: overlay.rememberCurrentFilmPosition()
         onPausedChanged: overlay.showControls()
     }
 
@@ -386,74 +502,99 @@ Item {
             anchors.left: parent.left
             anchors.top: parent.top
             anchors.bottom: parent.bottom
-            width: Math.max(104, parent.width * 0.082)
+            width: Math.max(250, parent.width * 0.18)
             color: "#0d1015"
             border.color: "#20242b"
             border.width: 1
 
-            Rectangle {
+            Row {
                 anchors.top: parent.top
-                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.left: parent.left
+                anchors.right: parent.right
                 anchors.topMargin: Math.max(28, parent.height * 0.045)
-                width: Math.max(52, 66 * overlay.uiScale)
-                height: width
-                radius: width * 0.28
-                color: "#f0eee9"
+                anchors.leftMargin: Math.max(22, 30 * overlay.uiScale)
+                height: Math.max(54, 66 * overlay.uiScale)
+                spacing: Math.max(12, 16 * overlay.uiScale)
 
-                Text {
-                    anchors.centerIn: parent
-                    color: "#11141a"
-                    font.family: "DejaVu Sans"
-                    font.bold: true
-                    font.pixelSize: parent.height * 0.42
-                    text: "M"
+                Rectangle {
+                    width: parent.height
+                    height: parent.height
+                    radius: width * 0.26
+                    color: "#f0eee9"
+                    Text { anchors.centerIn: parent; color: "#11141a"; font.bold: true;
+                           font.pixelSize: parent.height * 0.42; text: "M" }
+                }
+
+                Column {
+                    anchors.verticalCenter: parent.verticalCenter
+                    Text { color: "#f4f1eb"; font.bold: true;
+                           font.pixelSize: Math.max(14, 18 * overlay.uiScale); text: "ADULT TV" }
+                    Text { color: "#747c87"; font.pixelSize: Math.max(10, 12 * overlay.uiScale);
+                           text: controller.adultLibrary.length + " FILMS" }
                 }
             }
 
-            Column {
+            Text {
+                anchors.left: parent.left
                 anchors.top: parent.top
-                anchors.topMargin: Math.max(132, parent.height * 0.21)
-                anchors.horizontalCenter: parent.horizontalCenter
-                width: parent.width - 20
-                spacing: 9
+                anchors.leftMargin: Math.max(22, 30 * overlay.uiScale)
+                anchors.topMargin: Math.max(116, parent.height * 0.17)
+                color: "#6f7782"
+                font.bold: true
+                font.letterSpacing: 1.5
+                font.pixelSize: Math.max(10, 12 * overlay.uiScale)
+                text: "COLLECTIONS"
+            }
 
-                Rectangle {
-                    width: parent.width
-                    height: Math.max(66, 82 * overlay.uiScale)
-                    radius: 12
-                    color: "#242931"
-                    border.color: "#3b424d"
+            ListView {
+                id: collectionList
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                anchors.leftMargin: Math.max(12, 16 * overlay.uiScale)
+                anchors.rightMargin: Math.max(12, 16 * overlay.uiScale)
+                anchors.topMargin: Math.max(150, parent.height * 0.22)
+                anchors.bottomMargin: Math.max(74, parent.height * 0.1)
+                spacing: Math.max(7, 9 * overlay.uiScale)
+                clip: true
+                model: overlay.collections
+                currentIndex: overlay.selectedCollectionIndex
+                onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
 
-                    Column {
-                        anchors.centerIn: parent
-                        spacing: 5
-                        Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            color: "#f4f1eb"
-                            font.family: "DejaVu Sans"
-                            font.bold: true
-                            font.pixelSize: Math.max(18, 23 * overlay.uiScale)
-                            text: "▦"
-                        }
-                        Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            color: "#f4f1eb"
-                            font.family: "DejaVu Sans"
-                            font.bold: true
-                            font.pixelSize: Math.max(9, 11 * overlay.uiScale)
-                            text: "LIBRARY"
-                        }
+                delegate: Rectangle {
+                    required property int index
+                    required property var modelData
+                    readonly property bool selected: index === overlay.selectedCollectionIndex
+                    width: collectionList.width
+                    height: Math.max(48, 60 * overlay.uiScale)
+                    radius: Math.max(9, 12 * overlay.uiScale)
+                    color: selected ? (overlay.navigationZone === 0 ? "#f0ede7" : "#252b33")
+                                    : "transparent"
+                    border.color: selected ? "#515a66" : "transparent"
+                    border.width: 1
+
+                    Text {
+                        anchors.left: parent.left
+                        anchors.right: countText.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.leftMargin: Math.max(14, 18 * overlay.uiScale)
+                        anchors.rightMargin: 8
+                        color: selected && overlay.navigationZone === 0 ? "#171a20" : "#d7d4ce"
+                        elide: Text.ElideRight
+                        font.bold: selected
+                        font.pixelSize: Math.max(12, 15 * overlay.uiScale)
+                        text: modelData.name
                     }
-                }
-
-                Text {
-                    width: parent.width
-                    color: "#747c87"
-                    horizontalAlignment: Text.AlignHCenter
-                    font.family: "DejaVu Sans"
-                    font.pixelSize: Math.max(10, 12 * overlay.uiScale)
-                    text: controller.adultLibrary.length + (controller.adultLibrary.length === 1
-                                                            ? " FILM" : " FILMS")
+                    Text {
+                        id: countText
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.rightMargin: Math.max(12, 16 * overlay.uiScale)
+                        color: selected && overlay.navigationZone === 0 ? "#606873" : "#77808b"
+                        font.pixelSize: Math.max(10, 12 * overlay.uiScale)
+                        text: overlay.collectionFilmCount(modelData)
+                    }
                 }
             }
 
@@ -479,7 +620,7 @@ Item {
                     horizontalAlignment: Text.AlignHCenter
                     font.family: "DejaVu Sans"
                     font.pixelSize: Math.max(9, 10 * overlay.uiScale)
-                    text: "EXIT"
+                    text: overlay.navigationZone === 0 ? "EXIT" : "COLLECTIONS"
                 }
             }
         }
@@ -549,8 +690,8 @@ Item {
                 anchors.right: parent.right
                 anchors.top: adultHeader.bottom
                 anchors.topMargin: Math.max(14, parent.height * 0.02)
-                height: parent.height * 0.39
-                visible: controller.adultLibrary.length > 0
+                height: parent.height * 0.31
+                visible: overlay.visibleFilms.length > 0
                 radius: Math.max(16, 24 * overlay.uiScale)
                 color: "#151920"
                 border.color: "#2c323b"
@@ -724,48 +865,49 @@ Item {
                 font.family: "DejaVu Sans"
                 font.bold: true
                 font.pixelSize: Math.max(16, 21 * overlay.uiScale)
-                text: "Your films"
+                text: (overlay.collections.length > overlay.selectedCollectionIndex
+                       ? overlay.collections[overlay.selectedCollectionIndex].name : "Films")
+                      + "   ·   " + overlay.visibleFilms.length
             }
 
-            ListView {
-                id: filmStrip
+            GridView {
+                id: filmGrid
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: libraryHeading.bottom
                 anchors.topMargin: Math.max(10, parent.height * 0.014)
                 anchors.bottom: adultFooter.top
                 anchors.bottomMargin: Math.max(10, parent.height * 0.014)
-                visible: controller.adultLibrary.length > 0
-                orientation: ListView.Horizontal
+                visible: overlay.visibleFilms.length > 0
                 clip: true
-                spacing: Math.max(12, 18 * overlay.uiScale)
-                model: controller.adultLibrary
+                readonly property int columns: Math.max(2, Math.floor(width /
+                    Math.max(190, 250 * overlay.uiScale)))
+                cellWidth: width / columns
+                cellHeight: Math.max(142, height / 2)
+                model: overlay.visibleFilms
                 currentIndex: overlay.selectedIndex
                 highlightMoveDuration: 180
-                onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
+                onCurrentIndexChanged: positionViewAtIndex(currentIndex, GridView.Contain)
 
                 delegate: Rectangle {
                     required property int index
                     required property var modelData
                     readonly property bool selected: index === overlay.selectedIndex
-                    width: Math.max(180, Math.min(258, filmStrip.height * 0.83))
-                    height: filmStrip.height - (selected ? 2 : Math.max(9, 14 * overlay.uiScale))
-                    y: selected ? 0 : Math.max(7, 10 * overlay.uiScale)
+                    width: filmGrid.cellWidth - Math.max(10, 15 * overlay.uiScale)
+                    height: filmGrid.cellHeight - Math.max(10, 15 * overlay.uiScale)
                     radius: Math.max(12, 18 * overlay.uiScale)
-                    color: selected ? "#f0ede7" : "#171b21"
-                    border.color: selected ? "#ffffff" : "#2a3038"
-                    border.width: selected ? 3 : 1
+                    color: selected && overlay.navigationZone === 1 ? "#f0ede7" : "#171b21"
+                    border.color: selected ? (overlay.navigationZone === 1 ? "#ffffff" : "#4a525d")
+                                                   : "#2a3038"
+                    border.width: selected && overlay.navigationZone === 1 ? 3 : 1
                     clip: true
-
-                    Behavior on y { NumberAnimation { duration: 160 } }
-                    Behavior on height { NumberAnimation { duration: 160 } }
 
                     Rectangle {
                         id: cardArtwork
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.top: parent.top
-                        height: parent.height * 0.56
+                        height: parent.height * 0.58
                         color: overlay.accentColor(index)
                         gradient: Gradient {
                             GradientStop {
@@ -818,7 +960,7 @@ Item {
 
                         Text {
                             width: parent.width
-                            color: selected ? "#181b20" : "#ece9e3"
+                            color: selected && overlay.navigationZone === 1 ? "#181b20" : "#ece9e3"
                             elide: Text.ElideRight
                             maximumLineCount: 2
                             wrapMode: Text.Wrap
@@ -830,7 +972,7 @@ Item {
 
                         Text {
                             width: parent.width
-                            color: selected ? "#666d75" : "#7e8791"
+                            color: selected && overlay.navigationZone === 1 ? "#666d75" : "#7e8791"
                             font.family: "DejaVu Sans"
                             font.pixelSize: Math.max(10, 12 * overlay.uiScale)
                             text: (modelData.year ? modelData.year + "  •  " : "")
@@ -855,7 +997,10 @@ Item {
                     font.family: "DejaVu Sans"
                     font.pixelSize: Math.max(10, 12 * overlay.uiScale)
                     text: overlay.errorMessage.length > 0
-                          ? overlay.errorMessage : "← →  BROWSE     OK  PLAY     BACK  EXIT"
+                          ? overlay.errorMessage
+                          : (overlay.navigationZone === 0
+                             ? "↑ ↓  COLLECTIONS     → / OK  OPEN     BACK  EXIT"
+                             : "↑ ↓ ← →  BROWSE     OK  PLAY     BACK  COLLECTIONS")
                 }
                 Text {
                     width: parent.width * 0.3
@@ -970,11 +1115,19 @@ Item {
         }
     }
 
+    Timer {
+        id: adultPositionTimer
+        interval: 10000
+        repeat: true
+        running: overlay.playing && !overlay.stopping && !overlay.externalSession
+        onTriggered: overlay.rememberCurrentFilmPosition()
+    }
+
     Connections {
         target: controller
 
         function onAdultLibraryChanged() {
-            overlay.clampLibrarySelection()
+            overlay.rebuildCollections()
         }
     }
 }

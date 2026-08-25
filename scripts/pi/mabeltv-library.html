@@ -41,6 +41,7 @@
     /* Adult-library rows are deliberately constrained independently of the
        outer panel: long film titles must never widen a phone layout. */
     @media(max-width:820px){#view-adult .adult-library,#view-adult .adult-film-list,#view-adult .adult-film{min-width:0!important;max-width:100%!important;box-sizing:border-box}#view-adult .adult-film{width:100%;overflow:hidden}#view-adult .adult-film-copy,#view-adult .adult-film-actions{min-width:0;max-width:100%}#view-adult .adult-film-copy{width:100%}#view-adult .adult-film-copy strong{overflow:visible;white-space:normal;overflow-wrap:anywhere;text-overflow:clip}#view-adult .adult-film-actions{width:100%}#view-adult .adult-film-actions button{min-width:0;width:0;flex:1}}
+    .adult-folder-manager{display:grid;gap:11px;margin:0 0 16px;padding:14px;border:1px solid var(--line);border-radius:12px;background:#f7f8f6}.adult-folder-tabs{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px}.adult-folder-tab{white-space:nowrap}.adult-folder-tab.active{background:var(--ink);color:#fff;border-color:var(--ink)}.adult-folder-tools{display:grid;grid-template-columns:minmax(150px,1fr) auto auto auto;gap:7px}.adult-folder-label{display:inline-flex;margin-top:5px;border-radius:999px;padding:3px 8px;background:#e6ebe7;color:#45534b;font-size:.72rem;font-weight:700}.adult-move{display:flex;gap:6px}.adult-move select{min-width:130px;max-width:190px}.adult-film-actions{flex-wrap:wrap;justify-content:flex-end}.adult-film-actions .adult-move{flex-basis:100%;justify-content:flex-end}@media(max-width:720px){.adult-folder-tools{grid-template-columns:1fr 1fr}.adult-folder-tools input{grid-column:1/-1}.adult-move{width:100%}.adult-move select{min-width:0;max-width:none;flex:1}}
     /* The on-TV redesign is now the single supported presentation and HDMI
        output follows the connected screen automatically. Keep accepting the
        legacy fields server-side for cached pages and older installations. */
@@ -122,8 +123,8 @@
       <section id="view-adult" class="view"><div class="page">
         <header class="adult-hero surface"><div><p class="eyebrow">Parent library</p><h1>Adult mode</h1><p>Your own films, separate from Mabel’s channels. They arrive in their original quality so you can test them first.</p></div><div class="adult-hero-stat"><strong id="adultHeroCount">0</strong><span>films ready on TV</span></div></header>
         <div class="adult-layout">
-          <section class="adult-upload surface"><p class="section-kicker">Add a film</p><h2>Upload original quality</h2><form id="adultUploadForm" class="upload-form"><label class="drop-field" for="adultFile"><input id="adultFile" type="file" accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg" multiple><span class="drop-copy"><span class="drop-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 14v5h14v-5"/></svg></span><strong>Choose films</strong><small>Films stay untouched. Test them on TV, then optimise only if one actually struggles.</small></span></label><div id="adultSelectedFiles" class="callout" aria-live="polite">No films selected yet.</div><button id="adultUploadButton" type="submit" class="primary" disabled>Upload selected films</button></form><div id="adultUploadState" class="hidden callout" aria-live="polite"><p id="adultUploadText">Uploading…</p><progress id="adultProgress" max="1" value="0"></progress></div></section>
-          <section class="adult-library surface"><div class="section-heading"><div><p class="section-kicker">On the television</p><h2>Adult library</h2></div><span id="adultFilmCount" class="count-badge">0</span></div><div id="tmdbState" class="tmdb-state callout">Checking metadata service…</div><p class="adult-library-note">Scan a film to add locally cached TMDB artwork and details. Nothing is looked up while you browse or watch.</p><div id="adultFilmList" class="adult-film-list"></div></section>
+          <section class="adult-upload surface"><p class="section-kicker">Add a film</p><h2>Upload original quality</h2><form id="adultUploadForm" class="upload-form"><label class="drop-field" for="adultFile"><input id="adultFile" type="file" accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg" multiple><span class="drop-copy"><span class="drop-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 14v5h14v-5"/></svg></span><strong>Choose films</strong><small>Films stay untouched. Test them on TV, then optimise only if one actually struggles.</small></span></label><label>Put new films in<select id="adultUploadFolder"><option value="">Unfiled</option></select></label><div id="adultSelectedFiles" class="callout" aria-live="polite">No films selected yet.</div><button id="adultUploadButton" type="submit" class="primary" disabled>Upload selected films</button></form><div id="adultUploadState" class="hidden callout" aria-live="polite"><p id="adultUploadText">Uploading…</p><progress id="adultProgress" max="1" value="0"></progress></div></section>
+          <section class="adult-library surface"><div class="section-heading"><div><p class="section-kicker">On the television</p><h2>Adult library</h2></div><span id="adultFilmCount" class="count-badge">0</span></div><div class="adult-folder-manager"><div id="adultFolderTabs" class="adult-folder-tabs"></div><div class="adult-folder-tools"><input id="adultFolderName" maxlength="80" placeholder="New collection name"><button id="adultCreateFolder" type="button" class="primary">Create folder</button><button id="adultRenameFolder" type="button" class="secondary" disabled>Rename selected</button><button id="adultDeleteFolder" type="button" class="danger" disabled>Delete selected</button></div></div><div id="tmdbState" class="tmdb-state callout">Checking metadata service…</div><p class="adult-library-note">Folders created here are the same collections shown on Adult TV. Move a film once and both screens update together.</p><div id="adultFilmList" class="adult-film-list"></div></section>
         </div><section class="adult-guidance" aria-label="Adult library details"><div><strong>Private library</strong><span>These films never appear in children’s channels.</span></div><div><strong>Original first</strong><span>Every new film stays exactly as uploaded until you choose otherwise.</span></div><div><strong>Optimise only if needed</strong><span>If a film stutters, make a Pi-friendly 720p copy from its film card.</span></div></section><footer><span data-tv-name>Your TV</span> · Adult mode is protected by the on-TV parent menu</footer>
       </div></section>
       <section id="view-usb" class="view"><div class="page">
@@ -157,6 +158,7 @@
     let programmeVisibility = 'all'
     let programmePage = 1
     let adultOptimisationRefresh = null
+    let adultFolderFilter = '*'
     const PROGRAMMES_PER_PAGE = 12
     let setupStep = 1
     let setupChannels = []
@@ -579,15 +581,47 @@
 
     function renderAdultLibrary() {
       const films = library?.adult_library || []
+      const folders = library?.adult_folders || []
+      if (adultFolderFilter !== '*' && adultFolderFilter !== '' && !folders.includes(adultFolderFilter)) adultFolderFilter = '*'
       $('#adultFilmCount').textContent = String(films.length)
       $('#adultHeroCount').textContent = String(films.length)
+      const uploadFolder = $('#adultUploadFolder')
+      const uploadChoice = uploadFolder.value
+      uploadFolder.innerHTML = '<option value="">Unfiled</option>'
+      folders.forEach(folder => {
+        const option = document.createElement('option'); option.value = folder; option.textContent = folder
+        uploadFolder.append(option)
+      })
+      uploadFolder.value = folders.includes(uploadChoice) ? uploadChoice : ''
+
+      const tabs = $('#adultFolderTabs'); tabs.innerHTML = ''
+      const tabValues = [{ value: '*', name: 'All films' }, { value: '', name: 'Unfiled' },
+        ...folders.map(folder => ({ value: folder, name: folder }))]
+      tabValues.forEach(item => {
+        const count = item.value === '*' ? films.length : films.filter(film => film.folder === item.value).length
+        if (item.value === '' && count === 0) return
+        const tab = document.createElement('button'); tab.type = 'button'
+        tab.className = `secondary adult-folder-tab${adultFolderFilter === item.value ? ' active' : ''}`
+        tab.textContent = `${item.name} · ${count}`
+        tab.onclick = () => { adultFolderFilter = item.value; renderAdultLibrary() }
+        tabs.append(tab)
+      })
+      const realFolderSelected = adultFolderFilter !== '*' && adultFolderFilter !== ''
+      $('#adultRenameFolder').disabled = !realFolderSelected
+      $('#adultDeleteFolder').disabled = !realFolderSelected
+
       const root = $('#adultFilmList')
       root.innerHTML = ''
       if (!films.length) {
         root.innerHTML = '<div class="empty"><strong>No films yet</strong>Upload one here and it will appear in Adult mode on the television.</div>'
         return
       }
-      films.forEach(film => {
+      const visibleFilms = adultFolderFilter === '*' ? films
+        : films.filter(film => film.folder === adultFolderFilter)
+      if (!visibleFilms.length) {
+        root.innerHTML = '<div class="empty"><strong>This folder is empty</strong>Move a film here or choose it when uploading.</div>'
+      }
+      visibleFilms.forEach(film => {
         const row = document.createElement('article')
         row.className = 'adult-film metadata-film'
         const metadata = film.metadata || {}
@@ -601,6 +635,8 @@
         copy.className = 'adult-film-copy'
         const title = document.createElement('strong')
         title.textContent = metadata.title || film.display_name
+        const folderLabel = document.createElement('span')
+        folderLabel.className = 'adult-folder-label'; folderLabel.textContent = film.folder || 'Unfiled'
         const size = document.createElement('small')
         const state = film.playback_state || 'original'
         const stateLabel = state === 'optimised' ? 'Optimised for Pi · 720p H.264'
@@ -609,7 +645,7 @@
           : state === 'error' ? (film.playback_message || 'Optimisation stopped — try again')
           : 'Original quality · test on TV first'
         size.textContent = `${metadata.year ? metadata.year + ' · ' : ''}${(Number(film.size || 0) / 1073741824).toFixed(2)} GB · ${stateLabel}`
-        copy.append(title, size)
+        copy.append(title, folderLabel, size)
         if (metadata.overview) {
           const overview = document.createElement('p')
           overview.className = 'metadata-overview'
@@ -622,7 +658,7 @@
         rename.type = 'button'; rename.className = 'secondary'; rename.textContent = 'Rename'
         rename.onclick = () => {
           const name = prompt('Film name:', film.display_name)
-          if (name?.trim()) manage('rename-adult', { file: film.name, name: name.trim() })
+          if (name?.trim()) manage('rename-adult', { file: film.path, name: name.trim() })
         }
         const optimise = document.createElement('button')
         optimise.type = 'button'; optimise.className = 'secondary'
@@ -631,20 +667,32 @@
         optimise.disabled = state === 'optimised' || state === 'processing' || state === 'queued'
         optimise.onclick = () => {
           if (confirm(`Optimise “${film.display_name}” for the Pi? After a successful check, the original will be replaced by a smaller 720p H.264 version.`))
-            manage('optimise-adult', { file: film.name })
+            manage('optimise-adult', { file: film.path })
         }
         const remove = document.createElement('button')
         remove.type = 'button'; remove.className = 'danger'; remove.textContent = 'Remove'
         remove.onclick = () => {
           if (confirm(`Move “${film.display_name}” to the recycle bin?`))
-            manage('trash-adult', { file: film.name })
+            manage('trash-adult', { file: film.path })
         }
         const scan = document.createElement('button')
         scan.type = 'button'; scan.className = 'secondary'
         scan.textContent = metadata.tmdb_id ? 'Refresh metadata' : 'Scan metadata'
         scan.disabled = !tmdbConfigured
         scan.onclick = () => scanTmdb(film)
-        actions.append(scan, rename, optimise, remove)
+        const moveWrap = document.createElement('div'); moveWrap.className = 'adult-move'
+        const moveSelect = document.createElement('select')
+        const moveOptions = [{ value: '', name: 'Unfiled' }, ...folders.map(folder => ({ value: folder, name: folder }))]
+        moveOptions.forEach(item => {
+          const option = document.createElement('option'); option.value = item.value; option.textContent = item.name
+          moveSelect.append(option)
+        })
+        moveSelect.value = film.folder || ''
+        const move = document.createElement('button'); move.type = 'button'; move.className = 'secondary'; move.textContent = 'Move'
+        move.disabled = folders.length === 0
+        move.onclick = () => manage('move-adult', { file: film.path, folder: moveSelect.value })
+        moveWrap.append(moveSelect, move)
+        actions.append(moveWrap, scan, rename, optimise, remove)
         row.append(poster, copy, actions)
         root.append(row)
       })
@@ -657,7 +705,7 @@
       try {
         notice(`Searching TMDB for ${film.display_name}…`)
         const result = await api('/api/tmdb/search', {
-          method: 'POST', body: JSON.stringify({ file: film.name })
+          method: 'POST', body: JSON.stringify({ file: film.path })
         })
         $('#tmdbDialogTitle').textContent = `Match “${film.display_name}”`
         const root = $('#tmdbResults')
@@ -676,7 +724,7 @@
           choose.onclick = async () => {
             choose.disabled = true
             try {
-              await api('/api/tmdb/apply', { method: 'POST', body: JSON.stringify({ file: film.name, tmdb_id: match.id }) })
+              await api('/api/tmdb/apply', { method: 'POST', body: JSON.stringify({ file: film.path, tmdb_id: match.id }) })
               $('#tmdbDialog').close(); await load(); notice('Film metadata and artwork saved locally.')
             } catch (error) { notice(error.message, true); choose.disabled = false }
           }
@@ -687,6 +735,29 @@
     }
 
     $('#tmdbClose').onclick = () => $('#tmdbDialog').close()
+
+    $('#adultCreateFolder').onclick = async () => {
+      const name = $('#adultFolderName').value.trim()
+      if (!name) return
+      await manage('create-adult-folder', { name })
+      $('#adultFolderName').value = ''
+      adultFolderFilter = name
+      renderAdultLibrary()
+    }
+    $('#adultRenameFolder').onclick = async () => {
+      if (adultFolderFilter === '*' || adultFolderFilter === '') return
+      const name = prompt('Collection name:', adultFolderFilter)
+      if (!name?.trim()) return
+      const oldFolder = adultFolderFilter
+      adultFolderFilter = name.trim()
+      await manage('rename-adult-folder', { folder: oldFolder, name: name.trim() })
+    }
+    $('#adultDeleteFolder').onclick = async () => {
+      if (adultFolderFilter === '*' || adultFolderFilter === '') return
+      if (!confirm(`Delete the empty “${adultFolderFilter}” collection?`)) return
+      const folder = adultFolderFilter; adultFolderFilter = '*'
+      await manage('delete-adult-folder', { folder })
+    }
 
     function formatBytes(bytes) {
       const value = Number(bytes || 0)
@@ -1343,7 +1414,8 @@
       const prefix = total > 1 ? `Film ${position} of ${total}: ` : ''
       $('#adultProgress').max = file.size; $('#adultProgress').value = 0
       const created = await api('/api/adult/uploads', {
-        method: 'POST', body: JSON.stringify({ file_name: file.name, size: file.size })
+        method: 'POST', body: JSON.stringify({ file_name: file.name, size: file.size,
+                                               folder: $('#adultUploadFolder').value })
       })
       let offset = Number(created.offset) || 0, result = created
       while (offset < file.size) {

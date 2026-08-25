@@ -2,6 +2,7 @@
 
 #include <QDateTime>
 #include <QDir>
+#include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
@@ -389,18 +390,40 @@ QVariantList TvController::adultLibrary() const
         QStringLiteral("*.mov"), QStringLiteral("*.webm"), QStringLiteral("*.avi"),
         QStringLiteral("*.mpg"), QStringLiteral("*.mpeg"),
     };
-    const QFileInfoList entries = directory.entryInfoList(
-        filters, QDir::Files | QDir::Readable, QDir::Name | QDir::IgnoreCase);
+    QFileInfoList entries;
+    QDirIterator iterator(directory.absolutePath(), filters,
+                          QDir::Files | QDir::Readable,
+                          QDirIterator::Subdirectories);
+    while (iterator.hasNext()) {
+        const QFileInfo entry(iterator.next());
+        const QString relativePath = directory.relativeFilePath(entry.absoluteFilePath());
+        const QStringList parts = relativePath.split(QLatin1Char('/'));
+        if (parts.size() <= 2 && !relativePath.startsWith(QStringLiteral(".metadata/"))) {
+            entries.append(entry);
+        }
+    }
+    std::sort(entries.begin(), entries.end(), [&directory](const QFileInfo &left,
+                                                            const QFileInfo &right) {
+        return directory.relativeFilePath(left.absoluteFilePath()).compare(
+                   directory.relativeFilePath(right.absoluteFilePath()),
+                   Qt::CaseInsensitive) < 0;
+    });
     films.reserve(entries.size());
     for (const QFileInfo &entry : entries) {
-        const QJsonObject state = metadataStates.value(entry.fileName()).toObject();
+        const QString relativePath = directory.relativeFilePath(entry.absoluteFilePath());
+        const QJsonObject state = metadataStates.value(relativePath).toObject();
         const QJsonObject metadata = state.value(QStringLiteral("metadata")).toObject();
         const QString metadataTitle = metadata.value(QStringLiteral("title")).toString();
         const QString posterName = metadata.value(QStringLiteral("poster")).toString();
         const QString posterPath = directory.filePath(
             QStringLiteral(".metadata/%1").arg(posterName));
         films.append(QVariantMap{
+            {QStringLiteral("id"), state.value(QStringLiteral("library_id"))
+                 .toString(relativePath)},
             {QStringLiteral("fileName"), entry.fileName()},
+            {QStringLiteral("path"), relativePath},
+            {QStringLiteral("folder"), QFileInfo(relativePath).path() == QStringLiteral(".")
+                 ? QString() : QFileInfo(relativePath).path()},
             {QStringLiteral("name"), metadataTitle.isEmpty()
                  ? displayNameForEpisodePath(entry.fileName()) : metadataTitle},
             {QStringLiteral("source"), QUrl::fromLocalFile(entry.absoluteFilePath())},
@@ -1032,6 +1055,32 @@ void TvController::reloadAdultLibrary()
     emit adultLibraryChanged();
 }
 
+double TvController::adultPlaybackPosition(const QString &libraryId) const
+{
+    return m_adultPlaybackPositions.value(libraryId, 0.0);
+}
+
+void TvController::setAdultPlaybackPosition(const QString &libraryId,
+                                            double positionSeconds)
+{
+    const QString key = libraryId.trimmed();
+    if (key.isEmpty() || !std::isfinite(positionSeconds)) {
+        return;
+    }
+    const double position = std::max(0.0, positionSeconds);
+    if (position < 2.0) {
+        if (m_adultPlaybackPositions.remove(key) > 0) {
+            saveState();
+        }
+        return;
+    }
+    if (std::abs(m_adultPlaybackPositions.value(key, -1.0) - position) < 0.5) {
+        return;
+    }
+    m_adultPlaybackPositions.insert(key, position);
+    saveState();
+}
+
 void TvController::toggleChannelEnabled(int channelNumber)
 {
     if (m_parentAccessState != ParentOpen) {
@@ -1441,6 +1490,15 @@ void TvController::loadState()
     const bool sameUptimeSession =
         object.value(QStringLiteral("uptime_session_id")).toString() == m_sessionId;
     const int stateSchemaVersion = object.value(QStringLiteral("schema_version")).toInt(0);
+    const QJsonObject adultPositions = object.value(QStringLiteral("adult_positions")).toObject();
+    m_adultPlaybackPositions.clear();
+    for (auto iterator = adultPositions.constBegin(); iterator != adultPositions.constEnd();
+         ++iterator) {
+        const double position = iterator.value().toDouble(0.0);
+        if (!iterator.key().isEmpty() && std::isfinite(position) && position >= 2.0) {
+            m_adultPlaybackPositions.insert(iterator.key(), position);
+        }
+    }
     const QJsonObject timelines = object.value(QStringLiteral("channel_timelines")).toObject();
 
     for (ChannelRuntime &runtime : m_channels) {
@@ -1524,7 +1582,7 @@ void TvController::saveState() const
     }
 
     QJsonObject object{
-        {QStringLiteral("schema_version"), 3},
+        {QStringLiteral("schema_version"), 4},
         {QStringLiteral("uptime_session_id"), m_sessionId},
         {QStringLiteral("saved_at_utc_ms"),
          static_cast<double>(QDateTime::currentMSecsSinceEpoch())},
@@ -1536,6 +1594,13 @@ void TvController::saveState() const
         {QStringLiteral("standby"), m_standby},
         {QStringLiteral("playback_paused"), m_playbackPaused},
     };
+
+    QJsonObject adultPositions;
+    for (auto iterator = m_adultPlaybackPositions.constBegin();
+         iterator != m_adultPlaybackPositions.constEnd(); ++iterator) {
+        adultPositions.insert(iterator.key(), iterator.value());
+    }
+    object.insert(QStringLiteral("adult_positions"), adultPositions);
 
     QJsonObject timelines;
     const qint64 elapsedNow = m_broadcastClock.isValid() ? m_broadcastClock.elapsed() : 0;

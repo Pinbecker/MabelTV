@@ -713,6 +713,18 @@ class Library:
             metadata["status"] = "finalising"
             metadata["updated"] = time.time()
             self.write_json(self.incoming / f"{upload_id}.json", metadata)
+            if adult_upload:
+                with self.config_lock:
+                    states = self.adult_media_states()
+                    relative = self.adult_relative_path(destination)
+                    current = states.get(relative, {})
+                    if not isinstance(current, dict):
+                        current = {}
+                    current.setdefault("library_id", uuid.uuid4().hex)
+                    current.setdefault("state", "original")
+                    current.setdefault("message", "")
+                    states[relative] = current
+                    self.write_adult_media_states(states)
             refreshed = self.refresh_tv()
             result = {
                 "id": upload_id,
@@ -1070,12 +1082,56 @@ class Library:
         folder.mkdir(mode=0o750, exist_ok=True)
         return folder / name
 
-    def safe_adult_path(self, file_name: str) -> Path:
-        name = Path(file_name).name
-        if name != file_name or not name or Path(name).suffix.lower() not in SUPPORTED_EXTENSIONS:
+    @staticmethod
+    def normalise_adult_folder(folder_name: str) -> str:
+        requested = str(folder_name or "").strip()
+        name = SAFE_NAME.sub("", requested).strip(". ")
+        if (not name or name in {".", ".."} or "/" in requested
+                or "\\" in requested or len(name) > 80):
+            raise ValueError("Enter a simple folder name")
+        return name
+
+    def adult_folder_path(self, folder_name: str, *, create: bool = False) -> Path:
+        name = self.normalise_adult_folder(folder_name)
+        self.adult_root.mkdir(mode=0o750, exist_ok=True)
+        path = self.adult_root / name
+        if path.exists() and not path.is_dir():
+            raise ValueError("That folder name is already in use")
+        if create:
+            path.mkdir(mode=0o750, exist_ok=True)
+        return path
+
+    def safe_adult_path(self, file_name: str, *, create_folder: bool = False) -> Path:
+        relative = str(file_name or "").strip().replace("\\", "/")
+        parts = relative.split("/")
+        if len(parts) not in {1, 2} or any(not part or part in {".", ".."}
+                                           for part in parts):
+            raise ValueError("That is not a supported Adult library path")
+        name = parts[-1]
+        if Path(name).name != name or Path(name).suffix.lower() not in SUPPORTED_EXTENSIONS:
             raise ValueError("That is not a supported video file")
         self.adult_root.mkdir(mode=0o750, exist_ok=True)
-        return self.adult_root / name
+        parent = self.adult_root
+        if len(parts) == 2:
+            folder = self.normalise_adult_folder(parts[0])
+            if folder != parts[0]:
+                raise ValueError("That Adult library folder is not valid")
+            parent = self.adult_folder_path(folder, create=create_folder)
+        return parent / name
+
+    def adult_relative_path(self, path: Path) -> str:
+        try:
+            return path.relative_to(self.adult_root).as_posix()
+        except ValueError as error:
+            raise ValueError("That film is outside the Adult library") from error
+
+    def adult_folders(self) -> list[str]:
+        self.adult_root.mkdir(mode=0o750, exist_ok=True)
+        return sorted(
+            (item.name for item in self.adult_root.iterdir()
+             if item.is_dir() and not item.name.startswith(".")),
+            key=str.casefold,
+        )
 
     def adult_media_states(self) -> dict[str, dict[str, Any]]:
         value = self.read_json(self.adult_metadata_path, {})
@@ -1113,22 +1169,41 @@ class Library:
             self.write_adult_media_states(values)
 
     def adult_library(self) -> list[dict[str, Any]]:
+        with self.config_lock:
+            return self._adult_library()
+
+    def _adult_library(self) -> list[dict[str, Any]]:
         states = self.adult_media_states()
+        changed = False
         values = []
-        for item in sorted(self.adult_root.glob("*"), key=lambda path: path.name.lower()):
+        candidates = list(self.adult_root.glob("*"))
+        for folder in self.adult_folders():
+            candidates.extend((self.adult_root / folder).glob("*"))
+        for item in sorted(candidates,
+                           key=lambda path: self.adult_relative_path(path).casefold()):
             if item.is_file() and item.suffix.lower() in SUPPORTED_EXTENSIONS:
-                state = states.get(item.name, {})
+                relative = self.adult_relative_path(item)
+                state = states.get(relative, {})
+                if not isinstance(state, dict):
+                    state = {}
+                if not state.get("library_id"):
+                    state["library_id"] = uuid.uuid4().hex
+                    states[relative] = state
+                    changed = True
                 values.append({
                     "name": item.name,
+                    "path": relative,
+                    "folder": "" if item.parent == self.adult_root else item.parent.name,
+                    "library_id": state["library_id"],
                     "display_name": self.display_name(item.name),
                     "size": item.stat().st_size,
-                    "playback_state": state.get("state", "original")
-                    if isinstance(state, dict) else "original",
-                    "playback_message": state.get("message", "")
-                    if isinstance(state, dict) else "",
+                    "playback_state": state.get("state", "original"),
+                    "playback_message": state.get("message", ""),
                     "metadata": state.get("metadata", {})
-                    if isinstance(state, dict) and isinstance(state.get("metadata"), dict) else {},
+                    if isinstance(state.get("metadata"), dict) else {},
                 })
+        if changed:
+            self.write_adult_media_states(states)
         return values
 
     @staticmethod
@@ -1440,7 +1515,7 @@ class Library:
             raise ValueError("TMDB could not be reached. Try the scan again later") from error
 
     def tmdb_search(self, payload: dict[str, Any]) -> dict[str, Any]:
-        file_name = Path(str(payload.get("file", ""))).name
+        file_name = str(payload.get("file", ""))
         source = self.safe_adult_path(file_name)
         if not source.is_file():
             raise ValueError("Film not found")
@@ -1470,7 +1545,7 @@ class Library:
         return {"file": file_name, "query": title, "results": results}
 
     def tmdb_apply(self, payload: dict[str, Any]) -> dict[str, Any]:
-        file_name = Path(str(payload.get("file", ""))).name
+        file_name = str(payload.get("file", ""))
         source = self.safe_adult_path(file_name)
         if not source.is_file():
             raise ValueError("Film not found")
@@ -1522,7 +1597,10 @@ class Library:
 
     def upload_destination(self, metadata: dict[str, Any]) -> Path:
         if metadata.get("kind") == "adult":
-            return self.safe_adult_path(str(metadata.get("file_name", "")))
+            folder = str(metadata.get("folder", ""))
+            relative = f"{folder}/{metadata.get('file_name', '')}" if folder \
+                else str(metadata.get("file_name", ""))
+            return self.safe_adult_path(relative, create_folder=bool(folder))
         channel = self.channel(int(metadata.get("channel")))
         return self.safe_media_path(channel, str(metadata.get("file_name", "")))
 
@@ -1604,6 +1682,7 @@ class Library:
             },
             "tv_settings": self.tv_settings(settings),
             "adult_library": self.adult_library(),
+            "adult_folders": self.adult_folders(),
             "recycle": self.recycle_items(),
             "uploads": self.upload_jobs(),
             "storage": {"free_gb": disk.free / 1024**3,
@@ -1997,7 +2076,8 @@ class Library:
         source = self.safe_adult_path(file_name)
         if not source.is_file():
             raise ValueError("Film not found")
-        state = self.adult_media_states().get(source.name, {})
+        relative = self.adult_relative_path(source)
+        state = self.adult_media_states().get(relative, {})
         if isinstance(state, dict) and state.get("state") in {"queued", "processing"}:
             raise ValueError("This film is already being optimised")
         # Keep the original until the new copy has passed validation and has
@@ -2006,12 +2086,12 @@ class Library:
         if shutil.disk_usage(self.media_root).free < reserve:
             raise ValueError("There is not enough free space to safely optimise this film")
         with self.adult_optimisation_lock:
-            if source.name in self.adult_optimisation_active:
+            if relative in self.adult_optimisation_active:
                 raise ValueError("This film is already being optimised")
-            self.adult_optimisation_active.add(source.name)
+            self.adult_optimisation_active.add(relative)
         with self.config_lock:
-            self.set_adult_media_state(source.name, "queued")
-        threading.Thread(target=self.optimise_adult_file, args=(source.name,),
+            self.set_adult_media_state(relative, "queued")
+        threading.Thread(target=self.optimise_adult_file, args=(relative,),
                          name="mabeltv-adult-optimise", daemon=True).start()
 
     def optimise_adult_file(self, file_name: str) -> None:
@@ -2030,9 +2110,16 @@ class Library:
                 self.optimise_adult_for_playback(source, destination)
                 if destination != source:
                     source.unlink()
+                destination_relative = self.adult_relative_path(destination)
                 with self.config_lock:
-                    self.remove_adult_media_state(source.name)
-                    self.set_adult_media_state(destination.name, "optimised")
+                    states = self.adult_media_states()
+                    current = states.pop(file_name, {})
+                    if not isinstance(current, dict):
+                        current = {}
+                    current.update({"state": "optimised", "message": "",
+                                    "updated": time.time()})
+                    states[destination_relative] = current
+                    self.write_adult_media_states(states)
                 self.refresh_tv()
         except Exception as error:
             with self.config_lock:
@@ -2120,8 +2207,11 @@ class Library:
         """Reserve a resumable upload prepared for reliable Pi playback."""
         with self.config_lock:
             file_name = str(payload.get("file_name", ""))
+            requested_folder = str(payload.get("folder", "")).strip()
+            folder = self.normalise_adult_folder(requested_folder) if requested_folder else ""
             size = int(payload.get("size", 0))
-            destination = self.safe_adult_path(file_name)
+            relative = f"{folder}/{file_name}" if folder else file_name
+            destination = self.safe_adult_path(relative, create_folder=bool(folder))
             if size <= 0 or size > MAX_UPLOAD_BYTES:
                 raise ValueError("That file size is not supported")
 
@@ -2129,7 +2219,8 @@ class Library:
                 if manifest.name.endswith(".result.json"):
                     continue
                 value = self.read_json(manifest, {})
-                if value.get("kind") != "adult" or value.get("file_name") != file_name:
+                if (value.get("kind") != "adult" or value.get("file_name") != file_name
+                        or str(value.get("folder", "")) != folder):
                     continue
                 if value.get("size") != size:
                     raise ValueError(
@@ -2161,6 +2252,7 @@ class Library:
                 "id": upload_id,
                 "kind": "adult",
                 "file_name": file_name,
+                "folder": folder,
                 "size": size,
                 "created": time.time(),
             })
@@ -2569,6 +2661,62 @@ class Library:
             if folder.is_dir() and not any(folder.iterdir()):
                 folder.rmdir()
             return
+        if action == "create-adult-folder":
+            name = self.normalise_adult_folder(str(payload.get("name", "")))
+            destination = self.adult_root / name
+            if destination.exists():
+                raise ValueError("That Adult TV folder already exists")
+            destination.mkdir(mode=0o750)
+            return
+        if action == "rename-adult-folder":
+            source = self.adult_folder_path(str(payload.get("folder", "")))
+            if not source.is_dir():
+                raise ValueError("Adult TV folder not found")
+            new_name = self.normalise_adult_folder(str(payload.get("name", "")))
+            destination = self.adult_root / new_name
+            if destination.exists() and destination != source:
+                raise ValueError("That Adult TV folder already exists")
+            old_name = source.name
+            source.rename(destination)
+            states = self.adult_media_states()
+            prefix = old_name + "/"
+            updated = {
+                (new_name + "/" + key[len(prefix):]) if key.startswith(prefix) else key: value
+                for key, value in states.items()
+            }
+            if updated != states:
+                self.write_adult_media_states(updated)
+            return
+        if action == "delete-adult-folder":
+            folder = self.adult_folder_path(str(payload.get("folder", "")))
+            if not folder.is_dir():
+                raise ValueError("Adult TV folder not found")
+            if any(folder.iterdir()):
+                raise ValueError("Move every film out of this folder before deleting it")
+            folder.rmdir()
+            return
+        if action == "move-adult":
+            source = self.safe_adult_path(str(payload.get("file", "")))
+            if not source.is_file():
+                raise ValueError("Film not found")
+            requested_folder = str(payload.get("folder", "")).strip()
+            parent = (self.adult_folder_path(requested_folder, create=False)
+                      if requested_folder else self.adult_root)
+            if not parent.is_dir():
+                raise ValueError("Choose an existing Adult TV folder")
+            destination = parent / source.name
+            if destination.exists() and destination != source:
+                raise ValueError("That folder already contains a film with this name")
+            if destination == source:
+                return
+            old_relative = self.adult_relative_path(source)
+            new_relative = self.adult_relative_path(destination)
+            source.rename(destination)
+            states = self.adult_media_states()
+            if old_relative in states:
+                states[new_relative] = states.pop(old_relative)
+                self.write_adult_media_states(states)
+            return
         if action == "rename-adult":
             source = self.safe_adult_path(str(payload.get("file", "")))
             if not source.is_file():
@@ -2576,13 +2724,15 @@ class Library:
             proposed = SAFE_NAME.sub("", str(payload.get("name", "")).strip()).strip(". ")
             if not proposed:
                 raise ValueError("Enter a film name")
-            destination = self.safe_adult_path(proposed + source.suffix)
+            destination = source.with_name(proposed + source.suffix)
             if destination.exists() and destination != source:
                 raise ValueError("That name is already used in Adult mode")
             source.rename(destination)
             state = self.adult_media_states()
-            if source.name in state:
-                state[destination.name] = state.pop(source.name)
+            old_relative = self.adult_relative_path(source)
+            new_relative = self.adult_relative_path(destination)
+            if old_relative in state:
+                state[new_relative] = state.pop(old_relative)
                 self.write_adult_media_states(state)
             return
         if action == "optimise-adult":
@@ -2595,16 +2745,21 @@ class Library:
             item_id = f"{int(time.time())}-{uuid.uuid4().hex[:8]}"
             destination_dir = self.bin / item_id
             destination_dir.mkdir(mode=0o750)
+            relative = self.adult_relative_path(source)
+            states = self.adult_media_states()
+            adult_state = states.get(relative, {})
             self.write_json(destination_dir / "manifest.json", {
                 "id": item_id, "file_name": source.name,
-                "folder": ".adult", "channel_name": "Adult mode",
+                "folder": ".adult" + ("/" + source.parent.name
+                                        if source.parent != self.adult_root else ""),
+                "channel_name": "Adult mode", "adult_state": adult_state,
             })
             try:
                 shutil.move(str(source), str(destination_dir / source.name))
             except Exception:
                 shutil.rmtree(destination_dir, ignore_errors=True)
                 raise
-            self.remove_adult_media_state(source.name)
+            self.remove_adult_media_state(relative)
             return
         if action in {"toggle-channel", "toggle-programme", "rename", "trash"}:
             channel = self.channel(int(payload.get("channel")))
@@ -2652,6 +2807,12 @@ class Library:
                 folder = self.media_root / str(manifest.get("folder", "")); file_name = str(manifest.get("file_name", "")); destination = folder / Path(file_name).name
                 if not manifest.get("folder") or destination.exists(): raise ValueError("Cannot restore this item because a file with that name already exists")
                 folder.mkdir(mode=0o750, exist_ok=True); shutil.move(str(directory / file_name), str(destination)); shutil.rmtree(directory)
+                adult_state = manifest.get("adult_state")
+                if str(manifest.get("folder", "")).startswith(".adult") \
+                        and isinstance(adult_state, dict):
+                    states = self.adult_media_states()
+                    states[self.adult_relative_path(destination)] = adult_state
+                    self.write_adult_media_states(states)
             else:
                 shutil.rmtree(directory)
         else:

@@ -974,6 +974,7 @@ void CoreTests::adultLibraryIsSeparateAndParentOnly()
     QVERIFY(directory.isValid());
     QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/one")));
     QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/.adult")));
+    QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/.adult/Harry Potter")));
 
     QFile configuration(directory.filePath(QStringLiteral("channels.json")));
     QVERIFY(configuration.open(QIODevice::WriteOnly));
@@ -983,6 +984,19 @@ void CoreTests::adultLibraryIsSeparateAndParentOnly()
     QVERIFY(film.open(QIODevice::WriteOnly));
     film.write("raw");
     film.close();
+    QFile nestedFilm(directory.filePath(
+        QStringLiteral("media/.adult/Harry Potter/Philosophers Stone.mp4")));
+    QVERIFY(nestedFilm.open(QIODevice::WriteOnly));
+    nestedFilm.write("nested");
+    nestedFilm.close();
+    QFile adultMetadata(directory.filePath(QStringLiteral("media/.adult/.mabeltv-adult.json")));
+    QVERIFY(adultMetadata.open(QIODevice::WriteOnly));
+    adultMetadata.write(R"({
+        "Evening Film.mkv":{"library_id":"evening-id"},
+        "Harry Potter/Philosophers Stone.mp4":{"library_id":"potter-id",
+          "metadata":{"title":"Harry Potter and the Philosopher's Stone","year":"2001"}}
+    })");
+    adultMetadata.close();
 
     TvController controller;
     QVERIFY(controller.initialize(configuration.fileName(),
@@ -994,9 +1008,14 @@ void CoreTests::adultLibraryIsSeparateAndParentOnly()
                                                              QStringLiteral("h264"), {}};
                                   }));
     const QVariantList adult = controller.adultLibrary();
-    QCOMPARE(adult.size(), 1);
+    QCOMPARE(adult.size(), 2);
     QCOMPARE(adult.constFirst().toMap().value(QStringLiteral("name")).toString(),
              QStringLiteral("Evening Film"));
+    const QVariantMap nested = adult.at(1).toMap();
+    QCOMPARE(nested.value(QStringLiteral("id")).toString(), QStringLiteral("potter-id"));
+    QCOMPARE(nested.value(QStringLiteral("folder")).toString(), QStringLiteral("Harry Potter"));
+    QCOMPARE(nested.value(QStringLiteral("name")).toString(),
+             QStringLiteral("Harry Potter and the Philosopher's Stone"));
     QCOMPARE(controller.parentLibrary().constFirst().toMap()
                  .value(QStringLiteral("programmeCount")).toInt(), 0);
 
@@ -1010,6 +1029,18 @@ void CoreTests::adultLibraryIsSeparateAndParentOnly()
     controller.requestParentCommand(QStringLiteral("adult"));
     QCOMPARE(commands.count(), 1);
     QCOMPARE(commands.constFirst().constFirst().toString(), QStringLiteral("adult"));
+
+    controller.setAdultPlaybackPosition(QStringLiteral("potter-id"), 842.5);
+    TvController restored;
+    QVERIFY(restored.initialize(configuration.fileName(),
+                                directory.filePath(QStringLiteral("settings.json")),
+                                directory.filePath(QStringLiteral("media")),
+                                directory.filePath(QStringLiteral("state.json")),
+                                [](const QString &) {
+                                    return MediaInspection{true, true, 42.0,
+                                                           QStringLiteral("h264"), {}};
+                                }));
+    QCOMPARE(restored.adultPlaybackPosition(QStringLiteral("potter-id")), 842.5);
 }
 
 void CoreTests::longPowerRequestBypassesParentPanelButUsesOnlyShutdownCommand()
