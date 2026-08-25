@@ -26,8 +26,10 @@ Persistent Pi paths:
 | `/var/lib/mabeltv/settings.json` | parent choices | application |
 | `/var/lib/mabeltv/state.json` | volume, channel, broadcast timeline, and current-uptime episode inactivity markers | application |
 | `/var/lib/mabeltv/media-index.json` | ffprobe result cache | application/tools |
+| `/var/lib/mabeltv/secrets/tmdb-api-key` | optional root-controlled TMDB key | operator |
 | `/var/log/mabeltv` | rotating application and soak logs | application/tools |
 | `/srv/mabeltv/media` | user-supplied programmes | operator |
+| `/media/mabeltv-usb/*` | transient read-only removable-media mounts | appliance helper |
 | `/etc/rc_keymaps/mabeltv.toml` | learned IR scan-code map | remote mapper |
 
 There is no network playback, cloud service, account database, desktop session, or CEC control path. A bounded standard-library HTTP service provides the LAN-only grown-up dashboard on port 8080. It writes uploads into a staging inbox, publishes only complete media, owns channel/browser-library mutations, and sends the player a coalesced live-reload signal. Avahi advertises the local address; nothing is intentionally exposed beyond the home network.

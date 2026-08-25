@@ -796,6 +796,107 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertFalse(abandoned_manifest.exists())
 
 
+class UsbAndMetadataTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.fixture = LibraryFixture()
+        self.usb_root = self.fixture.root / "usb"
+        self.volume = self.usb_root / "TEST-USB"
+        self.volume.mkdir(parents=True)
+        self.fixture.library.usb_root = self.usb_root.resolve()
+        self.fixture.library.usb_requires_mount = False
+        self.fixture.library.refresh_tv = mock.Mock(return_value=True)
+
+    def tearDown(self) -> None:
+        self.fixture.close()
+
+    def test_interrupted_usb_copy_is_removed_from_private_staging(self) -> None:
+        partial = self.fixture.library.incoming / ("usb-" + "a" * 32 + "-0.part")
+        partial.write_bytes(b"unfinished")
+        self.fixture.library.cleanup_stale_temporary_files()
+        self.assertFalse(partial.exists())
+
+    def test_usb_browser_only_exposes_video_files_and_safe_relative_paths(self) -> None:
+        (self.volume / "Films").mkdir()
+        (self.volume / "Films" / "Movie.mkv").write_bytes(b"video")
+        (self.volume / "notes.txt").write_text("private", encoding="utf-8")
+        listing = self.fixture.library.usb_browse("TEST-USB")
+        self.assertEqual([(item["name"], item["type"]) for item in listing["entries"]],
+                         [("Films", "folder")])
+        films = self.fixture.library.usb_browse("TEST-USB", "Films")
+        self.assertEqual(films["entries"][0]["path"], "Films/Movie.mkv")
+        with self.assertRaisesRegex(ValueError, "path"):
+            self.fixture.library.usb_browse("TEST-USB", "../")
+
+    def test_usb_folder_import_copies_atomically_into_adult_library(self) -> None:
+        folder = self.volume / "Films"
+        folder.mkdir()
+        (folder / "One.mp4").write_bytes(b"one" * 1000)
+        (folder / "Two.mkv").write_bytes(b"two" * 1000)
+        (folder / "ignore.txt").write_text("no", encoding="utf-8")
+        job = self.fixture.library.start_usb_import({
+            "volume": "TEST-USB", "paths": ["Films"], "target": "adult",
+        })
+        deadline = time.time() + 5
+        result = job
+        while result["status"] not in {"complete", "error"} and time.time() < deadline:
+            time.sleep(0.02)
+            result = self.fixture.library.usb_import_status(job["id"])
+        self.assertEqual(result["status"], "complete")
+        self.assertEqual(result["files_done"], 2)
+        self.assertEqual((self.fixture.library.adult_root / "One.mp4").read_bytes(),
+                         b"one" * 1000)
+        self.assertFalse(any(self.fixture.library.adult_root.glob("*.part")))
+        self.fixture.library.refresh_tv.assert_called_once()
+
+    def test_usb_direct_play_sends_only_resolved_mounted_media(self) -> None:
+        movie = self.volume / "Movie.mp4"
+        movie.write_bytes(b"video")
+        client = mock.MagicMock()
+        context = mock.MagicMock()
+        context.__enter__.return_value = client
+        context.__exit__.return_value = False
+        client.recv.return_value = b"ok\n"
+        with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
+                mock.patch.object(mabeltv_library.socket, "socket", return_value=context):
+            result = self.fixture.library.usb_play("TEST-USB", "Movie.mp4")
+        sent = json.loads(client.sendall.call_args.args[0].decode())
+        self.assertEqual(sent["command"], "play-external")
+        self.assertEqual(Path(sent["path"]), movie.resolve())
+        self.assertTrue(result["ok"])
+
+    def test_tmdb_search_and_apply_cache_metadata_without_exposing_key(self) -> None:
+        movie = self.fixture.library.adult_root / "Fellowship of the Ring 2001.mkv"
+        movie.write_bytes(b"video")
+        self.fixture.library.tmdb_request = mock.Mock(side_effect=[
+            {"results": [{"id": 120, "title": "The Lord of the Rings: The Fellowship of the Ring",
+                           "original_title": "The Lord of the Rings: The Fellowship of the Ring",
+                           "release_date": "2001-12-19", "overview": "A journey begins.",
+                           "poster_path": None}]},
+            {"id": 120, "title": "The Lord of the Rings: The Fellowship of the Ring",
+             "original_title": "The Lord of the Rings: The Fellowship of the Ring",
+             "release_date": "2001-12-19", "overview": "A journey begins.",
+             "runtime": 179, "poster_path": None},
+        ])
+        found = self.fixture.library.tmdb_search({"file": movie.name})
+        self.assertEqual(found["results"][0]["id"], 120)
+        applied = self.fixture.library.tmdb_apply({"file": movie.name, "tmdb_id": 120})
+        self.assertTrue(applied["refreshed"])
+        film = self.fixture.library.adult_library()[0]
+        self.assertEqual(film["metadata"]["runtime"], 179)
+        self.assertEqual(film["metadata"]["provider"], "TMDB")
+        persisted = self.fixture.library.adult_media_states()[movie.name]
+        self.assertNotIn("api_key", json.dumps(persisted))
+
+    def test_adult_playback_state_updates_preserve_cached_metadata(self) -> None:
+        self.fixture.library.write_adult_media_states({
+            "Film.mkv": {"metadata": {"tmdb_id": 1, "title": "Film"}},
+        })
+        self.fixture.library.set_adult_media_state("Film.mkv", "processing")
+        state = self.fixture.library.adult_media_states()["Film.mkv"]
+        self.assertEqual(state["metadata"]["tmdb_id"], 1)
+        self.assertEqual(state["state"], "processing")
+
+
 class LibraryHttpTests(unittest.TestCase):
     def setUp(self) -> None:
         self.fixture = LibraryFixture()

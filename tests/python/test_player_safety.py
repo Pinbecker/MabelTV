@@ -160,6 +160,23 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn('objectName: "mabeltvAdultMode"', adult_qml)
         self.assertIn('command == QStringLiteral("status")', application)
 
+    def test_usb_playback_reuses_the_serialised_adult_decoder(self) -> None:
+        adult_qml = (PROJECT_ROOT / "qml" / "AdultModeOverlay.qml").read_text(
+            encoding="utf-8"
+        )
+        main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+        application = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("function portalExternalPlayback", main_qml)
+        self.assertIn("pendingExternalSource", main_qml)
+        self.assertIn("function requestExternal", adult_qml)
+        self.assertIn("onPlaybackStopped", adult_qml)
+        self.assertIn("externalStartTimer.restart()", adult_qml)
+        self.assertIn('QStringLiteral("play-external")', application)
+        self.assertIn('path.startsWith(QStringLiteral(', application)
+        self.assertIn('"/media/mabeltv-usb/"', application)
+
     def test_film_channels_get_a_skippable_countdown_before_starting(self) -> None:
         controller_header = (PROJECT_ROOT / "src" / "core" / "TvController.h").read_text(
             encoding="utf-8"

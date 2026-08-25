@@ -379,6 +379,11 @@ QVariantList TvController::adultLibrary() const
 {
     QVariantList films;
     const QDir directory(m_adultMediaRoot);
+    QJsonObject metadataStates;
+    QFile metadataFile(directory.filePath(QStringLiteral(".mabeltv-adult.json")));
+    if (metadataFile.open(QIODevice::ReadOnly)) {
+        metadataStates = QJsonDocument::fromJson(metadataFile.readAll()).object();
+    }
     const QStringList filters{
         QStringLiteral("*.mp4"), QStringLiteral("*.m4v"), QStringLiteral("*.mkv"),
         QStringLiteral("*.mov"), QStringLiteral("*.webm"), QStringLiteral("*.avi"),
@@ -388,11 +393,23 @@ QVariantList TvController::adultLibrary() const
         filters, QDir::Files | QDir::Readable, QDir::Name | QDir::IgnoreCase);
     films.reserve(entries.size());
     for (const QFileInfo &entry : entries) {
+        const QJsonObject state = metadataStates.value(entry.fileName()).toObject();
+        const QJsonObject metadata = state.value(QStringLiteral("metadata")).toObject();
+        const QString metadataTitle = metadata.value(QStringLiteral("title")).toString();
+        const QString posterName = metadata.value(QStringLiteral("poster")).toString();
+        const QString posterPath = directory.filePath(
+            QStringLiteral(".metadata/%1").arg(posterName));
         films.append(QVariantMap{
             {QStringLiteral("fileName"), entry.fileName()},
-            {QStringLiteral("name"), displayNameForEpisodePath(entry.fileName())},
+            {QStringLiteral("name"), metadataTitle.isEmpty()
+                 ? displayNameForEpisodePath(entry.fileName()) : metadataTitle},
             {QStringLiteral("source"), QUrl::fromLocalFile(entry.absoluteFilePath())},
             {QStringLiteral("size"), entry.size()},
+            {QStringLiteral("year"), metadata.value(QStringLiteral("year")).toString()},
+            {QStringLiteral("overview"), metadata.value(QStringLiteral("overview")).toString()},
+            {QStringLiteral("runtime"), metadata.value(QStringLiteral("runtime")).toInt()},
+            {QStringLiteral("poster"), posterName.isEmpty() || !QFileInfo::exists(posterPath)
+                 ? QUrl() : QUrl::fromLocalFile(posterPath)},
         });
     }
     return films;

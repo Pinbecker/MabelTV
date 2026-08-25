@@ -5,6 +5,30 @@ set -Eeuo pipefail
 
 action="${1:-}"
 
+usb_device() {
+    local device="${1:-}" parent removable transport type
+    [[ "$device" =~ ^/dev/sd[a-z][0-9]+$ ]] \
+        || { printf 'That is not a supported removable USB partition.\n' >&2; exit 2; }
+    type="$(lsblk -dnro TYPE -- "$device" 2>/dev/null || true)"
+    parent="$(lsblk -nro PKNAME -- "$device" 2>/dev/null | head -n1)"
+    [[ "$type" == "part" && -n "$parent" ]] \
+        || { printf 'Choose a partition on the external USB drive.\n' >&2; exit 2; }
+    removable="$(lsblk -dnro RM -- "/dev/$parent" 2>/dev/null || true)"
+    transport="$(lsblk -dnro TRAN -- "/dev/$parent" 2>/dev/null || true)"
+    [[ "$removable" == "1" && "$transport" == "usb" ]] \
+        || { printf 'Only a removable USB drive can be mounted here.\n' >&2; exit 2; }
+    printf '%s\n' "$device"
+}
+
+usb_mount_name() {
+    local device="$1" identity
+    identity="$(lsblk -dnro UUID -- "$device" 2>/dev/null || true)"
+    [[ -n "$identity" ]] || identity="$(basename -- "$device")"
+    identity="$(printf '%s' "$identity" | tr -cd 'A-Za-z0-9._-')"
+    [[ -n "$identity" ]] || { printf 'The USB partition has no safe identity.\n' >&2; exit 2; }
+    printf '%s\n' "$identity"
+}
+
 case "$action" in
     restart-player)
         systemctl restart mabeltv.service
@@ -38,6 +62,53 @@ case "$action" in
         install -o mabeltv -g mabeltv -m 0640 "$work.tar.gz" "$bundle.new"
         mv -f -- "$bundle.new" "$bundle"
         printf '%s\n' "$bundle"
+        ;;
+    usb-mount)
+        device="$(usb_device "${2:-}")"
+        fstype="$(lsblk -dnro FSTYPE -- "$device" 2>/dev/null || true)"
+        case "$fstype" in
+            vfat|exfat|ntfs|ntfs3|ext2|ext3|ext4) ;;
+            *) printf 'This USB filesystem is not supported: %s\n' "${fstype:-unknown}" >&2; exit 2 ;;
+        esac
+        identity="$(usb_mount_name "$device")"
+        target="/media/mabeltv-usb/$identity"
+        systemd-run --quiet --wait --collect \
+            /usr/bin/install -d -o root -g mabeltv -m 0750 "$target" >/dev/null
+        options="ro,nosuid,nodev,noexec"
+        case "$fstype" in
+            vfat|exfat|ntfs|ntfs3) options="$options,uid=$(id -u mabeltv),gid=$(id -g mabeltv),umask=0027" ;;
+        esac
+        if ! findmnt -rn --mountpoint "$target" >/dev/null 2>&1; then
+            systemd-mount --quiet --collect --options="$options" "$device" "$target"
+        fi
+        deadline=$((SECONDS + 10))
+        until findmnt -rn --mountpoint "$target" >/dev/null 2>&1; do
+            (( SECONDS < deadline )) || { printf 'The USB drive did not mount in time.\n' >&2; exit 1; }
+            sleep 0.2
+        done
+        printf '%s\n' "$target"
+        ;;
+    usb-eject)
+        identity="${2:-}"
+        [[ "$identity" =~ ^[A-Za-z0-9._-]+$ ]] \
+            || { printf 'That USB drive identity is not valid.\n' >&2; exit 2; }
+        target="/media/mabeltv-usb/$identity"
+        source="$(findmnt -rn -o SOURCE --mountpoint "$target" 2>/dev/null || true)"
+        [[ -n "$source" ]] || { printf 'That USB drive is not mounted.\n' >&2; exit 2; }
+        device="$(usb_device "$source")"
+        unit="$(systemd-escape --path --suffix=mount "$target")"
+        systemctl stop "$unit"
+        deadline=$((SECONDS + 10))
+        while findmnt -rn --mountpoint "$target" >/dev/null 2>&1; do
+            (( SECONDS < deadline )) || { printf 'The USB drive is still busy.\n' >&2; exit 1; }
+            sleep 0.2
+        done
+        systemd-run --quiet --wait --collect /usr/bin/rmdir -- "$target" \
+            >/dev/null 2>&1 || true
+        parent="$(lsblk -nro PKNAME -- "$device" | head -n1)"
+        command -v udisksctl >/dev/null 2>&1 \
+            && udisksctl power-off --no-user-interaction -b "/dev/$parent" >/dev/null 2>&1 || true
+        printf 'The USB drive can now be unplugged safely.\n'
         ;;
     *)
         printf 'Unsupported Mabel TV system action.\n' >&2

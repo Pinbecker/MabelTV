@@ -486,6 +486,42 @@ int main(int argc, char *argv[])
                                                   [socket, rootObject]() {
                                                       const QString command = QString::fromUtf8(
                                                           socket->readAll()).trimmed();
+                                                      if (command.startsWith(QLatin1Char('{'))) {
+                                                          const QJsonDocument request = QJsonDocument::fromJson(
+                                                              command.toUtf8());
+                                                          const QJsonObject object = request.object();
+                                                          if (request.isObject()
+                                                              && object.value(QStringLiteral("command")).toString()
+                                                                  == QStringLiteral("play-external")) {
+                                                              const QFileInfo requested(
+                                                                  object.value(QStringLiteral("path")).toString());
+                                                              const QString path = requested.canonicalFilePath();
+                                                              static const QSet<QString> mediaSuffixes{
+                                                                  QStringLiteral("mp4"), QStringLiteral("m4v"),
+                                                                  QStringLiteral("mkv"), QStringLiteral("mov"),
+                                                                  QStringLiteral("webm"), QStringLiteral("avi"),
+                                                                  QStringLiteral("mpg"), QStringLiteral("mpeg"),
+                                                              };
+                                                              if (requested.isFile()
+                                                                  && path.startsWith(QStringLiteral(
+                                                                      "/media/mabeltv-usb/"))
+                                                                  && mediaSuffixes.contains(
+                                                                      requested.suffix().toLower())) {
+                                                                  QMetaObject::invokeMethod(
+                                                                      rootObject,
+                                                                      "portalExternalPlayback",
+                                                                      Qt::QueuedConnection,
+                                                                      Q_ARG(QVariant, QUrl::fromLocalFile(path)),
+                                                                      Q_ARG(QVariant, object.value(
+                                                                          QStringLiteral("title")).toString()));
+                                                                  socket->write("ok\n");
+                                                              } else {
+                                                                  socket->write("unsupported\n");
+                                                              }
+                                                              socket->disconnectFromServer();
+                                                              return;
+                                                          }
+                                                      }
                                                       if (command == QStringLiteral("status")) {
                                                           QJsonObject status{
                                                               {QStringLiteral("mode"), QStringLiteral("kids")},

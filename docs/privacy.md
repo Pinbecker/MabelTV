@@ -9,6 +9,12 @@ Mabel TV is designed to work locally.
 - Avahi advertises the device name and dashboard port only on the local network.
 - The software contacts normal Raspberry Pi OS package/release infrastructure during installation and OS updates; those services have their own policies.
 
+TMDB enrichment is optional and inactive until a grown-up supplies an API key
+and presses **Scan metadata** for a particular Adult film. A scan sends the
+derived film title and optional year to TMDB; choosing a match downloads its
+details and poster. The result is cached locally, and ordinary browsing and
+playback make no TMDB requests. Media files are never uploaded to TMDB.
+
 Support bundles are created only when a grown-up requests one. They contain technical diagnostics and may expose the device hostname, local IP details, OS/hardware information, recent process/service logs, and filenames mentioned by errors. They do not intentionally contain video contents or a plaintext PIN. Review a bundle before sending it to another person.
 
 Uninstall without `--purge-data` retains media and owner settings. The separate `--purge-data` option permanently removes them and is deliberately explicit.

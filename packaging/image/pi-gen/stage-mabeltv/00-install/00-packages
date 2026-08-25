@@ -13,4 +13,5 @@ alsa-utils
 ca-certificates
 curl
 util-linux
+udisks2
 qrencode

@@ -48,6 +48,45 @@ Create, rename, renumber, hide/show, change crop/fit/stretch mode, choose **Show
 
 Deletion is deliberately two-stage. Recycle-bin items expire after 30 days; this is shown in the interface.
 
+### USB drive
+
+The parent dashboard can discover removable USB partitions, mount supported
+FAT, exFAT, NTFS, or ext filesystems read-only, and expose only folders and
+supported video files. It never exposes the Pi's own filesystem.
+
+- **Play now** opens a temporary USB session in the Adult player. The Kids
+  player is stopped first and playback waits for its decoder to be released.
+- **Import selected** copies videos or complete folders into Adult mode or a
+  selected children's channel. Copying uses an unpublished `.part` file,
+  reports byte/file progress, flushes it to disk, and publishes it atomically.
+- Imports reserve 256 MiB in addition to the selected file sizes. A duplicate
+  filename receives a numbered suffix rather than overwriting either copy.
+- The drive cannot be ejected while an import is active. Stop direct playback,
+  then use **Safely eject** before unplugging it.
+
+Mounting and ejecting cross a small root-owned helper which accepts only
+removable USB partitions. Drives are mounted with `ro,nosuid,nodev,noexec` and
+the dashboard itself remains unprivileged.
+
+### Adult metadata
+
+Adult films can be explicitly matched to TMDB. **Scan metadata** searches using
+the local filename and optional year, presents candidates for confirmation, and
+then caches the selected title, year, synopsis, runtime, TMDB ID, and poster on
+the Pi. Opening Adult mode never performs a live lookup, so it remains fast and
+works offline.
+
+The API key is not stored in HTML, JavaScript, media metadata, or logs. Put it
+on the Pi as a single line in:
+
+```text
+/var/lib/mabeltv/secrets/tmdb-api-key
+```
+
+The file and containing directory must remain readable only by `root` and the
+`mabeltv` group. Mabel TV also accepts `MABELTV_TMDB_API_KEY` for development,
+but the root-controlled file is the appliance configuration.
+
 ### TV guide
 
 The optional TV guide turns each channel's ordered programme files and real video

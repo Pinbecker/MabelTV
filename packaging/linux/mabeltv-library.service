@@ -35,6 +35,7 @@ ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectControlGroups=yes
 ReadWritePaths=/srv/mabeltv/media /var/lib/mabeltv /var/cache/mabeltv
+ReadOnlyPaths=-/media/mabeltv-usb
 
 [Install]
 WantedBy=multi-user.target

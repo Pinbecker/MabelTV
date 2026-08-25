@@ -35,6 +35,8 @@ Window {
     property bool childWasPausedBeforeAdult: false
     property bool restoreChildPauseAfterAdult: false
     property bool openingAdultMode: false
+    property url pendingExternalSource: ""
+    property string pendingExternalTitle: ""
     property string pendingPowerAction: ""
     property bool pendingPowerOnWake: false
     property bool filmCountdownActive: false
@@ -386,6 +388,21 @@ Window {
                 tvController.resumeFromStandby()
             }
         }
+    }
+
+    function portalExternalPlayback(source, title) {
+        if (tvController.remoteLocked || poweringOff
+                || pendingPowerAction.length > 0)
+            return
+        guideOverlay.close()
+        tvController.closeParent()
+        if (adultMode.active) {
+            adultMode.requestExternal(source, title)
+            return
+        }
+        pendingExternalSource = source
+        pendingExternalTitle = title
+        enterAdultMode()
     }
 
     // The generated power click and programme audio both use the Pi's
@@ -828,7 +845,15 @@ Window {
                             root.pendingPowerAction = ""
                             root.performPowerOff(action === "shutdown")
                         } else {
-                            adultMode.open()
+                            if (root.pendingExternalSource.toString().length > 0) {
+                                const source = root.pendingExternalSource
+                                const title = root.pendingExternalTitle
+                                root.pendingExternalSource = ""
+                                root.pendingExternalTitle = ""
+                                adultMode.openExternal(source, title)
+                            } else {
+                                adultMode.open()
+                            }
                         }
                     }
                 }

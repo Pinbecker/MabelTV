@@ -248,6 +248,8 @@ if [[ ! -e /etc/mabeltv/library.conf ]]; then
 fi
 chown root:mabeltv /etc/mabeltv/library.conf
 chmod 0640 /etc/mabeltv/library.conf
+install -d -o root -g mabeltv -m 0750 /media/mabeltv-usb
+install -d -o root -g mabeltv -m 0750 /var/lib/mabeltv/secrets
 
 # Capture every live unit/helper immediately before activation. This snapshot
 # is intentionally separate from the owner-data backup: it lets a failed

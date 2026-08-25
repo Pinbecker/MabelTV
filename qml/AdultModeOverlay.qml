@@ -23,6 +23,11 @@ Item {
     property real selectedSavedPosition: 0
     property string errorMessage: ""
     property var filmPositions: ({})
+    property bool externalSession: false
+    property url externalSource: ""
+    property string externalTitle: ""
+    property url queuedExternalSource: ""
+    property string queuedExternalTitle: ""
 
     signal closed()
     signal powerRequested()
@@ -42,7 +47,39 @@ Item {
         errorMessage = ""
         controlsOpacity = 1
         active = true
+        externalSession = false
+        externalSource = ""
+        externalTitle = ""
         refreshSelectedFilmPosition()
+    }
+
+    function openExternal(source, title) {
+        open()
+        playExternal(source, title)
+    }
+
+    function requestExternal(source, title) {
+        queuedExternalSource = source
+        queuedExternalTitle = title
+        if (playing || stopping) {
+            stopFilm()
+        } else {
+            externalStartTimer.restart()
+        }
+    }
+
+    function playExternal(source, title) {
+        externalSession = true
+        externalSource = source
+        externalTitle = title || "USB video"
+        queuedExternalSource = ""
+        queuedExternalTitle = ""
+        errorMessage = ""
+        playing = true
+        stopping = false
+        controlsOpacity = 1
+        adultPlayer.play(source, 0)
+        controlsTimer.restart()
     }
 
     function close() {
@@ -54,6 +91,10 @@ Item {
     }
 
     function finishClose() {
+        externalStartTimer.stop()
+        queuedExternalSource = ""
+        queuedExternalTitle = ""
+        externalSession = false
         active = false
         closing = false
         playing = false
@@ -95,6 +136,8 @@ Item {
     }
 
     function currentFilm() {
+        if (externalSession)
+            return { "name": externalTitle, "source": externalSource, "size": 0 }
         const films = controller.adultLibrary
         return selectedIndex >= 0 && selectedIndex < films.length
                 ? films[selectedIndex] : null
@@ -130,6 +173,7 @@ Item {
         if (!film)
             return
         errorMessage = ""
+        externalSession = false
         playing = true
         stopping = false
         backPressHeld = false
@@ -142,6 +186,8 @@ Item {
     }
 
     function rememberCurrentFilmPosition() {
+        if (externalSession)
+            return
         const film = currentFilm()
         if (!film || adultPlayer.playbackPosition < 2)
             return
@@ -270,11 +316,17 @@ Item {
 
         onPlaybackFinished: {
             const film = overlay.currentFilm()
-            if (film)
+            if (film && !overlay.externalSession)
                 overlay.filmPositions[film.source.toString()] = 0
             if (overlay.closing)
                 overlay.finishClose()
+            else if (overlay.queuedExternalSource.toString().length > 0) {
+                overlay.playing = false
+                overlay.stopping = false
+                externalStartTimer.restart()
+            }
             else {
+                overlay.externalSession = false
                 overlay.playing = false
                 overlay.stopping = false
                 overlay.controlsOpacity = 1
@@ -283,7 +335,13 @@ Item {
         onPlaybackStopped: {
             if (overlay.closing)
                 overlay.finishClose()
+            else if (overlay.queuedExternalSource.toString().length > 0) {
+                overlay.playing = false
+                overlay.stopping = false
+                externalStartTimer.restart()
+            }
             else {
+                overlay.externalSession = false
                 overlay.playing = false
                 overlay.stopping = false
                 overlay.controlsOpacity = 1
@@ -293,7 +351,13 @@ Item {
             overlay.errorMessage = message
             if (overlay.closing)
                 overlay.finishClose()
+            else if (overlay.queuedExternalSource.toString().length > 0) {
+                overlay.playing = false
+                overlay.stopping = false
+                externalStartTimer.restart()
+            }
             else {
+                overlay.externalSession = false
                 overlay.playing = false
                 overlay.stopping = false
                 overlay.controlsOpacity = 1
@@ -448,6 +512,7 @@ Item {
                         font.pixelSize: Math.max(23, parent.parent.height * 0.041)
                         text: "Adult TV"
                     }
+
                     Text {
                         color: "#727a85"
                         font.family: "DejaVu Sans"
@@ -506,6 +571,15 @@ Item {
                             position: 1
                             color: Qt.darker(overlay.accentColor(overlay.selectedIndex), 1.45)
                         }
+                    }
+
+                    Image {
+                        anchors.fill: parent
+                        source: overlay.currentFilm() ? overlay.currentFilm().poster : ""
+                        fillMode: Image.PreserveAspectCrop
+                        visible: source.toString().length > 0
+                        asynchronous: true
+                        cache: true
                     }
 
                     Text {
@@ -570,9 +644,23 @@ Item {
                         font.family: "DejaVu Sans"
                         font.pixelSize: Math.max(11, 15 * overlay.uiScale)
                         text: overlay.currentFilm()
-                              ? overlay.formatFileSize(overlay.currentFilm().size)
+                              ? (overlay.currentFilm().year
+                                 ? overlay.currentFilm().year + "   •   " : "")
+                                + overlay.formatFileSize(overlay.currentFilm().size)
                                 + "   •   LOCAL FILM   •   SUBTITLES WHEN AVAILABLE"
                               : ""
+                    }
+
+                    Text {
+                        width: parent.width
+                        visible: overlay.currentFilm() && overlay.currentFilm().overview
+                        color: "#aeb5bd"
+                        maximumLineCount: 2
+                        elide: Text.ElideRight
+                        wrapMode: Text.Wrap
+                        font.family: "DejaVu Sans"
+                        font.pixelSize: Math.max(10, 13 * overlay.uiScale)
+                        text: overlay.currentFilm() ? overlay.currentFilm().overview : ""
                     }
 
                     Rectangle {
@@ -592,6 +680,7 @@ Item {
                                   ? "▶  RESUME  " + overlay.formatTime(overlay.selectedSavedPosition)
                                   : "▶  PLAY FILM"
                         }
+
                     }
                 }
             }
@@ -689,6 +778,15 @@ Item {
                             }
                         }
 
+                        Image {
+                            anchors.fill: parent
+                            source: modelData.poster
+                            fillMode: Image.PreserveAspectCrop
+                            visible: source.toString().length > 0
+                            asynchronous: true
+                            cache: true
+                        }
+
                         Text {
                             anchors.left: parent.left
                             anchors.top: parent.top
@@ -735,7 +833,8 @@ Item {
                             color: selected ? "#666d75" : "#7e8791"
                             font.family: "DejaVu Sans"
                             font.pixelSize: Math.max(10, 12 * overlay.uiScale)
-                            text: overlay.formatFileSize(modelData.size) + "  •  FILM"
+                            text: (modelData.year ? modelData.year + "  •  " : "")
+                                  + overlay.formatFileSize(modelData.size) + "  •  FILM"
                         }
                     }
                 }
@@ -767,6 +866,17 @@ Item {
                     text: "MABELTV  •  ADULT"
                 }
             }
+        }
+    }
+
+    Timer {
+        id: externalStartTimer
+        interval: 350
+        repeat: false
+        onTriggered: {
+            if (!overlay.closing && overlay.queuedExternalSource.toString().length > 0)
+                overlay.playExternal(overlay.queuedExternalSource,
+                                     overlay.queuedExternalTitle)
         }
     }
 
