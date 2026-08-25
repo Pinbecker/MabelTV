@@ -3,6 +3,10 @@ Description=Complete the KidsTV first-boot installation
 Documentation=file:/usr/lib/mabeltv-bootstrap/image-build.json
 Wants=cloud-final.service
 After=local-fs.target rpi-resize.service cloud-final.service systemd-user-sessions.service
+# This is a TV appliance: finish its unattended product provisioning before
+# multi-user mode can start a tty login prompt.  The service itself reboots
+# into Mabel TV once the handoff is complete.
+Before=getty.target multi-user.target
 ConditionPathExists=!/var/lib/mabeltv-image/provisioned
 
 [Service]

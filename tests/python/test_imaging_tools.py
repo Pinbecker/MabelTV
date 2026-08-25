@@ -110,6 +110,18 @@ class ImagerManifestTests(unittest.TestCase):
         self.assertIn("userdel -r mabeltv-bootstrap", firstboot)
         self.assertIn("passwd -l root", firstboot)
 
+    def test_first_boot_provisions_before_a_console_login_can_appear(self):
+        service = (
+            ROOT
+            / "packaging/image/pi-gen/stage-mabeltv/00-install/files/mabeltv-image-firstboot.service"
+        ).read_text(encoding="utf-8")
+        firstboot = (
+            ROOT
+            / "packaging/image/pi-gen/stage-mabeltv/00-install/files/mabeltv-image-firstboot"
+        ).read_text(encoding="utf-8")
+        self.assertIn("Before=getty.target multi-user.target", service)
+        self.assertIn("Do not use the keyboard", firstboot)
+
 
 if __name__ == "__main__":
     unittest.main()

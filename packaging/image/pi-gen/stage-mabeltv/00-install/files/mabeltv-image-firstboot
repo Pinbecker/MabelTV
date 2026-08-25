@@ -14,6 +14,8 @@ marker="$state_dir/provisioned"
 [[ -r "$archive" && -r "$checksum_file" ]] \
     || { printf 'The embedded KidsTV release is missing.\n' >&2; exit 1; }
 
+printf '%s\n' 'Mabel TV is setting itself up. Do not use the keyboard; it will restart automatically when ready.'
+
 expected="$(awk 'NR == 1 { print $1 }' "$checksum_file")"
 actual="$(sha256sum "$archive" | awk '{ print $1 }')"
 [[ "$expected" =~ ^[0-9a-f]{64}$ && "$actual" == "$expected" ]] \
