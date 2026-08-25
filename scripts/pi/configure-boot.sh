@@ -67,8 +67,45 @@ boot_root=/boot/firmware
 [[ -f "$boot_root/config.txt" ]] || boot_root=/boot
 config_path="$boot_root/config.txt"
 cmdline_path="$boot_root/cmdline.txt"
+script_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
+edid_payload="$script_root/packaging/linux/mabeltv-audio-edid.base64"
+edid_hook="$script_root/packaging/linux/mabeltv-edid-initramfs-hook"
 if [[ ! -f "$config_path" || ! -f "$cmdline_path" ]]; then
     printf 'Could not locate Raspberry Pi config.txt and cmdline.txt.\n' >&2
+    exit 1
+fi
+if [[ ! -r "$edid_payload" ]]; then
+    printf 'The Mabel TV HDMI compatibility profile is missing: %s\n' "$edid_payload" >&2
+    exit 1
+fi
+if [[ ! -r "$edid_hook" ]]; then
+    printf 'The Mabel TV initramfs EDID hook is missing: %s\n' "$edid_hook" >&2
+    exit 1
+fi
+
+# Make the compatibility profile boot-available before changing cmdline.txt.
+# If initramfs generation fails, the existing boot command line remains valid.
+temporary_edid="$(mktemp)"
+if ! base64 --decode "$edid_payload" > "$temporary_edid"; then
+    rm -f -- "$temporary_edid"
+    printf 'Could not decode the Mabel TV HDMI compatibility profile.\n' >&2
+    exit 1
+fi
+if [[ "$(stat -c '%s' "$temporary_edid")" != "256" ]]; then
+    rm -f -- "$temporary_edid"
+    printf 'The Mabel TV HDMI compatibility profile is not a 256-byte EDID.\n' >&2
+    exit 1
+fi
+install -d -o root -g root -m 0755 /lib/firmware/edid
+install -o root -g root -m 0644 "$temporary_edid" \
+    /lib/firmware/edid/mabeltv-audio-edid.bin
+rm -f -- "$temporary_edid"
+if command -v update-initramfs >/dev/null 2>&1; then
+    install -D -o root -g root -m 0755 "$edid_hook" \
+        /etc/initramfs-tools/hooks/mabeltv-edid
+    update-initramfs -u -k all
+else
+    printf 'update-initramfs is required to embed the HDMI compatibility profile.\n' >&2
     exit 1
 fi
 
@@ -109,9 +146,6 @@ awk -v begin="$begin_marker" -v end="$end_marker" '
     fi
     printf 'hdmi_ignore_cec_init=1\n'
     printf 'hdmi_ignore_cec=1\n'
-    # Some 4K TVs advertise a 4K60 preferred mode.  Raise the Pi 4 HDMI core
-    # clock so the KMS hand-off from the firmware splash remains valid.
-    printf 'hdmi_enable_4kp60=1\n'
     printf 'disable_splash=1\n'
     printf '%s\n' "$end_marker"
 } >> "$temporary_config"
@@ -126,6 +160,7 @@ existing_video=""
 for token in "${cmdline_tokens[@]}"; do
     case "$token" in
         video=HDMI-A-1:*|video=HDMI-A-2:*) existing_video="$token" ;;
+        drm.edid_firmware=HDMI-A-1:*|drm.edid_firmware=HDMI-A-2:*) ;;
         quiet|loglevel=3|logo.nologo|vt.global_cursor_default=0|consoleblank=0) ;;
         *) new_tokens+=("$token") ;;
     esac
@@ -139,6 +174,7 @@ elif [[ "$display" == "720p" ]]; then
 elif [[ "$display" == "1080p" ]]; then
     new_tokens+=("video=HDMI-A-1:1920x1080M@60D")
 fi
+new_tokens+=("drm.edid_firmware=HDMI-A-1:edid/mabeltv-audio-edid.bin")
 new_tokens+=(quiet loglevel=3 logo.nologo vt.global_cursor_default=0 consoleblank=0)
 printf '%s\n' "${new_tokens[*]}" > "$cmdline_path"
 sha256sum "$cmdline_path" | awk '{print $1}' > "$boot_state/managed-cmdline.sha256"
@@ -153,7 +189,7 @@ managed_tokens_file="$boot_state/managed-cmdline.tokens"
 temporary_tokens="$(mktemp)"
 for token in "${new_tokens[@]}"; do
     case "$token" in
-        quiet|loglevel=3|logo.nologo|vt.global_cursor_default=0|consoleblank=0|video=HDMI-A-1:*|video=HDMI-A-2:*)
+        quiet|loglevel=3|logo.nologo|vt.global_cursor_default=0|consoleblank=0|video=HDMI-A-1:*|video=HDMI-A-2:*|drm.edid_firmware=HDMI-A-1:*|drm.edid_firmware=HDMI-A-2:*)
             if [[ -z "${original_token_set[$token]+present}" ]]; then
                 printf '%s\n' "$token" >> "$temporary_tokens"
             fi

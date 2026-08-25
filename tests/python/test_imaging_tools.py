@@ -82,7 +82,26 @@ class ImagerManifestTests(unittest.TestCase):
         self.assertIn('ir_mode="preserve"', configure_boot)
         self.assertIn('--disable-ir', configure_boot)
         self.assertIn('existing_ir_line=', configure_boot)
-        self.assertIn('hdmi_enable_4kp60=1', configure_boot)
+        self.assertNotIn('hdmi_enable_4kp60=1', configure_boot)
+        self.assertIn('mabeltv-audio-edid.base64', configure_boot)
+        self.assertIn('drm.edid_firmware=HDMI-A-1:edid/mabeltv-audio-edid.bin',
+                      configure_boot)
+        self.assertIn('mabeltv-edid-initramfs-hook', configure_boot)
+        self.assertIn('/etc/initramfs-tools/hooks/mabeltv-edid', configure_boot)
+        self.assertIn('update-initramfs -u -k all', configure_boot)
+
+        initramfs_hook = (
+            ROOT / "packaging" / "linux" / "mabeltv-edid-initramfs-hook"
+        ).read_text(encoding="utf-8")
+        self.assertIn('$DESTDIR/usr/lib/firmware/edid', initramfs_hook)
+        self.assertIn('mabeltv-audio-edid.bin', initramfs_hook)
+
+        uninstall = (ROOT / "scripts" / "pi" / "uninstall.sh").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('/etc/initramfs-tools/hooks/mabeltv-edid', uninstall)
+        self.assertIn('/lib/firmware/edid/mabeltv-audio-edid.bin', uninstall)
+        self.assertIn('update-initramfs -u -k all', uninstall)
 
     def test_laptop_only_builder_uses_local_arm64_docker_bundle_then_image_recipe(self):
         builder = (ROOT / "scripts" / "imaging" / "build-local-pi-image.sh").read_text(

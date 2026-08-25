@@ -87,6 +87,15 @@ fi
 rm -rf -- "$boot_state"
 rmdir /var/lib/mabeltv/install 2>/dev/null || true
 
+edid_hook=/etc/initramfs-tools/hooks/mabeltv-edid
+edid_firmware=/lib/firmware/edid/mabeltv-audio-edid.bin
+if [[ -e "$edid_hook" || -e "$edid_firmware" ]]; then
+    rm -f -- "$edid_hook" "$edid_firmware"
+    if command -v update-initramfs >/dev/null 2>&1; then
+        update-initramfs -u -k all
+    fi
+fi
+
 systemctl disable --now mabeltv.service mabeltv-library.service \
     mabeltv-ir.service mabeltv-health.timer mabeltv-boot-audit.service \
     mabeltv-retention.timer mabeltv-owner-recovery.service 2>/dev/null || true

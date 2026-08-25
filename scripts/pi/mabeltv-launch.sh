@@ -44,11 +44,28 @@ if [[ -z "${MABELTV_HWDEC:-}" ]]; then
     fi
 fi
 
-# Prepared video is capped at 720p when needed, but HDMI output is separate.
-# Cap the appliance UI at 1080p: a 4K television otherwise makes controls too
-# small and asks the Pi 4 to render four times as many pixels.  Keep an
-# explicit override for unusual qualified displays and test rigs.
-kms_mode="${MABELTV_DRM_MODE:-1920x1080}"
+display_mode="$(python3 - "$settings_path" <<'PY'
+import json
+import sys
+
+try:
+    with open(sys.argv[1], "r", encoding="utf-8") as settings_file:
+        value = json.load(settings_file).get("display_resolution", "720p")
+except (OSError, ValueError, TypeError):
+    value = "720p"
+print(value if value in {"720p", "1080p", "native"} else "720p")
+PY
+)"
+
+# Restore the settings-aware display selection used by the proven Pi build.
+# Include refresh rates for fixed modes: resolution-only requests let Qt pick
+# the highest EDID match and can silently select 1080p120 on capable TVs.
+case "$display_mode" in
+    1080p) kms_mode="1920x1080@60" ;;
+    native) kms_mode="preferred" ;;
+    *) kms_mode="1280x720@60" ;;
+esac
+kms_mode="${MABELTV_DRM_MODE:-$kms_mode}"
 
 mkdir -p "$runtime_dir"
 if command -v qrencode >/dev/null 2>&1; then
@@ -65,7 +82,12 @@ with open(sys.argv[1], "w", encoding="utf-8") as output_file:
     json.dump({
         "hwcursor": False,
         "pbuffers": True,
-        "outputs": [{"name": sys.argv[2], "mode": sys.argv[3], "primary": True}],
+        "outputs": [{
+            "name": sys.argv[2],
+            "mode": sys.argv[3],
+            "format": "xrgb8888",
+            "primary": True,
+        }],
     }, output_file)
 PY
 

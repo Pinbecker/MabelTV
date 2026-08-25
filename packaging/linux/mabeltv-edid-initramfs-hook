@@ -1,0 +1,25 @@
+#!/bin/sh
+set -eu
+
+PREREQ=""
+
+prereqs() {
+    echo "$PREREQ"
+}
+
+case "${1:-}" in
+    prereqs)
+        prereqs
+        exit 0
+        ;;
+esac
+
+firmware_source=/lib/firmware/edid/mabeltv-audio-edid.bin
+if [ ! -r "$firmware_source" ]; then
+    echo "Mabel TV HDMI compatibility profile is missing: $firmware_source" >&2
+    exit 1
+fi
+
+firmware_destination="$DESTDIR/usr/lib/firmware/edid"
+mkdir -p "$firmware_destination"
+cp -pL "$firmware_source" "$firmware_destination/mabeltv-audio-edid.bin"
