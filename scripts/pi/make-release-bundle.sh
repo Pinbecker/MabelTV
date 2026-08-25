@@ -6,8 +6,17 @@ set -Eeuo pipefail
 source_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 output_root="${1:-$source_root/out/release}"
 allow_dirty="${MABELTV_ALLOW_DIRTY_RELEASE:-false}"
+image_builder="${MABELTV_IMAGE_BUILD:-false}"
 
-bash "$source_root/scripts/pi/preflight.sh"
+if [[ "$image_builder" == "true" ]]; then
+    # The laptop image pipeline runs this script in an emulated ARM64 Debian
+    # Trixie container. It deliberately cannot satisfy the physical Pi 4
+    # preflight; that hardware validation remains a separate acceptance step.
+    [[ "$(uname -m)" == "aarch64" ]] \
+        || { printf 'The image builder must use an ARM64 container.\n' >&2; exit 1; }
+else
+    bash "$source_root/scripts/pi/preflight.sh"
+fi
 git -C "$source_root" rev-parse --is-inside-work-tree >/dev/null 2>&1 \
     || { printf 'A release must be built from a Git checkout.\n' >&2; exit 1; }
 dirty_source="false"
@@ -45,7 +54,7 @@ if git -C "$source_root" ls-tree -r --name-only "$commit" \
 fi
 # shellcheck disable=SC1091
 source /etc/os-release
-if [[ ! -r /etc/rpi-issue ]]; then
+if [[ "$image_builder" != "true" && ! -r /etc/rpi-issue ]]; then
     printf 'Customer bundles must be built on Raspberry Pi OS, not a generic Debian image.\n' >&2
     exit 1
 fi

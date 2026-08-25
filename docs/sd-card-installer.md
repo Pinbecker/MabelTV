@@ -41,18 +41,25 @@ This shared input is the bridge to a later custom desktop installer: the custom 
 
 ## Build a preview image
 
-First build and qualify the ordinary customer bundle on the exact clean Raspberry Pi OS Trixie/Pi 4 release machine:
+From the repository on a Windows laptop with WSL2 and Docker Desktop, run one command:
 
-```bash
-bash scripts/pi/make-release-bundle.sh
+```powershell
+.\scripts\imaging\build-local-pi-image.ps1
 ```
 
-Then, on a Debian/Ubuntu build machine with Docker and at least 40 GB of free Linux filesystem space:
+It builds the ARM64 release bundle inside an emulated Debian Trixie Docker
+container, runs the automated ARM tests, then gives that local bundle to
+`pi-gen` to make the final image. The Pi is not contacted. It needs at least
+40 GB free Linux storage and writes the final `.img.xz` to `out/pi-image/`.
+
+For a Linux/WSL terminal instead, use:
 
 ```bash
-bash scripts/imaging/build-pi-image.sh \
-  --bundle out/release/KidsTV-0.2.2-pi4-trixie-arm64.tar.gz
+bash scripts/imaging/build-local-pi-image.sh
 ```
+
+The lower-level `build-pi-image.sh --bundle …` command remains available when
+you already have a qualified bundle.
 
 The recipe pins the official `pi-gen` commit, builds Raspberry Pi OS Lite 64-bit with Imager's `cloudinit-rpi` customisation support, preinstalls runtime packages, embeds the exact checked release bundle, and exports one `.img.xz`. It refuses an unpublished dirty bundle or a bundle built for a different OS.
 

@@ -83,6 +83,19 @@ class ImagerManifestTests(unittest.TestCase):
         self.assertIn('--disable-ir', configure_boot)
         self.assertIn('existing_ir_line=', configure_boot)
 
+    def test_laptop_only_builder_uses_local_arm64_docker_bundle_then_image_recipe(self):
+        builder = (ROOT / "scripts" / "imaging" / "build-local-pi-image.sh").read_text(
+            encoding="utf-8")
+        dockerfile = (ROOT / "packaging" / "image" / "arm64-builder" / "Dockerfile").read_text(
+            encoding="utf-8")
+        launcher = (ROOT / "scripts" / "imaging" / "build-local-pi-image.ps1").read_text(
+            encoding="utf-8")
+        self.assertIn("--platform linux/arm64", builder)
+        self.assertIn("MABELTV_IMAGE_BUILD=true", builder)
+        self.assertIn("build-pi-image.sh", builder)
+        self.assertIn("debian:trixie-slim", dockerfile)
+        self.assertIn("build-local-pi-image.sh", launcher)
+
 
 if __name__ == "__main__":
     unittest.main()
