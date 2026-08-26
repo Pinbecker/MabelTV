@@ -167,6 +167,7 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("id: posterGrid", adult_qml)
         self.assertIn("readonly property int columns: 4", adult_qml)
         self.assertIn("cellHeight: height / 3", adult_qml)
+        self.assertIn("width: Math.min(parent.width, Math.max(500, 650 * overlay.uiScale))", adult_qml)
         self.assertIn("fillMode: Image.PreserveAspectFit", adult_qml)
         self.assertIn("function selectCollectionRelative(offset)", adult_qml)
         self.assertIn("function navigateGrid(horizontal, vertical)", adult_qml)

@@ -838,10 +838,10 @@ Item {
 
             GridView {
                 id: posterGrid
-                anchors.left: parent.left
-                anchors.right: parent.right
+                anchors.horizontalCenter: parent.horizontalCenter
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
+                width: Math.min(parent.width, Math.max(500, 650 * overlay.uiScale))
                 visible: overlay.visibleFilms.length > 0
                 clip: true
                 readonly property int columns: 4
@@ -930,15 +930,18 @@ Item {
                     }
 
                     Column {
-                        anchors.left: posterArtwork.left
-                        anchors.right: posterArtwork.right
+                        anchors.left: parent.left
+                        anchors.right: parent.right
                         anchors.top: posterArtwork.bottom
                         anchors.bottom: parent.bottom
+                        anchors.leftMargin: Math.max(4, 6 * overlay.uiScale)
+                        anchors.rightMargin: Math.max(4, 6 * overlay.uiScale)
                         anchors.topMargin: Math.max(5, 7 * overlay.uiScale)
                         spacing: Math.max(1, 2 * overlay.uiScale)
 
                         Rectangle {
-                            width: parent.width
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: posterArtwork.width
                             height: Math.max(2, 3 * overlay.uiScale)
                             radius: height / 2
                             color: focused ? "#d6b36a" : "transparent"
@@ -949,6 +952,7 @@ Item {
                             color: focused ? "#ffffff" : "#c7c7c3"
                             maximumLineCount: 1
                             elide: Text.ElideRight
+                            horizontalAlignment: Text.AlignHCenter
                             font.family: "DejaVu Sans"
                             font.bold: focused
                             font.pixelSize: Math.max(10, 12 * overlay.uiScale)
@@ -959,6 +963,7 @@ Item {
                             width: parent.width
                             color: focused ? "#aeb5bc" : "#6e7781"
                             elide: Text.ElideRight
+                            horizontalAlignment: Text.AlignHCenter
                             font.family: "DejaVu Sans"
                             font.pixelSize: Math.max(8, 9 * overlay.uiScale)
                             text: modelData.year ? modelData.year : "FILM"
