@@ -847,7 +847,7 @@ Item {
                 readonly property int columns: Math.max(4, Math.floor(width /
                     Math.max(150, 180 * overlay.uiScale)))
                 cellWidth: width / columns
-                cellHeight: height / 3
+                cellHeight: height / 2
                 model: overlay.visibleFilms
                 currentIndex: overlay.selectedIndex
                 highlightMoveDuration: 150
