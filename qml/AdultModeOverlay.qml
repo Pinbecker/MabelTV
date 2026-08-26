@@ -844,9 +844,9 @@ Item {
                 anchors.bottom: parent.bottom
                 visible: overlay.visibleFilms.length > 0
                 clip: true
-                readonly property int columns: 5
+                readonly property int columns: 4
                 cellWidth: width / columns
-                cellHeight: height / 2
+                cellHeight: height / 3
                 model: overlay.visibleFilms
                 currentIndex: overlay.selectedIndex
                 highlightMoveDuration: 150
@@ -858,42 +858,29 @@ Item {
                     readonly property bool selected: index === overlay.selectedIndex
                     readonly property bool focused: selected && overlay.navigationZone === 1
                     width: posterGrid.cellWidth - Math.max(12, 16 * overlay.uiScale)
-                    height: posterGrid.cellHeight - Math.max(10, 14 * overlay.uiScale)
+                    height: posterGrid.cellHeight - Math.max(6, 8 * overlay.uiScale)
                     radius: Math.max(8, 10 * overlay.uiScale)
                     color: "transparent"
                     border.color: "transparent"
                     border.width: 0
                     z: focused ? 2 : 1
-                    scale: focused ? 1.035 : 1
+                    scale: focused ? 1.02 : 1
 
                     Behavior on scale { NumberAnimation { duration: 120 } }
 
                     Rectangle {
                         id: posterArtwork
-                        anchors.left: parent.left
-                        anchors.right: parent.right
+                        anchors.horizontalCenter: parent.horizontalCenter
                         anchors.top: parent.top
-                        height: parent.height * 0.78
-                        radius: Math.max(7, 9 * overlay.uiScale)
-                        color: overlay.accentColor(index)
-                        border.color: focused ? "#f5f1e8" : "#272e36"
-                        border.width: focused ? Math.max(3, 4 * overlay.uiScale) : 1
-                        clip: true
-                        gradient: Gradient {
-                            GradientStop {
-                                position: 0
-                                color: Qt.lighter(overlay.accentColor(index), 1.14)
-                            }
-                            GradientStop {
-                                position: 1
-                                color: Qt.darker(overlay.accentColor(index), 1.38)
-                            }
-                        }
+                        height: parent.height * 0.72
+                        width: height * 0.68
+                        color: "transparent"
+                        border.width: 0
 
                         Image {
                             anchors.fill: parent
                             source: modelData.poster
-                            fillMode: Image.PreserveAspectCrop
+                            fillMode: Image.PreserveAspectFit
                             visible: source.toString().length > 0
                             asynchronous: true
                             cache: true
@@ -903,7 +890,7 @@ Item {
                             visible: false
                             anchors.left: parent.left
                             anchors.top: parent.top
-                            anchors.margins: Math.max(9, 12 * overlay.uiScale)
+                            anchors.margins: Math.max(5, 7 * overlay.uiScale)
                             width: numberText.implicitWidth + Math.max(12, 16 * overlay.uiScale)
                             height: Math.max(24, 30 * overlay.uiScale)
                             radius: height / 2
@@ -925,8 +912,8 @@ Item {
                             anchors.bottom: parent.bottom
                             anchors.margins: Math.max(9, 12 * overlay.uiScale)
                             visible: controller.adultPlaybackPosition(modelData.id) >= 30
-                            width: continueText.implicitWidth + Math.max(14, 18 * overlay.uiScale)
-                            height: Math.max(24, 30 * overlay.uiScale)
+                            width: continueText.implicitWidth + Math.max(10, 13 * overlay.uiScale)
+                            height: Math.max(18, 22 * overlay.uiScale)
                             radius: height / 2
                             color: "#e8e2d6"
 
@@ -936,30 +923,35 @@ Item {
                                 color: "#17201b"
                                 font.family: "DejaVu Sans"
                                 font.bold: true
-                                font.pixelSize: Math.max(9, 11 * overlay.uiScale)
+                                font.pixelSize: Math.max(8, 9 * overlay.uiScale)
                                 text: "RESUME"
                             }
                         }
                     }
 
                     Column {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
+                        anchors.left: posterArtwork.left
+                        anchors.right: posterArtwork.right
                         anchors.top: posterArtwork.bottom
                         anchors.bottom: parent.bottom
-                        anchors.leftMargin: Math.max(2, 3 * overlay.uiScale)
-                        anchors.rightMargin: Math.max(2, 3 * overlay.uiScale)
-                        anchors.topMargin: Math.max(8, 10 * overlay.uiScale)
-                        spacing: Math.max(3, 4 * overlay.uiScale)
+                        anchors.topMargin: Math.max(5, 7 * overlay.uiScale)
+                        spacing: Math.max(1, 2 * overlay.uiScale)
+
+                        Rectangle {
+                            width: parent.width
+                            height: Math.max(2, 3 * overlay.uiScale)
+                            radius: height / 2
+                            color: focused ? "#d6b36a" : "transparent"
+                        }
 
                         Text {
                             width: parent.width
-                            color: focused ? "#ffffff" : "#d9d7d2"
+                            color: focused ? "#ffffff" : "#c7c7c3"
                             maximumLineCount: 1
                             elide: Text.ElideRight
                             font.family: "DejaVu Sans"
                             font.bold: focused
-                            font.pixelSize: Math.max(12, 14 * overlay.uiScale)
+                            font.pixelSize: Math.max(10, 12 * overlay.uiScale)
                             text: modelData.name
                         }
 
@@ -968,7 +960,7 @@ Item {
                             color: focused ? "#aeb5bc" : "#6e7781"
                             elide: Text.ElideRight
                             font.family: "DejaVu Sans"
-                            font.pixelSize: Math.max(9, 11 * overlay.uiScale)
+                            font.pixelSize: Math.max(8, 9 * overlay.uiScale)
                             text: modelData.year ? modelData.year : "FILM"
                         }
                     }
