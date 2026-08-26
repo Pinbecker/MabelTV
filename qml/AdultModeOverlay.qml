@@ -844,8 +844,7 @@ Item {
                 anchors.bottom: parent.bottom
                 visible: overlay.visibleFilms.length > 0
                 clip: true
-                readonly property int columns: Math.max(4, Math.floor(width /
-                    Math.max(150, 180 * overlay.uiScale)))
+                readonly property int columns: 5
                 cellWidth: width / columns
                 cellHeight: height / 2
                 model: overlay.visibleFilms
