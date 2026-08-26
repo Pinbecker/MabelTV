@@ -838,13 +838,14 @@ Item {
 
             GridView {
                 id: posterGrid
-                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.left: parent.left
+                anchors.right: parent.right
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
-                width: Math.min(parent.width, Math.max(500, 650 * overlay.uiScale))
                 visible: overlay.visibleFilms.length > 0
                 clip: true
-                readonly property int columns: 4
+                readonly property int columns: Math.max(4, Math.floor(width /
+                    Math.max(150, 180 * overlay.uiScale)))
                 cellWidth: width / columns
                 cellHeight: height / 3
                 model: overlay.visibleFilms
@@ -872,7 +873,8 @@ Item {
                         id: posterArtwork
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.top: parent.top
-                        height: parent.height * 0.72
+                        height: Math.min(parent.height * 0.84,
+                                         (parent.width - Math.max(16, 22 * overlay.uiScale)) / 0.68)
                         width: height * 0.68
                         color: "transparent"
                         border.width: 0
