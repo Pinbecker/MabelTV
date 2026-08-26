@@ -303,9 +303,8 @@ Item {
         const count = visibleFilms.length
         if (count === 0)
             return
-        const columns = Math.max(1, filmGrid.columns)
-        const column = selectedIndex % columns
-        if (horizontal < 0 && column === 0) {
+        const columns = Math.max(1, posterGrid.columns)
+        if (horizontal < 0 && selectedIndex % columns === 0) {
             navigationZone = 0
             return
         }
@@ -484,229 +483,250 @@ Item {
     }
 
     Item {
+        id: libraryScreen
         anchors.fill: parent
         visible: !overlay.playing
 
         Rectangle {
             anchors.fill: parent
-            color: "#090b0f"
+            color: "#080a0d"
             gradient: Gradient {
-                GradientStop { position: 0; color: "#12151b" }
-                GradientStop { position: 0.55; color: "#090b0f" }
-                GradientStop { position: 1; color: "#06070a" }
+                GradientStop { position: 0; color: "#10141a" }
+                GradientStop { position: 0.58; color: "#090c10" }
+                GradientStop { position: 1; color: "#06080a" }
             }
         }
 
-        Rectangle {
-            id: adultRail
-            anchors.left: parent.left
+        Image {
+            anchors.right: parent.right
             anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            width: Math.max(250, parent.width * 0.18)
-            color: "#0d1015"
-            border.color: "#20242b"
-            border.width: 1
+            width: parent.width * 0.42
+            height: parent.height * 0.48
+            source: overlay.currentFilm() ? overlay.currentFilm().poster : ""
+            fillMode: Image.PreserveAspectCrop
+            opacity: 0.055
+            visible: source.toString().length > 0
+            asynchronous: true
+            cache: true
+        }
 
-            Row {
-                anchors.top: parent.top
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.topMargin: Math.max(28, parent.height * 0.045)
-                anchors.leftMargin: Math.max(22, 30 * overlay.uiScale)
-                height: Math.max(54, 66 * overlay.uiScale)
-                spacing: Math.max(12, 16 * overlay.uiScale)
-
-                Rectangle {
-                    width: parent.height
-                    height: parent.height
-                    radius: width * 0.26
-                    color: "#f0eee9"
-                    Text { anchors.centerIn: parent; color: "#11141a"; font.bold: true;
-                           font.pixelSize: parent.height * 0.42; text: "M" }
-                }
-
-                Column {
-                    anchors.verticalCenter: parent.verticalCenter
-                    Text { color: "#f4f1eb"; font.bold: true;
-                           font.pixelSize: Math.max(14, 18 * overlay.uiScale); text: "ADULT TV" }
-                    Text { color: "#747c87"; font.pixelSize: Math.max(10, 12 * overlay.uiScale);
-                           text: controller.adultLibrary.length + " FILMS" }
-                }
+        Rectangle {
+            anchors.fill: parent
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0; color: "#0010141a" }
+                GradientStop { position: 0.63; color: "#85080a0d" }
+                GradientStop { position: 1; color: "#d6080a0d" }
             }
+        }
 
-            Text {
-                anchors.left: parent.left
-                anchors.top: parent.top
-                anchors.leftMargin: Math.max(22, 30 * overlay.uiScale)
-                anchors.topMargin: Math.max(116, parent.height * 0.17)
-                color: "#6f7782"
-                font.bold: true
-                font.letterSpacing: 1.5
-                font.pixelSize: Math.max(10, 12 * overlay.uiScale)
-                text: "COLLECTIONS"
-            }
+        Row {
+            id: adultHeader
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.leftMargin: Math.max(28, 42 * overlay.uiScale)
+            anchors.rightMargin: Math.max(28, 42 * overlay.uiScale)
+            anchors.topMargin: Math.max(20, 27 * overlay.uiScale)
+            height: Math.max(48, 60 * overlay.uiScale)
+            spacing: Math.max(12, 16 * overlay.uiScale)
 
-            ListView {
-                id: collectionList
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                anchors.leftMargin: Math.max(12, 16 * overlay.uiScale)
-                anchors.rightMargin: Math.max(12, 16 * overlay.uiScale)
-                anchors.topMargin: Math.max(150, parent.height * 0.22)
-                anchors.bottomMargin: Math.max(74, parent.height * 0.1)
-                spacing: Math.max(7, 9 * overlay.uiScale)
-                clip: true
-                model: overlay.collections
-                currentIndex: overlay.selectedCollectionIndex
-                onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
+            Rectangle {
+                width: Math.max(5, 7 * overlay.uiScale)
+                height: parent.height * 0.72
+                anchors.verticalCenter: parent.verticalCenter
+                radius: width / 2
+                color: "#d6b36a"
 
-                delegate: Rectangle {
-                    required property int index
-                    required property var modelData
-                    readonly property bool selected: index === overlay.selectedCollectionIndex
-                    width: collectionList.width
-                    height: Math.max(48, 60 * overlay.uiScale)
-                    radius: Math.max(9, 12 * overlay.uiScale)
-                    color: selected ? (overlay.navigationZone === 0 ? "#f0ede7" : "#252b33")
-                                    : "transparent"
-                    border.color: selected ? "#515a66" : "transparent"
-                    border.width: 1
-
-                    Text {
-                        anchors.left: parent.left
-                        anchors.right: countText.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.leftMargin: Math.max(14, 18 * overlay.uiScale)
-                        anchors.rightMargin: 8
-                        color: selected && overlay.navigationZone === 0 ? "#171a20" : "#d7d4ce"
-                        elide: Text.ElideRight
-                        font.bold: selected
-                        font.pixelSize: Math.max(12, 15 * overlay.uiScale)
-                        text: modelData.name
-                    }
-                    Text {
-                        id: countText
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.rightMargin: Math.max(12, 16 * overlay.uiScale)
-                        color: selected && overlay.navigationZone === 0 ? "#606873" : "#77808b"
-                        font.pixelSize: Math.max(10, 12 * overlay.uiScale)
-                        text: overlay.collectionFilmCount(modelData)
-                    }
+                Text {
+                    visible: false
+                    anchors.centerIn: parent
+                    color: "#11151a"
+                    font.family: "DejaVu Sans"
+                    font.bold: true
+                    font.pixelSize: parent.height * 0.42
+                    text: "M"
                 }
             }
 
             Column {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                anchors.margins: 16
-                spacing: 5
+                anchors.verticalCenter: parent.verticalCenter
+                width: parent.width - headerStats.width - Math.max(5, 7 * overlay.uiScale)
+                       - parent.spacing * 2
+                spacing: 1
 
                 Text {
-                    width: parent.width
-                    color: "#8b929c"
-                    horizontalAlignment: Text.AlignHCenter
+                    color: "#f6f3ed"
                     font.family: "DejaVu Sans"
                     font.bold: true
-                    font.pixelSize: Math.max(10, 12 * overlay.uiScale)
-                    text: "BACK"
+                    font.pixelSize: Math.max(20, 27 * overlay.uiScale)
+                    text: "Adult Library"
                 }
                 Text {
-                    width: parent.width
-                    color: "#555c66"
-                    horizontalAlignment: Text.AlignHCenter
+                    color: "#737c86"
                     font.family: "DejaVu Sans"
-                    font.pixelSize: Math.max(9, 10 * overlay.uiScale)
-                    text: overlay.navigationZone === 0 ? "EXIT" : "COLLECTIONS"
+                    font.pixelSize: Math.max(11, 13 * overlay.uiScale)
+                    text: "MABELTV  /  PRIVATE"
+                }
+            }
+
+            Row {
+                id: headerStats
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: Math.max(10, 14 * overlay.uiScale)
+
+                Rectangle {
+                    width: filmCountText.implicitWidth + Math.max(24, 32 * overlay.uiScale)
+                    height: Math.max(30, 36 * overlay.uiScale)
+                    radius: height / 2
+                    color: "#12161b"
+                    border.color: "#29313a"
+
+                    Text {
+                        id: filmCountText
+                        anchors.centerIn: parent
+                        color: "#9ba3ac"
+                        font.family: "DejaVu Sans"
+                        font.bold: true
+                        font.pixelSize: Math.max(11, 14 * overlay.uiScale)
+                        text: controller.adultLibrary.length + " FILMS"
+                    }
+                }
+
+                Rectangle {
+                    width: privacyText.implicitWidth + Math.max(24, 32 * overlay.uiScale)
+                    height: Math.max(30, 36 * overlay.uiScale)
+                    radius: height / 2
+                    color: "transparent"
+                    border.color: "transparent"
+
+                    Text {
+                        id: privacyText
+                        anchors.centerIn: parent
+                        color: "#666f79"
+                        font.family: "DejaVu Sans"
+                        font.bold: true
+                        font.letterSpacing: 1.2
+                        font.pixelSize: Math.max(10, 12 * overlay.uiScale)
+                        text: "LOCAL MEDIA"
+                    }
+                }
+            }
+        }
+
+        Text {
+            id: collectionLabel
+            anchors.left: parent.left
+            anchors.top: adultHeader.bottom
+            anchors.leftMargin: Math.max(28, 42 * overlay.uiScale)
+            anchors.topMargin: Math.max(18, 24 * overlay.uiScale)
+            color: "#69727c"
+            font.family: "DejaVu Sans"
+            font.bold: true
+            font.letterSpacing: 1.8
+            font.pixelSize: Math.max(10, 12 * overlay.uiScale)
+            text: "LIBRARY"
+        }
+
+        ListView {
+            id: collectionTabs
+            anchors.left: parent.left
+            anchors.top: collectionLabel.bottom
+            anchors.bottom: adultFooter.top
+            anchors.leftMargin: Math.max(24, 36 * overlay.uiScale)
+            anchors.topMargin: Math.max(9, 12 * overlay.uiScale)
+            anchors.bottomMargin: Math.max(14, 20 * overlay.uiScale)
+            width: Math.max(190, parent.width * 0.17)
+            orientation: ListView.Vertical
+            spacing: Math.max(3, 5 * overlay.uiScale)
+            clip: true
+            model: overlay.collections
+            currentIndex: overlay.selectedCollectionIndex
+            onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
+
+            delegate: Rectangle {
+                required property int index
+                required property var modelData
+                readonly property bool selected: index === overlay.selectedCollectionIndex
+                width: collectionTabs.width
+                height: Math.max(42, 52 * overlay.uiScale)
+                radius: Math.max(7, 9 * overlay.uiScale)
+                color: selected
+                       ? (overlay.navigationZone === 0 ? "#eeeae2" : "#20262d")
+                       : "transparent"
+                border.color: selected
+                              ? (overlay.navigationZone === 0 ? "#ffffff" : "#343d47")
+                              : "transparent"
+                border.width: 1
+
+                Row {
+                    anchors.fill: parent
+                    anchors.leftMargin: Math.max(13, 17 * overlay.uiScale)
+                    anchors.rightMargin: Math.max(13, 17 * overlay.uiScale)
+                    spacing: Math.max(8, 11 * overlay.uiScale)
+
+                    Text {
+                        id: tabName
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: parent.width - tabCount.width - parent.spacing
+                        color: selected && overlay.navigationZone === 0
+                               ? "#15191e" : "#e2dfd9"
+                        elide: Text.ElideRight
+                        font.family: "DejaVu Sans"
+                        font.bold: true
+                        font.pixelSize: Math.max(12, 15 * overlay.uiScale)
+                        text: modelData.name
+                    }
+
+                    Text {
+                        id: tabCount
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: selected && overlay.navigationZone === 0
+                               ? "#65707a" : "#7f8994"
+                        font.family: "DejaVu Sans"
+                        font.bold: true
+                        font.pixelSize: Math.max(11, 13 * overlay.uiScale)
+                        text: overlay.collectionFilmCount(modelData)
+                    }
                 }
             }
         }
 
         Item {
-            id: adultContent
-            anchors.left: adultRail.right
+            id: libraryBody
+            anchors.left: collectionTabs.right
             anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.leftMargin: Math.max(34, parent.width * 0.032)
-            anchors.rightMargin: Math.max(34, parent.width * 0.038)
-
-            Row {
-                id: adultHeader
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.topMargin: Math.max(28, parent.height * 0.042)
-                height: Math.max(52, parent.height * 0.07)
-
-                Column {
-                    width: parent.width - privacyBadge.width
-                    spacing: 3
-
-                    Text {
-                        color: "#f3f0ea"
-                        font.family: "DejaVu Sans"
-                        font.bold: true
-                        font.pixelSize: Math.max(23, parent.parent.height * 0.041)
-                        text: "Adult TV"
-                    }
-
-                    Text {
-                        color: "#727a85"
-                        font.family: "DejaVu Sans"
-                        font.pixelSize: Math.max(11, parent.parent.height * 0.017)
-                        text: "Your private film library"
-                    }
-                }
-
-                Rectangle {
-                    id: privacyBadge
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: privacyText.implicitWidth + 28
-                    height: Math.max(30, 38 * overlay.uiScale)
-                    radius: height / 2
-                    color: "#181c22"
-                    border.color: "#333a44"
-
-                    Text {
-                        id: privacyText
-                        anchors.centerIn: parent
-                        color: "#9da5af"
-                        font.family: "DejaVu Sans"
-                        font.bold: true
-                        font.letterSpacing: 1.2
-                        font.pixelSize: Math.max(9, 11 * overlay.uiScale)
-                        text: "●  PRIVATE"
-                    }
-                }
-            }
+            anchors.top: adultHeader.bottom
+            anchors.bottom: adultFooter.top
+            anchors.leftMargin: Math.max(24, 34 * overlay.uiScale)
+            anchors.rightMargin: Math.max(28, 42 * overlay.uiScale)
+            anchors.topMargin: Math.max(18, 24 * overlay.uiScale)
+            anchors.bottomMargin: Math.max(10, 14 * overlay.uiScale)
 
             Rectangle {
-                id: featurePanel
-                anchors.left: parent.left
+                id: detailPanel
                 anchors.right: parent.right
-                anchors.top: adultHeader.bottom
-                anchors.topMargin: Math.max(14, parent.height * 0.02)
-                height: parent.height * 0.31
-                visible: overlay.visibleFilms.length > 0
-                radius: Math.max(16, 24 * overlay.uiScale)
-                color: "#151920"
-                border.color: "#2c323b"
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: 0
+                radius: Math.max(16, 22 * overlay.uiScale)
+                color: "#151a20"
+                border.color: "#303943"
+                border.width: 1
                 clip: true
+                visible: false
 
                 Rectangle {
+                    id: detailArtwork
+                    anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    width: parent.width * 0.34
+                    height: parent.height * 0.46
                     color: overlay.accentColor(overlay.selectedIndex)
                     gradient: Gradient {
                         GradientStop {
                             position: 0
-                            color: Qt.lighter(overlay.accentColor(overlay.selectedIndex), 1.18)
+                            color: Qt.lighter(overlay.accentColor(overlay.selectedIndex), 1.16)
                         }
                         GradientStop {
                             position: 1
@@ -723,200 +743,150 @@ Item {
                         cache: true
                     }
 
-                    Text {
-                        anchors.centerIn: parent
-                        color: "#38ffffff"
-                        font.family: "DejaVu Sans"
-                        font.bold: true
-                        font.pixelSize: Math.max(94, parent.height * 0.56)
-                        text: String(overlay.selectedIndex + 1).padStart(2, "0")
-                    }
-
                     Rectangle {
                         anchors.left: parent.left
-                        anchors.top: parent.top
+                        anchors.right: parent.right
                         anchors.bottom: parent.bottom
-                        width: parent.width * 0.28
+                        height: parent.height * 0.38
                         gradient: Gradient {
-                            orientation: Gradient.Horizontal
-                            GradientStop { position: 0; color: "#151920" }
-                            GradientStop { position: 1; color: "#00151920" }
+                            GradientStop { position: 0; color: "#00151a20" }
+                            GradientStop { position: 1; color: "#f0151a20" }
                         }
+                    }
+
+                    Text {
+                        anchors.left: parent.left
+                        anchors.bottom: parent.bottom
+                        anchors.margins: Math.max(16, 22 * overlay.uiScale)
+                        color: "#e7e2dc"
+                        font.family: "DejaVu Sans"
+                        font.bold: true
+                        font.pixelSize: Math.max(12, 15 * overlay.uiScale)
+                        text: overlay.selectedSavedPosition >= 30
+                              ? "CONTINUE AT " + overlay.formatTime(overlay.selectedSavedPosition)
+                              : "READY TO PLAY"
                     }
                 }
 
                 Column {
                     anchors.left: parent.left
                     anchors.right: parent.right
-                    anchors.top: parent.top
+                    anchors.top: detailArtwork.bottom
                     anchors.bottom: parent.bottom
-                    anchors.leftMargin: Math.max(26, parent.width * 0.035)
-                    anchors.rightMargin: parent.width * 0.37
-                    anchors.topMargin: Math.max(22, parent.height * 0.11)
-                    anchors.bottomMargin: Math.max(20, parent.height * 0.10)
-                    spacing: Math.max(8, parent.height * 0.035)
-
-                    Text {
-                        color: overlay.accentColor(overlay.selectedIndex)
-                        font.family: "DejaVu Sans"
-                        font.bold: true
-                        font.letterSpacing: 1.8
-                        font.pixelSize: Math.max(10, 12 * overlay.uiScale)
-                        text: overlay.selectedSavedPosition >= 30
-                              ? "CONTINUE WATCHING" : "FEATURED FROM YOUR LIBRARY"
-                    }
+                    anchors.margins: Math.max(18, 24 * overlay.uiScale)
+                    spacing: Math.max(7, 10 * overlay.uiScale)
 
                     Text {
                         width: parent.width
-                        color: "#f6f3ed"
-                        elide: Text.ElideRight
+                        color: "#f5f1ea"
                         maximumLineCount: 2
+                        elide: Text.ElideRight
                         wrapMode: Text.Wrap
                         font.family: "DejaVu Sans"
                         font.bold: true
-                        font.pixelSize: Math.max(29, Math.min(58, overlay.height * 0.061))
+                        font.pixelSize: Math.max(22, 29 * overlay.uiScale)
                         text: overlay.currentFilm() ? overlay.currentFilm().name : ""
                     }
 
                     Text {
                         width: parent.width
-                        color: "#929ba6"
+                        color: "#8f99a5"
                         elide: Text.ElideRight
                         font.family: "DejaVu Sans"
-                        font.pixelSize: Math.max(11, 15 * overlay.uiScale)
+                        font.pixelSize: Math.max(11, 14 * overlay.uiScale)
                         text: overlay.currentFilm()
                               ? (overlay.currentFilm().year
                                  ? overlay.currentFilm().year + "   •   " : "")
                                 + overlay.formatFileSize(overlay.currentFilm().size)
-                                + "   •   LOCAL FILM   •   SUBTITLES WHEN AVAILABLE"
+                                + "   •   LOCAL"
                               : ""
                     }
 
                     Text {
                         width: parent.width
                         visible: overlay.currentFilm() && overlay.currentFilm().overview
-                        color: "#aeb5bd"
-                        maximumLineCount: 2
+                        color: "#b2bac3"
+                        maximumLineCount: 3
                         elide: Text.ElideRight
                         wrapMode: Text.Wrap
                         font.family: "DejaVu Sans"
-                        font.pixelSize: Math.max(10, 13 * overlay.uiScale)
+                        font.pixelSize: Math.max(11, 13 * overlay.uiScale)
+                        lineHeight: 1.15
                         text: overlay.currentFilm() ? overlay.currentFilm().overview : ""
                     }
 
+                    Item { width: 1; height: Math.max(2, 4 * overlay.uiScale) }
+
                     Rectangle {
-                        width: playText.implicitWidth + Math.max(34, 46 * overlay.uiScale)
-                        height: Math.max(36, 48 * overlay.uiScale)
-                        radius: height / 2
-                        color: "#f2efe9"
+                        width: parent.width
+                        height: Math.max(42, 54 * overlay.uiScale)
+                        radius: Math.max(10, 14 * overlay.uiScale)
+                        color: "#f1eee7"
 
                         Text {
-                            id: playText
                             anchors.centerIn: parent
-                            color: "#15181e"
+                            color: "#15191e"
                             font.family: "DejaVu Sans"
                             font.bold: true
-                            font.pixelSize: Math.max(12, 15 * overlay.uiScale)
+                            font.pixelSize: Math.max(14, 17 * overlay.uiScale)
                             text: overlay.selectedSavedPosition >= 30
-                                  ? "▶  RESUME  " + overlay.formatTime(overlay.selectedSavedPosition)
-                                  : "▶  PLAY FILM"
+                                  ? "OK   RESUME FILM" : "OK   PLAY FILM"
                         }
-
                     }
                 }
-            }
-
-            Item {
-                anchors.fill: featurePanel
-                visible: controller.adultLibrary.length === 0
-
-                Column {
-                    anchors.centerIn: parent
-                    width: Math.min(parent.width * 0.8, 720)
-                    spacing: 12
-
-                    Text {
-                        width: parent.width
-                        color: "#f1eee8"
-                        horizontalAlignment: Text.AlignHCenter
-                        font.family: "DejaVu Sans"
-                        font.bold: true
-                        font.pixelSize: Math.max(28, 44 * overlay.uiScale)
-                        text: "Your Adult TV library is ready"
-                    }
-                    Text {
-                        width: parent.width
-                        color: "#858e99"
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.Wrap
-                        font.family: "DejaVu Sans"
-                        font.pixelSize: Math.max(13, 17 * overlay.uiScale)
-                        text: "Add films from Adult mode in the parent web portal, then they will appear here."
-                    }
-                }
-            }
-
-            Text {
-                id: libraryHeading
-                anchors.left: parent.left
-                anchors.top: featurePanel.bottom
-                anchors.topMargin: Math.max(18, parent.height * 0.027)
-                color: "#ece9e3"
-                font.family: "DejaVu Sans"
-                font.bold: true
-                font.pixelSize: Math.max(16, 21 * overlay.uiScale)
-                text: (overlay.collections.length > overlay.selectedCollectionIndex
-                       ? overlay.collections[overlay.selectedCollectionIndex].name : "Films")
-                      + "   ·   " + overlay.visibleFilms.length
             }
 
             GridView {
-                id: filmGrid
+                id: posterGrid
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.top: libraryHeading.bottom
-                anchors.topMargin: Math.max(10, parent.height * 0.014)
-                anchors.bottom: adultFooter.top
-                anchors.bottomMargin: Math.max(10, parent.height * 0.014)
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
                 visible: overlay.visibleFilms.length > 0
                 clip: true
-                readonly property int columns: Math.max(2, Math.floor(width /
-                    Math.max(190, 250 * overlay.uiScale)))
+                readonly property int columns: 5
                 cellWidth: width / columns
-                cellHeight: Math.max(142, height / 2)
+                cellHeight: height / 2
                 model: overlay.visibleFilms
                 currentIndex: overlay.selectedIndex
-                highlightMoveDuration: 180
+                highlightMoveDuration: 150
                 onCurrentIndexChanged: positionViewAtIndex(currentIndex, GridView.Contain)
 
                 delegate: Rectangle {
                     required property int index
                     required property var modelData
                     readonly property bool selected: index === overlay.selectedIndex
-                    width: filmGrid.cellWidth - Math.max(10, 15 * overlay.uiScale)
-                    height: filmGrid.cellHeight - Math.max(10, 15 * overlay.uiScale)
-                    radius: Math.max(12, 18 * overlay.uiScale)
-                    color: selected && overlay.navigationZone === 1 ? "#f0ede7" : "#171b21"
-                    border.color: selected ? (overlay.navigationZone === 1 ? "#ffffff" : "#4a525d")
-                                                   : "#2a3038"
-                    border.width: selected && overlay.navigationZone === 1 ? 3 : 1
-                    clip: true
+                    readonly property bool focused: selected && overlay.navigationZone === 1
+                    width: posterGrid.cellWidth - Math.max(12, 16 * overlay.uiScale)
+                    height: posterGrid.cellHeight - Math.max(10, 14 * overlay.uiScale)
+                    radius: Math.max(8, 10 * overlay.uiScale)
+                    color: "transparent"
+                    border.color: "transparent"
+                    border.width: 0
+                    z: focused ? 2 : 1
+                    scale: focused ? 1.035 : 1
+
+                    Behavior on scale { NumberAnimation { duration: 120 } }
 
                     Rectangle {
-                        id: cardArtwork
+                        id: posterArtwork
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.top: parent.top
-                        height: parent.height * 0.58
+                        height: parent.height * 0.78
+                        radius: Math.max(7, 9 * overlay.uiScale)
                         color: overlay.accentColor(index)
+                        border.color: focused ? "#f5f1e8" : "#272e36"
+                        border.width: focused ? Math.max(3, 4 * overlay.uiScale) : 1
+                        clip: true
                         gradient: Gradient {
                             GradientStop {
                                 position: 0
-                                color: Qt.lighter(overlay.accentColor(index), 1.16)
+                                color: Qt.lighter(overlay.accentColor(index), 1.14)
                             }
                             GradientStop {
                                 position: 1
-                                color: Qt.darker(overlay.accentColor(index), 1.35)
+                                color: Qt.darker(overlay.accentColor(index), 1.38)
                             }
                         }
 
@@ -929,87 +899,141 @@ Item {
                             cache: true
                         }
 
-                        Text {
+                        Rectangle {
+                            visible: false
                             anchors.left: parent.left
                             anchors.top: parent.top
-                            anchors.margins: Math.max(12, 17 * overlay.uiScale)
-                            color: "#b8ffffff"
-                            font.family: "DejaVu Sans"
-                            font.bold: true
-                            font.pixelSize: Math.max(11, 14 * overlay.uiScale)
-                            text: String(index + 1).padStart(2, "0")
+                            anchors.margins: Math.max(9, 12 * overlay.uiScale)
+                            width: numberText.implicitWidth + Math.max(12, 16 * overlay.uiScale)
+                            height: Math.max(24, 30 * overlay.uiScale)
+                            radius: height / 2
+                            color: "#c80a0d11"
+
+                            Text {
+                                id: numberText
+                                anchors.centerIn: parent
+                                color: "#f1eee8"
+                                font.family: "DejaVu Sans"
+                                font.bold: true
+                                font.pixelSize: Math.max(10, 12 * overlay.uiScale)
+                                text: String(index + 1).padStart(2, "0")
+                            }
                         }
 
-                        Text {
-                            anchors.centerIn: parent
-                            color: "#32ffffff"
-                            font.family: "DejaVu Sans"
-                            font.bold: true
-                            font.pixelSize: parent.height * 0.44
-                            text: modelData.name.length > 0 ? modelData.name.charAt(0).toUpperCase() : "M"
+                        Rectangle {
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.margins: Math.max(9, 12 * overlay.uiScale)
+                            visible: controller.adultPlaybackPosition(modelData.id) >= 30
+                            width: continueText.implicitWidth + Math.max(14, 18 * overlay.uiScale)
+                            height: Math.max(24, 30 * overlay.uiScale)
+                            radius: height / 2
+                            color: "#e8e2d6"
+
+                            Text {
+                                id: continueText
+                                anchors.centerIn: parent
+                                color: "#17201b"
+                                font.family: "DejaVu Sans"
+                                font.bold: true
+                                font.pixelSize: Math.max(9, 11 * overlay.uiScale)
+                                text: "RESUME"
+                            }
                         }
                     }
 
                     Column {
                         anchors.left: parent.left
                         anchors.right: parent.right
-                        anchors.top: cardArtwork.bottom
+                        anchors.top: posterArtwork.bottom
                         anchors.bottom: parent.bottom
-                        anchors.margins: Math.max(12, 17 * overlay.uiScale)
-                        spacing: Math.max(5, 7 * overlay.uiScale)
+                        anchors.leftMargin: Math.max(2, 3 * overlay.uiScale)
+                        anchors.rightMargin: Math.max(2, 3 * overlay.uiScale)
+                        anchors.topMargin: Math.max(8, 10 * overlay.uiScale)
+                        spacing: Math.max(3, 4 * overlay.uiScale)
 
                         Text {
                             width: parent.width
-                            color: selected && overlay.navigationZone === 1 ? "#181b20" : "#ece9e3"
+                            color: focused ? "#ffffff" : "#d9d7d2"
+                            maximumLineCount: 1
                             elide: Text.ElideRight
-                            maximumLineCount: 2
-                            wrapMode: Text.Wrap
                             font.family: "DejaVu Sans"
-                            font.bold: true
-                            font.pixelSize: Math.max(13, 17 * overlay.uiScale)
+                            font.bold: focused
+                            font.pixelSize: Math.max(12, 14 * overlay.uiScale)
                             text: modelData.name
                         }
 
                         Text {
                             width: parent.width
-                            color: selected && overlay.navigationZone === 1 ? "#666d75" : "#7e8791"
+                            color: focused ? "#aeb5bc" : "#6e7781"
+                            elide: Text.ElideRight
                             font.family: "DejaVu Sans"
-                            font.pixelSize: Math.max(10, 12 * overlay.uiScale)
-                            text: (modelData.year ? modelData.year + "  •  " : "")
-                                  + overlay.formatFileSize(modelData.size) + "  •  FILM"
+                            font.pixelSize: Math.max(9, 11 * overlay.uiScale)
+                            text: modelData.year ? modelData.year : "FILM"
                         }
                     }
                 }
             }
 
-            Row {
-                id: adultFooter
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                anchors.bottomMargin: Math.max(15, parent.height * 0.024)
-                height: Math.max(22, 28 * overlay.uiScale)
+            Column {
+                anchors.centerIn: parent
+                width: Math.min(parent.width * 0.78, 760)
+                visible: controller.adultLibrary.length === 0
+                spacing: Math.max(12, 16 * overlay.uiScale)
 
                 Text {
-                    width: parent.width * 0.7
-                    color: overlay.errorMessage.length > 0 ? "#ff9b89" : "#68717c"
-                    elide: Text.ElideRight
+                    width: parent.width
+                    color: "#f4f0e9"
+                    horizontalAlignment: Text.AlignHCenter
                     font.family: "DejaVu Sans"
-                    font.pixelSize: Math.max(10, 12 * overlay.uiScale)
-                    text: overlay.errorMessage.length > 0
-                          ? overlay.errorMessage
-                          : (overlay.navigationZone === 0
-                             ? "↑ ↓  COLLECTIONS     → / OK  OPEN     BACK  EXIT"
-                             : "↑ ↓ ← →  BROWSE     OK  PLAY     BACK  COLLECTIONS")
+                    font.bold: true
+                    font.pixelSize: Math.max(30, 44 * overlay.uiScale)
+                    text: "Your film library is ready"
                 }
+
                 Text {
-                    width: parent.width * 0.3
-                    color: "#4e5660"
-                    horizontalAlignment: Text.AlignRight
+                    width: parent.width
+                    color: "#8f98a3"
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.Wrap
                     font.family: "DejaVu Sans"
-                    font.pixelSize: Math.max(10, 12 * overlay.uiScale)
-                    text: "MABELTV  •  ADULT"
+                    font.pixelSize: Math.max(14, 18 * overlay.uiScale)
+                    text: "Add films and collections from the Adult section in the parent web portal."
                 }
+            }
+        }
+
+        Row {
+            id: adultFooter
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.leftMargin: Math.max(32, 48 * overlay.uiScale)
+            anchors.rightMargin: Math.max(32, 48 * overlay.uiScale)
+            anchors.bottomMargin: Math.max(14, 20 * overlay.uiScale)
+            height: Math.max(22, 28 * overlay.uiScale)
+
+            Text {
+                width: parent.width * 0.78
+                color: overlay.errorMessage.length > 0 ? "#ff9b89" : "#77818c"
+                elide: Text.ElideRight
+                font.family: "DejaVu Sans"
+                font.pixelSize: Math.max(11, 13 * overlay.uiScale)
+                text: overlay.errorMessage.length > 0
+                      ? overlay.errorMessage
+                      : (overlay.navigationZone === 0
+                         ? "↑ ↓  CHOOSE COLLECTION     → / OK  OPEN FILMS     BACK  EXIT"
+                         : "↑ ↓ ← →  MOVE     OK  PLAY     BACK  COLLECTIONS")
+            }
+
+            Text {
+                width: parent.width * 0.22
+                color: "#59626d"
+                horizontalAlignment: Text.AlignRight
+                font.family: "DejaVu Sans"
+                font.bold: true
+                font.pixelSize: Math.max(10, 12 * overlay.uiScale)
+                text: "MABELTV  •  ADULT"
             }
         }
     }

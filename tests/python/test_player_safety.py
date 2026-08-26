@@ -161,10 +161,10 @@ class PlayerSafetyTests(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn('text: "Your private film library"', adult_qml)
-        self.assertIn("id: featurePanel", adult_qml)
-        self.assertIn("id: collectionList", adult_qml)
-        self.assertIn("id: filmGrid", adult_qml)
+        self.assertIn('text: "Adult Library"', adult_qml)
+        self.assertIn("id: detailPanel", adult_qml)
+        self.assertIn("id: collectionTabs", adult_qml)
+        self.assertIn("id: posterGrid", adult_qml)
         self.assertIn("function selectCollectionRelative(offset)", adult_qml)
         self.assertIn("function navigateGrid(horizontal, vertical)", adult_qml)
         self.assertIn("function selectRelative(offset)", adult_qml)
