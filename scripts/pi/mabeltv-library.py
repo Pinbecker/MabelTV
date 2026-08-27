@@ -48,6 +48,9 @@ USB_IMPORT_RESERVE_BYTES = 256 * 1024 * 1024
 USB_MAX_SELECTION_FILES = 2000
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
 TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
+OPENSUBTITLES_API_BASE_URL = "https://api.opensubtitles.com/api/v1"
+OPENSUBTITLES_USER_AGENT = "MabelTV/0.2.5"
+SUBTITLE_EXTENSIONS = {".srt", ".vtt", ".ass", ".ssa"}
 SAFE_NAME = re.compile(r"[^A-Za-z0-9 ._()&'\-]+")
 EPISODE_NAME = re.compile(r"^s(\d{1,2})e(\d{1,3})\s*-\s*(.+)$", re.IGNORECASE)
 PIN_PATTERN = re.compile(r"\d{4,8}")
@@ -423,6 +426,9 @@ class Library:
         self.usb_requires_mount = configured_usb_root is None
         self.tmdb_key_path = Path(os.environ.get(
             "MABELTV_TMDB_API_KEY_FILE", "/var/lib/mabeltv/secrets/tmdb-api-key"))
+        self.opensubtitles_key_path = Path(os.environ.get(
+            "MABELTV_OPENSUBTITLES_API_KEY_FILE",
+            "/var/lib/mabeltv/secrets/opensubtitles-api-key"))
         self.bin = self.media_root / ".recycle-bin"
         self.sessions: dict[str, float] = {}
         self.login_failures: dict[str, list[float]] = {}
@@ -1488,6 +1494,148 @@ class Library:
                 pass
         return key
 
+    def opensubtitles_key(self) -> str:
+        """Return the Pi-local consumer key, never exposing it through the portal."""
+        key = os.environ.get("MABELTV_OPENSUBTITLES_API_KEY", "").strip()
+        if not key:
+            try:
+                key = self.opensubtitles_key_path.read_text(encoding="utf-8").strip()
+            except OSError:
+                pass
+        return key
+
+    @staticmethod
+    def subtitle_sidecars(source: Path) -> list[Path]:
+        """Find MPV-recognised sidecars belonging to one film, not unrelated SRTs."""
+        candidates: list[Path] = []
+        for extension in SUBTITLE_EXTENSIONS:
+            exact = source.with_suffix(extension)
+            if exact.is_file():
+                candidates.append(exact)
+            candidates.extend(candidate for candidate in source.parent.glob(
+                f"{source.stem}.*{extension}") if candidate.is_file())
+        return list(dict.fromkeys(candidates))
+
+    def subtitle_availability(self, source: Path) -> dict[str, Any]:
+        sidecars = self.subtitle_sidecars(source)
+        if sidecars:
+            return {"status": "external", "file": sidecars[0].name}
+        try:
+            result = subprocess.run(
+                ["ffprobe", "-v", "error", "-select_streams", "s",
+                 "-show_entries", "stream=index", "-of", "json", str(source)],
+                check=False, capture_output=True, text=True, timeout=30)
+            streams = json.loads(result.stdout).get("streams", [])
+            if result.returncode == 0 and streams:
+                return {"status": "embedded"}
+        except (OSError, subprocess.TimeoutExpired, TypeError, ValueError):
+            # A malformed file must not prevent its confirmed film metadata
+            # from being stored. Playback validation handles that separately.
+            pass
+        return {"status": "missing"}
+
+    def opensubtitles_request(self, endpoint: str,
+                              parameters: dict[str, Any] | None = None,
+                              body: dict[str, Any] | None = None) -> Any:
+        key = self.opensubtitles_key()
+        if not key:
+            raise ValueError("OpenSubtitles has not been configured")
+        query = urlencode(parameters or {})
+        url = f"{OPENSUBTITLES_API_BASE_URL}/{endpoint.lstrip('/')}"
+        if query:
+            url += f"?{query}"
+        headers = {
+            "Accept": "application/json",
+            "Api-Key": key,
+            "User-Agent": OPENSUBTITLES_USER_AGENT,
+        }
+        data = None
+        if body is not None:
+            data = json.dumps(body).encode("utf-8")
+            headers["Content-Type"] = "application/json"
+        try:
+            request = Request(url, data=data, headers=headers)
+            with urlopen(request, timeout=15) as response:
+                return json.loads(response.read(2 * 1024 * 1024))
+        except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as error:
+            raise ValueError("OpenSubtitles could not be reached") from error
+
+    def opensubtitles_download_bytes(self, link: str) -> bytes:
+        parsed = urlsplit(link)
+        if parsed.scheme != "https" or not parsed.netloc:
+            raise ValueError("OpenSubtitles returned an invalid download link")
+        try:
+            request = Request(link, headers={"User-Agent": OPENSUBTITLES_USER_AGENT})
+            with urlopen(request, timeout=20) as response:
+                return response.read(4 * 1024 * 1024 + 1)
+        except (HTTPError, URLError, TimeoutError) as error:
+            raise ValueError("OpenSubtitles could not download the subtitle") from error
+
+    @staticmethod
+    def opensubtitles_best_file(response: Any) -> int | None:
+        if not isinstance(response, dict):
+            return None
+        options: list[tuple[tuple[int, int, float, int], int]] = []
+        for item in response.get("data", []):
+            if not isinstance(item, dict):
+                continue
+            attributes = item.get("attributes", {})
+            if not isinstance(attributes, dict) or attributes.get("language") != "en":
+                continue
+            for value in attributes.get("files", []):
+                if not isinstance(value, dict):
+                    continue
+                try:
+                    file_id = int(value.get("file_id", 0))
+                except (TypeError, ValueError):
+                    continue
+                file_name = str(value.get("file_name", "")).lower()
+                if file_id <= 0 or not file_name.endswith(".srt"):
+                    continue
+                # Prefer ordinary English SRTs with a proven download history;
+                # hearing-impaired captions remain a valid fallback.
+                score = (
+                    0 if bool(attributes.get("hearing_impaired")) else 1,
+                    int(float(attributes.get("ratings") or 0) * 100),
+                    float(attributes.get("download_count") or 0),
+                    -file_id,
+                )
+                options.append((score, file_id))
+        return max(options)[1] if options else None
+
+    def fetch_automatic_subtitle(self, source: Path, tmdb_id: int) -> dict[str, Any]:
+        """Fetch one conservative English SRT after a confirmed TMDB match.
+
+        This never raises into the metadata path: a missing subtitle must not
+        make the film, artwork, or its selected TMDB match disappear.
+        """
+        current = self.subtitle_availability(source)
+        if current["status"] != "missing":
+            return current
+        if not self.opensubtitles_key():
+            return {"status": "not_configured"}
+        try:
+            matches = self.opensubtitles_request(
+                "subtitles", {"tmdb_id": tmdb_id, "languages": "en",
+                               "order_by": "download_count", "order_direction": "desc"})
+            file_id = self.opensubtitles_best_file(matches)
+            if file_id is None:
+                return {"status": "unavailable", "provider": "OpenSubtitles"}
+            ticket = self.opensubtitles_request("download", body={"file_id": file_id})
+            link = str(ticket.get("link", "")) if isinstance(ticket, dict) else ""
+            data = self.opensubtitles_download_bytes(link)
+            if len(data) > 4 * 1024 * 1024 or b"-->" not in data[:64 * 1024]:
+                raise ValueError("OpenSubtitles returned an invalid subtitle")
+            target = source.with_name(f"{source.stem}.en.srt")
+            temporary = target.with_suffix(".srt.new")
+            temporary.write_bytes(data)
+            os.replace(temporary, target)
+            return {"status": "downloaded", "file": target.name,
+                    "language": "en", "provider": "OpenSubtitles",
+                    "updated": time.time()}
+        except (OSError, ValueError):
+            return {"status": "unavailable", "provider": "OpenSubtitles"}
+
     def tmdb_status(self) -> dict[str, Any]:
         return {"configured": bool(self.tmdb_key()),
                 "key_file": str(self.tmdb_key_path), "provider": "TMDB"}
@@ -1576,6 +1724,7 @@ class Library:
             "runtime": int(value.get("runtime") or 0), "poster": poster_name,
             "updated": time.time(), "provider": "TMDB",
         }
+        metadata["subtitles"] = self.fetch_automatic_subtitle(source, tmdb_id)
         states = self.adult_media_states()
         current = states.get(file_name, {})
         if not isinstance(current, dict):

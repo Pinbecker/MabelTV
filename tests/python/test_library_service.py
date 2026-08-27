@@ -949,6 +949,56 @@ class UsbAndMetadataTests(unittest.TestCase):
         persisted = self.fixture.library.adult_media_states()[movie.name]
         self.assertNotIn("api_key", json.dumps(persisted))
 
+    def test_tmdb_apply_automatically_fetches_one_matching_english_subtitle(self) -> None:
+        movie = self.fixture.library.adult_root / "Fellowship of the Ring 2001.mkv"
+        movie.write_bytes(b"video")
+        self.fixture.library.tmdb_request = mock.Mock(return_value={
+            "id": 120, "title": "The Lord of the Rings: The Fellowship of the Ring",
+            "original_title": "The Lord of the Rings: The Fellowship of the Ring",
+            "release_date": "2001-12-19", "overview": "A journey begins.",
+            "runtime": 179, "poster_path": None,
+        })
+        self.fixture.library.subtitle_availability = mock.Mock(return_value={"status": "missing"})
+        self.fixture.library.opensubtitles_key = mock.Mock(return_value="private-consumer-key")
+        self.fixture.library.opensubtitles_request = mock.Mock(side_effect=[
+            {"data": [{"attributes": {"language": "en", "hearing_impaired": False,
+                                          "ratings": 8.0, "download_count": 20,
+                                          "files": [{"file_id": 555,
+                                                     "file_name": "film.en.srt"}]}}]},
+            {"link": "https://example.invalid/subtitle"},
+        ])
+        self.fixture.library.opensubtitles_download_bytes = mock.Mock(
+            return_value=b"1\n00:00:01,000 --> 00:00:02,000\nHello.\n")
+
+        applied = self.fixture.library.tmdb_apply({"file": movie.name, "tmdb_id": 120})
+
+        subtitle = movie.with_name("Fellowship of the Ring 2001.en.srt")
+        self.assertTrue(subtitle.is_file())
+        self.assertEqual(applied["metadata"]["subtitles"]["status"], "downloaded")
+        self.assertEqual(applied["metadata"]["subtitles"]["file"], subtitle.name)
+        self.assertEqual(self.fixture.library.opensubtitles_request.call_args_list[0].args[0],
+                         "subtitles")
+        self.assertNotIn("private-consumer-key",
+                         json.dumps(self.fixture.library.adult_media_states()))
+
+    def test_tmdb_apply_keeps_existing_subtitles_and_does_not_contact_provider(self) -> None:
+        movie = self.fixture.library.adult_root / "Film.mkv"
+        movie.write_bytes(b"video")
+        sidecar = movie.with_name("Film.en.srt")
+        sidecar.write_text("1\n00:00:01,000 --> 00:00:02,000\nHello.\n", encoding="utf-8")
+        self.fixture.library.tmdb_request = mock.Mock(return_value={
+            "id": 120, "title": "Film", "original_title": "Film",
+            "release_date": "2001-12-19", "overview": "", "runtime": 90,
+            "poster_path": None,
+        })
+        self.fixture.library.opensubtitles_request = mock.Mock()
+
+        applied = self.fixture.library.tmdb_apply({"file": movie.name, "tmdb_id": 120})
+
+        self.assertEqual(applied["metadata"]["subtitles"],
+                         {"status": "external", "file": sidecar.name})
+        self.fixture.library.opensubtitles_request.assert_not_called()
+
     def test_tmdb_read_access_token_uses_bearer_header(self) -> None:
         token = "eyJ" + "a" * 8 + ".payload.signature"
         self.fixture.library.tmdb_key = mock.Mock(return_value=token)
