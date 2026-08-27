@@ -282,6 +282,13 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("Number(modelData.runtime || 0) * 60", adult_qml)
         self.assertIn("id: subtitleAction", adult_qml)
         self.assertIn("scrubberFocus === 1", adult_qml)
+        self.assertIn("function openScrubber()", adult_qml)
+        self.assertIn("if (playing && scrubberActive)", adult_qml)
+        self.assertIn("!scrubberActive && (key === Qt.Key_Up || key === Qt.Key_Down)", adult_qml)
+        self.assertIn("id: adultVolumeRail", adult_qml)
+        self.assertNotIn("id: adultVolumeCard", adult_qml)
+        self.assertNotIn("seek(300)", adult_qml)
+        self.assertNotIn("seek(-300)", adult_qml)
         self.assertIn("interval: adultMode.active ? 700 : 3000", main_qml)
 
 
