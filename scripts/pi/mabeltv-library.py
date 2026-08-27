@@ -3271,6 +3271,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(length))
         self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Content-Disposition", "inline")
+        self.send_header("X-Content-Type-Options", "nosniff")
         if requested: self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
         self.send_header("Cache-Control", "no-store")
         self.security_headers(); self.end_headers()

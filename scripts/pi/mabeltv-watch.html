@@ -53,13 +53,21 @@
         }
         session = new URL(result.stream_url, location.origin).searchParams.get('stream')
         document.title = `${result.title} · MabelTV`; $('#title').textContent = result.title
-        const video = $('#video'); video.replaceChildren(); video.src = result.stream_url
+        const video = $('#video'); video.replaceChildren()
+        // Register media handlers before assigning the source/loading.  On
+        // iOS a cached/fast metadata response can otherwise arrive before the
+        // handler exists, leaving the native player stuck in its error state.
+        const requested = Number(query.get('position') || 0); const resume = requested > 0 ? requested : Number(result.resume_position || 0)
+        video.onloadedmetadata = () => { if (resume > 10 && resume < video.duration - 5) video.currentTime = resume }
+        video.onerror = () => {
+          const detail = video.error ? ` (media error ${video.error.code})` : ''
+          showError(`This video could not be played on this device${detail}. Try again.`)
+        }
+        video.src = result.stream_url
         if (result.subtitle_url) { const track = document.createElement('track'); track.kind = 'subtitles'; track.srclang = 'en'; track.label = 'English'; track.src = result.subtitle_url; video.append(track); $('#captionState').textContent = 'Subtitles are available in this device’s native CC menu.' }
         else $('#captionState').textContent = 'No browser subtitle track is available for this title.'
         video.load()
-        const requested = Number(query.get('position') || 0); const resume = requested > 0 ? requested : Number(result.resume_position || 0)
         $('#startOver').hidden = resume <= 10
-        video.onloadedmetadata = () => { if (resume > 10 && resume < video.duration - 5) video.currentTime = resume }
         video.onpause = () => savePosition(); video.onended = () => savePosition(true)
         $('#loading').hidden = true; $('#cabinet').hidden = false
         clearInterval(saveTimer); saveTimer = setInterval(savePosition, 15000)
