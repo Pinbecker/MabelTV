@@ -64,7 +64,10 @@
         $('#loading').hidden = true; $('#cabinet').hidden = false
         clearInterval(saveTimer); saveTimer = setInterval(savePosition, 15000)
         clearInterval(heartbeatTimer); heartbeatTimer = setInterval(() => api('/api/remote/heartbeat', { method: 'POST', body: JSON.stringify({ stream: session }) }).catch(() => {}), 30000)
-        await video.play().catch(() => {})
+        // The library card click is no longer a user gesture after navigating
+        // to this dedicated page. Calling play() here makes iOS reject the
+        // stream and show its crossed-out play control. Let the native
+        // control start playback from the user's tap instead.
       } catch (error) { showError(error.message) }
     }
 
