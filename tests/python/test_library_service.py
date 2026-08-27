@@ -92,11 +92,15 @@ class LibraryUnitTests(unittest.TestCase):
 
     def test_remote_browser_player_has_native_controls_and_safe_default(self) -> None:
         index = mabeltv_library.INDEX
+        player = mabeltv_library.WATCH_PAGE
         self.assertIn('id="view-watch"', index)
-        self.assertIn('id="remoteVideo" controls', index)
-        self.assertIn('kind = \'subtitles\'', index)
+        self.assertIn('watch-poster-grid', index)
+        self.assertNotIn('id="remoteVideo"', index)
+        self.assertIn('id="video" controls', player)
+        self.assertIn("track.kind = 'subtitles'", player)
+        self.assertIn("webkitEnterFullscreen", player)
         self.assertIn("set-remote-simultaneous", index)
-        self.assertIn("/api/remote/start", index)
+        self.assertIn("/api/remote/start", player)
 
     def test_remote_stream_requires_browser_format_and_resumes_adult_film(self) -> None:
         adult = self.fixture.media / ".adult"

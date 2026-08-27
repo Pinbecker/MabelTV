@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#050706">
+  <title>Watch · MabelTV</title>
+  <style>
+    :root{color-scheme:dark;--accent:#ff7559;--muted:#99a39f;--line:#29312e;font-family:"Segoe UI Variable","Segoe UI",-apple-system,BlinkMacSystemFont,Arial,sans-serif}*{box-sizing:border-box}html,body{min-height:100%;margin:0;background:#050706;color:#f6f7f6}body{display:grid;place-items:center}button,a{font:inherit}.player-page{width:100%;min-height:100vh;display:flex;flex-direction:column}.player-head{height:72px;display:flex;align-items:center;gap:16px;padding:0 clamp(16px,4vw,46px);border-bottom:1px solid var(--line);background:#090c0b}.back{width:42px;height:42px;display:grid;place-items:center;border:1px solid #303936;border-radius:50%;background:transparent;color:#fff;text-decoration:none;font-size:1.2rem}.player-title{min-width:0}.player-title strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.player-title small{color:var(--muted)}.player-stage{min-height:0;flex:1;display:grid;place-items:center;padding:clamp(14px,3vw,38px)}.cabinet{position:relative;width:min(1280px,100%);padding:clamp(9px,2vw,23px);border:clamp(8px,1.5vw,18px) solid #151a18;border-radius:20px;background:#020303;box-shadow:inset 0 0 0 2px #4b5551,0 28px 90px #000}.cabinet:after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;border-radius:inherit;background:repeating-linear-gradient(0deg,#fff0 0 3px,#0002 4px 5px);opacity:var(--crt,.25);mix-blend-mode:multiply}.cabinet video{display:block;width:100%;max-height:calc(100vh - 190px);aspect-ratio:16/9;background:#000;object-fit:contain}.cabinet.distortion video{transform:scale(1.006);filter:contrast(1.03) saturate(1.03)}.player-foot{min-height:74px;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:12px clamp(16px,4vw,46px);color:var(--muted)}.player-foot p{margin:0;font-size:.82rem}.player-foot button{min-height:40px;border:1px solid #323b37;border-radius:8px;padding:8px 14px;background:#161d1a;color:#fff}.state{max-width:620px;text-align:center}.state h1{margin:0 0 10px;font-size:clamp(1.6rem,4vw,3rem)}.state p{margin:0 0 22px;color:var(--muted)}.state button{min-height:48px;border:0;border-radius:10px;padding:11px 20px;background:#fff;color:#111614;font-weight:750}.error{color:#ff9c88}@media(max-width:720px){.player-head{height:58px;padding:0 12px}.back{width:36px;height:36px}.player-stage{padding:0}.cabinet{width:100%;padding:0;border:0;border-radius:0;box-shadow:none}.cabinet:after{border-radius:0}.cabinet video{max-height:calc(100vh - 124px);aspect-ratio:auto}.player-foot{min-height:66px;padding:10px 14px}.player-foot p{font-size:.72rem}}
+  </style>
+</head>
+<body>
+  <main class="player-page">
+    <header class="player-head"><a class="back" href="/#watch" aria-label="Back to library">←</a><div class="player-title"><strong id="title">Preparing player…</strong><small id="detail">MabelTV remote viewing</small></div></header>
+    <section id="stage" class="player-stage"><div id="loading" class="state"><h1>Getting things ready…</h1><p>Connecting securely to your MabelTV library.</p></div><div id="cabinet" class="cabinet" hidden><video id="video" controls preload="metadata"></video></div><div id="error" class="state error" hidden><h1>Couldn’t start this video</h1><p id="errorText"></p><button id="retry" type="button">Try again</button></div></section>
+    <footer class="player-foot"><p id="captionState">Native fullscreen and playback controls are provided by this device.</p><div><button id="startOver" type="button" hidden>Start over</button> <button id="fullscreen" type="button">Fullscreen</button></div></footer>
+  </main>
+  <script>
+    const $ = selector => document.querySelector(selector)
+    const query = new URLSearchParams(location.search)
+    let session = null
+    let saveTimer = null
+    let heartbeatTimer = null
+    let lastSaved = 0
+
+    async function api(path, options = {}) {
+      const response = await fetch(path, { credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, ...options })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok) { const error = new Error(body.error || 'MabelTV could not complete that request'); error.code = body.code; throw error }
+      return body
+    }
+
+    function payload() {
+      const kind = query.get('kind') || ''
+      return kind === 'adult' ? { kind, file: query.get('file') || '' }
+        : { kind: 'channel', channel: Number(query.get('channel')), file: query.get('file') || '' }
+    }
+
+    function showError(message) {
+      $('#loading').hidden = true; $('#cabinet').hidden = true; $('#error').hidden = false; $('#errorText').textContent = message
+    }
+
+    async function start() {
+      $('#error').hidden = true; $('#cabinet').hidden = true; $('#loading').hidden = false
+      try {
+        let result
+        try { result = await api('/api/remote/start', { method: 'POST', body: JSON.stringify(payload()) }) }
+        catch (error) {
+          if (error.code !== 'tv-active' || !confirm('Mabel TV is playing at home. Stop it and watch here instead?')) throw error
+          await api('/api/remote/stop-tv', { method: 'POST', body: '{}' })
+          await new Promise(resolve => setTimeout(resolve, 900))
+          result = await api('/api/remote/start', { method: 'POST', body: JSON.stringify(payload()) })
+        }
+        session = new URL(result.stream_url, location.origin).searchParams.get('stream')
+        document.title = `${result.title} · MabelTV`; $('#title').textContent = result.title
+        const video = $('#video'); video.replaceChildren(); video.src = result.stream_url
+        if (result.subtitle_url) { const track = document.createElement('track'); track.kind = 'subtitles'; track.srclang = 'en'; track.label = 'English'; track.src = result.subtitle_url; video.append(track); $('#captionState').textContent = 'Subtitles are available in this device’s native CC menu.' }
+        else $('#captionState').textContent = 'No browser subtitle track is available for this title.'
+        const requested = Number(query.get('position') || 0); const resume = requested > 0 ? requested : Number(result.resume_position || 0)
+        $('#startOver').hidden = resume <= 10
+        video.onloadedmetadata = () => { if (resume > 10 && resume < video.duration - 5) video.currentTime = resume }
+        video.onpause = () => savePosition(); video.onended = () => savePosition(true)
+        $('#loading').hidden = true; $('#cabinet').hidden = false
+        clearInterval(saveTimer); saveTimer = setInterval(savePosition, 15000)
+        clearInterval(heartbeatTimer); heartbeatTimer = setInterval(() => api('/api/remote/heartbeat', { method: 'POST', body: JSON.stringify({ stream: session }) }).catch(() => {}), 30000)
+        await video.play().catch(() => {})
+      } catch (error) { showError(error.message) }
+    }
+
+    function savePosition(finished = false) {
+      const video = $('#video'); if (!session || !Number.isFinite(video.currentTime) || (!finished && video.currentTime - lastSaved < 10)) return
+      lastSaved = video.currentTime
+      api('/api/remote/position', { method: 'POST', body: JSON.stringify({ stream: session, position: finished ? video.duration : video.currentTime, duration: video.duration }) }).catch(() => {})
+    }
+
+    function release() {
+      if (!session) return; savePosition(); navigator.sendBeacon?.('/api/remote/release', new Blob([JSON.stringify({ stream: session })], { type: 'application/json' }))
+    }
+
+    $('#retry').onclick = start
+    $('#startOver').onclick = () => { const video = $('#video'); video.currentTime = 0; lastSaved = 0; video.play().catch(() => {}); $('#startOver').hidden = true }
+    $('#fullscreen').onclick = () => { const video = $('#video'); if (video.webkitEnterFullscreen) video.webkitEnterFullscreen(); else if (video.requestFullscreen) video.requestFullscreen() }
+    addEventListener('pagehide', release)
+    start()
+  </script>
+</body>
+</html>

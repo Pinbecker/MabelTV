@@ -108,6 +108,16 @@ def load_index() -> str:
 INDEX = load_index()
 
 
+def load_watch_page() -> str:
+    try:
+        return Path(__file__).with_name("mabeltv-watch.html").read_text(encoding="utf-8")
+    except OSError:
+        return "<!doctype html><title>MabelTV</title><p>The remote player is unavailable.</p>"
+
+
+WATCH_PAGE = load_watch_page()
+
+
 class LiveStream:
     """A private, low-latency HLS mirror of the programme currently on TV."""
 
@@ -1217,6 +1227,8 @@ class Library:
                     if isinstance(state.get("metadata"), dict) else {},
                     "browser_ready": item.suffix.lower() in REMOTE_BROWSER_EXTENSIONS,
                     "remote_position": self.remote_resume_position(state["library_id"], state),
+                    "remote_duration": max(0, float(state.get("remote_duration", 0) or 0))
+                    if isinstance(state.get("remote_duration", 0), (int, float)) else 0,
                 })
         if changed:
             self.write_adult_media_states(states)
@@ -1970,7 +1982,12 @@ class Library:
             for item in sorted(folder.glob("*") if folder.is_dir() else [], key=lambda p: p.name.lower()):
                 if item.is_file() and item.suffix.lower() in SUPPORTED_EXTENSIONS:
                     disabled = set(disabled_programmes.get(str(channel["number"]), []))
-                    programmes.append({"name": item.name, "display_name": self.display_name(item.name), "enabled": item.name not in disabled})
+                    programmes.append({
+                        "name": item.name,
+                        "display_name": self.display_name(item.name),
+                        "enabled": item.name not in disabled,
+                        "browser_ready": self.remote_browser_ready(item),
+                    })
             response.append({"number": channel["number"], "name": channel["name"],
                              "aspect": channel.get("aspect", "crop"),
                              "content_type": self.channel_content_type(channel),
@@ -3324,6 +3341,8 @@ class Handler(BaseHTTPRequestHandler):
             if not self.require(): return
             parsed = urlsplit(self.path)
             query = parse_qs(parsed.query)
+            if parsed.path == "/watch/player":
+                data = WATCH_PAGE.encode(); self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8"); self.send_header("Content-Length", str(len(data))); self.send_header("Cache-Control", "no-store"); self.security_headers(); self.end_headers(); self.wfile.write(data); return
             if self.path == "/api/live":
                 self.json(200, self.server.library.live_tv_status()); return
             if self.path == "/api/live/stream.m3u8":

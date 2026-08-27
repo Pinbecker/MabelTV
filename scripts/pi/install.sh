@@ -203,6 +203,7 @@ install -o root -g root -m 0755 "$binary_root/mabeltv_media_check" "$incoming_di
 install -o root -g root -m 0755 "$source_root/scripts/pi/mabeltv-launch.sh" "$incoming_dir/mabeltv-launch"
 install -o root -g root -m 0755 "$source_root/scripts/pi/mabeltv-library.py" "$incoming_dir/mabeltv-library"
 install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-library.html" "$incoming_dir/mabeltv-library.html"
+install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-watch.html" "$incoming_dir/mabeltv-watch.html"
 install -o root -g root -m 0644 "$source_root/scripts/pi/hls.min.js" "$incoming_dir/hls.min.js"
 install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-icon.png" "$incoming_dir/mabeltv-icon.png"
 install -o root -g root -m 0644 "$source_root/scripts/pi/apple-touch-icon.png" "$incoming_dir/apple-touch-icon.png"
