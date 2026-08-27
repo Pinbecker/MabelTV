@@ -12,7 +12,7 @@
 <body>
   <main class="player-page">
     <header class="player-head"><a class="back" href="/#watch" aria-label="Back to library">←</a><div class="player-title"><strong id="title">Preparing player…</strong><small id="detail">MabelTV remote viewing</small></div></header>
-    <section id="stage" class="player-stage"><div id="loading" class="state"><h1>Getting things ready…</h1><p>Connecting securely to your MabelTV library.</p></div><div id="cabinet" class="cabinet" hidden><video id="video" controls preload="metadata"></video></div><div id="error" class="state error" hidden><h1>Couldn’t start this video</h1><p id="errorText"></p><button id="retry" type="button">Try again</button></div></section>
+    <section id="stage" class="player-stage"><div id="loading" class="state"><h1>Getting things ready…</h1><p>Connecting securely to your MabelTV library.</p></div><div id="cabinet" class="cabinet" hidden><video id="video" controls playsinline webkit-playsinline preload="metadata"></video></div><div id="error" class="state error" hidden><h1>Couldn’t start this video</h1><p id="errorText"></p><button id="retry" type="button">Try again</button></div></section>
     <footer class="player-foot"><p id="captionState">Native fullscreen and playback controls are provided by this device.</p><div><button id="startOver" type="button" hidden>Start over</button> <button id="fullscreen" type="button">Fullscreen</button></div></footer>
   </main>
   <script>
@@ -56,6 +56,7 @@
         const video = $('#video'); video.replaceChildren(); video.src = result.stream_url
         if (result.subtitle_url) { const track = document.createElement('track'); track.kind = 'subtitles'; track.srclang = 'en'; track.label = 'English'; track.src = result.subtitle_url; video.append(track); $('#captionState').textContent = 'Subtitles are available in this device’s native CC menu.' }
         else $('#captionState').textContent = 'No browser subtitle track is available for this title.'
+        video.load()
         const requested = Number(query.get('position') || 0); const resume = requested > 0 ? requested : Number(result.resume_position || 0)
         $('#startOver').hidden = resume <= 10
         video.onloadedmetadata = () => { if (resume > 10 && resume < video.duration - 5) video.currentTime = resume }
