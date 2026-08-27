@@ -1060,6 +1060,20 @@ double TvController::adultPlaybackPosition(const QString &libraryId) const
     return m_adultPlaybackPositions.value(libraryId, 0.0);
 }
 
+double TvController::adultPlaybackDuration(const QString &libraryId) const
+{
+    return m_adultPlaybackDurations.value(libraryId, 0.0);
+}
+
+double TvController::adultPlaybackProgress(const QString &libraryId) const
+{
+    const double duration = adultPlaybackDuration(libraryId);
+    if (duration < 10.0) {
+        return 0.0;
+    }
+    return std::clamp(adultPlaybackPosition(libraryId) / duration, 0.0, 1.0);
+}
+
 void TvController::setAdultPlaybackPosition(const QString &libraryId,
                                             double positionSeconds)
 {
@@ -1071,6 +1085,7 @@ void TvController::setAdultPlaybackPosition(const QString &libraryId,
     if (position < 2.0) {
         if (m_adultPlaybackPositions.remove(key) > 0) {
             saveState();
+            emit adultPlaybackStateChanged();
         }
         return;
     }
@@ -1079,6 +1094,23 @@ void TvController::setAdultPlaybackPosition(const QString &libraryId,
     }
     m_adultPlaybackPositions.insert(key, position);
     saveState();
+    emit adultPlaybackStateChanged();
+}
+
+void TvController::setAdultPlaybackDuration(const QString &libraryId,
+                                            double durationSeconds)
+{
+    const QString key = libraryId.trimmed();
+    if (key.isEmpty() || !std::isfinite(durationSeconds) || durationSeconds < 10.0) {
+        return;
+    }
+    const double duration = std::max(10.0, durationSeconds);
+    if (std::abs(m_adultPlaybackDurations.value(key, -1.0) - duration) < 1.0) {
+        return;
+    }
+    m_adultPlaybackDurations.insert(key, duration);
+    saveState();
+    emit adultPlaybackStateChanged();
 }
 
 void TvController::toggleChannelEnabled(int channelNumber)
@@ -1499,6 +1531,15 @@ void TvController::loadState()
             m_adultPlaybackPositions.insert(iterator.key(), position);
         }
     }
+    const QJsonObject adultDurations = object.value(QStringLiteral("adult_durations")).toObject();
+    m_adultPlaybackDurations.clear();
+    for (auto iterator = adultDurations.constBegin(); iterator != adultDurations.constEnd();
+         ++iterator) {
+        const double duration = iterator.value().toDouble(0.0);
+        if (!iterator.key().isEmpty() && std::isfinite(duration) && duration >= 10.0) {
+            m_adultPlaybackDurations.insert(iterator.key(), duration);
+        }
+    }
     const QJsonObject timelines = object.value(QStringLiteral("channel_timelines")).toObject();
 
     for (ChannelRuntime &runtime : m_channels) {
@@ -1601,6 +1642,13 @@ void TvController::saveState() const
         adultPositions.insert(iterator.key(), iterator.value());
     }
     object.insert(QStringLiteral("adult_positions"), adultPositions);
+
+    QJsonObject adultDurations;
+    for (auto iterator = m_adultPlaybackDurations.constBegin();
+         iterator != m_adultPlaybackDurations.constEnd(); ++iterator) {
+        adultDurations.insert(iterator.key(), iterator.value());
+    }
+    object.insert(QStringLiteral("adult_durations"), adultDurations);
 
     QJsonObject timelines;
     const qint64 elapsedNow = m_broadcastClock.isValid() ? m_broadcastClock.elapsed() : 0;

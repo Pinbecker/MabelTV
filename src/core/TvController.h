@@ -148,8 +148,12 @@ public:
     Q_INVOKABLE void reloadLibrary();
     Q_INVOKABLE void reloadAdultLibrary();
     Q_INVOKABLE double adultPlaybackPosition(const QString &libraryId) const;
+    Q_INVOKABLE double adultPlaybackDuration(const QString &libraryId) const;
+    Q_INVOKABLE double adultPlaybackProgress(const QString &libraryId) const;
     Q_INVOKABLE void setAdultPlaybackPosition(const QString &libraryId,
                                               double positionSeconds);
+    Q_INVOKABLE void setAdultPlaybackDuration(const QString &libraryId,
+                                              double durationSeconds);
     Q_INVOKABLE void toggleChannelEnabled(int channelNumber);
     Q_INVOKABLE void toggleProgrammeEnabled(int channelNumber, const QString &fileName);
     Q_INVOKABLE QVariantList guideSchedule() const;
@@ -184,6 +188,7 @@ signals:
     void scrubbingEnabledChanged();
     void parentLibraryChanged();
     void adultLibraryChanged();
+    void adultPlaybackStateChanged();
 
     void playbackRequested(const QUrl &source, double startPositionSeconds);
     void stopPlaybackRequested();
@@ -283,6 +288,7 @@ private:
     QSet<int> m_disabledChannelNumbers;
     QHash<int, QSet<QString>> m_disabledProgrammeNames;
     QHash<QString, double> m_adultPlaybackPositions;
+    QHash<QString, double> m_adultPlaybackDurations;
     int m_currentChannelIndex = -1;
     int m_initialChannelNumber = -1;
     int m_previousChannelNumber = -1;

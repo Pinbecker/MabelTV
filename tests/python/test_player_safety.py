@@ -274,7 +274,14 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("id: adultPositionTimer", adult_qml)
         self.assertIn("rememberCurrentFilmPosition", adult_qml)
         self.assertIn("savedPosition", adult_qml)
-        self.assertIn("HOLD MUTE subtitles", adult_qml)
+        self.assertIn("HOLD MUTE  SUBTITLES", adult_qml)
+        self.assertIn("id: playbackChoiceModal", adult_qml)
+        self.assertIn("function confirmPlaybackChoice()", adult_qml)
+        self.assertIn("id: filmProgressTrack", adult_qml)
+        self.assertIn("controller.adultPlaybackProgress(modelData.id)", adult_qml)
+        self.assertIn("id: subtitleAction", adult_qml)
+        self.assertIn("scrubberFocus === 1", adult_qml)
+        self.assertIn("interval: adultMode.active ? 700 : 3000", main_qml)
 
 
 if __name__ == "__main__":

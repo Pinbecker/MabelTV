@@ -25,6 +25,11 @@ Item {
     readonly property real uiScale: Math.max(0.62, Math.min(width / 1920, height / 1080))
     property real controlsOpacity: 1
     property real selectedSavedPosition: 0
+    property bool playChoiceVisible: false
+    property int playChoiceIndex: 0
+    property bool scrubberActive: false
+    property int scrubberFocus: 0 // 0 = timeline, 1 = subtitles
+    property int libraryProgressRevision: 0
     property string errorMessage: ""
     property bool externalSession: false
     property url externalSource: ""
@@ -49,6 +54,9 @@ Item {
         ignoreLibraryBackBeforeMs = 0
         errorMessage = ""
         controlsOpacity = 1
+        playChoiceVisible = false
+        scrubberActive = false
+        scrubberFocus = 0
         active = true
         externalSession = false
         externalSource = ""
@@ -252,7 +260,7 @@ Item {
         return Math.max(1, Math.round(Number(bytes || 0) / 1048576)) + " MB"
     }
 
-    function playSelected() {
+    function startSelectedFilm(startPosition) {
         const film = currentFilm()
         if (!film)
             return
@@ -263,10 +271,36 @@ Item {
         backPressHeld = false
         ignoreLibraryBackBeforeMs = 0
         controlsOpacity = 1
-        const savedPosition = controller.adultPlaybackPosition(film.id)
-        selectedSavedPosition = savedPosition
-        adultPlayer.play(film.source, savedPosition)
+        scrubberActive = false
+        scrubberFocus = 0
+        selectedSavedPosition = startPosition
+        adultPlayer.play(film.source, startPosition)
         controlsTimer.restart()
+    }
+
+    function playSelected() {
+        const film = currentFilm()
+        if (!film)
+            return
+        const savedPosition = controller.adultPlaybackPosition(film.id)
+        if (savedPosition >= 30) {
+            playChoiceIndex = 0
+            playChoiceVisible = true
+            return
+        }
+        startSelectedFilm(0)
+    }
+
+    function confirmPlaybackChoice() {
+        const film = currentFilm()
+        if (!film)
+            return
+        const resume = playChoiceIndex === 0
+        const startPosition = resume ? controller.adultPlaybackPosition(film.id) : 0
+        playChoiceVisible = false
+        if (!resume)
+            controller.setAdultPlaybackPosition(film.id, 0)
+        startSelectedFilm(startPosition)
     }
 
     function rememberCurrentFilmPosition() {
@@ -328,6 +362,8 @@ Item {
     }
 
     function seek(seconds) {
+        scrubberActive = true
+        scrubberFocus = 0
         adultPlayer.seekRelative(seconds)
         showControls()
     }
@@ -335,6 +371,8 @@ Item {
     function toggleSubtitles() {
         if (adultPlayer.subtitlesAvailable)
             adultPlayer.toggleSubtitles()
+        scrubberActive = true
+        scrubberFocus = 1
         showControls()
     }
 
@@ -350,6 +388,19 @@ Item {
 
     function handleKey(key, isAutoRepeat) {
         if (!playing) {
+            if (playChoiceVisible) {
+                if ((key === Qt.Key_Up || key === Qt.Key_Left) && !isAutoRepeat)
+                    playChoiceIndex = 0
+                else if ((key === Qt.Key_Down || key === Qt.Key_Right) && !isAutoRepeat)
+                    playChoiceIndex = 1
+                else if ((key === Qt.Key_Return || key === Qt.Key_Enter) && !isAutoRepeat)
+                    confirmPlaybackChoice()
+                else if (isBackKey(key) && !isAutoRepeat)
+                    playChoiceVisible = false
+                else
+                    return true
+                return true
+            }
             if (navigationZone === 0) {
                 if (key === Qt.Key_Up)
                     selectCollectionRelative(-1)
@@ -385,17 +436,26 @@ Item {
         if (stopping)
             return true
 
-        if ((key === Qt.Key_Return || key === Qt.Key_Enter) && !isAutoRepeat) {
-            togglePause()
-        } else if ((key === Qt.Key_R || key === Qt.Key_S) && !isAutoRepeat) {
+        if (scrubberActive && scrubberFocus === 1
+                && (key === Qt.Key_Return || key === Qt.Key_Enter) && !isAutoRepeat) {
             toggleSubtitles()
+        } else if (scrubberActive && key === Qt.Key_Up && !isAutoRepeat
+                   && adultPlayer.subtitlesAvailable) {
+            scrubberFocus = 1
+            showControls()
+        } else if (scrubberActive && key === Qt.Key_Down && !isAutoRepeat
+                   && scrubberFocus === 1) {
+            scrubberFocus = 0
+            showControls()
+        } else if ((key === Qt.Key_Return || key === Qt.Key_Enter) && !isAutoRepeat) {
+            togglePause()
         } else if (key === Qt.Key_Left) {
             seek(isAutoRepeat ? -30 : -15)
         } else if (key === Qt.Key_Right) {
             seek(isAutoRepeat ? 30 : 15)
-        } else if (key === Qt.Key_Up && !isAutoRepeat) {
+        } else if (!scrubberActive && key === Qt.Key_Up && !isAutoRepeat) {
             seek(300)
-        } else if (key === Qt.Key_Down && !isAutoRepeat) {
+        } else if (!scrubberActive && key === Qt.Key_Down && !isAutoRepeat) {
             seek(-300)
         } else if (key === Qt.Key_Plus || key === Qt.Key_Equal) {
             controller.dispatch(TvController.VolumeUp)
@@ -480,6 +540,11 @@ Item {
             }
         }
         onPausedChanged: overlay.showControls()
+        onPlaybackDurationChanged: {
+            const film = overlay.currentFilm()
+            if (film && !overlay.externalSession && adultPlayer.playbackDuration >= 10)
+                controller.setAdultPlaybackDuration(film.id, adultPlayer.playbackDuration)
+        }
     }
 
     Item {
@@ -930,6 +995,29 @@ Item {
                         }
                     }
 
+                    Rectangle {
+                        id: filmProgressTrack
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        anchors.leftMargin: Math.max(8, 10 * overlay.uiScale)
+                        anchors.rightMargin: Math.max(8, 10 * overlay.uiScale)
+                        height: Math.max(3, 4 * overlay.uiScale)
+                        radius: height / 2
+                        color: "#27303a"
+                        visible: controller.adultPlaybackPosition(modelData.id) >= 30
+
+                        property real progress: controller.adultPlaybackProgress(modelData.id)
+                                                + overlay.libraryProgressRevision * 0
+
+                        Rectangle {
+                            width: parent.width * parent.progress
+                            height: parent.height
+                            radius: parent.radius
+                            color: focused ? "#d6b36a" : "#b96c53"
+                        }
+                    }
+
                     Column {
                         anchors.left: parent.left
                         anchors.right: parent.right
@@ -1036,6 +1124,101 @@ Item {
         }
     }
 
+    Rectangle {
+        id: playbackChoiceModal
+        anchors.fill: parent
+        visible: overlay.playChoiceVisible
+        z: 20
+        color: "#c9000000"
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: Math.min(parent.width * 0.48, 760)
+            height: Math.min(parent.height * 0.52, 520)
+            radius: Math.max(18, 24 * overlay.uiScale)
+            color: "#171d24"
+            border.width: 1
+            border.color: "#3a4654"
+
+            Column {
+                anchors.fill: parent
+                anchors.margins: Math.max(28, 36 * overlay.uiScale)
+                spacing: Math.max(12, 16 * overlay.uiScale)
+
+                Text {
+                    width: parent.width
+                    color: "#87919d"
+                    font.family: "DejaVu Sans"
+                    font.bold: true
+                    font.letterSpacing: 1.6
+                    font.pixelSize: Math.max(10, 13 * overlay.uiScale)
+                    text: "CONTINUE WATCHING"
+                }
+
+                Text {
+                    width: parent.width
+                    color: "#f3f0ea"
+                    font.family: "DejaVu Sans"
+                    font.bold: true
+                    maximumLineCount: 2
+                    elide: Text.ElideRight
+                    wrapMode: Text.Wrap
+                    font.pixelSize: Math.max(24, 32 * overlay.uiScale)
+                    text: overlay.currentFilm() ? overlay.currentFilm().name : ""
+                }
+
+                Item { width: 1; height: Math.max(6, 10 * overlay.uiScale) }
+
+                Repeater {
+                    model: 2
+                    delegate: Rectangle {
+                        required property int index
+                        readonly property bool selected: index === overlay.playChoiceIndex
+                        width: parent.width
+                        height: Math.max(64, 82 * overlay.uiScale)
+                        radius: Math.max(10, 14 * overlay.uiScale)
+                        color: selected ? "#f0ede6" : "#202831"
+                        border.width: selected ? 2 : 1
+                        border.color: selected ? "#ffffff" : "#35404c"
+
+                        Column {
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.margins: Math.max(16, 21 * overlay.uiScale)
+                            spacing: 2
+                            Text {
+                                color: selected ? "#151a20" : "#edf0ec"
+                                font.family: "DejaVu Sans"
+                                font.bold: true
+                                font.pixelSize: Math.max(15, 19 * overlay.uiScale)
+                                text: index === 0 ? "Resume" : "Play from start"
+                            }
+                            Text {
+                                color: selected ? "#58636e" : "#9aa5b1"
+                                font.family: "DejaVu Sans"
+                                font.pixelSize: Math.max(11, 14 * overlay.uiScale)
+                                text: index === 0
+                                      ? "Continue at " + overlay.formatTime(overlay.selectedSavedPosition)
+                                      : "Start this film from 0:00"
+                            }
+                        }
+                    }
+                }
+
+                Item { width: 1; height: 1 }
+                Text {
+                    width: parent.width
+                    color: "#89939f"
+                    font.family: "DejaVu Sans"
+                    horizontalAlignment: Text.AlignHCenter
+                    font.pixelSize: Math.max(10, 13 * overlay.uiScale)
+                    text: "↑ ↓  CHOOSE OPTION     OK  CONFIRM     BACK  CANCEL"
+                }
+            }
+        }
+    }
+
     Timer {
         id: externalStartTimer
         interval: 350
@@ -1048,80 +1231,191 @@ Item {
     }
 
     Rectangle {
+        id: playbackControls
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         visible: overlay.playing
-        height: Math.max(118, parent.height * 0.19)
+        height: Math.max(176, parent.height * 0.255)
         opacity: adultPlayer.paused ? 1 : overlay.controlsOpacity
-        color: "#e8111512"
+        color: "#ed0d131a"
+        border.color: "#3b4652"
+        border.width: 1
 
         Behavior on opacity { NumberAnimation { duration: 180 } }
 
         Column {
             anchors.fill: parent
-            anchors.margins: Math.max(20, parent.height * 0.04)
-            spacing: 12
+            anchors.margins: Math.max(20, parent.height * 0.035)
+            spacing: Math.max(9, 12 * overlay.uiScale)
 
             Row {
                 width: parent.width
-                spacing: 16
+                height: Math.max(34, 42 * overlay.uiScale)
+                spacing: Math.max(14, 18 * overlay.uiScale)
+
+                Column {
+                    width: parent.width - adultVolumeCard.width - parent.spacing
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 1
+                    Text {
+                        width: parent.width
+                        color: "#f4f1eb"
+                        elide: Text.ElideRight
+                        font.family: "DejaVu Sans"
+                        font.bold: true
+                        font.pixelSize: Math.max(18, overlay.height * 0.029)
+                        text: overlay.currentFilm() ? overlay.currentFilm().name : ""
+                    }
+                    Text {
+                        color: adultPlayer.paused ? "#f0c36e" : "#95a1ae"
+                        font.family: "DejaVu Sans"
+                        font.bold: true
+                        font.letterSpacing: 1.2
+                        font.pixelSize: Math.max(9, 11 * overlay.uiScale)
+                        text: adultPlayer.paused ? "PAUSED" : "ADULT PLAYBACK"
+                    }
+                }
+
+                Rectangle {
+                    id: adultVolumeCard
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Math.max(154, 188 * overlay.uiScale)
+                    height: parent.height
+                    radius: height / 2
+                    color: "#202832"
+                    border.width: 1
+                    border.color: "#3b4754"
+
+                    Row {
+                        anchors.fill: parent
+                        anchors.leftMargin: Math.max(13, 17 * overlay.uiScale)
+                        anchors.rightMargin: Math.max(13, 17 * overlay.uiScale)
+                        spacing: Math.max(9, 12 * overlay.uiScale)
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: "#aeb8c2"
+                            font.family: "DejaVu Sans"
+                            font.bold: true
+                            font.pixelSize: Math.max(9, 11 * overlay.uiScale)
+                            text: "VOLUME"
+                        }
+                        Rectangle {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Math.max(52, 70 * overlay.uiScale)
+                            height: Math.max(4, 5 * overlay.uiScale)
+                            radius: height / 2
+                            color: "#47525e"
+                            Rectangle {
+                                width: parent.width * (controller.muted ? 0 : controller.volume / 100)
+                                height: parent.height
+                                radius: parent.radius
+                                color: "#d6b36a"
+                            }
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: "#f4f1eb"
+                            font.family: "DejaVu Sans"
+                            font.bold: true
+                            font.pixelSize: Math.max(11, 14 * overlay.uiScale)
+                            text: controller.muted ? "MUTE" : controller.volume + "%"
+                        }
+                    }
+                }
+            }
+
+            Item {
+                width: parent.width
+                height: Math.max(56, 70 * overlay.uiScale)
+
+                Rectangle {
+                    id: subtitleAction
+                    anchors.right: parent.right
+                    anchors.bottom: timelineTrack.top
+                    anchors.bottomMargin: Math.max(8, 10 * overlay.uiScale)
+                    visible: overlay.scrubberActive && adultPlayer.subtitlesAvailable
+                    width: subtitleActionLabel.implicitWidth + Math.max(34, 42 * overlay.uiScale)
+                    height: Math.max(34, 42 * overlay.uiScale)
+                    radius: height / 2
+                    color: overlay.scrubberFocus === 1 ? "#f1eee7" : "#28323d"
+                    border.width: overlay.scrubberFocus === 1 ? 2 : 1
+                    border.color: overlay.scrubberFocus === 1 ? "#ffffff" : "#596675"
+
+                    Text {
+                        id: subtitleActionLabel
+                        anchors.centerIn: parent
+                        color: overlay.scrubberFocus === 1 ? "#131920" : "#edf1ec"
+                        font.family: "DejaVu Sans"
+                        font.bold: true
+                        font.pixelSize: Math.max(10, 13 * overlay.uiScale)
+                        text: "SUBTITLES " + (adultPlayer.subtitlesVisible ? "ON" : "OFF")
+                    }
+                }
+
+                Rectangle {
+                    id: timelineTrack
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    height: Math.max(8, 11 * overlay.uiScale)
+                    radius: height / 2
+                    color: "#3b4753"
+                    border.width: overlay.scrubberActive && overlay.scrubberFocus === 0 ? 2 : 0
+                    border.color: "#d6b36a"
+
+                    Rectangle {
+                        width: parent.width * Math.min(1, overlay.playbackDuration > 0
+                                                       ? overlay.playbackPosition / overlay.playbackDuration : 0)
+                        height: parent.height
+                        radius: parent.radius
+                        color: "#d56d50"
+                    }
+                    Rectangle {
+                        anchors.verticalCenter: parent.verticalCenter
+                        x: Math.max(0, Math.min(parent.width - width,
+                                                 parent.width * Math.min(1, overlay.playbackDuration > 0
+                                                                          ? overlay.playbackPosition / overlay.playbackDuration : 0) - width / 2))
+                        width: Math.max(12, 16 * overlay.uiScale)
+                        height: width
+                        radius: width / 2
+                        color: "#f5f1e9"
+                        visible: overlay.scrubberActive
+                    }
+                }
+            }
+
+            Row {
+                width: parent.width
                 Text {
-                    width: parent.width - transportHelp.width - 16
-                    color: "white"
-                    elide: Text.ElideRight
+                    width: parent.width * 0.25
+                    color: "#dce3dd"
                     font.family: "DejaVu Sans"
                     font.bold: true
-                    font.pixelSize: Math.max(18, overlay.height * 0.032)
-                    text: overlay.currentFilm() ? overlay.currentFilm().name : ""
-                }
-                Text {
-                    id: transportHelp
-                    color: "#c1cbc5"
-                    font.family: "DejaVu Sans"
-                    font.pixelSize: Math.max(13, overlay.height * 0.022)
-                    text: adultPlayer.paused ? "PAUSED"
-                          : (adultPlayer.subtitlesAvailable
-                             ? "SUBTITLES " + (adultPlayer.subtitlesVisible ? "ON" : "OFF")
-                             : "OK pause")
-                }
-            }
-
-            Rectangle {
-                width: parent.width
-                height: 10
-                radius: 5
-                color: "#4c5751"
-                Rectangle {
-                    width: parent.width * Math.min(1, overlay.playbackDuration > 0
-                                                   ? overlay.playbackPosition / overlay.playbackDuration : 0)
-                    height: parent.height
-                    radius: parent.radius
-                    color: "#ed6a4d"
-                }
-            }
-
-            Row {
-                width: parent.width
-                Text {
-                    width: parent.width * 0.33
-                    color: "#d8dfdb"
-                    font.family: "DejaVu Sans"
+                    font.pixelSize: Math.max(11, 14 * overlay.uiScale)
                     text: overlay.formatTime(overlay.playbackPosition)
                 }
                 Text {
-                    width: parent.width * 0.34
-                    color: "#d8dfdb"
+                    width: parent.width * 0.5
+                    color: "#aeb8c1"
                     horizontalAlignment: Text.AlignHCenter
                     font.family: "DejaVu Sans"
-                    text: (adultPlayer.subtitlesAvailable ? "SOURCE subtitles   " : "")
-                          + "HOLD MUTE subtitles   ↓ −5 min   ← −15 sec   OK   +15 sec →   +5 min ↑"
+                    font.pixelSize: Math.max(10, 12 * overlay.uiScale)
+                    text: overlay.scrubberActive
+                          ? (overlay.scrubberFocus === 1
+                             ? "OK  TOGGLE SUBTITLES     ↓  RETURN TO TIMELINE"
+                             : (adultPlayer.subtitlesAvailable
+                                ? "↑  SUBTITLES     ← →  SEEK     OK  PAUSE"
+                                : "← →  SEEK     OK  PAUSE"))
+                          : "← →  SEEK     OK  PAUSE     HOLD MUTE  SUBTITLES"
                 }
                 Text {
-                    width: parent.width * 0.33
-                    color: "#d8dfdb"
+                    width: parent.width * 0.25
+                    color: "#dce3dd"
                     horizontalAlignment: Text.AlignRight
                     font.family: "DejaVu Sans"
+                    font.bold: true
+                    font.pixelSize: Math.max(11, 14 * overlay.uiScale)
                     text: overlay.formatTime(overlay.playbackDuration)
                 }
             }
@@ -1132,8 +1426,11 @@ Item {
         id: controlsTimer
         interval: 3500
         onTriggered: {
-            if (!adultPlayer.paused)
+            if (!adultPlayer.paused) {
                 overlay.controlsOpacity = 0
+                overlay.scrubberActive = false
+                overlay.scrubberFocus = 0
+            }
         }
     }
 
@@ -1150,6 +1447,10 @@ Item {
 
         function onAdultLibraryChanged() {
             overlay.rebuildCollections()
+        }
+        function onAdultPlaybackStateChanged() {
+            overlay.libraryProgressRevision += 1
+            overlay.refreshSelectedFilmPosition()
         }
     }
 }

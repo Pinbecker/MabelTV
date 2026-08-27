@@ -1497,7 +1497,9 @@ Window {
 
     Timer {
         id: muteHoldTimer
-        interval: 3000
+        // Adult playback uses a short, deliberate subtitle shortcut. Children
+        // retain the longer lock gesture so a normal mute press is unchanged.
+        interval: adultMode.active ? 700 : 3000
         onTriggered: {
             root.muteHeldForLock = true
             if (adultMode.active)

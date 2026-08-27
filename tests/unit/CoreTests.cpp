@@ -1031,6 +1031,7 @@ void CoreTests::adultLibraryIsSeparateAndParentOnly()
     QCOMPARE(commands.constFirst().constFirst().toString(), QStringLiteral("adult"));
 
     controller.setAdultPlaybackPosition(QStringLiteral("potter-id"), 842.5);
+    controller.setAdultPlaybackDuration(QStringLiteral("potter-id"), 10234.0);
     TvController restored;
     QVERIFY(restored.initialize(configuration.fileName(),
                                 directory.filePath(QStringLiteral("settings.json")),
@@ -1041,6 +1042,9 @@ void CoreTests::adultLibraryIsSeparateAndParentOnly()
                                                            QStringLiteral("h264"), {}};
                                 }));
     QCOMPARE(restored.adultPlaybackPosition(QStringLiteral("potter-id")), 842.5);
+    QCOMPARE(restored.adultPlaybackDuration(QStringLiteral("potter-id")), 10234.0);
+    QCOMPARE(restored.adultPlaybackProgress(QStringLiteral("potter-id")),
+             842.5 / 10234.0);
 }
 
 void CoreTests::longPowerRequestBypassesParentPanelButUsesOnlyShutdownCommand()
