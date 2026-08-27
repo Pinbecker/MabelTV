@@ -37,6 +37,9 @@ Window {
     property bool openingAdultMode: false
     property url pendingExternalSource: ""
     property string pendingExternalTitle: ""
+    property string pendingAdultLibraryPath: ""
+    property int pendingPortalChannel: -1
+    property string pendingPortalProgramme: ""
     property string pendingPowerAction: ""
     property bool pendingPowerOnWake: false
     property bool filmCountdownActive: false
@@ -384,6 +387,13 @@ Window {
                 const action = root.pendingPowerAction
                 root.pendingPowerAction = ""
                 root.performPowerOff(action === "shutdown")
+            } else if (root.pendingPortalChannel >= 0
+                       && root.pendingPortalProgramme.length > 0) {
+                const channel = root.pendingPortalChannel
+                const programme = root.pendingPortalProgramme
+                root.pendingPortalChannel = -1
+                root.pendingPortalProgramme = ""
+                tvController.playPortalProgramme(channel, programme)
             } else {
                 tvController.resumeFromStandby()
             }
@@ -402,6 +412,35 @@ Window {
         }
         pendingExternalSource = source
         pendingExternalTitle = title
+        enterAdultMode()
+    }
+
+    function portalPlayChannelProgramme(channel, file) {
+        if (tvController.remoteLocked || poweringOff
+                || pendingPowerAction.length > 0)
+            return
+        guideOverlay.close()
+        tvController.closeParent()
+        if (adultMode.active) {
+            pendingPortalChannel = Number(channel)
+            pendingPortalProgramme = String(file)
+            adultMode.close()
+            return
+        }
+        tvController.playPortalProgramme(Number(channel), String(file))
+    }
+
+    function portalPlayAdultFilm(file) {
+        if (tvController.remoteLocked || poweringOff
+                || pendingPowerAction.length > 0)
+            return
+        guideOverlay.close()
+        tvController.closeParent()
+        if (adultMode.active) {
+            adultMode.requestLibraryFilm(String(file))
+            return
+        }
+        pendingAdultLibraryPath = String(file)
         enterAdultMode()
     }
 
@@ -853,6 +892,11 @@ Window {
                                 adultMode.openExternal(source, title)
                             } else {
                                 adultMode.open()
+                                if (root.pendingAdultLibraryPath.length > 0) {
+                                    const file = root.pendingAdultLibraryPath
+                                    root.pendingAdultLibraryPath = ""
+                                    adultMode.requestLibraryFilm(file)
+                                }
                             }
                         }
                     }

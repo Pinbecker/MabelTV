@@ -221,6 +221,9 @@ class PlayerSafetyTests(unittest.TestCase):
         adult_qml = (PROJECT_ROOT / "qml" / "AdultModeOverlay.qml").read_text(
             encoding="utf-8"
         )
+        application = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
+            encoding="utf-8"
+        )
 
         self.assertIn('property string pendingPowerAction: ""', main_qml)
         self.assertIn("if (adultMode.active) {\n            adultMode.close()", main_qml)
@@ -260,6 +263,9 @@ class PlayerSafetyTests(unittest.TestCase):
         adult_qml = (PROJECT_ROOT / "qml" / "AdultModeOverlay.qml").read_text(
             encoding="utf-8"
         )
+        application = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
+            encoding="utf-8"
+        )
 
         self.assertIn("visible: !adultMode.active", main_qml)
         self.assertIn("property bool openingAdultMode", main_qml)
@@ -286,6 +292,8 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("NO SUBTITLES AVAILABLE", adult_qml)
         self.assertIn("scrubberFocus === 1", adult_qml)
         self.assertIn("function openScrubber()", adult_qml)
+        self.assertIn("function requestLibraryFilm(filePath)", adult_qml)
+        self.assertIn("id: libraryFilmStartTimer", adult_qml)
         self.assertIn("if (playing && scrubberActive)", adult_qml)
         self.assertIn("!scrubberActive && (key === Qt.Key_Up || key === Qt.Key_Down)", adult_qml)
         self.assertIn("id: adultVolumeRail", adult_qml)
@@ -294,6 +302,10 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertNotIn("seek(-300)", adult_qml)
         self.assertIn("interval: 3000", main_qml)
         self.assertNotIn("adultMode.active ? 700 : 3000", main_qml)
+        self.assertIn("function portalPlayChannelProgramme(channel, file)", main_qml)
+        self.assertIn("function portalPlayAdultFilm(file)", main_qml)
+        self.assertIn("portalPlayChannelProgramme", application)
+        self.assertIn("portalPlayAdultFilm", application)
 
 
 if __name__ == "__main__":

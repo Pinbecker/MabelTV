@@ -2061,6 +2061,40 @@ class Library:
             raise ValueError("The TV could not accept that control")
         return {"ok": True, "message": "Command sent"}
 
+    def play_on_tv(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Start a known library item through the private player socket."""
+        state = self.read_json(self.player_state_path, {})
+        if isinstance(state, dict) and state.get("standby"):
+            raise ValueError("Turn Mabel TV on before choosing Play on TV")
+        kind = str(payload.get("kind", ""))
+        if kind == "channel":
+            try:
+                channel = self.channel(int(payload.get("channel", 0)))
+            except (TypeError, ValueError):
+                raise ValueError("Choose a valid channel programme") from None
+            source = self.safe_media_path(channel, str(payload.get("file", "")))
+            command = {"command": "play-programme", "channel": int(channel["number"]),
+                       "file": source.name}
+        elif kind == "adult":
+            source = self.safe_adult_path(str(payload.get("file", "")))
+            command = {"command": "play-adult-film", "file": self.adult_relative_path(source)}
+        else:
+            raise ValueError("Choose a programme or Adult film to play")
+        if not source.is_file():
+            raise ValueError("That video is no longer in the Mabel TV library")
+        try:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+                client.settimeout(3)
+                client.connect("/run/mabeltv/portal-control.sock")
+                client.sendall((json.dumps(command, separators=(",", ":")) + "\n").encode())
+                reply = client.recv(32).decode(errors="replace").strip()
+        except OSError as error:
+            raise ValueError("The TV player is not ready to start that video") from error
+        if reply != "ok":
+            raise ValueError("The TV could not start that video")
+        return {"ok": True,
+                "message": f"Playing {self.display_name(source.name)} on Mabel TV"}
+
     def support_bundle(self) -> Path:
         self.admin_action("diagnostics")
         bundle = Path("/var/lib/mabeltv/support/mabeltv-support.tar.gz")
@@ -3172,6 +3206,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.json(200, self.server.library.stop_live_tv()); return
             if self.path == "/api/live/control":
                 self.json(200, self.server.library.live_tv_control(payload)); return
+            if self.path == "/api/play-on-tv":
+                self.json(200, self.server.library.play_on_tv(payload)); return
             if self.path == "/api/usb":
                 action = str(payload.get("action", ""))
                 if action == "mount": result = self.server.library.usb_mount(str(payload.get("device", "")))

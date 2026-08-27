@@ -1055,6 +1055,57 @@ void TvController::reloadAdultLibrary()
     emit adultLibraryChanged();
 }
 
+void TvController::playPortalProgramme(int channelNumber, const QString &fileName)
+{
+    // This is an explicit, parent-authenticated portal choice. It may start a
+    // hidden programme, but it never accepts an arbitrary path: the filename
+    // must already belong to one of the indexed channels.
+    if (m_standby || fileName.isEmpty()) {
+        return;
+    }
+
+    const int channelIndex = findChannelByNumber(channelNumber, true);
+    if (channelIndex < 0) {
+        return;
+    }
+    ChannelRuntime &target = m_channels[channelIndex];
+    int episodeIndex = -1;
+    for (int index = 0; index < target.channel.episodes.size(); ++index) {
+        if (QFileInfo(target.channel.episodes[index].path).fileName() == fileName) {
+            episodeIndex = index;
+            break;
+        }
+    }
+    if (episodeIndex < 0 || !QFileInfo(target.channel.episodes[episodeIndex].path).isFile()) {
+        return;
+    }
+
+    const bool changingChannel = channelIndex != m_currentChannelIndex;
+    if (changingChannel && m_currentChannelIndex >= 0) {
+        if (m_playbackMode == QStringLiteral("resume")) {
+            freezeTimeline(m_channels[m_currentChannelIndex]);
+        }
+        markCurrentEpisodeLeft(m_channels[m_currentChannelIndex]);
+        m_previousChannelNumber = currentChannelNumber();
+    }
+
+    m_currentChannelIndex = channelIndex;
+    target.currentEpisode = episodeIndex;
+    target.anchorMilliseconds = m_broadcastClock.elapsed();
+    target.anchorPositionSeconds = 0.0;
+    target.programmePositions[episodeIndex] = 0.0;
+    m_playbackPaused = false;
+    emit channelChanged();
+    if (changingChannel) {
+        emit channelDisplayRequested(currentChannelNumber(), currentChannelName());
+    }
+    emit stopPlaybackRequested();
+    setNoSignal(false);
+    setTuning(true);
+    m_tuningTimer.start();
+    saveState();
+}
+
 double TvController::adultPlaybackPosition(const QString &libraryId) const
 {
     return m_adultPlaybackPositions.value(libraryId, 0.0);

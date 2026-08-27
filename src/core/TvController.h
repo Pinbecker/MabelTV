@@ -130,6 +130,7 @@ public:
     Q_INVOKABLE void prepareForPlaybackRestart(const QString &message);
     Q_INVOKABLE void updatePlaybackPosition(double positionSeconds, bool paused);
     Q_INVOKABLE void restartCurrentProgramme();
+    Q_INVOKABLE void playPortalProgramme(int channelNumber, const QString &fileName);
     Q_INVOKABLE void requestParentAccess();
     Q_INVOKABLE void parentConfirm();
     Q_INVOKABLE void requestAdultModeShortcut();

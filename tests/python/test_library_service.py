@@ -926,6 +926,44 @@ class UsbAndMetadataTests(unittest.TestCase):
         self.assertEqual(Path(sent["path"]), movie.resolve())
         self.assertTrue(result["ok"])
 
+    def test_portal_play_on_tv_resolves_channel_and_adult_library_items(self) -> None:
+        self.fixture.library.complete_setup({
+            "setup_code": "135790", "pin": "2468",
+            "channels": mabeltv_library.DEFAULT_CHANNELS,
+        })
+        channel_movie = self.fixture.media / "kids-tv" / "Episode.mp4"
+        channel_movie.parent.mkdir(parents=True, exist_ok=True)
+        channel_movie.write_bytes(b"video")
+        adult_movie = self.fixture.library.adult_root / "Films" / "Film.mkv"
+        adult_movie.parent.mkdir(parents=True, exist_ok=True)
+        adult_movie.write_bytes(b"film")
+        client = mock.MagicMock()
+        context = mock.MagicMock()
+        context.__enter__.return_value = client
+        context.__exit__.return_value = False
+        client.recv.return_value = b"ok\n"
+        with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
+                mock.patch.object(mabeltv_library.socket, "socket", return_value=context):
+            channel_result = self.fixture.library.play_on_tv({
+                "kind": "channel", "channel": 1, "file": "Episode.mp4",
+            })
+            adult_result = self.fixture.library.play_on_tv({
+                "kind": "adult", "file": "Films/Film.mkv",
+            })
+        channel_command = json.loads(client.sendall.call_args_list[0].args[0].decode())
+        adult_command = json.loads(client.sendall.call_args_list[1].args[0].decode())
+        self.assertEqual(channel_command,
+                         {"command": "play-programme", "channel": 1, "file": "Episode.mp4"})
+        self.assertEqual(adult_command,
+                         {"command": "play-adult-film", "file": "Films/Film.mkv"})
+        self.assertTrue(channel_result["ok"])
+        self.assertTrue(adult_result["ok"])
+
+        with self.assertRaisesRegex(ValueError, "no longer"):
+            self.fixture.library.play_on_tv({
+                "kind": "adult", "file": "Films/Missing.mkv",
+            })
+
     def test_tmdb_search_and_apply_cache_metadata_without_exposing_key(self) -> None:
         movie = self.fixture.library.adult_root / "Fellowship of the Ring 2001.mkv"
         movie.write_bytes(b"video")

@@ -692,7 +692,10 @@
         move.disabled = folders.length === 0
         move.onclick = () => manage('move-adult', { file: film.path, folder: moveSelect.value })
         moveWrap.append(moveSelect, move)
-        actions.append(moveWrap, scan, rename, optimise, remove)
+        const play = document.createElement('button')
+        play.type = 'button'; play.className = 'primary'; play.textContent = 'Play on TV'
+        play.onclick = () => playOnTv({ kind: 'adult', file: film.path }, metadata.title || film.display_name)
+        actions.append(play, moveWrap, scan, rename, optimise, remove)
         row.append(poster, copy, actions)
         root.append(row)
       })
@@ -1100,7 +1103,11 @@
           copy.append(name, status); main.append(marker, copy)
           const actions = document.createElement('div')
           actions.className = 'programme-actions'
-          actions.append(actionButton(programme.enabled ? 'Hide' : 'Show', () => manage('toggle-programme', { channel: channel.number, file: programme.name })), actionButton('Rename', () => renameProgramme(channel, programme)), actionButton('Bin', () => { if (confirm(`Move “${programme.display_name}” to the recycle bin?`)) manage('trash', { channel: channel.number, file: programme.name }) }, 'danger'))
+          actions.append(
+            actionButton('Play on TV', () => playOnTv({ kind: 'channel', channel: channel.number, file: programme.name }, programme.display_name), 'primary'),
+            actionButton(programme.enabled ? 'Hide' : 'Show', () => manage('toggle-programme', { channel: channel.number, file: programme.name })),
+            actionButton('Rename', () => renameProgramme(channel, programme)),
+            actionButton('Bin', () => { if (confirm(`Move “${programme.display_name}” to the recycle bin?`)) manage('trash', { channel: channel.number, file: programme.name }) }, 'danger'))
           row.append(main, actions); list.append(row)
         })
         root.append(list)
@@ -1157,6 +1164,17 @@
         notice(result.message || 'Done.', result.refreshed === false)
       } catch (error) { notice(error.message, true) }
       finally { managementBusy = false }
+    }
+
+    async function playOnTv(payload, title) {
+      if (!confirm(`Play “${title}” on Mabel TV now? This will replace what is currently playing.`)) return
+      try {
+        notice(`Starting ${title} on Mabel TV…`)
+        const result = await api('/api/play-on-tv', {
+          method: 'POST', body: JSON.stringify(payload)
+        })
+        notice(result.message || `Playing ${title} on Mabel TV.`)
+      } catch (error) { notice(error.message, true) }
     }
 
     async function renameProgramme(channel, programme) {

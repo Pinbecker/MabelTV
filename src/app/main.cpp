@@ -521,6 +521,34 @@ int main(int argc, char *argv[])
                                                               socket->disconnectFromServer();
                                                               return;
                                                           }
+                                                          if (request.isObject()
+                                                              && object.value(QStringLiteral("command")).toString()
+                                                                  == QStringLiteral("play-programme")) {
+                                                              QMetaObject::invokeMethod(
+                                                                  rootObject,
+                                                                  "portalPlayChannelProgramme",
+                                                                  Qt::QueuedConnection,
+                                                                  Q_ARG(QVariant, object.value(
+                                                                      QStringLiteral("channel")).toInt()),
+                                                                  Q_ARG(QVariant, object.value(
+                                                                      QStringLiteral("file")).toString()));
+                                                              socket->write("ok\n");
+                                                              socket->disconnectFromServer();
+                                                              return;
+                                                          }
+                                                          if (request.isObject()
+                                                              && object.value(QStringLiteral("command")).toString()
+                                                                  == QStringLiteral("play-adult-film")) {
+                                                              QMetaObject::invokeMethod(
+                                                                  rootObject,
+                                                                  "portalPlayAdultFilm",
+                                                                  Qt::QueuedConnection,
+                                                                  Q_ARG(QVariant, object.value(
+                                                                      QStringLiteral("file")).toString()));
+                                                              socket->write("ok\n");
+                                                              socket->disconnectFromServer();
+                                                              return;
+                                                          }
                                                       }
                                                       if (command == QStringLiteral("status")) {
                                                           QJsonObject status{

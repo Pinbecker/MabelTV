@@ -36,6 +36,7 @@ Item {
     property string externalTitle: ""
     property url queuedExternalSource: ""
     property string queuedExternalTitle: ""
+    property string queuedLibraryFilmPath: ""
 
     signal closed()
     signal powerRequested()
@@ -47,6 +48,8 @@ Item {
 
     function open() {
         rebuildCollections()
+        libraryFilmStartTimer.stop()
+        queuedLibraryFilmPath = ""
         playing = false
         stopping = false
         closing = false
@@ -80,12 +83,36 @@ Item {
         }
     }
 
+    function requestLibraryFilm(filePath) {
+        queuedLibraryFilmPath = filePath
+        if (playing || stopping) {
+            stopFilm()
+        } else {
+            libraryFilmStartTimer.restart()
+        }
+    }
+
+    function playLibraryFilm(filePath) {
+        rebuildCollections()
+        selectedCollectionIndex = 0
+        applySelectedCollection()
+        for (let index = 0; index < visibleFilms.length; ++index) {
+            if (visibleFilms[index].path === filePath) {
+                selectedIndex = index
+                startSelectedFilm(0)
+                return
+            }
+        }
+        errorMessage = "That film is no longer in the Adult library."
+    }
+
     function playExternal(source, title) {
         externalSession = true
         externalSource = source
         externalTitle = title || "USB video"
         queuedExternalSource = ""
         queuedExternalTitle = ""
+        queuedLibraryFilmPath = ""
         errorMessage = ""
         playing = true
         stopping = false
@@ -104,8 +131,10 @@ Item {
 
     function finishClose() {
         externalStartTimer.stop()
+        libraryFilmStartTimer.stop()
         queuedExternalSource = ""
         queuedExternalTitle = ""
+        queuedLibraryFilmPath = ""
         externalSession = false
         active = false
         closing = false
@@ -520,6 +549,11 @@ Item {
                 overlay.stopping = false
                 externalStartTimer.restart()
             }
+            else if (overlay.queuedLibraryFilmPath.length > 0) {
+                overlay.playing = false
+                overlay.stopping = false
+                libraryFilmStartTimer.restart()
+            }
             else {
                 overlay.externalSession = false
                 overlay.playing = false
@@ -534,6 +568,11 @@ Item {
                 overlay.playing = false
                 overlay.stopping = false
                 externalStartTimer.restart()
+            }
+            else if (overlay.queuedLibraryFilmPath.length > 0) {
+                overlay.playing = false
+                overlay.stopping = false
+                libraryFilmStartTimer.restart()
             }
             else {
                 overlay.externalSession = false
@@ -550,6 +589,11 @@ Item {
                 overlay.playing = false
                 overlay.stopping = false
                 externalStartTimer.restart()
+            }
+            else if (overlay.queuedLibraryFilmPath.length > 0) {
+                overlay.playing = false
+                overlay.stopping = false
+                libraryFilmStartTimer.restart()
             }
             else {
                 overlay.externalSession = false
@@ -1251,6 +1295,19 @@ Item {
             if (!overlay.closing && overlay.queuedExternalSource.toString().length > 0)
                 overlay.playExternal(overlay.queuedExternalSource,
                                      overlay.queuedExternalTitle)
+        }
+    }
+
+    Timer {
+        id: libraryFilmStartTimer
+        interval: 350
+        repeat: false
+        onTriggered: {
+            if (!overlay.closing && overlay.queuedLibraryFilmPath.length > 0) {
+                const file = overlay.queuedLibraryFilmPath
+                overlay.queuedLibraryFilmPath = ""
+                overlay.playLibraryFilm(file)
+            }
         }
     }
 
