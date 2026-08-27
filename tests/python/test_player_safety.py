@@ -274,13 +274,16 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("id: adultPositionTimer", adult_qml)
         self.assertIn("rememberCurrentFilmPosition", adult_qml)
         self.assertIn("savedPosition", adult_qml)
-        self.assertIn("HOLD MUTE  SUBTITLES", adult_qml)
+        self.assertNotIn("HOLD MUTE  SUBTITLES", adult_qml)
         self.assertIn("id: playbackChoiceModal", adult_qml)
         self.assertIn("function confirmPlaybackChoice()", adult_qml)
         self.assertIn("id: filmProgressTrack", adult_qml)
         self.assertIn("controller.adultPlaybackDuration(modelData.id)", adult_qml)
         self.assertIn("Number(modelData.runtime || 0) * 60", adult_qml)
         self.assertIn("id: subtitleAction", adult_qml)
+        self.assertIn("visible: overlay.scrubberActive && adultPlayer.subtitlesAvailable", adult_qml)
+        self.assertIn("id: noSubtitlesMessage", adult_qml)
+        self.assertIn("NO SUBTITLES AVAILABLE", adult_qml)
         self.assertIn("scrubberFocus === 1", adult_qml)
         self.assertIn("function openScrubber()", adult_qml)
         self.assertIn("if (playing && scrubberActive)", adult_qml)
@@ -289,7 +292,8 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertNotIn("id: adultVolumeCard", adult_qml)
         self.assertNotIn("seek(300)", adult_qml)
         self.assertNotIn("seek(-300)", adult_qml)
-        self.assertIn("interval: adultMode.active ? 700 : 3000", main_qml)
+        self.assertIn("interval: 3000", main_qml)
+        self.assertNotIn("adultMode.active ? 700 : 3000", main_qml)
 
 
 if __name__ == "__main__":

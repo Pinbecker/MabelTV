@@ -1497,15 +1497,12 @@ Window {
 
     Timer {
         id: muteHoldTimer
-        // Adult playback uses a short, deliberate subtitle shortcut. Children
-        // retain the longer lock gesture so a normal mute press is unchanged.
-        interval: adultMode.active ? 700 : 3000
+        // Mute is only mute; Adult playback now exposes subtitles directly in
+        // its scrubber, so no hidden long-press subtitle gesture remains.
+        interval: 3000
         onTriggered: {
             root.muteHeldForLock = true
-            if (adultMode.active)
-                adultMode.toggleSubtitles()
-            else
-                tvController.toggleRemoteLock()
+            tvController.toggleRemoteLock()
         }
     }
 

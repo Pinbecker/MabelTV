@@ -365,6 +365,10 @@ Item {
     function togglePause() {
         if (!playing || stopping)
             return
+        // Pause is one of the three deliberate ways into the full scrubber.
+        // The subtitle state is therefore visible immediately, rather than
+        // requiring a second navigation press just to reveal it.
+        openScrubber()
         adultPlayer.togglePause()
         showControls()
     }
@@ -1276,7 +1280,9 @@ Item {
 
                 Text {
                     width: parent.width - (subtitleAction.visible
-                                            ? subtitleAction.width + parent.spacing : 0)
+                                            ? subtitleAction.width + parent.spacing
+                                            : (noSubtitlesMessage.visible
+                                               ? noSubtitlesMessage.width + parent.spacing : 0))
                     anchors.verticalCenter: parent.verticalCenter
                     color: "#f4f1eb"
                     elide: Text.ElideRight
@@ -1289,6 +1295,9 @@ Item {
                 Rectangle {
                     id: subtitleAction
                     anchors.verticalCenter: parent.verticalCenter
+                    // Keep the status visible as soon as the scrubber opens.
+                    // Up/Down only moves selection; it must not make this
+                    // control suddenly appear.
                     visible: overlay.scrubberActive && adultPlayer.subtitlesAvailable
                     width: subtitleActionLabel.implicitWidth + Math.max(30, 36 * overlay.uiScale)
                     height: Math.max(28, 34 * overlay.uiScale)
@@ -1306,6 +1315,17 @@ Item {
                         font.pixelSize: Math.max(9, 11 * overlay.uiScale)
                         text: "SUBTITLES " + (adultPlayer.subtitlesVisible ? "ON" : "OFF")
                     }
+                }
+
+                Text {
+                    id: noSubtitlesMessage
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: overlay.scrubberActive && !adultPlayer.subtitlesAvailable
+                    color: "#aeb8c1"
+                    font.family: "DejaVu Sans"
+                    font.bold: true
+                    font.pixelSize: Math.max(9, 11 * overlay.uiScale)
+                    text: "NO SUBTITLES AVAILABLE"
                 }
             }
 
@@ -1366,8 +1386,8 @@ Item {
                              ? "OK  TOGGLE SUBTITLES     ↓  TIMELINE     BACK  CLOSE"
                              : (adultPlayer.subtitlesAvailable
                                 ? "↑  SUBTITLES     ← →  15 SEC     OK  PAUSE"
-                                : "← →  15 SEC     OK  PAUSE"))
-                          : "↑ / ↓  CONTROLS     ← →  15 SEC     OK  PAUSE     HOLD MUTE  SUBTITLES"
+                                : "NO SUBTITLES AVAILABLE     ← →  15 SEC     OK  PAUSE"))
+                          : "↑ / ↓  CONTROLS     ← →  15 SEC     OK  PAUSE"
                 }
                 Text {
                     width: parent.width * 0.25
