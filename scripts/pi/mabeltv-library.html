@@ -31,7 +31,7 @@
     .feature-control{display:flex;align-items:center;justify-content:space-between;gap:28px;margin-top:20px;padding:18px;border:1px solid var(--line);border-radius:12px;background:var(--soft)}.feature-control>div{max-width:720px}.feature-control strong{display:block;margin-bottom:5px}.feature-control p{margin:0}.combo{display:flex;gap:6px;flex-wrap:wrap;margin-top:13px}.combo span{display:inline-flex;min-height:29px;align-items:center;border:1px solid #cfd5d0;border-radius:7px;padding:3px 9px;background:#fff;color:#3f4945;font-size:.76rem;font-weight:700}.feature-toggle{min-width:126px}.feature-toggle[aria-pressed="true"]{border-color:var(--green);background:var(--green);color:#fff}
     @media(max-width:720px){.feature-control{display:grid;gap:18px}.feature-toggle{width:100%}}
     @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
-    @media(max-width:720px){nav{grid-template-columns:repeat(7,1fr)}}
+    @media(max-width:720px){nav{grid-template-columns:repeat(5,1fr)}}
     .live-screen video,.live-screen img{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover;object-position:center;background:#050706}
     .tv-settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.tv-settings-grid .wide{grid-column:1/-1}.range-setting{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 13px;align-items:center;border:1px solid var(--line);border-radius:var(--rs);padding:13px;background:var(--soft)}.range-setting label{grid-column:1/-1}.range-setting input{min-height:auto;padding:0;accent-color:var(--accent2)}.range-setting output{min-width:42px;border-radius:99px;padding:3px 8px;background:#fff;color:var(--ink);font-size:.8rem;font-weight:720;text-align:center}.tv-settings-foot{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:4px}.tv-settings-foot p{margin:0;color:var(--muted);font-size:.82rem}
     @media(max-width:720px){.tv-settings-grid{grid-template-columns:1fr}.tv-settings-grid .wide{grid-column:auto}.tv-settings-foot{align-items:stretch;flex-direction:column}.tv-settings-foot button{width:100%}}
@@ -74,10 +74,8 @@
       <nav id="mainNav" aria-label="TV sections">
         <button class="active" data-view-button="overview" aria-current="page"><svg class="icon" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5V20H4Z"/><path d="M9 20v-6h6v6"/></svg>Home<span class="nav-dot"></span></button>
         <button data-view-button="live"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3Z"/></svg>Live TV<span class="nav-dot"></span></button>
-        <button data-view-button="add"><svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add videos<span class="nav-dot"></span></button>
         <button data-view-button="channels"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="m9 9 6 3-6 3Z"/></svg>Library<span class="nav-dot"></span></button>
         <button data-view-button="adult"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m10 9 5 3-5 3Z"/><path d="M7 4v4M17 4v4"/></svg>Adult<span class="nav-dot"></span></button>
-        <button data-view-button="usb"><svg class="icon" viewBox="0 0 24 24"><path d="M8 3h8v5H8zM6 8h12v12H6z"/><path d="M9 12h6M9 16h4"/></svg>USB<span class="nav-dot"></span></button>
         <button data-view-button="system"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.5 1A7 7 0 0 0 14.3 5L14 2h-4l-.4 3A7 7 0 0 0 7.5 7L5 6 3 9.3l2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.5-1a7 7 0 0 0 2.1 1.9l.4 3h4l.4-3a7 7 0 0 0 2.1-1.9l2.5 1 2-3.4-2-1.5c0-.4.1-.8.1-1.2Z"/></svg>Settings<span class="nav-dot"></span></button>
       </nav>
       <div class="rail-foot"><span id="topHealth" class="health-pill">Checking TV…</span><button id="logout" class="secondary">Lock controls</button></div>
@@ -87,7 +85,7 @@
       <p id="notice" class="notice" role="status" aria-live="polite"></p>
       <section id="view-overview" class="view active"><div class="page">
         <div class="home-intro">
-          <article class="home-greeting surface"><div><p class="eyebrow">Parent controls</p><h1><span data-tv-name>Your TV</span> is ready when you are.</h1><p>Add something new, or jump straight into a channel to tidy what appears on the television.</p></div><div class="home-actions"><button class="primary" data-go="add"><svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add videos</button><button id="enterAdultMode" type="button" class="secondary">Enter Adult Mode</button></div></article>
+          <article class="home-greeting surface"><div><p class="eyebrow">Parent controls</p><h1><span data-tv-name>Your TV</span> is ready when you are.</h1><p>Add something new, or jump straight into a channel to tidy what appears on the television.</p></div><div class="home-actions"><button class="primary" data-go="channels"><svg class="icon" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>Open library</button><button id="enterAdultMode" type="button" class="secondary">Enter Adult Mode</button></div></article>
           <article class="home-status surface"><div class="status-top"><span id="homeStatusIcon" class="status-icon"><svg class="icon" viewBox="0 0 24 24"><path d="m6 12 4 4 8-9"/></svg></span><div><p class="section-kicker">TV status</p><h2 id="healthTitle">Checking everything…</h2></div></div><p id="healthSummary" class="health-summary">Checking the player, temperature, power, and storage.</p><div class="quick-stats"><div class="quick-stat"><span>Temperature</span><strong id="temperature">—</strong></div><div class="quick-stat"><span>Storage available</span><strong id="storageFree">—</strong></div><div class="quick-stat"><span>Running for</span><strong id="uptime">—</strong></div></div><button id="refreshLibrary" class="secondary">Refresh TV library</button></article>
         </div>
         <article id="warningsCard" class="attention surface surface-pad hidden"><div class="attention-head"><span class="status-icon warn">!</span><div><p class="section-kicker">Needs attention</p><h2>There’s a small job to do</h2></div></div><div id="warnings"></div></article>
@@ -100,13 +98,6 @@
         <div class="live-layout"><section class="live-tv" aria-label="Live television preview"><div class="live-screen"><video id="liveVideo" muted autoplay playsinline preload="none"></video><img id="liveMjpeg" class="hidden" alt="Live MabelTV picture"><div id="liveOff" class="live-off"><strong id="liveOffTitle">Connecting to the TV…</strong><span id="liveOffText">Preparing the live picture</span></div></div><div class="live-meta"><small class="live-caption"><span id="liveChannel">Live preview</span><span aria-hidden="true"> · </span><span id="liveProgramme">Waiting for MabelTV</span></small><small class="live-state"><span id="liveLed" class="live-led off"></span><span id="liveState">Checking…</span></small></div></section><aside class="live-side"><section class="surface"><div class="remote-panel-head"><div><h2>TV remote</h2><p>Every command controls the TV in the room.</p></div><span class="count-badge">LIVE</span></div><div class="remote-shortcuts"><button type="button" class="primary" data-live-command="open-parent-menu">☰ Menu</button><button type="button" class="secondary" data-live-command="open-tv-guide">▦ Guide</button><button type="button" class="secondary" data-live-command="enter-adult-mode">◆ Adult</button></div><div class="remote-group"><h3>Navigate</h3><div class="remote-pad" aria-label="Directional controls"><button type="button" class="secondary up" data-live-command="navigate-up" aria-label="Up">▲</button><button type="button" class="secondary" data-live-command="navigate-left" aria-label="Left">◀</button><button type="button" class="select" data-live-command="select">Select</button><button type="button" class="secondary" data-live-command="navigate-right" aria-label="Right">▶</button><button type="button" class="secondary" data-live-command="navigate-down" aria-label="Down">▼</button></div></div><div class="remote-group"><h3>Playback</h3><div class="remote-grid"><button type="button" class="secondary" data-live-command="previous-programme">◀ Previous</button><button type="button" class="secondary" data-live-command="toggle-pause">⏯ Pause</button><button type="button" class="secondary" data-live-command="next-programme">Next ▶</button><button type="button" class="secondary" data-live-command="toggle-subtitles">CC Subtitles</button><button type="button" class="secondary wide" data-live-command="restart-programme">↺ Restart this programme</button></div></div><div class="remote-group"><h3>Channel and sound</h3><div class="remote-grid"><button type="button" class="secondary" data-live-command="channel-down">CH −</button><button type="button" class="secondary" data-live-command="close-overlay">Back / close</button><button type="button" class="secondary" data-live-command="channel-up">CH +</button><button type="button" class="secondary" data-live-command="volume-down">VOL −</button><button type="button" class="secondary" data-live-command="toggle-mute">Mute</button><button type="button" class="secondary" data-live-command="volume-up">VOL +</button><button type="button" class="secondary wide" data-live-command="toggle-power">Power / standby</button></div></div></section></aside></div>
         <footer><span data-tv-name>Your TV</span> · Live preview stays on your home network</footer>
       </div></section>
-      <section id="view-add" class="view"><div class="page">
-        <header class="page-head"><div><p class="eyebrow">Add videos</p><h1>Choose it. Send it. Done.</h1><p>Pick a channel, choose one or more videos, and <span data-tv-name>your TV</span> will take care of the rest.</p></div></header>
-        <div class="upload-layout">
-          <section class="upload-panel surface"><form id="uploadForm" class="upload-form"><label>Destination channel<select id="channel" required></select></label><label class="drop-field" for="file"><input id="file" type="file" accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg" multiple><span class="drop-copy"><span class="drop-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 14v5h14v-5"/></svg></span><strong>Choose videos</strong><small>Select several at once, or come back to add more</small></span></label><div id="selectedFiles" class="callout" aria-live="polite">No videos selected yet.</div><button id="uploadButton" type="submit" class="primary" disabled>Upload selected videos</button></form><div id="uploadState" class="hidden callout" aria-live="polite"><p id="uploadText">Preparing…</p><progress id="progress" max="1" value="0"></progress></div></section>
-          <aside class="upload-side"><section class="surface"><p class="section-kicker">In progress</p><h2>Upload activity</h2><div id="uploadJobs" aria-live="polite">No videos are waiting.</div></section><section class="surface"><p class="section-kicker">Good to know</p><ul class="tip-list"><li>Uploads safely resume if Wi-Fi drops.</li><li>You can close this page after upload reaches 100%.</li><li>iPhone MOV videos are prepared only when the Pi needs it.</li><li>Use S01E02 - The Picnic.mp4 for tidy episodes.</li></ul></section></aside>
-        </div><footer><span data-tv-name>Your TV</span> · Private and local</footer>
-      </div></section>
       <section id="view-channels" class="view"><div class="page">
         <div id="channelHub">
           <header class="page-head"><div><p class="eyebrow">Library</p><h1>Everything on the TV</h1><p>Open a channel to search, rename, hide, or remove programmes without digging through technical controls.</p></div><button id="showAddChannel" type="button">New channel</button></header>
@@ -117,6 +108,7 @@
         <div id="channelWorkspace" class="channel-workspace hidden">
           <button id="backToChannels" type="button" class="workspace-back">← Back to all channels</button>
           <section class="surface surface-pad"><div class="workspace-head"><div><div class="workspace-titleline"><span id="workspaceChannelBadge" class="workspace-channel-number">CH</span><div><p id="workspaceEyebrow" class="eyebrow">Channel</p><h1 id="workspaceChannelName">Channel</h1></div></div><p id="workspaceChannelStatus" class="muted"></p></div><div class="row"><button id="workspaceAddMedia" type="button">Add videos</button><button id="workspaceToggleChannel" type="button" class="secondary">Hide channel</button></div></div><div class="channel-facts"><div class="channel-fact"><strong id="workspaceProgrammeCount">0</strong><span>programmes</span></div><div class="channel-fact"><strong id="workspaceVisibleCount">0</strong><span>shown on TV</span></div><div class="channel-fact"><strong id="workspacePictureMode">—</strong><span>picture mode</span></div></div></section>
+          <section id="channelUploadPanel" class="surface upload-panel hidden"><div class="section-heading"><div><p class="section-kicker">Add to this channel</p><h2>Upload videos</h2><p class="muted">Files selected here go directly into <strong id="uploadDestination">this channel</strong>.</p></div><button id="closeChannelUpload" type="button" class="secondary">Close</button></div><form id="uploadForm" class="upload-form"><select id="channel" class="hidden" aria-hidden="true" tabindex="-1" required></select><label class="drop-field" for="file"><input id="file" type="file" accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg" multiple><span class="drop-copy"><span class="drop-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 14v5h14v-5"/></svg></span><strong>Choose videos</strong><small>Select one or more videos for this channel</small></span></label><div id="selectedFiles" class="callout" aria-live="polite">No videos selected yet.</div><button id="uploadButton" type="submit" class="primary" disabled>Upload selected videos</button></form><div id="uploadState" class="hidden callout" aria-live="polite"><p id="uploadText">Preparing…</p><progress id="progress" max="1" value="0"></progress></div><div class="upload-activity"><p class="section-kicker">Upload activity</p><div id="uploadJobs" aria-live="polite">No videos are waiting.</div></div></section>
           <div class="workspace-layout"><section class="workspace-main surface"><div class="section-heading"><div><p class="section-kicker">Programme library</p><h2 id="channelSummary">Everything in this channel</h2></div></div><div class="library-toolbar"><label>Find a programme<input id="programmeSearch" type="search" placeholder="Search titles…" autocomplete="off"></label><label>Show<select id="programmeVisibility"><option value="all">All programmes</option><option value="enabled">Shown on TV</option><option value="disabled">Hidden from TV</option></select></label></div><div id="channels"></div><div id="programmePager" class="pager hidden"></div></section><aside class="workspace-side"><section class="surface"><p class="section-kicker">Channel settings</p><h2>Edit this channel</h2><form id="editChannelForm" class="field-grid"><label>Channel number<input id="editChannelNumber" type="number" min="1" max="999" required></label><label>Channel name<input id="editChannelName" maxlength="60" required></label><label>Picture mode<select id="editChannelAspect"><option value="crop">Fill screen</option><option value="fit">Show whole picture</option><option value="stretch">Stretch to screen</option></select></label><label>What plays here?<select id="editChannelContentType"><option value="shows">Shows / episodes</option><option value="films">Films / long videos</option></select></label><div class="row wide"><button type="submit">Save changes</button><button id="deleteChannel" type="button" class="danger">Delete channel</button></div></form></section></aside></div>
         </div><footer><span data-tv-name>Your TV</span> · Library</footer>
       </div></section>
@@ -127,11 +119,6 @@
           <section class="adult-library surface"><div class="section-heading"><div><p class="section-kicker">On the television</p><h2>Adult library</h2></div><span id="adultFilmCount" class="count-badge">0</span></div><div class="adult-folder-manager"><div id="adultFolderTabs" class="adult-folder-tabs"></div><div class="adult-folder-tools"><input id="adultFolderName" maxlength="80" placeholder="New collection name"><button id="adultCreateFolder" type="button" class="primary">Create folder</button><button id="adultRenameFolder" type="button" class="secondary" disabled>Rename selected</button><button id="adultDeleteFolder" type="button" class="danger" disabled>Delete selected</button></div></div><div id="tmdbState" class="tmdb-state callout">Checking metadata service…</div><p class="adult-library-note">Folders created here are the same collections shown on Adult TV. Move a film once and both screens update together.</p><div id="adultFilmList" class="adult-film-list"></div></section>
         </div><section class="adult-guidance" aria-label="Adult library details"><div><strong>Private library</strong><span>These films never appear in children’s channels.</span></div><div><strong>Original first</strong><span>Every new film stays exactly as uploaded until you choose otherwise.</span></div><div><strong>Optimise only if needed</strong><span>If a film stutters, make a Pi-friendly 720p copy from its film card.</span></div></section><footer><span data-tv-name>Your TV</span> · Adult mode is protected by the on-TV parent menu</footer>
       </div></section>
-      <section id="view-usb" class="view"><div class="page">
-        <header class="usb-hero surface"><div><p class="eyebrow">Removable media</p><h1>USB drive</h1><p>Browse videos safely, play one immediately without copying it, or import films and folders into the permanent MabelTV library.</p></div><button id="usbRefresh" type="button" class="secondary">Scan drives</button></header>
-        <div class="usb-layout"><aside class="usb-drives surface"><p class="section-kicker">Connected storage</p><h2>Drives</h2><div id="usbDriveList" class="usb-drive-list"><div class="empty">Connect a USB drive, then scan.</div></div></aside><section class="usb-browser surface"><div class="section-heading"><div><p id="usbBreadcrumb" class="section-kicker">Choose a drive</p><h2>Media browser</h2></div><button id="usbEject" type="button" class="secondary hidden">Safely eject</button></div><div class="usb-toolbar"><button id="usbUp" type="button" class="secondary" disabled>Up one folder</button><button id="usbSelectAll" type="button" class="secondary" disabled>Select visible videos</button><span id="usbSelectionCount" class="muted">Nothing selected</span></div><div id="usbFileList" class="usb-file-list"><div class="empty"><strong>No drive selected</strong>Select or mount a connected USB drive.</div></div><div class="usb-import"><label>Copy selected items to<select id="usbTarget"><option value="adult">Adult library</option><option value="channel">Children’s channel</option></select></label><label id="usbChannelLabel" class="hidden">Channel<select id="usbChannel"></select></label><button id="usbImport" type="button" disabled>Import selected</button></div><div id="usbJob" class="usb-job callout hidden"><strong id="usbJobTitle">Importing…</strong><p id="usbJobText"></p><progress id="usbJobProgress" max="1" value="0"></progress></div></section></div>
-        <footer>USB drives are mounted read-only · Always use Safely eject before unplugging</footer>
-      </div></section>
       <section id="view-system" class="view"><div class="page">
         <header class="page-head"><div><p class="eyebrow">Settings</p><h1>TV and account</h1><p>Picture, playback, sound, parent controls, identity, and Pi controls live here.</p></div></header>
         <div class="settings-grid">
@@ -141,7 +128,7 @@
           <section class="settings-section surface"><p class="section-kicker">Raspberry Pi</p><h2>System status</h2><dl id="systemDetails" class="definition"></dl><div class="row"><button id="checkAgain" class="secondary">Check again</button><button id="restartPlayer" class="secondary">Restart TV player</button><a class="button secondary" href="/api/support" download>Support bundle</a></div><p class="small muted" style="margin-top:14px">Diagnostics never include the parent PIN or video files.</p></section>
           <section class="settings-section surface"><p class="section-kicker">Identity</p><h2>Name this TV</h2><p class="muted">Enter the child’s name and “TV” is added automatically, for example MabelTV.</p><form id="tvNameForm"><label>Child’s name<input id="tvNameChild" autocomplete="name" maxlength="40" placeholder="Mabel" required></label><button type="submit">Save TV name</button></form></section>
           <section class="settings-section surface"><p class="section-kicker">Security</p><h2>Parent PIN</h2><form id="portalPinForm"><div class="feature-control"><div><strong id="portalPinState">A parent PIN is required to open this portal</strong><p class="small muted">Your PIN is always retained. Enter it below to turn portal sign-in on or off.</p></div><button id="portalPinToggle" type="submit" class="secondary">Turn off PIN entry</button></div><label>Current PIN<input id="portalPinCurrent" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" required></label></form><h3 style="margin-top:26px">Change parent PIN</h3><form id="pinForm"><label>Current PIN<input id="currentPin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" required></label><label>New PIN<input id="newPin" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required></label><label>Repeat new PIN<input id="newPinAgain" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required></label><button type="submit">Change PIN</button></form></section>
-          <section class="settings-section surface"><p class="section-kicker">Everyday help</p><h2>Using <span data-tv-name>your TV</span></h2><details class="help"><summary>How do I add a programme?</summary><p>Open Add videos, choose its channel, choose one or more files, then upload.</p></details><details class="help"><summary>How do I open the grown-up menu on TV?</summary><p>Hold Back / Previous for 3.5 seconds, then press OK three times.</p></details><details class="help"><summary>What if the picture freezes?</summary><p>Use Restart TV player. If it happens again, download a support bundle immediately.</p></details><details class="help"><summary>Why is a phone video taking a while?</summary><p>Large or high-frame-rate iPhone MOV files are converted to a Pi-friendly copy. Normal MP4 programmes are left untouched.</p></details></section>
+          <section class="settings-section surface"><p class="section-kicker">Everyday help</p><h2>Using <span data-tv-name>your TV</span></h2><details class="help"><summary>How do I add a programme?</summary><p>Open Library, choose its channel, click Add videos, choose one or more files, then upload.</p></details><details class="help"><summary>How do I open the grown-up menu on TV?</summary><p>Hold Back / Previous for 3.5 seconds, then press OK three times.</p></details><details class="help"><summary>What if the picture freezes?</summary><p>Use Restart TV player. If it happens again, download a support bundle immediately.</p></details><details class="help"><summary>Why is a phone video taking a while?</summary><p>Large or high-frame-rate iPhone MOV files are converted to a Pi-friendly copy. Normal MP4 programmes are left untouched.</p></details></section>
           <section class="settings-section surface danger-zone full"><div class="section-heading"><div><p class="section-kicker">Power</p><h2>Restart or shut down safely</h2><p class="muted">Use these controls instead of pulling the cable. A safe shutdown protects the SD card.</p></div><div class="row"><button id="rebootPi" class="secondary">Restart Raspberry Pi</button><button id="poweroffPi" class="danger">Shut down Raspberry Pi</button></div></div></section>
         </div><footer><span data-tv-name>Your TV</span> <span data-version></span> · Local to your home network</footer>
       </div></section>
@@ -169,12 +156,6 @@
     let liveFallbackTimer = null
     let liveFrameTimer = null
     let livePictureVisible = false
-    let usbState = { volumes: [], imports: [] }
-    let usbVolume = ''
-    let usbPath = ''
-    let usbEntries = []
-    let usbSelection = new Set()
-    let usbJobTimer = null
     let tmdbConfigured = false
 
     async function api(path, options = {}) {
@@ -518,7 +499,6 @@
     $$('[data-view-button]').forEach(button => button.onclick = () => {
       if (button.dataset.viewButton === 'channels') showChannelHub()
       openView(button.dataset.viewButton)
-      if (button.dataset.viewButton === 'usb') refreshUsb().catch(error => notice(error.message, true))
       if (button.dataset.viewButton === 'adult') refreshTmdbStatus().catch(() => {})
     })
     $$('[data-go]').forEach(button => button.onclick = () => {
@@ -545,14 +525,6 @@
         option.value = channel.number
         option.textContent = `CH ${channel.number} — ${channel.name}`
         upload.append(option)
-      })
-      const usbChannel = $('#usbChannel')
-      usbChannel.innerHTML = ''
-      channels.forEach(channel => {
-        const option = document.createElement('option')
-        option.value = channel.number
-        option.textContent = `CH ${channel.number} — ${channel.name}`
-        usbChannel.append(option)
       })
       if (!channels.some(channel => String(channel.number) === uploadChoice)) uploadChoice = String(channels[0]?.number ?? '')
       upload.value = uploadChoice
@@ -768,97 +740,6 @@
       return `${Math.max(1, Math.round(value / 1048576))} MB`
     }
 
-    async function refreshUsb() {
-      usbState = await api('/api/usb')
-      const root = $('#usbDriveList'); root.innerHTML = ''
-      if (!usbState.volumes.length) root.innerHTML = '<div class="empty"><strong>No USB drive found</strong>Plug one into the Pi, wait a moment, then scan again.</div>'
-      usbState.volumes.forEach(volume => {
-        const row = document.createElement('article'); row.className = `usb-drive ${usbVolume === volume.id ? 'active' : ''}`
-        const copy = document.createElement('div'); copy.className = 'usb-drive-copy'
-        copy.innerHTML = `<strong>${escapeHtml(volume.label)}</strong><small>${escapeHtml(volume.filesystem)}${volume.size ? ` · ${formatBytes(volume.size)}` : ''}</small>`
-        const button = document.createElement('button'); button.type = 'button'; button.className = 'secondary'
-        button.textContent = volume.mounted ? 'Browse' : 'Mount read-only'
-        button.onclick = async () => {
-          try {
-            if (!volume.mounted) await api('/api/usb', { method: 'POST', body: JSON.stringify({ action: 'mount', device: volume.device }) })
-            usbVolume = volume.id; usbPath = ''; usbSelection.clear(); await refreshUsb(); await browseUsb('')
-          } catch (error) { notice(error.message, true) }
-        }
-        row.append(copy, button); root.append(row)
-      })
-      const active = usbState.volumes.find(volume => volume.id === usbVolume && volume.mounted)
-      if (!active && usbVolume) { usbVolume = ''; usbPath = ''; usbEntries = []; usbSelection.clear(); renderUsbFiles() }
-    }
-
-    async function browseUsb(path) {
-      if (!usbVolume) return
-      const data = await api(`/api/usb/browse?volume=${encodeURIComponent(usbVolume)}&path=${encodeURIComponent(path)}`)
-      usbPath = data.path; usbEntries = data.entries; renderUsbFiles()
-    }
-
-    function renderUsbFiles() {
-      const root = $('#usbFileList'); root.innerHTML = ''
-      $('#usbBreadcrumb').textContent = usbVolume ? `${usbVolume}${usbPath ? ' / ' + usbPath : ''}` : 'Choose a drive'
-      $('#usbUp').disabled = !usbVolume || !usbPath
-      $('#usbSelectAll').disabled = !usbEntries.some(entry => entry.type === 'video')
-      $('#usbEject').classList.toggle('hidden', !usbVolume)
-      if (!usbEntries.length) root.innerHTML = `<div class="empty"><strong>${usbVolume ? 'No videos here' : 'No drive selected'}</strong>${usbVolume ? 'Open another folder.' : 'Select or mount a connected USB drive.'}</div>`
-      usbEntries.forEach(entry => {
-        const row = document.createElement('article'); row.className = 'usb-file'
-        if (entry.type === 'video') {
-          const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.checked = usbSelection.has(entry.path)
-          checkbox.onchange = () => { checkbox.checked ? usbSelection.add(entry.path) : usbSelection.delete(entry.path); updateUsbSelection() }
-          row.append(checkbox)
-        }
-        const copy = document.createElement('div'); copy.className = 'usb-file-copy'
-        copy.innerHTML = `<strong>${escapeHtml(entry.name)}</strong><small>${entry.type === 'folder' ? 'Folder' : formatBytes(entry.size)}</small>`
-        row.append(copy)
-        if (entry.type === 'folder') {
-          const choose = document.createElement('button'); choose.type = 'button'; choose.className = 'secondary'; choose.textContent = 'Open'
-          choose.onclick = () => browseUsb(entry.path).catch(error => notice(error.message, true)); row.append(choose)
-          const selectFolder = document.createElement('button'); selectFolder.type = 'button'; selectFolder.className = 'secondary'; selectFolder.textContent = usbSelection.has(entry.path) ? 'Selected' : 'Select folder'
-          selectFolder.onclick = () => { usbSelection.has(entry.path) ? usbSelection.delete(entry.path) : usbSelection.add(entry.path); renderUsbFiles() }; row.append(selectFolder)
-        } else {
-          const play = document.createElement('button'); play.type = 'button'; play.className = 'secondary'; play.textContent = 'Play now'
-          play.onclick = async () => { try { const result = await api('/api/usb', { method: 'POST', body: JSON.stringify({ action: 'play', volume: usbVolume, path: entry.path }) }); notice(result.message) } catch (error) { notice(error.message, true) } }
-          row.append(play)
-        }
-        root.append(row)
-      })
-      updateUsbSelection()
-    }
-
-    function updateUsbSelection() {
-      $('#usbSelectionCount').textContent = usbSelection.size ? `${usbSelection.size} item${usbSelection.size === 1 ? '' : 's'} selected` : 'Nothing selected'
-      $('#usbImport').disabled = !usbVolume || usbSelection.size === 0
-    }
-
-    $('#usbRefresh').onclick = () => refreshUsb().catch(error => notice(error.message, true))
-    $('#usbUp').onclick = () => browseUsb(usbPath.split('/').slice(0, -1).join('/')).catch(error => notice(error.message, true))
-    $('#usbSelectAll').onclick = () => { usbEntries.filter(entry => entry.type === 'video').forEach(entry => usbSelection.add(entry.path)); renderUsbFiles() }
-    $('#usbTarget').onchange = () => $('#usbChannelLabel').classList.toggle('hidden', $('#usbTarget').value !== 'channel')
-    $('#usbEject').onclick = async () => { if (!confirm('Safely eject this USB drive? Stop any USB video first.')) return; try { const result = await api('/api/usb', { method: 'POST', body: JSON.stringify({ action: 'eject', volume: usbVolume }) }); usbVolume = ''; usbSelection.clear(); renderUsbFiles(); await refreshUsb(); notice(result.message) } catch (error) { notice(error.message, true) } }
-    $('#usbImport').onclick = async () => {
-      try {
-        const payload = { action: 'import', volume: usbVolume, paths: [...usbSelection], target: $('#usbTarget').value }
-        if (payload.target === 'channel') payload.channel = Number($('#usbChannel').value)
-        const job = await api('/api/usb', { method: 'POST', body: JSON.stringify(payload) })
-        usbSelection.clear(); renderUsbFiles(); monitorUsbJob(job.id)
-      } catch (error) { notice(error.message, true) }
-    }
-
-    async function monitorUsbJob(id) {
-      clearTimeout(usbJobTimer); $('#usbJob').classList.remove('hidden')
-      try {
-        const job = await api(`/api/usb/imports/${id}`)
-        $('#usbJobTitle').textContent = job.status === 'complete' ? 'Import complete' : job.status === 'error' ? 'Import stopped' : `Copying ${job.current || 'videos'}…`
-        $('#usbJobText').textContent = `${job.files_done} of ${job.files_total} files · ${formatBytes(job.bytes_done)} of ${formatBytes(job.bytes_total)} — ${job.message}`
-        $('#usbJobProgress').max = Math.max(1, job.bytes_total); $('#usbJobProgress').value = job.bytes_done
-        if (job.status === 'complete') { await load(); notice('USB videos imported into MabelTV.') }
-        else if (job.status === 'error') notice(job.message, true)
-        else usbJobTimer = setTimeout(() => monitorUsbJob(id), 1000)
-      } catch (error) { notice(error.message, true) }
-    }
 
     function renderTvSettings() {
       const settings = library?.tv_settings || {}
@@ -1146,7 +1027,14 @@
       $('#workspacePictureMode').textContent = aspectLabel(channel.aspect)
       $('#workspaceToggleChannel').textContent = channel.enabled ? 'Hide channel' : 'Show channel'
       $('#workspaceToggleChannel').onclick = () => manage('toggle-channel', { channel: channel.number })
-      $('#workspaceAddMedia').onclick = () => { $('#channel').value = String(channel.number); openView('add') }
+      $('#channel').value = String(channel.number)
+      $('#uploadDestination').textContent = channel.name
+      $('#workspaceAddMedia').onclick = () => {
+        const panel = $('#channelUploadPanel')
+        panel.classList.toggle('hidden')
+        if (!panel.classList.contains('hidden')) $('#file').focus()
+      }
+      $('#closeChannelUpload').onclick = () => $('#channelUploadPanel').classList.add('hidden')
       $('#programmeSearch').value = programmeSearch
       $('#programmeVisibility').value = programmeVisibility
       renderProgrammeList(channel)
