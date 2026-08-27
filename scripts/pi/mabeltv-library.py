@@ -51,6 +51,8 @@ TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
 OPENSUBTITLES_API_BASE_URL = "https://api.opensubtitles.com/api/v1"
 OPENSUBTITLES_USER_AGENT = "MabelTV/0.2.5"
 SUBTITLE_EXTENSIONS = {".srt", ".vtt", ".ass", ".ssa"}
+REMOTE_BROWSER_EXTENSIONS = {".mp4", ".m4v", ".mov", ".webm"}
+REMOTE_SESSION_SECONDS = 2 * 60
 SAFE_NAME = re.compile(r"[^A-Za-z0-9 ._()&'\-]+")
 EPISODE_NAME = re.compile(r"^s(\d{1,2})e(\d{1,3})\s*-\s*(.+)$", re.IGNORECASE)
 PIN_PATTERN = re.compile(r"\d{4,8}")
@@ -406,6 +408,10 @@ class LiveStream:
         return {key: value for key, value in info.items() if key != "source"} | {"streaming": running}
 
 
+class RemoteTvActiveError(ValueError):
+    """Raised when the conservative one-player rule needs an explicit choice."""
+
+
 class Library:
     def __init__(self, args: argparse.Namespace) -> None:
         self.media_root = Path(args.media_root).resolve()
@@ -441,6 +447,8 @@ class Library:
         self.adult_optimisation_active: set[str] = set()
         self.adult_optimisation_lock = threading.Lock()
         self.adult_optimisation_serial = threading.Lock()
+        self.remote_stream_lock = threading.RLock()
+        self.remote_stream: dict[str, Any] | None = None
         self.usb_imports: dict[str, dict[str, Any]] = {}
         self.usb_import_lock = threading.RLock()
         self.conversion_closed = threading.Event()
@@ -1207,10 +1215,156 @@ class Library:
                     "playback_message": state.get("message", ""),
                     "metadata": state.get("metadata", {})
                     if isinstance(state.get("metadata"), dict) else {},
+                    "browser_ready": item.suffix.lower() in REMOTE_BROWSER_EXTENSIONS,
+                    "remote_position": self.remote_resume_position(state["library_id"], state),
                 })
         if changed:
             self.write_adult_media_states(states)
         return values
+
+    def remote_resume_position(self, library_id: str, media_state: dict[str, Any]) -> float:
+        """Use the furthest safe saved position from TV or browser playback."""
+        candidates: list[float] = []
+        try:
+            candidates.append(float(media_state.get("remote_position", 0) or 0))
+        except (TypeError, ValueError):
+            pass
+        player_state = self.read_json(self.player_state_path, {})
+        if isinstance(player_state, dict):
+            positions = player_state.get("adult_positions", {})
+            if isinstance(positions, dict):
+                try:
+                    candidates.append(float(positions.get(library_id, 0) or 0))
+                except (TypeError, ValueError):
+                    pass
+        return max([value for value in candidates if value >= 0] or [0])
+
+    @staticmethod
+    def remote_browser_ready(source: Path) -> bool:
+        return source.suffix.lower() in REMOTE_BROWSER_EXTENSIONS
+
+    def remote_tv_running(self) -> bool:
+        state = self.read_json(self.player_state_path, {})
+        return isinstance(state, dict) and state.get("standby") is not True
+
+    def remote_settings(self) -> dict[str, Any]:
+        settings = self.settings()
+        return {"allow_simultaneous": settings.get("remote_allow_simultaneous") is True,
+                "tv_running": self.remote_tv_running(),
+                "active": self.remote_stream_status()}
+
+    def remote_stream_status(self) -> dict[str, Any] | None:
+        with self.remote_stream_lock:
+            if not self.remote_stream:
+                return None
+            if float(self.remote_stream.get("expires", 0)) <= time.time():
+                self.remote_stream = None
+                return None
+            return {"kind": self.remote_stream["kind"],
+                    "title": self.remote_stream["title"]}
+
+    def remote_source(self, payload: dict[str, Any]) -> tuple[str, Path, str, str | None, float]:
+        kind = str(payload.get("kind", ""))
+        if kind == "adult":
+            source = self.safe_adult_path(str(payload.get("file", "")))
+            if not source.is_file():
+                raise ValueError("That Adult film is no longer in the library")
+            relative = self.adult_relative_path(source)
+            state = self.adult_media_states().get(relative, {})
+            library_id = state.get("library_id") if isinstance(state, dict) else None
+            if not isinstance(library_id, str):
+                # Give old libraries a stable ID before opening a browser stream.
+                self.adult_library()
+                state = self.adult_media_states().get(relative, {})
+                library_id = state.get("library_id") if isinstance(state, dict) else None
+            resume = self.remote_resume_position(str(library_id or ""), state if isinstance(state, dict) else {})
+            return kind, source, self.display_name(source.name), str(library_id or ""), resume
+        if kind == "channel":
+            try:
+                channel = self.channel(int(payload.get("channel", 0)))
+            except (TypeError, ValueError):
+                raise ValueError("Choose a valid Mabel TV programme") from None
+            source = self.safe_media_path(channel, str(payload.get("file", "")))
+            if not source.is_file():
+                raise ValueError("That Mabel TV programme is no longer in the library")
+            return kind, source, self.display_name(source.name), None, 0
+        raise ValueError("Choose an Adult film or a Mabel TV programme")
+
+    def start_remote_stream(self, payload: dict[str, Any]) -> dict[str, Any]:
+        kind, source, title, library_id, resume = self.remote_source(payload)
+        if not self.remote_browser_ready(source):
+            raise ValueError("This file is not browser-ready. Use an MP4 or M4V version for remote viewing.")
+        settings = self.remote_settings()
+        if settings["tv_running"] and not settings["allow_simultaneous"]:
+            raise RemoteTvActiveError("Mabel TV is playing. Stop it first, or allow simultaneous playback in Settings.")
+        with self.remote_stream_lock:
+            if self.remote_stream and float(self.remote_stream.get("expires", 0)) > time.time():
+                raise ValueError("Another remote viewing session is already active")
+            token = secrets.token_urlsafe(24)
+            self.remote_stream = {"token": token, "kind": kind, "source": source,
+                                  "title": title, "library_id": library_id,
+                                  "expires": time.time() + REMOTE_SESSION_SECONDS}
+        base = urlencode({"stream": token})
+        return {"ok": True, "title": title, "kind": kind, "resume_position": resume,
+                "stream_url": f"/api/remote/media?{base}",
+                "subtitle_url": f"/api/remote/subtitles?{base}" if kind == "adult" else None}
+
+    def remote_session(self, token: str) -> dict[str, Any]:
+        with self.remote_stream_lock:
+            current = self.remote_stream
+            if not current or not secrets.compare_digest(str(current.get("token", "")), token) \
+                    or float(current.get("expires", 0)) <= time.time():
+                self.remote_stream = None
+                raise ValueError("That remote viewing session has expired")
+            current["expires"] = time.time() + REMOTE_SESSION_SECONDS
+            return current.copy()
+
+    def remote_stop_tv(self) -> dict[str, Any]:
+        if not self.remote_tv_running():
+            return {"ok": True, "message": "Mabel TV is already off"}
+        self.live_tv_control({"command": "toggle-power"})
+        return {"ok": True, "message": "Mabel TV has been stopped for remote viewing"}
+
+    def remote_release(self, token: str) -> dict[str, Any]:
+        with self.remote_stream_lock:
+            if self.remote_stream and secrets.compare_digest(
+                    str(self.remote_stream.get("token", "")), token):
+                self.remote_stream = None
+        return {"ok": True}
+
+    def remote_save_position(self, payload: dict[str, Any]) -> dict[str, Any]:
+        session = self.remote_session(str(payload.get("stream", "")))
+        if session["kind"] != "adult" or not session.get("library_id"):
+            return {"ok": True}
+        try:
+            position = max(0.0, float(payload.get("position", 0)))
+            duration = max(0.0, float(payload.get("duration", 0)))
+        except (TypeError, ValueError) as error:
+            raise ValueError("That playback position is not valid") from error
+        with self.config_lock:
+            states = self.adult_media_states()
+            relative = self.adult_relative_path(session["source"])
+            state = states.get(relative, {})
+            if not isinstance(state, dict): state = {}
+            state["remote_position"] = 0 if duration and position >= duration - 12 else position
+            state["remote_duration"] = duration
+            states[relative] = state
+            self.write_adult_media_states(states)
+        return {"ok": True}
+
+    def remote_subtitles(self, token: str) -> bytes:
+        session = self.remote_session(token)
+        if session["kind"] != "adult":
+            raise ValueError("This Mabel TV programme has no browser subtitle track")
+        sidecars = self.subtitle_sidecars(session["source"])
+        preferred = next((path for path in sidecars if path.suffix.lower() == ".vtt"), None)
+        preferred = preferred or next((path for path in sidecars if path.suffix.lower() == ".srt"), None)
+        if not preferred:
+            raise ValueError("No browser subtitle track is available for this film")
+        text = preferred.read_text(encoding="utf-8-sig", errors="replace")
+        if not text.lstrip().startswith("WEBVTT"):
+            text = "WEBVTT\n\n" + re.sub(r"(\d\d:\d\d:\d\d),(\d{3})", r"\1.\2", text)
+        return text.encode("utf-8")
 
     @staticmethod
     def usb_identity(value: str) -> str:
@@ -1832,6 +1986,7 @@ class Library:
                 "tv_guide_enabled": self.tv_guide_enabled(settings),
             },
             "tv_settings": self.tv_settings(settings),
+            "remote_viewing": self.remote_settings(),
             "adult_library": self.adult_library(),
             "adult_folders": self.adult_folders(),
             "recycle": self.recycle_items(),
@@ -2703,6 +2858,14 @@ class Library:
             settings["tv_guide_enabled"] = enabled
             self.write_json(self.settings_path, settings)
             return
+        if action == "set-remote-simultaneous":
+            enabled = payload.get("enabled")
+            if not isinstance(enabled, bool):
+                raise ValueError("Choose whether simultaneous viewing is allowed")
+            settings = self.settings()
+            settings["remote_allow_simultaneous"] = enabled
+            self.write_json(self.settings_path, settings)
+            return
         if action == "set-tv-settings":
             requested = payload.get("settings")
             if not isinstance(requested, dict):
@@ -3057,6 +3220,40 @@ class Handler(BaseHTTPRequestHandler):
         with path.open("rb") as source:
             shutil.copyfileobj(source, self.wfile, 1024 * 1024)
 
+    def stream_remote_media(self, path: Path) -> None:
+        """Serve one authorised local file with HTTP range support for native players."""
+        size = path.stat().st_size
+        start, end = 0, size - 1
+        requested = self.headers.get("Range", "")
+        if requested:
+            match = re.fullmatch(r"bytes=(\d*)-(\d*)", requested.strip())
+            if not match:
+                self.send_response(HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+                self.send_header("Content-Range", f"bytes */{size}"); self.end_headers(); return
+            start = int(match.group(1)) if match.group(1) else 0
+            end = int(match.group(2)) if match.group(2) else size - 1
+            if start >= size or end < start:
+                self.send_response(HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+                self.send_header("Content-Range", f"bytes */{size}"); self.end_headers(); return
+            end = min(end, size - 1)
+        length = end - start + 1
+        content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        self.send_response(HTTPStatus.PARTIAL_CONTENT if requested else HTTPStatus.OK)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(length))
+        self.send_header("Accept-Ranges", "bytes")
+        if requested: self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+        self.send_header("Cache-Control", "no-store")
+        self.security_headers(); self.end_headers()
+        with path.open("rb") as source:
+            source.seek(start)
+            remaining = length
+            while remaining:
+                data = source.read(min(1024 * 1024, remaining))
+                if not data: break
+                self.wfile.write(data)
+                remaining -= len(data)
+
     def stream_bytes(self, data: bytes, content_type: str) -> None:
         self.send_response(200)
         self.send_header("Content-Type", content_type)
@@ -3136,6 +3333,12 @@ class Handler(BaseHTTPRequestHandler):
             if self.path.startswith("/api/live/segment-") or self.path == "/api/live/init.mp4":
                 self.json(410, {"error": "The live picture now uses the portal frame feed"}); return
             if self.path == "/api/library": self.json(200, self.server.library.library()); return
+            if parsed.path == "/api/remote/media":
+                session = self.server.library.remote_session(str(query.get("stream", [""])[0]))
+                self.stream_remote_media(session["source"]); return
+            if parsed.path == "/api/remote/subtitles":
+                data = self.server.library.remote_subtitles(str(query.get("stream", [""])[0]))
+                self.stream_bytes(data, "text/vtt; charset=utf-8"); return
             if parsed.path == "/api/usb":
                 self.json(200, self.server.library.usb_volumes()); return
             if parsed.path == "/api/usb/browse":
@@ -3208,6 +3411,17 @@ class Handler(BaseHTTPRequestHandler):
                 self.json(200, self.server.library.live_tv_control(payload)); return
             if self.path == "/api/play-on-tv":
                 self.json(200, self.server.library.play_on_tv(payload)); return
+            if self.path == "/api/remote/start":
+                self.json(200, self.server.library.start_remote_stream(payload)); return
+            if self.path == "/api/remote/stop-tv":
+                self.json(200, self.server.library.remote_stop_tv()); return
+            if self.path == "/api/remote/position":
+                self.json(200, self.server.library.remote_save_position(payload)); return
+            if self.path == "/api/remote/heartbeat":
+                self.server.library.remote_session(str(payload.get("stream", "")))
+                self.json(200, {"ok": True}); return
+            if self.path == "/api/remote/release":
+                self.json(200, self.server.library.remote_release(str(payload.get("stream", "")))); return
             if self.path == "/api/usb":
                 action = str(payload.get("action", ""))
                 if action == "mount": result = self.server.library.usb_mount(str(payload.get("device", "")))
@@ -3247,6 +3461,8 @@ class Handler(BaseHTTPRequestHandler):
                 output = self.server.library.admin_action(str(payload.get("action", "")))
                 self.json(200, {"ok": True, "message": output}); return
             self.json(404, {"error": "Not found"})
+        except RemoteTvActiveError as error:
+            self.json(HTTPStatus.CONFLICT, {"error": str(error), "code": "tv-active"})
         except ValueError as error: self.json(400, {"error": str(error)})
         except Exception as error:
             self.unexpected("POST", error); self.json(500, {"error": "The library had an unexpected problem"})

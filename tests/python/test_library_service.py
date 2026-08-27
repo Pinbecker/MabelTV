@@ -90,6 +90,44 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertNotIn("KidsTV", index)
         self.assertIn("state.tv_name", index)
 
+    def test_remote_browser_player_has_native_controls_and_safe_default(self) -> None:
+        index = mabeltv_library.INDEX
+        self.assertIn('id="view-watch"', index)
+        self.assertIn('id="remoteVideo" controls', index)
+        self.assertIn('kind = \'subtitles\'', index)
+        self.assertIn("set-remote-simultaneous", index)
+        self.assertIn("/api/remote/start", index)
+
+    def test_remote_stream_requires_browser_format_and_resumes_adult_film(self) -> None:
+        adult = self.fixture.media / ".adult"
+        adult.mkdir(parents=True, exist_ok=True)
+        film = adult / "Remote Film.mp4"
+        film.write_bytes(b"remote-film")
+        self.fixture.library.player_state_path = self.fixture.root / "player-state.json"
+        self.fixture.library.player_state_path.write_text('{"standby": true}', encoding="utf-8")
+        item = self.fixture.library.adult_library()[0]
+        started = self.fixture.library.start_remote_stream({"kind": "adult", "file": "Remote Film.mp4"})
+        self.assertIn("/api/remote/media?stream=", started["stream_url"])
+        token = started["stream_url"].split("stream=", 1)[1]
+        self.fixture.library.remote_save_position({"stream": token, "position": 42, "duration": 100})
+        self.assertEqual(self.fixture.library.adult_library()[0]["remote_position"], 42)
+        (adult / "Remote Film.en.srt").write_text("1\n00:00:01,000 --> 00:00:02,000\nHello\n", encoding="utf-8")
+        captions = self.fixture.library.remote_subtitles(token).decode("utf-8")
+        self.assertTrue(captions.startswith("WEBVTT"))
+        self.assertEqual(item["library_id"], self.fixture.library.adult_library()[0]["library_id"])
+
+    def test_remote_stream_blocks_live_tv_unless_concurrent_mode_is_enabled(self) -> None:
+        adult = self.fixture.media / ".adult"
+        adult.mkdir(parents=True, exist_ok=True)
+        (adult / "Film.mp4").write_bytes(b"film")
+        self.fixture.library.player_state_path = self.fixture.root / "player-state.json"
+        self.fixture.library.player_state_path.write_text('{"standby": false}', encoding="utf-8")
+        with self.assertRaises(mabeltv_library.RemoteTvActiveError):
+            self.fixture.library.start_remote_stream({"kind": "adult", "file": "Film.mp4"})
+        self.fixture.library.manage({"action": "set-remote-simultaneous", "enabled": True})
+        started = self.fixture.library.start_remote_stream({"kind": "adult", "file": "Film.mp4"})
+        self.assertTrue(started["ok"])
+
     def test_first_run_hashes_pin_and_creates_generic_channels(self) -> None:
         result = self.fixture.library.complete_setup({
             "setup_code": "135790",

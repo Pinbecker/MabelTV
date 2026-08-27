@@ -47,6 +47,7 @@
        legacy fields server-side for cached pages and older installations. */
     .settings-section:has(.design-picker),label:has(#tvDisplayResolution){display:none}
     .usb-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:end;margin-bottom:14px;padding:34px;background:linear-gradient(135deg,#15231f,#253d35);color:#fff}.usb-hero .eyebrow{color:#8bd5b5}.usb-hero p:last-child{max-width:660px;margin:0;color:#c7d7d0}.usb-layout{display:grid;grid-template-columns:280px minmax(0,1fr);gap:14px;align-items:start}.usb-drives,.usb-browser{padding:22px}.usb-drive-list,.usb-file-list{display:grid;gap:8px;margin-top:15px}.usb-drive,.usb-file{display:flex;align-items:center;gap:11px;border:1px solid var(--line);border-radius:10px;padding:11px;background:var(--soft)}.usb-drive.active{border-color:var(--green);background:#eef8f3}.usb-drive-copy,.usb-file-copy{min-width:0;flex:1}.usb-drive-copy strong,.usb-file-copy strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.usb-drive-copy small,.usb-file-copy small{color:var(--muted)}.usb-file input{width:auto;min-height:auto}.usb-toolbar{display:flex;align-items:center;gap:8px;margin:14px 0;flex-wrap:wrap}.usb-import{display:grid;grid-template-columns:minmax(170px,1fr) minmax(180px,1fr) auto;gap:9px;margin-top:16px;border-top:1px solid var(--line);padding-top:16px}.usb-job{margin-top:12px}.metadata-film{display:grid;grid-template-columns:62px minmax(0,1fr) auto;align-items:center}.metadata-poster{width:62px;height:92px;border-radius:7px;object-fit:cover;background:#dfe3df}.metadata-overview{display:-webkit-box;overflow:hidden;margin:5px 0 0;color:var(--muted);font-size:.79rem;-webkit-box-orient:vertical;-webkit-line-clamp:2}.tmdb-state{margin-bottom:13px}.tmdb-dialog{width:min(760px,calc(100% - 28px));max-height:85vh;border:0;border-radius:16px;padding:0;box-shadow:0 26px 90px #0008}.tmdb-dialog::backdrop{background:#08100da8}.tmdb-dialog-head{position:sticky;z-index:2;top:0;display:flex;align-items:flex-start;justify-content:space-between;gap:15px;border-bottom:1px solid var(--line);padding:20px 22px;background:#fff}.tmdb-results{display:grid;gap:9px;padding:18px 22px 24px}.tmdb-result{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:13px;align-items:center;border:1px solid var(--line);border-radius:11px;padding:11px}.tmdb-result img{width:56px;height:82px;border-radius:6px;object-fit:cover;background:var(--soft)}.tmdb-result p{display:-webkit-box;overflow:hidden;margin:4px 0 0;color:var(--muted);font-size:.78rem;-webkit-box-orient:vertical;-webkit-line-clamp:2}@media(max-width:820px){.usb-layout{grid-template-columns:1fr}.usb-import{grid-template-columns:1fr}.metadata-film,.tmdb-result{grid-template-columns:52px minmax(0,1fr)}.metadata-film .adult-film-actions,.tmdb-result button{grid-column:1/-1}.metadata-poster{width:52px;height:78px}}
+    .remote-shell{padding:24px}.remote-head,.remote-now{display:flex;align-items:center;justify-content:space-between;gap:14px}.remote-tabs{display:flex;gap:7px}.remote-tabs .active{background:var(--ink);border-color:var(--ink);color:#fff}.remote-library{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:10px;margin-top:18px}.remote-card{display:grid;gap:10px;min-height:150px;border:1px solid var(--line);border-radius:12px;padding:15px;background:var(--soft)}.remote-card strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.remote-card small{color:var(--muted)}.remote-card .row{margin-top:auto}.remote-card button{flex:1}.remote-player-wrap{margin-top:22px}.remote-cabinet{position:relative;width:min(100%,960px);margin:auto;padding:clamp(14px,3vw,30px);border:16px solid #171b19;border-radius:22px;background:#090c0b;box-shadow:inset 0 0 0 2px #57605b,0 18px 50px #17201c30;overflow:hidden}.remote-cabinet:after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:repeating-linear-gradient(0deg,#fff0 0 3px,#0002 4px 5px);opacity:var(--remote-crt,.35);mix-blend-mode:multiply}.remote-cabinet.distortion video{transform:scale(1.012);filter:contrast(1.04) saturate(1.04)}.remote-cabinet video{position:relative;z-index:0;display:block;width:100%;max-height:72vh;background:#000;aspect-ratio:16/9}.remote-now{width:min(100%,960px);margin:12px auto 0}.remote-now p{margin:3px 0 0}@media(max-width:720px){nav{grid-template-columns:repeat(6,1fr)}.remote-shell{padding:18px}.remote-library{grid-template-columns:repeat(2,minmax(0,1fr))}.remote-head,.remote-now{align-items:stretch;flex-direction:column}.remote-cabinet{border-width:10px;border-radius:15px}.remote-now button{width:100%}}
   </style>
 </head>
 <body>
@@ -76,6 +77,7 @@
         <button data-view-button="live"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3Z"/></svg>Live TV<span class="nav-dot"></span></button>
         <button data-view-button="channels"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="m9 9 6 3-6 3Z"/></svg>Library<span class="nav-dot"></span></button>
         <button data-view-button="adult"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m10 9 5 3-5 3Z"/><path d="M7 4v4M17 4v4"/></svg>Adult<span class="nav-dot"></span></button>
+        <button data-view-button="watch"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3Z"/><path d="M8 3v3M16 3v3"/></svg>Watch<span class="nav-dot"></span></button>
         <button data-view-button="system"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.5 1A7 7 0 0 0 14.3 5L14 2h-4l-.4 3A7 7 0 0 0 7.5 7L5 6 3 9.3l2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.5-1a7 7 0 0 0 2.1 1.9l.4 3h4l.4-3a7 7 0 0 0 2.1-1.9l2.5 1 2-3.4-2-1.5c0-.4.1-.8.1-1.2Z"/></svg>Settings<span class="nav-dot"></span></button>
       </nav>
       <div class="rail-foot"><span id="topHealth" class="health-pill">Checking TV…</span><button id="logout" class="secondary">Lock controls</button></div>
@@ -119,12 +121,17 @@
           <section class="adult-library surface"><div class="section-heading"><div><p class="section-kicker">On the television</p><h2>Adult library</h2></div><span id="adultFilmCount" class="count-badge">0</span></div><div class="adult-folder-manager"><div id="adultFolderTabs" class="adult-folder-tabs"></div><div class="adult-folder-tools"><input id="adultFolderName" maxlength="80" placeholder="New collection name"><button id="adultCreateFolder" type="button" class="primary">Create folder</button><button id="adultRenameFolder" type="button" class="secondary" disabled>Rename selected</button><button id="adultDeleteFolder" type="button" class="danger" disabled>Delete selected</button></div></div><div id="tmdbState" class="tmdb-state callout">Checking metadata service…</div><p class="adult-library-note">Folders created here are the same collections shown on Adult TV. Move a film once and both screens update together.</p><div id="adultFilmList" class="adult-film-list"></div></section>
         </div><section class="adult-guidance" aria-label="Adult library details"><div><strong>Private library</strong><span>These films never appear in children’s channels.</span></div><div><strong>Original first</strong><span>Every new film stays exactly as uploaded until you choose otherwise.</span></div><div><strong>Optimise only if needed</strong><span>If a film stutters, make a Pi-friendly 720p copy from its film card.</span></div></section><footer><span data-tv-name>Your TV</span> · Adult mode is protected by the on-TV parent menu</footer>
       </div></section>
+      <section id="view-watch" class="view"><div class="page">
+        <header class="page-head"><div><p class="eyebrow">Remote viewing</p><h1>Watch Mabel TV</h1><p>Choose a film or programme to watch directly in this browser. Native video controls, fullscreen and captions are provided by your device.</p></div></header>
+        <section class="surface remote-shell"><div class="remote-head"><div class="remote-tabs" role="tablist"><button id="watchMabelTab" type="button" class="secondary active">Mabel TV</button><button id="watchAdultTab" type="button" class="secondary">Adult library</button></div><span id="remotePolicy" class="count-badge">One player at a time</span></div><p id="remoteStatus" class="muted">Checking remote viewing status…</p><div id="remoteMabel" class="remote-library"></div><div id="remoteAdult" class="remote-library hidden"></div><div id="remotePlayerWrap" class="remote-player-wrap hidden"><div id="remoteCabinet" class="remote-cabinet"><video id="remoteVideo" controls preload="metadata" playsinline></video></div><div class="remote-now"><div><strong id="remoteNowTitle">Ready to watch</strong><p id="remoteNowDetail" class="small muted">Use your browser’s fullscreen and subtitle controls.</p></div><button id="remoteStop" type="button" class="secondary">Stop watching</button></div></div></section><footer><span data-tv-name>Your TV</span> · Remote viewing</footer>
+      </div></section>
       <section id="view-system" class="view"><div class="page">
         <header class="page-head"><div><p class="eyebrow">Settings</p><h1>TV and account</h1><p>Picture, playback, sound, parent controls, identity, and Pi controls live here.</p></div></header>
         <div class="settings-grid">
           <section class="settings-section surface full"><p class="section-kicker">On-TV picture, playback &amp; sound</p><h2>TV settings</h2><p class="muted">The same settings found in the parent menu on the television. Saving applies them to MabelTV straight away; the picture may refresh briefly.</p><form id="tvSettingsForm"><div class="tv-settings-grid"><label>How programmes play<select id="tvPlaybackMode"><option value="continuous">Continuous broadcast</option><option value="resume">Resume where you left off</option></select><small>Choose whether each channel carries on as a live schedule or remembers your place.</small></label><label>Episode reset<select id="tvEpisodeReset"><option value="0">Never</option><option value="5">After 5 minutes</option><option value="20">After 20 minutes</option><option value="60">After 1 hour</option><option value="180">After 3 hours</option></select><small>After this time away, an episode starts from the beginning.</small></label><label>Picture mode<select id="tvPictureMode"><option value="channel">Use each channel’s setting</option><option value="crop">Fill screen</option><option value="fit">Show whole picture</option><option value="stretch">Stretch to screen</option></select></label><label>TV cabinet<select id="tvBorder"><option value="slim-black">Slim black</option><option value="silver-90s">Silver 90s</option><option value="charcoal-90s">Charcoal 90s</option><option value="vintage-black">Vintage black</option></select></label><div class="range-setting"><label for="tvCrtGlass">CRT glass</label><input id="tvCrtGlass" type="range" min="0" max="100" step="5" value="35"><output id="tvCrtGlassValue" for="tvCrtGlass">35%</output></div><div class="range-setting"><label for="tvDistortion">90s distortion</label><input id="tvDistortion" type="range" min="0" max="100" step="5" value="20"><output id="tvDistortionValue" for="tvDistortion">20%</output></div><label>Display output<select id="tvDisplayResolution"><option value="720p">720p</option><option value="1080p">1080p</option><option value="native">Native display resolution</option></select><small>Changes after the player refreshes.</small></label><label>Volume limit<select id="tvVolumeLimit"><option value="true">On</option><option value="false">Off</option></select><small>Keep the remote volume within the maximum below.</small></label><div class="range-setting"><label for="tvMaximumVolume">Maximum volume</label><input id="tvMaximumVolume" type="range" min="5" max="100" step="5" value="60"><output id="tvMaximumVolumeValue" for="tvMaximumVolume">60%</output></div><label>Button sound effects<select id="tvSoundEffects"><option value="true">On</option><option value="false">Off</option></select><small>The navigation sounds heard on the television.</small></label><label>Playback scrubbing<select id="tvScrubbing"><option value="false">Off — Left / Right do nothing</option><option value="true">On — Left / Right seek</option></select><small>Up / Down always choose the previous or next programme.</small></label></div><div class="tv-settings-foot"><p>These controls match the parent settings menu on MabelTV.</p><button type="submit">Save TV settings</button></div></form></section>
           <section class="settings-section surface full"><p class="section-kicker">On-TV parent controls</p><h2>Choose the design shown on the television</h2><p class="muted">This changes the grown-up screen opened by holding Back / Previous. The current design remains available, and the television updates as soon as you choose.</p><div class="design-picker"><button type="button" class="design-option" data-parent-style="classic" aria-pressed="false"><span class="design-preview classic"><span>[ PARENT CONTROL ]<br>CHANNELS &amp; PROGRAMMES<br>CRT GLASS ........ 35%</span></span><span class="design-copy"><strong>Classic console</strong><small>The original green technical design</small></span></button><button type="button" class="design-option" data-parent-style="modern" aria-pressed="false"><span class="design-preview modern"><span class="mini-rail"></span><span class="mini-page"><span class="mini-line"></span><span class="mini-line"></span><span class="mini-line"></span></span></span><span class="design-copy"><strong>Modern family</strong><small>A warmer, clearer app-style design</small></span></button></div></section>
           <section class="settings-section surface full"><p class="section-kicker">Optional feature</p><h2>TV guide</h2><p class="muted">Turn episode filenames and video lengths into a familiar live schedule. It stays hidden during normal viewing until someone holds the remote’s OK / Select button.</p><div class="feature-control"><div><strong id="tvGuideState">TV guide is off</strong><p class="small muted">When it is on, programmes continue in filename order so the times shown in the guide match what plays.</p><div class="combo" aria-label="How to open the TV guide"><span>HOLD OK / SELECT · 3.5 SEC</span></div></div><button id="tvGuideToggle" type="button" class="feature-toggle" aria-pressed="false">Turn on</button></div></section>
+          <section class="settings-section surface full"><p class="section-kicker">Remote viewing</p><h2>TV and browser playback</h2><p class="muted">Remote viewing sends the original file directly to your browser. By default it protects the Pi by allowing only the TV or one remote viewer, never both.</p><div class="feature-control"><div><strong id="remoteConcurrentState">One player at a time</strong><p class="small muted">Turn this on only when you deliberately want to test television playback and one remote stream together.</p></div><button id="remoteConcurrentToggle" type="button" class="feature-toggle" aria-pressed="false">Allow both</button></div></section>
           <section class="settings-section surface"><p class="section-kicker">Raspberry Pi</p><h2>System status</h2><dl id="systemDetails" class="definition"></dl><div class="row"><button id="checkAgain" class="secondary">Check again</button><button id="restartPlayer" class="secondary">Restart TV player</button><a class="button secondary" href="/api/support" download>Support bundle</a></div><p class="small muted" style="margin-top:14px">Diagnostics never include the parent PIN or video files.</p></section>
           <section class="settings-section surface"><p class="section-kicker">Identity</p><h2>Name this TV</h2><p class="muted">Enter the child’s name and “TV” is added automatically, for example MabelTV.</p><form id="tvNameForm"><label>Child’s name<input id="tvNameChild" autocomplete="name" maxlength="40" placeholder="Mabel" required></label><button type="submit">Save TV name</button></form></section>
           <section class="settings-section surface"><p class="section-kicker">Security</p><h2>Parent PIN</h2><form id="portalPinForm"><div class="feature-control"><div><strong id="portalPinState">A parent PIN is required to open this portal</strong><p class="small muted">Your PIN is always retained. Enter it below to turn portal sign-in on or off.</p></div><button id="portalPinToggle" type="submit" class="secondary">Turn off PIN entry</button></div><label>Current PIN<input id="portalPinCurrent" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" required></label></form><h3 style="margin-top:26px">Change parent PIN</h3><form id="pinForm"><label>Current PIN<input id="currentPin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" required></label><label>New PIN<input id="newPin" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required></label><label>Repeat new PIN<input id="newPinAgain" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required></label><button type="submit">Change PIN</button></form></section>
@@ -157,6 +164,11 @@
     let liveFrameTimer = null
     let livePictureVisible = false
     let tmdbConfigured = false
+    let remoteKind = 'channel'
+    let remoteSession = null
+    let remotePositionTimer = null
+    let remoteHeartbeatTimer = null
+    let remoteLastSaved = 0
 
     async function api(path, options = {}) {
       const response = await fetch(path, {
@@ -172,7 +184,11 @@
         $('#pin').focus()
         throw new Error('Your session was locked')
       }
-      if (!response.ok) throw new Error(body.error || `${tvName()} could not complete that request`)
+      if (!response.ok) {
+        const error = new Error(body.error || `${tvName()} could not complete that request`)
+        error.code = body.code
+        throw error
+      }
       return body
     }
 
@@ -383,6 +399,7 @@
         else button.removeAttribute('aria-current')
       })
       window.scrollTo({ top: 0, behavior: 'smooth' })
+      if (name !== 'watch') stopRemotePlayback()
       if (name === 'live') startLiveTv()
       else stopLiveTv()
     }
@@ -537,6 +554,7 @@
       renderTvSettings()
       renderParentOverlayStyle()
       renderTvGuideSetting()
+      renderRemoteViewing()
       renderPortalPinSetting()
       refreshTmdbStatus().catch(() => {})
     }
@@ -1039,6 +1057,119 @@
       $('#programmeVisibility').value = programmeVisibility
       renderProgrammeList(channel)
     }
+
+    function remoteTime(value) {
+      const seconds = Math.max(0, Math.floor(Number(value) || 0))
+      return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
+    }
+
+    function remoteCard(film, payload, resume = 0) {
+      const card = document.createElement('article'); card.className = 'remote-card'
+      const title = document.createElement('strong'); title.textContent = film.display_name
+      const detail = document.createElement('small')
+      detail.textContent = film.browser_ready === false ? 'Needs an MP4 or M4V version for browser viewing.'
+        : resume > 10 ? `Resume from ${remoteTime(resume)}` : 'Ready to watch'
+      const actions = document.createElement('div'); actions.className = 'row'
+      const watch = document.createElement('button'); watch.type = 'button'; watch.textContent = resume > 10 ? 'Resume' : 'Watch'
+      watch.disabled = film.browser_ready === false
+      watch.onclick = () => startRemotePlayback(payload, film.display_name, resume)
+      actions.append(watch)
+      if (resume > 10) {
+        const restart = document.createElement('button'); restart.type = 'button'; restart.className = 'secondary'; restart.textContent = 'From start'
+        restart.disabled = film.browser_ready === false
+        restart.onclick = () => startRemotePlayback(payload, film.display_name, 0)
+        actions.append(restart)
+      }
+      card.append(title, detail, actions); return card
+    }
+
+    function renderRemoteViewing() {
+      const remote = library?.remote_viewing || {}
+      const simultaneous = remote.allow_simultaneous === true
+      $('#remotePolicy').textContent = simultaneous ? 'TV + remote allowed' : 'One player at a time'
+      $('#remoteStatus').textContent = remote.tv_running
+        ? (simultaneous ? 'Mabel TV is playing. A remote stream is allowed by your setting.' : 'Mabel TV is playing. Starting remote viewing will offer to stop it.')
+        : 'Mabel TV is off. Remote viewing is ready.'
+      $('#remoteConcurrentState').textContent = simultaneous ? 'TV and one remote stream can run together' : 'One player at a time'
+      $('#remoteConcurrentToggle').textContent = simultaneous ? 'Use one player' : 'Allow both'
+      $('#remoteConcurrentToggle').setAttribute('aria-pressed', String(simultaneous))
+      const mabel = $('#remoteMabel'); const adult = $('#remoteAdult')
+      mabel.innerHTML = ''; adult.innerHTML = ''
+      const channels = library?.channels || []
+      channels.forEach(channel => (channel.programmes || []).filter(programme => programme.enabled).forEach(programme => {
+        mabel.append(remoteCard(programme, { kind: 'channel', channel: channel.number, file: programme.name }))
+      }))
+      if (!mabel.children.length) mabel.innerHTML = '<div class="empty">No Mabel TV programmes are ready to watch remotely.</div>'
+      const films = library?.adult_library || []
+      films.forEach(film => adult.append(remoteCard(film, { kind: 'adult', file: film.path }, film.remote_position)))
+      if (!adult.children.length) adult.innerHTML = '<div class="empty">No Adult films are ready to watch remotely.</div>'
+      $('#watchMabelTab').classList.toggle('active', remoteKind === 'channel')
+      $('#watchAdultTab').classList.toggle('active', remoteKind === 'adult')
+      mabel.classList.toggle('hidden', remoteKind !== 'channel')
+      adult.classList.toggle('hidden', remoteKind !== 'adult')
+      const settings = library?.tv_settings || {}
+      $('#remoteCabinet').style.setProperty('--remote-crt', String((Number(settings.crt_glass || 0) / 100)))
+      $('#remoteCabinet').classList.toggle('distortion', Number(settings.video_distortion || 0) > 0)
+    }
+
+    async function startRemotePlayback(payload, title, requestedPosition) {
+      try {
+        let result
+        try {
+          result = await api('/api/remote/start', { method: 'POST', body: JSON.stringify(payload) })
+        } catch (error) {
+          if (error.code !== 'tv-active' || !confirm('Mabel TV is currently playing. Stop it and watch here instead?')) throw error
+          await api('/api/remote/stop-tv', { method: 'POST', body: '{}' })
+          await new Promise(resolve => setTimeout(resolve, 900))
+          result = await api('/api/remote/start', { method: 'POST', body: JSON.stringify(payload) })
+        }
+        remoteSession = { stream: new URL(result.stream_url, location.origin).searchParams.get('stream'), payload, title }
+        const video = $('#remoteVideo')
+        video.pause(); video.replaceChildren(); video.src = result.stream_url
+        if (result.subtitle_url) {
+          const track = document.createElement('track'); track.kind = 'subtitles'; track.srclang = 'en'; track.label = 'English'; track.src = result.subtitle_url; track.default = true
+          video.append(track)
+        }
+        const resume = Number(requestedPosition || result.resume_position || 0)
+        video.onloadedmetadata = () => { if (resume > 10 && resume < video.duration - 5) video.currentTime = resume }
+        video.onpause = () => saveRemotePosition()
+        video.onended = () => { saveRemotePosition(true); stopRemotePlayback(false) }
+        $('#remoteNowTitle').textContent = title
+        $('#remoteNowDetail').textContent = result.subtitle_url ? 'Use your browser’s CC / subtitles menu to turn captions on or off.' : 'No browser subtitle track is available for this video.'
+        $('#remotePlayerWrap').classList.remove('hidden')
+        remoteLastSaved = 0
+        clearInterval(remotePositionTimer)
+        remotePositionTimer = setInterval(saveRemotePosition, 15000)
+        clearInterval(remoteHeartbeatTimer)
+        remoteHeartbeatTimer = setInterval(() => {
+          if (remoteSession) api('/api/remote/heartbeat', { method: 'POST', body: JSON.stringify({ stream: remoteSession.stream }) }).catch(() => {})
+        }, 30000)
+        await video.play().catch(() => {})
+        notice(`Now watching ${title}.`)
+      } catch (error) { notice(error.message, true) }
+    }
+
+    function saveRemotePosition(finished = false) {
+      const video = $('#remoteVideo')
+      if (!remoteSession || !Number.isFinite(video.currentTime) || (!finished && video.currentTime - remoteLastSaved < 10)) return
+      remoteLastSaved = video.currentTime
+      api('/api/remote/position', { method: 'POST', body: JSON.stringify({ stream: remoteSession.stream, position: finished ? video.duration : video.currentTime, duration: video.duration }) }).catch(() => {})
+    }
+
+    function stopRemotePlayback(save = true) {
+      if (!remoteSession) return
+      if (save) saveRemotePosition()
+      if (remoteSession) api('/api/remote/release', { method: 'POST', body: JSON.stringify({ stream: remoteSession.stream }) }).catch(() => {})
+      clearInterval(remotePositionTimer); remotePositionTimer = null
+      clearInterval(remoteHeartbeatTimer); remoteHeartbeatTimer = null
+      const video = $('#remoteVideo'); video.pause(); video.removeAttribute('src'); video.replaceChildren(); video.load()
+      remoteSession = null; $('#remotePlayerWrap').classList.add('hidden')
+    }
+
+    $('#watchMabelTab').onclick = () => { remoteKind = 'channel'; renderRemoteViewing() }
+    $('#watchAdultTab').onclick = () => { remoteKind = 'adult'; renderRemoteViewing() }
+    $('#remoteStop').onclick = () => stopRemotePlayback()
+    $('#remoteConcurrentToggle').onclick = () => manage('set-remote-simultaneous', { enabled: library?.remote_viewing?.allow_simultaneous !== true })
 
     let managementBusy = false
     async function manage(action, extra = {}, preferredChannel = null) {
