@@ -1589,8 +1589,10 @@ class Library:
                     file_id = int(value.get("file_id", 0))
                 except (TypeError, ValueError):
                     continue
-                file_name = str(value.get("file_name", "")).lower()
-                if file_id <= 0 or not file_name.endswith(".srt"):
+                # The OpenSubtitles search API often omits the extension from
+                # an otherwise valid text-subtitle filename.  The download is
+                # still checked for real SRT timing cues before it is saved.
+                if file_id <= 0:
                     continue
                 # Prefer ordinary English SRTs with a proven download history;
                 # hearing-impaired captions remain a valid fallback.

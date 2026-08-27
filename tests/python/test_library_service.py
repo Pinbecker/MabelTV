@@ -963,8 +963,10 @@ class UsbAndMetadataTests(unittest.TestCase):
         self.fixture.library.opensubtitles_request = mock.Mock(side_effect=[
             {"data": [{"attributes": {"language": "en", "hearing_impaired": False,
                                           "ratings": 8.0, "download_count": 20,
+                                          # OpenSubtitles commonly returns a
+                                          # release name with no .srt suffix.
                                           "files": [{"file_id": 555,
-                                                     "file_name": "film.en.srt"}]}}]},
+                                                     "file_name": "film.en"}]}}]},
             {"link": "https://example.invalid/subtitle"},
         ])
         self.fixture.library.opensubtitles_download_bytes = mock.Mock(
