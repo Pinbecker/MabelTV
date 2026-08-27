@@ -1007,7 +1007,12 @@ Item {
                         color: "#27303a"
                         visible: controller.adultPlaybackPosition(modelData.id) >= 30
 
-                        property real progress: controller.adultPlaybackProgress(modelData.id)
+                        property real duration: Math.max(
+                            controller.adultPlaybackDuration(modelData.id),
+                            Number(modelData.runtime || 0) * 60)
+                        property real progress: (duration >= 10
+                                                 ? Math.min(1, controller.adultPlaybackPosition(modelData.id)
+                                                            / duration) : 0)
                                                 + overlay.libraryProgressRevision * 0
 
                         Rectangle {
