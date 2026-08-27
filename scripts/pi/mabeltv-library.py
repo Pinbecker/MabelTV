@@ -3247,8 +3247,20 @@ class Handler(BaseHTTPRequestHandler):
             if not match:
                 self.send_response(HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
                 self.send_header("Content-Range", f"bytes */{size}"); self.end_headers(); return
-            start = int(match.group(1)) if match.group(1) else 0
-            end = int(match.group(2)) if match.group(2) else size - 1
+            # Native iPhone/iPad playback commonly asks for a suffix range
+            # (for example ``bytes=-65536``) to read the MP4 index stored at
+            # the end of an otherwise perfectly valid film.  Treating that
+            # as bytes 0-65536 makes Safari discard the source as corrupt.
+            if not match.group(1) and match.group(2):
+                suffix_length = int(match.group(2))
+                if suffix_length <= 0:
+                    self.send_response(HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+                    self.send_header("Content-Range", f"bytes */{size}"); self.end_headers(); return
+                start = max(0, size - suffix_length)
+                end = size - 1
+            else:
+                start = int(match.group(1)) if match.group(1) else 0
+                end = int(match.group(2)) if match.group(2) else size - 1
             if start >= size or end < start:
                 self.send_response(HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
                 self.send_header("Content-Range", f"bytes */{size}"); self.end_headers(); return
