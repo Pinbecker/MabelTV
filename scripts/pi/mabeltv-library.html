@@ -352,7 +352,7 @@
         <div id="remoteMabel"></div>
         <div id="watchAdultLayout" class="watch-adult-layout hidden">
           <section class="watch-discovery" aria-label="Find a film">
-            <label class="watch-search" for="watchSearch"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><input id="watchSearch" type="search" autocomplete="off" placeholder="Search films" aria-label="Search Adult films"><button id="watchSearchClear" type="button" class="hidden" aria-label="Clear film search">×</button></label>
+            <div class="watch-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><input id="watchSearch" type="search" autocomplete="off" placeholder="Search films" aria-label="Search Adult films"><button id="watchSearchClear" type="button" class="hidden" aria-label="Clear film search">×</button></div>
             <button id="watchCollectionTrigger" type="button" class="watch-tool" aria-haspopup="dialog" aria-controls="watchCollectionSheet"><span class="watch-tool-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h6l2 2h8v9H4z"/></svg></span><span class="watch-tool-copy"><small>Collection</small><strong id="watchCollectionName">All films</strong></span><svg class="watch-tool-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 10 3 3 3-3"/></svg></button>
             <button id="watchReadyToggle" type="button" class="watch-tool watch-ready-toggle" aria-pressed="false"><span class="watch-tool-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5h8l3 4v8l-3 2H8l-3-2V9zM9 12l2 2 4-4"/></svg></span><span class="watch-tool-copy"><small>Filter</small><strong>Streamable</strong></span><span id="watchReadyCount" class="watch-tool-count">0</span></button>
           </section>
@@ -1764,26 +1764,28 @@
       $('#watchSearch').value = watchSearchText
       $('#watchSearchClear').classList.toggle('hidden', !watchSearchText)
 
+      const query = watchSearchText.trim().toLocaleLowerCase()
       const resumable = allFilms
         .filter(film => film.browser_ready !== false && watchFilmResumable(film))
         .sort((left, right) => Number(right.remote_last_watched || 0) - Number(left.remote_last_watched || 0))
         .slice(0, 10)
       const continueSection = $('#watchContinueSection')
-      continueSection.classList.toggle('hidden', !resumable.length)
+      continueSection.classList.toggle('hidden', !resumable.length || Boolean(query))
       $('#watchContinueCount').textContent = resumable.length ? `${resumable.length} in progress` : ''
       const continueRail = $('#watchContinueRail')
       continueRail.innerHTML = ''
       resumable.forEach(film => continueRail.append(continueWatchCard(film)))
 
-      const query = watchSearchText.trim().toLocaleLowerCase()
       const films = allFilms.filter(film => {
-        if (watchFolder !== '*' && film.folder !== watchFolder) return false
+        // Search is always global. A film should never look missing merely
+        // because someone last browsed a different collection.
+        if (!query && watchFolder !== '*' && film.folder !== watchFolder) return false
         if (watchReadyOnly && film.browser_ready === false) return false
         if (!query) return true
         const metadata = film.metadata || {}
         return [watchFilmTitle(film), film.display_name, film.folder, metadata.year].filter(Boolean).join(' ').toLocaleLowerCase().includes(query)
       })
-      $('#watchLibraryKicker').textContent = query ? 'Search results' : watchReadyOnly ? 'Ready to stream' : 'Your library'
+      $('#watchLibraryKicker').textContent = query ? 'Search all films' : watchReadyOnly ? 'Ready to stream' : 'Your library'
       $('#watchLibraryTitle').textContent = query ? `“${watchSearchText.trim()}”` : collectionName
       $('#watchLibraryCount').textContent = `${films.length} film${films.length === 1 ? '' : 's'}`
       const grid = document.createElement('div')
