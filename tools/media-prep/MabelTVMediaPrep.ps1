@@ -2,7 +2,9 @@
 # It does not connect to, upload to, or modify the Raspberry Pi.
 
 [CmdletBinding()]
-param()
+param(
+    [switch]$SelfTest
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -43,8 +45,8 @@ function Format-Bytes([double]$Bytes) {
 function Format-Time([double]$Seconds) {
     if ($Seconds -lt 0 -or [double]::IsNaN($Seconds)) { return 'calculating...' }
     $span = [TimeSpan]::FromSeconds([Math]::Ceiling($Seconds))
-    if ($span.TotalHours -ge 1) { return ('{0:hh\\:mm\\:ss}' -f $span) }
-    return ('{0:mm\\:ss}' -f $span)
+    if ($span.TotalHours -ge 1) { return ('{0:hh\:mm\:ss}' -f $span) }
+    return ('{0:mm\:ss}' -f $span)
 }
 
 function Test-H264Encoder([string]$Encoder) {
@@ -95,7 +97,7 @@ function Inspect-Media([string]$Path, [string]$Target) {
         return [pscustomobject]@{
             Ready = $reasons.Count -eq 0; Reasons = $reasons; Duration = [double]$probe.format.duration
             Width = [int]$video.width; Height = [int]$video.height; Fps = $fps; Bitrate = $bitrate
-            Summary = "${($video.codec_name.ToUpperInvariant())} | $($video.width)x$($video.height) | $([Math]::Round($fps, 2)) fps"
+            Summary = "$($video.codec_name.ToUpperInvariant()) | $($video.width)x$($video.height) | $([Math]::Round($fps, 2)) fps"
         }
     } catch { return [pscustomobject]@{ Ready = $false; Reasons = @($_.Exception.Message); Duration = 0; Width = 0; Height = 0; Fps = 0; Bitrate = 0; Summary = 'Could not inspect file' } }
 }
@@ -115,7 +117,8 @@ function Refresh-Queue {
         $item = [Windows.Forms.ListViewItem]::new([string]$job.Status)
         [void]$item.SubItems.Add([string]$job.Target)
         [void]$item.SubItems.Add([IO.Path]::GetFileName($job.Path))
-        [void]$item.SubItems.Add((if ($job.Status -eq 'Converting') { "{0:N0}% | {1}" -f $job.Percent, $job.Detail } else { [string]$job.Detail }))
+        $progressText = if ($job.Status -eq 'Converting') { "{0:N0}% | {1}" -f $job.Percent, $job.Detail } else { [string]$job.Detail }
+        [void]$item.SubItems.Add($progressText)
         $item.Tag = $job
         [void]$list.Items.Add($item)
     }
@@ -179,7 +182,7 @@ function Start-Next {
     $folder = $outputBox.Text.Trim()
     if (-not $folder) { [Windows.Forms.MessageBox]::Show('Choose an output folder first.', $script:appName, 'OK', 'Warning') | Out-Null; return }
     New-Item -ItemType Directory -Force -Path $folder | Out-Null
-    Save-Settings $folder
+    if (-not $SelfTest) { Save-Settings $folder }
     $job.Output = Get-OutputPath $job.Path $job.Target $folder
     $job.PartOutput = "$($job.Output).part.mp4"
     $job.Status = 'Converting'; $job.Detail = 'Starting FFmpeg...'; $job.Started = Get-Date
@@ -193,7 +196,7 @@ function Start-Next {
     }
     $job.Worker = Start-Job -ScriptBlock {
         param($Executable, $Arguments, $PartOutput, $Output)
-        & $Executable @Arguments 2>&1 | ForEach-Object { [Console]::WriteLine($_.ToString()) }
+        & $Executable @Arguments 2>&1 | ForEach-Object { $_.ToString() }
         $exitCode = $LASTEXITCODE
         if ($exitCode -eq 0 -and (Test-Path -LiteralPath $PartOutput)) { Move-Item -LiteralPath $PartOutput -Destination $Output -Force }
         "MABELTV_EXIT=$exitCode"
@@ -301,4 +304,38 @@ $form.Controls.AddRange(@($title,$subtitle,$mabelDrop,$adultDrop,$outLabel,$outp
 $timer = [Windows.Forms.Timer]::new(); $timer.Interval = 450; $timer.Add_Tick({ Poll-Worker }); $timer.Start()
 $form.Add_FormClosing({ if ($script:currentJob) { $choice = [Windows.Forms.MessageBox]::Show('A conversion is still running. Cancel it and close?', $script:appName, 'YesNo', 'Warning'); if ($choice -eq 'Yes') { Cancel-Current } else { $_.Cancel = $true } } })
 Refresh-Queue; Refresh-Recent; Set-Controls
+
+if ($SelfTest) {
+    $selfTestRoot = Join-Path ([IO.Path]::GetTempPath()) ("mabeltv-media-prep-self-test-" + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $selfTestRoot | Out-Null
+    try {
+        $selfTestInput = Join-Path $selfTestRoot 'input.mkv'
+        $selfTestOutput = Join-Path $selfTestRoot 'output'
+        New-Item -ItemType Directory -Path $selfTestOutput | Out-Null
+        & $script:ffmpeg -hide_banner -loglevel error -y -f lavfi -i 'testsrc2=size=320x180:rate=25' -f lavfi -i 'sine=frequency=440:sample_rate=48000' -t 2 -c:v mpeg4 -c:a mp3 $selfTestInput
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $selfTestInput)) { throw 'Could not create the self-test video.' }
+
+        $outputBox.Text = $selfTestOutput
+        Add-Files 'Adult TV' @($selfTestInput)
+        $deadline = (Get-Date).AddMinutes(2)
+        while (($script:currentJob -or $script:queue.Count -gt 0) -and (Get-Date) -lt $deadline) {
+            Start-Sleep -Milliseconds 200
+            Poll-Worker
+        }
+        if ($script:currentJob -or $script:queue.Count -gt 0) { throw 'The self-test conversion timed out.' }
+        $completed = @($script:recent | Where-Object { $_.Status -eq 'Complete' }) | Select-Object -First 1
+        if (-not $completed -or -not (Test-Path -LiteralPath $completed.Output)) { throw 'The self-test conversion did not complete.' }
+        $validation = & $script:ffprobe -v error -show_entries 'stream=codec_type,codec_name' -of json -- $completed.Output | Out-String | ConvertFrom-Json
+        $videoCodec = @($validation.streams | Where-Object { $_.codec_type -eq 'video' } | Select-Object -First 1).codec_name
+        $audioCodec = @($validation.streams | Where-Object { $_.codec_type -eq 'audio' } | Select-Object -First 1).codec_name
+        if ($videoCodec -ne 'h264' -or $audioCodec -ne 'aac') { throw "Unexpected self-test output: video=$videoCodec audio=$audioCodec" }
+        Write-Output "MabelTV Media Prep self-test passed using $script:videoEncoder."
+    } finally {
+        if ($selfTestRoot -and $selfTestRoot.StartsWith([IO.Path]::GetTempPath(), [StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $selfTestRoot)) {
+            Remove-Item -LiteralPath $selfTestRoot -Recurse -Force
+        }
+    }
+    exit 0
+}
+
 [void]$form.ShowDialog()
