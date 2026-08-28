@@ -112,6 +112,7 @@ class LibraryUnitTests(unittest.TestCase):
         item = self.fixture.library.adult_library()[0]
         started = self.fixture.library.start_remote_stream({"kind": "adult", "file": "Remote Film.mp4"})
         self.assertIn("/api/remote/media?stream=", started["stream_url"])
+        self.assertIsNone(started["subtitle_url"])
         token = started["stream_url"].split("stream=", 1)[1]
         self.fixture.library.remote_save_position({"stream": token, "position": 42, "duration": 100})
         self.assertEqual(self.fixture.library.adult_library()[0]["remote_position"], 42)

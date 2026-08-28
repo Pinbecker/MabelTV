@@ -1321,7 +1321,12 @@ class Library:
         base = urlencode({"stream": token})
         return {"ok": True, "title": title, "kind": kind, "resume_position": resume,
                 "stream_url": f"/api/remote/media?{base}",
-                "subtitle_url": f"/api/remote/subtitles?{base}" if kind == "adult" else None}
+                # Keep initial media startup identical for Adult and Mabel TV.
+                # Attaching an external text track during source negotiation
+                # makes iOS reject otherwise compatible Adult MP4s with
+                # MEDIA_ERR_SRC_NOT_SUPPORTED (4). Captions can be requested
+                # after playback has opened instead of being coupled to it.
+                "subtitle_url": None}
 
     def remote_session(self, token: str) -> dict[str, Any]:
         with self.remote_stream_lock:
