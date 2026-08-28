@@ -260,6 +260,9 @@ $encoderName = if ($script:videoEncoder -eq 'h264_qsv') { 'Intel Quick Sync acce
 $subtitle = [Windows.Forms.Label]::new(); $subtitle.Text = "Prepare files on this laptop. Nothing is uploaded or sent to the Pi. Using $encoderName."; $subtitle.ForeColor = [Drawing.Color]::FromArgb(171, 184, 178); $subtitle.Location = [Drawing.Point]::new(29, 61); $subtitle.AutoSize = $true
 
 function New-DropZone([string]$Target, [int]$X, [string]$Heading, [string]$Description, [Drawing.Color]$Accent) {
+    # Event handlers execute later in a separate scope. Capture the target now
+    # so a click on either picker always retains its Mabel/Adult destination.
+    $targetName = $Target
     $panel = [Windows.Forms.Panel]::new(); $panel.Location = [Drawing.Point]::new($X, 102); $panel.Size = [Drawing.Size]::new(500, 130); $panel.BackColor = [Drawing.Color]::FromArgb(29, 39, 35); $panel.BorderStyle = 'FixedSingle'; $panel.AllowDrop = $true
     $head = [Windows.Forms.Label]::new(); $head.Text = $Heading; $head.Font = [Drawing.Font]::new('Segoe UI Semibold', 15); $head.ForeColor = $Accent; $head.Location = [Drawing.Point]::new(18, 16); $head.AutoSize = $true
     $copy = [Windows.Forms.Label]::new(); $copy.Text = $Description; $copy.ForeColor = [Drawing.Color]::FromArgb(207, 215, 210); $copy.Location = [Drawing.Point]::new(19, 48); $copy.Size = [Drawing.Size]::new(360, 38)
@@ -267,10 +270,10 @@ function New-DropZone([string]$Target, [int]$X, [string]$Heading, [string]$Descr
     $hint = [Windows.Forms.Label]::new(); $hint.Text = 'Drop one or many video files here'; $hint.ForeColor = [Drawing.Color]::FromArgb(139, 153, 146); $hint.Location = [Drawing.Point]::new(19, 96); $hint.AutoSize = $true
     $panel.Controls.AddRange(@($head, $copy, $button, $hint))
     $drop = { param($sender, $event) $event.Effect = [Windows.Forms.DragDropEffects]::Copy }
-    $receive = { param($sender, $event) if ($event.Data.GetDataPresent([Windows.Forms.DataFormats]::FileDrop)) { Add-Files $Target @($event.Data.GetData([Windows.Forms.DataFormats]::FileDrop)) } }
+    $receive = { param($sender, $event) if ($event.Data.GetDataPresent([Windows.Forms.DataFormats]::FileDrop)) { Add-Files $targetName @($event.Data.GetData([Windows.Forms.DataFormats]::FileDrop)) } }.GetNewClosure()
     $panel.Add_DragEnter($drop); $panel.Add_DragDrop($receive)
     foreach ($control in @($head, $copy, $hint)) { $control.Add_DragEnter($drop); $control.Add_DragDrop($receive) }
-    $button.Add_Click({ $dialog = [Windows.Forms.OpenFileDialog]::new(); $dialog.Multiselect = $true; $dialog.Filter = 'Video files|*.mp4;*.m4v;*.mov;*.mkv;*.avi;*.mpg;*.mpeg;*.webm|All files|*.*'; if ($dialog.ShowDialog() -eq 'OK') { Add-Files $Target $dialog.FileNames } })
+    $button.Add_Click({ $dialog = [Windows.Forms.OpenFileDialog]::new(); $dialog.Multiselect = $true; $dialog.Filter = 'Video files|*.mp4;*.m4v;*.mov;*.mkv;*.avi;*.mpg;*.mpeg;*.webm|All files|*.*'; if ($dialog.ShowDialog() -eq 'OK') { Add-Files $targetName $dialog.FileNames } }.GetNewClosure())
     return $panel
 }
 
