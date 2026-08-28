@@ -1118,8 +1118,10 @@
           if (!result.subtitle_url || captionsAttached) return
           captionsAttached = true
           const track = document.createElement('track')
-          track.kind = 'subtitles'; track.srclang = 'en'; track.label = 'English'; track.src = result.subtitle_url; track.default = true
-          track.addEventListener('load', () => { if (track.track) track.track.mode = 'showing' }, { once: true })
+          // Register the choice with AVPlayer but leave it off initially. The
+          // previous forced `mode = showing` displayed captions while Apple's
+          // own selector still reported Off.
+          track.kind = 'subtitles'; track.srclang = 'en'; track.label = 'English'; track.src = result.subtitle_url; track.default = false
           video.append(track)
         }
         const resume = Number(position || result.resume_position || 0)
@@ -1155,7 +1157,9 @@
         iosRemoteLastSaved = 0
         clearInterval(iosRemotePositionTimer); iosRemotePositionTimer = setInterval(saveIosRemotePosition, 15000)
         clearInterval(iosRemoteHeartbeatTimer); iosRemoteHeartbeatTimer = setInterval(() => api('/api/remote/heartbeat', { method: 'POST', body: JSON.stringify({ stream: iosRemoteSession }) }).catch(() => {}), 30000)
-        video.src = result.stream_url
+        // A prepared HLS package is used only for the controlled iPad test.
+        // Every other title retains the proven progressive MP4 route.
+        video.src = result.hls_url || result.stream_url
         video.load()
         await video.play().catch(() => {})
       } catch (startError) {

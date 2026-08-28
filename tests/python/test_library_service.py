@@ -99,7 +99,9 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn('id="video" controls', player)
         self.assertIn("track.kind = 'subtitles'", player)
         self.assertIn("video.oncanplay = attachNativeCaptions", index)
-        self.assertIn("track.track.mode = 'showing'", index)
+        self.assertIn("track.default = false", index)
+        self.assertNotIn("track.track.mode = 'showing'", index)
+        self.assertIn("result.hls_url || result.stream_url", index)
         self.assertIn("webkitEnterFullscreen", player)
         self.assertIn("navigator.maxTouchPoints > 1", index)
         self.assertIn("body>:not(#iosWatchPlayer)", index)
@@ -118,6 +120,7 @@ class LibraryUnitTests(unittest.TestCase):
         started = self.fixture.library.start_remote_stream({"kind": "adult", "file": "Remote Film.mp4"})
         self.assertIn("/api/remote/media?stream=", started["stream_url"])
         self.assertIsNone(started["subtitle_url"])
+        self.assertIsNone(started["hls_url"])
         token = started["stream_url"].split("stream=", 1)[1]
         self.fixture.library.remote_save_position({"stream": token, "position": 42, "duration": 100})
         self.assertEqual(self.fixture.library.adult_library()[0]["remote_position"], 42)
@@ -128,6 +131,27 @@ class LibraryUnitTests(unittest.TestCase):
         captions = self.fixture.library.remote_subtitles(caption_token).decode("utf-8")
         self.assertTrue(captions.startswith("WEBVTT"))
         self.assertEqual(item["library_id"], self.fixture.library.adult_library()[0]["library_id"])
+
+    def test_prepared_remote_hls_package_is_private_and_tokenised(self) -> None:
+        adult = self.fixture.media / ".adult"
+        adult.mkdir(parents=True, exist_ok=True)
+        film = adult / "HLS Film.mp4"
+        film.write_bytes(b"browser-ready-film")
+        self.fixture.library.player_state_path = self.fixture.root / "player-state.json"
+        self.fixture.library.player_state_path.write_text('{"standby": true}', encoding="utf-8")
+        self.fixture.library.remote_hls_root = self.fixture.root / "remote-hls"
+        package = self.fixture.library.remote_hls_package(film)
+        package.mkdir(parents=True)
+        (package / "video.m3u8").write_text(
+            "#EXTM3U\n#EXT-X-VERSION:4\n#EXTINF:6.0,\nstream.ts\n#EXT-X-ENDLIST\n",
+            encoding="utf-8")
+        (package / "stream.ts").write_bytes(b"transport-stream")
+        started = self.fixture.library.start_remote_stream({"kind": "adult", "file": film.name})
+        self.assertIn("/api/remote/hls/playlist.m3u8?stream=", started["hls_url"])
+        token = started["stream_url"].split("stream=", 1)[1]
+        manifest = self.fixture.library.remote_hls_manifest(token).decode("utf-8")
+        self.assertIn(f"/api/remote/hls/stream.ts?stream={token}", manifest)
+        self.assertEqual(self.fixture.library.remote_hls_segment(token), package / "stream.ts")
 
     def test_remote_stream_blocks_live_tv_unless_concurrent_mode_is_enabled(self) -> None:
         adult = self.fixture.media / ".adult"
