@@ -99,6 +99,9 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn('id="video" controls', player)
         self.assertIn("track.kind = 'subtitles'", player)
         self.assertIn("webkitEnterFullscreen", player)
+        self.assertIn("navigator.maxTouchPoints > 1", index)
+        self.assertIn("body>:not(#iosWatchPlayer)", index)
+        self.assertIn("classList.toggle('adult', result.kind === 'adult')", player)
         self.assertIn("set-remote-simultaneous", index)
         self.assertIn("/api/remote/start", player)
 
