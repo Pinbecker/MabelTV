@@ -53,6 +53,112 @@
     /* The children’s remote player deliberately remains inside our web view:
        this lets the Mabel TV cabinet and CRT finish survive on iPad too. */
     .mabel-watch-player{position:fixed;z-index:101;inset:0;display:grid;place-items:center;overflow:auto;padding:max(22px,env(safe-area-inset-top)) max(22px,env(safe-area-inset-right)) max(22px,env(safe-area-inset-bottom)) max(22px,env(safe-area-inset-left));background:radial-gradient(circle at 50% 25%,#233d36 0,#0b100f 47%,#030504 100%);color:#fff}.mabel-watch-player.hidden{display:none}.mabel-watch-shell{width:min(1160px,100%)}.mabel-watch-head{display:flex;align-items:center;gap:13px;margin:0 auto 14px;max-width:1040px;color:#dce5e0}.mabel-watch-back{width:44px;height:44px;min-height:44px;flex:0 0 auto;border:1px solid #5b6b64;border-radius:50%;padding:0;background:#111b17;color:#fff;font-size:1.5rem}.mabel-watch-head div{min-width:0}.mabel-watch-head strong,.mabel-watch-head small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mabel-watch-head small{margin-top:2px;color:#9baba3;font-size:.76rem}.mabel-watch-cabinet{--glass:.25;--distortion:1;position:relative;border:clamp(12px,2.1vw,27px) solid #111713;border-radius:clamp(18px,3vw,37px);padding:clamp(13px,2.2vw,29px);background:linear-gradient(145deg,#3c4a44,#151b18 52%,#080b0a);box-shadow:0 36px 100px #000b,inset 0 1px #ffffff24}.mabel-watch-cabinet.silver-90s{border-color:#aeb4b2;background:linear-gradient(145deg,#e3e6e5,#6c7473 42%,#363d3c)}.mabel-watch-cabinet.charcoal-90s{border-color:#303938;background:linear-gradient(145deg,#69716f,#262d2c 48%,#111514)}.mabel-watch-cabinet.vintage-black{border-color:#171716;border-radius:28px 28px 46px 46px;background:linear-gradient(145deg,#37342d,#151411 53%,#070706)}.mabel-watch-screen{position:relative;overflow:hidden;border:clamp(4px,.7vw,8px) solid #030504;border-radius:clamp(7px,1.4vw,14px);background:#000;box-shadow:inset 0 0 0 1px #ffffff13,0 0 0 1px #0008}.mabel-watch-screen video{display:block;width:100%;aspect-ratio:16/9;background:#000;object-fit:contain;filter:contrast(calc(1 + var(--distortion) * .04)) saturate(calc(1 + var(--distortion) * .08))}.mabel-watch-screen:after{position:absolute;z-index:1;inset:0;content:"";pointer-events:none;opacity:var(--glass);background:repeating-linear-gradient(0deg,#c7ffe408 0 1px,#0000000b 1px 3px),linear-gradient(115deg,#ffffff18 0%,transparent 20% 72%,#96e7c20d 100%);mix-blend-mode:screen}.mabel-watch-hud{position:absolute;z-index:2;right:0;bottom:0;left:0;display:grid;gap:9px;padding:34px 16px 13px;background:linear-gradient(transparent,#000d 42%);opacity:0;transition:opacity .18s}.mabel-watch-screen:hover .mabel-watch-hud,.mabel-watch-screen:focus-within .mabel-watch-hud{opacity:1}.mabel-watch-controls{display:flex;align-items:center;justify-content:center;gap:8px}.mabel-watch-controls button{width:43px;height:38px;min-height:38px;border:1px solid #ffffff3d;border-radius:9px;padding:0;background:#101614d9;color:#fff;font-weight:760}.mabel-watch-controls .mabel-watch-play{width:54px;background:#eff5f1;color:#101513}.mabel-watch-timeline{display:flex;align-items:center;gap:9px;font-size:.7rem;color:#e5ece8}.mabel-watch-timeline input{width:100%;accent-color:#87e0b9}.mabel-watch-brand{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 4px 0;color:#bac7c1;font-size:.68rem;font-weight:750;letter-spacing:.1em;text-transform:uppercase}.mabel-watch-brand span:last-child{color:#7be0b0}.mabel-watch-error{margin:16px 0 0;color:#ffab9b;text-align:center}@media(max-width:720px){.mabel-watch-player{align-items:center;padding:12px}.mabel-watch-head{margin-bottom:8px;padding:0 3px}.mabel-watch-cabinet{border-width:12px;padding:11px}.mabel-watch-hud{opacity:1;padding:29px 9px 8px}.mabel-watch-controls button{width:38px;height:34px;min-height:34px}.mabel-watch-controls .mabel-watch-play{width:46px}.mabel-watch-brand{padding-top:7px;font-size:.57rem}}
+    /* Immersive Mabel TV remote player. The cabinet fills the browser surface;
+       every control lives over the picture and disappears during playback. */
+    .mabel-watch-player{
+      overflow:hidden;
+      padding:max(7px,env(safe-area-inset-top)) max(7px,env(safe-area-inset-right)) max(7px,env(safe-area-inset-bottom)) max(7px,env(safe-area-inset-left));
+      background:radial-gradient(ellipse at 50% 42%,#18231f 0,#060908 58%,#010202 100%);
+    }
+    .mabel-watch-shell{
+      width:min(calc(100vw - 14px),calc((100dvh - 14px) * 1.83));
+      max-width:none;
+    }
+    .mabel-watch-head{display:none}
+    .mabel-watch-cabinet{
+      border-width:clamp(9px,1.35vw,20px);
+      border-radius:clamp(14px,2vw,28px);
+      padding:clamp(8px,1.15vw,17px);
+      box-shadow:0 24px 80px #000d,inset 0 1px #ffffff24;
+    }
+    .mabel-watch-screen{
+      aspect-ratio:16/9;
+      border-width:clamp(3px,.45vw,6px);
+      border-radius:clamp(6px,1vw,12px);
+      cursor:none;
+    }
+    .mabel-watch-player.controls-visible .mabel-watch-screen{cursor:default}
+    .mabel-watch-screen video{
+      width:100%;
+      height:100%;
+      aspect-ratio:auto;
+    }
+    .mabel-watch-hud{
+      inset:0;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      gap:0;
+      padding:clamp(10px,2vw,24px);
+      background:linear-gradient(180deg,#000b 0,transparent 28%,transparent 58%,#000d 100%);
+      opacity:0;
+      visibility:hidden;
+      transform:translateY(3px);
+      transition:opacity .2s ease,visibility .2s ease,transform .2s ease;
+      pointer-events:none;
+    }
+    .mabel-watch-player.controls-visible .mabel-watch-hud{
+      opacity:1;
+      visibility:visible;
+      transform:none;
+      pointer-events:auto;
+    }
+    .mabel-watch-player:not(.controls-visible) .mabel-watch-screen:hover .mabel-watch-hud,
+    .mabel-watch-player:not(.controls-visible) .mabel-watch-screen:focus-within .mabel-watch-hud{
+      opacity:0;
+      visibility:hidden;
+      transform:translateY(3px);
+      pointer-events:none;
+    }
+    .mabel-watch-topbar{display:flex;align-items:center;gap:12px}
+    .mabel-watch-title{min-width:0;flex:1;text-shadow:0 2px 10px #000}
+    .mabel-watch-title strong,.mabel-watch-title small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .mabel-watch-title strong{font-size:clamp(.88rem,1.5vw,1.15rem)}
+    .mabel-watch-title small{margin-top:2px;color:#b7c2bd;font-size:clamp(.62rem,1vw,.75rem)}
+    .mabel-watch-live-badge{border:1px solid #8dffd050;border-radius:999px;padding:5px 9px;background:#0e2119bf;color:#8dffd0;font-size:.62rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+    .mabel-watch-bottom{display:grid;gap:10px}
+    .mabel-watch-timeline{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;color:#e8eeeb;font-variant-numeric:tabular-nums;text-shadow:0 1px 5px #000}
+    .mabel-watch-timeline input{height:18px;margin:0;cursor:pointer;accent-color:#84e5b9}
+    .mabel-watch-controls{justify-content:flex-start;gap:7px}
+    .mabel-watch-controls button,.mabel-watch-icon-button{
+      width:42px;
+      height:42px;
+      min-height:42px;
+      display:grid;
+      place-items:center;
+      border:1px solid #ffffff29;
+      border-radius:50%;
+      padding:0;
+      background:#101613bf;
+      color:#fff;
+      backdrop-filter:blur(14px);
+      -webkit-backdrop-filter:blur(14px);
+    }
+    .mabel-watch-controls button:hover,.mabel-watch-icon-button:hover{border-color:#ffffff70;background:#29332fd9}
+    .mabel-watch-controls svg,.mabel-watch-icon-button svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .mabel-watch-controls .mabel-watch-play{width:48px;height:48px;min-height:48px;border-color:#fff;background:#f4f7f5;color:#101412}
+    .mabel-watch-play-icon{fill:currentColor!important;stroke:none!important}
+    .mabel-watch-pause-icon{display:none}
+    .mabel-watch-play.playing .mabel-watch-play-icon{display:none}
+    .mabel-watch-play.playing .mabel-watch-pause-icon{display:block}
+    .mabel-watch-skip{position:relative}
+    .mabel-watch-skip span{position:absolute;font-size:.52rem;font-weight:800}
+    .mabel-watch-control-spacer{flex:1}
+    .mabel-watch-muted-icon{display:none}
+    .mabel-watch-mute.muted .mabel-watch-sound-icon{display:none}
+    .mabel-watch-mute.muted .mabel-watch-muted-icon{display:block}
+    .mabel-watch-brand{padding:clamp(6px,.7vw,10px) 3px 0;font-size:clamp(.5rem,.7vw,.64rem)}
+    .mabel-watch-error{position:fixed;z-index:4;right:20px;bottom:20px;left:20px;margin:0;border:1px solid #ff8e783b;border-radius:10px;padding:12px;background:#2b1410e8}
+    @media(max-width:720px){
+      .mabel-watch-player{padding:max(4px,env(safe-area-inset-top)) max(4px,env(safe-area-inset-right)) max(4px,env(safe-area-inset-bottom)) max(4px,env(safe-area-inset-left))}
+      .mabel-watch-shell{width:min(calc(100vw - 8px),calc((100dvh - 8px) * 1.83))}
+      .mabel-watch-cabinet{border-width:7px;padding:6px}
+      .mabel-watch-hud{padding:9px}
+      .mabel-watch-controls button,.mabel-watch-icon-button{width:38px;height:38px;min-height:38px}
+      .mabel-watch-controls .mabel-watch-play{width:44px;height:44px;min-height:44px}
+      .mabel-watch-live-badge{display:none}
+      .mabel-watch-brand{padding-top:4px}
+    }
   </style>
 </head>
 <body>
@@ -148,7 +254,7 @@
     </main>
   </section>
   <section id="iosWatchPlayer" class="ios-watch-player hidden" aria-label="Remote video player"><header class="ios-watch-head"><button id="iosWatchBack" type="button" class="ios-watch-back" aria-label="Back to library">←</button><div><strong id="iosWatchTitle">MabelTV</strong><small>MabelTV remote viewing</small></div><button id="iosWatchStartOver" type="button" class="hidden">Start over</button></header><div class="ios-watch-stage"><video id="iosWatchVideo" controls playsinline webkit-playsinline preload="metadata"></video><p id="iosWatchError" class="ios-watch-error hidden"></p></div></section>
-  <section id="mabelWatchPlayer" class="mabel-watch-player hidden" aria-label="Mabel TV remote player"><div class="mabel-watch-shell"><header class="mabel-watch-head"><button id="mabelWatchBack" type="button" class="mabel-watch-back" aria-label="Back to Mabel TV programmes">←</button><div><strong id="mabelWatchTitle">MabelTV</strong><small id="mabelWatchChannel">Remote Mabel TV</small></div></header><div id="mabelWatchCabinet" class="mabel-watch-cabinet slim-black"><div class="mabel-watch-screen"><video id="mabelWatchVideo" playsinline webkit-playsinline preload="metadata"></video><div class="mabel-watch-hud"><div class="mabel-watch-controls"><button type="button" data-mabel-watch-action="back" aria-label="Back 15 seconds">↶15</button><button type="button" class="mabel-watch-play" data-mabel-watch-action="play" aria-label="Play or pause">▶</button><button type="button" data-mabel-watch-action="forward" aria-label="Forward 15 seconds">15↷</button><button type="button" data-mabel-watch-action="mute" aria-label="Mute">⌁</button></div><label class="mabel-watch-timeline"><span id="mabelWatchCurrent">0:00</span><input id="mabelWatchSeek" type="range" min="0" max="1000" value="0" aria-label="Playback position"><span id="mabelWatchDuration">0:00</span></label></div></div><div class="mabel-watch-brand"><span>MabelTV broadcast</span><span>Remote viewing</span></div></div><p id="mabelWatchError" class="mabel-watch-error hidden"></p></div></section>
+  <section id="mabelWatchPlayer" class="mabel-watch-player hidden" aria-label="Mabel TV remote player"><div class="mabel-watch-shell"><div id="mabelWatchCabinet" class="mabel-watch-cabinet slim-black"><div id="mabelWatchScreen" class="mabel-watch-screen" tabindex="0"><video id="mabelWatchVideo" playsinline webkit-playsinline preload="metadata"></video><div id="mabelWatchControls" class="mabel-watch-hud"><div class="mabel-watch-topbar"><button id="mabelWatchBack" type="button" class="mabel-watch-icon-button" aria-label="Back to Mabel TV programmes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7M8 12h11"/></svg></button><div class="mabel-watch-title"><strong id="mabelWatchTitle">MabelTV</strong><small id="mabelWatchChannel">Remote Mabel TV</small></div><span class="mabel-watch-live-badge">MabelTV</span></div><div class="mabel-watch-bottom"><label class="mabel-watch-timeline"><span id="mabelWatchCurrent">0:00</span><input id="mabelWatchSeek" type="range" min="0" max="1000" value="0" aria-label="Playback position"><span id="mabelWatchDuration">0:00</span></label><div class="mabel-watch-controls"><button type="button" class="mabel-watch-skip" data-mabel-watch-action="back" aria-label="Back 15 seconds"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8V3m0 0h5M5 3l3.4 3.4A8 8 0 1 1 4 13"/></svg><span>15</span></button><button type="button" class="mabel-watch-play" data-mabel-watch-action="play" aria-label="Play or pause"><svg class="mabel-watch-play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 9 6-9 6Z"/></svg><svg class="mabel-watch-pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6v12M15 6v12"/></svg></button><button type="button" class="mabel-watch-skip" data-mabel-watch-action="forward" aria-label="Forward 15 seconds"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 8V3m0 0h-5m5 0-3.4 3.4A8 8 0 1 0 20 13"/></svg><span>15</span></button><span class="mabel-watch-control-spacer"></span><button type="button" class="mabel-watch-icon-button mabel-watch-mute" data-mabel-watch-action="mute" aria-label="Mute"><svg class="mabel-watch-sound-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 10v4h4l5 4V6l-5 4ZM18 9c1.3 1.8 1.3 4.2 0 6"/></svg><svg class="mabel-watch-muted-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 10v4h4l5 4V6l-5 4ZM17 10l4 4m0-4-4 4"/></svg></button></div></div></div></div><div class="mabel-watch-brand"><span>MabelTV</span><span>Remote broadcast</span></div></div><p id="mabelWatchError" class="mabel-watch-error hidden"></p></div></section>
   <dialog id="tmdbDialog" class="tmdb-dialog"><div class="tmdb-dialog-head"><div><p class="section-kicker">TMDB match</p><h2 id="tmdbDialogTitle">Choose the correct film</h2></div><button id="tmdbClose" type="button" class="secondary">Close</button></div><div id="tmdbResults" class="tmdb-results"></div></dialog>
 
   <script>
@@ -182,6 +288,7 @@
     let iosRemoteLastSaved = 0
     let mabelRemoteSession = null
     let mabelRemoteHeartbeatTimer = null
+    let mabelControlsTimer = null
 
     async function api(path, options = {}) {
       const response = await fetch(path, {
@@ -1218,10 +1325,14 @@
       const video = $('#mabelWatchVideo')
       if (mabelRemoteSession) api('/api/remote/release', { method: 'POST', body: JSON.stringify({ stream: mabelRemoteSession }) }).catch(() => {})
       clearInterval(mabelRemoteHeartbeatTimer)
+      clearTimeout(mabelControlsTimer)
       mabelRemoteHeartbeatTimer = null
+      mabelControlsTimer = null
       mabelRemoteSession = null
       video.pause(); video.removeAttribute('src'); video.load()
       $('#mabelWatchPlayer').classList.add('hidden')
+      $('#mabelWatchPlayer').classList.remove('controls-visible')
+      document.documentElement.style.overflow = ''
     }
 
     function mabelWatchTime(value) {
@@ -1229,9 +1340,21 @@
       return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
     }
 
+    function showMabelWatchControls(keepVisible = false) {
+      const shell = $('#mabelWatchPlayer'); const video = $('#mabelWatchVideo')
+      shell.classList.add('controls-visible')
+      clearTimeout(mabelControlsTimer)
+      mabelControlsTimer = null
+      if (!keepVisible && !video.paused) {
+        mabelControlsTimer = setTimeout(() => shell.classList.remove('controls-visible'), 2800)
+      }
+    }
+
     async function startMabelWatchPlayer(payload) {
       const shell = $('#mabelWatchPlayer'); const video = $('#mabelWatchVideo'); const error = $('#mabelWatchError')
       shell.classList.remove('hidden'); error.classList.add('hidden')
+      document.documentElement.style.overflow = 'hidden'
+      showMabelWatchControls(true)
       try {
         let result
         try { result = await api('/api/remote/start', { method: 'POST', body: JSON.stringify(payload) }) }
@@ -1256,8 +1379,8 @@
           $('#mabelWatchCurrent').textContent = mabelWatchTime(video.currentTime)
           $('#mabelWatchSeek').value = String(video.duration ? Math.round(video.currentTime / video.duration * 1000) : 0)
         }
-        video.onplay = () => { $('[data-mabel-watch-action="play"]').textContent = 'Ⅱ' }
-        video.onpause = () => { $('[data-mabel-watch-action="play"]').textContent = '▶' }
+        video.onplay = () => { $('[data-mabel-watch-action="play"]').classList.add('playing'); showMabelWatchControls() }
+        video.onpause = () => { $('[data-mabel-watch-action="play"]').classList.remove('playing'); showMabelWatchControls(true) }
         video.onerror = () => { error.textContent = `This programme could not be played (media error ${video.error?.code || 'unknown'}).`; error.classList.remove('hidden') }
         video.src = result.stream_url
         video.load()
@@ -1289,12 +1412,26 @@
     $('#mabelWatchBack').onclick = closeMabelWatchPlayer
     $$('[data-mabel-watch-action]').forEach(button => button.onclick = () => {
       const video = $('#mabelWatchVideo')
+      showMabelWatchControls(button.dataset.mabelWatchAction === 'play' && video.paused)
       if (button.dataset.mabelWatchAction === 'play') (video.paused ? video.play() : video.pause()).catch(() => {})
       if (button.dataset.mabelWatchAction === 'back') video.currentTime = Math.max(0, video.currentTime - 15)
       if (button.dataset.mabelWatchAction === 'forward') video.currentTime = Math.min(video.duration || Infinity, video.currentTime + 15)
-      if (button.dataset.mabelWatchAction === 'mute') { video.muted = !video.muted; button.textContent = video.muted ? '⌁' : '⌁' }
+      if (button.dataset.mabelWatchAction === 'mute') { video.muted = !video.muted; button.classList.toggle('muted', video.muted); button.setAttribute('aria-label', video.muted ? 'Unmute' : 'Mute') }
     })
-    $('#mabelWatchSeek').oninput = event => { const video = $('#mabelWatchVideo'); if (video.duration) video.currentTime = Number(event.target.value) / 1000 * video.duration }
+    $('#mabelWatchSeek').oninput = event => { const video = $('#mabelWatchVideo'); showMabelWatchControls(true); if (video.duration) video.currentTime = Number(event.target.value) / 1000 * video.duration }
+    $('#mabelWatchSeek').onchange = () => showMabelWatchControls()
+    $('#mabelWatchScreen').onpointermove = () => showMabelWatchControls()
+    $('#mabelWatchScreen').onpointerdown = event => {
+      if (event.target === $('#mabelWatchVideo')) {
+        if ($('#mabelWatchPlayer').classList.contains('controls-visible')) showMabelWatchControls()
+        else showMabelWatchControls()
+      }
+    }
+    document.addEventListener('keydown', event => {
+      if ($('#mabelWatchPlayer').classList.contains('hidden')) return
+      if (event.key === 'Escape') closeMabelWatchPlayer()
+      if (event.key === ' ' && event.target.tagName !== 'INPUT') { event.preventDefault(); const video = $('#mabelWatchVideo'); (video.paused ? video.play() : video.pause()).catch(() => {}) }
+    })
     window.addEventListener('pagehide', () => { if (mabelRemoteSession) navigator.sendBeacon('/api/remote/release', JSON.stringify({ stream: mabelRemoteSession })) })
 
     function adultWatchCard(film) {
