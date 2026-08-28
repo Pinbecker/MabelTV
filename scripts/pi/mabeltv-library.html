@@ -1119,12 +1119,28 @@
         video.onerror = () => { error.textContent = `This video could not be played (media error ${video.error?.code || 'unknown'}).`; error.classList.remove('hidden'); video.classList.add('hidden') }
         video.onwebkitbeginfullscreen = () => setNativeVideoBackdrop(true)
         video.onwebkitendfullscreen = () => setNativeVideoBackdrop(false)
+        video.onwebkitpresentationmodechanged = () => {
+          setNativeVideoBackdrop(video.webkitPresentationMode === 'fullscreen' || Boolean(video.webkitDisplayingFullscreen))
+        }
         let fullscreenStarted = false
         video.onplay = () => {
-          if (!fullscreenStarted && video.webkitEnterFullscreen) {
+          if (!fullscreenStarted) {
             fullscreenStarted = true
             setNativeVideoBackdrop(true)
-            try { video.webkitEnterFullscreen() } catch (error) { setNativeVideoBackdrop(false) }
+            try {
+              // iPadOS has a dedicated native presentation-mode path.  Prefer
+              // it over the older fullscreen entry point: both retain the
+              // system player and controls, but this avoids a hybrid inline /
+              // fullscreen hand-off on modern iPads.
+              if (typeof video.webkitSetPresentationMode === 'function') video.webkitSetPresentationMode('fullscreen')
+              else if (typeof video.webkitEnterFullscreen === 'function') video.webkitEnterFullscreen()
+              else setNativeVideoBackdrop(false)
+            } catch (error) {
+              try {
+                if (typeof video.webkitEnterFullscreen === 'function') video.webkitEnterFullscreen()
+                else setNativeVideoBackdrop(false)
+              } catch (fallbackError) { setNativeVideoBackdrop(false) }
+            }
           }
         }
         video.onpause = () => saveIosRemotePosition()
