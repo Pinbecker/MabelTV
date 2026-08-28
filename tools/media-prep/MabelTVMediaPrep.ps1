@@ -1,4 +1,4 @@
-# MabelTV Media Prep — local Windows preparation app.
+# MabelTV Media Prep - local Windows preparation app.
 # It does not connect to, upload to, or modify the Raspberry Pi.
 
 [CmdletBinding()]
@@ -13,6 +13,7 @@ $script:appName = 'MabelTV Media Prep'
 $script:settingsDirectory = Join-Path $env:APPDATA 'MabelTV Media Prep'
 $script:settingsPath = Join-Path $script:settingsDirectory 'settings.json'
 $script:queue = [System.Collections.ArrayList]::new()
+$script:recent = [System.Collections.ArrayList]::new()
 $script:currentJob = $null
 $script:ffmpeg = (Get-Command ffmpeg.exe -ErrorAction SilentlyContinue).Source
 $script:ffprobe = (Get-Command ffprobe.exe -ErrorAction SilentlyContinue).Source
@@ -40,7 +41,7 @@ function Format-Bytes([double]$Bytes) {
 }
 
 function Format-Time([double]$Seconds) {
-    if ($Seconds -lt 0 -or [double]::IsNaN($Seconds)) { return 'calculating…' }
+    if ($Seconds -lt 0 -or [double]::IsNaN($Seconds)) { return 'calculating...' }
     $span = [TimeSpan]::FromSeconds([Math]::Ceiling($Seconds))
     if ($span.TotalHours -ge 1) { return ('{0:hh\\:mm\\:ss}' -f $span) }
     return ('{0:mm\\:ss}' -f $span)
@@ -94,7 +95,7 @@ function Inspect-Media([string]$Path, [string]$Target) {
         return [pscustomobject]@{
             Ready = $reasons.Count -eq 0; Reasons = $reasons; Duration = [double]$probe.format.duration
             Width = [int]$video.width; Height = [int]$video.height; Fps = $fps; Bitrate = $bitrate
-            Summary = "${($video.codec_name.ToUpperInvariant())} · $($video.width)x$($video.height) · $([Math]::Round($fps, 2)) fps"
+            Summary = "${($video.codec_name.ToUpperInvariant())} | $($video.width)x$($video.height) | $([Math]::Round($fps, 2)) fps"
         }
     } catch { return [pscustomobject]@{ Ready = $false; Reasons = @($_.Exception.Message); Duration = 0; Width = 0; Height = 0; Fps = 0; Bitrate = 0; Summary = 'Could not inspect file' } }
 }
@@ -114,13 +115,37 @@ function Refresh-Queue {
         $item = [Windows.Forms.ListViewItem]::new([string]$job.Status)
         [void]$item.SubItems.Add([string]$job.Target)
         [void]$item.SubItems.Add([IO.Path]::GetFileName($job.Path))
-        [void]$item.SubItems.Add((if ($job.Status -eq 'Converting') { "{0:N0}% · {1}" -f $job.Percent, $job.Detail } else { [string]$job.Detail }))
+        [void]$item.SubItems.Add((if ($job.Status -eq 'Converting') { "{0:N0}% | {1}" -f $job.Percent, $job.Detail } else { [string]$job.Detail }))
         $item.Tag = $job
         [void]$list.Items.Add($item)
     }
     $pending = @($script:queue | Where-Object { $_.Status -eq 'Queued' }).Count
-    $ready = @($script:queue | Where-Object { $_.Status -eq 'Already ready' }).Count
-    $queueLabel.Text = "$pending waiting · $ready already ready · $($script:queue.Count) total"
+    $queueLabel.Text = if ($script:currentJob) { "$pending waiting after the current conversion" } elseif ($pending) { "$pending waiting to start" } else { 'Nothing waiting - drop more files whenever you like.' }
+}
+
+function Add-Recent($Job) {
+    [void]$script:recent.Insert(0, $Job)
+    while ($script:recent.Count -gt 6) { $script:recent.RemoveAt($script:recent.Count - 1) }
+    Refresh-Recent
+}
+
+function Refresh-Recent {
+    $recentList.Items.Clear()
+    if ($script:recent.Count -eq 0) {
+        $item = [Windows.Forms.ListViewItem]::new('Nothing completed yet')
+        [void]$item.SubItems.Add('Drop a file above and it will appear here when finished.')
+        $item.ForeColor = [Drawing.Color]::FromArgb(153, 166, 159)
+        [void]$recentList.Items.Add($item)
+        return
+    }
+    foreach ($job in $script:recent) {
+        $item = [Windows.Forms.ListViewItem]::new([string]$job.Status)
+        [void]$item.SubItems.Add("$([IO.Path]::GetFileName($job.Path)) - $($job.Detail)")
+        if ($job.Status -eq 'Complete') { $item.ForeColor = [Drawing.Color]::FromArgb(139, 220, 171) }
+        elseif ($job.Status -eq 'Already ready') { $item.ForeColor = [Drawing.Color]::FromArgb(193, 208, 199) }
+        else { $item.ForeColor = [Drawing.Color]::FromArgb(255, 174, 152) }
+        [void]$recentList.Items.Add($item)
+    }
 }
 
 function Set-Controls {
@@ -142,22 +167,22 @@ function Add-Files([string]$Target, [string[]]$Paths) {
             Detail = if ($analysis.Ready) { 'No action required' } else { ($analysis.Reasons -join '; ') }
             Duration = $analysis.Duration; Percent = 0; Output = $null; PartOutput = $null; Worker = $null; Started = $null
         }
-        [void]$script:queue.Add($job)
+        if ($analysis.Ready) { Add-Recent $job } else { [void]$script:queue.Add($job) }
     }
-    Refresh-Queue; Set-Controls
+    Refresh-Queue; Set-Controls; Start-Next
 }
 
 function Start-Next {
     if ($script:currentJob) { return }
     $job = @($script:queue | Where-Object { $_.Status -eq 'Queued' }) | Select-Object -First 1
-    if (-not $job) { $overall.Value = 100; $overallLabel.Text = 'Queue complete'; Set-Controls; return }
+    if (-not $job) { $overall.Value = 0; $overallLabel.Text = 'Ready for more files.'; Set-Controls; return }
     $folder = $outputBox.Text.Trim()
     if (-not $folder) { [Windows.Forms.MessageBox]::Show('Choose an output folder first.', $script:appName, 'OK', 'Warning') | Out-Null; return }
     New-Item -ItemType Directory -Force -Path $folder | Out-Null
     Save-Settings $folder
     $job.Output = Get-OutputPath $job.Path $job.Target $folder
     $job.PartOutput = "$($job.Output).part.mp4"
-    $job.Status = 'Converting'; $job.Detail = 'Starting FFmpeg…'; $job.Started = Get-Date
+    $job.Status = 'Converting'; $job.Detail = 'Starting FFmpeg...'; $job.Started = Get-Date
     $job.Percent = 0; $script:currentJob = $job
     $fps = if ($job.Analysis.Fps -gt 25.1) { '30' } else { '25' }
     $encoderArgs = if ($script:videoEncoder -eq 'h264_qsv') { @('-c:v','h264_qsv','-global_quality',$(if ($job.Target -eq 'Mabel TV') { '23' } else { '20' })) } else { @('-c:v','libx264','-preset','medium','-crf',$(if ($job.Target -eq 'Mabel TV') { '22' } else { '20' })) }
@@ -173,7 +198,7 @@ function Start-Next {
         if ($exitCode -eq 0 -and (Test-Path -LiteralPath $PartOutput)) { Move-Item -LiteralPath $PartOutput -Destination $Output -Force }
         "MABELTV_EXIT=$exitCode"
     } -ArgumentList $script:ffmpeg, $arguments, $job.PartOutput, $job.Output
-    $overall.Value = 0; $overallLabel.Text = "Preparing $([IO.Path]::GetFileName($job.Path))…"
+    $overall.Value = 0; $overallLabel.Text = "Preparing $([IO.Path]::GetFileName($job.Path))..."
     Refresh-Queue; Set-Controls
 }
 
@@ -184,6 +209,7 @@ function Cancel-Current {
     Remove-Job -Job $job.Worker -Force -ErrorAction SilentlyContinue
     if ($job.PartOutput) { Remove-Item -LiteralPath $job.PartOutput -Force -ErrorAction SilentlyContinue }
     $job.Status = 'Cancelled'; $job.Detail = 'Conversion cancelled safely'; $job.Worker = $null
+    [void]$script:queue.Remove($job); Add-Recent $job
     $script:currentJob = $null; $overall.Value = 0; $overallLabel.Text = 'Cancelled'
     Refresh-Queue; Set-Controls
 }
@@ -204,14 +230,14 @@ function Poll-Worker {
         if ($line -match '^MABELTV_EXIT=(\d+)$') { $exit = [int]$Matches[1] }
     }
     $overall.Value = [Math]::Max(0, [Math]::Min(100, [int]$job.Percent))
-    $overallLabel.Text = if ($job.Percent -gt 0) { "$([IO.Path]::GetFileName($job.Path)) · $([int]$job.Percent)% · $($job.Detail)" } else { "Converting $([IO.Path]::GetFileName($job.Path))…" }
+    $overallLabel.Text = if ($job.Percent -gt 0) { "$([IO.Path]::GetFileName($job.Path)) | $([int]$job.Percent)% | $($job.Detail)" } else { "Converting $([IO.Path]::GetFileName($job.Path))..." }
     if ($job.Worker.State -in @('Completed','Failed','Stopped')) {
         $rest = @(Receive-Job -Job $job.Worker -ErrorAction SilentlyContinue)
         foreach ($lineObject in $rest) { if (([string]$lineObject) -match '^MABELTV_EXIT=(\d+)$') { $exit = [int]$Matches[1] } }
         Remove-Job -Job $job.Worker -Force -ErrorAction SilentlyContinue
-        if ($exit -eq 0 -and (Test-Path -LiteralPath $job.Output)) { $job.Status = 'Complete'; $job.Percent = 100; $job.Detail = "Ready · $(Format-Bytes (Get-Item -LiteralPath $job.Output).Length)" }
+        if ($exit -eq 0 -and (Test-Path -LiteralPath $job.Output)) { $job.Status = 'Complete'; $job.Percent = 100; $job.Detail = "Ready | $(Format-Bytes (Get-Item -LiteralPath $job.Output).Length)" }
         else { $job.Status = 'Failed'; $job.Detail = 'FFmpeg could not prepare this file'; Remove-Item -LiteralPath $job.PartOutput -Force -ErrorAction SilentlyContinue }
-        $job.Worker = $null; $script:currentJob = $null
+        $job.Worker = $null; [void]$script:queue.Remove($job); Add-Recent $job; $script:currentJob = $null
         Refresh-Queue; Set-Controls; Start-Next
     } else { Refresh-Queue }
 }
@@ -226,7 +252,7 @@ if (-not $script:ffmpeg -or -not $script:ffprobe) {
 $script:videoEncoder = if (Test-H264Encoder 'h264_qsv') { 'h264_qsv' } else { 'libx264' }
 
 $form = [Windows.Forms.Form]::new()
-$form.Text = $script:appName; $form.StartPosition = 'CenterScreen'; $form.MinimumSize = [Drawing.Size]::new(940, 690); $form.Size = [Drawing.Size]::new(1100, 760)
+$form.Text = $script:appName; $form.StartPosition = 'CenterScreen'; $form.MinimumSize = [Drawing.Size]::new(940, 780); $form.Size = [Drawing.Size]::new(1100, 850)
 $form.BackColor = [Drawing.Color]::FromArgb(19, 25, 23); $form.ForeColor = [Drawing.Color]::White; $form.Font = [Drawing.Font]::new('Segoe UI', 10)
 
 $title = [Windows.Forms.Label]::new(); $title.Text = 'MabelTV Media Prep'; $title.Font = [Drawing.Font]::new('Segoe UI Semibold', 23); $title.Location = [Drawing.Point]::new(26, 20); $title.AutoSize = $true
@@ -257,18 +283,21 @@ $browse = [Windows.Forms.Button]::new(); $browse.Text = 'Choose folder'; $browse
 $browse.Add_Click({ $dialog = [Windows.Forms.FolderBrowserDialog]::new(); $dialog.SelectedPath = $outputBox.Text; if ($dialog.ShowDialog() -eq 'OK') { $outputBox.Text = $dialog.SelectedPath; Save-Settings $dialog.SelectedPath } })
 
 $queueLabel = [Windows.Forms.Label]::new(); $queueLabel.Text = 'Drop files above to start a queue.'; $queueLabel.Location = [Drawing.Point]::new(28, 335); $queueLabel.AutoSize = $true; $queueLabel.ForeColor = [Drawing.Color]::FromArgb(171, 184, 178)
-$list = [Windows.Forms.ListView]::new(); $list.Location = [Drawing.Point]::new(26, 360); $list.Size = [Drawing.Size]::new(1026, 250); $list.View = 'Details'; $list.FullRowSelect = $true; $list.GridLines = $true; $list.BackColor = [Drawing.Color]::FromArgb(25, 33, 30); $list.ForeColor = [Drawing.Color]::White
+$list = [Windows.Forms.ListView]::new(); $list.Location = [Drawing.Point]::new(26, 360); $list.Size = [Drawing.Size]::new(1026, 195); $list.View = 'Details'; $list.FullRowSelect = $true; $list.GridLines = $true; $list.BackColor = [Drawing.Color]::FromArgb(25, 33, 30); $list.ForeColor = [Drawing.Color]::White
 foreach ($column in @(@('Status',130), @('Target',110), @('File',315), @('Progress / details',445))) { [void]$list.Columns.Add($column[0], $column[1]) }
 
-$overall = [Windows.Forms.ProgressBar]::new(); $overall.Location = [Drawing.Point]::new(28, 628); $overall.Size = [Drawing.Size]::new(720, 20); $overall.Style = 'Continuous'
-$overallLabel = [Windows.Forms.Label]::new(); $overallLabel.Text = 'Ready to analyse files.'; $overallLabel.Location = [Drawing.Point]::new(28, 654); $overallLabel.Size = [Drawing.Size]::new(720, 24); $overallLabel.ForeColor = [Drawing.Color]::FromArgb(171, 184, 178)
-$startButton = [Windows.Forms.Button]::new(); $startButton.Text = 'Start queue'; $startButton.Location = [Drawing.Point]::new(768, 622); $startButton.Size = [Drawing.Size]::new(136, 42); $startButton.BackColor = [Drawing.Color]::FromArgb(244, 244, 241); $startButton.ForeColor = [Drawing.Color]::FromArgb(17, 22, 20); $startButton.FlatStyle = 'Flat'
-$cancelButton = [Windows.Forms.Button]::new(); $cancelButton.Text = 'Cancel current'; $cancelButton.Location = [Drawing.Point]::new(914, 622); $cancelButton.Size = [Drawing.Size]::new(138, 42); $cancelButton.FlatStyle = 'Flat'
-$clearButton = [Windows.Forms.Button]::new(); $clearButton.Text = 'Clear finished'; $clearButton.Location = [Drawing.Point]::new(914, 670); $clearButton.Size = [Drawing.Size]::new(138, 28); $clearButton.FlatStyle = 'Flat'
-$startButton.Add_Click({ Start-Next }); $cancelButton.Add_Click({ Cancel-Current }); $clearButton.Add_Click({ [void]$script:queue.RemoveAll([Predicate[object]]{ param($item) $item.Status -in @('Complete','Already ready','Cancelled','Failed') }); Refresh-Queue; Set-Controls })
+$overall = [Windows.Forms.ProgressBar]::new(); $overall.Location = [Drawing.Point]::new(28, 575); $overall.Size = [Drawing.Size]::new(720, 20); $overall.Style = 'Continuous'
+$overallLabel = [Windows.Forms.Label]::new(); $overallLabel.Text = 'Ready to analyse files.'; $overallLabel.Location = [Drawing.Point]::new(28, 601); $overallLabel.Size = [Drawing.Size]::new(720, 24); $overallLabel.ForeColor = [Drawing.Color]::FromArgb(171, 184, 178)
+$startButton = [Windows.Forms.Button]::new(); $startButton.Text = 'Start pending'; $startButton.Location = [Drawing.Point]::new(768, 569); $startButton.Size = [Drawing.Size]::new(136, 42); $startButton.BackColor = [Drawing.Color]::FromArgb(244, 244, 241); $startButton.ForeColor = [Drawing.Color]::FromArgb(17, 22, 20); $startButton.FlatStyle = 'Flat'
+$cancelButton = [Windows.Forms.Button]::new(); $cancelButton.Text = 'Cancel current'; $cancelButton.Location = [Drawing.Point]::new(914, 569); $cancelButton.Size = [Drawing.Size]::new(138, 42); $cancelButton.FlatStyle = 'Flat'
+$recentLabel = [Windows.Forms.Label]::new(); $recentLabel.Text = 'Recent results'; $recentLabel.Location = [Drawing.Point]::new(28, 645); $recentLabel.AutoSize = $true; $recentLabel.Font = [Drawing.Font]::new('Segoe UI Semibold', 10); $recentLabel.ForeColor = [Drawing.Color]::FromArgb(207, 215, 210)
+$recentList = [Windows.Forms.ListView]::new(); $recentList.Location = [Drawing.Point]::new(26, 668); $recentList.Size = [Drawing.Size]::new(1026, 95); $recentList.View = 'Details'; $recentList.FullRowSelect = $true; $recentList.BackColor = [Drawing.Color]::FromArgb(22, 29, 27); $recentList.ForeColor = [Drawing.Color]::White
+[void]$recentList.Columns.Add('Result',130); [void]$recentList.Columns.Add('File',875)
+$clearButton = [Windows.Forms.Button]::new(); $clearButton.Text = 'Clear recent'; $clearButton.Location = [Drawing.Point]::new(914, 770); $clearButton.Size = [Drawing.Size]::new(138, 28); $clearButton.FlatStyle = 'Flat'
+$startButton.Add_Click({ Start-Next }); $cancelButton.Add_Click({ Cancel-Current }); $clearButton.Add_Click({ $script:recent.Clear(); Refresh-Recent; Set-Controls })
 
-$form.Controls.AddRange(@($title,$subtitle,$mabelDrop,$adultDrop,$outLabel,$outputBox,$browse,$queueLabel,$list,$overall,$overallLabel,$startButton,$cancelButton,$clearButton))
+$form.Controls.AddRange(@($title,$subtitle,$mabelDrop,$adultDrop,$outLabel,$outputBox,$browse,$queueLabel,$list,$overall,$overallLabel,$startButton,$cancelButton,$recentLabel,$recentList,$clearButton))
 $timer = [Windows.Forms.Timer]::new(); $timer.Interval = 450; $timer.Add_Tick({ Poll-Worker }); $timer.Start()
 $form.Add_FormClosing({ if ($script:currentJob) { $choice = [Windows.Forms.MessageBox]::Show('A conversion is still running. Cancel it and close?', $script:appName, 'YesNo', 'Warning'); if ($choice -eq 'Yes') { Cancel-Current } else { $_.Cancel = $true } } })
-Refresh-Queue; Set-Controls
+Refresh-Queue; Refresh-Recent; Set-Controls
 [void]$form.ShowDialog()
