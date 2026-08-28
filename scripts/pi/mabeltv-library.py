@@ -459,8 +459,6 @@ class Library:
         self.adult_optimisation_serial = threading.Lock()
         self.remote_stream_lock = threading.RLock()
         self.remote_stream: dict[str, Any] | None = None
-        self.remote_hls_root = Path(os.environ.get(
-            "MABELTV_REMOTE_HLS_ROOT", "/var/lib/mabeltv/remote-hls")).resolve()
         self.usb_imports: dict[str, dict[str, Any]] = {}
         self.usb_import_lock = threading.RLock()
         self.conversion_closed = threading.Event()
@@ -1329,53 +1327,12 @@ class Library:
                                 if path.suffix.lower() in {".vtt", ".srt"}]
             if browser_sidecars:
                 subtitle_url = f"/api/remote/subtitles?{base}"
-        hls_url = None
-        if self.remote_hls_available(source):
-            hls_url = f"/api/remote/hls/playlist.m3u8?{base}"
         return {"ok": True, "title": title, "kind": kind, "resume_position": resume,
                 "stream_url": f"/api/remote/media?{base}",
-                "hls_url": hls_url,
                 # The browser attaches this only after the video itself has
                 # reached canplay. That keeps iOS source negotiation isolated
                 # from the external text track while still exposing native CC.
                 "subtitle_url": subtitle_url}
-
-    @staticmethod
-    def remote_hls_key(source: Path) -> str:
-        stat = source.stat()
-        identity = f"{source.resolve()}\0{stat.st_size}\0{stat.st_mtime_ns}"
-        return hashlib.sha256(identity.encode("utf-8")).hexdigest()[:24]
-
-    def remote_hls_package(self, source: Path) -> Path:
-        return self.remote_hls_root / self.remote_hls_key(source)
-
-    def remote_hls_available(self, source: Path) -> bool:
-        package = self.remote_hls_package(source)
-        return (package / "video.m3u8").is_file() and (package / "stream.ts").is_file()
-
-    def remote_hls_manifest(self, token: str) -> bytes:
-        session = self.remote_session(token)
-        path = self.remote_hls_package(session["source"]) / "video.m3u8"
-        if not path.is_file():
-            raise ValueError("The HLS test version of this film is not available")
-        output: list[str] = []
-        segment_url = f"/api/remote/hls/stream.ts?{urlencode({'stream': token})}"
-        for line in path.read_text(encoding="utf-8").splitlines():
-            stripped = line.strip()
-            if stripped and not stripped.startswith("#"):
-                if stripped != "stream.ts":
-                    raise ValueError("The HLS test package contains an invalid segment")
-                output.append(segment_url)
-            else:
-                output.append(line)
-        return ("\n".join(output) + "\n").encode("utf-8")
-
-    def remote_hls_segment(self, token: str) -> Path:
-        session = self.remote_session(token)
-        path = self.remote_hls_package(session["source"]) / "stream.ts"
-        if not path.is_file():
-            raise ValueError("The HLS test segment is not available")
-        return path
 
     def remote_session(self, token: str) -> dict[str, Any]:
         with self.remote_stream_lock:
@@ -3434,12 +3391,6 @@ class Handler(BaseHTTPRequestHandler):
             if parsed.path == "/api/remote/subtitles":
                 data = self.server.library.remote_subtitles(str(query.get("stream", [""])[0]))
                 self.stream_bytes(data, "text/vtt; charset=utf-8"); return
-            if parsed.path == "/api/remote/hls/playlist.m3u8":
-                data = self.server.library.remote_hls_manifest(str(query.get("stream", [""])[0]))
-                self.stream_bytes(data, "application/vnd.apple.mpegurl"); return
-            if parsed.path == "/api/remote/hls/stream.ts":
-                path = self.server.library.remote_hls_segment(str(query.get("stream", [""])[0]))
-                self.stream_remote_media(path); return
             if parsed.path == "/api/usb":
                 self.json(200, self.server.library.usb_volumes()); return
             if parsed.path == "/api/usb/browse":

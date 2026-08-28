@@ -1125,43 +1125,41 @@
           video.append(track)
         }
         const resume = Number(position || result.resume_position || 0)
-        video.onloadedmetadata = () => { if (resume > 10 && resume < video.duration - 5) video.currentTime = resume }
+        let nativeFullscreen = false
+        const requestNativeFullscreen = () => {
+          if (nativeFullscreen || typeof video.webkitEnterFullscreen !== 'function') return
+          try { video.webkitEnterFullscreen() } catch (_) { /* wait for play */ }
+        }
+        video.onloadedmetadata = () => {
+          if (resume > 10 && resume < video.duration - 5) video.currentTime = resume
+          requestNativeFullscreen()
+        }
         // Do not involve the external VTT in initial source negotiation. Adult
         // MP4s previously failed with MEDIA_ERR_SRC_NOT_SUPPORTED when iPadOS
         // received the video and text track together. Once canplay fires, the
         // movie is already accepted and the native AVPlayer can safely add CC.
         video.oncanplay = attachNativeCaptions
         video.onerror = () => { setNativeVideoBackdrop(false); error.textContent = `This video could not be played (media error ${video.error?.code || 'unknown'}).`; error.classList.remove('hidden'); video.classList.add('hidden') }
-        video.onwebkitbeginfullscreen = () => setNativeVideoBackdrop(true)
         video.onwebkitendfullscreen = () => setNativeVideoBackdrop(false)
         video.onwebkitpresentationmodechanged = () => {
           setNativeVideoBackdrop(video.webkitPresentationMode === 'fullscreen' || Boolean(video.webkitDisplayingFullscreen))
         }
-        let fullscreenStarted = false
-        video.onplay = () => {
-          if (!fullscreenStarted) {
-            fullscreenStarted = true
-            try {
-              // webkitEnterFullscreen is the route that opens iPadOS's true
-              // native AVPlayer. webkitSetPresentationMode can leave modern
-              // iPads in a stretched inline player with the older controls.
-              if (typeof video.webkitEnterFullscreen === 'function') video.webkitEnterFullscreen()
-            } catch (error) {
-              setNativeVideoBackdrop(false)
-            }
-          }
-        }
+        video.onwebkitbeginfullscreen = () => { nativeFullscreen = true; setNativeVideoBackdrop(true) }
+        // Ask for the true native player immediately from the library tap and
+        // retry only once the media becomes ready. This avoids the old inline
+        // hand-off before the Liquid Glass player opens.
+        video.onplay = requestNativeFullscreen
         video.onpause = () => saveIosRemotePosition()
         video.onended = () => saveIosRemotePosition(true)
         $('#iosWatchStartOver').classList.toggle('hidden', resume <= 10)
         iosRemoteLastSaved = 0
         clearInterval(iosRemotePositionTimer); iosRemotePositionTimer = setInterval(saveIosRemotePosition, 15000)
         clearInterval(iosRemoteHeartbeatTimer); iosRemoteHeartbeatTimer = setInterval(() => api('/api/remote/heartbeat', { method: 'POST', body: JSON.stringify({ stream: iosRemoteSession }) }).catch(() => {}), 30000)
-        // A prepared HLS package is used only for the controlled iPad test.
-        // Every other title retains the proven progressive MP4 route.
-        video.src = result.hls_url || result.stream_url
+        video.src = result.stream_url
         video.load()
-        await video.play().catch(() => {})
+        const playAttempt = video.play()
+        requestNativeFullscreen()
+        await playAttempt.catch(() => {})
       } catch (startError) {
         error.textContent = startError.message; error.classList.remove('hidden'); video.classList.add('hidden')
       }
