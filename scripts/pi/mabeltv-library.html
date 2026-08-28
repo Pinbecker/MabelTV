@@ -1126,20 +1126,13 @@
         video.onplay = () => {
           if (!fullscreenStarted) {
             fullscreenStarted = true
-            setNativeVideoBackdrop(true)
             try {
-              // iPadOS has a dedicated native presentation-mode path.  Prefer
-              // it over the older fullscreen entry point: both retain the
-              // system player and controls, but this avoids a hybrid inline /
-              // fullscreen hand-off on modern iPads.
-              if (typeof video.webkitSetPresentationMode === 'function') video.webkitSetPresentationMode('fullscreen')
-              else if (typeof video.webkitEnterFullscreen === 'function') video.webkitEnterFullscreen()
-              else setNativeVideoBackdrop(false)
+              // webkitEnterFullscreen is the route that opens iPadOS's true
+              // native AVPlayer. webkitSetPresentationMode can leave modern
+              // iPads in a stretched inline player with the older controls.
+              if (typeof video.webkitEnterFullscreen === 'function') video.webkitEnterFullscreen()
             } catch (error) {
-              try {
-                if (typeof video.webkitEnterFullscreen === 'function') video.webkitEnterFullscreen()
-                else setNativeVideoBackdrop(false)
-              } catch (fallbackError) { setNativeVideoBackdrop(false) }
+              setNativeVideoBackdrop(false)
             }
           }
         }
