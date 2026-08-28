@@ -191,6 +191,7 @@
       }
       if (!response.ok) {
         const error = new Error(body.error || `${tvName()} could not complete that request`)
+        error.status = response.status
         error.code = body.code
         throw error
       }
@@ -315,11 +316,25 @@
           showOnly('app')
           if (location.hash === '#watch' || new URLSearchParams(location.search).has('watch')) openView('watch')
         } else {
-          showOnly('login')
+          // A valid HttpOnly session cookie survives an iPad page reload.  Ask
+          // the protected library before showing the PIN screen so closing a
+          // native player never looks like a logout.
+          try {
+            await load()
+            showOnly('app')
+            if (location.hash === '#watch' || new URLSearchParams(location.search).has('watch')) openView('watch')
+          } catch (error) {
+            showOnly('login')
+            if (error.status !== 401) {
+              $('#loginError').classList.add('bad')
+              $('#loginError').textContent = `The portal connection was interrupted. ${tvName()} is still running — try again in a moment.`
+            }
+          }
         }
       } catch (error) {
         showOnly('login')
-        $('#loginError').textContent = `${tvName()} is starting up. Refresh this page in a moment.`
+        $('#loginError').classList.add('bad')
+        $('#loginError').textContent = `The portal connection was interrupted. ${tvName()} is still running — refresh in a moment.`
       }
     }
 
@@ -1069,6 +1084,32 @@
       return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
     }
 
+    function artworkUrl(name, retry = '') {
+      const base = `/api/adult/artwork/${encodeURIComponent(name)}`
+      return retry ? `${base}?retry=${encodeURIComponent(retry)}` : base
+    }
+
+    function posterImage(name, fallback) {
+      const image = document.createElement('img')
+      let retried = false
+      image.src = artworkUrl(name)
+      image.alt = ''
+      image.loading = 'lazy'
+      image.decoding = 'async'
+      image.onerror = () => {
+        if (!retried) {
+          retried = true
+          image.src = artworkUrl(name, Date.now())
+          return
+        }
+        const placeholder = document.createElement('span')
+        placeholder.className = 'watch-card-placeholder'
+        placeholder.textContent = fallback
+        image.replaceWith(placeholder)
+      }
+      return image
+    }
+
     function playerUrl(payload, position = 0) {
       const query = new URLSearchParams({ ...payload, position: String(Math.max(0, Number(position) || 0)) })
       return `/watch/player?${query}`
@@ -1187,8 +1228,7 @@
       const card = document.createElement('button'); card.type = 'button'; card.className = 'watch-card'
       const art = document.createElement('span'); art.className = 'watch-card-art'
       if (metadata.poster) {
-        const image = document.createElement('img'); image.src = `/api/adult/artwork/${encodeURIComponent(metadata.poster)}`; image.alt = ''
-        art.append(image)
+        art.append(posterImage(metadata.poster, (metadata.title || film.display_name).slice(0, 1).toUpperCase()))
       } else {
         const placeholder = document.createElement('span'); placeholder.className = 'watch-card-placeholder'; placeholder.textContent = (metadata.title || film.display_name).slice(0, 1).toUpperCase(); art.append(placeholder)
       }
@@ -1209,7 +1249,7 @@
       if (!film || remoteKind !== 'adult') { feature.classList.add('hidden'); return }
       const metadata = film.metadata || {}
       feature.classList.remove('hidden')
-      const poster = metadata.poster ? `/api/adult/artwork/${encodeURIComponent(metadata.poster)}` : ''
+      const poster = metadata.poster ? artworkUrl(metadata.poster) : ''
       feature.style.setProperty('--feature-art', poster ? `url("${poster}")` : 'radial-gradient(circle at 84% 15%,#513029 0,#1c2823 35%,#101513 74%)')
       $('#watchFeatureTitle').textContent = metadata.title || film.display_name
       $('#watchFeatureOverview').textContent = metadata.overview || 'Ready to watch from your private Adult library.'

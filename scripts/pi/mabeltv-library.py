@@ -2322,7 +2322,14 @@ class Library:
         if not token:
             return False
         with self.config_lock:
-            return self.sessions.get(token, 0) > time.time()
+            # A parent actively using the portal should not be sent back to
+            # the PIN screen halfway through an evening.  Sessions remain
+            # memory-only (so a real service restart still signs out safely),
+            # but each authenticated request renews the eight-hour window.
+            if self.sessions.get(token, 0) <= time.time():
+                return False
+            self.sessions[token] = time.time() + SESSION_SECONDS
+            return True
 
     def revoke_session(self, token: str | None) -> None:
         if token:
@@ -3245,12 +3252,13 @@ class Handler(BaseHTTPRequestHandler):
         with path.open("rb") as source:
             shutil.copyfileobj(source, self.wfile, 1024 * 1024)
 
-    def stream_file(self, path: Path, content_type: str) -> None:
+    def stream_file(self, path: Path, content_type: str,
+                    cache_control: str = "no-store") -> None:
         size = path.stat().st_size
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(size))
-        self.send_header("Cache-Control", "no-store")
+        self.send_header("Cache-Control", cache_control)
         self.security_headers()
         self.end_headers()
         with path.open("rb") as source:
@@ -3295,14 +3303,20 @@ class Handler(BaseHTTPRequestHandler):
         if requested: self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
         self.send_header("Cache-Control", "no-store")
         self.security_headers(); self.end_headers()
-        with path.open("rb") as source:
-            source.seek(start)
-            remaining = length
-            while remaining:
-                data = source.read(min(1024 * 1024, remaining))
-                if not data: break
-                self.wfile.write(data)
-                remaining -= len(data)
+        try:
+            with path.open("rb") as source:
+                source.seek(start)
+                remaining = length
+                while remaining:
+                    data = source.read(min(1024 * 1024, remaining))
+                    if not data: break
+                    self.wfile.write(data)
+                    remaining -= len(data)
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            # Native iOS playback opens and cancels several range requests
+            # while it hands the file to AVPlayer.  That is normal client
+            # behaviour, not a fault in the portal or the Pi.
+            return
 
     def stream_bytes(self, data: bytes, content_type: str) -> None:
         self.send_response(200)
@@ -3403,13 +3417,16 @@ class Handler(BaseHTTPRequestHandler):
                 self.json(200, self.server.library.tmdb_status()); return
             if parsed.path.startswith("/api/adult/artwork/"):
                 self.stream_file(self.server.library.adult_artwork(
-                    parsed.path.rsplit("/", 1)[1]), "image/jpeg"); return
+                    parsed.path.rsplit("/", 1)[1]), "image/jpeg",
+                    "public, max-age=31536000, immutable"); return
             if self.path == "/api/status": self.json(200, self.server.library.live_status()); return
             if self.path == "/api/support":
                 self.file(self.server.library.support_bundle(), "mabeltv-support.tar.gz"); return
             if self.path.startswith("/api/uploads/"):
                 self.json(200, self.server.library.upload_status(self.path.rsplit("/", 1)[1])); return
             self.json(404, {"error": "Not found"})
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            return
         except ValueError as error: self.json(400, {"error": str(error)})
         except Exception as error:
             self.unexpected("GET", error); self.json(500, {"error": "The library had an unexpected problem"})
