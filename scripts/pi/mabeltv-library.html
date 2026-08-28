@@ -124,7 +124,9 @@
     .mabel-watch-cabinet.charcoal-90s .mabel-watch-charcoal-fascia{
       position:absolute;
       z-index:1;
-      top:64.2%;
+      /* The 4:3 tube is calculated from cabinet width, so it finishes at
+         roughly 82% of this 4:3 body. Keep all physical furniture below it. */
+      top:84%;
       right:9.5%;
       bottom:3%;
       left:9.5%;
@@ -134,8 +136,8 @@
     .mabel-watch-charcoal-speaker{
       position:absolute;
       bottom:0;
-      width:32%;
-      height:66%;
+      width:27%;
+      height:72%;
       border:1px solid #4f544f;
       border-radius:10%;
       background:repeating-linear-gradient(to bottom,#080a09 0 3%,#222522 3% 14%,#080a09 14% 17%);
@@ -146,8 +148,8 @@
     .mabel-watch-charcoal-logo{
       position:absolute;
       top:0;
-      left:34%;
-      width:32%;
+      left:35%;
+      width:30%;
       color:#aaada8;
       font-size:clamp(.5rem,1vw,.9rem);
       font-weight:800;
@@ -157,10 +159,10 @@
     }
     .mabel-watch-charcoal-control{
       position:absolute;
-      bottom:11%;
-      left:40.5%;
-      width:19%;
-      height:27%;
+      bottom:8%;
+      left:40%;
+      width:20%;
+      height:48%;
       border:1px solid #626762;
       border-radius:28%;
       background:linear-gradient(145deg,#161916,#060807);
