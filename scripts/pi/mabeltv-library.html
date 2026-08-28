@@ -61,7 +61,7 @@
       background:radial-gradient(ellipse at 50% 42%,#18231f 0,#060908 58%,#010202 100%);
     }
     .mabel-watch-shell{
-      width:min(calc(100vw - 14px),calc((100dvh - 14px) * 1.83));
+      width:min(calc(100vw - 14px),calc(177.778dvh - 150px));
       max-width:none;
     }
     .mabel-watch-head{display:none}
@@ -158,6 +158,12 @@
       .mabel-watch-controls .mabel-watch-play{width:44px;height:44px;min-height:44px}
       .mabel-watch-live-badge{display:none}
       .mabel-watch-brand{padding-top:4px}
+    }
+    @media(max-height:600px) and (orientation:landscape){
+      .mabel-watch-shell{width:min(calc(100vw - 8px),calc(177.778dvh - 100px))}
+      .mabel-watch-cabinet{border-width:6px;padding:5px}
+      .mabel-watch-hud{padding:8px}
+      .mabel-watch-brand{padding-top:3px;font-size:.48rem}
     }
   </style>
 </head>
