@@ -1112,10 +1112,23 @@
         }
         iosRemoteSession = new URL(result.stream_url, location.origin).searchParams.get('stream')
         $('#iosWatchTitle').textContent = result.title
-        video.pause(); video.replaceChildren(); video.src = result.stream_url
-        if (result.subtitle_url) { const track = document.createElement('track'); track.kind = 'subtitles'; track.srclang = 'en'; track.label = 'English'; track.src = result.subtitle_url; video.append(track) }
+        video.pause(); video.removeAttribute('src'); video.replaceChildren()
+        let captionsAttached = false
+        const attachNativeCaptions = () => {
+          if (!result.subtitle_url || captionsAttached) return
+          captionsAttached = true
+          const track = document.createElement('track')
+          track.kind = 'subtitles'; track.srclang = 'en'; track.label = 'English'; track.src = result.subtitle_url; track.default = true
+          track.addEventListener('load', () => { if (track.track) track.track.mode = 'showing' }, { once: true })
+          video.append(track)
+        }
         const resume = Number(position || result.resume_position || 0)
         video.onloadedmetadata = () => { if (resume > 10 && resume < video.duration - 5) video.currentTime = resume }
+        // Do not involve the external VTT in initial source negotiation. Adult
+        // MP4s previously failed with MEDIA_ERR_SRC_NOT_SUPPORTED when iPadOS
+        // received the video and text track together. Once canplay fires, the
+        // movie is already accepted and the native AVPlayer can safely add CC.
+        video.oncanplay = attachNativeCaptions
         video.onerror = () => { setNativeVideoBackdrop(false); error.textContent = `This video could not be played (media error ${video.error?.code || 'unknown'}).`; error.classList.remove('hidden'); video.classList.add('hidden') }
         video.onwebkitbeginfullscreen = () => setNativeVideoBackdrop(true)
         video.onwebkitendfullscreen = () => setNativeVideoBackdrop(false)
@@ -1142,6 +1155,8 @@
         iosRemoteLastSaved = 0
         clearInterval(iosRemotePositionTimer); iosRemotePositionTimer = setInterval(saveIosRemotePosition, 15000)
         clearInterval(iosRemoteHeartbeatTimer); iosRemoteHeartbeatTimer = setInterval(() => api('/api/remote/heartbeat', { method: 'POST', body: JSON.stringify({ stream: iosRemoteSession }) }).catch(() => {}), 30000)
+        video.src = result.stream_url
+        video.load()
         await video.play().catch(() => {})
       } catch (startError) {
         error.textContent = startError.message; error.classList.remove('hidden'); video.classList.add('hidden')

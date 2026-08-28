@@ -1321,14 +1321,18 @@ class Library:
                                   "title": title, "library_id": library_id,
                                   "expires": time.time() + REMOTE_SESSION_SECONDS}
         base = urlencode({"stream": token})
+        subtitle_url = None
+        if kind == "adult":
+            browser_sidecars = [path for path in self.subtitle_sidecars(source)
+                                if path.suffix.lower() in {".vtt", ".srt"}]
+            if browser_sidecars:
+                subtitle_url = f"/api/remote/subtitles?{base}"
         return {"ok": True, "title": title, "kind": kind, "resume_position": resume,
                 "stream_url": f"/api/remote/media?{base}",
-                # Keep initial media startup identical for Adult and Mabel TV.
-                # Attaching an external text track during source negotiation
-                # makes iOS reject otherwise compatible Adult MP4s with
-                # MEDIA_ERR_SRC_NOT_SUPPORTED (4). Captions can be requested
-                # after playback has opened instead of being coupled to it.
-                "subtitle_url": None}
+                # The browser attaches this only after the video itself has
+                # reached canplay. That keeps iOS source negotiation isolated
+                # from the external text track while still exposing native CC.
+                "subtitle_url": subtitle_url}
 
     def remote_session(self, token: str) -> dict[str, Any]:
         with self.remote_stream_lock:

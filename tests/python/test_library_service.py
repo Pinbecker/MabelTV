@@ -98,6 +98,8 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertNotIn('id="remoteVideo"', index)
         self.assertIn('id="video" controls', player)
         self.assertIn("track.kind = 'subtitles'", player)
+        self.assertIn("video.oncanplay = attachNativeCaptions", index)
+        self.assertIn("track.track.mode = 'showing'", index)
         self.assertIn("webkitEnterFullscreen", player)
         self.assertIn("navigator.maxTouchPoints > 1", index)
         self.assertIn("body>:not(#iosWatchPlayer)", index)
@@ -120,7 +122,10 @@ class LibraryUnitTests(unittest.TestCase):
         self.fixture.library.remote_save_position({"stream": token, "position": 42, "duration": 100})
         self.assertEqual(self.fixture.library.adult_library()[0]["remote_position"], 42)
         (adult / "Remote Film.en.srt").write_text("1\n00:00:01,000 --> 00:00:02,000\nHello\n", encoding="utf-8")
-        captions = self.fixture.library.remote_subtitles(token).decode("utf-8")
+        with_captions = self.fixture.library.start_remote_stream({"kind": "adult", "file": "Remote Film.mp4"})
+        self.assertIn("/api/remote/subtitles?stream=", with_captions["subtitle_url"])
+        caption_token = with_captions["stream_url"].split("stream=", 1)[1]
+        captions = self.fixture.library.remote_subtitles(caption_token).decode("utf-8")
         self.assertTrue(captions.startswith("WEBVTT"))
         self.assertEqual(item["library_id"], self.fixture.library.adult_library()[0]["library_id"])
 
