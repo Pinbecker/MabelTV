@@ -1310,8 +1310,10 @@ class Library:
         if settings["tv_running"] and not settings["allow_simultaneous"]:
             raise RemoteTvActiveError("Mabel TV is playing. Stop it first, or allow simultaneous playback in Settings.")
         with self.remote_stream_lock:
-            if self.remote_stream and float(self.remote_stream.get("expires", 0)) > time.time():
-                raise ValueError("Another remote viewing session is already active")
+            # The portal deliberately supports one remote viewer. Selecting a
+            # different title in that viewer must replace its previous stream;
+            # otherwise a missed pagehide/sendBeacon leaves the entire Watch
+            # section locked until the session timeout expires.
             token = secrets.token_urlsafe(24)
             self.remote_stream = {"token": token, "kind": kind, "source": source,
                                   "title": title, "library_id": library_id,
@@ -1324,9 +1326,14 @@ class Library:
     def remote_session(self, token: str) -> dict[str, Any]:
         with self.remote_stream_lock:
             current = self.remote_stream
-            if not current or not secrets.compare_digest(str(current.get("token", "")), token) \
-                    or float(current.get("expires", 0)) <= time.time():
+            if not current:
+                raise ValueError("That remote viewing session has expired")
+            if float(current.get("expires", 0)) <= time.time():
                 self.remote_stream = None
+                raise ValueError("That remote viewing session has expired")
+            # A late media/range/heartbeat request from the previous page must
+            # never erase the replacement stream that is now active.
+            if not secrets.compare_digest(str(current.get("token", "")), token):
                 raise ValueError("That remote viewing session has expired")
             current["expires"] = time.time() + REMOTE_SESSION_SECONDS
             return current.copy()

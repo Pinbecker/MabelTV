@@ -132,6 +132,21 @@ class LibraryUnitTests(unittest.TestCase):
         started = self.fixture.library.start_remote_stream({"kind": "adult", "file": "Film.mp4"})
         self.assertTrue(started["ok"])
 
+    def test_new_remote_stream_replaces_old_without_stale_token_clearing_it(self) -> None:
+        adult = self.fixture.media / ".adult"
+        adult.mkdir(parents=True, exist_ok=True)
+        (adult / "First.mp4").write_bytes(b"first")
+        (adult / "Second.mp4").write_bytes(b"second")
+        self.fixture.library.player_state_path = self.fixture.root / "player-state.json"
+        self.fixture.library.player_state_path.write_text('{"standby": true}', encoding="utf-8")
+        first = self.fixture.library.start_remote_stream({"kind": "adult", "file": "First.mp4"})
+        second = self.fixture.library.start_remote_stream({"kind": "adult", "file": "Second.mp4"})
+        first_token = first["stream_url"].split("stream=", 1)[1]
+        second_token = second["stream_url"].split("stream=", 1)[1]
+        with self.assertRaisesRegex(ValueError, "expired"):
+            self.fixture.library.remote_session(first_token)
+        self.assertEqual(self.fixture.library.remote_session(second_token)["title"], "Second")
+
     def test_first_run_hashes_pin_and_creates_generic_channels(self) -> None:
         result = self.fixture.library.complete_setup({
             "setup_code": "135790",
