@@ -18,7 +18,7 @@
   <script>
     const $ = selector => document.querySelector(selector)
     const query = new URLSearchParams(location.search)
-    $('#back').href = `/?watch=${encodeURIComponent(query.get('kind') === 'adult' ? 'adult' : 'mabel')}#watch`
+    $('#back').href = '/#watch'
     let session = null
     let saveTimer = null
     let heartbeatTimer = null
@@ -69,6 +69,13 @@
         else $('#captionState').textContent = 'No browser subtitle track is available for this title.'
         video.load()
         $('#startOver').hidden = resume <= 10
+        let fullscreenStarted = false
+        video.onplay = () => {
+          if (!fullscreenStarted && video.webkitEnterFullscreen) {
+            fullscreenStarted = true
+            video.webkitEnterFullscreen()
+          }
+        }
         video.onpause = () => savePosition(); video.onended = () => savePosition(true)
         $('#loading').hidden = true; $('#cabinet').hidden = false
         clearInterval(saveTimer); saveTimer = setInterval(savePosition, 15000)

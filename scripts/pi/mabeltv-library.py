@@ -1229,6 +1229,8 @@ class Library:
                     "remote_position": self.remote_resume_position(state["library_id"], state),
                     "remote_duration": max(0, float(state.get("remote_duration", 0) or 0))
                     if isinstance(state.get("remote_duration", 0), (int, float)) else 0,
+                    "remote_last_watched": max(0, float(state.get("remote_last_watched", 0) or 0))
+                    if isinstance(state.get("remote_last_watched", 0), (int, float)) else 0,
                 })
         if changed:
             self.write_adult_media_states(states)
@@ -1372,6 +1374,7 @@ class Library:
             if not isinstance(state, dict): state = {}
             state["remote_position"] = 0 if duration and position >= duration - 12 else position
             state["remote_duration"] = duration
+            state["remote_last_watched"] = time.time()
             states[relative] = state
             self.write_adult_media_states(states)
         return {"ok": True}

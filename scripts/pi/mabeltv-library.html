@@ -1112,6 +1112,13 @@
         const resume = Number(position || result.resume_position || 0)
         video.onloadedmetadata = () => { if (resume > 10 && resume < video.duration - 5) video.currentTime = resume }
         video.onerror = () => { error.textContent = `This video could not be played (media error ${video.error?.code || 'unknown'}).`; error.classList.remove('hidden'); video.classList.add('hidden') }
+        let fullscreenStarted = false
+        video.onplay = () => {
+          if (!fullscreenStarted && video.webkitEnterFullscreen) {
+            fullscreenStarted = true
+            video.webkitEnterFullscreen()
+          }
+        }
         video.onpause = () => saveIosRemotePosition()
         video.onended = () => saveIosRemotePosition(true)
         $('#iosWatchStartOver').classList.toggle('hidden', resume <= 10)
@@ -1197,7 +1204,9 @@
       const films = watchFolder === '*' ? allFilms : allFilms.filter(film => film.folder === watchFolder)
       const section = document.createElement('section'); section.className = 'watch-section'; const head = document.createElement('div'); head.className = 'watch-section-head'; head.innerHTML = `<h2>${watchFolder === '*' ? 'All films' : ''}</h2><span>${films.length} film${films.length === 1 ? '' : 's'}</span>`; if (watchFolder !== '*') head.querySelector('h2').textContent = watchFolder
       const grid = document.createElement('div'); grid.className = 'watch-poster-grid'; films.forEach(film => grid.append(adultWatchCard(film))); if (!films.length) grid.innerHTML = '<div class="watch-empty">There are no films in this collection.</div>'; section.append(head, grid); adult.append(section)
-      const featured = allFilms.find(film => film.remote_position > 10 && film.browser_ready !== false) || allFilms.find(film => film.browser_ready !== false) || allFilms[0]
+      const resumable = allFilms.filter(film => film.remote_position > 10 && film.browser_ready !== false)
+      const featured = resumable.sort((a, b) => Number(b.remote_last_watched || 0) - Number(a.remote_last_watched || 0))[0]
+        || allFilms.find(film => film.browser_ready !== false) || allFilms[0]
       renderWatchFeature(featured)
     }
 
