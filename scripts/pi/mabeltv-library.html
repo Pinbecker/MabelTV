@@ -1419,7 +1419,10 @@
     $$('[data-mabel-watch-action]').forEach(button => button.onclick = () => {
       const video = $('#mabelWatchVideo')
       showMabelWatchControls(button.dataset.mabelWatchAction === 'play' && video.paused)
-      if (button.dataset.mabelWatchAction === 'play') (video.paused ? video.play() : video.pause()).catch(() => {})
+      if (button.dataset.mabelWatchAction === 'play') {
+        if (video.paused) video.play().catch(() => {})
+        else video.pause()
+      }
       if (button.dataset.mabelWatchAction === 'back') video.currentTime = Math.max(0, video.currentTime - 15)
       if (button.dataset.mabelWatchAction === 'forward') video.currentTime = Math.min(video.duration || Infinity, video.currentTime + 15)
       if (button.dataset.mabelWatchAction === 'mute') { video.muted = !video.muted; button.classList.toggle('muted', video.muted); button.setAttribute('aria-label', video.muted ? 'Unmute' : 'Mute') }
@@ -1436,7 +1439,12 @@
     document.addEventListener('keydown', event => {
       if ($('#mabelWatchPlayer').classList.contains('hidden')) return
       if (event.key === 'Escape') closeMabelWatchPlayer()
-      if (event.key === ' ' && event.target.tagName !== 'INPUT') { event.preventDefault(); const video = $('#mabelWatchVideo'); (video.paused ? video.play() : video.pause()).catch(() => {}) }
+      if (event.key === ' ' && event.target.tagName !== 'INPUT') {
+        event.preventDefault()
+        const video = $('#mabelWatchVideo')
+        if (video.paused) video.play().catch(() => {})
+        else video.pause()
+      }
     })
     window.addEventListener('pagehide', () => { if (mabelRemoteSession) navigator.sendBeacon('/api/remote/release', JSON.stringify({ stream: mabelRemoteSession })) })
 
