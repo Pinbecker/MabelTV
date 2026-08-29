@@ -144,6 +144,40 @@ class LibraryUnitTests(unittest.TestCase):
         started = self.fixture.library.start_remote_stream({"kind": "adult", "file": "Film.mp4"})
         self.assertTrue(started["ok"])
 
+    def test_remote_resume_ignores_first_seconds_and_end_credits(self) -> None:
+        self.assertEqual(self.fixture.library.normalise_resume_position(29, 7200), 0)
+        self.assertEqual(self.fixture.library.normalise_resume_position(30, 7200), 30)
+        self.assertEqual(self.fixture.library.normalise_resume_position(6900, 7200), 0)
+        self.assertEqual(self.fixture.library.normalise_resume_position(6800, 7200), 6800)
+
+    def test_starting_over_suppresses_the_stale_tv_bookmark(self) -> None:
+        adult = self.fixture.media / ".adult"
+        adult.mkdir(parents=True, exist_ok=True)
+        (adult / "Film.mp4").write_bytes(b"film")
+        self.fixture.library.player_state_path = self.fixture.root / "player-state.json"
+        item = self.fixture.library.adult_library()[0]
+        self.fixture.library.player_state_path.write_text(json.dumps({
+            "standby": True, "adult_positions": {item["library_id"]: 420},
+        }), encoding="utf-8")
+        started = self.fixture.library.start_remote_stream({"kind": "adult", "file": "Film.mp4"})
+        token = started["stream_url"].split("stream=", 1)[1]
+        self.fixture.library.remote_save_position({
+            "stream": token, "position": 12, "duration": 7200,
+        })
+        self.assertEqual(self.fixture.library.adult_library()[0]["remote_position"], 0)
+        self.fixture.library.player_state_path.write_text(json.dumps({
+            "standby": True, "adult_positions": {item["library_id"]: 480},
+        }), encoding="utf-8")
+        self.assertEqual(self.fixture.library.adult_library()[0]["remote_position"], 480)
+        self.fixture.library.player_state_path.write_text(json.dumps({
+            "standby": True,
+            "adult_positions": {item["library_id"]: 7050},
+            "adult_durations": {item["library_id"]: 7200},
+        }), encoding="utf-8")
+        finished = self.fixture.library.adult_library()[0]
+        self.assertEqual(finished["remote_position"], 0)
+        self.assertEqual(finished["remote_duration"], 7200)
+
     def test_new_remote_stream_replaces_old_without_stale_token_clearing_it(self) -> None:
         adult = self.fixture.media / ".adult"
         adult.mkdir(parents=True, exist_ok=True)
@@ -1149,6 +1183,52 @@ class UsbAndMetadataTests(unittest.TestCase):
         sent = request.call_args.args[0]
         self.assertEqual(sent.headers["Authorization"], f"Bearer {token}")
         self.assertNotIn("api_key", sent.full_url)
+
+    def test_channel_metadata_caches_one_show_identity_and_each_film(self) -> None:
+        channels = [
+            {"number": 1, "name": "Puffin Rock", "folder": "shows",
+             "aspect": "crop", "content_type": "shows"},
+            {"number": 5, "name": "Films", "folder": "films",
+             "aspect": "fit", "content_type": "films"},
+        ]
+        self.fixture.channels.write_text(json.dumps({
+            "schema_version": 1, "channels": channels,
+        }), encoding="utf-8")
+        (self.fixture.media / "shows").mkdir(parents=True)
+        (self.fixture.media / "shows" / "Episode 1.mp4").write_bytes(b"show")
+        (self.fixture.media / "films").mkdir(parents=True)
+        (self.fixture.media / "films" / "Cinderella 1950.mp4").write_bytes(b"film")
+        self.fixture.library.tmdb_request = mock.Mock(side_effect=[
+            {"results": [{"id": 100}]},
+            {"id": 100, "name": "Puffin Rock", "overview": "Island adventures.",
+             "first_air_date": "2015-01-01", "backdrop_path": "/show.jpg"},
+            {"results": [{"id": 200}]},
+            {"id": 200, "title": "Cinderella", "overview": "A timeless tale.",
+             "release_date": "1950-02-15", "poster_path": "/film.jpg"},
+        ])
+        self.fixture.library.cache_channel_artwork = mock.Mock(
+            side_effect=["mabel-show-1-100.jpg", "mabel-film-5-200.jpg"])
+
+        result = self.fixture.library.refresh_channel_metadata()
+
+        self.assertEqual(result, {"ok": True, "updated": 2, "skipped": 0})
+        rendered = self.fixture.library.library()["channels"]
+        show = next(channel for channel in rendered if channel["number"] == 1)
+        films = next(channel for channel in rendered if channel["number"] == 5)
+        self.assertEqual(show["metadata"]["artwork"], "mabel-show-1-100.jpg")
+        self.assertEqual(show["programmes"][0]["metadata"], {})
+        self.assertEqual(films["programmes"][0]["metadata"]["poster"],
+                         "mabel-film-5-200.jpg")
+        self.assertEqual(
+            self.fixture.library.tmdb_request.call_args_list[2].args[1]["year"],
+            1950)
+
+    def test_portal_theme_is_validated_and_exposed(self) -> None:
+        self.fixture.library.manage({"action": "set-portal-theme", "theme": "light"})
+        self.assertEqual(self.fixture.library.library()["appearance"]["portal_theme"],
+                         "light")
+        with self.assertRaisesRegex(ValueError, "light or dark"):
+            self.fixture.library.manage({"action": "set-portal-theme", "theme": "blue"})
 
     def test_adult_playback_state_updates_preserve_cached_metadata(self) -> None:
         self.fixture.library.write_adult_media_states({

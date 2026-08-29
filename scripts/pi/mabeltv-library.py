@@ -48,11 +48,15 @@ USB_IMPORT_RESERVE_BYTES = 256 * 1024 * 1024
 USB_MAX_SELECTION_FILES = 2000
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
 TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
+TMDB_BACKDROP_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w1280"
 OPENSUBTITLES_API_BASE_URL = "https://api.opensubtitles.com/api/v1"
 OPENSUBTITLES_USER_AGENT = "MabelTV/0.2.5"
 SUBTITLE_EXTENSIONS = {".srt", ".vtt", ".ass", ".ssa"}
 REMOTE_BROWSER_EXTENSIONS = {".mp4", ".m4v", ".mov", ".webm"}
 REMOTE_SESSION_SECONDS = 2 * 60
+REMOTE_RESUME_MIN_SECONDS = 30.0
+REMOTE_COMPLETION_MIN_SECONDS = 180.0
+REMOTE_COMPLETION_FRACTION = 0.05
 SAFE_NAME = re.compile(r"[^A-Za-z0-9 ._()&'\-]+")
 EPISODE_NAME = re.compile(r"^s(\d{1,2})e(\d{1,3})\s*-\s*(.+)$", re.IGNORECASE)
 PIN_PATTERN = re.compile(r"\d{4,8}")
@@ -435,6 +439,8 @@ class Library:
         self.adult_root = self.media_root / ".adult"
         self.adult_metadata_path = self.adult_root / ".mabeltv-adult.json"
         self.adult_artwork_root = self.adult_root / ".metadata"
+        self.channel_metadata_path = self.media_root / ".mabeltv-channels.json"
+        self.channel_artwork_root = self.media_root / ".channel-metadata"
         configured_usb_root = os.environ.get("MABELTV_USB_ROOT")
         self.usb_root = Path(configured_usb_root or "/media/mabeltv-usb").resolve()
         # A real installation must only browse an actual mount. Tests and the
@@ -466,6 +472,7 @@ class Library:
         self.incoming.mkdir(mode=0o750, exist_ok=True)
         self.adult_root.mkdir(mode=0o750, exist_ok=True)
         self.adult_artwork_root.mkdir(mode=0o750, exist_ok=True)
+        self.channel_artwork_root.mkdir(mode=0o750, exist_ok=True)
         self.bin.mkdir(mode=0o750, exist_ok=True)
         self.reconcile_recycle_items()
         self.cleanup_stale_temporary_files()
@@ -1161,6 +1168,18 @@ class Library:
         value = self.read_json(self.adult_metadata_path, {})
         return value if isinstance(value, dict) else {}
 
+    def channel_media_states(self) -> dict[str, Any]:
+        """Cached TMDB matches for MabelTV shows and film-channel titles."""
+        value = self.read_json(self.channel_metadata_path, {})
+        return value if isinstance(value, dict) else {}
+
+    def write_channel_media_states(self, values: dict[str, Any]) -> None:
+        self.write_json(self.channel_metadata_path, values)
+
+    @staticmethod
+    def channel_programme_key(channel_number: int, file_name: str) -> str:
+        return f"{int(channel_number)}/{file_name}"
+
     def write_adult_media_states(self, values: dict[str, dict[str, Any]]) -> None:
         self.write_json(self.adult_metadata_path, values)
 
@@ -1227,8 +1246,8 @@ class Library:
                     if isinstance(state.get("metadata"), dict) else {},
                     "browser_ready": item.suffix.lower() in REMOTE_BROWSER_EXTENSIONS,
                     "remote_position": self.remote_resume_position(state["library_id"], state),
-                    "remote_duration": max(0, float(state.get("remote_duration", 0) or 0))
-                    if isinstance(state.get("remote_duration", 0), (int, float)) else 0,
+                    "remote_duration": self.remote_resume_duration(
+                        state["library_id"], state),
                     "remote_last_watched": max(0, float(state.get("remote_last_watched", 0) or 0))
                     if isinstance(state.get("remote_last_watched", 0), (int, float)) else 0,
                 })
@@ -1248,10 +1267,57 @@ class Library:
             positions = player_state.get("adult_positions", {})
             if isinstance(positions, dict):
                 try:
-                    candidates.append(float(positions.get(library_id, 0) or 0))
+                    player_position = float(positions.get(library_id, 0) or 0)
+                    ignored = float(media_state.get("ignored_player_position", -1) or -1)
+                    # Starting over in a browser must also suppress the older
+                    # on-TV bookmark.  Accept that TV bookmark again as soon
+                    # as the television genuinely moves to a different point.
+                    if ignored < 0 or abs(player_position - ignored) > 5:
+                        candidates.append(player_position)
                 except (TypeError, ValueError):
                     pass
+        position = max([value for value in candidates if value >= 0] or [0])
+        duration = self.remote_resume_duration(library_id, media_state)
+        return self.normalise_resume_position(position, duration)
+
+    def remote_resume_duration(self, library_id: str,
+                               media_state: dict[str, Any]) -> float:
+        """Use duration learned from either the television or the browser."""
+        candidates: list[float] = []
+        try:
+            candidates.append(float(media_state.get("remote_duration", 0) or 0))
+        except (TypeError, ValueError):
+            pass
+        player_state = self.read_json(self.player_state_path, {})
+        durations = player_state.get("adult_durations", {}) \
+            if isinstance(player_state, dict) else {}
+        if isinstance(durations, dict):
+            try:
+                candidates.append(float(durations.get(library_id, 0) or 0))
+            except (TypeError, ValueError):
+                pass
         return max([value for value in candidates if value >= 0] or [0])
+
+    @staticmethod
+    def normalise_resume_position(position: float, duration: float) -> float:
+        """Keep only meaningful in-progress positions.
+
+        The start threshold lets a deliberate restart clear Continue Watching.
+        At the other end, the final five percent (at least three minutes) is
+        treated as credits/completion because TMDB does not publish a reliable
+        per-film credits timestamp.
+        """
+        if position < REMOTE_RESUME_MIN_SECONDS:
+            return 0.0
+        if duration > 0:
+            completion_window = max(
+                REMOTE_COMPLETION_MIN_SECONDS,
+                duration * REMOTE_COMPLETION_FRACTION,
+            )
+            completion_window = min(completion_window, duration * 0.20)
+            if position >= max(0.0, duration - completion_window):
+                return 0.0
+        return position
 
     @staticmethod
     def remote_browser_ready(source: Path) -> bool:
@@ -1376,9 +1442,21 @@ class Library:
             relative = self.adult_relative_path(session["source"])
             state = states.get(relative, {})
             if not isinstance(state, dict): state = {}
-            state["remote_position"] = 0 if duration and position >= duration - 12 else position
+            saved_position = self.normalise_resume_position(position, duration)
+            state["remote_position"] = saved_position
             state["remote_duration"] = duration
             state["remote_last_watched"] = time.time()
+            if saved_position == 0:
+                player_state = self.read_json(self.player_state_path, {})
+                positions = player_state.get("adult_positions", {}) \
+                    if isinstance(player_state, dict) else {}
+                try:
+                    state["ignored_player_position"] = float(
+                        positions.get(session["library_id"], 0) or 0)
+                except (AttributeError, TypeError, ValueError):
+                    state["ignored_player_position"] = 0.0
+            else:
+                state.pop("ignored_player_position", None)
             states[relative] = state
             self.write_adult_media_states(states)
         return {"ok": True}
@@ -1849,6 +1927,125 @@ class Library:
         except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as error:
             raise ValueError("TMDB could not be reached. Try the scan again later") from error
 
+    @staticmethod
+    def tmdb_title_query(value: str) -> tuple[str, int | None]:
+        title = re.sub(r"[._]+", " ", str(value or "")).strip()
+        title = re.sub(
+            r"\b(?:1080p|720p|2160p|bluray|web[- ]?dl|x26[45]|hevc)\b.*$",
+            "", title, flags=re.IGNORECASE).strip()
+        year_match = re.search(r"\b(19\d{2}|20\d{2})\b", title)
+        year = int(year_match.group(1)) if year_match else None
+        if year:
+            title = title.replace(str(year), "").strip(" .-()[]")
+        return title, year
+
+    def cache_channel_artwork(self, remote_path: str, file_name: str,
+                              *, backdrop: bool = False) -> str:
+        if (not remote_path or not re.fullmatch(
+                r"mabel-(?:show|film)-[0-9]+-[0-9]+\.jpg", file_name)):
+            return ""
+        destination = self.channel_artwork_root / file_name
+        try:
+            base = TMDB_BACKDROP_IMAGE_BASE_URL if backdrop else TMDB_IMAGE_BASE_URL
+            request = Request(base + remote_path,
+                              headers={"User-Agent": "MabelTV/0.2.5"})
+            with urlopen(request, timeout=15) as response:
+                data = response.read(10 * 1024 * 1024)
+            temporary = destination.with_suffix(".jpg.new")
+            temporary.write_bytes(data)
+            os.replace(temporary, destination)
+            return file_name
+        except (HTTPError, URLError, TimeoutError, OSError):
+            return ""
+
+    def refresh_channel_metadata(self) -> dict[str, Any]:
+        """Cache one show image per series channel and posters for film channels."""
+        states = self.channel_media_states()
+        channels_state = states.get("channels", {})
+        programmes_state = states.get("programmes", {})
+        if not isinstance(channels_state, dict):
+            channels_state = {}
+        if not isinstance(programmes_state, dict):
+            programmes_state = {}
+        updated = 0
+        skipped = 0
+        for channel in self.channels():
+            number = int(channel["number"])
+            content_type = self.channel_content_type(channel)
+            if content_type != "films":
+                response = self.tmdb_request("search/tv", {
+                    "query": str(channel.get("name", "")),
+                    "include_adult": "false", "language": "en-GB",
+                })
+                matches = response.get("results", []) if isinstance(response, dict) else []
+                match = next((value for value in matches
+                              if isinstance(value, dict) and value.get("id")), None)
+                if not isinstance(match, dict):
+                    skipped += 1
+                    continue
+                tmdb_id = int(match["id"])
+                details = self.tmdb_request(f"tv/{tmdb_id}", {"language": "en-GB"})
+                remote_art = str(details.get("backdrop_path") or details.get("poster_path") or "")
+                art_name = self.cache_channel_artwork(
+                    remote_art, f"mabel-show-{number}-{tmdb_id}.jpg",
+                    backdrop=bool(details.get("backdrop_path")))
+                channels_state[str(number)] = {
+                    "tmdb_id": tmdb_id,
+                    "title": str(details.get("name") or channel.get("name", "")),
+                    "overview": str(details.get("overview") or ""),
+                    "year": str(details.get("first_air_date") or "")[:4],
+                    "artwork": art_name,
+                    "updated": time.time(), "provider": "TMDB",
+                }
+                updated += 1
+                continue
+
+            folder = self.media_root / str(channel["folder"])
+            candidates = sorted(
+                (item for item in folder.glob("*") if item.is_file()
+                 and item.suffix.lower() in SUPPORTED_EXTENSIONS),
+                key=lambda path: path.name.casefold()) if folder.is_dir() else []
+            for item in candidates:
+                title, year = self.tmdb_title_query(self.display_name(item.name))
+                parameters: dict[str, Any] = {
+                    "query": title, "include_adult": "false", "language": "en-GB",
+                }
+                if year:
+                    parameters["year"] = year
+                response = self.tmdb_request("search/movie", parameters)
+                matches = response.get("results", []) if isinstance(response, dict) else []
+                match = next((value for value in matches
+                              if isinstance(value, dict) and value.get("id")), None)
+                if not isinstance(match, dict):
+                    skipped += 1
+                    continue
+                tmdb_id = int(match["id"])
+                details = self.tmdb_request(f"movie/{tmdb_id}", {"language": "en-GB"})
+                poster_name = self.cache_channel_artwork(
+                    str(details.get("poster_path") or ""),
+                    f"mabel-film-{number}-{tmdb_id}.jpg")
+                programmes_state[self.channel_programme_key(number, item.name)] = {
+                    "tmdb_id": tmdb_id,
+                    "title": str(details.get("title") or self.display_name(item.name)),
+                    "overview": str(details.get("overview") or ""),
+                    "year": str(details.get("release_date") or "")[:4],
+                    "poster": poster_name,
+                    "updated": time.time(), "provider": "TMDB",
+                }
+                updated += 1
+        states.update({"channels": channels_state, "programmes": programmes_state,
+                       "updated": time.time()})
+        self.write_channel_media_states(states)
+        return {"ok": True, "updated": updated, "skipped": skipped}
+
+    def channel_artwork(self, name: str) -> Path:
+        if not re.fullmatch(r"mabel-(?:show|film)-[0-9]+-[0-9]+\.jpg", name):
+            raise ValueError("Artwork not found")
+        path = self.channel_artwork_root / name
+        if not path.is_file():
+            raise ValueError("Artwork not found")
+        return path
+
     def tmdb_search(self, payload: dict[str, Any]) -> dict[str, Any]:
         file_name = str(payload.get("file", ""))
         source = self.safe_adult_path(file_name)
@@ -1994,6 +2191,13 @@ class Library:
         rules = settings.get("library", {})
         disabled_channels = set(rules.get("disabled_channels", []))
         disabled_programmes = rules.get("disabled_programmes", {})
+        channel_media = self.channel_media_states()
+        channel_metadata = channel_media.get("channels", {})
+        programme_metadata = channel_media.get("programmes", {})
+        if not isinstance(channel_metadata, dict):
+            channel_metadata = {}
+        if not isinstance(programme_metadata, dict):
+            programme_metadata = {}
         response = []
         for channel in self.channels():
             folder = self.media_root / str(channel["folder"])
@@ -2006,13 +2210,17 @@ class Library:
                         "display_name": self.display_name(item.name),
                         "enabled": item.name not in disabled,
                         "browser_ready": self.remote_browser_ready(item),
+                        "metadata": programme_metadata.get(
+                            self.channel_programme_key(channel["number"], item.name), {}),
                     })
             response.append({"number": channel["number"], "name": channel["name"],
                              "aspect": channel.get("aspect", "crop"),
                              "content_type": self.channel_content_type(channel),
                              "enabled": channel["number"] not in disabled_channels,
                              "programmes": programmes,
-                             "enabled_programmes": sum(p["enabled"] for p in programmes)})
+                             "enabled_programmes": sum(p["enabled"] for p in programmes),
+                             "metadata": channel_metadata.get(
+                                 str(channel["number"]), {})})
         disk = shutil.disk_usage(self.media_root)
         owner = self.owner()
         return {
@@ -2020,6 +2228,8 @@ class Library:
             "appearance": {
                 "parent_overlay_style": self.parent_overlay_style(settings),
                 "tv_guide_enabled": self.tv_guide_enabled(settings),
+                "portal_theme": settings.get("portal_theme")
+                if settings.get("portal_theme") in {"dark", "light"} else "dark",
             },
             "tv_settings": self.tv_settings(settings),
             "remote_viewing": self.remote_settings(),
@@ -2895,7 +3105,7 @@ class Library:
             return self.refresh_tv()
         with self.config_lock:
             self._manage(payload)
-        if payload.get("action") == "optimise-adult":
+        if payload.get("action") in {"optimise-adult", "set-portal-theme"}:
             return True
         return self.refresh_tv()
 
@@ -2907,6 +3117,14 @@ class Library:
                 raise ValueError("Choose the classic or modern parent-control design")
             settings = self.settings()
             settings["parent_overlay_style"] = style
+            self.write_json(self.settings_path, settings)
+            return
+        if action == "set-portal-theme":
+            theme = str(payload.get("theme", ""))
+            if theme not in {"dark", "light"}:
+                raise ValueError("Choose the light or dark portal theme")
+            settings = self.settings()
+            settings["portal_theme"] = theme
             self.write_json(self.settings_path, settings)
             return
         if action == "set-tv-guide-enabled":
@@ -3435,6 +3653,10 @@ class Handler(BaseHTTPRequestHandler):
                 self.stream_file(self.server.library.adult_artwork(
                     parsed.path.rsplit("/", 1)[1]), "image/jpeg",
                     "public, max-age=31536000, immutable"); return
+            if parsed.path.startswith("/api/channel/artwork/"):
+                self.stream_file(self.server.library.channel_artwork(
+                    parsed.path.rsplit("/", 1)[1]), "image/jpeg",
+                    "public, max-age=31536000, immutable"); return
             if self.path == "/api/status": self.json(200, self.server.library.live_status()); return
             if self.path == "/api/support":
                 self.file(self.server.library.support_bundle(), "mabeltv-support.tar.gz"); return
@@ -3519,6 +3741,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.json(200, self.server.library.tmdb_search(payload)); return
             if self.path == "/api/tmdb/apply":
                 self.json(200, self.server.library.tmdb_apply(payload)); return
+            if self.path == "/api/tmdb/channels":
+                self.json(200, self.server.library.refresh_channel_metadata()); return
             if self.path == "/api/adult/uploads":
                 self.json(201, self.server.library.adult_upload_create(payload)); return
             if self.path == "/api/uploads": self.json(201, self.server.library.upload_create(payload)); return

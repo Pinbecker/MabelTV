@@ -11,6 +11,7 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link rel="icon" type="image/png" href="/icons/icon-192.png">
   <title>Your TV</title>
+  <script>try{document.documentElement.dataset.portalTheme=localStorage.getItem('mabeltv-portal-theme')||'dark'}catch(_){document.documentElement.dataset.portalTheme='dark'}</script>
   <script src="/hls.min.js"></script>
   <style>
     :root{color-scheme:light;--ink:#18201d;--muted:#69716d;--faint:#8e9692;--canvas:#f3f4f1;--surface:#fff;--soft:#f7f8f5;--rail:#151b19;--rail2:#222b28;--line:#dfe3de;--accent:#ed6a4d;--accent2:#ce4f34;--accent-soft:#fff0eb;--green:#27735d;--green-soft:#e6f3ee;--amber:#a96811;--amber-soft:#fff4da;--red:#b74339;--red-soft:#fff0ee;--r:14px;--rs:9px;--shadow:0 1px 2px #121c180d,0 10px 28px #121c180f;--font:"Segoe UI Variable","Segoe UI",-apple-system,BlinkMacSystemFont,Arial,sans-serif}
@@ -962,6 +963,131 @@
       body.portal-v2 .programme-action-grid{grid-template-columns:1fr}
       body.portal-v2 .programme-action-grid button:first-child{grid-column:auto}
     }
+
+    /* Adult library: a poster-led management surface, built as a compact
+       mobile library rather than a desktop form squeezed onto a phone. */
+    body.portal-v2 #view-adult .page{width:min(1280px,calc(100% - 48px))}
+    body.portal-v2 #view-adult .adult-hero{min-height:245px;align-items:center;margin-bottom:18px;border:1px solid #313b37;border-radius:27px;padding:clamp(27px,4vw,50px);background:radial-gradient(circle at 80% 0,#5b2f26 0,#19211e 38%,#0d1210 78%);box-shadow:0 28px 80px #0005}
+    body.portal-v2 #view-adult .adult-hero h1{max-width:700px;margin:0 0 12px;color:#f5f7f6;font-size:clamp(2.7rem,6vw,5rem);letter-spacing:-.065em}
+    body.portal-v2 #view-adult .adult-hero p:not(.eyebrow){max-width:650px;margin:0;color:#a9b4af;font-size:.96rem}
+    body.portal-v2 #view-adult .adult-hero-actions{display:flex;align-items:center;gap:10px}
+    body.portal-v2 #view-adult .adult-hero-stat{min-width:130px;border:1px solid #ffffff20;border-radius:17px;padding:16px 18px;background:#ffffff09;backdrop-filter:blur(12px)}
+    body.portal-v2 #view-adult .adult-add-film{min-height:66px;border:0;border-radius:17px;padding:12px 19px;background:#f3f5f4;color:#101513;box-shadow:0 14px 34px #0006}
+    body.portal-v2 #view-adult .adult-add-film svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2}
+    body.portal-v2 #view-adult .adult-library{min-height:500px;border-color:#2b3531;border-radius:24px;padding:24px;background:#111714;color:#edf2ef;box-shadow:0 24px 70px #0004}
+    body.portal-v2 #view-adult .adult-library-head,body.portal-v2 #view-adult .adult-library-context{display:flex;align-items:center;justify-content:space-between;gap:18px}
+    body.portal-v2 #view-adult .adult-library-head h2{margin:2px 0 0;color:#f4f7f5;font-size:1.55rem}
+    body.portal-v2 #view-adult .adult-count{border:1px solid #323d38;border-radius:999px;padding:6px 11px;background:#0c110f;color:#909b95;font-size:.72rem}
+    body.portal-v2 #view-adult .adult-discovery{display:grid;grid-template-columns:minmax(0,1fr) minmax(210px,280px);gap:8px;margin:20px 0 14px}
+    body.portal-v2 #view-adult .adult-search{position:relative;display:block}
+    body.portal-v2 #view-adult .adult-search>svg{position:absolute;z-index:1;top:15px;left:15px;width:19px;height:19px;fill:none;stroke:#77827d;stroke-width:1.8}
+    body.portal-v2 #view-adult .adult-search input{height:52px;border-color:#303a36;border-radius:15px;padding:10px 45px;background:#0b100e;color:#f4f7f5}
+    body.portal-v2 #view-adult .adult-search button{position:absolute;top:8px;right:8px;width:36px;height:36px;min-height:36px;border:0;border-radius:50%;padding:0;background:#202925;color:#aeb7b2}
+    body.portal-v2 #view-adult .adult-tool{min-height:52px;justify-content:space-between;border-color:#303a36;border-radius:15px;padding:8px 13px;background:#171e1b;color:#eef2f0;text-align:left}
+    body.portal-v2 #view-adult .adult-tool span{display:grid}.adult-tool small{color:#78837d;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase}.adult-tool strong{font-size:.79rem}.adult-tool>svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8}
+    body.portal-v2 #view-adult .adult-library-context{min-height:35px;margin-bottom:13px;padding:0 3px;color:#7d8983;font-size:.73rem}
+    body.portal-v2 #view-adult .adult-library-context p{margin:0}.adult-library-context .tmdb-state{overflow:hidden;max-width:52%;color:#77817c;text-overflow:ellipsis;white-space:nowrap}
+    body.portal-v2 #view-adult .adult-film-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:22px 12px}
+    body.portal-v2 #view-adult button.adult-film{display:block;min-width:0;min-height:0;border:0;border-radius:0;padding:0;background:transparent;color:#f2f5f3;text-align:left;box-shadow:none}
+    body.portal-v2 #view-adult button.adult-film:hover{background:transparent;transform:none}
+    body.portal-v2 #view-adult .adult-film-poster{width:100%;aspect-ratio:2/3;display:block;overflow:hidden;border:1px solid #ffffff12;border-radius:13px;background:linear-gradient(145deg,#2a342f,#171d1a);object-fit:cover;box-shadow:0 14px 35px #0006;transition:.2s}
+    body.portal-v2 #view-adult span.adult-film-poster:after{height:100%;display:grid;content:"MABELTV";place-items:center;color:#ffffff24;font-size:.72rem;font-weight:800;letter-spacing:.18em}
+    body.portal-v2 #view-adult .adult-film:hover .adult-film-poster{border-color:#ffffff38;transform:translateY(-4px);box-shadow:0 22px 42px #0009}
+    body.portal-v2 #view-adult .adult-film-copy{padding:9px 2px 0}
+    body.portal-v2 #view-adult .adult-film-copy strong{display:-webkit-box;overflow:hidden;color:#edf2ef;font-size:.82rem;line-height:1.25;white-space:normal;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+    body.portal-v2 #view-adult .adult-film-copy small{display:block;overflow:hidden;margin-top:4px;color:#717c76;font-size:.65rem;text-overflow:ellipsis;white-space:nowrap}
+    body.portal-v2 #view-adult .adult-film-more{position:absolute;right:8px;bottom:46px;width:31px;height:31px;display:grid;place-items:center;border-radius:50%;background:#0b100ed9;color:#fff;font-size:.7rem;letter-spacing:1px;backdrop-filter:blur(8px)}
+    body.portal-v2 #view-adult button.adult-film{position:relative}
+    .adult-folder-tabs{display:grid;gap:6px}.adult-folder-tab{width:100%;min-height:52px;justify-content:space-between;border:0;border-radius:12px;padding:9px 12px;background:transparent;color:#dbe1de}.adult-folder-tab:hover{background:#202824}.adult-folder-tab.active{background:#eef3f0;color:#101513}.adult-folder-tab strong{min-width:28px;border-radius:99px;padding:3px 7px;background:#ffffff0b;color:#7f8a84;font-size:.68rem}.adult-folder-tab.active strong{background:#dce5e0;color:#415049}.adult-folder-tools{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid #2b3531}.adult-folder-tools input{grid-column:1/-1}.adult-film-sheet-summary{display:grid;grid-template-columns:92px 1fr;gap:15px;align-items:start}.adult-film-sheet-poster{width:92px;aspect-ratio:2/3;overflow:hidden;border-radius:11px;background:#25302b}.adult-film-sheet-poster img{width:100%;height:100%;object-fit:cover}.adult-film-sheet-summary p{margin:3px 0;color:#929d97;font-size:.82rem}.adult-film-primary{width:100%;min-height:62px;justify-content:flex-start;margin:17px 0 13px;border:0;border-radius:14px;background:#eef3f0;color:#101513;text-align:left}.adult-film-primary svg{width:24px;height:24px;fill:currentColor}.adult-film-primary span{display:grid}.adult-film-primary small{color:#66716b;font-size:.65rem}.adult-film-move{margin:0 0 9px}.adult-film-action-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}.adult-film-action-grid .danger{grid-column:1/-1}
+
+    /* Library cards regain the generous scale of the original design without
+       returning to loud per-channel colour coding. */
+    body.portal-v2 #view-channels .library-channel-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+    body.portal-v2 #view-channels .library-utilities{grid-template-columns:repeat(3,minmax(0,1fr))}
+    body.portal-v2 #view-channels button.library-main-card{min-height:190px;display:flex;flex-direction:column;align-items:stretch;gap:0;border:1px solid #303a36;border-radius:21px;padding:20px;background:linear-gradient(145deg,#171e1b,#101513);color:#edf2ef}
+    body.portal-v2 #view-channels button.library-main-card:hover{border-color:#56645e;background:#1b2420;transform:translateY(-2px)}
+    .library-card-top,.library-card-footer{display:flex;align-items:center;justify-content:space-between;gap:12px}.library-channel-pill{border:1px solid #3a4640;border-radius:999px;padding:5px 9px;background:#0b100e;color:#aeb8b3;font-size:.62rem;font-weight:760;letter-spacing:.08em}.library-channel-state{color:#78d7ad;font-size:.66rem}.hidden-channel .library-channel-state{color:#78827d}.library-main-card .channel-card-copy h3{margin:22px 0 5px;color:#fff;font-size:1.45rem;letter-spacing:-.035em}.library-main-card .channel-card-detail{color:#88938d;font-size:.72rem}.library-card-preview{display:block;overflow:hidden;margin-top:13px;color:#bdc6c2;font-size:.75rem;text-overflow:ellipsis;white-space:nowrap}.library-card-preview em{color:#6f7974;font-style:normal}.library-card-footer{margin-top:auto;padding-top:17px;border-top:1px solid #2a332f;color:#7f8a84;font-size:.68rem}.library-card-footer span:last-child{display:flex;align-items:center;gap:5px;color:#cbd2ce}.library-card-footer svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8}.library-workspace-nav{min-height:auto!important;border:0!important;padding-top:0!important;padding-bottom:0!important}
+
+    /* MabelTV Watch: one piece of artwork identifies each show; films receive
+       compact poster-led cards instead of repeated CHANNEL labels. */
+    #remoteMabel{display:grid;gap:28px}.mabel-channel-section{min-width:0;margin:0}.mabel-show-identity{min-height:230px;display:flex;align-items:flex-end;margin-bottom:12px;overflow:hidden;border:1px solid #303a36;border-radius:23px;padding:28px;background:linear-gradient(135deg,#18211d,#0b100e);background-position:center;background-size:cover;box-shadow:0 20px 50px #0005}.mabel-show-identity>div{max-width:600px}.mabel-show-identity span,.mabel-film-head span{color:#79dbae;font-size:.65rem;font-weight:760;letter-spacing:.1em;text-transform:uppercase}.mabel-show-identity h2,.mabel-film-head h2{margin:5px 0;color:#f4f7f5;font-size:clamp(1.8rem,4vw,3rem);letter-spacing:-.045em}.mabel-show-identity p{display:-webkit-box;overflow:hidden;max-width:520px;margin:7px 0 0;color:#b1bbb6;font-size:.82rem;-webkit-box-orient:vertical;-webkit-line-clamp:2}.mabel-film-head{display:flex;align-items:flex-end;justify-content:space-between;padding:0 2px}.mabel-film-head strong{color:#75807a;font-size:.7rem}.watch-channel-rail{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(220px,285px);gap:9px;overflow-x:auto;padding:2px 2px 10px;scrollbar-width:none;scroll-snap-type:x mandatory}.watch-channel-rail::-webkit-scrollbar{display:none}.watch-programme{scroll-snap-align:start}.watch-mabel-episode{min-height:94px;justify-content:flex-start;border:1px solid #2b3531;border-radius:15px;padding:15px;background:#131a17;color:#edf2ef;text-align:left}.watch-mabel-episode:hover{border-color:#4b5952;background:#1a221f}.watch-mabel-copy{min-width:0;display:grid}.watch-mabel-copy strong{display:-webkit-box;overflow:hidden;font-size:.84rem;line-height:1.25;-webkit-box-orient:vertical;-webkit-line-clamp:2}.watch-mabel-copy small{margin-top:8px;color:#78837d;font-size:.65rem}.watch-mabel-film{min-height:120px;display:grid;grid-template-columns:76px minmax(0,1fr);align-items:stretch;gap:13px;overflow:hidden;border:1px solid #2c3632;border-radius:16px;padding:0 14px 0 0;background:#131a17;color:#edf2ef;text-align:left}.watch-mabel-film-art{width:76px;height:120px;display:block;background:linear-gradient(145deg,#29342f,#111714);object-fit:cover}.watch-mabel-film .watch-mabel-copy{align-content:center}
+
+    .portal-theme-picker{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:19px}.portal-theme-picker button{min-height:130px;display:grid;grid-template-columns:150px 1fr;justify-content:stretch;gap:15px;border:2px solid #34403a;border-radius:18px;padding:12px;background:#111714;color:#edf2ef;text-align:left}.portal-theme-picker button[aria-pressed="true"]{border-color:#f58d75;box-shadow:0 0 0 3px #f58d7524}.portal-theme-picker button>span:last-child{align-self:center;display:grid}.portal-theme-picker small{margin-top:5px;color:#84908a}.theme-preview{height:100px;display:grid;grid-template-columns:28% 1fr;grid-template-rows:repeat(3,1fr);gap:5px;overflow:hidden;border-radius:11px;padding:8px}.theme-preview i{display:block;border-radius:5px}.theme-preview i:first-child{grid-row:1/-1}.theme-preview-dark{background:#0d1210}.theme-preview-dark i{background:#28322e}.theme-preview-dark i:nth-child(2){background:#ef8169}.theme-preview-light{background:#f3f0e9}.theme-preview-light i{background:#fff;box-shadow:0 2px 8px #403b3020}.theme-preview-light i:first-child{background:#e3ded3}.theme-preview-light i:nth-child(2){background:#d66d55}
+
+    @media(max-width:720px){
+      body.portal-v2 #view-adult .page{width:100%;padding-right:0;padding-left:0}
+      body.portal-v2 #view-adult .adult-hero{display:block;min-height:260px;margin:0 10px 12px;border-radius:23px;padding:25px 20px}
+      body.portal-v2 #view-adult .adult-hero h1{font-size:3rem}
+      body.portal-v2 #view-adult .adult-hero-actions{align-items:stretch;margin-top:25px}
+      body.portal-v2 #view-adult .adult-hero-stat{min-width:0;flex:1;padding:11px 14px}
+      body.portal-v2 #view-adult .adult-hero-stat strong{font-size:1.65rem}
+      body.portal-v2 #view-adult .adult-add-film{min-height:58px;flex:1}
+      body.portal-v2 #view-adult .adult-library{border-right:0;border-left:0;border-radius:0;padding:20px 10px}
+      body.portal-v2 #view-adult .adult-library-head,body.portal-v2 #view-adult .adult-library-context{padding:0 3px}
+      body.portal-v2 #view-adult .adult-discovery{grid-template-columns:minmax(0,1fr) minmax(126px,.58fr);gap:7px}
+      body.portal-v2 #view-adult .adult-film-list{grid-template-columns:repeat(3,minmax(0,1fr));gap:20px 8px}
+      body.portal-v2 #view-adult .adult-film-poster{border-radius:9px}
+      body.portal-v2 #view-adult .adult-film-copy strong{font-size:.7rem}
+      body.portal-v2 #view-adult .adult-film-copy small{font-size:.57rem}
+      body.portal-v2 #view-adult .adult-film-more{right:5px;bottom:40px;width:27px;height:27px}
+      .adult-film-action-grid{grid-template-columns:1fr}
+      .adult-film-action-grid .danger{grid-column:auto}
+      body.portal-v2 #view-channels button.library-main-card{min-height:165px!important;display:flex!important;border-radius:18px!important;padding:17px!important}
+      body.portal-v2 #view-channels .library-utilities{grid-template-columns:1fr}
+      body.portal-v2 #view-channels .library-main-card .channel-card-copy h3{font-size:1.24rem}
+      .mabel-channel-section{padding:0 10px}.mabel-show-identity{min-height:195px;border-radius:19px;padding:20px}.mabel-show-identity h2{font-size:2rem}.mabel-show-identity p{font-size:.72rem}.watch-channel-rail{grid-auto-columns:72vw}.watch-mabel-film{grid-auto-columns:auto}.portal-theme-picker{grid-template-columns:1fr}.portal-theme-picker button{grid-template-columns:115px 1fr}.theme-preview{height:82px}
+    }
+
+    /* A complete light expression of the portal. The player itself remains
+       black, while navigation, cards, sheets and every working surface move
+       to warm daylight materials with preserved hierarchy and contrast. */
+    html[data-portal-theme="light"]{color-scheme:light;background:#f4f1eb}
+    html[data-portal-theme="light"] body.portal-v2{--portal-bg:#f4f1eb;--portal-surface:#fffdf9;--portal-soft:#eeeae2;--portal-line:#d8d2c7;--portal-ink:#1b211e;--portal-muted:#69726d;background:#f4f1eb;color:#1b211e}
+    html[data-portal-theme="light"] body.portal-v2 .app-main,html[data-portal-theme="light"] body.portal-v2 .view{background:#f4f1eb}
+    html[data-portal-theme="light"] body.portal-v2 .rail{background:#e7e2d9;color:#1b211e;box-shadow:inset -1px 0 #d4cec3}
+    html[data-portal-theme="light"] body.portal-v2 .rail .logo,html[data-portal-theme="light"] body.portal-v2 .rail-tv strong{color:#1b211e}
+    html[data-portal-theme="light"] body.portal-v2 .rail-tv,html[data-portal-theme="light"] body.portal-v2 nav button{color:#68716c}
+    html[data-portal-theme="light"] body.portal-v2 nav button:hover{background:#dcd6cb;color:#1b211e}
+    html[data-portal-theme="light"] body.portal-v2 nav button.active{background:#fffdf9;color:#1b211e;box-shadow:0 6px 18px #635a4820}
+    html[data-portal-theme="light"] body.portal-v2 .health-pill,html[data-portal-theme="light"] body.portal-v2 .rail #logout{border-color:#cfc8bc;color:#59635e}
+    html[data-portal-theme="light"] body.portal-v2 .surface,html[data-portal-theme="light"] body.portal-v2 .settings-section{border-color:#d8d2c7;background:#fffdf9;color:#1b211e;box-shadow:0 10px 35px #4e463617}
+    html[data-portal-theme="light"] body.portal-v2 h1,html[data-portal-theme="light"] body.portal-v2 h2,html[data-portal-theme="light"] body.portal-v2 h3{color:#1b211e}
+    html[data-portal-theme="light"] body.portal-v2 .muted,html[data-portal-theme="light"] body.portal-v2 .section-kicker{color:#717a75}
+    html[data-portal-theme="light"] body.portal-v2 input,html[data-portal-theme="light"] body.portal-v2 select{border-color:#d4cdc2;background:#fff;color:#1b211e}
+    html[data-portal-theme="light"] body.portal-v2 button.secondary,html[data-portal-theme="light"] body.portal-v2 .button.secondary{border-color:#d4cdc2;background:#fffdf9;color:#1b211e}
+    html[data-portal-theme="light"] body.portal-v2 .library-hero,html[data-portal-theme="light"] body.portal-v2 .home-greeting,html[data-portal-theme="light"] body.portal-v2 .watch-top{background:linear-gradient(145deg,#fffdf9,#ebe5dc);color:#1b211e}
+    html[data-portal-theme="light"] body.portal-v2 .library-hero p,html[data-portal-theme="light"] body.portal-v2 .home-greeting p,html[data-portal-theme="light"] body.portal-v2 .watch-heading>p:last-child{color:#69726d}
+    html[data-portal-theme="light"] body.portal-v2 #view-channels button.library-main-card{border-color:#d6cfc4;background:linear-gradient(145deg,#fff,#f7f3ed);color:#1b211e;box-shadow:0 10px 28px #51493614}
+    html[data-portal-theme="light"] body.portal-v2 #view-channels button.library-main-card:hover{border-color:#aaa297;background:#fff}
+    html[data-portal-theme="light"] body.portal-v2 .library-main-card .channel-card-copy h3,html[data-portal-theme="light"] body.portal-v2 .library-card-footer span:last-child{color:#1b211e}
+    html[data-portal-theme="light"] body.portal-v2 .library-channel-pill{border-color:#d7d0c5;background:#eee9e1;color:#59635e}
+    html[data-portal-theme="light"] body.portal-v2 .library-card-preview{color:#4f5954}
+    html[data-portal-theme="light"] body.portal-v2 .library-card-footer{border-color:#ded8ce;color:#707974}
+    html[data-portal-theme="light"] body.portal-v2 #view-adult .adult-library{border-color:#d7d1c7;background:#fffdf9;color:#1b211e;box-shadow:0 20px 55px #51493618}
+    html[data-portal-theme="light"] body.portal-v2 #view-adult .adult-library-head h2,html[data-portal-theme="light"] body.portal-v2 #view-adult .adult-film-copy strong{color:#1b211e}
+    html[data-portal-theme="light"] body.portal-v2 #view-adult .adult-search input{border-color:#d6d0c6;background:#f5f1ea;color:#1b211e}
+    html[data-portal-theme="light"] body.portal-v2 #view-adult .adult-tool{border-color:#d6d0c6;background:#f5f1ea;color:#1b211e}
+    html[data-portal-theme="light"] body.portal-v2 #view-adult .adult-count{border-color:#d6d0c6;background:#f3efe8;color:#69726d}
+    html[data-portal-theme="light"] body.portal-v2 #view-adult .adult-film-poster{border-color:#d8d2c8;box-shadow:0 10px 28px #51493625}
+    html[data-portal-theme="light"] body.portal-v2 #view-watch{background:#f4f1eb;color:#1b211e}
+    html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-discovery,html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-tool,html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-search{border-color:#d5cfc4;background:#fffdf9;color:#1b211e;box-shadow:0 10px 30px #51493618}
+    html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-search input{color:#1b211e}
+    html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-library-head h2,html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-section-head h2{color:#1b211e}
+    html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-card-copy strong{color:#1b211e}
+    html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-library-count{border-color:#d6d0c6;background:#fffdf9;color:#69726d}
+    html[data-portal-theme="light"] body.portal-v2 .mabel-show-identity{border-color:#d5cfc4}
+    html[data-portal-theme="light"] body.portal-v2 .watch-mabel-episode,html[data-portal-theme="light"] body.portal-v2 .watch-mabel-film{border-color:#d5cfc4;background:#fffdf9;color:#1b211e;box-shadow:0 8px 24px #51493614}
+    html[data-portal-theme="light"] body.portal-v2 .library-sheet-panel,html[data-portal-theme="light"] body.portal-v2 .watch-sheet-panel{border-color:#d4cdc2;background:#fffdf9;color:#1b211e}
+    html[data-portal-theme="light"] body.portal-v2 .library-sheet-head{border-color:#ded8ce;background:#f7f3ed}
+    html[data-portal-theme="light"] body.portal-v2 .library-sheet-head h2,html[data-portal-theme="light"] body.portal-v2 .watch-sheet-panel h2{color:#1b211e}
+    html[data-portal-theme="light"] body.portal-v2 .adult-folder-tab{color:#1b211e}
+    html[data-portal-theme="light"] body.portal-v2 .adult-folder-tab:hover{background:#eee9e1}
+    html[data-portal-theme="light"] body.portal-v2 .adult-folder-tab.active{background:#1b211e;color:#fff}
+    html[data-portal-theme="light"] body.portal-v2 .portal-theme-picker button{border-color:#d5cfc4;background:#f7f3ed;color:#1b211e}
+    html[data-portal-theme="light"] body.portal-v2 .mobile-head{background:#f4f1eb;color:#1b211e;border-color:#d8d2c7}
+    html[data-portal-theme="light"] body.portal-v2 .mobile-nav{background:#fffdf9;border-color:#d8d2c7;box-shadow:0 -10px 30px #51493616}
+    html[data-portal-theme="light"] body.portal-v2 .mobile-nav button{color:#65706a}
+    html[data-portal-theme="light"] body.portal-v2 .mobile-nav button.active{color:#d75e46}
   </style>
 </head>
 <body class="portal-v2">
@@ -1051,20 +1177,23 @@
           <header class="library-hero"><div class="library-hero-copy"><p class="eyebrow">MabelTV library</p><h1>Your channels.</h1><p>Everything Mabel can watch, organised by channel. Open one to add videos or make a quick change.</p></div><div class="library-hero-actions"><button id="showAddChannel" type="button" class="library-create"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>New channel</span></button></div></header>
           <div class="library-overview-bar"><div><p class="section-kicker">On the television</p><h2>Channels</h2></div><div class="library-overview-meta"><span><strong id="libraryChannelCount">0</strong> channels</span><span>·</span><span><strong id="libraryProgrammeCount">0</strong> programmes</span></div></div>
           <div id="channelCards" class="channel-grid library-channel-grid"></div>
-          <div class="library-utilities"><button id="openAddChannelUtility" type="button" class="library-utility"><span class="library-utility-icon"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><span><strong>Create another channel</strong><small>Choose its number, name and picture style</small></span></button><button id="openRecycleBin" type="button" class="library-utility"><span class="library-utility-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg></span><span><strong>Recycle bin</strong><small>Restore recently removed programmes</small></span><span id="recycleCount" class="count-badge">0</span></button></div>
+          <div class="library-utilities"><button id="openAddChannelUtility" type="button" class="library-utility"><span class="library-utility-icon"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><span><strong>Create another channel</strong><small>Choose its number, name and picture style</small></span></button><button id="refreshChannelArtwork" type="button" class="library-utility"><span class="library-utility-icon"><svg viewBox="0 0 24 24"><path d="M4 17V7h16v10zM7 14l3-3 2 2 2-2 3 3M8 9h.1"/></svg></span><span><strong>Refresh programme artwork</strong><small>Find show and film pictures for Watch</small></span></button><button id="openRecycleBin" type="button" class="library-utility"><span class="library-utility-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg></span><span><strong>Recycle bin</strong><small>Restore recently removed programmes</small></span><span id="recycleCount" class="count-badge">0</span></button></div>
         </div>
         <div id="channelWorkspace" class="channel-workspace hidden">
-          <div class="library-workspace-nav"><button id="backToChannels" type="button" class="workspace-back"><svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg><span>All channels</span></button><span id="workspaceTopStatus" class="workspace-nav-status">On TV</span></div>
+          <div class="library-workspace-nav"><button id="backToChannels" type="button" class="workspace-back"><svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg><span>All channels</span></button></div>
           <section class="surface channel-hero"><div class="channel-hero-main workspace-head"><div><div class="workspace-titleline"><span id="workspaceChannelBadge" class="workspace-channel-number">CH</span><div><p id="workspaceEyebrow" class="eyebrow">Channel</p><h1 id="workspaceChannelName">Channel</h1></div></div><p id="workspaceChannelStatus" class="muted"></p></div><div class="channel-workspace-actions"><button id="workspaceAddMedia" type="button" class="workspace-add"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Add videos</span></button><button id="workspaceToggleChannel" type="button" class="secondary"><svg viewBox="0 0 24 24"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z"/><circle cx="12" cy="12" r="2.5"/></svg><span class="workspace-action-label">Hide</span></button><button id="workspaceSettings" type="button" class="secondary" aria-label="Channel settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.5 1A7 7 0 0 0 14.3 5L14 2h-4l-.4 3A7 7 0 0 0 7.5 7L5 6 3 9.3l2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.5-1a7 7 0 0 0 2.1 1.9l.4 3h4l.4-3a7 7 0 0 0 2.1-1.9l2.5 1 2-3.4-2-1.5c0-.4.1-.8.1-1.2Z"/></svg><span class="workspace-action-label">Settings</span></button></div></div><div class="channel-facts"><div class="channel-fact"><strong id="workspaceProgrammeCount">0</strong><span>programmes</span></div><div class="channel-fact"><strong id="workspaceVisibleCount">0</strong><span>shown on TV</span></div><div class="channel-fact"><strong id="workspacePictureMode">—</strong><span>picture mode</span></div></div></section>
           <div class="workspace-layout"><section class="workspace-main surface"><div class="programme-library-head"><div><p class="section-kicker">Programme library</p><h2 id="channelSummary">Everything in this channel</h2></div><span id="channelResultCount" class="programme-library-count"></span></div><div class="library-toolbar"><label class="programme-search"><span>Find a programme</span><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><input id="programmeSearch" type="search" placeholder="Search titles…" autocomplete="off"></label><div class="programme-filter" aria-label="Programme visibility"><button type="button" class="programme-filter-option active" data-programme-visibility="all">All</button><button type="button" class="programme-filter-option" data-programme-visibility="enabled">On TV</button><button type="button" class="programme-filter-option" data-programme-visibility="disabled">Hidden</button></div><select id="programmeVisibility" class="hidden" aria-hidden="true" tabindex="-1"><option value="all">All programmes</option><option value="enabled">Shown on TV</option><option value="disabled">Hidden from TV</option></select></div><div id="channels"></div><div id="programmePager" class="pager hidden"></div></section></div>
         </div><footer><span data-tv-name>Your TV</span> · Library</footer>
       </div></section>
-      <section id="view-adult" class="view"><div class="page">
-        <header class="adult-hero surface"><div><p class="eyebrow">Parent library</p><h1>Adult mode</h1><p>Your own films, separate from Mabel’s channels. They arrive in their original quality so you can test them first.</p></div><div class="adult-hero-stat"><strong id="adultHeroCount">0</strong><span>films ready on TV</span></div></header>
-        <div class="adult-layout">
-          <section class="adult-upload surface"><p class="section-kicker">Add a film</p><h2>Upload original quality</h2><form id="adultUploadForm" class="upload-form"><label class="drop-field" for="adultFile"><input id="adultFile" type="file" accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg" multiple><span class="drop-copy"><span class="drop-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 14v5h14v-5"/></svg></span><strong>Choose films</strong><small>Films stay untouched. Test them on TV, then optimise only if one actually struggles.</small></span></label><label>Put new films in<select id="adultUploadFolder"><option value="">Unfiled</option></select></label><div id="adultSelectedFiles" class="callout" aria-live="polite">No films selected yet.</div><button id="adultUploadButton" type="submit" class="primary" disabled>Upload selected films</button></form><div id="adultUploadState" class="hidden callout" aria-live="polite"><p id="adultUploadText">Uploading…</p><progress id="adultProgress" max="1" value="0"></progress></div></section>
-          <section class="adult-library surface"><div class="section-heading"><div><p class="section-kicker">On the television</p><h2>Adult library</h2></div><span id="adultFilmCount" class="count-badge">0</span></div><div class="adult-folder-manager"><div id="adultFolderTabs" class="adult-folder-tabs"></div><div class="adult-folder-tools"><input id="adultFolderName" maxlength="80" placeholder="New collection name"><button id="adultCreateFolder" type="button" class="primary">Create folder</button><button id="adultRenameFolder" type="button" class="secondary" disabled>Rename selected</button><button id="adultDeleteFolder" type="button" class="danger" disabled>Delete selected</button></div></div><div id="tmdbState" class="tmdb-state callout">Checking metadata service…</div><p class="adult-library-note">Folders created here are the same collections shown on Adult TV. Move a film once and both screens update together.</p><div id="adultFilmList" class="adult-film-list"></div></section>
-        </div><section class="adult-guidance" aria-label="Adult library details"><div><strong>Private library</strong><span>These films never appear in children’s channels.</span></div><div><strong>Original first</strong><span>Every new film stays exactly as uploaded until you choose otherwise.</span></div><div><strong>Optimise only if needed</strong><span>If a film stutters, make a Pi-friendly 720p copy from its film card.</span></div></section><footer><span data-tv-name>Your TV</span> · Adult mode is protected by the on-TV parent menu</footer>
+      <section id="view-adult" class="view"><div class="page adult-page">
+        <header class="adult-hero surface"><div><p class="eyebrow">Private cinema</p><h1>Your film library.</h1><p>Organise what appears on Adult TV, refresh artwork and send any film straight to the television.</p></div><div class="adult-hero-actions"><div class="adult-hero-stat"><strong id="adultHeroCount">0</strong><span>films on this TV</span></div><button id="adultAddFilms" type="button" class="adult-add-film"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Add films</span></button></div></header>
+        <section class="adult-library surface">
+          <div class="adult-library-head"><div><p class="section-kicker">Adult TV</p><h2>Browse and organise</h2></div><span id="adultFilmCount" class="adult-count">0 films</span></div>
+          <div class="adult-discovery"><label class="adult-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><input id="adultSearch" type="search" autocomplete="off" placeholder="Search your films"><button id="adultSearchClear" type="button" class="hidden" aria-label="Clear search">×</button></label><button id="adultCollectionTrigger" type="button" class="adult-tool"><span><small>Collection</small><strong id="adultCollectionName">All films</strong></span><svg viewBox="0 0 24 24"><path d="m9 10 3 3 3-3"/></svg></button></div>
+          <div class="adult-library-context"><p id="adultLibrarySummary">Every film, in one place.</p><span id="tmdbState" class="tmdb-state">Checking metadata…</span></div>
+          <div id="adultFilmList" class="adult-film-list"></div>
+        </section>
+        <footer><span data-tv-name>Your TV</span> · Adult mode is protected by the on-TV parent menu</footer>
       </div></section>
       <section id="view-watch" class="view"><div class="page">
         <header class="watch-top"><div class="watch-heading"><p class="eyebrow watch-brand">Private cinema</p><h1>Watch anywhere.</h1><p>Pick up a film exactly where you left it, or take MabelTV with you.</p></div><div class="watch-controls"><div class="watch-tabs" role="tablist" aria-label="Choose a library"><button id="watchAdultTab" type="button" class="active" role="tab" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14v11H5zM8 7l2-3m3 3 2-3m3 3 2-3"/></svg><span>Adult</span></button><button id="watchMabelTab" type="button" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14v10H5zM9 4l3 4 3-4M9 12v3m6-3v3"/></svg><span>Mabel TV</span></button></div><span id="remotePolicy" class="watch-policy"><i></i><span>One player at a time</span></span></div></header>
@@ -1082,6 +1211,7 @@
       <section id="view-system" class="view"><div class="page">
         <header class="page-head"><div><p class="eyebrow">Settings</p><h1>TV and account</h1><p>Picture, playback, sound, parent controls, identity, and Pi controls live here.</p></div></header>
         <div class="settings-grid">
+          <section class="settings-section surface full portal-appearance"><p class="section-kicker">Portal appearance</p><h2>Choose your look</h2><p class="muted">Use the same carefully designed portal in a deep cinema theme or a calm, bright theme.</p><div class="portal-theme-picker"><button type="button" data-portal-theme-choice="dark"><span class="theme-preview theme-preview-dark"><i></i><i></i><i></i></span><span><strong>Dark cinema</strong><small>Rich charcoal surfaces and warm highlights</small></span></button><button type="button" data-portal-theme-choice="light"><span class="theme-preview theme-preview-light"><i></i><i></i><i></i></span><span><strong>Soft daylight</strong><small>Warm white, crisp type and gentle depth</small></span></button></div></section>
           <section class="settings-section surface full"><p class="section-kicker">On-TV picture, playback &amp; sound</p><h2>TV settings</h2><p class="muted">The same settings found in the parent menu on the television. Saving applies them to MabelTV straight away; the picture may refresh briefly.</p><form id="tvSettingsForm"><div class="tv-settings-grid"><label>How programmes play<select id="tvPlaybackMode"><option value="continuous">Continuous broadcast</option><option value="resume">Resume where you left off</option></select><small>Choose whether each channel carries on as a live schedule or remembers your place.</small></label><label>Episode reset<select id="tvEpisodeReset"><option value="0">Never</option><option value="5">After 5 minutes</option><option value="20">After 20 minutes</option><option value="60">After 1 hour</option><option value="180">After 3 hours</option></select><small>After this time away, an episode starts from the beginning.</small></label><label>Picture mode<select id="tvPictureMode"><option value="channel">Use each channel’s setting</option><option value="crop">Fill screen</option><option value="fit">Show whole picture</option><option value="stretch">Stretch to screen</option></select></label><label>TV cabinet<select id="tvBorder"><option value="slim-black">Slim black</option><option value="silver-90s">Silver 90s</option><option value="charcoal-90s">Charcoal 90s</option><option value="vintage-black">Vintage black</option></select></label><div class="range-setting"><label for="tvCrtGlass">CRT glass</label><input id="tvCrtGlass" type="range" min="0" max="100" step="5" value="35"><output id="tvCrtGlassValue" for="tvCrtGlass">35%</output></div><div class="range-setting"><label for="tvDistortion">90s distortion</label><input id="tvDistortion" type="range" min="0" max="100" step="5" value="20"><output id="tvDistortionValue" for="tvDistortion">20%</output></div><label>Display output<select id="tvDisplayResolution"><option value="720p">720p</option><option value="1080p">1080p</option><option value="native">Native display resolution</option></select><small>Changes after the player refreshes.</small></label><label>Volume limit<select id="tvVolumeLimit"><option value="true">On</option><option value="false">Off</option></select><small>Keep the remote volume within the maximum below.</small></label><div class="range-setting"><label for="tvMaximumVolume">Maximum volume</label><input id="tvMaximumVolume" type="range" min="5" max="100" step="5" value="60"><output id="tvMaximumVolumeValue" for="tvMaximumVolume">60%</output></div><label>Button sound effects<select id="tvSoundEffects"><option value="true">On</option><option value="false">Off</option></select><small>The navigation sounds heard on the television.</small></label><label>Playback scrubbing<select id="tvScrubbing"><option value="false">Off — Left / Right do nothing</option><option value="true">On — Left / Right seek</option></select><small>Up / Down always choose the previous or next programme.</small></label></div><div class="tv-settings-foot"><p>These controls match the parent settings menu on MabelTV.</p><button type="submit">Save TV settings</button></div></form></section>
           <section class="settings-section surface full"><p class="section-kicker">On-TV parent controls</p><h2>Choose the design shown on the television</h2><p class="muted">This changes the grown-up screen opened by holding Back / Previous. The current design remains available, and the television updates as soon as you choose.</p><div class="design-picker"><button type="button" class="design-option" data-parent-style="classic" aria-pressed="false"><span class="design-preview classic"><span>[ PARENT CONTROL ]<br>CHANNELS &amp; PROGRAMMES<br>CRT GLASS ........ 35%</span></span><span class="design-copy"><strong>Classic console</strong><small>The original green technical design</small></span></button><button type="button" class="design-option" data-parent-style="modern" aria-pressed="false"><span class="design-preview modern"><span class="mini-rail"></span><span class="mini-page"><span class="mini-line"></span><span class="mini-line"></span><span class="mini-line"></span></span></span><span class="design-copy"><strong>Modern family</strong><small>A warmer, clearer app-style design</small></span></button></div></section>
           <section class="settings-section surface full"><p class="section-kicker">Optional feature</p><h2>TV guide</h2><p class="muted">Turn episode filenames and video lengths into a familiar live schedule. It stays hidden during normal viewing until someone holds the remote’s OK / Select button.</p><div class="feature-control"><div><strong id="tvGuideState">TV guide is off</strong><p class="small muted">When it is on, programmes continue in filename order so the times shown in the guide match what plays.</p><div class="combo" aria-label="How to open the TV guide"><span>HOLD OK / SELECT · 3.5 SEC</span></div></div><button id="tvGuideToggle" type="button" class="feature-toggle" aria-pressed="false">Turn on</button></div></section>
@@ -1097,6 +1227,9 @@
   </section>
   <dialog id="watchCollectionSheet" class="watch-sheet"><div class="watch-sheet-panel"><span class="watch-sheet-handle" aria-hidden="true"></span><header><div><p class="watch-section-kicker">Browse by</p><h2>Collections</h2></div><button id="watchCollectionClose" type="button" class="watch-sheet-close" aria-label="Close collections">×</button></header><div id="watchCollectionOptions" class="watch-collection-options"></div></div></dialog>
   <dialog id="watchFilmSheet" class="watch-film-sheet"><article class="watch-film-panel"><button id="watchFilmClose" type="button" class="watch-film-close" aria-label="Close film details">×</button><div id="watchFilmBackdrop" class="watch-film-backdrop"><div id="watchFilmPoster" class="watch-film-poster"></div></div><div class="watch-film-body"><p id="watchFilmEyebrow" class="watch-film-eyebrow"></p><h2 id="watchFilmTitle"></h2><div id="watchFilmMeta" class="watch-film-meta"></div><div id="watchFilmProgress" class="watch-film-progress hidden"><div><span>Progress</span><strong id="watchFilmProgressLabel"></strong></div><span class="watch-film-progress-track"><i id="watchFilmProgressFill"></i></span></div><p id="watchFilmOverview" class="watch-film-overview"></p><p id="watchFilmAvailability" class="watch-film-availability hidden"></p><div class="watch-film-actions"><button id="watchFilmPlay" type="button" class="watch-film-play"><span class="watch-action-icon">▶</span><span><strong>Play film</strong><small>Open the native player</small></span></button><button id="watchFilmStartOver" type="button" class="watch-film-secondary hidden"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8V3m0 0h5M5 3l3.5 3.5A8 8 0 1 1 4 13"/></svg><span>Start over</span></button></div></div></article></dialog>
+  <dialog id="adultUploadSheet" class="library-sheet adult-sheet"><section class="library-sheet-panel"><span class="library-sheet-handle"></span><header class="library-sheet-head"><div><p class="section-kicker">Add to Adult TV</p><h2>Upload films</h2><p>Choose one or several films. Their original quality is preserved.</p></div><button id="adultUploadClose" type="button" class="library-sheet-close" aria-label="Close upload">×</button></header><div class="library-sheet-body"><form id="adultUploadForm" class="upload-form"><label class="drop-field" for="adultFile"><input id="adultFile" type="file" accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg" multiple><span class="drop-copy"><span class="drop-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 14v5h14v-5"/></svg></span><strong>Choose films</strong><small>Pick one or several files from this device</small></span></label><label>Put new films in<select id="adultUploadFolder"><option value="">Unfiled</option></select></label><div id="adultSelectedFiles" class="callout" aria-live="polite">No films selected yet.</div><button id="adultUploadButton" type="submit" class="primary" disabled>Upload selected films</button></form><div id="adultUploadState" class="hidden callout" aria-live="polite"><p id="adultUploadText">Uploading…</p><progress id="adultProgress" max="1" value="0"></progress></div></div></section></dialog>
+  <dialog id="adultCollectionSheet" class="library-sheet adult-sheet"><section class="library-sheet-panel"><span class="library-sheet-handle"></span><header class="library-sheet-head"><div><p class="section-kicker">Organise your library</p><h2>Collections</h2><p>A change here is reflected on Adult TV as well.</p></div><button id="adultCollectionClose" type="button" class="library-sheet-close" aria-label="Close collections">×</button></header><div class="library-sheet-body"><div id="adultFolderTabs" class="adult-folder-tabs"></div><div class="adult-folder-tools"><input id="adultFolderName" maxlength="80" placeholder="New collection name"><button id="adultCreateFolder" type="button" class="primary">Create collection</button><button id="adultRenameFolder" type="button" class="secondary" disabled>Rename selected</button><button id="adultDeleteFolder" type="button" class="danger" disabled>Delete selected</button></div></div></section></dialog>
+  <dialog id="adultFilmSheet" class="library-sheet adult-film-sheet"><section class="library-sheet-panel"><span class="library-sheet-handle"></span><header class="library-sheet-head"><div><p id="adultFilmSheetEyebrow" class="section-kicker">Film options</p><h2 id="adultFilmSheetTitle">Film</h2><p id="adultFilmSheetMeta"></p></div><button id="adultFilmClose" type="button" class="library-sheet-close" aria-label="Close film options">×</button></header><div class="library-sheet-body"><div class="adult-film-sheet-summary"><span id="adultFilmSheetPoster" class="adult-film-sheet-poster"></span><p id="adultFilmSheetOverview">Choose what to do with this film.</p></div><button id="adultFilmPlay" type="button" class="adult-film-primary"><svg viewBox="0 0 24 24"><path d="m8 5 11 7-11 7Z"/></svg><span><strong>Play on TV</strong><small>Start this film immediately</small></span></button><label class="adult-film-move">Move to collection<select id="adultFilmFolder"></select></label><div class="adult-film-action-grid"><button id="adultFilmMove" type="button" class="secondary">Move film</button><button id="adultFilmScan" type="button" class="secondary">Scan metadata</button><button id="adultFilmRename" type="button" class="secondary">Rename</button><button id="adultFilmOptimise" type="button" class="secondary">Optimise for Pi</button><button id="adultFilmRemove" type="button" class="danger">Move to bin</button></div></div></section></dialog>
   <section id="iosWatchPlayer" class="ios-watch-player hidden" aria-label="Remote video player"><header class="ios-watch-head"><button id="iosWatchBack" type="button" class="ios-watch-back" aria-label="Back to library">←</button><div><strong id="iosWatchTitle">MabelTV</strong><small>MabelTV remote viewing</small></div><button id="iosWatchStartOver" type="button" class="hidden">Start over</button></header><div class="ios-watch-stage"><video id="iosWatchVideo" controls playsinline webkit-playsinline preload="metadata"></video><p id="iosWatchError" class="ios-watch-error hidden"></p></div></section>
   <section id="mabelWatchPlayer" class="mabel-watch-player hidden" aria-label="Mabel TV remote player"><div id="mabelWatchShell" class="mabel-watch-shell slim-black"><div id="mabelWatchCabinet" class="mabel-watch-cabinet slim-black"><div id="mabelWatchScreen" class="mabel-watch-screen" tabindex="0"><video id="mabelWatchVideo" playsinline webkit-playsinline preload="metadata"></video><div id="mabelWatchControls" class="mabel-watch-hud"><div class="mabel-watch-topbar"><button id="mabelWatchBack" type="button" class="mabel-watch-icon-button" aria-label="Back to Mabel TV programmes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7M8 12h11"/></svg></button><div class="mabel-watch-title"><strong id="mabelWatchTitle">MabelTV</strong><small id="mabelWatchChannel">Remote Mabel TV</small></div><span class="mabel-watch-live-badge">MabelTV</span></div><div class="mabel-watch-bottom"><label class="mabel-watch-timeline"><span id="mabelWatchCurrent">0:00</span><input id="mabelWatchSeek" type="range" min="0" max="1000" value="0" aria-label="Playback position"><span id="mabelWatchDuration">0:00</span></label><div class="mabel-watch-controls"><button type="button" class="mabel-watch-skip" data-mabel-watch-action="back" aria-label="Back 15 seconds"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8V3m0 0h5M5 3l3.4 3.4A8 8 0 1 1 4 13"/></svg><span>15</span></button><button type="button" class="mabel-watch-play" data-mabel-watch-action="play" aria-label="Play or pause"><svg class="mabel-watch-play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 9 6-9 6Z"/></svg><svg class="mabel-watch-pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6v12M15 6v12"/></svg></button><button type="button" class="mabel-watch-skip" data-mabel-watch-action="forward" aria-label="Forward 15 seconds"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 8V3m0 0h-5m5 0-3.4 3.4A8 8 0 1 0 20 13"/></svg><span>15</span></button><span class="mabel-watch-control-spacer"></span><button type="button" class="mabel-watch-icon-button mabel-watch-mute" data-mabel-watch-action="mute" aria-label="Mute"><svg class="mabel-watch-sound-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 10v4h4l5 4V6l-5 4ZM18 9c1.3 1.8 1.3 4.2 0 6"/></svg><svg class="mabel-watch-muted-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 10v4h4l5 4V6l-5 4ZM17 10l4 4m0-4-4 4"/></svg></button></div></div></div></div><div class="mabel-watch-charcoal-fascia" aria-hidden="true"><span class="mabel-watch-charcoal-speaker left"></span><span class="mabel-watch-charcoal-speaker right"></span><span class="mabel-watch-charcoal-logo">MABEL</span><span class="mabel-watch-charcoal-control"></span></div><div class="mabel-watch-brand"><span>MabelTV</span><span>Remote broadcast</span></div></div><p id="mabelWatchError" class="mabel-watch-error hidden"></p></div></section>
   <dialog id="liveChannelSheet" class="remote-sheet"><section class="remote-sheet-panel"><span class="remote-sheet-handle" aria-hidden="true"></span><header><div><p class="section-kicker">Jump straight to</p><h2>Choose a channel</h2><p>Change channel without tapping through them one at a time.</p></div><button id="closeLiveChannels" type="button" class="remote-sheet-close" aria-label="Close channel picker">×</button></header><div id="liveChannelOptions" class="remote-channel-options"></div></section></dialog>
@@ -1119,6 +1252,8 @@
     let selectedProgrammeAction = null
     let adultOptimisationRefresh = null
     let adultFolderFilter = '*'
+    let adultSearchText = ''
+    let selectedAdultFilm = null
     const PROGRAMMES_PER_PAGE = 12
     let setupStep = 1
     let setupChannels = []
@@ -1638,6 +1773,7 @@
       renderTvGuideSetting()
       renderRemoteViewing()
       renderPortalPinSetting()
+      renderPortalTheme()
       refreshTmdbStatus().catch(() => {})
     }
 
@@ -1655,7 +1791,7 @@
       const films = library?.adult_library || []
       const folders = library?.adult_folders || []
       if (adultFolderFilter !== '*' && adultFolderFilter !== '' && !folders.includes(adultFolderFilter)) adultFolderFilter = '*'
-      $('#adultFilmCount').textContent = String(films.length)
+      const folderName = adultFolderFilter === '*' ? 'All films' : (adultFolderFilter || 'Unfiled')
       $('#adultHeroCount').textContent = String(films.length)
       const uploadFolder = $('#adultUploadFolder')
       const uploadChoice = uploadFolder.value
@@ -1673,9 +1809,9 @@
         const count = item.value === '*' ? films.length : films.filter(film => film.folder === item.value).length
         if (item.value === '' && count === 0) return
         const tab = document.createElement('button'); tab.type = 'button'
-        tab.className = `secondary adult-folder-tab${adultFolderFilter === item.value ? ' active' : ''}`
-        tab.textContent = `${item.name} · ${count}`
-        tab.onclick = () => { adultFolderFilter = item.value; renderAdultLibrary() }
+        tab.className = `adult-folder-tab${adultFolderFilter === item.value ? ' active' : ''}`
+        tab.innerHTML = `<span>${escapeHtml(item.name)}</span><strong>${count}</strong>`
+        tab.onclick = () => { adultFolderFilter = item.value; $('#adultCollectionSheet').close(); renderAdultLibrary() }
         tabs.append(tab)
       })
       const realFolderSelected = adultFolderFilter !== '*' && adultFolderFilter !== ''
@@ -1688,92 +1824,65 @@
         root.innerHTML = '<div class="empty"><strong>No films yet</strong>Upload one here and it will appear in Adult mode on the television.</div>'
         return
       }
-      const visibleFilms = adultFolderFilter === '*' ? films
-        : films.filter(film => film.folder === adultFolderFilter)
+      const query = adultSearchText.trim().toLocaleLowerCase()
+      const visibleFilms = (adultFolderFilter === '*' ? films
+        : films.filter(film => film.folder === adultFolderFilter))
+        .filter(film => !query || `${film.metadata?.title || ''} ${film.display_name} ${film.folder || ''}`.toLocaleLowerCase().includes(query))
+      $('#adultFilmCount').textContent = `${visibleFilms.length} film${visibleFilms.length === 1 ? '' : 's'}`
+      $('#adultCollectionName').textContent = folderName
+      $('#adultLibrarySummary').textContent = query ? `Results for “${adultSearchText.trim()}”` : folderName === 'All films' ? 'Every film, in one place.' : `${folderName} collection`
+      $('#adultSearchClear').classList.toggle('hidden', !adultSearchText)
       if (!visibleFilms.length) {
-        root.innerHTML = '<div class="empty"><strong>This folder is empty</strong>Move a film here or choose it when uploading.</div>'
+        root.innerHTML = `<div class="empty"><strong>${query ? 'No matching films' : 'This collection is empty'}</strong>${query ? 'Try a different title.' : 'Move a film here or choose this collection while uploading.'}</div>`
       }
       visibleFilms.forEach(film => {
-        const row = document.createElement('article')
-        row.className = 'adult-film metadata-film'
+        const row = document.createElement('button')
+        row.type = 'button'; row.className = 'adult-film'
         const metadata = film.metadata || {}
         const poster = document.createElement(metadata.poster ? 'img' : 'span')
-        poster.className = 'metadata-poster'
+        poster.className = 'adult-film-poster'
         if (metadata.poster) {
           poster.src = `/api/adult/artwork/${encodeURIComponent(metadata.poster)}`
-          poster.alt = ''
+          poster.alt = `Poster for ${metadata.title || film.display_name}`
         }
         const copy = document.createElement('div')
         copy.className = 'adult-film-copy'
         const title = document.createElement('strong')
         title.textContent = metadata.title || film.display_name
-        const folderLabel = document.createElement('span')
-        folderLabel.className = 'adult-folder-label'; folderLabel.textContent = film.folder || 'Unfiled'
-        const size = document.createElement('small')
+        const meta = document.createElement('small')
         const state = film.playback_state || 'original'
-        const stateLabel = state === 'optimised' ? 'Optimised for Pi · 720p H.264'
-          : state === 'processing' ? 'Optimising for Pi…'
-          : state === 'queued' ? 'Waiting to optimise…'
-          : state === 'error' ? (film.playback_message || 'Optimisation stopped — try again')
-          : 'Original quality · test on TV first'
-        size.textContent = `${metadata.year ? metadata.year + ' · ' : ''}${(Number(film.size || 0) / 1073741824).toFixed(2)} GB · ${stateLabel}`
-        copy.append(title, folderLabel, size)
-        if (metadata.overview) {
-          const overview = document.createElement('p')
-          overview.className = 'metadata-overview'
-          overview.textContent = metadata.overview
-          copy.append(overview)
-        }
-        const actions = document.createElement('div')
-        actions.className = 'adult-film-actions'
-        const rename = document.createElement('button')
-        rename.type = 'button'; rename.className = 'secondary'; rename.textContent = 'Rename'
-        rename.onclick = () => {
-          const name = prompt('Film name:', film.display_name)
-          if (name?.trim()) manage('rename-adult', { file: film.path, name: name.trim() })
-        }
-        const optimise = document.createElement('button')
-        optimise.type = 'button'; optimise.className = 'secondary'
-        optimise.textContent = state === 'optimised' ? 'Optimised'
-          : state === 'processing' || state === 'queued' ? 'Optimising…' : 'Optimise for Pi'
-        optimise.disabled = state === 'optimised' || state === 'processing' || state === 'queued'
-        optimise.onclick = () => {
-          if (confirm(`Optimise “${film.display_name}” for the Pi? After a successful check, the original will be replaced by a smaller 720p H.264 version.`))
-            manage('optimise-adult', { file: film.path })
-        }
-        const remove = document.createElement('button')
-        remove.type = 'button'; remove.className = 'danger'; remove.textContent = 'Remove'
-        remove.onclick = () => {
-          if (confirm(`Move “${film.display_name}” to the recycle bin?`))
-            manage('trash-adult', { file: film.path })
-        }
-        const scan = document.createElement('button')
-        scan.type = 'button'; scan.className = 'secondary'
-        scan.textContent = metadata.tmdb_id ? 'Refresh metadata' : 'Scan metadata'
-        scan.disabled = !tmdbConfigured
-        scan.onclick = () => scanTmdb(film)
-        const moveWrap = document.createElement('div'); moveWrap.className = 'adult-move'
-        const moveSelect = document.createElement('select')
-        const moveOptions = [{ value: '', name: 'Unfiled' }, ...folders.map(folder => ({ value: folder, name: folder }))]
-        moveOptions.forEach(item => {
-          const option = document.createElement('option'); option.value = item.value; option.textContent = item.name
-          moveSelect.append(option)
-        })
-        moveSelect.value = film.folder || ''
-        const move = document.createElement('button'); move.type = 'button'; move.className = 'secondary'; move.textContent = 'Move'
-        move.disabled = folders.length === 0
-        move.onclick = () => manage('move-adult', { file: film.path, folder: moveSelect.value })
-        moveWrap.append(moveSelect, move)
-        const play = document.createElement('button')
-        play.type = 'button'; play.className = 'primary'; play.textContent = 'Play on TV'
-        play.onclick = () => playOnTv({ kind: 'adult', file: film.path }, metadata.title || film.display_name)
-        actions.append(play, moveWrap, scan, rename, optimise, remove)
-        row.append(poster, copy, actions)
+        const stateLabel = state === 'optimised' ? 'Pi ready' : state === 'processing' ? 'Optimising…' : state === 'queued' ? 'Queued' : state === 'error' ? 'Needs attention' : 'Original'
+        meta.textContent = [metadata.year, film.folder || 'Unfiled', stateLabel].filter(Boolean).join(' · ')
+        const more = document.createElement('span'); more.className = 'adult-film-more'; more.textContent = '•••'
+        copy.append(title, meta)
+        row.append(poster, copy, more)
+        row.onclick = () => openAdultFilmSheet(film)
         root.append(row)
       })
       clearTimeout(adultOptimisationRefresh)
       if (films.some(film => ['queued', 'processing'].includes(film.playback_state)))
         adultOptimisationRefresh = setTimeout(() => load().catch(() => {}), 2500)
+    }
+
+    function openAdultFilmSheet(film) {
+      selectedAdultFilm = film
+      const metadata = film.metadata || {}; const folders = library?.adult_folders || []
+      const title = metadata.title || film.display_name
+      $('#adultFilmSheetTitle').textContent = title
+      $('#adultFilmSheetEyebrow').textContent = film.folder || 'Unfiled'
+      $('#adultFilmSheetMeta').textContent = [metadata.year, `${(Number(film.size || 0) / 1073741824).toFixed(2)} GB`, film.playback_state === 'optimised' ? 'Optimised for Pi' : 'Original quality'].filter(Boolean).join(' · ')
+      $('#adultFilmSheetOverview').textContent = metadata.overview || 'Artwork, organisation and playback controls for this film.'
+      const poster = $('#adultFilmSheetPoster'); poster.innerHTML = ''
+      if (metadata.poster) poster.innerHTML = `<img src="/api/adult/artwork/${encodeURIComponent(metadata.poster)}" alt="">`
+      const select = $('#adultFilmFolder'); select.innerHTML = '<option value="">Unfiled</option>'
+      folders.forEach(folder => { const option = document.createElement('option'); option.value = folder; option.textContent = folder; select.append(option) })
+      select.value = film.folder || ''
+      const busy = ['processing', 'queued'].includes(film.playback_state)
+      $('#adultFilmOptimise').disabled = busy || film.playback_state === 'optimised'
+      $('#adultFilmOptimise').textContent = film.playback_state === 'optimised' ? 'Already optimised' : busy ? 'Optimising…' : 'Optimise for Pi'
+      $('#adultFilmScan').disabled = !tmdbConfigured
+      $('#adultFilmScan').textContent = metadata.tmdb_id ? 'Refresh metadata' : 'Scan metadata'
+      $('#adultFilmSheet').showModal(); document.documentElement.style.overflow = 'hidden'
     }
 
     async function scanTmdb(film) {
@@ -1810,6 +1919,26 @@
     }
 
     $('#tmdbClose').onclick = () => $('#tmdbDialog').close()
+    $('#adultSearch').oninput = event => { adultSearchText = event.target.value; renderAdultLibrary() }
+    $('#adultSearchClear').onclick = () => { adultSearchText = ''; $('#adultSearch').value = ''; renderAdultLibrary(); $('#adultSearch').focus() }
+    $('#adultAddFilms').onclick = () => openLibrarySheet($('#adultUploadSheet'), $('#adultFile'))
+    $('#adultCollectionTrigger').onclick = () => openLibrarySheet($('#adultCollectionSheet'))
+    $('#adultUploadClose').onclick = () => closeLibrarySheet($('#adultUploadSheet'))
+    $('#adultCollectionClose').onclick = () => closeLibrarySheet($('#adultCollectionSheet'))
+    $('#adultFilmClose').onclick = () => closeLibrarySheet($('#adultFilmSheet'))
+    ;[$('#adultUploadSheet'), $('#adultCollectionSheet'), $('#adultFilmSheet')].forEach(dialog => {
+      dialog.onclick = event => { if (event.target === dialog) closeLibrarySheet(dialog) }
+      dialog.onclose = () => { document.documentElement.style.overflow = ''; if (dialog === $('#adultFilmSheet')) selectedAdultFilm = null }
+    })
+    $('#adultFilmPlay').onclick = () => {
+      const film = selectedAdultFilm; if (!film) return
+      playOnTv({ kind: 'adult', file: film.path }, film.metadata?.title || film.display_name)
+    }
+    $('#adultFilmMove').onclick = async () => { if (selectedAdultFilm) { const film = selectedAdultFilm; closeLibrarySheet($('#adultFilmSheet')); await manage('move-adult', { file: film.path, folder: $('#adultFilmFolder').value }) } }
+    $('#adultFilmScan').onclick = () => { const film = selectedAdultFilm; if (film) { closeLibrarySheet($('#adultFilmSheet')); scanTmdb(film) } }
+    $('#adultFilmRename').onclick = () => { const film = selectedAdultFilm; if (!film) return; const name = prompt('Film name:', film.display_name); if (name?.trim()) { closeLibrarySheet($('#adultFilmSheet')); manage('rename-adult', { file: film.path, name: name.trim() }) } }
+    $('#adultFilmOptimise').onclick = () => { const film = selectedAdultFilm; if (film && confirm(`Optimise “${film.display_name}” for the Pi? The original is replaced only after the new copy passes its checks.`)) { closeLibrarySheet($('#adultFilmSheet')); manage('optimise-adult', { file: film.path }) } }
+    $('#adultFilmRemove').onclick = () => { const film = selectedAdultFilm; if (film && confirm(`Move “${film.display_name}” to the recycle bin?`)) { closeLibrarySheet($('#adultFilmSheet')); manage('trash-adult', { file: film.path }) } }
 
     $('#adultCreateFolder').onclick = async () => {
       const name = $('#adultFolderName').value.trim()
@@ -1872,6 +2001,25 @@
         button.setAttribute('aria-pressed', String(button.dataset.parentStyle === current))
       })
     }
+
+    function applyPortalTheme(theme) {
+      const next = theme === 'light' ? 'light' : 'dark'
+      document.documentElement.dataset.portalTheme = next
+      try { localStorage.setItem('mabeltv-portal-theme', next) } catch (_) {}
+      document.querySelector('meta[name="theme-color"]').content = next === 'light' ? '#f4f1eb' : '#101513'
+    }
+
+    function renderPortalTheme() {
+      const theme = library?.appearance?.portal_theme || document.documentElement.dataset.portalTheme || 'dark'
+      applyPortalTheme(theme)
+      $$('[data-portal-theme-choice]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.portalThemeChoice === theme)))
+    }
+
+    $$('[data-portal-theme-choice]').forEach(button => button.onclick = () => {
+      const theme = button.dataset.portalThemeChoice
+      applyPortalTheme(theme)
+      manage('set-portal-theme', { theme })
+    })
 
     $$('[data-parent-style]').forEach(button => button.onclick = () => {
       const style = button.dataset.parentStyle
@@ -1999,12 +2147,11 @@
           <span class="channel-card-footer">Manage channel</span>
         </button>`
       }
-      const accents = ['#ff8065', '#79d9ad', '#8fb8ff', '#e5b66f', '#c69cff', '#69cfd0']
-      const accent = accents[Math.abs(Number(channel.number) || 0) % accents.length]
-      return `<button type="button" class="channel-card ${channel.enabled ? '' : 'hidden-channel'}" style="--channel-accent:${accent}" data-open-channel="${channel.number}" aria-label="Open channel ${channel.number}, ${escapeHtml(channel.name)}">
-        <span class="channel-card-number"><small>Channel</small><strong>${channel.number}</strong></span>
-        <span class="channel-card-copy"><h3>${escapeHtml(channel.name)}</h3><span class="channel-card-detail"><strong>${total}</strong> programme${total === 1 ? '' : 's'} · ${escapeHtml(channel.content_type === 'films' ? 'Films' : 'Shows')}</span><span class="channel-card-status">${channel.enabled ? `${shown} on TV` : 'Hidden from TV'}</span></span>
-        <span class="channel-card-chevron"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></span>
+      const first = channel.programmes[0]?.display_name
+      return `<button type="button" class="channel-card library-main-card ${channel.enabled ? '' : 'hidden-channel'}" data-open-channel="${channel.number}" aria-label="Open channel ${channel.number}, ${escapeHtml(channel.name)}">
+        <span class="library-card-top"><span class="library-channel-pill">CH ${channel.number}</span><span class="library-channel-state">${channel.enabled ? 'On TV' : 'Hidden'}</span></span>
+        <span class="channel-card-copy"><h3>${escapeHtml(channel.name)}</h3><span class="channel-card-detail">${total} programme${total === 1 ? '' : 's'} · ${escapeHtml(channel.content_type === 'films' ? 'Films' : 'Shows')}</span>${first ? `<span class="library-card-preview">${escapeHtml(first)}${total > 1 ? ` <em>+ ${total - 1} more</em>` : ''}</span>` : '<span class="library-card-preview muted">Ready for its first programme</span>'}</span>
+        <span class="library-card-footer"><span>${shown} shown on TV</span><span>Open channel <svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></span></span>
       </button>`
     }
 
@@ -2162,8 +2309,6 @@
       $('#workspaceChannelBadge').textContent = `CH ${channel.number}`
       $('#workspaceChannelName').textContent = channel.name
       $('#workspaceChannelStatus').textContent = channel.enabled ? 'Available on the television now' : 'Currently hidden from the television'
-      $('#workspaceTopStatus').textContent = channel.enabled ? 'On TV' : 'Hidden'
-      $('#workspaceTopStatus').classList.toggle('hidden-status', !channel.enabled)
       $('#workspaceProgrammeCount').textContent = channel.programmes.length
       $('#workspaceVisibleCount').textContent = channel.enabled ? channel.enabled_programmes : 0
       $('#workspacePictureMode').textContent = aspectLabel(channel.aspect)
@@ -2436,7 +2581,10 @@
     function watchFilmResumable(film) {
       const position = Number(film?.remote_position || 0)
       const duration = Number(film?.remote_duration || 0)
-      return position > 10 && (!duration || position < duration - 90)
+      if (position < 30) return false
+      if (!duration) return true
+      const completionWindow = Math.min(Math.max(180, duration * .05), duration * .2)
+      return position < duration - completionWindow
     }
 
     function watchTimeLabel(value) {
@@ -2669,11 +2817,34 @@
       ;(library?.channels || []).filter(channel => channel.enabled).forEach(channel => {
         const programmes = (channel.programmes || []).filter(programme => programme.enabled)
         if (!programmes.length) return
-        const section = document.createElement('section'); section.className = 'watch-section'
-        const head = document.createElement('div'); head.className = 'watch-section-head'; head.innerHTML = `<h2></h2><span></span>`; head.querySelector('h2').textContent = `CH ${channel.number} · ${channel.name}`; head.querySelector('span').textContent = `${programmes.length} programme${programmes.length === 1 ? '' : 's'}`
+        const isFilms = channel.content_type === 'films'
+        const section = document.createElement('section'); section.className = `watch-section mabel-channel-section ${isFilms ? 'mabel-film-channel' : 'mabel-show-channel'}`
+        const metadata = channel.metadata || {}
+        if (!isFilms) {
+          const identity = document.createElement('header'); identity.className = 'mabel-show-identity'
+          if (metadata.artwork) identity.style.backgroundImage = `linear-gradient(90deg,rgba(7,12,10,.92) 0%,rgba(7,12,10,.62) 52%,rgba(7,12,10,.2) 100%),url('/api/channel/artwork/${encodeURIComponent(metadata.artwork)}')`
+          identity.innerHTML = `<div><span>CH ${channel.number} · ${programmes.length} episodes</span><h2>${escapeHtml(metadata.title || channel.name)}</h2><p>${escapeHtml(metadata.overview || `Watch ${channel.name} wherever you are.`)}</p></div>`
+          section.append(identity)
+        } else {
+          const head = document.createElement('div'); head.className = 'watch-section-head mabel-film-head'; head.innerHTML = `<div><span>CH ${channel.number}</span><h2>${escapeHtml(channel.name)}</h2></div><strong>${programmes.length} film${programmes.length === 1 ? '' : 's'}</strong>`; section.append(head)
+        }
         const rail = document.createElement('div'); rail.className = 'watch-channel-rail'
-        programmes.forEach(programme => { const card = document.createElement('button'); card.type = 'button'; card.className = 'watch-programme'; const number = document.createElement('span'); number.className = 'watch-programme-number'; number.textContent = `CHANNEL ${channel.number}`; const title = document.createElement('strong'); title.textContent = programme.display_name; const play = document.createElement('small'); play.textContent = programme.browser_ready === false ? 'TV only · MP4 needed' : 'Play programme  ▶'; card.append(number, title, play); card.onclick = () => programme.browser_ready === false ? notice('This programme needs a browser-ready MP4 copy before it can be watched here.', true) : openRemotePlayer({ kind: 'channel', channel: channel.number, file: programme.name }); rail.append(card) })
-        section.append(head, rail); mabel.append(section)
+        programmes.forEach(programme => {
+          const card = document.createElement('button'); card.type = 'button'; card.className = `watch-programme ${isFilms ? 'watch-mabel-film' : 'watch-mabel-episode'}`
+          const programmeMetadata = programme.metadata || {}
+          if (isFilms) {
+            const art = document.createElement(programmeMetadata.poster ? 'img' : 'span'); art.className = 'watch-mabel-film-art'
+            if (programmeMetadata.poster) { art.src = `/api/channel/artwork/${encodeURIComponent(programmeMetadata.poster)}`; art.alt = '' }
+            card.append(art)
+          }
+          const copy = document.createElement('span'); copy.className = 'watch-mabel-copy'
+          const title = document.createElement('strong'); title.textContent = programmeMetadata.title || programme.display_name
+          const play = document.createElement('small'); play.textContent = programme.browser_ready === false ? 'TV only · MP4 needed' : `${programmeMetadata.year ? `${programmeMetadata.year} · ` : ''}Play now  ▶`
+          copy.append(title, play); card.append(copy)
+          card.onclick = () => programme.browser_ready === false ? notice('This programme needs a browser-ready MP4 copy before it can be watched here.', true) : openRemotePlayer({ kind: 'channel', channel: channel.number, file: programme.name })
+          rail.append(card)
+        })
+        section.append(rail); mabel.append(section)
       })
       if (!mabel.children.length) mabel.innerHTML = '<div class="watch-empty">No Mabel TV programmes are ready.</div>'
       renderAdultWatch()
@@ -2727,6 +2898,16 @@
     const showAddChannelSheet = () => openLibrarySheet($('#addChannelPanel'), $('#newChannelNumber'))
     $('#showAddChannel').onclick = showAddChannelSheet
     $('#openAddChannelUtility').onclick = showAddChannelSheet
+    $('#refreshChannelArtwork').onclick = async () => {
+      const button = $('#refreshChannelArtwork'); button.disabled = true
+      try {
+        notice('Finding artwork for MabelTV programmes…')
+        const result = await api('/api/tmdb/channels', { method: 'POST', body: '{}' })
+        await load()
+        notice(`Artwork refreshed for ${Number(result.updated || 0)} item${Number(result.updated || 0) === 1 ? '' : 's'}.`)
+      } catch (error) { notice(error.message, true) }
+      finally { button.disabled = false }
+    }
     $('#openRecycleBin').onclick = () => openLibrarySheet($('#recycleSheet'))
     $('#closeAddChannel').onclick = () => closeLibrarySheet($('#addChannelPanel'))
     $('#cancelAddChannel').onclick = () => closeLibrarySheet($('#addChannelPanel'))
@@ -3063,6 +3244,7 @@
         notice(`${files.length - failures.length} of ${files.length} films were added.\n${failures.map(failure => `${failure.file.name}: ${failure.message}`).join('\n')}`, true)
       } else {
         notice(`${files.length} film${files.length === 1 ? '' : 's'} added to Adult mode in original quality. Test them on TV first.`)
+        closeLibrarySheet($('#adultUploadSheet'))
       }
       $('#adultFile').disabled = false
       $('#adultUploadButton').disabled = selectedAdultFiles.length === 0
