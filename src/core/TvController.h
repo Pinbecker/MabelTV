@@ -295,6 +295,7 @@ private:
     QHash<int, QSet<QString>> m_disabledProgrammeNames;
     QHash<QString, double> m_adultPlaybackPositions;
     QHash<QString, double> m_adultPlaybackDurations;
+    QHash<QString, qint64> m_adultPlaybackUpdatedUtcMs;
     int m_currentChannelIndex = -1;
     int m_initialChannelNumber = -1;
     int m_previousChannelNumber = -1;

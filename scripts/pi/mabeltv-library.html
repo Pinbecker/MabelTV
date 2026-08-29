@@ -1657,6 +1657,10 @@
         border-radius:22px 22px 0 0;
       }
     }
+    /* One catalogue, with management kept close but out of the main navigation. */
+    .watch-library-admin{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:-6px 0 22px;border:1px solid #27312d;border-radius:15px;padding:12px 14px;background:#111714;color:#dfe5e2}.watch-library-admin>span{display:grid;gap:2px}.watch-library-admin strong{font-size:.77rem}.watch-library-admin small{color:#7f8a85;font-size:.68rem}.watch-library-admin>div{display:flex;gap:7px}.watch-library-admin button{min-height:38px;border:1px solid #303b36;border-radius:10px;padding:7px 12px;background:#1a211e;color:#dfe5e2;font-size:.72rem}.watch-library-admin button:hover{border-color:#53615b;background:#222a26}.watch-film-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.watch-film-actions .watch-film-secondary{width:auto;min-height:44px}.watch-film-actions .watch-film-secondary span{display:inline}.watch-programme-sheet{width:min(560px,calc(100% - 32px));overflow:visible}.watch-programme-sheet>article{position:relative;border:1px solid #34403a;border-radius:22px;padding:30px;background:#111614;color:#f5f7f6;box-shadow:0 40px 130px #000e}.watch-programme-sheet h2{margin:4px 42px 7px 0;font-size:clamp(1.6rem,4vw,2.25rem);letter-spacing:-.04em}.watch-programme-sheet>article>p:not(.watch-film-eyebrow):not(.watch-programme-note){margin:0;color:#8f9994;font-size:.78rem}.watch-destination-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:24px}.watch-programme-note{margin:18px 0 0!important;border-top:1px solid #29332f;padding-top:15px;color:#7f8984!important;font-size:.7rem!important;line-height:1.45}.watch-film-actions .watch-action-icon{font-size:.58rem;font-weight:800}.watch-film-actions .watch-film-play{min-width:0}.watch-film-actions .watch-film-play>span:last-child{min-width:0}.watch-film-actions .watch-film-play strong,.watch-film-actions .watch-film-play small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    html[data-portal-theme="light"] body.portal-v2 .watch-library-admin,html[data-portal-theme="light"] body.portal-v2 .watch-programme-sheet>article{border-color:#d6d0c6;background:#fffdf9;color:#1c2420;box-shadow:0 20px 55px #51493618}html[data-portal-theme="light"] body.portal-v2 .watch-library-admin button{border-color:#d4cdc2;background:#f1ede6;color:#27302c}html[data-portal-theme="light"] body.portal-v2 .watch-programme-note{border-color:#ddd6cc;color:#68726c!important}
+    @media(max-width:720px){body.portal-v2 nav{grid-template-columns:repeat(4,1fr)}.watch-library-admin{align-items:flex-start;margin:0 10px 18px;padding:11px 12px}.watch-library-admin>span small{display:none}.watch-library-admin>div{margin-left:auto}.watch-library-admin button{min-height:36px;padding:6px 9px;font-size:.65rem}.watch-film-actions{grid-template-columns:1fr 1fr}.watch-film-actions .watch-film-play{min-height:58px;padding:8px 10px}.watch-film-actions .watch-action-icon{display:none}.watch-film-actions .watch-film-play small{font-size:.56rem}.watch-film-actions .watch-film-secondary{grid-column:auto;width:auto;min-height:44px;padding:7px}.watch-film-actions .watch-film-secondary span{display:none}.watch-programme-sheet{width:100%;margin:auto 0 0}.watch-programme-sheet>article{border-right:0;border-bottom:0;border-left:0;border-radius:24px 24px 0 0;padding:28px 16px calc(18px + env(safe-area-inset-bottom))}.watch-destination-actions{grid-template-columns:1fr}.watch-destination-actions .watch-film-play{min-height:58px}}
   </style>
 </head>
 <body class="portal-v2">
@@ -1684,8 +1688,6 @@
       <nav id="mainNav" aria-label="TV sections">
         <button class="active" data-view-button="overview" aria-current="page"><svg class="icon" viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5V20H4Z"/><path d="M9 20v-6h6v6"/></svg>Home<span class="nav-dot"></span></button>
         <button data-view-button="live"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3Z"/></svg>Live TV<span class="nav-dot"></span></button>
-        <button data-view-button="channels"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="m9 9 6 3-6 3Z"/></svg>Library<span class="nav-dot"></span></button>
-        <button data-view-button="adult"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m10 9 5 3-5 3Z"/><path d="M7 4v4M17 4v4"/></svg>Adult<span class="nav-dot"></span></button>
         <button data-view-button="watch"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3Z"/><path d="M8 3v3M16 3v3"/></svg>Watch<span class="nav-dot"></span></button>
         <button data-view-button="system"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.5 1A7 7 0 0 0 14.3 5L14 2h-4l-.4 3A7 7 0 0 0 7.5 7L5 6 3 9.3l2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.5-1a7 7 0 0 0 2.1 1.9l.4 3h4l.4-3a7 7 0 0 0 2.1-1.9l2.5 1 2-3.4-2-1.5c0-.4.1-.8.1-1.2Z"/></svg>Settings<span class="nav-dot"></span></button>
       </nav>
@@ -1696,12 +1698,12 @@
       <p id="notice" class="notice" role="status" aria-live="polite"></p>
       <section id="view-overview" class="view active"><div class="page">
         <div class="home-intro">
-          <article class="home-greeting surface portal-intro"><div><p class="eyebrow">Parent controls</p><h1><span data-tv-name>Your TV</span> is ready when you are.</h1><div class="home-now-playing" aria-live="polite"><span class="home-now-playing-label">Now playing</span><strong id="homeNowPlayingTitle">Checking MabelTV…</strong><span id="homeNowPlayingMeta" class="home-now-playing-meta">Getting the current programme</span></div></div><div class="home-actions"><button class="primary" data-go="channels"><svg class="icon" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>Open library</button><button id="enterAdultMode" type="button" class="secondary">Enter Adult Mode</button><button id="homePowerToggle" type="button" class="secondary home-power-toggle">Checking power…</button></div></article>
+          <article class="home-greeting surface portal-intro"><div><p class="eyebrow">Parent controls</p><h1><span data-tv-name>Your TV</span> is ready when you are.</h1><div class="home-now-playing" aria-live="polite"><span class="home-now-playing-label">Now playing</span><strong id="homeNowPlayingTitle">Checking MabelTV…</strong><span id="homeNowPlayingMeta" class="home-now-playing-meta">Getting the current programme</span></div></div><div class="home-actions"><button class="primary" data-go="watch"><svg class="icon" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>Open library</button><button id="enterAdultMode" type="button" class="secondary">Enter Adult Mode</button><button id="homePowerToggle" type="button" class="secondary home-power-toggle">Checking power…</button></div></article>
           <article class="home-status surface"><div class="status-top"><span id="homeStatusIcon" class="status-icon"><svg class="icon" viewBox="0 0 24 24"><path d="m6 12 4 4 8-9"/></svg></span><div><p class="section-kicker">TV status</p><h2 id="healthTitle">Checking everything…</h2></div></div><p id="healthSummary" class="health-summary">Checking the player, temperature, power, and storage.</p><div class="quick-stats"><div class="quick-stat"><span>MabelTV</span><strong id="homePowerState">Checking…</strong></div><div class="quick-stat"><span>Temperature</span><strong id="temperature">—</strong></div><div class="quick-stat"><span>Storage available</span><strong id="storageFree">—</strong></div><div class="quick-stat"><span>Running for</span><strong id="uptime">—</strong></div></div><button id="refreshLibrary" class="secondary">Refresh TV library</button></article>
         </div>
         <article id="warningsCard" class="attention surface surface-pad hidden"><div class="attention-head"><span class="status-icon warn">!</span><div><p class="section-kicker">Needs attention</p><h2>There’s a small job to do</h2></div></div><div id="warnings"></div></article>
         <section class="library-bar surface" aria-label="Library summary"><div id="librarySummary"></div></section>
-        <section><div class="section-heading"><div><p class="eyebrow">On the television</p><h2>Your channels</h2><p class="muted">Open a channel to see its programmes and decide exactly what shows up on TV.</p></div><button type="button" class="secondary" data-go="channels">Open full library</button></div><div id="overviewChannels" class="channel-grid"></div></section>
+        <section><div class="section-heading"><div><p class="eyebrow">On the television</p><h2>Your channels</h2><p class="muted">Browse everything in one library, then choose whether to play it on TV or watch here.</p></div><button type="button" class="secondary" data-go="watch">Open full library</button></div><div id="overviewChannels" class="channel-grid"></div></section>
         <footer><span data-tv-name>Your TV</span> <span data-version></span> · Local to your home network</footer>
       </div></section>
       <section id="view-live" class="view"><div class="page">
@@ -1743,7 +1745,7 @@
       </div></section>
       <section id="view-channels" class="view"><div class="page">
         <div id="channelHub">
-          <header class="library-hero portal-intro"><div class="library-hero-copy"><p class="eyebrow">MabelTV library</p><h1>Your channels.</h1><p>Everything Mabel can watch, organised by channel. Open one to add videos or make a quick change.</p></div><div class="library-hero-actions"><button id="showAddChannel" type="button" class="library-create"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>New channel</span></button></div></header>
+          <header class="library-hero portal-intro"><div class="library-hero-copy"><p class="eyebrow">MabelTV library</p><h1>Your channels.</h1><p>Everything Mabel can watch, organised by channel. Open one to add videos or make a quick change.</p></div><div class="library-hero-actions"><button type="button" class="secondary" data-go="watch">Back to Watch</button><button id="showAddChannel" type="button" class="library-create"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>New channel</span></button></div></header>
           <div class="library-overview-bar"><div><p class="section-kicker">On the television</p><h2>Channels</h2></div><div class="library-overview-meta"><span><strong id="libraryChannelCount">0</strong> channels</span><span>·</span><span><strong id="libraryProgrammeCount">0</strong> programmes</span></div></div>
           <div id="channelCards" class="channel-grid library-channel-grid"></div>
           <div class="library-utilities"><button id="openAddChannelUtility" type="button" class="library-utility"><span class="library-utility-icon"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><span><strong>Create another channel</strong><small>Choose its number, name and picture style</small></span></button><button id="refreshChannelArtwork" type="button" class="library-utility"><span class="library-utility-icon"><svg viewBox="0 0 24 24"><path d="M4 17V7h16v10zM7 14l3-3 2 2 2-2 3 3M8 9h.1"/></svg></span><span><strong>Refresh programme artwork</strong><small>Find show and film pictures for Watch</small></span></button><button id="openRecycleBin" type="button" class="library-utility"><span class="library-utility-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg></span><span><strong>Recycle bin</strong><small>Restore recently removed programmes</small></span><span id="recycleCount" class="count-badge">0</span></button></div>
@@ -1755,7 +1757,7 @@
         </div><footer><span data-tv-name>Your TV</span> · Library</footer>
       </div></section>
       <section id="view-adult" class="view"><div class="page adult-page">
-        <header class="adult-hero surface portal-intro"><div><p class="eyebrow">Private cinema</p><h1>Your film library.</h1><p>Organise what appears on Adult TV, refresh artwork and send any film straight to the television.</p></div><div class="adult-hero-actions"><div class="adult-hero-stat"><strong id="adultHeroCount">0</strong><span>films on this TV</span></div><button id="adultAddFilms" type="button" class="adult-add-film"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Add films</span></button></div></header>
+        <header class="adult-hero surface portal-intro"><div><p class="eyebrow">Private cinema</p><h1>Your film library.</h1><p>Organise what appears on Adult TV, refresh artwork and send any film straight to the television.</p></div><div class="adult-hero-actions"><button type="button" class="secondary" data-go="watch">Back to Watch</button><div class="adult-hero-stat"><strong id="adultHeroCount">0</strong><span>films on this TV</span></div><button id="adultAddFilms" type="button" class="adult-add-film"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Add films</span></button></div></header>
         <section class="adult-library surface">
           <div class="adult-library-head"><div><p class="section-kicker">Adult TV</p><h2>Browse and organise</h2></div><span id="adultFilmCount" class="adult-count">0 films</span></div>
           <div class="adult-discovery"><label class="adult-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><input id="adultSearch" type="search" autocomplete="off" placeholder="Search your films"><button id="adultSearchClear" type="button" class="hidden" aria-label="Clear search">×</button></label><button id="adultCollectionTrigger" type="button" class="adult-tool"><span><small>Collection</small><strong id="adultCollectionName">All films</strong></span><svg viewBox="0 0 24 24"><path d="m9 10 3 3 3-3"/></svg></button></div>
@@ -1765,7 +1767,8 @@
         <footer><span data-tv-name>Your TV</span> · Adult mode is protected by the on-TV parent menu</footer>
       </div></section>
       <section id="view-watch" class="view"><div class="page">
-        <header class="watch-top portal-intro"><div class="watch-heading"><p class="eyebrow watch-brand">Private cinema</p><h1>Watch anywhere.</h1><p>Pick up a film exactly where you left it, or take MabelTV with you.</p></div><div class="watch-controls"><div class="watch-tabs" role="tablist" aria-label="Choose a library"><button id="watchAdultTab" type="button" class="active" role="tab" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14v11H5zM8 7l2-3m3 3 2-3m3 3 2-3"/></svg><span>Adult</span></button><button id="watchMabelTab" type="button" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14v10H5zM9 4l3 4 3-4M9 12v3m6-3v3"/></svg><span>Mabel TV</span></button></div><span id="remotePolicy" class="watch-policy"><i></i><span>One player at a time</span></span></div></header>
+        <header class="watch-top portal-intro"><div class="watch-heading"><p class="eyebrow watch-brand">Your complete library</p><h1>Watch anywhere.</h1><p>Choose something once, then play it on the television or watch it on this device.</p></div><div class="watch-controls"><div class="watch-tabs" role="tablist" aria-label="Choose a library"><button id="watchAdultTab" type="button" class="active" role="tab" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14v11H5zM8 7l2-3m3 3 2-3m3 3 2-3"/></svg><span>Adult</span></button><button id="watchMabelTab" type="button" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14v10H5zM9 4l3 4 3-4M9 12v3m6-3v3"/></svg><span>MabelTV</span></button></div><span id="remotePolicy" class="watch-policy"><i></i><span>Choose TV or this device</span></span></div></header>
+        <div class="watch-library-admin" aria-label="Library tools"><span><strong>Library tools</strong><small id="watchAdminHint">Add films or organise the Adult library</small></span><div><button id="watchAddAdult" type="button">Add films</button><button id="watchManageAdult" type="button">Organise films</button><button id="watchManageMabel" type="button" class="hidden">Manage channels</button></div></div>
         <div id="remoteMabel"></div>
         <div id="watchAdultLayout" class="watch-adult-layout hidden">
           <section class="watch-discovery" aria-label="Find a film">
@@ -1795,7 +1798,8 @@
     </main>
   </section>
   <dialog id="watchCollectionSheet" class="watch-sheet"><div class="watch-sheet-panel"><span class="watch-sheet-handle" aria-hidden="true"></span><header><div><p class="watch-section-kicker">Browse by</p><h2>Collections</h2></div><button id="watchCollectionClose" type="button" class="watch-sheet-close" aria-label="Close collections">×</button></header><div id="watchCollectionOptions" class="watch-collection-options"></div></div></dialog>
-  <dialog id="watchFilmSheet" class="watch-film-sheet"><article class="watch-film-panel"><button id="watchFilmClose" type="button" class="watch-film-close" aria-label="Close film details">×</button><div id="watchFilmBackdrop" class="watch-film-backdrop"><div id="watchFilmPoster" class="watch-film-poster"></div></div><div class="watch-film-body"><p id="watchFilmEyebrow" class="watch-film-eyebrow"></p><h2 id="watchFilmTitle"></h2><div id="watchFilmMeta" class="watch-film-meta"></div><div id="watchFilmProgress" class="watch-film-progress hidden"><div><span>Progress</span><strong id="watchFilmProgressLabel"></strong></div><span class="watch-film-progress-track"><i id="watchFilmProgressFill"></i></span></div><p id="watchFilmOverview" class="watch-film-overview"></p><p id="watchFilmAvailability" class="watch-film-availability hidden"></p><div class="watch-film-actions"><button id="watchFilmPlay" type="button" class="watch-film-play"><span class="watch-action-icon">▶</span><span><strong>Play film</strong><small>Open the native player</small></span></button><button id="watchFilmStartOver" type="button" class="watch-film-secondary hidden"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8V3m0 0h5M5 3l3.5 3.5A8 8 0 1 1 4 13"/></svg><span>Start over</span></button><button id="watchFilmRemoveProgress" type="button" class="watch-film-secondary watch-film-remove hidden" aria-label="Remove from Continue Watching"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16M9 7l-5 5 5 5"/></svg><span>Remove from Continue</span></button></div></div></article></dialog>
+  <dialog id="watchFilmSheet" class="watch-film-sheet"><article class="watch-film-panel"><button id="watchFilmClose" type="button" class="watch-film-close" aria-label="Close film details">×</button><div id="watchFilmBackdrop" class="watch-film-backdrop"><div id="watchFilmPoster" class="watch-film-poster"></div></div><div class="watch-film-body"><p id="watchFilmEyebrow" class="watch-film-eyebrow"></p><h2 id="watchFilmTitle"></h2><div id="watchFilmMeta" class="watch-film-meta"></div><div id="watchFilmProgress" class="watch-film-progress hidden"><div><span>Progress</span><strong id="watchFilmProgressLabel"></strong></div><span class="watch-film-progress-track"><i id="watchFilmProgressFill"></i></span></div><p id="watchFilmOverview" class="watch-film-overview"></p><p id="watchFilmAvailability" class="watch-film-availability hidden"></p><div class="watch-film-actions"><button id="watchFilmTv" type="button" class="watch-film-play"><span class="watch-action-icon">TV</span><span><strong>Play on TV</strong><small>Replaces what is playing there</small></span></button><button id="watchFilmHere" type="button" class="watch-film-play"><span class="watch-action-icon">▶</span><span><strong>Watch on this device</strong><small>Uses the shared film position</small></span></button><button id="watchFilmStartOver" type="button" class="watch-film-secondary hidden"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8V3m0 0h5M5 3l3.5 3.5A8 8 0 1 1 4 13"/></svg><span>Start from beginning here</span></button><button id="watchFilmRemoveProgress" type="button" class="watch-film-secondary watch-film-remove hidden" aria-label="Remove from Continue Watching"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16M9 7l-5 5 5 5"/></svg><span>Remove from Continue</span></button></div></div></article></dialog>
+  <dialog id="watchProgrammeSheet" class="watch-programme-sheet"><article><button id="watchProgrammeClose" type="button" class="watch-film-close" aria-label="Close programme details">×</button><p class="watch-film-eyebrow" id="watchProgrammeEyebrow">MabelTV</p><h2 id="watchProgrammeTitle">Programme</h2><p id="watchProgrammeMeta"></p><div class="watch-destination-actions"><button id="watchProgrammeTv" type="button" class="watch-film-play"><span class="watch-action-icon">TV</span><span><strong>Play on TV</strong><small>Replaces what is playing there</small></span></button><button id="watchProgrammeHere" type="button" class="watch-film-play"><span class="watch-action-icon">▶</span><span><strong>Watch on this device</strong><small>Starts an independent stream</small></span></button></div><p class="watch-programme-note">MabelTV programmes do not appear in Continue Watching. Their normal TV channel position is unchanged.</p></article></dialog>
   <dialog id="adultUploadSheet" class="library-sheet adult-sheet"><section class="library-sheet-panel"><span class="library-sheet-handle"></span><header class="library-sheet-head"><div><p class="section-kicker">Add to Adult TV</p><h2>Upload films</h2><p>Choose one or several films. Their original quality is preserved.</p></div><button id="adultUploadClose" type="button" class="library-sheet-close" aria-label="Close upload">×</button></header><div class="library-sheet-body"><form id="adultUploadForm" class="upload-form"><label class="drop-field" for="adultFile"><input id="adultFile" type="file" accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg" multiple><span class="drop-copy"><span class="drop-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 14v5h14v-5"/></svg></span><strong>Choose films</strong><small>Pick one or several files from this device</small></span></label><label>Put new films in<select id="adultUploadFolder"><option value="">Unfiled</option></select></label><div id="adultSelectedFiles" class="callout" aria-live="polite">No films selected yet.</div><button id="adultUploadButton" type="submit" class="primary" disabled>Upload selected films</button></form><div id="adultUploadState" class="hidden callout" aria-live="polite"><p id="adultUploadText">Uploading…</p><progress id="adultProgress" max="1" value="0"></progress></div></div></section></dialog>
   <dialog id="adultCollectionSheet" class="library-sheet adult-sheet"><section class="library-sheet-panel"><span class="library-sheet-handle"></span><header class="library-sheet-head"><div><p class="section-kicker">Organise your library</p><h2>Collections</h2><p>A change here is reflected on Adult TV as well.</p></div><button id="adultCollectionClose" type="button" class="library-sheet-close" aria-label="Close collections">×</button></header><div class="library-sheet-body"><div id="adultFolderTabs" class="adult-folder-tabs"></div><div class="adult-folder-tools"><input id="adultFolderName" maxlength="80" placeholder="New collection name"><button id="adultCreateFolder" type="button" class="primary">Create collection</button><button id="adultRenameFolder" type="button" class="secondary" disabled>Rename selected</button><button id="adultDeleteFolder" type="button" class="danger" disabled>Delete selected</button></div></div></section></dialog>
   <dialog id="adultFilmSheet" class="library-sheet adult-film-sheet"><section class="library-sheet-panel"><span class="library-sheet-handle"></span><header class="library-sheet-head"><div><p id="adultFilmSheetEyebrow" class="section-kicker">Film options</p><h2 id="adultFilmSheetTitle">Film</h2><p id="adultFilmSheetMeta"></p></div><button id="adultFilmClose" type="button" class="library-sheet-close" aria-label="Close film options">×</button></header><div class="library-sheet-body"><div class="adult-film-sheet-summary"><span id="adultFilmSheetPoster" class="adult-film-sheet-poster"></span><p id="adultFilmSheetOverview">Choose what to do with this film.</p></div><button id="adultFilmPlay" type="button" class="adult-film-primary"><svg viewBox="0 0 24 24"><path d="m8 5 11 7-11 7Z"/></svg><span><strong>Play on TV</strong><small>Start this film immediately</small></span></button><label class="adult-film-move">Move to collection<select id="adultFilmFolder"></select></label><div class="adult-film-action-grid"><button id="adultFilmMove" type="button" class="secondary">Move film</button><button id="adultFilmScan" type="button" class="secondary">Scan metadata</button><button id="adultFilmRename" type="button" class="secondary">Rename</button><button id="adultFilmOptimise" type="button" class="secondary">Optimise for Pi</button><button id="adultFilmRemove" type="button" class="danger">Move to bin</button></div></div></section></dialog>
@@ -1844,6 +1848,7 @@
     let watchSearchText = ''
     let watchReadyOnly = false
     let selectedWatchFilm = null
+    let selectedWatchProgramme = null
     let iosRemoteSession = null
     let iosRemotePositionTimer = null
     let iosRemoteHeartbeatTimer = null
@@ -3008,13 +3013,7 @@
       document.documentElement.style.overflow = 'hidden'
       try {
         let result
-        try { result = await api('/api/remote/start', { method: 'POST', body: JSON.stringify(payload) }) }
-        catch (startError) {
-          if (startError.code !== 'tv-active' || !confirm('Mabel TV is playing at home. Stop it and watch here instead?')) throw startError
-          await api('/api/remote/stop-tv', { method: 'POST', body: '{}' })
-          await new Promise(resolve => setTimeout(resolve, 900))
-          result = await api('/api/remote/start', { method: 'POST', body: JSON.stringify(payload) })
-        }
+        result = await startRemoteStream(payload)
         iosRemoteSession = new URL(result.stream_url, location.origin).searchParams.get('stream')
         $('#iosWatchTitle').textContent = result.title
         video.pause(); video.removeAttribute('src'); video.replaceChildren()
@@ -3106,13 +3105,7 @@
       showMabelWatchControls(true)
       try {
         let result
-        try { result = await api('/api/remote/start', { method: 'POST', body: JSON.stringify(payload) }) }
-        catch (startError) {
-          if (startError.code !== 'tv-active' || !confirm('Mabel TV is playing at home. Stop it and watch here instead?')) throw startError
-          await api('/api/remote/stop-tv', { method: 'POST', body: '{}' })
-          await new Promise(resolve => setTimeout(resolve, 900))
-          result = await api('/api/remote/start', { method: 'POST', body: JSON.stringify(payload) })
-        }
+        result = await startRemoteStream(payload)
         mabelRemoteSession = new URL(result.stream_url, location.origin).searchParams.get('stream')
         $('#mabelWatchTitle').textContent = result.title
         const channel = (library?.channels || []).find(value => Number(value.number) === Number(payload.channel))
@@ -3151,11 +3144,41 @@
         || (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1)
     }
 
-    function openRemotePlayer(payload, position = 0) {
-      if (payload.kind === 'channel') { startMabelWatchPlayer(payload); return }
-      const url = playerUrl(payload, position)
-      if (isAppleMobilePlayer()) startIosRemotePlayer(payload, position)
-      else window.open(url, '_blank', 'noopener')
+    async function allowIndependentViewing() {
+      const remote = library?.remote_viewing || {}
+      if (remote.allow_simultaneous === true || remote.tv_running !== true) return
+      await api('/api/manage', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'set-remote-simultaneous', enabled: true }),
+      })
+      remote.allow_simultaneous = true
+      renderRemoteViewing()
+    }
+
+    async function startRemoteStream(payload) {
+      await allowIndependentViewing()
+      return api('/api/remote/start', { method: 'POST', body: JSON.stringify(payload) })
+    }
+
+    async function openRemotePlayer(payload, position = 0) {
+      const desktopAdult = payload.kind === 'adult' && !isAppleMobilePlayer()
+      // Reserve the tab during the direct user gesture. Waiting for the
+      // portal-only concurrency setting first would let some browsers mistake
+      // the eventual player window for an unsolicited popup.
+      const playerWindow = desktopAdult ? window.open('about:blank', '_blank') : null
+      try {
+        await allowIndependentViewing()
+        if (payload.kind === 'channel') { await startMabelWatchPlayer(payload); return }
+        const url = playerUrl(payload, position)
+        if (isAppleMobilePlayer()) await startIosRemotePlayer(payload, position)
+        else if (playerWindow) {
+          playerWindow.opener = null
+          playerWindow.location.replace(url)
+        } else throw new Error('Allow pop-ups for MabelTV, then choose Watch on this device again.')
+      } catch (error) {
+        if (playerWindow) playerWindow.close()
+        showError(error)
+      }
     }
 
     $('#iosWatchBack').onclick = closeIosRemotePlayer
@@ -3294,7 +3317,7 @@
       play.textContent = '▶'
       copy.append(label, title, time, play)
       card.append(art, copy)
-      card.onclick = () => playWatchFilm(film, Number(film.remote_position || 0))
+      card.onclick = () => openWatchFilmSheet(film)
       const more = document.createElement('button')
       more.type = 'button'
       more.className = 'watch-continue-more'
@@ -3318,6 +3341,11 @@
     function playWatchFilm(film, position) {
       closeWatchFilmSheet()
       openRemotePlayer({ kind: 'adult', file: film.path }, position)
+    }
+
+    function playWatchFilmOnTv(film) {
+      closeWatchFilmSheet()
+      playOnTv({ kind: 'adult', file: film.path }, watchFilmTitle(film))
     }
 
     async function clearWatchFilmProgress(film, playAfter = false) {
@@ -3363,11 +3391,15 @@
       const availability = $('#watchFilmAvailability')
       availability.classList.toggle('hidden', streamable)
       availability.textContent = streamable ? '' : 'This copy plays on the television, but needs an MP4 or M4V version before a browser can stream it.'
-      const play = $('#watchFilmPlay')
-      play.disabled = !streamable
-      play.querySelector('strong').textContent = streamable ? resumable ? 'Resume film' : 'Play film' : 'TV only'
-      play.querySelector('small').textContent = streamable ? resumable ? `Continue from ${watchTimeLabel(film.remote_position)}` : 'Open the native player' : 'Browser-ready copy needed'
-      play.onclick = streamable ? () => playWatchFilm(film, resumable ? Number(film.remote_position || 0) : 0) : null
+      const tvPlay = $('#watchFilmTv')
+      tvPlay.querySelector('strong').textContent = resumable ? 'Resume on TV' : 'Play on TV'
+      tvPlay.querySelector('small').textContent = resumable ? `Continue from ${watchTimeLabel(film.remote_position)}` : 'Replaces what is playing there'
+      tvPlay.onclick = () => playWatchFilmOnTv(film)
+      const herePlay = $('#watchFilmHere')
+      herePlay.disabled = !streamable
+      herePlay.querySelector('strong').textContent = streamable ? resumable ? 'Resume on this device' : 'Watch on this device' : 'TV only'
+      herePlay.querySelector('small').textContent = streamable ? resumable ? `Continue from ${watchTimeLabel(film.remote_position)}` : 'Starts an independent stream' : 'Browser-ready copy needed'
+      herePlay.onclick = streamable ? () => playWatchFilm(film, resumable ? Number(film.remote_position || 0) : 0) : null
       const startOver = $('#watchFilmStartOver')
       startOver.classList.toggle('hidden', !streamable || !resumable)
       startOver.onclick = streamable && resumable ? () => clearWatchFilmProgress(film, true).catch(showError) : null
@@ -3453,15 +3485,50 @@
       adult.append(grid)
     }
 
+    function closeWatchProgrammeSheet() {
+      const dialog = $('#watchProgrammeSheet')
+      if (dialog.open) dialog.close()
+      selectedWatchProgramme = null
+      document.documentElement.style.overflow = ''
+    }
+
+    function openWatchProgrammeSheet(channel, programme) {
+      selectedWatchProgramme = { channel, programme }
+      const metadata = programme.metadata || {}
+      const title = metadata.title || programme.display_name
+      $('#watchProgrammeEyebrow').textContent = `CH ${channel.number} · ${channel.name}`
+      $('#watchProgrammeTitle').textContent = title
+      $('#watchProgrammeMeta').textContent = [metadata.year, channel.content_type === 'films' ? 'Film' : 'MabelTV programme'].filter(Boolean).join(' · ')
+      $('#watchProgrammeTv').onclick = () => {
+        closeWatchProgrammeSheet()
+        playOnTv({ kind: 'channel', channel: channel.number, file: programme.name }, title)
+      }
+      const here = $('#watchProgrammeHere')
+      here.disabled = programme.browser_ready === false
+      here.querySelector('strong').textContent = programme.browser_ready === false ? 'TV only' : 'Watch on this device'
+      here.querySelector('small').textContent = programme.browser_ready === false ? 'Browser-ready MP4 needed' : 'Starts an independent stream'
+      here.onclick = programme.browser_ready === false ? null : () => {
+        closeWatchProgrammeSheet()
+        openRemotePlayer({ kind: 'channel', channel: channel.number, file: programme.name })
+      }
+      const dialog = $('#watchProgrammeSheet')
+      if (!dialog.open) dialog.showModal()
+      document.documentElement.style.overflow = 'hidden'
+    }
+
     function renderRemoteViewing() {
       const remote = library?.remote_viewing || {}; const simultaneous = remote.allow_simultaneous === true
-      $('#remotePolicy span').textContent = simultaneous ? 'TV + remote allowed' : 'One player at a time'
+      $('#remotePolicy span').textContent = simultaneous ? 'TV + this device ready' : 'Choose TV or this device'
       $('#remoteConcurrentState').textContent = simultaneous ? 'TV and one remote stream can run together' : 'One player at a time'
       $('#remoteConcurrentToggle').textContent = simultaneous ? 'Use one player' : 'Allow both'
       $('#remoteConcurrentToggle').setAttribute('aria-pressed', String(simultaneous))
       $('#watchMabelTab').classList.toggle('active', remoteKind === 'channel'); $('#watchMabelTab').setAttribute('aria-selected', String(remoteKind === 'channel'))
       $('#watchAdultTab').classList.toggle('active', remoteKind === 'adult'); $('#watchAdultTab').setAttribute('aria-selected', String(remoteKind === 'adult'))
       $('#remoteMabel').classList.toggle('hidden', remoteKind !== 'channel'); $('#watchAdultLayout').classList.toggle('hidden', remoteKind !== 'adult')
+      $('#watchAddAdult').classList.toggle('hidden', remoteKind !== 'adult')
+      $('#watchManageAdult').classList.toggle('hidden', remoteKind !== 'adult')
+      $('#watchManageMabel').classList.toggle('hidden', remoteKind !== 'channel')
+      $('#watchAdminHint').textContent = remoteKind === 'adult' ? 'Add films or organise the Adult library' : 'Add programmes or organise MabelTV channels'
       const mabel = $('#remoteMabel'); mabel.innerHTML = ''
       ;(library?.channels || []).filter(channel => channel.enabled).forEach(channel => {
         const programmes = (channel.programmes || []).filter(programme => programme.enabled)
@@ -3488,9 +3555,9 @@
           }
           const copy = document.createElement('span'); copy.className = 'watch-mabel-copy'
           const title = document.createElement('strong'); title.textContent = programmeMetadata.title || programme.display_name
-          const play = document.createElement('small'); play.textContent = programme.browser_ready === false ? 'TV only · MP4 needed' : `${programmeMetadata.year ? `${programmeMetadata.year} · ` : ''}Play now  ▶`
+          const play = document.createElement('small'); play.textContent = programme.browser_ready === false ? 'TV only · choose where to play' : `${programmeMetadata.year ? `${programmeMetadata.year} · ` : ''}Choose where to watch  ›`
           copy.append(title, play); card.append(copy)
-          card.onclick = () => programme.browser_ready === false ? notice('This programme needs a browser-ready MP4 copy before it can be watched here.', true) : openRemotePlayer({ kind: 'channel', channel: channel.number, file: programme.name })
+          card.onclick = () => openWatchProgrammeSheet(channel, programme)
           rail.append(card)
         })
         section.append(rail); mabel.append(section)
@@ -3511,6 +3578,12 @@
     $('#watchFilmClose').onclick = closeWatchFilmSheet
     $('#watchFilmSheet').onclick = event => { if (event.target === $('#watchFilmSheet')) closeWatchFilmSheet() }
     $('#watchFilmSheet').onclose = () => { selectedWatchFilm = null; document.documentElement.style.overflow = '' }
+    $('#watchProgrammeClose').onclick = closeWatchProgrammeSheet
+    $('#watchProgrammeSheet').onclick = event => { if (event.target === $('#watchProgrammeSheet')) closeWatchProgrammeSheet() }
+    $('#watchProgrammeSheet').onclose = () => { selectedWatchProgramme = null; document.documentElement.style.overflow = '' }
+    $('#watchAddAdult').onclick = () => $('#adultAddFilms').click()
+    $('#watchManageAdult').onclick = () => { openView('adult'); refreshTmdbStatus().catch(() => {}) }
+    $('#watchManageMabel').onclick = () => { showChannelHub(); openView('channels') }
     $('#remoteConcurrentToggle').onclick = () => manage('set-remote-simultaneous', { enabled: library?.remote_viewing?.allow_simultaneous !== true })
 
     let managementBusy = false

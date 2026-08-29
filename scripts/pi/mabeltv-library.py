@@ -1248,18 +1248,26 @@ class Library:
                     "remote_position": self.remote_resume_position(state["library_id"], state),
                     "remote_duration": self.remote_resume_duration(
                         state["library_id"], state),
-                    "remote_last_watched": max(0, float(state.get("remote_last_watched", 0) or 0))
-                    if isinstance(state.get("remote_last_watched", 0), (int, float)) else 0,
+                    "remote_last_watched": self.remote_last_watched(
+                        state["library_id"], state),
                 })
         if changed:
             self.write_adult_media_states(states)
         return values
 
     def remote_resume_position(self, library_id: str, media_state: dict[str, Any]) -> float:
-        """Use the furthest safe saved position from TV or browser playback."""
-        candidates: list[float] = []
+        """Use the position from the most recently active film session.
+
+        An already-running TV and browser player never read this value again,
+        so neither session can make the other one jump.  This choice is only
+        applied the next time the film is opened.
+        """
+        candidates: list[tuple[float, float]] = []
         try:
-            candidates.append(float(media_state.get("remote_position", 0) or 0))
+            candidates.append((
+                float(media_state.get("remote_last_watched", 0) or 0),
+                float(media_state.get("remote_position", 0) or 0),
+            ))
         except (TypeError, ValueError):
             pass
         player_state = self.read_json(self.player_state_path, {})
@@ -1273,12 +1281,40 @@ class Library:
                     # on-TV bookmark.  Accept that TV bookmark again as soon
                     # as the television genuinely moves to a different point.
                     if ignored < 0 or abs(player_position - ignored) > 5:
-                        candidates.append(player_position)
+                        updates = player_state.get("adult_position_updated_utc_ms", {})
+                        updated = float(updates.get(library_id, 0) or 0) / 1000.0 \
+                            if isinstance(updates, dict) else 0.0
+                        candidates.append((updated, player_position))
                 except (TypeError, ValueError):
                     pass
-        position = max([value for value in candidates if value >= 0] or [0])
+        valid = [(updated, position) for updated, position in candidates if position >= 0]
+        timestamped = [item for item in valid if item[0] > 0]
+        # State written by an older player has no per-film timestamp. Preserve
+        # the established furthest-position fallback until that player next
+        # receives this additive state field.
+        position = max(timestamped, key=lambda item: item[0])[1] \
+            if timestamped and len(timestamped) == len(valid) \
+            else max([item[1] for item in valid] or [0])
         duration = self.remote_resume_duration(library_id, media_state)
         return self.normalise_resume_position(position, duration)
+
+    def remote_last_watched(self, library_id: str,
+                            media_state: dict[str, Any]) -> float:
+        """Return the newest activity timestamp across TV and browser players."""
+        try:
+            browser_updated = max(
+                0.0, float(media_state.get("remote_last_watched", 0) or 0))
+        except (TypeError, ValueError):
+            browser_updated = 0.0
+        player_state = self.read_json(self.player_state_path, {})
+        updates = player_state.get("adult_position_updated_utc_ms", {}) \
+            if isinstance(player_state, dict) else {}
+        try:
+            tv_updated = max(0.0, float(updates.get(library_id, 0) or 0) / 1000.0) \
+                if isinstance(updates, dict) else 0.0
+        except (TypeError, ValueError):
+            tv_updated = 0.0
+        return max(browser_updated, tv_updated)
 
     def remote_resume_duration(self, library_id: str,
                                media_state: dict[str, Any]) -> float:
@@ -3137,7 +3173,11 @@ class Library:
             return self.refresh_tv()
         with self.config_lock:
             self._manage(payload)
-        if payload.get("action") in {"optimise-adult", "set-portal-theme"}:
+        if payload.get("action") in {
+                "optimise-adult", "set-portal-theme", "set-remote-simultaneous"}:
+            # These settings belong to the portal/library service.  In
+            # particular, allowing a browser stream alongside the television
+            # must never refresh or otherwise disturb the TV player.
             return True
         return self.refresh_tv()
 

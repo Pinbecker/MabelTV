@@ -1165,6 +1165,7 @@ void TvController::setAdultPlaybackPosition(const QString &libraryId,
     const double position = std::max(0.0, positionSeconds);
     if (position < 2.0) {
         if (m_adultPlaybackPositions.remove(key) > 0) {
+            m_adultPlaybackUpdatedUtcMs.remove(key);
             saveState();
             emit adultPlaybackStateChanged();
         }
@@ -1174,6 +1175,7 @@ void TvController::setAdultPlaybackPosition(const QString &libraryId,
         return;
     }
     m_adultPlaybackPositions.insert(key, position);
+    m_adultPlaybackUpdatedUtcMs.insert(key, QDateTime::currentMSecsSinceEpoch());
     saveState();
     emit adultPlaybackStateChanged();
 }
@@ -1602,6 +1604,16 @@ void TvController::loadState()
             m_adultPlaybackPositions.insert(iterator.key(), position);
         }
     }
+    const QJsonObject adultPositionUpdates =
+        object.value(QStringLiteral("adult_position_updated_utc_ms")).toObject();
+    m_adultPlaybackUpdatedUtcMs.clear();
+    for (auto iterator = adultPositionUpdates.constBegin();
+         iterator != adultPositionUpdates.constEnd(); ++iterator) {
+        const qint64 updated = static_cast<qint64>(iterator.value().toDouble(0.0));
+        if (m_adultPlaybackPositions.contains(iterator.key()) && updated > 0) {
+            m_adultPlaybackUpdatedUtcMs.insert(iterator.key(), updated);
+        }
+    }
     const QJsonObject adultDurations = object.value(QStringLiteral("adult_durations")).toObject();
     m_adultPlaybackDurations.clear();
     for (auto iterator = adultDurations.constBegin(); iterator != adultDurations.constEnd();
@@ -1713,6 +1725,13 @@ void TvController::saveState() const
         adultPositions.insert(iterator.key(), iterator.value());
     }
     object.insert(QStringLiteral("adult_positions"), adultPositions);
+
+    QJsonObject adultPositionUpdates;
+    for (auto iterator = m_adultPlaybackUpdatedUtcMs.constBegin();
+         iterator != m_adultPlaybackUpdatedUtcMs.constEnd(); ++iterator) {
+        adultPositionUpdates.insert(iterator.key(), static_cast<double>(iterator.value()));
+    }
+    object.insert(QStringLiteral("adult_position_updated_utc_ms"), adultPositionUpdates);
 
     QJsonObject adultDurations;
     for (auto iterator = m_adultPlaybackDurations.constBegin();

@@ -112,6 +112,14 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("/api/remote/clear-position", index)
         self.assertIn('id="watchFilmRemoveProgress"', index)
         self.assertIn("watch-continue-more", index)
+        self.assertIn('id="watchFilmTv"', index)
+        self.assertIn('id="watchFilmHere"', index)
+        self.assertIn('id="watchProgrammeSheet"', index)
+        self.assertIn('id="watchManageAdult"', index)
+        self.assertIn('id="watchManageMabel"', index)
+        self.assertNotIn('data-view-button="channels"', index)
+        self.assertNotIn('data-view-button="adult"', index)
+        self.assertNotIn("api('/api/remote/stop-tv'", index)
 
     def test_remote_stream_requires_browser_format_and_resumes_adult_film(self) -> None:
         adult = self.fixture.media / ".adult"
@@ -146,6 +154,51 @@ class LibraryUnitTests(unittest.TestCase):
         self.fixture.library.manage({"action": "set-remote-simultaneous", "enabled": True})
         started = self.fixture.library.start_remote_stream({"kind": "adult", "file": "Film.mp4"})
         self.assertTrue(started["ok"])
+
+    def test_remote_concurrent_setting_does_not_refresh_the_tv_player(self) -> None:
+        self.fixture.library.refresh_tv = mock.Mock(return_value=True)
+
+        result = self.fixture.library.manage({
+            "action": "set-remote-simultaneous", "enabled": True,
+        })
+
+        self.assertTrue(result)
+        self.fixture.library.refresh_tv.assert_not_called()
+        self.assertTrue(self.fixture.library.remote_settings()["allow_simultaneous"])
+
+    def test_most_recent_adult_session_sets_next_shared_resume_position(self) -> None:
+        adult = self.fixture.media / ".adult"
+        adult.mkdir(parents=True, exist_ok=True)
+        (adult / "Film.mp4").write_bytes(b"film")
+        self.fixture.library.player_state_path = self.fixture.root / "player-state.json"
+        item = self.fixture.library.adult_library()[0]
+        states = self.fixture.library.adult_media_states()
+        states["Film.mp4"].update({
+            "remote_position": 900,
+            "remote_duration": 7200,
+            "remote_last_watched": 200,
+        })
+        self.fixture.library.write_adult_media_states(states)
+        self.fixture.library.player_state_path.write_text(json.dumps({
+            "standby": False,
+            "adult_positions": {item["library_id"]: 300},
+            "adult_durations": {item["library_id"]: 7200},
+            "adult_position_updated_utc_ms": {item["library_id"]: 300000},
+        }), encoding="utf-8")
+
+        latest_tv = self.fixture.library.adult_library()[0]
+        self.assertEqual(latest_tv["remote_position"], 300)
+        self.assertEqual(latest_tv["remote_last_watched"], 300)
+
+        states = self.fixture.library.adult_media_states()
+        states["Film.mp4"].update({
+            "remote_position": 1200,
+            "remote_last_watched": 400,
+        })
+        self.fixture.library.write_adult_media_states(states)
+        latest_browser = self.fixture.library.adult_library()[0]
+        self.assertEqual(latest_browser["remote_position"], 1200)
+        self.assertEqual(latest_browser["remote_last_watched"], 400)
 
     def test_remote_resume_ignores_first_seconds_and_end_credits(self) -> None:
         self.assertEqual(self.fixture.library.normalise_resume_position(29, 7200), 0)
