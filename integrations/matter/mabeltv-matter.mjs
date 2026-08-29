@@ -92,7 +92,21 @@ pollTimer.unref();
 
 await writePairingDetails(server);
 logger.info(`MabelTV Matter bridge ready; initial state is ${initialPower ? "ON" : "OFF"}`);
-await server.run();
+for (const signal of ["SIGINT", "SIGTERM"]) {
+  process.once(signal, () => {
+    clearInterval(pollTimer);
+    // matter.js performs the orderly fabric/storage shutdown. Its raw-HCI BLE
+    // dependency can retain a native handle afterwards, so guarantee systemd
+    // gets a clean exit instead of timing out an otherwise completed stop.
+    const exitTimer = setTimeout(() => process.exit(0), 5000);
+    exitTimer.unref();
+  });
+}
+try {
+  await server.run();
+} finally {
+  clearInterval(pollTimer);
+}
 
 function requiredInteger(name, minimum, maximum) {
   const raw = process.env[name];
