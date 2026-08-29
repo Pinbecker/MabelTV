@@ -24,8 +24,10 @@ const discriminator = requiredInteger("MABELTV_MATTER_DISCRIMINATOR", 0, 4095);
 const port = optionalInteger("MABELTV_MATTER_PORT", 5540, 1, 65535);
 
 Environment.default.vars.set("ble.enable", true);
-Environment.default.vars.set("log.level", process.env.MABELTV_MATTER_LOG_LEVEL || "info");
-Logger.level = process.env.MABELTV_MATTER_LOG_LEVEL || "info";
+// Matter's NOTICE-level commissioning banner includes the setup passcode. The
+// root-only pairing helper is the deliberate place to reveal that secret.
+Environment.default.vars.set("log.level", process.env.MABELTV_MATTER_LOG_LEVEL || "warn");
+Logger.level = process.env.MABELTV_MATTER_LOG_LEVEL || "warn";
 
 const initialPower = await getMabelTvPower();
 const server = await ServerNode.create({
