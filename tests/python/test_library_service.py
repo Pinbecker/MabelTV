@@ -128,6 +128,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertNotIn('data-view-button="channels"', index)
         self.assertNotIn('data-view-button="adult"', index)
         self.assertNotIn("api('/api/remote/stop-tv'", index)
+        self.assertNotIn("document.getElementById('logout').click()", index)
 
     def test_remote_stream_requires_browser_format_and_resumes_adult_film(self) -> None:
         adult = self.fixture.media / ".adult"
