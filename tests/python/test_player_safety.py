@@ -6,6 +6,19 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 class PlayerSafetyTests(unittest.TestCase):
+    def test_child_remote_lock_never_blocks_parent_portal_commands(self) -> None:
+        main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+        portal = (PROJECT_ROOT / "scripts" / "pi" / "mabeltv-library.html").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertNotIn("if (tvController.remoteLocked || poweringOff", main_qml)
+        self.assertIn("if (poweringOff || pendingPowerAction.length > 0)", main_qml)
+        self.assertNotIn("button.disabled = state.remote_locked === true", portal)
+        self.assertNotIn("(locked && !canUnlock)", portal)
+        self.assertIn("Kids’ remote locked", portal)
+        self.assertIn("Unlock kids’ physical remote", portal)
+
     def test_playback_telemetry_never_queries_libmpv_synchronously(self) -> None:
         source = (PROJECT_ROOT / "src" / "media" / "MpvVideo.cpp").read_text(
             encoding="utf-8"

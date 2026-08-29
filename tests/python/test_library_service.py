@@ -123,6 +123,8 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("channelWorkspaceReturnToWatch", index)
         self.assertIn('id="watchMabelUtilities"', index)
         self.assertIn("body.portal-v2 .watch-programme-sheet[open]", index)
+        self.assertIn("grid-template-columns:50px minmax(142px,176px) 50px", index)
+        self.assertIn("body.portal-v2 #view-live .remote-mode small{display:none}", index)
         self.assertNotIn('data-view-button="channels"', index)
         self.assertNotIn('data-view-button="adult"', index)
         self.assertNotIn("api('/api/remote/stop-tv'", index)

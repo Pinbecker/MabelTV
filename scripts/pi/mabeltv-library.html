@@ -1781,10 +1781,122 @@
         max-width:none;
         margin:0;
       }
-      body.portal-v2 #view-live :is(.live-layout,.live-tv,.live-side,.remote-console){
+      body.portal-v2 #view-live .live-layout{
         width:100%;
         min-width:0;
         max-width:100%;
+        padding:0 12px;
+      }
+      body.portal-v2 #view-live :is(.live-tv,.live-side,.remote-console){
+        width:100%;
+        min-width:0;
+        max-width:100%;
+      }
+      body.portal-v2 #view-live .live-tv{
+        margin:0 0 12px;
+        border:1px solid #2b3531;
+        border-radius:20px;
+        overflow:hidden;
+      }
+      body.portal-v2 #view-live .live-side>section.remote-console{
+        border:1px solid #2b3531;
+        border-radius:18px;
+        overflow:hidden;
+      }
+      body.portal-v2 #view-live .remote-panel-head{
+        padding:12px 12px;
+      }
+      body.portal-v2 #view-live .remote-mark{
+        width:38px;
+        height:38px;
+        border-radius:11px;
+      }
+      body.portal-v2 #view-live .remote-mark svg{width:22px;height:22px}
+      body.portal-v2 #view-live .remote-heading{gap:10px}
+      body.portal-v2 #view-live .remote-heading h2{font-size:1.14rem}
+      body.portal-v2 #view-live .remote-feedback{padding:6px 8px}
+      body.portal-v2 #view-live .remote-mode-row{
+        grid-template-columns:repeat(4,minmax(0,1fr));
+        gap:5px;
+        padding:8px;
+      }
+      body.portal-v2 #view-live button.remote-mode{
+        min-height:56px;
+        flex-direction:column;
+        justify-content:center;
+        gap:4px;
+        border-radius:11px;
+        padding:5px 3px;
+        text-align:center;
+      }
+      body.portal-v2 #view-live .remote-mode-icon{
+        width:27px;
+        height:27px;
+        border-radius:8px;
+      }
+      body.portal-v2 #view-live .remote-mode-icon svg{width:18px;height:18px}
+      body.portal-v2 #view-live .remote-mode strong{font-size:.62rem}
+      body.portal-v2 #view-live .remote-mode small{display:none}
+      body.portal-v2 #view-live .remote-everyday,
+      body.portal-v2 #view-live .remote-playback{padding:12px 8px 14px}
+      body.portal-v2 #view-live .remote-section-head{margin-bottom:9px;padding:0 2px}
+      body.portal-v2 #view-live .remote-section-head h3{font-size:.82rem}
+      body.portal-v2 #view-live button.remote-back{
+        min-height:34px;
+        padding:5px 9px;
+        font-size:.65rem;
+      }
+      body.portal-v2 #view-live .remote-primary-cluster{
+        grid-template-columns:50px minmax(142px,176px) 50px;
+        gap:6px;
+        min-height:202px;
+        border-radius:16px;
+        padding:7px 6px;
+      }
+      body.portal-v2 #view-live .remote-rocker{
+        height:158px;
+        border-radius:27px;
+      }
+      body.portal-v2 #view-live .remote-rocker>span,
+      body.portal-v2 #view-live button.remote-rocker-state{
+        min-height:44px;
+        padding:2px 1px;
+      }
+      body.portal-v2 #view-live .remote-pad{max-width:176px;padding:6px}
+      body.portal-v2 #view-live .remote-transport{
+        gap:4px;
+        min-height:116px;
+        border-radius:16px;
+        padding:9px 6px;
+      }
+      body.portal-v2 #view-live .remote-transport button{
+        min-height:56px;
+        gap:4px;
+        border-radius:12px;
+        padding:6px 2px;
+      }
+      body.portal-v2 #view-live .remote-transport button.remote-play{
+        min-height:70px;
+        border-radius:18px;
+      }
+      body.portal-v2 #view-live .remote-transport button span{font-size:.45rem}
+      body.portal-v2 #view-live .remote-transport svg{width:17px;height:17px}
+      body.portal-v2 #view-live .remote-play svg{width:22px;height:22px}
+      body.portal-v2 #view-live .remote-dock{
+        grid-template-columns:minmax(0,1fr) 58px 52px;
+        gap:5px;
+        padding:8px;
+      }
+      body.portal-v2 #view-live button.remote-dock-main{
+        min-height:50px;
+        border-radius:12px;
+        padding:6px 8px;
+      }
+      body.portal-v2 #view-live .remote-dock-icon{width:32px;height:32px}
+      body.portal-v2 #view-live button.remote-dock-action{
+        min-height:50px;
+        border-radius:12px;
+        padding:4px 2px;
       }
       body.portal-v2 .watch-programme-sheet[open]{
         align-items:flex-end;
@@ -1878,7 +1990,7 @@
               </div></section>
             </div>
 
-            <footer class="remote-dock"><button id="openLiveChannels" type="button" class="remote-dock-main"><span class="remote-dock-icon"><svg viewBox="0 0 24 24"><path d="M5 5h14M5 12h14M5 19h14"/><circle cx="8" cy="5" r="1"/><circle cx="14" cy="12" r="1"/><circle cx="10" cy="19" r="1"/></svg></span><span><small>Jump straight to</small><strong id="remoteChannelPickerLabel">Choose a channel</strong></span><svg class="remote-dock-chevron" viewBox="0 0 24 24"><path d="m9 7 5 5-5 5"/></svg></button><button id="remoteLock" type="button" class="remote-dock-action" data-live-command="toggle-remote-lock"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span>Lock remote</span></button><button id="openRemotePower" type="button" class="remote-dock-action remote-power"><svg viewBox="0 0 24 24"><path d="M12 3v9M6.6 6.6a7.5 7.5 0 1 0 10.8 0"/></svg><span>Power</span></button></footer>
+            <footer class="remote-dock"><button id="openLiveChannels" type="button" class="remote-dock-main"><span class="remote-dock-icon"><svg viewBox="0 0 24 24"><path d="M5 5h14M5 12h14M5 19h14"/><circle cx="8" cy="5" r="1"/><circle cx="14" cy="12" r="1"/><circle cx="10" cy="19" r="1"/></svg></span><span><small>Jump straight to</small><strong id="remoteChannelPickerLabel">Choose a channel</strong></span><svg class="remote-dock-chevron" viewBox="0 0 24 24"><path d="m9 7 5 5-5 5"/></svg></button><button id="remoteLock" type="button" class="remote-dock-action" data-live-command="toggle-remote-lock" aria-label="Lock kids’ physical remote"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span>Lock kids</span></button><button id="openRemotePower" type="button" class="remote-dock-action remote-power"><svg viewBox="0 0 24 24"><path d="M12 3v9M6.6 6.6a7.5 7.5 0 1 0 10.8 0"/></svg><span>Power</span></button></footer>
           </section></aside>
         </div>
         <footer><span data-tv-name>Your TV</span> · Live preview stays on your home network</footer>
@@ -2350,7 +2462,6 @@
         const current = !state.adult_mode && Number(button.dataset.liveChannel) === Number(state.channel_number)
         button.classList.toggle('active', current)
         button.setAttribute('aria-current', current ? 'true' : 'false')
-        button.disabled = state.remote_locked === true
       })
     }
 
@@ -2366,7 +2477,7 @@
         const feedback = $('#remoteFeedback').closest('.remote-feedback')
         feedback.classList.toggle('success', available)
         feedback.classList.remove('error')
-        $('#remoteFeedback').textContent = locked ? 'Remote locked' : (available ? 'Ready' : 'TV offline')
+        $('#remoteFeedback').textContent = locked ? 'Kids’ remote locked' : (available ? 'Ready' : 'TV offline')
       }
       $('#remoteMabelAction').classList.toggle('active', available && !adult)
       $('#remoteAdultAction').classList.toggle('active', available && adult)
@@ -2384,15 +2495,15 @@
       $('#remoteChannelPickerLabel').textContent = adult
         ? 'Adult TV is open' : (available ? `CH ${state.channel_number} · ${state.channel_name}` : 'Choose a channel')
       $('#remoteLock').classList.toggle('active', locked)
-      $('#remoteLock').querySelector('span').textContent = locked ? 'Unlock remote' : 'Lock remote'
+      $('#remoteLock').querySelector('span').textContent = locked ? 'Unlock kids' : 'Lock kids'
+      $('#remoteLock').setAttribute('aria-label', locked ? 'Unlock kids’ physical remote' : 'Lock kids’ physical remote')
       $$('[data-live-command]').forEach(button => {
-        const canUnlock = button.dataset.liveCommand === 'toggle-remote-lock'
         const adultSubtitles = button.dataset.liveCommand !== 'toggle-subtitles'
           || (adult && state.subtitles_available !== false)
-        button.disabled = (locked && !canUnlock) || !adultSubtitles
+        button.disabled = !adultSubtitles
       })
-      $('#openLiveChannels').disabled = locked
-      $('#openRemotePower').disabled = locked
+      $('#openLiveChannels').disabled = false
+      $('#openRemotePower').disabled = false
       updateLiveChannelSelection(state)
       const waking = state.standby === true
       $('#remotePowerTitle').textContent = waking ? 'Wake MabelTV?' : 'Put MabelTV in standby?'

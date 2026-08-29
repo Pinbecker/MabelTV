@@ -236,10 +236,10 @@ Window {
         player.play(source, start)
     }
 
-    // Commands from the parent web portal arrive through the local Unix
-    // socket owned by the player service. They intentionally reuse the same
-    // paths as the physical remote, so locks, standby and channel rules stay
-    // identical whichever remote is used.
+    // Commands from the authenticated parent portal arrive through the local
+    // Unix socket owned by the player service. The child-remote lock applies
+    // only to physical IR input: the portal must remain available so a parent
+    // can control the TV and unlock that remote again.
     function portalNavigate(key) {
         if (adultMode.active) {
             adultMode.handleKey(key, false)
@@ -263,8 +263,7 @@ Window {
     }
 
     function portalTuneChannel(channel) {
-        if (tvController.remoteLocked || poweringOff
-                || pendingPowerAction.length > 0)
+        if (poweringOff || pendingPowerAction.length > 0)
             return
         guideOverlay.close()
         tvController.closeParent()
@@ -282,8 +281,7 @@ Window {
             showRemoteLockState()
             return
         }
-        if (tvController.remoteLocked || poweringOff
-                || pendingPowerAction.length > 0)
+        if (poweringOff || pendingPowerAction.length > 0)
             return
         if (command === "return-to-mabeltv") {
             guideOverlay.close()
@@ -441,8 +439,7 @@ Window {
     }
 
     function portalExternalPlayback(source, title) {
-        if (tvController.remoteLocked || poweringOff
-                || pendingPowerAction.length > 0)
+        if (poweringOff || pendingPowerAction.length > 0)
             return
         guideOverlay.close()
         tvController.closeParent()
@@ -456,8 +453,7 @@ Window {
     }
 
     function portalPlayChannelProgramme(channel, file) {
-        if (tvController.remoteLocked || poweringOff
-                || pendingPowerAction.length > 0)
+        if (poweringOff || pendingPowerAction.length > 0)
             return
         guideOverlay.close()
         tvController.closeParent()
@@ -471,8 +467,7 @@ Window {
     }
 
     function portalPlayAdultFilm(file) {
-        if (tvController.remoteLocked || poweringOff
-                || pendingPowerAction.length > 0)
+        if (poweringOff || pendingPowerAction.length > 0)
             return
         guideOverlay.close()
         tvController.closeParent()
