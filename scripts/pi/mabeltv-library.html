@@ -416,6 +416,9 @@
     body.portal-v2 .home-greeting>*{position:relative;z-index:1}
     body.portal-v2 .home-greeting h1{max-width:720px;color:#fff;font-size:clamp(2.6rem,5.5vw,5rem)}
     body.portal-v2 .home-greeting p{color:#aab5af}
+    body.portal-v2 .home-actions{width:100%}
+    body.portal-v2 .home-actions>button:not(.home-power-toggle){flex:1 1 0}
+    body.portal-v2 .home-actions .home-power-toggle{flex:0 0 100%;width:100%}
     body.portal-v2 .home-actions .secondary{border-color:#ffffff2d;background:#ffffff0b;color:#fff;backdrop-filter:blur(12px)}
     body.portal-v2 .home-status{padding:26px;background:linear-gradient(160deg,#151c19,#0e1311)}
     body.portal-v2 .status-icon{background:#173126;color:#79ddb0;box-shadow:0 0 0 7px #75d9ad0a}
@@ -576,8 +579,8 @@
       body.portal-v2 .home-greeting{min-height:315px;margin-bottom:11px;border-radius:20px;padding:27px 22px}
       body.portal-v2 .home-greeting h1{font-size:2.7rem}
       body.portal-v2 .home-status{padding:21px;border-radius:17px}
-      body.portal-v2 .home-actions{width:100%}
       body.portal-v2 .home-actions button{min-width:0;flex:1;padding-right:9px;padding-left:9px}
+      body.portal-v2 .home-actions .home-power-toggle{flex:0 0 100%}
       body.portal-v2 .library-bar{grid-template-columns:repeat(3,1fr);margin-bottom:24px}
       body.portal-v2 .library-stat{padding:13px 10px}
       body.portal-v2 .library-stat strong{font-size:1.35rem}
@@ -1389,7 +1392,7 @@
       <p id="notice" class="notice" role="status" aria-live="polite"></p>
       <section id="view-overview" class="view active"><div class="page">
         <div class="home-intro">
-          <article class="home-greeting surface"><div><p class="eyebrow">Parent controls</p><h1><span data-tv-name>Your TV</span> is ready when you are.</h1><p>Add something new, or jump straight into a channel to tidy what appears on the television.</p></div><div class="home-actions"><button class="primary" data-go="channels"><svg class="icon" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>Open library</button><button id="enterAdultMode" type="button" class="secondary">Enter Adult Mode</button><button id="homeTurnOn" type="button" class="secondary">Turn On</button><button id="homeTurnOff" type="button" class="secondary">Turn Off</button></div></article>
+          <article class="home-greeting surface"><div><p class="eyebrow">Parent controls</p><h1><span data-tv-name>Your TV</span> is ready when you are.</h1><p>Add something new, or jump straight into a channel to tidy what appears on the television.</p></div><div class="home-actions"><button class="primary" data-go="channels"><svg class="icon" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>Open library</button><button id="enterAdultMode" type="button" class="secondary">Enter Adult Mode</button><button id="homePowerToggle" type="button" class="secondary home-power-toggle">Checking power…</button></div></article>
           <article class="home-status surface"><div class="status-top"><span id="homeStatusIcon" class="status-icon"><svg class="icon" viewBox="0 0 24 24"><path d="m6 12 4 4 8-9"/></svg></span><div><p class="section-kicker">TV status</p><h2 id="healthTitle">Checking everything…</h2></div></div><p id="healthSummary" class="health-summary">Checking the player, temperature, power, and storage.</p><div class="quick-stats"><div class="quick-stat"><span>MabelTV</span><strong id="homePowerState">Checking…</strong></div><div class="quick-stat"><span>Temperature</span><strong id="temperature">—</strong></div><div class="quick-stat"><span>Storage available</span><strong id="storageFree">—</strong></div><div class="quick-stat"><span>Running for</span><strong id="uptime">—</strong></div></div><button id="refreshLibrary" class="secondary">Refresh TV library</button></article>
         </div>
         <article id="warningsCard" class="attention surface surface-pad hidden"><div class="attention-head"><span class="status-icon warn">!</span><div><p class="section-kicker">Needs attention</p><h2>There’s a small job to do</h2></div></div><div id="warnings"></div></article>
@@ -1975,7 +1978,9 @@
     async function refreshHomePowerState() {
       const state = await api('/api/live')
       liveTvState = state || {}
-      $('#homePowerState').textContent = state.standby === true ? 'Standby' : 'On'
+      const standby = state.standby === true
+      $('#homePowerState').textContent = standby ? 'Standby' : 'On'
+      $('#homePowerToggle').textContent = standby ? 'Turn On' : 'Turn Off'
       return state
     }
 
@@ -3645,15 +3650,19 @@
       } catch (error) { notice(error.message, true) }
       finally { setTimeout(() => { button.disabled = false }, 450) }
     }
-    $('#homeTurnOn').onclick = async () => {
-      $('#homePowerState').textContent = 'Turning on…'
-      if (await sendLiveCommand('turn-on', $('#homeTurnOn')))
-        notice('MabelTV is turning on and selecting its HDMI input.')
-    }
-    $('#homeTurnOff').onclick = async () => {
-      $('#homePowerState').textContent = 'Turning off…'
-      if (await sendLiveCommand('turn-off', $('#homeTurnOff')))
-        notice('MabelTV is entering standby. The Raspberry Pi stays on.')
+    $('#homePowerToggle').onclick = async () => {
+      const button = $('#homePowerToggle')
+      const turningOn = liveTvState.standby === true
+      const command = turningOn ? 'turn-on' : 'turn-off'
+      button.textContent = turningOn ? 'Turning On…' : 'Turning Off…'
+      $('#homePowerState').textContent = turningOn ? 'Turning on…' : 'Turning off…'
+      if (await sendLiveCommand(command, button)) {
+        notice(turningOn
+          ? 'MabelTV is turning on and selecting its HDMI input.'
+          : 'MabelTV is entering standby. The Raspberry Pi stays on.')
+      } else {
+        refreshHomePowerState().catch(() => {})
+      }
     }
     $('#portalPinForm').onsubmit = async event => {
       event.preventDefault()
