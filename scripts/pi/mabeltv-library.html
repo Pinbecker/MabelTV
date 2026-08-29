@@ -416,6 +416,10 @@
     body.portal-v2 .home-greeting>*{position:relative;z-index:1}
     body.portal-v2 .home-greeting h1{max-width:720px;color:#fff;font-size:clamp(2.6rem,5.5vw,5rem)}
     body.portal-v2 .home-greeting p{color:#aab5af}
+    body.portal-v2 .home-now-playing{display:grid;width:100%;max-width:620px;gap:3px;margin-top:20px;border:1px solid #ffffff1d;border-radius:14px;padding:13px 16px;background:#07100c4d;backdrop-filter:blur(12px)}
+    body.portal-v2 .home-now-playing-label{color:#ff9c83;font-size:.67rem;font-weight:850;letter-spacing:.15em;text-transform:uppercase}
+    body.portal-v2 .home-now-playing strong{display:-webkit-box;overflow:hidden;color:#f6f8f7;font-size:1.12rem;line-height:1.3;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+    body.portal-v2 .home-now-playing-meta{overflow:hidden;color:#93a099;font-size:.78rem;text-overflow:ellipsis;white-space:nowrap}
     body.portal-v2 .home-actions{width:100%}
     body.portal-v2 .home-actions>button:not(.home-power-toggle){flex:1 1 0}
     body.portal-v2 .home-actions .home-power-toggle{flex:0 0 100%;width:100%}
@@ -578,6 +582,7 @@
       body.portal-v2 .home-intro{display:block;margin-bottom:12px}
       body.portal-v2 .home-greeting{min-height:315px;margin-bottom:11px;border-radius:20px;padding:27px 22px}
       body.portal-v2 .home-greeting h1{font-size:2.7rem}
+      body.portal-v2 .home-now-playing{margin-top:15px}
       body.portal-v2 .home-status{padding:21px;border-radius:17px}
       body.portal-v2 .home-actions button{min-width:0;flex:1;padding-right:9px;padding-left:9px}
       body.portal-v2 .home-actions .home-power-toggle{flex:0 0 100%}
@@ -1185,6 +1190,9 @@
     html[data-portal-theme="light"] body.portal-v2 .home-greeting{border-color:#d5cec3;background:radial-gradient(circle at 90% 5%,#f2cbbb 0,transparent 35%),linear-gradient(145deg,#fffdf9,#e9e3da);color:#1c2420}
     html[data-portal-theme="light"] body.portal-v2 .home-greeting h1{color:#1c2420}
     html[data-portal-theme="light"] body.portal-v2 .home-greeting p{color:#65706a}
+    html[data-portal-theme="light"] body.portal-v2 .home-now-playing{border-color:#d2c9bd;background:#ffffff87}
+    html[data-portal-theme="light"] body.portal-v2 .home-now-playing strong{color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 .home-now-playing-meta{color:#65706a}
     html[data-portal-theme="light"] body.portal-v2 .home-actions .secondary{border-color:#c9c2b7;background:#ffffffa8;color:#26302b}
     html[data-portal-theme="light"] body.portal-v2 .home-status{border-color:#d8d1c6;background:linear-gradient(160deg,#fff,#f7f3ec);color:#1c2420}
     html[data-portal-theme="light"] body.portal-v2 .home-status h2,
@@ -1392,7 +1400,7 @@
       <p id="notice" class="notice" role="status" aria-live="polite"></p>
       <section id="view-overview" class="view active"><div class="page">
         <div class="home-intro">
-          <article class="home-greeting surface"><div><p class="eyebrow">Parent controls</p><h1><span data-tv-name>Your TV</span> is ready when you are.</h1><p>Add something new, or jump straight into a channel to tidy what appears on the television.</p></div><div class="home-actions"><button class="primary" data-go="channels"><svg class="icon" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>Open library</button><button id="enterAdultMode" type="button" class="secondary">Enter Adult Mode</button><button id="homePowerToggle" type="button" class="secondary home-power-toggle">Checking power…</button></div></article>
+          <article class="home-greeting surface"><div><p class="eyebrow">Parent controls</p><h1><span data-tv-name>Your TV</span> is ready when you are.</h1><div class="home-now-playing" aria-live="polite"><span class="home-now-playing-label">Now playing</span><strong id="homeNowPlayingTitle">Checking MabelTV…</strong><span id="homeNowPlayingMeta" class="home-now-playing-meta">Getting the current programme</span></div></div><div class="home-actions"><button class="primary" data-go="channels"><svg class="icon" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>Open library</button><button id="enterAdultMode" type="button" class="secondary">Enter Adult Mode</button><button id="homePowerToggle" type="button" class="secondary home-power-toggle">Checking power…</button></div></article>
           <article class="home-status surface"><div class="status-top"><span id="homeStatusIcon" class="status-icon"><svg class="icon" viewBox="0 0 24 24"><path d="m6 12 4 4 8-9"/></svg></span><div><p class="section-kicker">TV status</p><h2 id="healthTitle">Checking everything…</h2></div></div><p id="healthSummary" class="health-summary">Checking the player, temperature, power, and storage.</p><div class="quick-stats"><div class="quick-stat"><span>MabelTV</span><strong id="homePowerState">Checking…</strong></div><div class="quick-stat"><span>Temperature</span><strong id="temperature">—</strong></div><div class="quick-stat"><span>Storage available</span><strong id="storageFree">—</strong></div><div class="quick-stat"><span>Running for</span><strong id="uptime">—</strong></div></div><button id="refreshLibrary" class="secondary">Refresh TV library</button></article>
         </div>
         <article id="warningsCard" class="attention surface surface-pad hidden"><div class="attention-head"><span class="status-icon warn">!</span><div><p class="section-kicker">Needs attention</p><h2>There’s a small job to do</h2></div></div><div id="warnings"></div></article>
@@ -1525,6 +1533,7 @@
     let recoveringOwner = false
     let configuredTvName = 'Your TV'
     let noticeTimer = null
+    let homeStatusRefreshTimer = null
     let liveRefreshTimer = null
     let liveFallbackTimer = null
     let liveFrameTimer = null
@@ -1661,9 +1670,11 @@
 
     function openRequestedView() {
       const requested = location.hash.replace(/^#/, '')
-      const allowed = new Set(['home', 'live', 'channels', 'adult', 'watch', 'system'])
-      if (allowed.has(requested)) openView(requested)
+      const view = requested === 'home' ? 'overview' : requested
+      const allowed = new Set(['overview', 'live', 'channels', 'adult', 'watch', 'system'])
+      if (allowed.has(view)) openView(view)
       else if (new URLSearchParams(location.search).has('watch')) openView('watch')
+      else openView('overview')
     }
 
     async function initialise() {
@@ -1803,6 +1814,8 @@
       window.scrollTo({ top: 0, behavior: 'smooth' })
       if (name === 'live') startLiveTv()
       else stopLiveTv()
+      if (name === 'overview') startHomeStatusRefresh()
+      else stopHomeStatusRefresh()
     }
 
     function showLivePicture() {
@@ -1981,7 +1994,35 @@
       const standby = state.standby === true
       $('#homePowerState').textContent = standby ? 'Standby' : 'On'
       $('#homePowerToggle').textContent = standby ? 'Turn On' : 'Turn Off'
+      if (standby) {
+        $('#homeNowPlayingTitle').textContent = 'Nothing playing'
+        $('#homeNowPlayingMeta').textContent = 'MabelTV is in standby'
+      } else if (state.adult_mode === true) {
+        const playing = state.adult_playing === true
+        $('#homeNowPlayingTitle').textContent = playing ? (state.programme || 'Adult film') : 'Adult library'
+        $('#homeNowPlayingMeta').textContent = playing
+          ? `Adult Mode · ${state.paused === true ? 'Paused' : 'Playing'}`
+          : 'Adult Mode · Ready'
+      } else if (state.available === true) {
+        $('#homeNowPlayingTitle').textContent = state.programme || 'Current programme'
+        $('#homeNowPlayingMeta').textContent = `CH ${state.channel_number} · ${state.channel_name} · ${state.paused === true ? 'Paused' : 'Playing'}`
+      } else {
+        $('#homeNowPlayingTitle').textContent = 'Getting ready…'
+        $('#homeNowPlayingMeta').textContent = state.reason || 'Waiting for the current programme'
+      }
       return state
+    }
+
+    function startHomeStatusRefresh() {
+      refreshHomePowerState().catch(() => {})
+      if (!homeStatusRefreshTimer)
+        homeStatusRefreshTimer = setInterval(() => refreshHomePowerState().catch(() => {}), 5000)
+    }
+
+    function stopHomeStatusRefresh() {
+      if (!homeStatusRefreshTimer) return
+      clearInterval(homeStatusRefreshTimer)
+      homeStatusRefreshTimer = null
     }
 
     function startLiveTv() {

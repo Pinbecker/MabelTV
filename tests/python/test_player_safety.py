@@ -248,9 +248,13 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn('QStringLiteral("standby 0")', cec)
         self.assertNotIn('QStringLiteral("toggle")', cec)
         self.assertIn("id=\"homePowerToggle\"", portal)
+        self.assertIn("id=\"homeNowPlayingTitle\"", portal)
+        self.assertIn("id=\"homeNowPlayingMeta\"", portal)
         self.assertNotIn("id=\"homeTurnOn\"", portal)
         self.assertNotIn("id=\"homeTurnOff\"", portal)
         self.assertIn("const command = turningOn ? 'turn-on' : 'turn-off'", portal)
+        self.assertIn("state.programme || 'Current programme'", portal)
+        self.assertIn("MabelTV is in standby", portal)
         self.assertIn("body: JSON.stringify({ command, ...extra })", portal)
 
     def test_health_monitor_resets_for_every_playback_request(self) -> None:
