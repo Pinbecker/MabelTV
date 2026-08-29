@@ -376,9 +376,13 @@ class LiveStream:
 
     def preview(self) -> bytes:
         """Return the current frame from one shared Pi-owned preview encoder."""
-        info = self.source()
-        if not info["available"]:
-            raise ValueError(str(info["reason"]))
+        # The frame encoder mirrors the DRM/KMS output itself, so it can show
+        # Adult TV and overlays that have no children's-channel timeline.  A
+        # channel lookup here used to reject that perfectly valid picture and
+        # made the portal report the active television as offline.
+        state = self.library.read_json(self.library.player_state_path, {})
+        if not isinstance(state, dict) or state.get("standby"):
+            raise ValueError("The TV is off")
         signature = ("tv-screen", False)
         with self.lock:
             if self.preview_signature == signature and self.preview_frame \
@@ -411,9 +415,9 @@ class LiveStream:
                 return self.preview_frame
         raise ValueError(self.preview_error or "The live TV picture is taking longer than expected")
 
-    def status(self) -> dict[str, Any]:
+    def status(self, allow_screen_without_programme: bool = False) -> dict[str, Any]:
         info = self.source()
-        if not info["available"]:
+        if not info["available"] and not allow_screen_without_programme:
             self.stop()
         with self.lock:
             running = ((self.process is not None and self.process.poll() is None)
@@ -2469,21 +2473,24 @@ class Library:
         return result.stdout.strip()
 
     def live_tv_status(self) -> dict[str, Any]:
-        status = self.live_stream.status()
         mode = self.player_mode_status()
+        adult_mode = mode.get("mode") == "adult"
+        status = self.live_stream.status(allow_screen_without_programme=adult_mode)
         for field in ("volume", "muted", "remote_locked", "standby", "subtitles_available",
                       "subtitles_visible"):
             if field in mode:
                 status[field] = mode[field]
-        if mode.get("mode") == "adult":
+        if adult_mode:
             playing = mode.get("playing") is True
             status.update({
+                "available": mode.get("standby") is not True,
                 "adult_mode": True,
                 "adult_playing": playing,
                 "programme": str(mode.get("programme") or "Film library")
                              if playing else "Film library",
                 "paused": mode.get("paused") is True,
             })
+            status.pop("reason", None)
         return status
 
     def player_mode_status(self) -> dict[str, Any]:
@@ -2569,12 +2576,24 @@ class Library:
             raise ValueError("Choose a programme or Adult film to play")
         if not source.is_file():
             raise ValueError("That video is no longer in the Mabel TV library")
+        sent_to_player = False
+        accepted_without_reply = False
         try:
             with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
                 client.settimeout(3)
                 client.connect("/run/mabeltv/portal-control.sock")
                 client.sendall((json.dumps(command, separators=(",", ":")) + "\n").encode())
+                sent_to_player = True
                 reply = client.recv(32).decode(errors="replace").strip()
+        except socket.timeout as error:
+            # A busy renderer transition can delay the socket acknowledgement
+            # even though the complete command is already queued in the local
+            # player.  Do not turn that accepted request into the false failure
+            # the portal previously showed while the film started on screen.
+            if not sent_to_player:
+                raise ValueError("The TV player is not ready to start that video") from error
+            accepted_without_reply = True
+            reply = "ok"
         except OSError as error:
             raise ValueError("The TV player is not ready to start that video") from error
         if reply != "ok":
@@ -2596,8 +2615,9 @@ class Library:
                 raise ValueError("The film was selected, but Mabel TV could not start it immediately") from error
             if skip_reply != "ok":
                 raise ValueError("The film was selected, but Mabel TV could not start it immediately")
+        verb = "Starting" if accepted_without_reply else "Playing"
         return {"ok": True,
-                "message": f"Playing {self.display_name(source.name)} on Mabel TV"}
+                "message": f"{verb} {self.display_name(source.name)} on Mabel TV"}
 
     def support_bundle(self) -> Path:
         self.admin_action("diagnostics")

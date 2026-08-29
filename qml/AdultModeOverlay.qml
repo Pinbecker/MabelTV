@@ -21,6 +21,8 @@ Item {
     property var visibleFilms: []
     readonly property real playbackPosition: adultPlayer.playbackPosition
     readonly property real playbackDuration: adultPlayer.playbackDuration
+    readonly property bool subtitlesAvailable: adultPlayer.subtitlesAvailable
+    readonly property bool subtitlesVisible: adultPlayer.subtitlesVisible
     readonly property string currentFilmName: currentFilm() ? currentFilm().name : ""
     readonly property real uiScale: Math.max(0.62, Math.min(width / 1920, height / 1080))
     property real controlsOpacity: 1

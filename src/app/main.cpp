@@ -530,6 +530,8 @@ int main(int argc, char *argv[])
                                                           if (request.isObject()
                                                               && object.value(QStringLiteral("command")).toString()
                                                                   == QStringLiteral("play-programme")) {
+                                                              socket->write("ok\n");
+                                                              socket->flush();
                                                               QMetaObject::invokeMethod(
                                                                   rootObject,
                                                                   "portalPlayChannelProgramme",
@@ -538,20 +540,20 @@ int main(int argc, char *argv[])
                                                                       QStringLiteral("channel")).toInt()),
                                                                   Q_ARG(QVariant, object.value(
                                                                       QStringLiteral("file")).toString()));
-                                                              socket->write("ok\n");
                                                               socket->disconnectFromServer();
                                                               return;
                                                           }
                                                            if (request.isObject()
                                                                && object.value(QStringLiteral("command")).toString()
                                                                    == QStringLiteral("play-adult-film")) {
+                                                              socket->write("ok\n");
+                                                              socket->flush();
                                                               QMetaObject::invokeMethod(
                                                                   rootObject,
                                                                   "portalPlayAdultFilm",
                                                                   Qt::QueuedConnection,
                                                                   Q_ARG(QVariant, object.value(
                                                                       QStringLiteral("file")).toString()));
-                                                              socket->write("ok\n");
                                                                socket->disconnectFromServer();
                                                                return;
                                                            }

@@ -54,9 +54,9 @@ Window {
     readonly property bool portalRemoteLocked: tvController.remoteLocked
     readonly property bool portalStandby: tvController.standby
     readonly property bool portalSubtitlesAvailable: adultMode.active
-        && adultPlayer.subtitlesAvailable
+        && adultMode.subtitlesAvailable
     readonly property bool portalSubtitlesVisible: adultMode.active
-        && adultPlayer.subtitlesVisible
+        && adultMode.subtitlesVisible
 
     function acceptRepeat(kind, isAutoRepeat) {
         const now = Date.now()

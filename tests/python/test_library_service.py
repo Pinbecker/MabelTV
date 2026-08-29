@@ -953,8 +953,8 @@ class LibraryUnitTests(unittest.TestCase):
 
     def test_live_tv_status_reports_adult_mode_instead_of_hidden_kids_playback(self) -> None:
         self.fixture.library.live_stream.status = mock.Mock(return_value={
-            "available": True, "channel_number": 5, "channel_name": "Films",
-            "programme": "Finding Nemo", "paused": False,
+            "available": False, "reason": "Waiting for the TV programme",
+            "channel_number": 5, "channel_name": "Films",
         })
         self.fixture.library.player_mode_status = mock.Mock(return_value={
             "mode": "adult", "playing": True,
@@ -965,6 +965,10 @@ class LibraryUnitTests(unittest.TestCase):
 
         status = self.fixture.library.live_tv_status()
 
+        self.fixture.library.live_stream.status.assert_called_once_with(
+            allow_screen_without_programme=True)
+        self.assertTrue(status["available"])
+        self.assertNotIn("reason", status)
         self.assertTrue(status["adult_mode"])
         self.assertTrue(status["adult_playing"])
         self.assertEqual(status["programme"], "The Fellowship of the Ring")
@@ -1207,6 +1211,41 @@ class UsbAndMetadataTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "no longer"):
             self.fixture.library.play_on_tv({
                 "kind": "adult", "file": "Films/Missing.mkv",
+            })
+
+    def test_portal_play_on_tv_treats_a_sent_command_as_accepted_if_ack_is_late(self) -> None:
+        adult_movie = self.fixture.library.adult_root / "Passengers (2016).mp4"
+        adult_movie.write_bytes(b"film")
+        client = mock.MagicMock()
+        context = mock.MagicMock()
+        context.__enter__.return_value = client
+        context.__exit__.return_value = False
+        client.recv.side_effect = mabeltv_library.socket.timeout("late acknowledgement")
+
+        with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
+                mock.patch.object(mabeltv_library.socket, "socket", return_value=context):
+            result = self.fixture.library.play_on_tv({
+                "kind": "adult", "file": adult_movie.name,
+            })
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["message"], "Starting Passengers (2016) on Mabel TV")
+        client.sendall.assert_called_once()
+
+    def test_portal_play_on_tv_still_reports_a_real_connection_failure(self) -> None:
+        adult_movie = self.fixture.library.adult_root / "Film.mp4"
+        adult_movie.write_bytes(b"film")
+        client = mock.MagicMock()
+        context = mock.MagicMock()
+        context.__enter__.return_value = client
+        context.__exit__.return_value = False
+        client.connect.side_effect = OSError("player unavailable")
+
+        with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
+                mock.patch.object(mabeltv_library.socket, "socket", return_value=context), \
+                self.assertRaisesRegex(ValueError, "not ready to start"):
+            self.fixture.library.play_on_tv({
+                "kind": "adult", "file": adult_movie.name,
             })
 
     def test_tmdb_search_and_apply_cache_metadata_without_exposing_key(self) -> None:
