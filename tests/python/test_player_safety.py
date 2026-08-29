@@ -271,6 +271,11 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("--portal-sheet-radius:22px", portal)
         self.assertIn(":is(.library-sheet,.remote-sheet,.watch-sheet)[open]", portal)
         self.assertIn(":is(.library-sheet-panel,.remote-sheet-panel,.watch-sheet-panel)", portal)
+        self.assertNotIn("Everything Mabel can watch, organised by channel", portal)
+        self.assertNotIn("Organise what appears on Adult TV", portal)
+        self.assertNotIn("Pick up a film exactly where you left it", portal)
+        self.assertIn("#view-adult .adult-film-list{grid-template-columns:repeat(3", portal)
+        self.assertIn("#view-live .page{width:100%;padding-right:10px;padding-left:10px}", portal)
 
     def test_health_monitor_resets_for_every_playback_request(self) -> None:
         source = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
