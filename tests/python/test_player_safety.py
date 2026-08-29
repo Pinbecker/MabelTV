@@ -257,6 +257,21 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("MabelTV is in standby", portal)
         self.assertIn("body: JSON.stringify({ command, ...extra })", portal)
 
+    def test_portal_uses_shared_intro_and_sheet_design_tokens(self) -> None:
+        portal = (PROJECT_ROOT / "scripts" / "pi" / "mabeltv-library.html").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertEqual(portal.count('class="home-greeting surface portal-intro"'), 1)
+        self.assertEqual(portal.count('library-hero portal-intro'), 1)
+        self.assertEqual(portal.count('adult-hero surface portal-intro'), 1)
+        self.assertEqual(portal.count('watch-top portal-intro'), 1)
+        self.assertEqual(portal.count('<header class="page-head portal-page-head'), 2)
+        self.assertIn("--portal-intro-radius:20px", portal)
+        self.assertIn("--portal-sheet-radius:22px", portal)
+        self.assertIn(":is(.library-sheet,.remote-sheet,.watch-sheet)[open]", portal)
+        self.assertIn(":is(.library-sheet-panel,.remote-sheet-panel,.watch-sheet-panel)", portal)
+
     def test_health_monitor_resets_for_every_playback_request(self) -> None:
         source = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
             encoding="utf-8"

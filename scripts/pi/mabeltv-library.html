@@ -1361,6 +1361,302 @@
     body.portal-v2 .notice:empty{border:0!important;box-shadow:none!important}
     html[data-portal-theme="light"] body.portal-v2 #view-channels .library-main-card .channel-card-copy h3{color:#1c2420}
     html[data-portal-theme="light"] body.portal-v2 #view-channels .library-main-card .channel-card-detail{color:#5f6963}
+
+    /* Portal cohesion pass: one compact intro rhythm and one sheet system. */
+    body.portal-v2{
+      --portal-intro-radius:20px;
+      --portal-card-radius:18px;
+      --portal-sheet-radius:22px;
+      --portal-section-gap:16px;
+    }
+    body.portal-v2 .portal-intro{
+      min-height:0;
+      border-radius:var(--portal-intro-radius);
+    }
+    body.portal-v2 .portal-page-head{
+      margin-bottom:var(--portal-section-gap);
+    }
+    body.portal-v2 .portal-page-head h1{
+      margin-top:3px;
+      font-size:clamp(2.15rem,3.7vw,3.45rem);
+      line-height:.98;
+      letter-spacing:-.045em;
+    }
+    body.portal-v2 .portal-page-head p:last-child{
+      max-width:650px;
+      margin-top:7px;
+      font-size:.88rem;
+    }
+    body.portal-v2 .home-greeting{
+      min-height:0;
+      padding:30px;
+    }
+    body.portal-v2 .home-greeting h1{
+      font-size:clamp(2.35rem,4.5vw,3.75rem);
+      line-height:.98;
+    }
+    body.portal-v2 .home-now-playing{
+      margin-top:17px;
+      padding:12px 14px;
+    }
+    body.portal-v2 .home-actions{margin-top:15px}
+    body.portal-v2 .home-status{border-radius:var(--portal-card-radius);padding:23px}
+    body.portal-v2 #view-channels .library-hero{
+      gap:22px;
+      margin-bottom:var(--portal-section-gap);
+      border-radius:var(--portal-intro-radius);
+      padding:27px 29px;
+    }
+    body.portal-v2 #view-channels .library-hero h1{
+      margin:3px 0 7px;
+      font-size:clamp(2.25rem,4.2vw,3.5rem);
+      line-height:.98;
+    }
+    body.portal-v2 #view-channels button.library-create{
+      min-height:48px;
+      border-radius:14px;
+    }
+    body.portal-v2 #view-adult .adult-hero{
+      min-height:0;
+      gap:24px;
+      margin-bottom:var(--portal-section-gap);
+      border-radius:var(--portal-intro-radius);
+      padding:27px 29px;
+    }
+    body.portal-v2 #view-adult .adult-hero h1{
+      margin:3px 0 7px;
+      font-size:clamp(2.3rem,4.2vw,3.55rem);
+      line-height:.98;
+    }
+    body.portal-v2 #view-adult .adult-hero-actions{gap:8px}
+    body.portal-v2 #view-adult .adult-hero-stat,
+    body.portal-v2 #view-adult .adult-add-film{min-height:50px}
+    body.portal-v2 #view-adult .adult-library,
+    body.portal-v2 #view-live .live-tv,
+    body.portal-v2 #view-live .live-side>section,
+    body.portal-v2 .settings-section{border-radius:var(--portal-card-radius)}
+    body.portal-v2 #view-watch .watch-top{
+      gap:24px;
+      margin:0 0 var(--portal-section-gap);
+      border:1px solid #2c3732;
+      border-radius:var(--portal-intro-radius);
+      padding:23px 25px;
+      background:linear-gradient(145deg,#17211d,#0e1412);
+      box-shadow:0 18px 52px #0004;
+    }
+    body.portal-v2 #view-watch .watch-top h1{
+      font-size:clamp(2.2rem,3.8vw,3.45rem);
+      line-height:.98;
+    }
+    body.portal-v2 #view-watch .watch-heading>p:last-child{
+      margin-top:6px;
+      font-size:.86rem;
+    }
+
+    body.portal-v2 :is(.library-sheet,.remote-sheet,.watch-sheet)[open]{
+      width:100vw;
+      height:100dvh;
+      max-width:none;
+      max-height:none;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      margin:0;
+      border:0;
+      padding:14px;
+      overflow:hidden;
+      background:transparent;
+    }
+    body.portal-v2 :is(.library-sheet,.remote-sheet,.watch-sheet)::backdrop,
+    body.portal-v2 .watch-film-sheet::backdrop,
+    body.portal-v2 .tmdb-dialog::backdrop{
+      background:#020403d6;
+      -webkit-backdrop-filter:blur(12px);
+      backdrop-filter:blur(12px);
+    }
+    body.portal-v2 :is(.library-sheet-panel,.remote-sheet-panel,.watch-sheet-panel){
+      width:min(620px,calc(100vw - 28px));
+      max-height:min(820px,90dvh);
+      overflow:auto;
+      border:1px solid #35413b;
+      border-radius:var(--portal-sheet-radius);
+      background:#111714;
+      color:#eef2f0;
+      box-shadow:0 36px 120px #000e;
+    }
+    body.portal-v2 .library-sheet-panel.wide{width:min(720px,calc(100vw - 28px))}
+    body.portal-v2 :is(.library-sheet-head,.remote-sheet-panel>header,.watch-sheet-panel>header){
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:18px;
+      border-bottom:1px solid #29332f;
+      padding:18px 20px 16px;
+      background:#121816;
+    }
+    body.portal-v2 :is(.library-sheet-head,.remote-sheet-panel>header,.watch-sheet-panel>header) h2{
+      margin:2px 0 4px;
+      color:#fff;
+      font-size:1.5rem;
+      line-height:1.08;
+      letter-spacing:-.025em;
+    }
+    body.portal-v2 :is(.library-sheet-head,.remote-sheet-panel>header) p:last-child{
+      max-width:470px;
+      margin:0;
+      color:#7e8983;
+      font-size:.76rem;
+      line-height:1.4;
+    }
+    body.portal-v2 :is(button.library-sheet-close,button.remote-sheet-close,button.watch-sheet-close){
+      width:38px;
+      height:38px;
+      min-height:38px;
+      flex:none;
+      border:1px solid #35413b;
+      border-radius:50%;
+      padding:0;
+      background:#1a221f;
+      color:#cbd2ce;
+      font-size:1.3rem;
+      box-shadow:none;
+    }
+    body.portal-v2 .library-sheet-body{padding:17px 19px 20px}
+    body.portal-v2 .remote-power-actions{padding:17px 19px 20px}
+    body.portal-v2 .remote-channel-options,
+    body.portal-v2 .watch-collection-options{padding:10px 12px 14px}
+    body.portal-v2 .tmdb-dialog{
+      width:min(680px,calc(100vw - 28px));
+      max-height:min(820px,90dvh);
+      border:1px solid #35413b;
+      border-radius:var(--portal-sheet-radius);
+      background:#111714;
+      color:#eef2f0;
+      box-shadow:0 36px 120px #000e;
+    }
+    body.portal-v2 .tmdb-dialog-head{padding:18px 20px 16px}
+    body.portal-v2 .watch-film-panel{
+      border-radius:var(--portal-sheet-radius);
+      box-shadow:0 36px 120px #000e;
+    }
+    body.portal-v2 .watch-film-close{top:14px;right:14px}
+
+    html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-top{
+      border-color:#d7d0c5;
+      background:linear-gradient(145deg,#fffdf9,#eee9e1);
+      color:#1c2420;
+      box-shadow:0 14px 38px #51493618;
+    }
+    html[data-portal-theme="light"] body.portal-v2 :is(.library-sheet-panel,.remote-sheet-panel,.watch-sheet-panel,.tmdb-dialog){
+      border-color:#d4cdc2;
+      background:#fffdf9;
+      color:#1c2420;
+      box-shadow:0 34px 100px #3f382a38;
+    }
+    html[data-portal-theme="light"] body.portal-v2 :is(.library-sheet-head,.remote-sheet-panel>header,.watch-sheet-panel>header){
+      border-color:#ded7cd;
+      background:#f7f3ed;
+    }
+    html[data-portal-theme="light"] body.portal-v2 :is(.library-sheet-head,.remote-sheet-panel>header,.watch-sheet-panel>header) h2{color:#1c2420}
+
+    @media(min-width:901px){
+      body.portal-v2 .home-intro{grid-template-columns:minmax(0,1.45fr) minmax(320px,.75fr);align-items:start}
+      body.portal-v2 .home-greeting{align-self:stretch}
+      body.portal-v2 .home-status{align-self:stretch}
+      body.portal-v2 .home-status .quick-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+      body.portal-v2 .home-status .quick-stat{display:grid;align-content:center;gap:2px;padding:10px 8px}
+      body.portal-v2 .home-status .quick-stat:nth-child(odd){border-right:1px solid #29332f;padding-left:0}
+      body.portal-v2 .home-status .quick-stat:nth-child(even){padding-right:0;padding-left:12px}
+      html[data-portal-theme="light"] body.portal-v2 .home-status .quick-stat:nth-child(odd){border-right-color:#ddd6cc}
+    }
+
+    @media(max-width:720px){
+      body.portal-v2{--portal-intro-radius:18px;--portal-card-radius:16px;--portal-section-gap:14px}
+      body.portal-v2 .portal-page-head{margin-bottom:14px}
+      body.portal-v2 .portal-page-head h1{font-size:2.1rem}
+      body.portal-v2 .portal-page-head p:last-child{font-size:.82rem;line-height:1.4}
+      body.portal-v2 .home-greeting{padding:21px}
+      body.portal-v2 .home-greeting h1{font-size:2.25rem;line-height:.98}
+      body.portal-v2 .home-now-playing{margin-top:15px;padding:11px 13px}
+      body.portal-v2 .home-now-playing strong{font-size:1.02rem}
+      body.portal-v2 .home-actions{margin-top:15px}
+      body.portal-v2 .home-status{padding:21px}
+      body.portal-v2 #view-channels .library-hero{
+        gap:16px;
+        margin-bottom:14px;
+        border-radius:var(--portal-intro-radius);
+        padding:20px;
+      }
+      body.portal-v2 #view-channels .library-hero h1{font-size:2.2rem}
+      body.portal-v2 #view-channels .library-hero p:not(.eyebrow){font-size:.84rem;line-height:1.4}
+      body.portal-v2 #view-channels button.library-create{min-height:46px}
+      body.portal-v2 #view-adult .adult-hero{
+        min-height:0;
+        margin:0 10px 14px;
+        border-radius:var(--portal-intro-radius);
+        padding:20px;
+      }
+      body.portal-v2 #view-adult .adult-hero h1{font-size:2.2rem;line-height:.98}
+      body.portal-v2 #view-adult .adult-hero p:not(.eyebrow){font-size:.84rem;line-height:1.4}
+      body.portal-v2 #view-adult .adult-hero-actions{margin-top:17px}
+      body.portal-v2 #view-adult .adult-hero-stat,
+      body.portal-v2 #view-adult .adult-add-film{min-height:50px}
+      body.portal-v2 #view-adult .adult-hero-stat strong{font-size:1.45rem}
+      body.portal-v2 #view-watch .watch-top{
+        width:calc(100% - 20px);
+        display:block;
+        margin:0 10px 14px;
+        border-radius:var(--portal-intro-radius);
+        padding:19px;
+      }
+      body.portal-v2 #view-watch .watch-top h1{font-size:2.2rem}
+      body.portal-v2 #view-watch .watch-heading>p:last-child{font-size:.82rem;line-height:1.35}
+      body.portal-v2 #view-watch .watch-controls{
+        display:grid;
+        grid-template-columns:minmax(0,1fr) auto;
+        align-items:center;
+        gap:8px;
+        margin-top:15px;
+      }
+      body.portal-v2 #view-watch .watch-tabs{width:auto}
+      body.portal-v2 #view-watch .watch-tabs button{padding:7px 10px}
+      body.portal-v2 #view-watch .watch-policy{align-self:auto;padding:8px 9px;font-size:.63rem}
+      body.portal-v2 :is(.library-sheet,.remote-sheet,.watch-sheet)[open]{
+        align-items:flex-end;
+        padding:0;
+      }
+      body.portal-v2 :is(.library-sheet-panel,.remote-sheet-panel,.watch-sheet-panel),
+      body.portal-v2 .library-sheet-panel.wide{
+        width:100%;
+        max-height:90dvh;
+        border-right:0;
+        border-bottom:0;
+        border-left:0;
+        border-radius:22px 22px 0 0;
+        padding-bottom:env(safe-area-inset-bottom);
+      }
+      body.portal-v2 :is(.library-sheet-handle,.remote-sheet-handle,.watch-sheet-handle){
+        width:38px;
+        height:4px;
+        display:block;
+        margin:9px auto 0;
+        border-radius:99px;
+        background:#4b5650;
+      }
+      body.portal-v2 :is(.library-sheet-head,.remote-sheet-panel>header,.watch-sheet-panel>header){padding:14px 17px 15px}
+      body.portal-v2 :is(.library-sheet-head,.remote-sheet-panel>header,.watch-sheet-panel>header) h2{font-size:1.42rem}
+      body.portal-v2 .library-sheet-body,
+      body.portal-v2 .remote-power-actions{padding:15px 16px 18px}
+      body.portal-v2 .tmdb-dialog{
+        width:100%;
+        max-height:90dvh;
+        margin:auto 0 0;
+        border-right:0;
+        border-bottom:0;
+        border-left:0;
+        border-radius:22px 22px 0 0;
+      }
+    }
   </style>
 </head>
 <body class="portal-v2">
@@ -1400,7 +1696,7 @@
       <p id="notice" class="notice" role="status" aria-live="polite"></p>
       <section id="view-overview" class="view active"><div class="page">
         <div class="home-intro">
-          <article class="home-greeting surface"><div><p class="eyebrow">Parent controls</p><h1><span data-tv-name>Your TV</span> is ready when you are.</h1><div class="home-now-playing" aria-live="polite"><span class="home-now-playing-label">Now playing</span><strong id="homeNowPlayingTitle">Checking MabelTV…</strong><span id="homeNowPlayingMeta" class="home-now-playing-meta">Getting the current programme</span></div></div><div class="home-actions"><button class="primary" data-go="channels"><svg class="icon" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>Open library</button><button id="enterAdultMode" type="button" class="secondary">Enter Adult Mode</button><button id="homePowerToggle" type="button" class="secondary home-power-toggle">Checking power…</button></div></article>
+          <article class="home-greeting surface portal-intro"><div><p class="eyebrow">Parent controls</p><h1><span data-tv-name>Your TV</span> is ready when you are.</h1><div class="home-now-playing" aria-live="polite"><span class="home-now-playing-label">Now playing</span><strong id="homeNowPlayingTitle">Checking MabelTV…</strong><span id="homeNowPlayingMeta" class="home-now-playing-meta">Getting the current programme</span></div></div><div class="home-actions"><button class="primary" data-go="channels"><svg class="icon" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>Open library</button><button id="enterAdultMode" type="button" class="secondary">Enter Adult Mode</button><button id="homePowerToggle" type="button" class="secondary home-power-toggle">Checking power…</button></div></article>
           <article class="home-status surface"><div class="status-top"><span id="homeStatusIcon" class="status-icon"><svg class="icon" viewBox="0 0 24 24"><path d="m6 12 4 4 8-9"/></svg></span><div><p class="section-kicker">TV status</p><h2 id="healthTitle">Checking everything…</h2></div></div><p id="healthSummary" class="health-summary">Checking the player, temperature, power, and storage.</p><div class="quick-stats"><div class="quick-stat"><span>MabelTV</span><strong id="homePowerState">Checking…</strong></div><div class="quick-stat"><span>Temperature</span><strong id="temperature">—</strong></div><div class="quick-stat"><span>Storage available</span><strong id="storageFree">—</strong></div><div class="quick-stat"><span>Running for</span><strong id="uptime">—</strong></div></div><button id="refreshLibrary" class="secondary">Refresh TV library</button></article>
         </div>
         <article id="warningsCard" class="attention surface surface-pad hidden"><div class="attention-head"><span class="status-icon warn">!</span><div><p class="section-kicker">Needs attention</p><h2>There’s a small job to do</h2></div></div><div id="warnings"></div></article>
@@ -1409,7 +1705,7 @@
         <footer><span data-tv-name>Your TV</span> <span data-version></span> · Local to your home network</footer>
       </div></section>
       <section id="view-live" class="view"><div class="page">
-        <header class="page-head live-page-head"><div><p class="eyebrow">Remote control</p><h1>Live TV</h1><p>Watch the picture and take control without leaving the portal.</p></div></header>
+        <header class="page-head portal-page-head live-page-head"><div><p class="eyebrow">Remote control</p><h1>Live TV</h1><p>Watch the picture and take control without leaving the portal.</p></div></header>
         <div class="live-layout">
           <section class="live-tv" aria-label="Live television preview"><div class="live-screen"><video id="liveVideo" muted autoplay playsinline preload="none"></video><img id="liveMjpeg" class="hidden" alt="Live MabelTV picture"><div id="liveOff" class="live-off"><strong id="liveOffTitle">Connecting to the TV…</strong><span id="liveOffText">Preparing the live picture</span></div></div><div class="live-meta"><small class="live-caption"><span id="liveChannel">Live preview</span><span aria-hidden="true"> · </span><span id="liveProgramme">Waiting for MabelTV</span></small><small class="live-state"><span id="liveLed" class="live-led off"></span><span id="liveState">Checking…</span></small></div></section>
           <aside class="live-side"><section class="surface remote-console" aria-label="MabelTV remote control">
@@ -1447,7 +1743,7 @@
       </div></section>
       <section id="view-channels" class="view"><div class="page">
         <div id="channelHub">
-          <header class="library-hero"><div class="library-hero-copy"><p class="eyebrow">MabelTV library</p><h1>Your channels.</h1><p>Everything Mabel can watch, organised by channel. Open one to add videos or make a quick change.</p></div><div class="library-hero-actions"><button id="showAddChannel" type="button" class="library-create"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>New channel</span></button></div></header>
+          <header class="library-hero portal-intro"><div class="library-hero-copy"><p class="eyebrow">MabelTV library</p><h1>Your channels.</h1><p>Everything Mabel can watch, organised by channel. Open one to add videos or make a quick change.</p></div><div class="library-hero-actions"><button id="showAddChannel" type="button" class="library-create"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>New channel</span></button></div></header>
           <div class="library-overview-bar"><div><p class="section-kicker">On the television</p><h2>Channels</h2></div><div class="library-overview-meta"><span><strong id="libraryChannelCount">0</strong> channels</span><span>·</span><span><strong id="libraryProgrammeCount">0</strong> programmes</span></div></div>
           <div id="channelCards" class="channel-grid library-channel-grid"></div>
           <div class="library-utilities"><button id="openAddChannelUtility" type="button" class="library-utility"><span class="library-utility-icon"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><span><strong>Create another channel</strong><small>Choose its number, name and picture style</small></span></button><button id="refreshChannelArtwork" type="button" class="library-utility"><span class="library-utility-icon"><svg viewBox="0 0 24 24"><path d="M4 17V7h16v10zM7 14l3-3 2 2 2-2 3 3M8 9h.1"/></svg></span><span><strong>Refresh programme artwork</strong><small>Find show and film pictures for Watch</small></span></button><button id="openRecycleBin" type="button" class="library-utility"><span class="library-utility-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg></span><span><strong>Recycle bin</strong><small>Restore recently removed programmes</small></span><span id="recycleCount" class="count-badge">0</span></button></div>
@@ -1459,7 +1755,7 @@
         </div><footer><span data-tv-name>Your TV</span> · Library</footer>
       </div></section>
       <section id="view-adult" class="view"><div class="page adult-page">
-        <header class="adult-hero surface"><div><p class="eyebrow">Private cinema</p><h1>Your film library.</h1><p>Organise what appears on Adult TV, refresh artwork and send any film straight to the television.</p></div><div class="adult-hero-actions"><div class="adult-hero-stat"><strong id="adultHeroCount">0</strong><span>films on this TV</span></div><button id="adultAddFilms" type="button" class="adult-add-film"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Add films</span></button></div></header>
+        <header class="adult-hero surface portal-intro"><div><p class="eyebrow">Private cinema</p><h1>Your film library.</h1><p>Organise what appears on Adult TV, refresh artwork and send any film straight to the television.</p></div><div class="adult-hero-actions"><div class="adult-hero-stat"><strong id="adultHeroCount">0</strong><span>films on this TV</span></div><button id="adultAddFilms" type="button" class="adult-add-film"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Add films</span></button></div></header>
         <section class="adult-library surface">
           <div class="adult-library-head"><div><p class="section-kicker">Adult TV</p><h2>Browse and organise</h2></div><span id="adultFilmCount" class="adult-count">0 films</span></div>
           <div class="adult-discovery"><label class="adult-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><input id="adultSearch" type="search" autocomplete="off" placeholder="Search your films"><button id="adultSearchClear" type="button" class="hidden" aria-label="Clear search">×</button></label><button id="adultCollectionTrigger" type="button" class="adult-tool"><span><small>Collection</small><strong id="adultCollectionName">All films</strong></span><svg viewBox="0 0 24 24"><path d="m9 10 3 3 3-3"/></svg></button></div>
@@ -1469,7 +1765,7 @@
         <footer><span data-tv-name>Your TV</span> · Adult mode is protected by the on-TV parent menu</footer>
       </div></section>
       <section id="view-watch" class="view"><div class="page">
-        <header class="watch-top"><div class="watch-heading"><p class="eyebrow watch-brand">Private cinema</p><h1>Watch anywhere.</h1><p>Pick up a film exactly where you left it, or take MabelTV with you.</p></div><div class="watch-controls"><div class="watch-tabs" role="tablist" aria-label="Choose a library"><button id="watchAdultTab" type="button" class="active" role="tab" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14v11H5zM8 7l2-3m3 3 2-3m3 3 2-3"/></svg><span>Adult</span></button><button id="watchMabelTab" type="button" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14v10H5zM9 4l3 4 3-4M9 12v3m6-3v3"/></svg><span>Mabel TV</span></button></div><span id="remotePolicy" class="watch-policy"><i></i><span>One player at a time</span></span></div></header>
+        <header class="watch-top portal-intro"><div class="watch-heading"><p class="eyebrow watch-brand">Private cinema</p><h1>Watch anywhere.</h1><p>Pick up a film exactly where you left it, or take MabelTV with you.</p></div><div class="watch-controls"><div class="watch-tabs" role="tablist" aria-label="Choose a library"><button id="watchAdultTab" type="button" class="active" role="tab" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14v11H5zM8 7l2-3m3 3 2-3m3 3 2-3"/></svg><span>Adult</span></button><button id="watchMabelTab" type="button" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14v10H5zM9 4l3 4 3-4M9 12v3m6-3v3"/></svg><span>Mabel TV</span></button></div><span id="remotePolicy" class="watch-policy"><i></i><span>One player at a time</span></span></div></header>
         <div id="remoteMabel"></div>
         <div id="watchAdultLayout" class="watch-adult-layout hidden">
           <section class="watch-discovery" aria-label="Find a film">
@@ -1482,7 +1778,7 @@
         </div><footer><span data-tv-name>Your TV</span> · Remote viewing</footer>
       </div></section>
       <section id="view-system" class="view"><div class="page">
-        <header class="page-head"><div><p class="eyebrow">Settings</p><h1>TV and account</h1><p>Picture, playback, sound, parent controls, identity, and Pi controls live here.</p></div></header>
+        <header class="page-head portal-page-head"><div><p class="eyebrow">Settings</p><h1>TV and account</h1><p>Picture, playback, sound, parent controls, identity, and Pi controls live here.</p></div></header>
         <div class="settings-grid">
           <section class="settings-section surface full portal-appearance"><p class="section-kicker">Portal appearance</p><h2>Choose your look</h2><p class="muted">Use the same carefully designed portal in a deep cinema theme or a calm, bright theme.</p><div class="portal-theme-picker"><button type="button" data-portal-theme-choice="dark"><span class="theme-preview theme-preview-dark"><i></i><i></i><i></i></span><span><strong>Dark cinema</strong><small>Rich charcoal surfaces and warm highlights</small></span></button><button type="button" data-portal-theme-choice="light"><span class="theme-preview theme-preview-light"><i></i><i></i><i></i></span><span><strong>Soft daylight</strong><small>Warm white, crisp type and gentle depth</small></span></button></div></section>
           <section class="settings-section surface full"><p class="section-kicker">On-TV picture, playback &amp; sound</p><h2>TV settings</h2><p class="muted">The same settings found in the parent menu on the television. Saving applies them to MabelTV straight away; the picture may refresh briefly.</p><form id="tvSettingsForm"><div class="tv-settings-grid"><label>How programmes play<select id="tvPlaybackMode"><option value="continuous">Continuous broadcast</option><option value="resume">Resume where you left off</option></select><small>Choose whether each channel carries on as a live schedule or remembers your place.</small></label><label>Episode reset<select id="tvEpisodeReset"><option value="0">Never</option><option value="5">After 5 minutes</option><option value="20">After 20 minutes</option><option value="60">After 1 hour</option><option value="180">After 3 hours</option></select><small>After this time away, an episode starts from the beginning.</small></label><label>Picture mode<select id="tvPictureMode"><option value="channel">Use each channel’s setting</option><option value="crop">Fill screen</option><option value="fit">Show whole picture</option><option value="stretch">Stretch to screen</option></select></label><label>TV cabinet<select id="tvBorder"><option value="slim-black">Slim black</option><option value="silver-90s">Silver 90s</option><option value="charcoal-90s">Charcoal 90s</option><option value="vintage-black">Vintage black</option></select></label><div class="range-setting"><label for="tvCrtGlass">CRT glass</label><input id="tvCrtGlass" type="range" min="0" max="100" step="5" value="35"><output id="tvCrtGlassValue" for="tvCrtGlass">35%</output></div><div class="range-setting"><label for="tvDistortion">90s distortion</label><input id="tvDistortion" type="range" min="0" max="100" step="5" value="20"><output id="tvDistortionValue" for="tvDistortion">20%</output></div><label>Display output<select id="tvDisplayResolution"><option value="720p">720p</option><option value="1080p">1080p</option><option value="native">Native display resolution</option></select><small>Changes after the player refreshes.</small></label><label>Volume limit<select id="tvVolumeLimit"><option value="true">On</option><option value="false">Off</option></select><small>Keep the remote volume within the maximum below.</small></label><div class="range-setting"><label for="tvMaximumVolume">Maximum volume</label><input id="tvMaximumVolume" type="range" min="5" max="100" step="5" value="60"><output id="tvMaximumVolumeValue" for="tvMaximumVolume">60%</output></div><label>Button sound effects<select id="tvSoundEffects"><option value="true">On</option><option value="false">Off</option></select><small>The navigation sounds heard on the television.</small></label><label>Playback scrubbing<select id="tvScrubbing"><option value="false">Off — Left / Right do nothing</option><option value="true">On — Left / Right seek</option></select><small>Up / Down always choose the previous or next programme.</small></label></div><div class="tv-settings-foot"><p>These controls match the parent settings menu on MabelTV.</p><button type="submit">Save TV settings</button></div></form></section>
