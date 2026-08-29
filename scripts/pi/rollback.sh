@@ -141,7 +141,19 @@ fi
 systemctl restart mabeltv.service || activation_ok="false"
 if [[ -f "$target/appliance/packaging/linux/mabeltv-matter.service" \
       && -f "$target/appliance/integrations/matter/mabeltv-matter.mjs" ]]; then
-    systemctl disable --now bluetooth.service || true
+    if grep -q 'mabeltv-matter-bluetooth' \
+            "$target/appliance/packaging/linux/mabeltv-matter.service"; then
+        systemctl disable --now bluetooth.service || true
+    elif [[ -r /var/lib/mabeltv/matter/bluetooth-service-state ]]; then
+        (
+            # shellcheck disable=SC1091
+            source /var/lib/mabeltv/matter/bluetooth-service-state
+            [[ "${enabled:-false}" == "true" ]] \
+                && systemctl enable bluetooth.service 2>/dev/null || true
+            [[ "${active:-false}" == "true" ]] \
+                && systemctl start bluetooth.service 2>/dev/null || true
+        )
+    fi
     systemctl enable mabeltv-matter.service || activation_ok="false"
     systemctl restart mabeltv-matter.service || activation_ok="false"
 else

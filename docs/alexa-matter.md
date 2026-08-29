@@ -8,8 +8,9 @@ No Alexa skill, cloud webhook, or Raspberry Pi shutdown command is involved.
 ## Pair with Alexa
 
 The Raspberry Pi and a Matter-capable Echo must be on the same normal home
-network. Do not use an isolated guest network. Keep Bluetooth enabled on the
-phone running the Alexa app during setup.
+network. Do not use an isolated guest network. MabelTV is already connected to
+Wi-Fi, so it uses Matter's on-network commissioning mode and does not ask Alexa
+to provision or replace the Pi's Wi-Fi connection.
 
 1. On a computer connected to the Pi, display the private setup code:
 
@@ -42,10 +43,9 @@ journalctl -u mabeltv-matter.service -b --no-pager -n 100
 sudo mabeltv-alexa-pairing
 ```
 
-Matter commissioning uses the Pi's Bluetooth controller directly. The normal
-BlueZ `bluetooth.service` is disabled while `mabeltv-matter.service` owns that
-controller; Wi-Fi is unaffected. MabelTV's uninstall and rollback scripts
-restore the Bluetooth service state recorded before Matter was enabled.
+Matter commissioning uses IPv6 link-local traffic and multicast DNS on the
+existing home network. Bluetooth proximity is not involved. The Echo and Pi
+must be on the same LAN, with client isolation and multicast filtering disabled.
 
 The boot setting `hdmi_ignore_cec_init=1` remains intentional: it prevents an
 ordinary Pi boot from unexpectedly waking the television. It does not disable

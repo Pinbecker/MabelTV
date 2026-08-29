@@ -145,14 +145,20 @@ class ImagerManifestTests(unittest.TestCase):
         socket_bridge = (ROOT / "integrations/matter/mabeltv-power-socket.mjs").read_text(
             encoding="utf-8")
 
-        for package in ("nodejs", "npm", "rfkill", "bluez", "libbluetooth-dev"):
+        for package in ("nodejs", "npm"):
             self.assertIn(package, packages.splitlines())
             self.assertIn(package, installer)
+        for bluetooth_package in ("rfkill", "bluez", "libbluetooth-dev"):
+            self.assertNotIn(bluetooth_package, packages.splitlines())
         self.assertIn("mabeltv-matter.service", activation)
         self.assertIn("User=mabeltv", service)
+        self.assertNotIn("AF_BLUETOOTH", service)
+        self.assertIn("AF_NETLINK", service)
+        self.assertNotIn("Conflicts=bluetooth.service", service)
         self.assertIn("/run/mabeltv/portal-control.sock", socket_bridge)
         self.assertIn('on ? "turn-on" : "turn-off"', socket_bridge)
         self.assertIn("getMabelTvPower", bridge)
+        self.assertIn("discoveryCapabilities: { onIpNetwork: true, ble: false }", bridge)
 
     def test_laptop_only_builder_uses_local_arm64_docker_bundle_then_image_recipe(self):
         builder = (ROOT / "scripts" / "imaging" / "build-local-pi-image.sh").read_text(

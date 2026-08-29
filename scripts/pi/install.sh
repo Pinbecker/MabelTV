@@ -70,7 +70,7 @@ if [[ "$skip_packages" != "true" ]]; then
         qt6-qpa-plugins qml6-module-qtquick qml6-module-qtquick-window \
         libqt6opengl6 libmpv-dev ffmpeg ir-keytable cec-utils python3 sudo logrotate avahi-daemon \
         alsa-utils ca-certificates curl util-linux qrencode udisks2 \
-        nodejs npm rfkill bluez libbluetooth-dev
+        nodejs npm
     if [[ -z "$prebuilt_dir" ]]; then
         DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             build-essential cmake ninja-build pkg-config \
@@ -408,18 +408,19 @@ if [[ "$player_should_run" == "true" ]]; then
         restore_failed_release "$release_dir"
         exit 1
     fi
-    # matter.js owns the raw Bluetooth HCI interface while commissioning.
-    # Preserve Bluetooth's pre-install state in the transaction map so a
-    # failed activation restores it automatically.
-    if [[ ! -e /var/lib/mabeltv/matter/bluetooth-service-state ]]; then
-        {
-            printf 'enabled=%s\n' "${unit_was_enabled[bluetooth.service]}"
-            printf 'active=%s\n' "${unit_was_active[bluetooth.service]}"
-        } > /var/lib/mabeltv/matter/bluetooth-service-state
-        chown mabeltv:mabeltv /var/lib/mabeltv/matter/bluetooth-service-state
-        chmod 0640 /var/lib/mabeltv/matter/bluetooth-service-state
+    # Releases before on-network commissioning temporarily disabled BlueZ so
+    # matter.js could own the raw HCI adapter. Restore the state captured by
+    # that release; the current Matter bridge does not use Bluetooth.
+    if [[ -r /var/lib/mabeltv/matter/bluetooth-service-state ]]; then
+        (
+            # shellcheck disable=SC1091
+            source /var/lib/mabeltv/matter/bluetooth-service-state
+            [[ "${enabled:-false}" == "true" ]] \
+                && systemctl enable bluetooth.service 2>/dev/null || true
+            [[ "${active:-false}" == "true" ]] \
+                && systemctl start bluetooth.service 2>/dev/null || true
+        )
     fi
-    systemctl disable --now bluetooth.service
     systemctl enable mabeltv-matter.service
     if ! systemctl restart mabeltv-matter.service \
         || ! wait_for_stable_service mabeltv-matter.service 30 8; then

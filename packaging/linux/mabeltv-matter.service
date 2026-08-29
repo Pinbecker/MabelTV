@@ -2,9 +2,6 @@
 Description=Mabel TV local Matter accessory for Alexa
 After=network-online.target mabeltv.service
 Wants=network-online.target
-# matter.js commissions as a BLE peripheral through the raw HCI interface.
-# BlueZ cannot own that interface at the same time.
-Conflicts=bluetooth.service
 StartLimitIntervalSec=60
 StartLimitBurst=5
 
@@ -15,15 +12,13 @@ Group=mabeltv
 WorkingDirectory=/var/lib/mabeltv/matter
 Environment=HOME=/var/lib/mabeltv
 EnvironmentFile=/etc/mabeltv/matter.conf
-ExecStartPre=+/usr/local/libexec/mabeltv-matter-bluetooth
 ExecStart=/usr/bin/node /opt/mabeltv/current/appliance/integrations/matter/mabeltv-matter.mjs --storage-path=/var/lib/mabeltv/matter/storage
 Restart=on-failure
 RestartSec=3
 TimeoutStartSec=30
 TimeoutStopSec=8
 UMask=0027
-AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW
-CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW
+CapabilityBoundingSet=
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
@@ -37,7 +32,7 @@ ProtectKernelLogs=true
 ProtectProc=invisible
 ProcSubset=pid
 ReadWritePaths=/var/lib/mabeltv/matter
-RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_BLUETOOTH AF_NETLINK
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
 LockPersonality=true
 MemoryDenyWriteExecute=false
 MemoryHigh=180M

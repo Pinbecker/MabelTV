@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 
-import "@matter/nodejs-ble";
-
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
@@ -23,7 +21,6 @@ const passcode = requiredInteger("MABELTV_MATTER_PASSCODE", 1, 99_999_998);
 const discriminator = requiredInteger("MABELTV_MATTER_DISCRIMINATOR", 0, 4095);
 const port = optionalInteger("MABELTV_MATTER_PORT", 5540, 1, 65535);
 
-Environment.default.vars.set("ble.enable", true);
 // Matter's NOTICE-level commissioning banner includes the setup passcode. The
 // root-only pairing helper is the deliberate place to reveal that secret.
 Environment.default.vars.set("log.level", process.env.MABELTV_MATTER_LOG_LEVEL || "warn");
@@ -32,7 +29,15 @@ Logger.level = process.env.MABELTV_MATTER_LOG_LEVEL || "warn";
 const initialPower = await getMabelTvPower();
 const server = await ServerNode.create({
   id: "mabel-tv",
-  network: { port },
+  // The Pi is already connected to the home network. Advertising it as a BLE
+  // provisionable device makes commissioners expect a Network Commissioning
+  // cluster and new Wi-Fi credentials; advertise only the supported on-network
+  // rendezvous instead.
+  network: {
+    port,
+    ble: false,
+    discoveryCapabilities: { onIpNetwork: true, ble: false },
+  },
   commissioning: { passcode, discriminator },
   productDescription: {
     name: "Mabel TV",
@@ -92,16 +97,6 @@ pollTimer.unref();
 
 await writePairingDetails(server);
 logger.info(`MabelTV Matter bridge ready; initial state is ${initialPower ? "ON" : "OFF"}`);
-for (const signal of ["SIGINT", "SIGTERM"]) {
-  process.once(signal, () => {
-    clearInterval(pollTimer);
-    // matter.js performs the orderly fabric/storage shutdown. Its raw-HCI BLE
-    // dependency can retain a native handle afterwards, so guarantee systemd
-    // gets a clean exit instead of timing out an otherwise completed stop.
-    const exitTimer = setTimeout(() => process.exit(0), 5000);
-    exitTimer.unref();
-  });
-}
 try {
   await server.run();
 } finally {
