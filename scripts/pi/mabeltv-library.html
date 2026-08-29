@@ -1015,6 +1015,9 @@
     .portal-theme-picker{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:19px}.portal-theme-picker button{min-height:130px;display:grid;grid-template-columns:150px 1fr;justify-content:stretch;gap:15px;border:2px solid #34403a;border-radius:18px;padding:12px;background:#111714;color:#edf2ef;text-align:left}.portal-theme-picker button[aria-pressed="true"]{border-color:#f58d75;box-shadow:0 0 0 3px #f58d7524}.portal-theme-picker button>span:last-child{align-self:center;display:grid}.portal-theme-picker small{margin-top:5px;color:#84908a}.theme-preview{height:100px;display:grid;grid-template-columns:28% 1fr;grid-template-rows:repeat(3,1fr);gap:5px;overflow:hidden;border-radius:11px;padding:8px}.theme-preview i{display:block;border-radius:5px}.theme-preview i:first-child{grid-row:1/-1}.theme-preview-dark{background:#0d1210}.theme-preview-dark i{background:#28322e}.theme-preview-dark i:nth-child(2){background:#ef8169}.theme-preview-light{background:#f3f0e9}.theme-preview-light i{background:#fff;box-shadow:0 2px 8px #403b3020}.theme-preview-light i:first-child{background:#e3ded3}.theme-preview-light i:nth-child(2){background:#d66d55}
 
     @media(max-width:720px){
+      body.portal-v2 #view-watch .watch-controls{display:grid;grid-template-columns:1fr;gap:7px}
+      body.portal-v2 #view-watch .watch-tabs{width:100%}
+      body.portal-v2 #view-watch .watch-policy{max-width:none;justify-self:start;padding:6px 9px}
       body.portal-v2 #view-adult .page{width:100%;padding-right:0;padding-left:0}
       body.portal-v2 #view-adult .adult-hero{display:block;min-height:260px;margin:0 10px 12px;border-radius:23px;padding:25px 20px}
       body.portal-v2 #view-adult .adult-hero h1{font-size:3rem}
@@ -1394,6 +1397,13 @@
       return span.innerHTML
     }
 
+    function openRequestedView() {
+      const requested = location.hash.replace(/^#/, '')
+      const allowed = new Set(['home', 'live', 'channels', 'adult', 'watch', 'system'])
+      if (allowed.has(requested)) openView(requested)
+      else if (new URLSearchParams(location.search).has('watch')) openView('watch')
+    }
+
     async function initialise() {
       try {
         const state = await api('/api/setup')
@@ -1421,7 +1431,7 @@
         } else if (state.portal_pin_required === false) {
           await load()
           showOnly('app')
-          if (location.hash === '#watch' || new URLSearchParams(location.search).has('watch')) openView('watch')
+          openRequestedView()
         } else {
           // A valid HttpOnly session cookie survives an iPad page reload.  Ask
           // the protected library before showing the PIN screen so closing a
@@ -1429,7 +1439,7 @@
           try {
             await load()
             showOnly('app')
-            if (location.hash === '#watch' || new URLSearchParams(location.search).has('watch')) openView('watch')
+            openRequestedView()
           } catch (error) {
             showOnly('login')
             if (error.status !== 401) {
@@ -1511,7 +1521,7 @@
         $('#pin').value = ''
         await load()
         showOnly('app')
-        if (location.hash === '#watch' || new URLSearchParams(location.search).has('watch')) openView('watch')
+        openRequestedView()
       } catch (error) {
         $('#loginError').classList.add('bad')
         $('#loginError').textContent = error.message
