@@ -244,15 +244,15 @@ Window {
         if (adultMode.active) {
             adultMode.handleKey(key, false)
         } else if (guideOverlay.visible) {
-            guideOverlay.handleKey(key)
+            guideOverlay.handleKey(key, true)
         } else if (parentOverlay.visible) {
             parentOverlay.handleKey(key, Qt.NoModifier)
         } else if (key === Qt.Key_Up) {
             syncPlaybackPosition()
-            tvController.dispatch(TvController.PreviousProgramme)
+            tvController.dispatchPortal(TvController.PreviousProgramme)
         } else if (key === Qt.Key_Down) {
             syncPlaybackPosition()
-            tvController.dispatch(TvController.NextProgramme)
+            tvController.dispatchPortal(TvController.NextProgramme)
         } else if (key === Qt.Key_Left && tvController.scrubbingEnabled && !directMediaMode) {
             scrubPlayback(-15)
         } else if (key === Qt.Key_Right && tvController.scrubbingEnabled && !directMediaMode) {
@@ -272,7 +272,7 @@ Window {
             adultMode.close()
             return
         }
-        tvController.tuneGuideChannel(Number(channel))
+        tvController.tunePortalChannel(Number(channel))
     }
 
     function portalCommand(command) {
@@ -293,7 +293,7 @@ Window {
                 adultMode.close()
             guideOverlay.close()
             if (tvController.parentAccessState === TvController.ParentClosed)
-                tvController.requestParentAccess()
+                tvController.requestPortalParentAccess()
             while (tvController.parentAccessState === TvController.ParentConfirmation)
                 tvController.parentConfirm()
         } else if (command === "open-tv-guide") {
@@ -313,7 +313,7 @@ Window {
                 adultMode.restartFilm()
             } else {
                 syncPlaybackPosition()
-                tvController.restartCurrentProgramme()
+                tvController.restartPortalProgramme()
             }
         } else if (command === "enter-adult-mode") {
             if (!adultMode.active) {
@@ -325,28 +325,28 @@ Window {
                 adultMode.selectRelative(-1)
             else {
                 syncPlaybackPosition()
-                tvController.dispatch(TvController.ChannelUp)
+                tvController.dispatchPortal(TvController.ChannelUp)
             }
         } else if (command === "channel-down") {
             if (adultMode.active)
                 adultMode.selectRelative(1)
             else {
                 syncPlaybackPosition()
-                tvController.dispatch(TvController.ChannelDown)
+                tvController.dispatchPortal(TvController.ChannelDown)
             }
         } else if (command === "previous-programme") {
             if (adultMode.active)
                 adultMode.selectRelative(-1)
             else {
                 syncPlaybackPosition()
-                tvController.dispatch(TvController.PreviousProgramme)
+                tvController.dispatchPortal(TvController.PreviousProgramme)
             }
         } else if (command === "next-programme") {
             if (adultMode.active)
                 adultMode.selectRelative(1)
             else {
                 syncPlaybackPosition()
-                tvController.dispatch(TvController.NextProgramme)
+                tvController.dispatchPortal(TvController.NextProgramme)
             }
         } else if (command === "toggle-pause") {
             if (adultMode.active)
@@ -357,11 +357,11 @@ Window {
             if (adultMode.active)
                 adultMode.toggleSubtitles()
         } else if (command === "volume-up") {
-            tvController.dispatch(TvController.VolumeUp)
+            tvController.dispatchPortal(TvController.VolumeUp)
         } else if (command === "volume-down") {
-            tvController.dispatch(TvController.VolumeDown)
+            tvController.dispatchPortal(TvController.VolumeDown)
         } else if (command === "toggle-mute") {
-            tvController.dispatch(TvController.ToggleMute)
+            tvController.dispatchPortal(TvController.ToggleMute)
         } else if (command === "turn-on") {
             tvController.turnOn()
         } else if (command === "turn-off") {
@@ -424,7 +424,7 @@ Window {
             } else if (root.pendingPortalTuneChannel >= 0) {
                 const channel = root.pendingPortalTuneChannel
                 root.pendingPortalTuneChannel = -1
-                tvController.tuneGuideChannel(channel)
+                tvController.tunePortalChannel(channel)
             } else if (root.pendingPortalChannel >= 0
                        && root.pendingPortalProgramme.length > 0) {
                 const channel = root.pendingPortalChannel

@@ -123,6 +123,7 @@ public:
 
     Q_INVOKABLE void start();
     Q_INVOKABLE void dispatch(Action action);
+    Q_INVOKABLE void dispatchPortal(Action action);
     Q_INVOKABLE void turnOn();
     Q_INVOKABLE void turnOff();
     Q_INVOKABLE void toggleRemoteLock();
@@ -134,8 +135,10 @@ public:
     Q_INVOKABLE void prepareForPlaybackRestart(const QString &message);
     Q_INVOKABLE void updatePlaybackPosition(double positionSeconds, bool paused);
     Q_INVOKABLE void restartCurrentProgramme();
+    Q_INVOKABLE void restartPortalProgramme();
     Q_INVOKABLE void playPortalProgramme(int channelNumber, const QString &fileName);
     Q_INVOKABLE void requestParentAccess();
+    Q_INVOKABLE void requestPortalParentAccess();
     Q_INVOKABLE void parentConfirm();
     Q_INVOKABLE void requestAdultModeShortcut();
     Q_INVOKABLE void closeParent();
@@ -163,6 +166,7 @@ public:
     Q_INVOKABLE void toggleProgrammeEnabled(int channelNumber, const QString &fileName);
     Q_INVOKABLE QVariantList guideSchedule() const;
     Q_INVOKABLE void tuneGuideChannel(int channelNumber);
+    Q_INVOKABLE void tunePortalChannel(int channelNumber);
     Q_INVOKABLE void requestParentCommand(const QString &command);
 
     void setTvControl(CecTvControl *tvControl);
@@ -262,6 +266,10 @@ private:
     void prepareCurrentEpisodeForVisit(ChannelRuntime &runtime);
     [[nodiscard]] qint64 episodeUptimeMilliseconds() const;
     void setParentMessage(const QString &message);
+    void dispatchAction(Action action, bool respectRemoteLock);
+    void restartCurrentProgrammeInternal(bool parentPortalAuthorized);
+    void requestParentAccessInternal(bool respectRemoteLock);
+    void tuneGuideChannelInternal(int channelNumber, bool respectRemoteLock);
     void updateLibraryStatus();
     void enterNoChannelsState();
     bool applyLibrary(ChannelLibraryResult library);

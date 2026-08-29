@@ -18,6 +18,10 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertNotIn("(locked && !canUnlock)", portal)
         self.assertIn("Kids’ remote locked", portal)
         self.assertIn("Unlock kids’ physical remote", portal)
+        self.assertIn("tvController.dispatchPortal(", main_qml)
+        self.assertIn("tvController.tunePortalChannel(", main_qml)
+        self.assertIn("tvController.requestPortalParentAccess()", main_qml)
+        self.assertIn("tvController.restartPortalProgramme()", main_qml)
 
     def test_playback_telemetry_never_queries_libmpv_synchronously(self) -> None:
         source = (PROJECT_ROOT / "src" / "media" / "MpvVideo.cpp").read_text(

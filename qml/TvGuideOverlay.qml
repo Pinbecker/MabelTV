@@ -103,7 +103,7 @@ Item {
         visible = false
     }
 
-    function handleKey(key) {
+    function handleKey(key, parentPortalAuthorized) {
         if (!visible)
             return false
         if (key === Qt.Key_Up || key === Qt.Key_PageUp) {
@@ -123,7 +123,10 @@ Item {
             selectedProgramme = nowProgrammeIndex(selectedChannelData())
         } else if (key === Qt.Key_Return || key === Qt.Key_Enter) {
             if (rows.length > 0) {
-                controller.tuneGuideChannel(rows[selectedRow].number)
+                if (parentPortalAuthorized === true)
+                    controller.tunePortalChannel(rows[selectedRow].number)
+                else
+                    controller.tuneGuideChannel(rows[selectedRow].number)
                 close()
             }
         } else if (key === Qt.Key_B || key === Qt.Key_Backspace

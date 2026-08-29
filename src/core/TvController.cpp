@@ -559,7 +559,17 @@ QVariantList TvController::guideSchedule() const
 
 void TvController::tuneGuideChannel(int channelNumber)
 {
-    if (!m_tvGuideEnabled || m_remoteLocked || m_standby
+    tuneGuideChannelInternal(channelNumber, true);
+}
+
+void TvController::tunePortalChannel(int channelNumber)
+{
+    tuneGuideChannelInternal(channelNumber, false);
+}
+
+void TvController::tuneGuideChannelInternal(int channelNumber, bool respectRemoteLock)
+{
+    if (!m_tvGuideEnabled || (respectRemoteLock && m_remoteLocked) || m_standby
         || m_parentAccessState != ParentClosed) {
         return;
     }
@@ -589,7 +599,17 @@ void TvController::start()
 
 void TvController::dispatch(Action action)
 {
-    if (m_remoteLocked) {
+    dispatchAction(action, true);
+}
+
+void TvController::dispatchPortal(Action action)
+{
+    dispatchAction(action, false);
+}
+
+void TvController::dispatchAction(Action action, bool respectRemoteLock)
+{
+    if (respectRemoteLock && m_remoteLocked) {
         return;
     }
     if (m_parentAccessState != ParentClosed && action != ToggleStandby) {
@@ -749,7 +769,17 @@ void TvController::updatePlaybackPosition(double positionSeconds, bool paused)
 
 void TvController::restartCurrentProgramme()
 {
-    if (m_parentAccessState != ParentConfirmation || m_standby
+    restartCurrentProgrammeInternal(false);
+}
+
+void TvController::restartPortalProgramme()
+{
+    restartCurrentProgrammeInternal(true);
+}
+
+void TvController::restartCurrentProgrammeInternal(bool parentPortalAuthorized)
+{
+    if ((!parentPortalAuthorized && m_parentAccessState != ParentConfirmation) || m_standby
         || m_currentChannelIndex < 0) {
         return;
     }
@@ -764,7 +794,9 @@ void TvController::restartCurrentProgramme()
     runtime.anchorMilliseconds = m_broadcastClock.elapsed();
     m_playbackPaused = false;
     requestTune(m_currentChannelIndex, false, false);
-    qInfo() << "Current programme deliberately restarted from parent confirmation";
+    qInfo() << (parentPortalAuthorized
+                    ? "Current programme deliberately restarted from parent portal"
+                    : "Current programme deliberately restarted from parent confirmation");
 }
 
 void TvController::playbackFailed(const QString &message)
@@ -829,7 +861,17 @@ void TvController::prepareForPlaybackRestart(const QString &message)
 
 void TvController::requestParentAccess()
 {
-    if (m_remoteLocked || m_parentAccessState == ParentOpen) {
+    requestParentAccessInternal(true);
+}
+
+void TvController::requestPortalParentAccess()
+{
+    requestParentAccessInternal(false);
+}
+
+void TvController::requestParentAccessInternal(bool respectRemoteLock)
+{
+    if ((respectRemoteLock && m_remoteLocked) || m_parentAccessState == ParentOpen) {
         return;
     }
     m_parentAccessState = ParentConfirmation;

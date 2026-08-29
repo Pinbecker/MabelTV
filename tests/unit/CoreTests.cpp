@@ -718,6 +718,18 @@ void CoreTests::remoteLockBlocksActionsAndPersists()
         controller.dispatch(TvController::ToggleStandby);
         QCOMPARE(controller.volume(), 20);
         QVERIFY(!controller.standby());
+
+        controller.dispatchPortal(TvController::VolumeUp);
+        QCOMPARE(controller.volume(), 25);
+        QVERIFY(controller.remoteLocked());
+        controller.dispatchPortal(TvController::VolumeDown);
+        QCOMPARE(controller.volume(), 20);
+
+        controller.requestParentAccess();
+        QCOMPARE(controller.parentAccessState(), TvController::ParentClosed);
+        controller.requestPortalParentAccess();
+        QCOMPARE(controller.parentAccessState(), TvController::ParentConfirmation);
+        controller.closeParent();
     }
 
     TvController restored;
@@ -912,8 +924,13 @@ void CoreTests::tvGuideBuildsOrderedScheduleAndTunesChannels()
     }
     QCOMPARE(nowProgrammes, 1);
 
+    controller.toggleRemoteLock();
     controller.tuneGuideChannel(2);
+    QCOMPARE(controller.currentChannelNumber(), 1);
+    controller.tunePortalChannel(2);
     QCOMPARE(controller.currentChannelNumber(), 2);
+    QVERIFY(controller.remoteLocked());
+    controller.toggleRemoteLock();
 }
 
 void CoreTests::parentLibraryControlsPersistAndAffectPlayback()
