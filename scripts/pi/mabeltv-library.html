@@ -1005,6 +1005,7 @@
     body.portal-v2 #view-channels .library-channel-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
     body.portal-v2 #view-channels .library-utilities{grid-template-columns:repeat(3,minmax(0,1fr))}
     body.portal-v2 #view-channels button.library-main-card{min-height:190px;display:flex;flex-direction:column;align-items:stretch;gap:0;border:1px solid #303a36;border-radius:21px;padding:20px;background:linear-gradient(145deg,#171e1b,#101513);color:#edf2ef}
+    body.portal-v2 #view-channels button.library-main-card:before{display:none}
     body.portal-v2 #view-channels button.library-main-card:hover{border-color:#56645e;background:#1b2420;transform:translateY(-2px)}
     .library-card-top,.library-card-footer{display:flex;align-items:center;justify-content:space-between;gap:12px}.library-channel-pill{border:1px solid #3a4640;border-radius:999px;padding:5px 9px;background:#0b100e;color:#aeb8b3;font-size:.62rem;font-weight:760;letter-spacing:.08em}.library-channel-state{color:#78d7ad;font-size:.66rem}.hidden-channel .library-channel-state{color:#78827d}.library-main-card .channel-card-copy h3{margin:22px 0 5px;color:#fff;font-size:1.45rem;letter-spacing:-.035em}.library-main-card .channel-card-detail{color:#88938d;font-size:.72rem}.library-card-preview{display:block;overflow:hidden;margin-top:13px;color:#bdc6c2;font-size:.75rem;text-overflow:ellipsis;white-space:nowrap}.library-card-preview em{color:#6f7974;font-style:normal}.library-card-footer{margin-top:auto;padding-top:17px;border-top:1px solid #2a332f;color:#7f8a84;font-size:.68rem}.library-card-footer span:last-child{display:flex;align-items:center;gap:5px;color:#cbd2ce}.library-card-footer svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8}.library-workspace-nav{min-height:auto!important;border:0!important;padding-top:0!important;padding-bottom:0!important}
 
@@ -1019,15 +1020,19 @@
       body.portal-v2 #view-watch .watch-tabs{width:100%}
       body.portal-v2 #view-watch .watch-policy{max-width:none;justify-self:start;padding:6px 9px}
       body.portal-v2 #view-adult .page{width:100%;padding-right:0;padding-left:0}
-      body.portal-v2 #view-adult .adult-hero{display:block;min-height:260px;margin:0 10px 12px;border-radius:23px;padding:25px 20px}
-      body.portal-v2 #view-adult .adult-hero h1{font-size:3rem}
-      body.portal-v2 #view-adult .adult-hero-actions{align-items:stretch;margin-top:25px}
-      body.portal-v2 #view-adult .adult-hero-stat{min-width:0;flex:1;padding:11px 14px}
+      body.portal-v2 #view-adult,body.portal-v2 #view-adult .page{max-width:100vw!important;overflow-x:clip}
+      body.portal-v2 #view-adult .adult-hero{width:calc(100vw - 20px);max-width:calc(100vw - 20px);display:block;min-height:260px;margin:0 10px 12px;border-radius:23px;padding:25px 20px}
+      body.portal-v2 #view-adult .adult-hero>div:first-child,body.portal-v2 #view-adult .adult-hero p:not(.eyebrow){width:100%;max-width:100%;min-width:0}
+      body.portal-v2 #view-adult .adult-hero h1{max-width:100%;font-size:clamp(2.5rem,12vw,3rem);overflow-wrap:anywhere}
+      body.portal-v2 #view-adult .adult-hero-actions{display:grid;grid-template-columns:1fr 1fr;align-items:stretch;margin-top:25px}
+      body.portal-v2 #view-adult .adult-hero-stat{width:auto!important;min-width:0;max-width:100%;padding:11px 14px}
+      body.portal-v2 #view-adult .adult-add-film{min-width:0;padding-right:9px;padding-left:9px}
       body.portal-v2 #view-adult .adult-hero-stat strong{font-size:1.65rem}
       body.portal-v2 #view-adult .adult-add-film{min-height:58px;flex:1}
-      body.portal-v2 #view-adult .adult-library{border-right:0;border-left:0;border-radius:0;padding:20px 10px}
+      body.portal-v2 #view-adult .adult-library{width:100vw;max-width:100vw!important;overflow:hidden;border-right:0;border-left:0;border-radius:0;padding:20px 10px}
       body.portal-v2 #view-adult .adult-library-head,body.portal-v2 #view-adult .adult-library-context{padding:0 3px}
-      body.portal-v2 #view-adult .adult-discovery{grid-template-columns:minmax(0,1fr) minmax(126px,.58fr);gap:7px}
+      body.portal-v2 #view-adult .adult-discovery{grid-template-columns:minmax(0,1fr) minmax(118px,.55fr);gap:7px}
+      body.portal-v2 #view-adult .adult-search,body.portal-v2 #view-adult .adult-tool{min-width:0;width:100%}
       body.portal-v2 #view-adult .adult-film-list{grid-template-columns:repeat(3,minmax(0,1fr));gap:20px 8px}
       body.portal-v2 #view-adult .adult-film-poster{border-radius:9px}
       body.portal-v2 #view-adult .adult-film-copy strong{font-size:.7rem}
@@ -1036,6 +1041,7 @@
       .adult-film-action-grid{grid-template-columns:1fr}
       .adult-film-action-grid .danger{grid-column:auto}
       body.portal-v2 #view-channels button.library-main-card{min-height:165px!important;display:flex!important;border-radius:18px!important;padding:17px!important}
+      body.portal-v2 #view-channels .library-channel-grid{grid-template-columns:1fr}
       body.portal-v2 #view-channels .library-utilities{grid-template-columns:1fr}
       body.portal-v2 #view-channels .library-main-card .channel-card-copy h3{font-size:1.24rem}
       .mabel-channel-section{padding:0 10px}.mabel-show-identity{min-height:195px;border-radius:19px;padding:20px}.mabel-show-identity h2{font-size:2rem}.mabel-show-identity p{font-size:.72rem}.watch-channel-rail{grid-auto-columns:72vw}.watch-mabel-film{grid-auto-columns:auto}.portal-theme-picker{grid-template-columns:1fr}.portal-theme-picker button{grid-template-columns:115px 1fr}.theme-preview{height:82px}
