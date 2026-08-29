@@ -853,7 +853,8 @@ class LibraryUnitTests(unittest.TestCase):
         commands = ("open-parent-menu", "open-tv-guide", "close-overlay",
                     "restart-programme", "navigate-up", "navigate-down",
                     "navigate-left", "navigate-right", "select",
-                    "toggle-subtitles", "return-to-mabeltv", "toggle-remote-lock")
+                    "toggle-subtitles", "return-to-mabeltv", "toggle-remote-lock",
+                    "turn-on", "turn-off")
         with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True):
             with mock.patch.object(mabeltv_library.socket, "socket") as socket_factory:
                 client = socket_factory.return_value.__enter__.return_value

@@ -1,4 +1,5 @@
 #include "core/TvController.h"
+#include "hardware/CecTvControl.h"
 #include "library/ChannelLibrary.h"
 #include "library/ShuffleBag.h"
 
@@ -29,12 +30,12 @@ private slots:
     void controllerDisplaysSeasonEpisodeOrFilmNameWhenProgrammeChanges();
     void controllerRestoresCorruptFilmPositionWithoutChangingFilm();
     void standbyWakeWaitsForWelcomeBeforeResumingPlayback();
+    void cecFailureDoesNotBlockMabelTvStandbyOrWake();
     void remoteLockBlocksActionsAndPersists();
     void parentControlsRequireThreeConfirmationsAndPersistSettings();
     void tvGuideBuildsOrderedScheduleAndTunesChannels();
     void parentLibraryControlsPersistAndAffectPlayback();
     void adultLibraryIsSeparateAndParentOnly();
-    void longPowerRequestBypassesParentPanelButUsesOnlyShutdownCommand();
 };
 
 void CoreTests::shuffleBagVisitsEveryItemBeforeRepeating()
@@ -636,18 +637,54 @@ void CoreTests::standbyWakeWaitsForWelcomeBeforeResumingPlayback()
     stopRequests.clear();
 
     controller.updatePlaybackPosition(17.25, false);
-    controller.dispatch(TvController::ToggleStandby);
+    controller.turnOff();
     QVERIFY(controller.standby());
     QCOMPARE(stopRequests.count(), 1);
+    controller.turnOff();
+    QCOMPARE(stopRequests.count(), 1);
 
-    controller.dispatch(TvController::ToggleStandby);
+    controller.turnOn();
     QVERIFY(!controller.standby());
+    controller.turnOn();
     QTest::qWait(600);
     QCOMPARE(playbackRequests.count(), 1);
 
     controller.resumeFromStandby();
     QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 2, 1000);
     QVERIFY(std::abs(playbackRequests.at(1).at(1).toDouble() - 17.25) < 0.8);
+}
+
+void CoreTests::cecFailureDoesNotBlockMabelTvStandbyOrWake()
+{
+    const QByteArray oldClient = qgetenv("MABELTV_CEC_CLIENT");
+    const QByteArray oldDevice = qgetenv("MABELTV_CEC_DEVICE");
+    qputenv("MABELTV_CEC_CLIENT", "mabeltv-cec-client-that-does-not-exist");
+    qputenv("MABELTV_CEC_DEVICE", "/dev/mabeltv-cec-that-does-not-exist");
+
+    {
+        CecTvControl cec(QStringLiteral("MabelTV"));
+        TvController controller;
+        controller.setTvControl(&cec);
+
+        controller.turnOff();
+        QVERIFY(controller.standby());
+        QTest::qWait(100);
+
+        controller.turnOn();
+        QVERIFY(!controller.standby());
+        QTest::qWait(100);
+    }
+
+    if (oldClient.isNull()) {
+        qunsetenv("MABELTV_CEC_CLIENT");
+    } else {
+        qputenv("MABELTV_CEC_CLIENT", oldClient);
+    }
+    if (oldDevice.isNull()) {
+        qunsetenv("MABELTV_CEC_DEVICE");
+    } else {
+        qputenv("MABELTV_CEC_DEVICE", oldDevice);
+    }
 }
 
 void CoreTests::remoteLockBlocksActionsAndPersists()
@@ -1045,17 +1082,6 @@ void CoreTests::adultLibraryIsSeparateAndParentOnly()
     QCOMPARE(restored.adultPlaybackDuration(QStringLiteral("potter-id")), 10234.0);
     QCOMPARE(restored.adultPlaybackProgress(QStringLiteral("potter-id")),
              842.5 / 10234.0);
-}
-
-void CoreTests::longPowerRequestBypassesParentPanelButUsesOnlyShutdownCommand()
-{
-    TvController controller;
-    QSignalSpy commands(&controller, &TvController::parentCommandRequested);
-
-    controller.requestSafeShutdown();
-
-    QCOMPARE(commands.count(), 1);
-    QCOMPARE(commands.constFirst().constFirst().toString(), QStringLiteral("shutdown"));
 }
 
 QTEST_MAIN(CoreTests)

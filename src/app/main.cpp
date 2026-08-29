@@ -1,5 +1,6 @@
 #include "core/TvController.h"
 #include "diagnostics/Logging.h"
+#include "hardware/CecTvControl.h"
 #include "media/MpvVideo.h"
 #include "media/SoundEffects.h"
 
@@ -360,6 +361,11 @@ int main(int argc, char *argv[])
 
     TvController television;
     television.initialize(channelsPath, settingsPath, mediaRoot, statePath);
+    CecTvControl cecTvControl(tvDisplayName);
+    television.setTvControl(&cecTvControl);
+    qInfo() << (cecTvControl.available()
+                    ? "HDMI-CEC TV control is available"
+                    : "HDMI-CEC TV control is unavailable; MabelTV standby remains usable");
 
 #ifdef Q_OS_LINUX
     std::unique_ptr<QSocketNotifier> reloadNotifier;
@@ -577,6 +583,8 @@ int main(int argc, char *argv[])
                                                                     "portalMuted").toBool()},
                                                                {QStringLiteral("remote_locked"), rootObject->property(
                                                                     "portalRemoteLocked").toBool()},
+                                                               {QStringLiteral("standby"), rootObject->property(
+                                                                    "portalStandby").toBool()},
                                                                {QStringLiteral("subtitles_available"), rootObject->property(
                                                                     "portalSubtitlesAvailable").toBool()},
                                                                {QStringLiteral("subtitles_visible"), rootObject->property(
@@ -614,6 +622,8 @@ int main(int argc, char *argv[])
                                                           QStringLiteral("volume-up"),
                                                           QStringLiteral("volume-down"),
                                                           QStringLiteral("toggle-mute"),
+                                                          QStringLiteral("turn-on"),
+                                                          QStringLiteral("turn-off"),
                                                           QStringLiteral("toggle-power"),
                                                           QStringLiteral("open-parent-menu"),
                                                           QStringLiteral("open-tv-guide"),

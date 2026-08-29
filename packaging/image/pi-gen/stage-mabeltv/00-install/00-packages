@@ -5,6 +5,7 @@ libqt6opengl6
 libmpv-dev
 ffmpeg
 ir-keytable
+cec-utils
 python3
 sudo
 logrotate

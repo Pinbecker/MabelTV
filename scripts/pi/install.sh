@@ -68,7 +68,7 @@ if [[ "$skip_packages" != "true" ]]; then
     apt-get update
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         qt6-qpa-plugins qml6-module-qtquick qml6-module-qtquick-window \
-        libqt6opengl6 libmpv-dev ffmpeg ir-keytable python3 sudo logrotate avahi-daemon \
+        libqt6opengl6 libmpv-dev ffmpeg ir-keytable cec-utils python3 sudo logrotate avahi-daemon \
         alsa-utils ca-certificates curl util-linux qrencode udisks2
     if [[ -z "$prebuilt_dir" ]]; then
         DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \

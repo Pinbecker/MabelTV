@@ -38,6 +38,7 @@ Test both supported RAM/storage/display arrangements that will be advertised:
 
 - microSD and USB SSD;
 - both micro-HDMI sockets;
+- HDMI-CEC discovery, status, wake, active-source selection and standby on each advertised television, with the Pi still reachable after TV standby;
 - cold boot with TV on, TV off, and TV connected after boot;
 - HDMI audio, mute/volume, and missing-audio fallback;
 - USB keyboard-style remote and the documented GPIO IR option;

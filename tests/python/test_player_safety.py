@@ -221,15 +221,35 @@ class PlayerSafetyTests(unittest.TestCase):
         adult_qml = (PROJECT_ROOT / "qml" / "AdultModeOverlay.qml").read_text(
             encoding="utf-8"
         )
-        application = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
+        self.assertIn('property string pendingPowerAction: ""', main_qml)
+        self.assertIn("if (adultMode.active) {\n            adultMode.close()", main_qml)
+        self.assertIn("root.performPowerOff()", main_qml)
+        self.assertIn("tvController.turnOff()", main_qml)
+        self.assertIn("if (root.pendingPowerAction.length > 0)", main_qml)
+        self.assertNotIn("powerHoldTimer", main_qml)
+        self.assertNotIn("requestSafeShutdown", main_qml)
+        self.assertIn("if (overlay.closing)\n                overlay.finishClose()", adult_qml)
+
+    def test_tv_power_uses_one_explicit_cec_layer_for_remote_and_portal(self) -> None:
+        controller = (PROJECT_ROOT / "src" / "core" / "TvController.cpp").read_text(
+            encoding="utf-8"
+        )
+        cec = (PROJECT_ROOT / "src" / "hardware" / "CecTvControl.cpp").read_text(
+            encoding="utf-8"
+        )
+        portal = (PROJECT_ROOT / "scripts" / "pi" / "mabeltv-library.html").read_text(
             encoding="utf-8"
         )
 
-        self.assertIn('property string pendingPowerAction: ""', main_qml)
-        self.assertIn("if (adultMode.active) {\n            adultMode.close()", main_qml)
-        self.assertIn("root.performPowerOff(action === \"shutdown\")", main_qml)
-        self.assertIn("if (root.pendingPowerAction.length > 0)", main_qml)
-        self.assertIn("if (overlay.closing)\n                overlay.finishClose()", adult_qml)
+        self.assertIn("m_tvControl->turnOn()", controller)
+        self.assertIn("m_tvControl->turnOff()", controller)
+        self.assertIn('QStringLiteral("on 0")', cec)
+        self.assertIn('QStringLiteral("as")', cec)
+        self.assertIn('QStringLiteral("standby 0")', cec)
+        self.assertNotIn('QStringLiteral("toggle")', cec)
+        self.assertIn("id=\"homeTurnOn\"", portal)
+        self.assertIn("id=\"homeTurnOff\"", portal)
+        self.assertIn("body: JSON.stringify({ command, ...extra })", portal)
 
     def test_health_monitor_resets_for_every_playback_request(self) -> None:
         source = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(

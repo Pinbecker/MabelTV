@@ -17,11 +17,9 @@ Window {
     property real flickerAmount: 0
     property real distortionPhase: 0
     property bool poweringOff: false
-    property bool powerOffShutsDown: false
     property real powerOffProgress: 0
     property bool previousHeldForParent: false
     property bool previousHeldForRestart: false
-    property bool powerHeldForShutdown: false
     property bool muteHeldForLock: false
     readonly property bool showStatic: !directMediaMode
         && (tvController.tuning
@@ -54,6 +52,7 @@ Window {
     readonly property int portalVolume: tvController.volume
     readonly property bool portalMuted: tvController.muted
     readonly property bool portalRemoteLocked: tvController.remoteLocked
+    readonly property bool portalStandby: tvController.standby
     readonly property bool portalSubtitlesAvailable: adultMode.active
         && adultPlayer.subtitlesAvailable
     readonly property bool portalSubtitlesVisible: adultMode.active
@@ -147,18 +146,16 @@ Window {
         scrubOsdTimer.restart()
     }
 
-    function beginPowerOff(shutDownPi) {
+    function beginPowerOff() {
         if (poweringOff || pendingPowerAction.length > 0)
             return
         if (tvController.standby) {
-            if (shutDownPi)
-                tvController.requestSafeShutdown()
-            else
-                tvController.dispatch(TvController.ToggleStandby)
+            // Explicit OFF is intentionally harmless when already in standby.
+            tvController.turnOff()
             return
         }
         cancelFilmCountdown()
-        pendingPowerAction = shutDownPi ? "shutdown" : "standby"
+        pendingPowerAction = "standby"
         if (openingAdultMode)
             return
         if (adultMode.active) {
@@ -166,17 +163,16 @@ Window {
             return
         }
         pendingPowerAction = ""
-        performPowerOff(shutDownPi)
+        performPowerOff()
     }
 
-    function performPowerOff(shutDownPi) {
+    function performPowerOff() {
         if (poweringOff)
             return
         cancelFilmCountdown()
         syncPlaybackPosition()
         if (player.status === "Playing" && !player.paused)
             player.togglePause()
-        powerOffShutsDown = shutDownPi
         poweringOff = true
         powerOffProgress = 0
         if (tvController.soundEffectsEnabled)
@@ -368,8 +364,17 @@ Window {
             tvController.dispatch(TvController.VolumeDown)
         } else if (command === "toggle-mute") {
             tvController.dispatch(TvController.ToggleMute)
+        } else if (command === "turn-on") {
+            tvController.turnOn()
+        } else if (command === "turn-off") {
+            beginPowerOff()
         } else if (command === "toggle-power") {
-            beginPowerOff(false)
+            // Compatibility for an older portal page. Use MabelTV state, not a
+            // CEC power-toggle opcode, to choose the explicit operation.
+            if (tvController.standby)
+                tvController.turnOn()
+            else
+                beginPowerOff()
         } else if (command === "navigate-up") {
             portalNavigate(Qt.Key_Up)
         } else if (command === "navigate-down") {
@@ -416,9 +421,8 @@ Window {
         repeat: false
         onTriggered: {
             if (root.pendingPowerAction.length > 0) {
-                const action = root.pendingPowerAction
                 root.pendingPowerAction = ""
-                root.performPowerOff(action === "shutdown")
+                root.performPowerOff()
             } else if (root.pendingPortalTuneChannel >= 0) {
                 const channel = root.pendingPortalTuneChannel
                 root.pendingPortalTuneChannel = -1
@@ -916,9 +920,8 @@ Window {
                         root.openingAdultMode = false
                         tvController.closeParent()
                         if (root.pendingPowerAction.length > 0) {
-                            const action = root.pendingPowerAction
                             root.pendingPowerAction = ""
-                            root.performPowerOff(action === "shutdown")
+                            root.performPowerOff()
                         } else {
                             if (root.pendingExternalSource.toString().length > 0) {
                                 const source = root.pendingExternalSource
@@ -1458,7 +1461,7 @@ Window {
         anchors.fill: parent
         controller: tvController
         onClosed: root.leaveAdultMode()
-        onPowerRequested: root.beginPowerOff(false)
+        onPowerRequested: root.beginPowerOff()
     }
 
     Rectangle {
@@ -1567,15 +1570,6 @@ Window {
     }
 
     Timer {
-        id: powerHoldTimer
-        interval: 5000
-        onTriggered: {
-            root.powerHeldForShutdown = true
-            root.beginPowerOff(true)
-        }
-    }
-
-    Timer {
         id: muteHoldTimer
         // Mute is only mute; Adult playback now exposes subtitles directly in
         // its scrubber, so no hidden long-press subtitle gesture remains.
@@ -1616,12 +1610,8 @@ Window {
         PauseAnimation { duration: 70 }
         ScriptAction {
             script: {
-                if (root.powerOffShutsDown) {
-                    tvController.requestSafeShutdown()
-                } else {
-                    tvController.dispatch(TvController.ToggleStandby)
-                    root.poweringOff = false
-                }
+                tvController.turnOff()
+                root.poweringOff = false
             }
         }
     }
@@ -1753,10 +1743,6 @@ Window {
                 event.accepted = true
             } else if (adultMode.active) {
                 if (event.key === Qt.Key_P) {
-                    if (!event.isAutoRepeat) {
-                        root.powerHeldForShutdown = false
-                        powerHoldTimer.restart()
-                    }
                     event.accepted = true
                 } else {
                     event.accepted = adultMode.handleKey(event.key, event.isAutoRepeat)
@@ -1807,10 +1793,6 @@ Window {
                 }
                 event.accepted = true
             } else if (event.key === Qt.Key_P) {
-                if (!event.isAutoRepeat) {
-                    root.powerHeldForShutdown = false
-                    powerHoldTimer.restart()
-                }
                 event.accepted = true
             } else if (event.key >= Qt.Key_0 && event.key <= Qt.Key_9
                        && !event.isAutoRepeat && !directMediaMode) {
@@ -1919,12 +1901,10 @@ Window {
                 root.previousHeldForRestart = false
                 event.accepted = true
             } else if (event.key === Qt.Key_P && !event.isAutoRepeat) {
-                if (powerHoldTimer.running) {
-                    powerHoldTimer.stop()
-                    if (!root.powerHeldForShutdown)
-                        root.beginPowerOff(false)
-                }
-                root.powerHeldForShutdown = false
+                if (tvController.standby)
+                    tvController.turnOn()
+                else
+                    root.beginPowerOff()
                 event.accepted = true
             }
         }

@@ -18,6 +18,8 @@
 #include <functional>
 #include <utility>
 
+class CecTvControl;
+
 class TvController final : public QObject
 {
     Q_OBJECT
@@ -121,6 +123,8 @@ public:
 
     Q_INVOKABLE void start();
     Q_INVOKABLE void dispatch(Action action);
+    Q_INVOKABLE void turnOn();
+    Q_INVOKABLE void turnOff();
     Q_INVOKABLE void toggleRemoteLock();
     Q_INVOKABLE void resumeFromStandby();
     Q_INVOKABLE void enterDigit(int digit);
@@ -160,7 +164,8 @@ public:
     Q_INVOKABLE QVariantList guideSchedule() const;
     Q_INVOKABLE void tuneGuideChannel(int channelNumber);
     Q_INVOKABLE void requestParentCommand(const QString &command);
-    Q_INVOKABLE void requestSafeShutdown();
+
+    void setTvControl(CecTvControl *tvControl);
 
 signals:
     void channelChanged();
@@ -307,6 +312,7 @@ private:
     bool m_started = false;
     bool m_soundEffectsEnabled = true;
     bool m_scrubbingEnabled = false;
+    CecTvControl *m_tvControl = nullptr;
     QString m_sessionId;
     std::function<qint64()> m_episodeUptimeClock;
     ParentAccessState m_parentAccessState = ParentClosed;

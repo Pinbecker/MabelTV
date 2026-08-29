@@ -99,7 +99,7 @@ When creating or editing a channel, choose **Shows / episodes** or **Films / lon
 - Page Up / Page Down: channel up/down
 - `+` / `-`: volume
 - Enter: pause/play
-- `P`: standby; hold five seconds for safe shutdown
+- `P`: put MabelTV and the television in standby, or wake them and select the Pi HDMI input; the Pi stays running
 - `B`: hold for 3.5 seconds to open the parent menu; a short press does nothing
 - Up / Down: previous/next programme
 - Left / Right: seek only when Playback scrubbing is enabled
@@ -117,6 +117,6 @@ Open the dashboard and go to **Help & system**.
 - Select **Download support bundle** immediately after a recurring problem.
 - Run `sudo mabeltv-doctor` over SSH for the same first-line checks in a terminal.
 
-Always use the dashboard or the five-second Power hold before removing power. Pulling power can corrupt the SD card.
+Always use the dashboard's **Shut down Raspberry Pi** action or `sudo poweroff` over SSH before removing power. The remote Power button controls MabelTV and the physical television only; it deliberately leaves the Pi running. Pulling power can corrupt the SD card.
 
 If the parent PIN is forgotten, do not reinstall. Shut down the Pi, connect its boot microSD/USB drive to another computer, create an empty file named exactly `mabeltv-reset-pin` on the visible boot partition, and boot again. The TV supplies a new one-time setup code while keeping videos, channels, and settings. Platform-specific steps are in [Forgotten parent PIN](raspberry-pi-setup.md#forgotten-parent-pin).

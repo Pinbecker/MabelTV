@@ -45,6 +45,8 @@ qt_standard_project_setup(REQUIRES 6.4)
 add_library(mabeltv_core STATIC
     src/core/TvController.cpp
     src/core/TvController.h
+    src/hardware/CecTvControl.cpp
+    src/hardware/CecTvControl.h
     src/library/ChannelLibrary.cpp
     src/library/ChannelLibrary.h
     src/library/MediaIndex.cpp

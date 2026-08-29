@@ -47,6 +47,7 @@ The manual customer journey, including exact Windows/macOS/Linux copy commands, 
 - Main-loop, loading-state, and rendered-frame watchdogs with controlled, evidence-preserving restarts.
 - Temperature and voltage warnings, conversion heat pause/resume, memory/task/file-descriptor limits, and systemd restart limits.
 - A dashboard health summary, support-bundle download, safe player restart, Pi reboot, and Pi shutdown.
+- HDMI-CEC power control: MabelTV standby puts the television in standby, while wake selects the Pi input. The Raspberry Pi remains running.
 - An optional 5-minute, 20-minute, 1-hour, or 3-hour inactivity reset for partly watched show episodes; film and long-video channels always retain their resume positions.
 - Late activation, new-release readiness checks, an explicit previous-release pointer, matching asset rollback, and a non-destructive uninstaller.
 - Physical parent-PIN recovery from the SD card’s boot partition without deleting videos or settings.
@@ -64,7 +65,7 @@ A USB keyboard or keyboard-style USB remote works without mapping. The essential
 | `M` | mute; hold three seconds to lock/unlock other controls |
 | `B` | previous channel; hold 3.5 seconds, then OK three times, for adult controls |
 | Enter | pause/play, direct-channel confirm, or adult-menu confirm |
-| `P` | standby; hold five seconds for safe shutdown |
+| `P` | MabelTV + television standby / wake; the Pi stays running |
 | Left / Right | previous / next programme |
 | `0`–`9` | direct channel entry |
 | `R` | another programme on the current channel |

@@ -16,7 +16,7 @@ Both routes are produced from the same qualified release bundle. The image is on
 | Board | Raspberry Pi 4 Model B |
 | Memory | 2 GB or more |
 | OS | Raspberry Pi OS Lite 64-bit; `ID` and `VERSION_ID` must match the bundle's `SUPPORTED-OS.txt` and build manifest |
-| Display | either Pi 4 micro-HDMI connector; detected at launch |
+| Display | either Pi 4 micro-HDMI connector; display/audio and the connected HDMI-CEC adapter are detected at launch |
 | Audio | matching HDMI ALSA device, selected at launch |
 | Storage | at least 4 GB free for installation, plus media capacity |
 | Cooling | ventilated case; a fan is strongly recommended behind a TV |
@@ -67,7 +67,7 @@ The product installer:
 
 1. checks Pi model, RAM, architecture, OS, storage, and recorded heat/power state;
 2. verifies the build manifest and both binary SHA-256 values;
-3. installs runtime dependencies and Avahi network discovery;
+3. installs runtime dependencies, including `cec-utils`, and Avahi network discovery;
 4. runs the native libmpv self-test;
 5. stages a complete immutable release, including matching units/helpers/docs;
 6. preserves channels, settings, owner record, media, and a pre-install backup;
@@ -154,7 +154,7 @@ The bundle includes recent service/kernel evidence, model, OS, memory, storage, 
 
 This recovery requires physical access to the boot microSD card or USB drive. It preserves media, channels, settings, and a recovery copy of the previous owner record.
 
-1. Hold the remote's `P` key for five seconds, or run `sudo poweroff` over SSH. Wait for shutdown, then remove the boot microSD card/USB drive.
+1. Use **Shut down Raspberry Pi** in the parent dashboard, or run `sudo poweroff` over SSH. Wait for shutdown, then remove the boot microSD card/USB drive. The remote `P` key intentionally leaves the Pi running.
 2. Insert it into another computer and open the small FAT boot partition (usually labelled `bootfs`).
 3. Create an empty file named exactly `mabeltv-reset-pin` (no `.txt` suffix).
 4. Return the card and boot the Pi.

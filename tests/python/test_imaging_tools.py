@@ -83,6 +83,9 @@ class ImagerManifestTests(unittest.TestCase):
         self.assertIn('--disable-ir', configure_boot)
         self.assertIn('existing_ir_line=', configure_boot)
         self.assertNotIn('hdmi_enable_4kp60=1', configure_boot)
+        self.assertIn('hdmi_ignore_cec_init=1', configure_boot)
+        self.assertNotIn("printf 'hdmi_ignore_cec=1", configure_boot)
+
         self.assertIn('mabeltv-audio-edid.base64', configure_boot)
         self.assertIn('drm.edid_firmware=HDMI-A-1:edid/mabeltv-audio-edid.bin',
                       configure_boot)
@@ -122,6 +125,13 @@ class ImagerManifestTests(unittest.TestCase):
         self.assertIn('mabeltv-screen-capture-stop', activation)
         self.assertIn('mabeltv-screen-capture-stop', sudoers)
         self.assertIn('mabeltv-screen-capture-stop', uninstall)
+
+    def test_pi_images_and_updates_install_cec_runtime(self):
+        packages = (ROOT / "packaging/image/pi-gen/stage-mabeltv/00-install/00-packages").read_text(
+            encoding="utf-8")
+        installer = (ROOT / "scripts/pi/install.sh").read_text(encoding="utf-8")
+        self.assertIn("cec-utils", packages.splitlines())
+        self.assertIn("cec-utils", installer)
 
     def test_laptop_only_builder_uses_local_arm64_docker_bundle_then_image_recipe(self):
         builder = (ROOT / "scripts" / "imaging" / "build-local-pi-image.sh").read_text(

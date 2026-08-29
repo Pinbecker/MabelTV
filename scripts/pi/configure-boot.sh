@@ -144,8 +144,9 @@ awk -v begin="$begin_marker" -v end="$end_marker" '
         && ! grep -q -E '^dtoverlay=gpio-ir(,gpio_pin=[0-9]+)?$' "$temporary_config"; then
         printf '%s\n' "$ir_line"
     fi
+    # Keep firmware boot quiet so a Pi maintenance reboot does not wake the TV.
+    # Runtime CEC remains enabled for MabelTV's explicit ON/OFF operations.
     printf 'hdmi_ignore_cec_init=1\n'
-    printf 'hdmi_ignore_cec=1\n'
     printf 'disable_splash=1\n'
     printf '%s\n' "$end_marker"
 } >> "$temporary_config"
@@ -200,9 +201,9 @@ install -o root -g root -m 0600 "$temporary_tokens" "$managed_tokens_file"
 rm -f -- "$temporary_tokens"
 
 if grep -q -E '^dtoverlay=gpio-ir(,gpio_pin=[0-9]+)?$' "$config_path"; then
-    printf 'Configured GPIO IR input, disabled HDMI-CEC, and selected %s output.\n' "$display"
+    printf 'Configured GPIO IR input, enabled runtime HDMI-CEC, and selected %s output.\n' "$display"
 else
-    printf 'Configured appliance display settings without an IR receiver, disabled HDMI-CEC, and selected %s output.\n' "$display"
+    printf 'Configured appliance display settings without an IR receiver, enabled runtime HDMI-CEC, and selected %s output.\n' "$display"
 fi
 printf 'Backups: %s and %s\n' "$config_path.mabeltv-$stamp.bak" "$cmdline_path.mabeltv-$stamp.bak"
 printf 'Reboot is required.\n'

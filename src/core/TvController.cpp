@@ -1,5 +1,7 @@
 #include "TvController.h"
 
+#include "hardware/CecTvControl.h"
+
 #include <QDateTime>
 #include <QDir>
 #include <QDirIterator>
@@ -595,18 +597,11 @@ void TvController::dispatch(Action action)
     }
 
     if (action == ToggleStandby) {
-        if (!m_standby && m_currentChannelIndex >= 0) {
-            freezeTimeline(m_channels[m_currentChannelIndex]);
-            markCurrentEpisodeLeft(m_channels[m_currentChannelIndex]);
-        }
-        setStandby(!m_standby);
         if (m_standby) {
-            m_playbackPaused = false;
-            m_tuningTimer.stop();
-            setTuning(false);
-            emit stopPlaybackRequested();
+            turnOn();
+        } else {
+            turnOff();
         }
-        saveState();
         return;
     }
 
@@ -1055,6 +1050,41 @@ void TvController::reloadAdultLibrary()
     emit adultLibraryChanged();
 }
 
+void TvController::turnOn()
+{
+    if (m_standby) {
+        setStandby(false);
+        saveState();
+    }
+    if (m_tvControl != nullptr) {
+        m_tvControl->turnOn();
+    }
+}
+
+void TvController::turnOff()
+{
+    if (!m_standby) {
+        if (m_currentChannelIndex >= 0) {
+            freezeTimeline(m_channels[m_currentChannelIndex]);
+            markCurrentEpisodeLeft(m_channels[m_currentChannelIndex]);
+        }
+        setStandby(true);
+        m_playbackPaused = false;
+        m_tuningTimer.stop();
+        setTuning(false);
+        emit stopPlaybackRequested();
+        saveState();
+    }
+    if (m_tvControl != nullptr) {
+        m_tvControl->turnOff();
+    }
+}
+
+void TvController::setTvControl(CecTvControl *tvControl)
+{
+    m_tvControl = tvControl;
+}
+
 void TvController::playPortalProgramme(int channelNumber, const QString &fileName)
 {
     // This is an explicit, parent-authenticated portal choice. It may start a
@@ -1272,16 +1302,6 @@ void TvController::requestParentCommand(const QString &command)
         saveState();
         emit parentCommandRequested(command);
     }
-}
-
-void TvController::requestSafeShutdown()
-{
-    if (m_remoteLocked) {
-        return;
-    }
-    qInfo() << "Safe shutdown requested by long power-button hold";
-    saveState();
-    emit parentCommandRequested(QStringLiteral("shutdown"));
 }
 
 void TvController::loadSettings(const QString &settingsPath)

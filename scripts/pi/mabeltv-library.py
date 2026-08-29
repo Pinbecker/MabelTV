@@ -1418,7 +1418,7 @@ class Library:
     def remote_stop_tv(self) -> dict[str, Any]:
         if not self.remote_tv_running():
             return {"ok": True, "message": "Mabel TV is already off"}
-        self.live_tv_control({"command": "toggle-power"})
+        self.live_tv_control({"command": "turn-off"})
         return {"ok": True, "message": "Mabel TV has been stopped for remote viewing"}
 
     def remote_release(self, token: str) -> dict[str, Any]:
@@ -2435,7 +2435,7 @@ class Library:
     def live_tv_status(self) -> dict[str, Any]:
         status = self.live_stream.status()
         mode = self.player_mode_status()
-        for field in ("volume", "muted", "remote_locked", "subtitles_available",
+        for field in ("volume", "muted", "remote_locked", "standby", "subtitles_available",
                       "subtitles_visible"):
             if field in mode:
                 status[field] = mode[field]
@@ -2479,7 +2479,8 @@ class Library:
     def live_tv_control(self, payload: dict[str, Any]) -> dict[str, Any]:
         command = str(payload.get("command", ""))
         allowed = {"channel-up", "channel-down", "previous-programme", "next-programme",
-                   "toggle-pause", "toggle-subtitles", "volume-up", "volume-down", "toggle-mute", "toggle-power",
+                   "toggle-pause", "toggle-subtitles", "volume-up", "volume-down", "toggle-mute",
+                   "turn-on", "turn-off", "toggle-power",
                    "open-parent-menu", "open-tv-guide", "close-overlay", "restart-programme",
                    "enter-adult-mode", "navigate-up", "navigate-down", "navigate-left",
                    "navigate-right", "select", "return-to-mabeltv", "toggle-remote-lock",

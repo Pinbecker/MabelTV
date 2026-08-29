@@ -1389,8 +1389,8 @@
       <p id="notice" class="notice" role="status" aria-live="polite"></p>
       <section id="view-overview" class="view active"><div class="page">
         <div class="home-intro">
-          <article class="home-greeting surface"><div><p class="eyebrow">Parent controls</p><h1><span data-tv-name>Your TV</span> is ready when you are.</h1><p>Add something new, or jump straight into a channel to tidy what appears on the television.</p></div><div class="home-actions"><button class="primary" data-go="channels"><svg class="icon" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>Open library</button><button id="enterAdultMode" type="button" class="secondary">Enter Adult Mode</button></div></article>
-          <article class="home-status surface"><div class="status-top"><span id="homeStatusIcon" class="status-icon"><svg class="icon" viewBox="0 0 24 24"><path d="m6 12 4 4 8-9"/></svg></span><div><p class="section-kicker">TV status</p><h2 id="healthTitle">Checking everything…</h2></div></div><p id="healthSummary" class="health-summary">Checking the player, temperature, power, and storage.</p><div class="quick-stats"><div class="quick-stat"><span>Temperature</span><strong id="temperature">—</strong></div><div class="quick-stat"><span>Storage available</span><strong id="storageFree">—</strong></div><div class="quick-stat"><span>Running for</span><strong id="uptime">—</strong></div></div><button id="refreshLibrary" class="secondary">Refresh TV library</button></article>
+          <article class="home-greeting surface"><div><p class="eyebrow">Parent controls</p><h1><span data-tv-name>Your TV</span> is ready when you are.</h1><p>Add something new, or jump straight into a channel to tidy what appears on the television.</p></div><div class="home-actions"><button class="primary" data-go="channels"><svg class="icon" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>Open library</button><button id="enterAdultMode" type="button" class="secondary">Enter Adult Mode</button><button id="homeTurnOn" type="button" class="secondary">Turn On</button><button id="homeTurnOff" type="button" class="secondary">Turn Off</button></div></article>
+          <article class="home-status surface"><div class="status-top"><span id="homeStatusIcon" class="status-icon"><svg class="icon" viewBox="0 0 24 24"><path d="m6 12 4 4 8-9"/></svg></span><div><p class="section-kicker">TV status</p><h2 id="healthTitle">Checking everything…</h2></div></div><p id="healthSummary" class="health-summary">Checking the player, temperature, power, and storage.</p><div class="quick-stats"><div class="quick-stat"><span>MabelTV</span><strong id="homePowerState">Checking…</strong></div><div class="quick-stat"><span>Temperature</span><strong id="temperature">—</strong></div><div class="quick-stat"><span>Storage available</span><strong id="storageFree">—</strong></div><div class="quick-stat"><span>Running for</span><strong id="uptime">—</strong></div></div><button id="refreshLibrary" class="secondary">Refresh TV library</button></article>
         </div>
         <article id="warningsCard" class="attention surface surface-pad hidden"><div class="attention-head"><span class="status-icon warn">!</span><div><p class="section-kicker">Needs attention</p><h2>There’s a small job to do</h2></div></div><div id="warnings"></div></article>
         <section class="library-bar surface" aria-label="Library summary"><div id="librarySummary"></div></section>
@@ -1935,7 +1935,7 @@
       $('#openLiveChannels').disabled = locked
       $('#openRemotePower').disabled = locked
       updateLiveChannelSelection(state)
-      const waking = !available && String(state.reason || '').toLowerCase().includes('off')
+      const waking = state.standby === true
       $('#remotePowerTitle').textContent = waking ? 'Wake MabelTV?' : 'Put MabelTV in standby?'
       $('#remotePowerDescription').textContent = waking
         ? 'The television will start and return to the last channel.'
@@ -1970,6 +1970,13 @@
       } catch (error) {
         renderLiveTv({ available: false, reason: error.message })
       }
+    }
+
+    async function refreshHomePowerState() {
+      const state = await api('/api/live')
+      liveTvState = state || {}
+      $('#homePowerState').textContent = state.standby === true ? 'Standby' : 'On'
+      return state
     }
 
     function startLiveTv() {
@@ -2043,6 +2050,7 @@
       renderRemoteViewing()
       renderPortalPinSetting()
       renderPortalTheme()
+      refreshHomePowerState().catch(() => {})
       refreshTmdbStatus().catch(() => {})
     }
 
@@ -3570,7 +3578,8 @@
       'navigate-right': 'Right', select: 'Selected', 'previous-programme': 'Previous programme',
       'next-programme': 'Next programme', 'restart-programme': 'Restarting programme',
       'toggle-pause': 'Playback changed', 'toggle-subtitles': 'Subtitles changed',
-      'toggle-remote-lock': 'Remote lock changed', 'toggle-power': 'Power command sent'
+      'toggle-remote-lock': 'Remote lock changed', 'turn-on': 'Turning TV on',
+      'turn-off': 'Turning TV off', 'toggle-power': 'Power command sent'
     }
 
     async function sendLiveCommand(command, button = null, extra = {}) {
@@ -3589,11 +3598,20 @@
           setTimeout(() => button.classList.remove('command-ok'), 380)
         }
         setRemoteFeedback(liveCommandFeedback[command] || 'Done', 'success')
-        setTimeout(() => refreshLiveTv(command === 'toggle-power'), 280)
+        if (command === 'turn-on' || command === 'turn-off' || command === 'toggle-power') {
+          setTimeout(() => {
+            refreshLiveTv(true)
+            refreshHomePowerState().catch(() => {})
+          }, 1400)
+        } else {
+          setTimeout(() => refreshLiveTv(false), 280)
+        }
+        return true
       } catch (error) {
         if (button) button.classList.remove('is-sending')
         setRemoteFeedback('Command failed', 'error', 2200)
         notice(error.message, true)
+        return false
       } finally {
         if (button) delete button.dataset.remoteBusy
       }
@@ -3613,7 +3631,7 @@
     $('#closeRemotePower').onclick = $('#cancelRemotePower').onclick = () => $('#remotePowerSheet').close()
     $('#confirmRemotePower').onclick = async () => {
       $('#remotePowerSheet').close()
-      await sendLiveCommand('toggle-power', $('#openRemotePower'))
+      await sendLiveCommand(liveTvState.standby === true ? 'turn-on' : 'turn-off', $('#openRemotePower'))
     }
     ;[$('#liveChannelSheet'), $('#remotePowerSheet')].forEach(dialog => dialog.onclick = event => {
       if (event.target === dialog) dialog.close()
@@ -3626,6 +3644,16 @@
         notice('Adult mode is open on MabelTV.')
       } catch (error) { notice(error.message, true) }
       finally { setTimeout(() => { button.disabled = false }, 450) }
+    }
+    $('#homeTurnOn').onclick = async () => {
+      $('#homePowerState').textContent = 'Turning on…'
+      if (await sendLiveCommand('turn-on', $('#homeTurnOn')))
+        notice('MabelTV is turning on and selecting its HDMI input.')
+    }
+    $('#homeTurnOff').onclick = async () => {
+      $('#homePowerState').textContent = 'Turning off…'
+      if (await sendLiveCommand('turn-off', $('#homeTurnOff')))
+        notice('MabelTV is entering standby. The Raspberry Pi stays on.')
     }
     $('#portalPinForm').onsubmit = async event => {
       event.preventDefault()

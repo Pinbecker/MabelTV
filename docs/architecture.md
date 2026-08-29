@@ -10,6 +10,8 @@ Linux rc-core / USB keyboard
              │
              ▼
         TvController ────────► settings + timeline state
+             │ explicit on/off
+             ├───────────────► CecTvControl ─► cec-client ─► HDMI TV
              │ playback URL / offset
              ▼
        MpvVideo/libmpv ──────► Qt OpenGL texture ─► CRT shader ─► KMS/HDMI
@@ -32,6 +34,6 @@ Persistent Pi paths:
 | `/media/mabeltv-usb/*` | transient read-only removable-media mounts | appliance helper |
 | `/etc/rc_keymaps/mabeltv.toml` | learned IR scan-code map | remote mapper |
 
-There is no network playback, cloud service, account database, desktop session, or CEC control path. A bounded standard-library HTTP service provides the LAN-only grown-up dashboard on port 8080. It writes uploads into a staging inbox, publishes only complete media, owns channel/browser-library mutations, and sends the player a coalesced live-reload signal. Avahi advertises the local address; nothing is intentionally exposed beyond the home network.
+There is no cloud service, account database, or desktop session. A bounded standard-library HTTP service provides the LAN-only grown-up dashboard on port 8080. It writes uploads into a staging inbox, publishes only complete media, owns channel/browser-library mutations, and sends the player a coalesced live-reload signal. Authenticated portal power POSTs and the IR power key both reach the same `TvController` operations through the private player socket. `CecTvControl` asynchronously invokes `cec-client`; failures are journalled but never block MabelTV standby or wake. Avahi advertises the local address; nothing is intentionally exposed beyond the home network.
 
 Media discovery has two phases. Startup admits unchanged cached files immediately and provisionally admits new readable video paths so systemd readiness is never held behind hundreds of probes. A QtConcurrent worker validates uncached/changed files, writes the media index atomically, and publishes the result on the main thread. Live reload keeps the last-known-good library playing until the worker completes.

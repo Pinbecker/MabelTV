@@ -55,7 +55,7 @@ The normal mapping is deliberately simple:
 | Volume + / - | Equal / Minus | louder / quieter |
 | Mute | M | mute; hold three seconds to lock or unlock the remote |
 | Previous / Back | B | previous channel; hold for parent confirmation |
-| Power | P | standby / welcome-screen wake; hold five seconds for shutdown |
+| Power | P | MabelTV + TV standby / wake; wake also selects the Pi HDMI input |
 | OK | Enter | pause / play; confirm channel number or parent access |
 | Navigation Up / Down | Up / Down | next / previous channel; navigate the parent panel |
 | Navigation Left / Right | Left / Right | previous / next episode or film; adjust parent settings |
@@ -69,12 +69,14 @@ for 3.5 seconds to open it. A normal short OK press still pauses, plays, or conf
 a channel number. In the guide, use Up/Down or Channel +/− to choose a channel,
 press OK to watch it, and press Back to close the guide.
 
-One-shot actions (digits, pause/play, mute, random, standby, parent access and shutdown) ignore Linux auto-repeat events. Channel and volume holds are allowed but rate-limited, so a noisy receiver or a long press cannot generate an uncontrolled burst of actions. While the remote is locked, every button except the three-second Mute hold is ignored; a small on-screen label remains as a reminder.
+One-shot actions (digits, pause/play, mute, random, standby and parent access) ignore Linux auto-repeat events. Channel and volume holds are allowed but rate-limited, so a noisy receiver or a long press cannot generate an uncontrolled burst of actions. The Power button never shuts down the Raspberry Pi. While the remote is locked, every button except the three-second Mute hold is ignored; a small on-screen label remains as a reminder.
 
 Left/Right navigation normally resumes the saved position for each individual programme. In Parent Control, **Reset unvisited episodes** can be set to Off, 5 minutes, 20 minutes, 1 hour, or 3 hours. In Resume mode, a partly watched show restarts when it is next selected after that much inactivity during the current Mabel TV uptime. Time while the player is stopped never counts, and channels marked **Films / long videos** are never reset. A one-off deliberate restart remains available by holding Back and then pressing Left, Right, OK on the confirmation screen.
 
 ## TV interaction
 
-The EZClicker is sold as a Samsung IR remote while the target television is LG, so its TV-directed codes would not normally match the LG receiver. That cannot be guaranteed for every LG model: test every button while the Pi is off before child use. The Pi boot setup also disables HDMI-CEC, so Mabel TV itself does not send power, input-switch, volume, or active-source commands through HDMI.
+The EZClicker is sold as a Samsung IR remote while the target television may be another brand, so its TV-directed codes should not be relied upon. MabelTV instead uses HDMI-CEC through the Pi: an explicit ON wakes the TV and announces the Pi as the active source; OFF sends TV standby. It never sends a CEC toggle and never shuts down the Pi. The installer provides `cec-client` through Debian's `cec-utils` package, and the `mabeltv` service accesses the connected `/dev/cec*` device through its existing `video` group membership without sudo.
+
+Enable the television manufacturer's HDMI-CEC setting (LG calls it **SIMPLINK**). MabelTV automatically chooses the Pi 4 HDMI connector with a valid CEC physical address. `MABELTV_CEC_DEVICE=/dev/cec1` can override that detection for unusual hardware.
 
 If an IR button still operates the LG television, do not use that button in the mapper. Choose a harmless spare button for the Mabel TV action, or physically position/shroud the KY-022 so the remote can be aimed away from the TV's receiver.
