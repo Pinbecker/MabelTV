@@ -96,13 +96,14 @@ if [[ -e "$edid_hook" || -e "$edid_firmware" ]]; then
     fi
 fi
 
-systemctl disable --now mabeltv.service mabeltv-library.service \
+systemctl disable --now mabeltv.service mabeltv-library.service mabeltv-matter.service \
     mabeltv-ir.service mabeltv-health.timer mabeltv-boot-audit.service \
     mabeltv-retention.timer mabeltv-owner-recovery.service 2>/dev/null || true
 
 unit_paths=(
     /etc/systemd/system/mabeltv.service
     /etc/systemd/system/mabeltv-library.service
+    /etc/systemd/system/mabeltv-matter.service
     /etc/systemd/system/mabeltv-ir.service
     /etc/systemd/system/mabeltv-recovery.service
     /etc/systemd/system/mabeltv-health.service
@@ -125,6 +126,7 @@ helper_paths=(
     /usr/local/libexec/mabeltv-retention
     /usr/local/libexec/mabeltv-activate-assets
     /usr/local/libexec/mabeltv-owner-recovery
+    /usr/local/libexec/mabeltv-matter-bluetooth
     /usr/local/sbin/mabeltv-map-remote
     /usr/local/sbin/mabeltv-add-channel
     /usr/local/sbin/mabeltv-backup
@@ -136,6 +138,7 @@ helper_paths=(
     /usr/local/sbin/mabeltv-fence-check
     /usr/local/sbin/mabeltv-doctor
     /usr/local/sbin/mabeltv-uninstall
+    /usr/local/sbin/mabeltv-alexa-pairing
 )
 rm -f -- "${unit_paths[@]}" "${helper_paths[@]}" \
     /etc/logrotate.d/mabeltv /etc/sudoers.d/mabeltv \
@@ -143,11 +146,20 @@ rm -f -- "${unit_paths[@]}" "${helper_paths[@]}" \
     /etc/systemd/journald.conf.d/mabeltv.conf
 rm -rf -- /opt/mabeltv /usr/share/doc/mabeltv
 systemctl daemon-reload
+saved_bluetooth_state=/var/lib/mabeltv/matter/bluetooth-service-state
+if [[ -r "$saved_bluetooth_state" ]]; then
+    # shellcheck disable=SC1090
+    source "$saved_bluetooth_state"
+    [[ "${enabled:-false}" == "true" ]] \
+        && systemctl enable bluetooth.service 2>/dev/null || true
+    [[ "${active:-false}" == "true" ]] \
+        && systemctl start bluetooth.service 2>/dev/null || true
+fi
 systemctl try-restart avahi-daemon.service systemd-journald.service 2>/dev/null || true
 
 if [[ "$purge_data" == "true" ]]; then
     rm -rf -- /var/lib/mabeltv /var/cache/mabeltv /var/log/mabeltv /srv/mabeltv/media /var/backups/mabeltv
-    rm -f -- /etc/mabeltv/library.conf /etc/rc_keymaps/mabeltv.toml
+    rm -f -- /etc/mabeltv/library.conf /etc/mabeltv/matter.conf /etc/rc_keymaps/mabeltv.toml
     rmdir /etc/mabeltv /srv/mabeltv /var/backups/mabeltv 2>/dev/null || true
     userdel mabeltv 2>/dev/null || true
     printf 'Mabel TV software, videos, settings and backups were permanently removed.\n'

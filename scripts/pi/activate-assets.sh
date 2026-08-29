@@ -17,6 +17,7 @@ unit_names=(
     mabeltv-retention.service
     mabeltv-retention.timer
     mabeltv-owner-recovery.service
+    mabeltv-matter.service
 )
 linux_helper_names=(
     mabeltv-recovery
@@ -29,6 +30,7 @@ linux_helper_names=(
     mabeltv-screen-capture-stop
     mabeltv-retention
     mabeltv-owner-recovery
+    mabeltv-matter-bluetooth
 )
 script_helper_mappings=(
     load-ir-keymap.sh:mabeltv-load-ir-keymap
@@ -54,6 +56,7 @@ for mapping in "${script_helper_mappings[@]}"; do asset_targets+=("usr/local/lib
 for mapping in "${sbin_mappings[@]}"; do asset_targets+=("usr/local/sbin/${mapping#*:}"); done
 asset_targets+=(
     usr/local/libexec/mabeltv-activate-assets
+    usr/local/sbin/mabeltv-alexa-pairing
     etc/logrotate.d/mabeltv
     etc/systemd/journald.conf.d/mabeltv.conf
     etc/sudoers.d/mabeltv
@@ -149,6 +152,8 @@ for mapping in "${sbin_mappings[@]}"; do
     target_name="${mapping#*:}"
     stage_file "$scripts/$source_name" "usr/local/sbin/$target_name" 0755
 done
+# The pairing helper is a packaged Linux asset rather than a general Pi script.
+stage_file "$linux/mabeltv-matter-pairing" usr/local/sbin/mabeltv-alexa-pairing 0755
 stage_file "$scripts/activate-assets.sh" usr/local/libexec/mabeltv-activate-assets 0755
 stage_file "$linux/mabeltv-logrotate" etc/logrotate.d/mabeltv 0644
 stage_file "$linux/mabeltv-journald.conf" etc/systemd/journald.conf.d/mabeltv.conf 0644

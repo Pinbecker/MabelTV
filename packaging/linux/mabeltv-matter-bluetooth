@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Prepare the Pi's Bluetooth controller for matter.js BLE commissioning. This
+# runs as a privileged ExecStartPre step; the long-running bridge is unprivileged.
+set -Eeuo pipefail
+
+command -v rfkill >/dev/null 2>&1 \
+    || { printf 'rfkill is required for Matter commissioning.\n' >&2; exit 1; }
+command -v hciconfig >/dev/null 2>&1 \
+    || { printf 'hciconfig is required for Matter commissioning.\n' >&2; exit 1; }
+
+rfkill unblock bluetooth
+adapter=""
+for candidate in /sys/class/rfkill/rfkill*; do
+    [[ -r "$candidate/type" && -r "$candidate/name" ]] || continue
+    if [[ "$(<"$candidate/type")" == "bluetooth" ]]; then
+        adapter="$(<"$candidate/name")"
+        break
+    fi
+done
+[[ -n "$adapter" ]] || { printf 'No Bluetooth controller was detected.\n' >&2; exit 1; }
+hciconfig "$adapter" up

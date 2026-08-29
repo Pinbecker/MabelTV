@@ -34,7 +34,7 @@ else
     fail 'No active Mabel TV release was found'
 fi
 
-for service in mabeltv.service mabeltv-library.service; do
+for service in mabeltv.service mabeltv-library.service mabeltv-matter.service; do
     if systemctl is-active --quiet "$service"; then
         pass "$service is running"
     else

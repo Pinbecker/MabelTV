@@ -133,6 +133,27 @@ class ImagerManifestTests(unittest.TestCase):
         self.assertIn("cec-utils", packages.splitlines())
         self.assertIn("cec-utils", installer)
 
+    def test_pi_images_and_updates_install_local_matter_runtime(self):
+        packages = (ROOT / "packaging/image/pi-gen/stage-mabeltv/00-install/00-packages").read_text(
+            encoding="utf-8")
+        installer = (ROOT / "scripts/pi/install.sh").read_text(encoding="utf-8")
+        activation = (ROOT / "scripts/pi/activate-assets.sh").read_text(encoding="utf-8")
+        service = (ROOT / "packaging/linux/mabeltv-matter.service").read_text(
+            encoding="utf-8")
+        bridge = (ROOT / "integrations/matter/mabeltv-matter.mjs").read_text(
+            encoding="utf-8")
+        socket_bridge = (ROOT / "integrations/matter/mabeltv-power-socket.mjs").read_text(
+            encoding="utf-8")
+
+        for package in ("nodejs", "npm", "rfkill", "bluez", "libbluetooth-dev"):
+            self.assertIn(package, packages.splitlines())
+            self.assertIn(package, installer)
+        self.assertIn("mabeltv-matter.service", activation)
+        self.assertIn("User=mabeltv", service)
+        self.assertIn("/run/mabeltv/portal-control.sock", socket_bridge)
+        self.assertIn('on ? "turn-on" : "turn-off"', socket_bridge)
+        self.assertIn("getMabelTvPower", bridge)
+
     def test_laptop_only_builder_uses_local_arm64_docker_bundle_then_image_recipe(self):
         builder = (ROOT / "scripts" / "imaging" / "build-local-pi-image.sh").read_text(
             encoding="utf-8")

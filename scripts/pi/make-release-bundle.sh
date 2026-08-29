@@ -89,13 +89,16 @@ cmake --build "$build" --parallel "${MABELTV_BUILD_JOBS:-2}"
 ctest --test-dir "$build" --output-on-failure
 
 install -d -m 0755 "$stage/prebuilt" "$stage/config/examples" \
-    "$stage/packaging/linux" "$stage/scripts/pi" "$stage/docs"
+    "$stage/packaging/linux" "$stage/scripts/pi" "$stage/docs" \
+    "$stage/integrations/matter"
 install -m 0755 "$build/mabeltv" "$build/mabeltv_media_check" "$stage/prebuilt/"
 printf '%s\n' "$version" > "$stage/prebuilt/VERSION"
 cp -a "$build_source/packaging/linux/." "$stage/packaging/linux/"
 cp -a "$build_source/scripts/pi/." "$stage/scripts/pi/"
 rm -f -- "$stage/scripts/pi"/replace-*-fps30.sh
 cp -a "$build_source/docs/." "$stage/docs/"
+cp -a "$build_source/integrations/matter/." "$stage/integrations/matter/"
+rm -rf -- "$stage/integrations/matter/node_modules"
 install -m 0644 "$build_source/config/examples/channels.json" \
     "$build_source/config/examples/settings.json" "$stage/config/examples/"
 install -m 0644 "$build_source/CMakeLists.txt" "$build_source/README.md" \

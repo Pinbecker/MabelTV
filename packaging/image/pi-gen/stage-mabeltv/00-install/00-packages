@@ -16,3 +16,8 @@ curl
 util-linux
 udisks2
 qrencode
+nodejs
+npm
+rfkill
+bluez
+libbluetooth-dev

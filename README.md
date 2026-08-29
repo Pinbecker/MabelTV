@@ -48,6 +48,7 @@ The manual customer journey, including exact Windows/macOS/Linux copy commands, 
 - Temperature and voltage warnings, conversion heat pause/resume, memory/task/file-descriptor limits, and systemd restart limits.
 - A dashboard health summary, support-bundle download, safe player restart, Pi reboot, and Pi shutdown.
 - HDMI-CEC power control: MabelTV standby puts the television in standby, while wake selects the Pi input. The Raspberry Pi remains running.
+- Optional personal [local Alexa control with Matter](docs/alexa-matter.md) reuses that exact power path without a cloud skill.
 - An optional 5-minute, 20-minute, 1-hour, or 3-hour inactivity reset for partly watched show episodes; film and long-video channels always retain their resume positions.
 - Late activation, new-release readiness checks, an explicit previous-release pointer, matching asset rollback, and a non-destructive uninstaller.
 - Physical parent-PIN recovery from the SD card’s boot partition without deleting videos or settings.

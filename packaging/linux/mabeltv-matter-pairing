@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Display the private setup code only to an operator using sudo.
+set -Eeuo pipefail
+
+pairing_file=/var/lib/mabeltv/matter/pairing.json
+if [[ $EUID -ne 0 ]]; then
+    printf 'Run with sudo: sudo mabeltv-alexa-pairing\n' >&2
+    exit 1
+fi
+if [[ ! -r "$pairing_file" ]]; then
+    printf 'Pairing details are not ready. Check: systemctl status mabeltv-matter.service\n' >&2
+    exit 1
+fi
+
+readarray -t pairing < <(python3 - "$pairing_file" <<'PY'
+import json
+import pathlib
+import sys
+
+details = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+print(details["manualPairingCode"])
+print(details["qrPairingCode"])
+PY
+)
+printf 'Mabel TV Matter pairing\n\nManual setup code: %s\n\n' "${pairing[0]}"
+printf 'Scan this QR code in the Alexa app:\n'
+qrencode -t ANSIUTF8 "${pairing[1]}"

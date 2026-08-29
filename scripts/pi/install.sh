@@ -48,10 +48,10 @@ if systemctl is-enabled --quiet mabeltv-library.service 2>/dev/null; then
     library_was_enabled="true"
 fi
 transaction_units=(
-    mabeltv.service mabeltv-library.service mabeltv-ir.service
+    mabeltv.service mabeltv-library.service mabeltv-matter.service mabeltv-ir.service
     mabeltv-health.timer mabeltv-boot-audit.service
     mabeltv-retention.timer mabeltv-owner-recovery.service
-    avahi-daemon.service
+    avahi-daemon.service bluetooth.service
 )
 declare -A unit_was_enabled=()
 declare -A unit_was_active=()
@@ -69,7 +69,8 @@ if [[ "$skip_packages" != "true" ]]; then
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         qt6-qpa-plugins qml6-module-qtquick qml6-module-qtquick-window \
         libqt6opengl6 libmpv-dev ffmpeg ir-keytable cec-utils python3 sudo logrotate avahi-daemon \
-        alsa-utils ca-certificates curl util-linux qrencode udisks2
+        alsa-utils ca-certificates curl util-linux qrencode udisks2 \
+        nodejs npm rfkill bluez libbluetooth-dev
     if [[ -z "$prebuilt_dir" ]]; then
         DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             build-essential cmake ninja-build pkg-config \
@@ -120,7 +121,7 @@ fi
 if ! id mabeltv >/dev/null 2>&1; then
     useradd --system --home-dir /var/lib/mabeltv --create-home --shell /usr/sbin/nologin mabeltv
 fi
-for group_name in audio video render input gpio; do
+for group_name in audio video render input gpio bluetooth; do
     if getent group "$group_name" >/dev/null; then
         usermod -a -G "$group_name" mabeltv
     fi
@@ -128,7 +129,8 @@ done
 
 install -d -o root -g root -m 0755 /opt/mabeltv/releases /usr/local/libexec
 install -d -o mabeltv -g mabeltv -m 0750 \
-    /var/lib/mabeltv /var/cache/mabeltv /var/log/mabeltv /srv/mabeltv/media
+    /var/lib/mabeltv /var/lib/mabeltv/matter \
+    /var/cache/mabeltv /var/log/mabeltv /srv/mabeltv/media
 install -d -o root -g root -m 0755 /etc/rc_keymaps /usr/share/doc/mabeltv
 install -d -o root -g mabeltv -m 0750 /etc/mabeltv
 
@@ -141,10 +143,12 @@ install -d -o root -g root -m 0700 "$backup_dir"
 preinstall_backup="$backup_dir/preinstall-$(date +%Y%m%d-%H%M%S).tar.gz"
 backup_paths=(var/lib/mabeltv etc/systemd/system/mabeltv.service etc/systemd/system/mabeltv-ir.service)
 [[ -f /etc/systemd/system/mabeltv-library.service ]] && backup_paths+=(etc/systemd/system/mabeltv-library.service)
+[[ -f /etc/systemd/system/mabeltv-matter.service ]] && backup_paths+=(etc/systemd/system/mabeltv-matter.service)
 [[ -f /etc/systemd/system/mabeltv-health.service ]] && backup_paths+=(etc/systemd/system/mabeltv-health.service)
 [[ -f /etc/systemd/system/mabeltv-health.timer ]] && backup_paths+=(etc/systemd/system/mabeltv-health.timer)
 [[ -f /etc/systemd/system/mabeltv-boot-audit.service ]] && backup_paths+=(etc/systemd/system/mabeltv-boot-audit.service)
 [[ -f /etc/mabeltv/library.conf ]] && backup_paths+=(etc/mabeltv/library.conf)
+[[ -f /etc/mabeltv/matter.conf ]] && backup_paths+=(etc/mabeltv/matter.conf)
 [[ -f /etc/sudoers.d/mabeltv ]] && backup_paths+=(etc/sudoers.d/mabeltv)
 tar -C / -czf "$preinstall_backup" --ignore-failed-read "${backup_paths[@]}"
 chmod 0600 "$preinstall_backup"
@@ -213,7 +217,10 @@ install -o root -g root -m 0644 "$source_root/scripts/pi/icons/icon-192.png" "$i
 install -o root -g root -m 0644 "$source_root/scripts/pi/icons/icon-512.png" "$incoming_dir/icons/icon-512.png"
 install -d -o root -g root -m 0755 "$incoming_dir/appliance"
 cp -a "$source_root/packaging" "$source_root/scripts" "$source_root/config" \
-    "$source_root/docs" "$incoming_dir/appliance/"
+    "$source_root/docs" "$source_root/integrations" "$incoming_dir/appliance/"
+rm -rf -- "$incoming_dir/appliance/integrations/matter/node_modules"
+npm ci --omit=dev --no-audit --no-fund \
+    --prefix "$incoming_dir/appliance/integrations/matter"
 install -o root -g root -m 0644 "$source_root/README.md" "$source_root/LICENSE" \
     "$incoming_dir/appliance/"
 rm -f -- "$incoming_dir/appliance/scripts/pi/replace-waffle-dog-fps30.sh"
@@ -249,6 +256,22 @@ if [[ ! -e /etc/mabeltv/library.conf ]]; then
 fi
 chown root:mabeltv /etc/mabeltv/library.conf
 chmod 0640 /etc/mabeltv/library.conf
+if [[ ! -e /etc/mabeltv/matter.conf ]]; then
+    while :; do
+        matter_passcode="$(( $(od -An -N4 -tu4 /dev/urandom) % 99999998 + 1 ))"
+        case "$matter_passcode" in
+            11111111|22222222|33333333|44444444|55555555|66666666|77777777|88888888|12345678|87654321) ;;
+            *) break ;;
+        esac
+    done
+    matter_discriminator="$(( $(od -An -N2 -tu2 /dev/urandom) % 4096 ))"
+    {
+        printf 'MABELTV_MATTER_PASSCODE=%08d\n' "$matter_passcode"
+        printf 'MABELTV_MATTER_DISCRIMINATOR=%d\n' "$matter_discriminator"
+    } > /etc/mabeltv/matter.conf
+fi
+chown root:mabeltv /etc/mabeltv/matter.conf
+chmod 0640 /etc/mabeltv/matter.conf
 install -d -o root -g mabeltv -m 0750 /media/mabeltv-usb
 install -d -o root -g mabeltv -m 0750 /var/lib/mabeltv/secrets
 
@@ -346,7 +369,8 @@ bash "$release_dir/appliance/scripts/pi/activate-assets.sh" "$release_dir"
 # transactionally installed helpers exist, then restore the snapshot on error.
 verify_dir="$(mktemp -d /tmp/mabeltv-units.XXXXXX)"
 for unit in mabeltv.service mabeltv-ir.service mabeltv-recovery.service \
-    mabeltv-library.service mabeltv-health.service mabeltv-health.timer \
+    mabeltv-library.service mabeltv-matter.service \
+    mabeltv-health.service mabeltv-health.timer \
     mabeltv-boot-audit.service mabeltv-retention.service \
     mabeltv-retention.timer mabeltv-owner-recovery.service; do
     sed "s|/opt/mabeltv/current|$release_dir|g" \
@@ -381,6 +405,25 @@ if [[ "$player_should_run" == "true" ]]; then
     if ! systemctl restart mabeltv.service \
         || ! wait_for_stable_service mabeltv.service 55 10; then
         printf 'The new player did not become healthy; restoring the previous release.\n' >&2
+        restore_failed_release "$release_dir"
+        exit 1
+    fi
+    # matter.js owns the raw Bluetooth HCI interface while commissioning.
+    # Preserve Bluetooth's pre-install state in the transaction map so a
+    # failed activation restores it automatically.
+    if [[ ! -e /var/lib/mabeltv/matter/bluetooth-service-state ]]; then
+        {
+            printf 'enabled=%s\n' "${unit_was_enabled[bluetooth.service]}"
+            printf 'active=%s\n' "${unit_was_active[bluetooth.service]}"
+        } > /var/lib/mabeltv/matter/bluetooth-service-state
+        chown mabeltv:mabeltv /var/lib/mabeltv/matter/bluetooth-service-state
+        chmod 0640 /var/lib/mabeltv/matter/bluetooth-service-state
+    fi
+    systemctl disable --now bluetooth.service
+    systemctl enable mabeltv-matter.service
+    if ! systemctl restart mabeltv-matter.service \
+        || ! wait_for_stable_service mabeltv-matter.service 30 8; then
+        printf 'The local Matter accessory did not start; restoring the previous release.\n' >&2
         restore_failed_release "$release_dir"
         exit 1
     fi
@@ -419,6 +462,9 @@ printf 'Installed release %s. Current release: %s\n' "$release_id" "$(readlink -
 printf 'Pre-install backup: %s\n' "$preinstall_backup"
 printf 'Media belongs under /srv/mabeltv/media/<channel-folder>/.\n'
 printf 'Mabel TV Library is available on this home network at http://%s.local:8080\n' "$(hostname)"
+if systemctl is-active --quiet mabeltv-matter.service 2>/dev/null; then
+    printf 'Alexa Matter setup: sudo mabeltv-alexa-pairing\n'
+fi
 if [[ ! -s /var/lib/mabeltv/owner.json ]]; then
     setup_code="$(sed -n 's/^MABELTV_SETUP_CODE=//p' /etc/mabeltv/library.conf)"
     if [[ -n "$setup_code" ]]; then

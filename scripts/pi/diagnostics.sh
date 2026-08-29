@@ -9,9 +9,11 @@ cat /etc/os-release > "$destination/os-release.txt"
 tr -d '\0' < /proc/device-tree/model > "$destination/pi-model.txt" 2>/dev/null || true
 free -h > "$destination/memory.txt"
 df -h > "$destination/filesystems.txt"
-systemctl status mabeltv.service --no-pager > "$destination/service-status.txt" 2>&1 || true
+systemctl status mabeltv.service mabeltv-library.service mabeltv-matter.service \
+    --no-pager > "$destination/service-status.txt" 2>&1 || true
 journalctl --list-boots --no-pager > "$destination/boot-history.txt" 2>&1 || true
-journalctl -u mabeltv.service -u mabeltv-library.service --no-pager -n 1000 > "$destination/journal.txt" 2>&1 || true
+journalctl -u mabeltv.service -u mabeltv-library.service -u mabeltv-matter.service \
+    --no-pager -n 1000 > "$destination/journal.txt" 2>&1 || true
 journalctl -k --no-pager -p warning..alert -n 500 > "$destination/kernel-warnings.txt" 2>&1 || true
 journalctl -b -1 --no-pager -n 1000 > "$destination/previous-boot-journal.txt" 2>&1 || true
 pid="$(systemctl show -p MainPID --value mabeltv.service)"
@@ -21,6 +23,7 @@ if [[ "$pid" =~ ^[1-9][0-9]*$ && -d "/proc/$pid/fd" ]]; then
     cat "/proc/$pid/limits" > "$destination/process-limits.txt" 2>/dev/null || true
 fi
 ir-keytable > "$destination/ir-keytable.txt" 2>&1 || true
+rfkill list bluetooth > "$destination/bluetooth.txt" 2>&1 || true
 for card in /sys/class/drm/card*-*/status; do
     [[ -e "$card" ]] || continue
     printf '%s: %s\n' "$card" "$(<"$card")"
