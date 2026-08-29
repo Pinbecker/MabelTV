@@ -536,9 +536,9 @@ int main(int argc, char *argv[])
                                                               socket->disconnectFromServer();
                                                               return;
                                                           }
-                                                          if (request.isObject()
-                                                              && object.value(QStringLiteral("command")).toString()
-                                                                  == QStringLiteral("play-adult-film")) {
+                                                           if (request.isObject()
+                                                               && object.value(QStringLiteral("command")).toString()
+                                                                   == QStringLiteral("play-adult-film")) {
                                                               QMetaObject::invokeMethod(
                                                                   rootObject,
                                                                   "portalPlayAdultFilm",
@@ -546,14 +546,42 @@ int main(int argc, char *argv[])
                                                                   Q_ARG(QVariant, object.value(
                                                                       QStringLiteral("file")).toString()));
                                                               socket->write("ok\n");
-                                                              socket->disconnectFromServer();
-                                                              return;
-                                                          }
-                                                      }
-                                                      if (command == QStringLiteral("status")) {
-                                                          QJsonObject status{
-                                                              {QStringLiteral("mode"), QStringLiteral("kids")},
-                                                          };
+                                                               socket->disconnectFromServer();
+                                                               return;
+                                                           }
+                                                           if (request.isObject()
+                                                               && object.value(QStringLiteral("command")).toString()
+                                                                   == QStringLiteral("tune-channel")) {
+                                                               const int channel = object.value(
+                                                                   QStringLiteral("channel")).toInt(-1);
+                                                               if (channel > 0) {
+                                                                   QMetaObject::invokeMethod(
+                                                                       rootObject,
+                                                                       "portalTuneChannel",
+                                                                       Qt::QueuedConnection,
+                                                                       Q_ARG(QVariant, channel));
+                                                                   socket->write("ok\n");
+                                                               } else {
+                                                                   socket->write("unsupported\n");
+                                                               }
+                                                               socket->disconnectFromServer();
+                                                               return;
+                                                           }
+                                                       }
+                                                       if (command == QStringLiteral("status")) {
+                                                           QJsonObject status{
+                                                               {QStringLiteral("mode"), QStringLiteral("kids")},
+                                                               {QStringLiteral("volume"), rootObject->property(
+                                                                    "portalVolume").toInt()},
+                                                               {QStringLiteral("muted"), rootObject->property(
+                                                                    "portalMuted").toBool()},
+                                                               {QStringLiteral("remote_locked"), rootObject->property(
+                                                                    "portalRemoteLocked").toBool()},
+                                                               {QStringLiteral("subtitles_available"), rootObject->property(
+                                                                    "portalSubtitlesAvailable").toBool()},
+                                                               {QStringLiteral("subtitles_visible"), rootObject->property(
+                                                                    "portalSubtitlesVisible").toBool()},
+                                                           };
                                                           QObject *adultMode = rootObject->findChild<QObject *>(
                                                               QStringLiteral("mabeltvAdultMode"));
                                                           if (adultMode != nullptr
@@ -590,9 +618,11 @@ int main(int argc, char *argv[])
                                                           QStringLiteral("open-parent-menu"),
                                                           QStringLiteral("open-tv-guide"),
                                                           QStringLiteral("close-overlay"),
-                                                          QStringLiteral("restart-programme"),
-                                                          QStringLiteral("enter-adult-mode"),
-                                                          QStringLiteral("navigate-up"),
+                                                           QStringLiteral("restart-programme"),
+                                                           QStringLiteral("enter-adult-mode"),
+                                                           QStringLiteral("return-to-mabeltv"),
+                                                           QStringLiteral("toggle-remote-lock"),
+                                                           QStringLiteral("navigate-up"),
                                                           QStringLiteral("navigate-down"),
                                                           QStringLiteral("navigate-left"),
                                                           QStringLiteral("navigate-right"),

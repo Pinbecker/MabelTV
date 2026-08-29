@@ -619,6 +619,174 @@
       body.portal-v2 .auth-panel{padding:18px 13px 34px}
       body.portal-v2 .auth-content{border-radius:20px;padding:23px 18px}
     }
+
+    /* Live TV remote -------------------------------------------------------
+       The picture above is deliberately untouched. Everything below it is a
+       purpose-built, stateful remote designed around thumbs rather than a
+       matrix of desktop buttons. */
+    body.portal-v2 #view-live .page{width:min(1280px,calc(100% - 52px))}
+    body.portal-v2 #view-live .live-layout{display:block}
+    body.portal-v2 #view-live .live-tv{width:100%;margin-bottom:14px}
+    body.portal-v2 #view-live .live-side{width:100%}
+    body.portal-v2 #view-live .live-side>section.remote-console{padding:0;border-radius:24px;background:linear-gradient(145deg,#161e1b,#0b100e 72%);box-shadow:0 30px 90px #0007}
+    body.portal-v2 #view-live .remote-console svg,body.portal-v2 .remote-sheet svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+    body.portal-v2 #view-live .remote-panel-head{display:flex;align-items:center;justify-content:space-between;gap:24px;margin:0;border-bottom:1px solid #29332f;padding:22px 24px}
+    body.portal-v2 #view-live .remote-heading{display:flex;min-width:0;align-items:center;gap:14px}
+    body.portal-v2 #view-live .remote-heading h2{margin:1px 0 2px;font-size:1.55rem}
+    body.portal-v2 #view-live .remote-heading p:last-child{margin:0;color:#77827c;font-size:.78rem}
+    body.portal-v2 #view-live .remote-mark{width:48px;height:48px;display:grid;flex:none;place-items:center;border:1px solid #3a4640;border-radius:15px;background:#1c2521;color:#ff8a71;box-shadow:0 8px 25px #0004}
+    body.portal-v2 #view-live .remote-mark svg{width:26px;height:26px}
+    body.portal-v2 #view-live .remote-feedback{display:flex;min-width:122px;align-items:center;justify-content:center;gap:8px;border:1px solid #303b36;border-radius:999px;padding:8px 12px;background:#0d1311;color:#8e9993;font-size:.72rem;font-weight:680}
+    body.portal-v2 #view-live .remote-feedback.success{border-color:#315443;background:#12251d;color:#90dfbb}
+    body.portal-v2 #view-live .remote-feedback.error{border-color:#63342e;background:#281613;color:#ff9d91}
+
+    body.portal-v2 #view-live .remote-mode-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:14px 16px;border-bottom:1px solid #29332f;background:#0d1311}
+    body.portal-v2 #view-live button.remote-mode{min-width:0;min-height:68px;display:flex;align-items:center;justify-content:flex-start;gap:11px;border:1px solid #2d3732;border-radius:14px;padding:10px 12px;background:#151c19;color:#dce2df;text-align:left;box-shadow:none}
+    body.portal-v2 #view-live button.remote-mode:hover{border-color:#4d5a54;background:#1c2521}
+    body.portal-v2 #view-live button.remote-mode.active{border-color:#eaf0ed;background:#eef3f0;color:#101513;box-shadow:0 10px 26px #0005}
+    body.portal-v2 #view-live .remote-mode-icon{width:38px;height:38px;display:grid;flex:none;place-items:center;border-radius:11px;background:#ffffff08;color:#9ca7a1}
+    body.portal-v2 #view-live .remote-mode.active .remote-mode-icon{background:#dce6e0;color:#234739}
+    body.portal-v2 #view-live .remote-mode>span:last-child{min-width:0;display:grid}
+    body.portal-v2 #view-live .remote-mode strong{overflow:hidden;font-size:.8rem;text-overflow:ellipsis;white-space:nowrap}
+    body.portal-v2 #view-live .remote-mode small{overflow:hidden;margin-top:2px;color:#727d77;font-size:.62rem;font-weight:560;text-overflow:ellipsis;white-space:nowrap}
+    body.portal-v2 #view-live .remote-mode.active small{color:#5e6964}
+
+    body.portal-v2 #view-live .remote-control-deck{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(360px,.8fr);gap:1px;background:#29332f}
+    body.portal-v2 #view-live .remote-everyday,body.portal-v2 #view-live .remote-playback{min-width:0;padding:21px 22px 24px;background:linear-gradient(155deg,#151c19,#101513)}
+    body.portal-v2 #view-live .remote-playback{background:linear-gradient(155deg,#121816,#0d1210)}
+    body.portal-v2 #view-live .remote-section-head{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:17px}
+    body.portal-v2 #view-live .remote-section-head h3{margin:2px 0 0;color:#eef2f0;font-size:1.05rem}
+    body.portal-v2 #view-live button.remote-back{min-height:40px;display:flex;gap:8px;border-color:#435049;border-radius:999px;padding:7px 14px;background:#1a221f;color:#dce2df}
+    body.portal-v2 #view-live .remote-back svg{width:18px;height:18px}
+
+    body.portal-v2 #view-live .remote-primary-cluster{display:grid;grid-template-columns:88px minmax(190px,256px) 88px;align-items:center;justify-content:center;gap:clamp(13px,3vw,30px);min-height:286px;border:1px solid #29332f;border-radius:22px;padding:16px;background:radial-gradient(circle at 50% 42%,#1c2521,#0b100e 67%);box-shadow:0 1px 0 #ffffff08 inset}
+    body.portal-v2 #view-live .remote-rocker{height:218px;display:grid;grid-template-rows:1fr auto 1fr;overflow:hidden;border:1px solid #3a4540;border-radius:44px;background:linear-gradient(90deg,#121816,#1b2420 50%,#101513);box-shadow:0 15px 32px #0008,0 1px 0 #ffffff15 inset}
+    body.portal-v2 #view-live .remote-rocker>button{width:100%;min-height:0;border:0;border-radius:0;padding:0;background:transparent;color:#d9e0dc;box-shadow:none}
+    body.portal-v2 #view-live .remote-rocker>button:first-child{border-bottom:1px solid #313c36}
+    body.portal-v2 #view-live .remote-rocker>button:last-child{border-top:1px solid #313c36}
+    body.portal-v2 #view-live .remote-rocker>button:hover{background:#26302b;color:#fff}
+    body.portal-v2 #view-live .remote-rocker>span,body.portal-v2 #view-live button.remote-rocker-state{min-height:58px;display:grid;align-content:center;justify-items:center;border:0;border-radius:0;padding:6px;background:#0c110f;color:#c9d1cd;box-shadow:none;text-align:center}
+    body.portal-v2 #view-live .remote-rocker small{color:#68736d;font-size:.56rem;font-weight:760;letter-spacing:.1em;text-transform:uppercase}
+    body.portal-v2 #view-live .remote-rocker strong{margin-top:2px;color:#e8ecea;font-size:.78rem}
+    body.portal-v2 #view-live button.remote-rocker-state.muted{background:#2b1714;color:#ff9a87}
+    body.portal-v2 #view-live button.remote-rocker-state.muted strong{color:#ff9a87}
+
+    body.portal-v2 #view-live .remote-pad{position:relative;width:100%;max-width:256px;aspect-ratio:1;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);margin:0;border:1px solid #3b4741;border-radius:50%;padding:9px;background:radial-gradient(circle,#1c2521 0 29%,#111714 30% 64%,#1f2924 65% 100%);box-shadow:0 22px 44px #000b,0 1px 0 #ffffff18 inset}
+    body.portal-v2 #view-live .remote-pad-ring{position:absolute;inset:31%;border:1px solid #3b4741;border-radius:50%;pointer-events:none}
+    body.portal-v2 #view-live .remote-pad button{position:relative;z-index:1;min-height:0;border:0;border-radius:50%;padding:0;background:transparent;color:#abb5b0;box-shadow:none}
+    body.portal-v2 #view-live .remote-pad button:hover{background:#ffffff0b;color:#fff}
+    body.portal-v2 #view-live .remote-pad button.up{grid-area:1/2}.portal-v2 #view-live .remote-pad button.left{grid-area:2/1}.portal-v2 #view-live .remote-pad button.select{grid-area:2/2;border:1px solid #dce3df;background:#edf2ef;color:#111614;box-shadow:0 8px 24px #0009;font-size:.75rem;font-weight:800}.portal-v2 #view-live .remote-pad button.right{grid-area:2/3}.portal-v2 #view-live .remote-pad button.down{grid-area:3/2}
+    body.portal-v2 #view-live .remote-pad button.select:hover{background:#fff}
+
+    body.portal-v2 #view-live .remote-state-pill{border:1px solid #31463c;border-radius:999px;padding:6px 10px;background:#112018;color:#86d8b1;font-size:.65rem;font-weight:750;letter-spacing:.06em;text-transform:uppercase}
+    body.portal-v2 #view-live .remote-state-pill.paused{border-color:#5a4528;background:#271f13;color:#e9bd79}
+    body.portal-v2 #view-live .remote-transport{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;align-items:center;min-height:286px;border:1px solid #29332f;border-radius:22px;padding:18px 13px;background:#0b100e}
+    body.portal-v2 #view-live .remote-transport button{min-width:0;min-height:108px;display:flex;flex-direction:column;gap:9px;border:1px solid #303b35;border-radius:18px;padding:12px 5px;background:linear-gradient(145deg,#19211e,#111614);color:#aab4af;box-shadow:0 9px 20px #0005}
+    body.portal-v2 #view-live .remote-transport button:hover{border-color:#56635d;background:#222c27;color:#fff}
+    body.portal-v2 #view-live .remote-transport button span{font-size:.62rem}
+    body.portal-v2 #view-live .remote-transport button.remote-play{min-height:138px;border-color:#eef3f0;border-radius:28px;background:#eef3f0;color:#101513;box-shadow:0 18px 35px #0009}
+    body.portal-v2 #view-live .remote-transport button.remote-play:hover{background:#fff;color:#101513}
+    body.portal-v2 #view-live .remote-play svg{width:29px;height:29px}
+    body.portal-v2 #view-live .remote-play-icon{display:none}
+    body.portal-v2 #view-live .remote-play.paused .remote-pause-icon{display:none}
+    body.portal-v2 #view-live .remote-play.paused .remote-play-icon{display:block}
+    body.portal-v2 #view-live #remoteSubtitles.active{border-color:#79513f;background:#2d1d17;color:#ffad96}
+
+    body.portal-v2 #view-live .remote-dock{display:grid;grid-template-columns:minmax(240px,1fr) auto auto;gap:8px;margin:0;padding:13px 16px 16px;background:#0b100e;color:inherit;text-align:left}
+    body.portal-v2 #view-live button.remote-dock-main{min-width:0;min-height:62px;display:flex;justify-content:flex-start;gap:12px;border-color:#34403a;border-radius:16px;padding:9px 12px;background:#151c19;color:#dce2df;text-align:left}
+    body.portal-v2 #view-live .remote-dock-icon{width:40px;height:40px;display:grid;flex:none;place-items:center;border-radius:12px;background:#202a25;color:#8edeb8}
+    body.portal-v2 #view-live .remote-dock-main>span:nth-child(2){min-width:0;display:grid;flex:1}
+    body.portal-v2 #view-live .remote-dock-main small{color:#6f7a74;font-size:.58rem;font-weight:720;letter-spacing:.07em;text-transform:uppercase}
+    body.portal-v2 #view-live .remote-dock-main strong{overflow:hidden;margin-top:2px;font-size:.8rem;text-overflow:ellipsis;white-space:nowrap}
+    body.portal-v2 #view-live .remote-dock-chevron{width:18px;height:18px;color:#65706a}
+    body.portal-v2 #view-live button.remote-dock-action{min-width:104px;min-height:62px;display:flex;flex-direction:column;gap:4px;border-color:#34403a;border-radius:16px;padding:7px 12px;background:#151c19;color:#aeb8b3;font-size:.62rem}
+    body.portal-v2 #view-live button.remote-dock-action svg{width:20px;height:20px}
+    body.portal-v2 #view-live button.remote-dock-action.active{border-color:#486d5c;background:#16281f;color:#90dfbb}
+    body.portal-v2 #view-live button.remote-power{border-color:#4d302b;color:#d99b90}
+    body.portal-v2 #view-live button.is-sending{border-color:#ff866d!important;color:#ff9a83!important;transform:scale(.98)}
+    body.portal-v2 #view-live button.command-ok{animation:remoteCommandOk .35s ease}
+    @keyframes remoteCommandOk{50%{box-shadow:0 0 0 3px #78dbaf35,0 8px 25px #0007}}
+
+    body.portal-v2 .remote-sheet{max-width:none;max-height:none;border:0;padding:0;background:transparent;color:#eef2f0}
+    body.portal-v2 .remote-sheet::backdrop{background:#020403d2;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+    body.portal-v2 .remote-sheet-panel{width:min(600px,calc(100vw - 28px));max-height:min(760px,88dvh);overflow:auto;border:1px solid #35413b;border-radius:24px;background:#111714;box-shadow:0 36px 120px #000e}
+    body.portal-v2 .remote-sheet-handle{display:none}
+    body.portal-v2 .remote-sheet-panel>header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;border-bottom:1px solid #29332f;padding:21px 22px 18px}
+    body.portal-v2 .remote-sheet-panel>header h2{margin:2px 0 5px;color:#fff;font-size:1.7rem}
+    body.portal-v2 .remote-sheet-panel>header p:last-child{max-width:430px;margin:0;color:#7e8983;font-size:.78rem}
+    body.portal-v2 button.remote-sheet-close{width:39px;height:39px;min-height:39px;flex:none;border:1px solid #35413b;border-radius:50%;padding:0;background:#1a221f;color:#cbd2ce;font-size:1.35rem}
+    body.portal-v2 .remote-channel-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:11px}
+    body.portal-v2 button.remote-channel-option{min-height:74px;display:flex;justify-content:flex-start;gap:12px;border:1px solid #2f3934;border-radius:14px;padding:10px 12px;background:#151c19;color:#dce2df;text-align:left}
+    body.portal-v2 button.remote-channel-option:hover{border-color:#52605a;background:#1e2723}
+    body.portal-v2 button.remote-channel-option.active{border-color:#edf2ef;background:#edf2ef;color:#101513}
+    body.portal-v2 .remote-channel-number{width:42px;height:42px;display:grid;flex:none;place-items:center;border:1px solid #3a4540;border-radius:12px;color:#ff917a;font-size:.67rem;font-weight:800}
+    body.portal-v2 .remote-channel-option.active .remote-channel-number{border-color:#ced8d2;color:#315e4b}
+    body.portal-v2 .remote-channel-option>span:last-child{min-width:0;display:grid}
+    body.portal-v2 .remote-channel-option strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    body.portal-v2 .remote-channel-option small{margin-top:3px;color:#748079;font-size:.65rem}
+    body.portal-v2 .remote-channel-option.active small{color:#5f6b65}
+    body.portal-v2 .remote-power-actions{display:grid;gap:9px;padding:14px}
+    body.portal-v2 button.remote-power-confirm{min-height:82px;display:flex;justify-content:flex-start;gap:14px;border:1px solid #68372f;border-radius:16px;padding:13px 15px;background:#2b1714;color:#ff9f91;text-align:left}
+    body.portal-v2 .remote-power-confirm svg{width:29px;height:29px;flex:none}
+    body.portal-v2 .remote-power-confirm>span{display:grid}
+    body.portal-v2 .remote-power-confirm small{margin-top:4px;color:#b8786d}
+
+    @media(max-width:1024px){
+      body.portal-v2 #view-live .remote-control-deck{grid-template-columns:1fr}
+      body.portal-v2 #view-live .remote-primary-cluster{min-height:270px}
+      body.portal-v2 #view-live .remote-transport{min-height:205px}
+      body.portal-v2 #view-live .remote-transport button{min-height:92px}
+      body.portal-v2 #view-live .remote-transport button.remote-play{min-height:118px}
+    }
+
+    @media(max-width:720px){
+      body.portal-v2 #view-live .page{padding-right:0;padding-left:0}
+      body.portal-v2 #view-live .page-head{padding-right:15px;padding-left:15px}
+      body.portal-v2 #view-live .live-tv{margin:0 0 10px}
+      body.portal-v2 #view-live .live-side>section.remote-console{border-right:0;border-left:0;border-radius:0;padding:0}
+      body.portal-v2 #view-live .remote-panel-head{padding:18px 14px}
+      body.portal-v2 #view-live .remote-mark{width:43px;height:43px;border-radius:13px}
+      body.portal-v2 #view-live .remote-heading h2{font-size:1.35rem}
+      body.portal-v2 #view-live .remote-heading p:last-child{display:none}
+      body.portal-v2 #view-live .remote-feedback{min-width:auto;padding:7px 9px;font-size:.64rem}
+      body.portal-v2 #view-live .remote-mode-row{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:10px}
+      body.portal-v2 #view-live button.remote-mode{min-height:62px;padding:8px 9px}
+      body.portal-v2 #view-live .remote-mode-icon{width:34px;height:34px}
+      body.portal-v2 #view-live .remote-everyday,body.portal-v2 #view-live .remote-playback{padding:18px 10px 20px}
+      body.portal-v2 #view-live .remote-section-head{padding:0 3px}
+      body.portal-v2 #view-live .remote-section-head h3{font-size:.96rem}
+      body.portal-v2 #view-live button.remote-back{min-height:38px;padding:6px 12px}
+      body.portal-v2 #view-live .remote-primary-cluster{grid-template-columns:62px minmax(164px,220px) 62px;gap:8px;min-height:254px;border-radius:20px;padding:10px 7px}
+      body.portal-v2 #view-live .remote-rocker{height:190px;border-radius:32px}
+      body.portal-v2 #view-live .remote-rocker>span,body.portal-v2 #view-live button.remote-rocker-state{min-height:53px;padding:4px 1px}
+      body.portal-v2 #view-live .remote-rocker small{font-size:.46rem}
+      body.portal-v2 #view-live .remote-rocker strong{font-size:.68rem}
+      body.portal-v2 #view-live .remote-pad{max-width:220px;padding:7px}
+      body.portal-v2 #view-live .remote-transport{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;min-height:185px;border-radius:20px;padding:13px 7px}
+      body.portal-v2 #view-live .remote-transport button{min-height:86px;gap:7px;border-radius:15px;padding:9px 2px}
+      body.portal-v2 #view-live .remote-transport button.remote-play{min-height:110px;border-radius:23px}
+      body.portal-v2 #view-live .remote-transport button span{font-size:.52rem}
+      body.portal-v2 #view-live .remote-transport svg{width:19px;height:19px}
+      body.portal-v2 #view-live .remote-play svg{width:25px;height:25px}
+      body.portal-v2 #view-live .remote-dock{grid-template-columns:minmax(0,1fr) 70px 62px;gap:6px;padding:10px 9px 13px}
+      body.portal-v2 #view-live button.remote-dock-main{min-height:58px;border-radius:14px;padding:8px}
+      body.portal-v2 #view-live .remote-dock-icon{width:36px;height:36px}
+      body.portal-v2 #view-live button.remote-dock-action{min-width:0;min-height:58px;border-radius:14px;padding:6px 3px;font-size:.52rem}
+      body.portal-v2 .remote-sheet{width:100%;margin:auto 0 0}
+      body.portal-v2 .remote-sheet-panel{width:100%;max-height:88dvh;border-right:0;border-bottom:0;border-left:0;border-radius:25px 25px 0 0;padding-bottom:env(safe-area-inset-bottom)}
+      body.portal-v2 .remote-sheet-handle{width:38px;height:4px;display:block;margin:9px auto 0;border-radius:99px;background:#4b5650}
+      body.portal-v2 .remote-sheet-panel>header{padding:13px 16px 15px}
+      body.portal-v2 .remote-sheet-panel>header h2{font-size:1.45rem}
+      body.portal-v2 .remote-channel-options{grid-template-columns:1fr;padding:8px 9px 12px}
+    }
+
+    @media(max-width:360px){
+      body.portal-v2 #view-live .remote-primary-cluster{grid-template-columns:54px minmax(150px,1fr) 54px}
+      body.portal-v2 #view-live .remote-rocker{height:176px}
+      body.portal-v2 #view-live .remote-transport button span{display:none}
+      body.portal-v2 #view-live .remote-transport button{min-height:76px}
+      body.portal-v2 #view-live .remote-transport button.remote-play{min-height:98px}
+    }
   </style>
 </head>
 <body class="portal-v2">
@@ -668,7 +836,39 @@
       </div></section>
       <section id="view-live" class="view"><div class="page">
         <header class="page-head live-page-head"><div><p class="eyebrow">Remote control</p><h1>Live TV</h1><p>Watch the picture and take control without leaving the portal.</p></div></header>
-        <div class="live-layout"><section class="live-tv" aria-label="Live television preview"><div class="live-screen"><video id="liveVideo" muted autoplay playsinline preload="none"></video><img id="liveMjpeg" class="hidden" alt="Live MabelTV picture"><div id="liveOff" class="live-off"><strong id="liveOffTitle">Connecting to the TV…</strong><span id="liveOffText">Preparing the live picture</span></div></div><div class="live-meta"><small class="live-caption"><span id="liveChannel">Live preview</span><span aria-hidden="true"> · </span><span id="liveProgramme">Waiting for MabelTV</span></small><small class="live-state"><span id="liveLed" class="live-led off"></span><span id="liveState">Checking…</span></small></div></section><aside class="live-side"><section class="surface"><div class="remote-panel-head"><div><h2>TV remote</h2><p>Every command controls the TV in the room.</p></div><span class="count-badge">LIVE</span></div><div class="remote-shortcuts"><button type="button" class="primary" data-live-command="open-parent-menu">☰ Menu</button><button type="button" class="secondary" data-live-command="open-tv-guide">▦ Guide</button><button type="button" class="secondary" data-live-command="enter-adult-mode">◆ Adult</button></div><div class="remote-group"><h3>Navigate</h3><div class="remote-pad" aria-label="Directional controls"><button type="button" class="secondary up" data-live-command="navigate-up" aria-label="Up">▲</button><button type="button" class="secondary" data-live-command="navigate-left" aria-label="Left">◀</button><button type="button" class="select" data-live-command="select">Select</button><button type="button" class="secondary" data-live-command="navigate-right" aria-label="Right">▶</button><button type="button" class="secondary" data-live-command="navigate-down" aria-label="Down">▼</button></div></div><div class="remote-group"><h3>Playback</h3><div class="remote-grid"><button type="button" class="secondary" data-live-command="previous-programme">◀ Previous</button><button type="button" class="secondary" data-live-command="toggle-pause">⏯ Pause</button><button type="button" class="secondary" data-live-command="next-programme">Next ▶</button><button type="button" class="secondary" data-live-command="toggle-subtitles">CC Subtitles</button><button type="button" class="secondary wide" data-live-command="restart-programme">↺ Restart this programme</button></div></div><div class="remote-group"><h3>Channel and sound</h3><div class="remote-grid"><button type="button" class="secondary" data-live-command="channel-down">CH −</button><button type="button" class="secondary" data-live-command="close-overlay">Back / close</button><button type="button" class="secondary" data-live-command="channel-up">CH +</button><button type="button" class="secondary" data-live-command="volume-down">VOL −</button><button type="button" class="secondary" data-live-command="toggle-mute">Mute</button><button type="button" class="secondary" data-live-command="volume-up">VOL +</button><button type="button" class="secondary wide" data-live-command="toggle-power">Power / standby</button></div></div></section></aside></div>
+        <div class="live-layout">
+          <section class="live-tv" aria-label="Live television preview"><div class="live-screen"><video id="liveVideo" muted autoplay playsinline preload="none"></video><img id="liveMjpeg" class="hidden" alt="Live MabelTV picture"><div id="liveOff" class="live-off"><strong id="liveOffTitle">Connecting to the TV…</strong><span id="liveOffText">Preparing the live picture</span></div></div><div class="live-meta"><small class="live-caption"><span id="liveChannel">Live preview</span><span aria-hidden="true"> · </span><span id="liveProgramme">Waiting for MabelTV</span></small><small class="live-state"><span id="liveLed" class="live-led off"></span><span id="liveState">Checking…</span></small></div></section>
+          <aside class="live-side"><section class="surface remote-console" aria-label="MabelTV remote control">
+            <header class="remote-panel-head"><div class="remote-heading"><span class="remote-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="4"/><circle cx="12" cy="7" r="1.5"/><path d="M12 11v6M9 14h6"/></svg></span><div><p class="section-kicker">In-room control</p><h2>Remote</h2><p>Built for quick taps without taking your eyes off the television.</p></div></div><div class="remote-feedback" aria-live="polite"><span id="remoteConnectionDot" class="live-led off"></span><span id="remoteFeedback">Connecting</span></div></header>
+
+            <div class="remote-mode-row" aria-label="TV destinations">
+              <button type="button" class="remote-mode" data-live-command="return-to-mabeltv" id="remoteMabelAction"><span class="remote-mode-icon"><svg viewBox="0 0 24 24"><path d="M4 7h16v11H4zM8 4l4 3 4-3"/><path d="M9 12h6"/></svg></span><span><strong>MabelTV</strong><small>Children’s channels</small></span></button>
+              <button type="button" class="remote-mode" data-live-command="open-tv-guide"><span class="remote-mode-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="15" rx="2"/><path d="M3 10h18M8 5v15M12 13h5M12 16h4"/></svg></span><span><strong>Guide</strong><small>What’s on now</small></span></button>
+              <button type="button" class="remote-mode" data-live-command="open-parent-menu"><span class="remote-mode-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.5 1A7 7 0 0 0 14.3 5L14 2h-4l-.4 3A7 7 0 0 0 7.5 7L5 6 3 9.3l2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.5-1a7 7 0 0 0 2.1 1.9l.4 3h4l.4-3a7 7 0 0 0 2.1-1.9l2.5 1 2-3.4-2-1.5c0-.4.1-.8.1-1.2Z"/></svg></span><span><strong>Menu</strong><small>Parent controls</small></span></button>
+              <button type="button" class="remote-mode" data-live-command="enter-adult-mode" id="remoteAdultAction"><span class="remote-mode-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m10 9 5 3-5 3ZM7 4v4M17 4v4"/></svg></span><span><strong>Adult TV</strong><small>Private library</small></span></button>
+            </div>
+
+            <div class="remote-control-deck">
+              <section class="remote-everyday" aria-labelledby="remoteEverydayTitle"><div class="remote-section-head"><div><p class="section-kicker">Everyday controls</p><h3 id="remoteEverydayTitle">Navigate, tune and listen</h3></div><button id="remoteBack" type="button" class="remote-back" data-live-command="close-overlay"><svg viewBox="0 0 24 24"><path d="m15 5-7 7 7 7M8 12h11"/></svg><span>Back</span></button></div>
+                <div class="remote-primary-cluster">
+                  <div class="remote-rocker" aria-label="Channel controls"><button type="button" data-live-command="channel-up" aria-label="Channel up"><svg viewBox="0 0 24 24"><path d="M12 7v10M7 12h10"/></svg></button><span><small>Channel</small><strong>CH</strong></span><button type="button" data-live-command="channel-down" aria-label="Channel down"><svg viewBox="0 0 24 24"><path d="M7 12h10"/></svg></button></div>
+                  <div class="remote-pad" aria-label="Directional controls"><span class="remote-pad-ring" aria-hidden="true"></span><button type="button" class="up" data-live-command="navigate-up" aria-label="Up"><svg viewBox="0 0 24 24"><path d="m7 15 5-6 5 6"/></svg></button><button type="button" class="left" data-live-command="navigate-left" aria-label="Left"><svg viewBox="0 0 24 24"><path d="m15 7-6 5 6 5"/></svg></button><button type="button" class="select" data-live-command="select"><span>OK</span></button><button type="button" class="right" data-live-command="navigate-right" aria-label="Right"><svg viewBox="0 0 24 24"><path d="m9 7 6 5-6 5"/></svg></button><button type="button" class="down" data-live-command="navigate-down" aria-label="Down"><svg viewBox="0 0 24 24"><path d="m7 9 5 6 5-6"/></svg></button></div>
+                  <div class="remote-rocker" aria-label="Volume controls"><button type="button" data-live-command="volume-up" aria-label="Volume up"><svg viewBox="0 0 24 24"><path d="M12 7v10M7 12h10"/></svg></button><button type="button" id="remoteMute" class="remote-rocker-state" data-live-command="toggle-mute" aria-label="Mute"><small>Volume</small><strong id="remoteVolumeValue">—</strong></button><button type="button" data-live-command="volume-down" aria-label="Volume down"><svg viewBox="0 0 24 24"><path d="M7 12h10"/></svg></button></div>
+                </div>
+              </section>
+
+              <section class="remote-playback" aria-labelledby="remotePlaybackTitle"><div class="remote-section-head"><div><p class="section-kicker">Playback</p><h3 id="remotePlaybackTitle">Programme controls</h3></div><span id="remotePlaybackState" class="remote-state-pill">Live</span></div><div class="remote-transport">
+                <button type="button" data-live-command="previous-programme"><svg viewBox="0 0 24 24"><path d="M7 6v12M18 7l-8 5 8 5Z"/></svg><span>Previous</span></button>
+                <button type="button" data-live-command="restart-programme"><svg viewBox="0 0 24 24"><path d="M5 8V3m0 0h5M5 3l3.5 3.5A8 8 0 1 1 4 13"/></svg><span>Restart</span></button>
+                <button type="button" id="remotePlayPause" class="remote-play" data-live-command="toggle-pause"><svg class="remote-pause-icon" viewBox="0 0 24 24"><path d="M9 6v12M15 6v12"/></svg><svg class="remote-play-icon" viewBox="0 0 24 24"><path d="m9 6 9 6-9 6Z"/></svg><span id="remotePlayPauseLabel">Pause</span></button>
+                <button type="button" id="remoteSubtitles" data-live-command="toggle-subtitles"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M7 11h4M7 14h6M15 11h2M15 14h2"/></svg><span>Subtitles</span></button>
+                <button type="button" data-live-command="next-programme"><svg viewBox="0 0 24 24"><path d="M17 6v12M6 7l8 5-8 5Z"/></svg><span>Next</span></button>
+              </div></section>
+            </div>
+
+            <footer class="remote-dock"><button id="openLiveChannels" type="button" class="remote-dock-main"><span class="remote-dock-icon"><svg viewBox="0 0 24 24"><path d="M5 5h14M5 12h14M5 19h14"/><circle cx="8" cy="5" r="1"/><circle cx="14" cy="12" r="1"/><circle cx="10" cy="19" r="1"/></svg></span><span><small>Jump straight to</small><strong id="remoteChannelPickerLabel">Choose a channel</strong></span><svg class="remote-dock-chevron" viewBox="0 0 24 24"><path d="m9 7 5 5-5 5"/></svg></button><button id="remoteLock" type="button" class="remote-dock-action" data-live-command="toggle-remote-lock"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span>Lock remote</span></button><button id="openRemotePower" type="button" class="remote-dock-action remote-power"><svg viewBox="0 0 24 24"><path d="M12 3v9M6.6 6.6a7.5 7.5 0 1 0 10.8 0"/></svg><span>Power</span></button></footer>
+          </section></aside>
+        </div>
         <footer><span data-tv-name>Your TV</span> · Live preview stays on your home network</footer>
       </div></section>
       <section id="view-channels" class="view"><div class="page">
@@ -725,6 +925,8 @@
   <dialog id="watchFilmSheet" class="watch-film-sheet"><article class="watch-film-panel"><button id="watchFilmClose" type="button" class="watch-film-close" aria-label="Close film details">×</button><div id="watchFilmBackdrop" class="watch-film-backdrop"><div id="watchFilmPoster" class="watch-film-poster"></div></div><div class="watch-film-body"><p id="watchFilmEyebrow" class="watch-film-eyebrow"></p><h2 id="watchFilmTitle"></h2><div id="watchFilmMeta" class="watch-film-meta"></div><div id="watchFilmProgress" class="watch-film-progress hidden"><div><span>Progress</span><strong id="watchFilmProgressLabel"></strong></div><span class="watch-film-progress-track"><i id="watchFilmProgressFill"></i></span></div><p id="watchFilmOverview" class="watch-film-overview"></p><p id="watchFilmAvailability" class="watch-film-availability hidden"></p><div class="watch-film-actions"><button id="watchFilmPlay" type="button" class="watch-film-play"><span class="watch-action-icon">▶</span><span><strong>Play film</strong><small>Open the native player</small></span></button><button id="watchFilmStartOver" type="button" class="watch-film-secondary hidden"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8V3m0 0h5M5 3l3.5 3.5A8 8 0 1 1 4 13"/></svg><span>Start over</span></button></div></div></article></dialog>
   <section id="iosWatchPlayer" class="ios-watch-player hidden" aria-label="Remote video player"><header class="ios-watch-head"><button id="iosWatchBack" type="button" class="ios-watch-back" aria-label="Back to library">←</button><div><strong id="iosWatchTitle">MabelTV</strong><small>MabelTV remote viewing</small></div><button id="iosWatchStartOver" type="button" class="hidden">Start over</button></header><div class="ios-watch-stage"><video id="iosWatchVideo" controls playsinline webkit-playsinline preload="metadata"></video><p id="iosWatchError" class="ios-watch-error hidden"></p></div></section>
   <section id="mabelWatchPlayer" class="mabel-watch-player hidden" aria-label="Mabel TV remote player"><div id="mabelWatchShell" class="mabel-watch-shell slim-black"><div id="mabelWatchCabinet" class="mabel-watch-cabinet slim-black"><div id="mabelWatchScreen" class="mabel-watch-screen" tabindex="0"><video id="mabelWatchVideo" playsinline webkit-playsinline preload="metadata"></video><div id="mabelWatchControls" class="mabel-watch-hud"><div class="mabel-watch-topbar"><button id="mabelWatchBack" type="button" class="mabel-watch-icon-button" aria-label="Back to Mabel TV programmes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7M8 12h11"/></svg></button><div class="mabel-watch-title"><strong id="mabelWatchTitle">MabelTV</strong><small id="mabelWatchChannel">Remote Mabel TV</small></div><span class="mabel-watch-live-badge">MabelTV</span></div><div class="mabel-watch-bottom"><label class="mabel-watch-timeline"><span id="mabelWatchCurrent">0:00</span><input id="mabelWatchSeek" type="range" min="0" max="1000" value="0" aria-label="Playback position"><span id="mabelWatchDuration">0:00</span></label><div class="mabel-watch-controls"><button type="button" class="mabel-watch-skip" data-mabel-watch-action="back" aria-label="Back 15 seconds"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8V3m0 0h5M5 3l3.4 3.4A8 8 0 1 1 4 13"/></svg><span>15</span></button><button type="button" class="mabel-watch-play" data-mabel-watch-action="play" aria-label="Play or pause"><svg class="mabel-watch-play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 9 6-9 6Z"/></svg><svg class="mabel-watch-pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6v12M15 6v12"/></svg></button><button type="button" class="mabel-watch-skip" data-mabel-watch-action="forward" aria-label="Forward 15 seconds"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 8V3m0 0h-5m5 0-3.4 3.4A8 8 0 1 0 20 13"/></svg><span>15</span></button><span class="mabel-watch-control-spacer"></span><button type="button" class="mabel-watch-icon-button mabel-watch-mute" data-mabel-watch-action="mute" aria-label="Mute"><svg class="mabel-watch-sound-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 10v4h4l5 4V6l-5 4ZM18 9c1.3 1.8 1.3 4.2 0 6"/></svg><svg class="mabel-watch-muted-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 10v4h4l5 4V6l-5 4ZM17 10l4 4m0-4-4 4"/></svg></button></div></div></div></div><div class="mabel-watch-charcoal-fascia" aria-hidden="true"><span class="mabel-watch-charcoal-speaker left"></span><span class="mabel-watch-charcoal-speaker right"></span><span class="mabel-watch-charcoal-logo">MABEL</span><span class="mabel-watch-charcoal-control"></span></div><div class="mabel-watch-brand"><span>MabelTV</span><span>Remote broadcast</span></div></div><p id="mabelWatchError" class="mabel-watch-error hidden"></p></div></section>
+  <dialog id="liveChannelSheet" class="remote-sheet"><section class="remote-sheet-panel"><span class="remote-sheet-handle" aria-hidden="true"></span><header><div><p class="section-kicker">Jump straight to</p><h2>Choose a channel</h2><p>Change channel without tapping through them one at a time.</p></div><button id="closeLiveChannels" type="button" class="remote-sheet-close" aria-label="Close channel picker">×</button></header><div id="liveChannelOptions" class="remote-channel-options"></div></section></dialog>
+  <dialog id="remotePowerSheet" class="remote-sheet remote-power-sheet"><section class="remote-sheet-panel"><span class="remote-sheet-handle" aria-hidden="true"></span><header><div><p class="section-kicker">Television power</p><h2 id="remotePowerTitle">Put MabelTV in standby?</h2><p id="remotePowerDescription">The portal stays available. Use the physical remote or this page to wake the television again.</p></div><button id="closeRemotePower" type="button" class="remote-sheet-close" aria-label="Close power controls">×</button></header><div class="remote-power-actions"><button id="confirmRemotePower" type="button" class="remote-power-confirm"><svg viewBox="0 0 24 24"><path d="M12 3v9M6.6 6.6a7.5 7.5 0 1 0 10.8 0"/></svg><span><strong id="remotePowerActionTitle">Put TV in standby</strong><small id="remotePowerActionHint">The screen will switch off safely</small></span></button><button id="cancelRemotePower" type="button" class="secondary">Keep watching</button></div></section></dialog>
   <dialog id="tmdbDialog" class="tmdb-dialog"><div class="tmdb-dialog-head"><div><p class="section-kicker">TMDB match</p><h2 id="tmdbDialogTitle">Choose the correct film</h2></div><button id="tmdbClose" type="button" class="secondary">Close</button></div><div id="tmdbResults" class="tmdb-results"></div></dialog>
 
   <script>
@@ -747,6 +949,8 @@
     let liveFallbackTimer = null
     let liveFrameTimer = null
     let livePictureVisible = false
+    let liveTvState = {}
+    let remoteFeedbackTimer = null
     let tmdbConfigured = false
     // Watch is an adult-library-first surface.  Mabel TV remains one tap away
     // but is never restored as the accidental default from an earlier visit.
@@ -1072,7 +1276,93 @@
       showLiveFallback()
     }
 
+    function setRemoteFeedback(message, tone = '', hold = 1100) {
+      clearTimeout(remoteFeedbackTimer)
+      const feedback = $('#remoteFeedback')
+      const container = feedback.closest('.remote-feedback')
+      feedback.textContent = message
+      container.classList.toggle('success', tone === 'success')
+      container.classList.toggle('error', tone === 'error')
+      if (hold > 0) remoteFeedbackTimer = setTimeout(() => {
+        remoteFeedbackTimer = null
+        renderRemoteState(liveTvState)
+      }, hold)
+    }
+
+    function renderLiveChannelOptions() {
+      const root = $('#liveChannelOptions')
+      if (!root) return
+      const channels = (library?.channels || []).filter(channel => channel.enabled)
+      if (!channels.length) {
+        root.innerHTML = '<div class="watch-empty">No active channels are available.</div>'
+        return
+      }
+      root.innerHTML = channels.map(channel => `<button type="button" class="remote-channel-option" data-live-channel="${channel.number}"><span class="remote-channel-number">CH ${channel.number}</span><span><strong>${escapeHtml(channel.name)}</strong><small>${channel.programmes.length} programme${channel.programmes.length === 1 ? '' : 's'}</small></span></button>`).join('')
+      $$('[data-live-channel]').forEach(button => button.onclick = () => tuneLiveChannel(Number(button.dataset.liveChannel), button))
+      updateLiveChannelSelection(liveTvState)
+    }
+
+    function updateLiveChannelSelection(state) {
+      $$('[data-live-channel]').forEach(button => {
+        const current = !state.adult_mode && Number(button.dataset.liveChannel) === Number(state.channel_number)
+        button.classList.toggle('active', current)
+        button.setAttribute('aria-current', current ? 'true' : 'false')
+        button.disabled = state.remote_locked === true
+      })
+    }
+
+    function renderRemoteState(state) {
+      const available = state.available === true
+      const locked = state.remote_locked === true
+      const adult = state.adult_mode === true
+      const paused = state.paused === true
+      const muted = state.muted === true
+      const volume = Number.isFinite(Number(state.volume)) ? Math.max(0, Math.min(100, Number(state.volume))) : null
+      $('#remoteConnectionDot').classList.toggle('off', !available)
+      if (remoteFeedbackTimer === null) {
+        const feedback = $('#remoteFeedback').closest('.remote-feedback')
+        feedback.classList.toggle('success', available)
+        feedback.classList.remove('error')
+        $('#remoteFeedback').textContent = locked ? 'Remote locked' : (available ? 'Ready' : 'TV offline')
+      }
+      $('#remoteMabelAction').classList.toggle('active', available && !adult)
+      $('#remoteAdultAction').classList.toggle('active', available && adult)
+      $('#remoteVolumeValue').textContent = muted ? 'Muted' : (volume === null ? '—' : `${Math.round(volume)}%`)
+      $('#remoteMute').classList.toggle('muted', muted)
+      $('#remoteMute').setAttribute('aria-label', muted ? 'Unmute' : 'Mute')
+      $('#remotePlaybackState').textContent = paused ? 'Paused' : (available ? 'Playing' : 'Offline')
+      $('#remotePlaybackState').classList.toggle('paused', paused)
+      $('#remotePlayPause').classList.toggle('paused', paused)
+      $('#remotePlayPauseLabel').textContent = paused ? 'Play' : 'Pause'
+      $('#remoteSubtitles').classList.toggle('active', state.subtitles_visible === true)
+      $('#remoteSubtitles').setAttribute('aria-pressed', String(state.subtitles_visible === true))
+      $('#remoteSubtitles').querySelector('span').textContent = adult
+        ? (state.subtitles_available === false ? 'No subtitles' : 'Subtitles') : 'Adult only'
+      $('#remoteChannelPickerLabel').textContent = adult
+        ? 'Adult TV is open' : (available ? `CH ${state.channel_number} · ${state.channel_name}` : 'Choose a channel')
+      $('#remoteLock').classList.toggle('active', locked)
+      $('#remoteLock').querySelector('span').textContent = locked ? 'Unlock remote' : 'Lock remote'
+      $$('[data-live-command]').forEach(button => {
+        const canUnlock = button.dataset.liveCommand === 'toggle-remote-lock'
+        const adultSubtitles = button.dataset.liveCommand !== 'toggle-subtitles'
+          || (adult && state.subtitles_available !== false)
+        button.disabled = (locked && !canUnlock) || !adultSubtitles
+      })
+      $('#openLiveChannels').disabled = locked
+      $('#openRemotePower').disabled = locked
+      updateLiveChannelSelection(state)
+      const waking = !available && String(state.reason || '').toLowerCase().includes('off')
+      $('#remotePowerTitle').textContent = waking ? 'Wake MabelTV?' : 'Put MabelTV in standby?'
+      $('#remotePowerDescription').textContent = waking
+        ? 'The television will start and return to the last channel.'
+        : 'The portal stays available. Use the physical remote or this page to wake the television again.'
+      $('#remotePowerActionTitle').textContent = waking ? 'Wake the television' : 'Put TV in standby'
+      $('#remotePowerActionHint').textContent = waking ? 'Return to the last channel' : 'The screen will switch off safely'
+      $('#cancelRemotePower').textContent = waking ? 'Not now' : 'Keep watching'
+    }
+
     function renderLiveTv(state) {
+      liveTvState = state || {}
       const available = state.available === true
       $('#liveOff').classList.toggle('hidden', available && livePictureVisible)
       $('#liveLed').classList.toggle('off', !available)
@@ -1083,6 +1373,7 @@
         ? (state.adult_mode ? 'ADULT TV · PRIVATE LIBRARY' : `CH ${state.channel_number} · ${state.channel_name}`)
         : 'Live preview'
       $('#liveState').textContent = available ? (state.paused ? 'Paused' : 'Live') : 'Offline'
+      renderRemoteState(state)
     }
 
     async function refreshLiveTv(restartStream = false) {
@@ -1161,6 +1452,7 @@
       renderAdultLibrary()
       renderOverviewChannels()
       renderChannels()
+      renderLiveChannelOptions()
       renderTvSettings()
       renderParentOverlayStyle()
       renderTvGuideSetting()
@@ -2523,14 +2815,62 @@
     $('#restartPlayer').onclick = () => { if (confirm('Restart the TV player now? The picture will disappear briefly.')) systemAction('restart-player', 'Restarting the TV player…') }
     $('#rebootPi').onclick = () => { if (confirm(`Restart the Raspberry Pi now? ${tvName()} will be unavailable for about a minute.`)) systemAction('reboot', 'Restarting the Raspberry Pi…') }
     $('#poweroffPi').onclick = () => { if (confirm('Shut down the Raspberry Pi now? You will need to switch its power back on afterwards.')) systemAction('poweroff', 'Shutting down safely…') }
-    $$('[data-live-command]').forEach(button => button.onclick = async () => {
-      const controls = $$('[data-live-command]')
-      controls.forEach(control => control.disabled = true)
+    const liveCommandFeedback = {
+      'return-to-mabeltv': 'Returning to MabelTV', 'open-tv-guide': 'Opening guide',
+      'open-parent-menu': 'Opening menu', 'enter-adult-mode': 'Opening Adult TV',
+      'close-overlay': 'Back', 'channel-up': 'Channel up', 'channel-down': 'Channel down',
+      'volume-up': 'Volume up', 'volume-down': 'Volume down', 'toggle-mute': 'Sound changed',
+      'navigate-up': 'Up', 'navigate-down': 'Down', 'navigate-left': 'Left',
+      'navigate-right': 'Right', select: 'Selected', 'previous-programme': 'Previous programme',
+      'next-programme': 'Next programme', 'restart-programme': 'Restarting programme',
+      'toggle-pause': 'Playback changed', 'toggle-subtitles': 'Subtitles changed',
+      'toggle-remote-lock': 'Remote lock changed', 'toggle-power': 'Power command sent'
+    }
+
+    async function sendLiveCommand(command, button = null, extra = {}) {
+      if (button?.dataset.remoteBusy === 'true') return
+      if (button) {
+        button.dataset.remoteBusy = 'true'
+        button.classList.add('is-sending')
+      }
+      navigator.vibrate?.(8)
+      setRemoteFeedback(liveCommandFeedback[command] || 'Sending…', '', 0)
       try {
-        await api('/api/live/control', { method: 'POST', body: JSON.stringify({ command: button.dataset.liveCommand }) })
-        setTimeout(() => refreshLiveTv(true), 700)
-      } catch (error) { notice(error.message, true) }
-      finally { setTimeout(() => controls.forEach(control => control.disabled = false), 450) }
+        await api('/api/live/control', { method: 'POST', body: JSON.stringify({ command, ...extra }) })
+        if (button) {
+          button.classList.remove('is-sending')
+          button.classList.add('command-ok')
+          setTimeout(() => button.classList.remove('command-ok'), 380)
+        }
+        setRemoteFeedback(liveCommandFeedback[command] || 'Done', 'success')
+        setTimeout(() => refreshLiveTv(command === 'toggle-power'), 280)
+      } catch (error) {
+        if (button) button.classList.remove('is-sending')
+        setRemoteFeedback('Command failed', 'error', 2200)
+        notice(error.message, true)
+      } finally {
+        if (button) delete button.dataset.remoteBusy
+      }
+    }
+
+    async function tuneLiveChannel(channel, button) {
+      if (!Number.isInteger(channel)) return
+      await sendLiveCommand('tune-channel', button, { channel })
+      $('#liveChannelSheet').close()
+      setRemoteFeedback(`Opening channel ${channel}`, 'success')
+    }
+
+    $$('[data-live-command]').forEach(button => button.onclick = () => sendLiveCommand(button.dataset.liveCommand, button))
+    $('#openLiveChannels').onclick = () => { renderLiveChannelOptions(); $('#liveChannelSheet').showModal() }
+    $('#closeLiveChannels').onclick = () => $('#liveChannelSheet').close()
+    $('#openRemotePower').onclick = () => { renderRemoteState(liveTvState); $('#remotePowerSheet').showModal() }
+    $('#closeRemotePower').onclick = $('#cancelRemotePower').onclick = () => $('#remotePowerSheet').close()
+    $('#confirmRemotePower').onclick = async () => {
+      $('#remotePowerSheet').close()
+      await sendLiveCommand('toggle-power', $('#openRemotePower'))
+    }
+    ;[$('#liveChannelSheet'), $('#remotePowerSheet')].forEach(dialog => dialog.onclick = event => {
+      if (event.target === dialog) dialog.close()
     })
     $('#enterAdultMode').onclick = async () => {
       const button = $('#enterAdultMode')

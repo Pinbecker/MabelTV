@@ -790,7 +790,7 @@ class LibraryUnitTests(unittest.TestCase):
         commands = ("open-parent-menu", "open-tv-guide", "close-overlay",
                     "restart-programme", "navigate-up", "navigate-down",
                     "navigate-left", "navigate-right", "select",
-                    "toggle-subtitles")
+                    "toggle-subtitles", "return-to-mabeltv", "toggle-remote-lock")
         with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True):
             with mock.patch.object(mabeltv_library.socket, "socket") as socket_factory:
                 client = socket_factory.return_value.__enter__.return_value
@@ -804,6 +804,28 @@ class LibraryUnitTests(unittest.TestCase):
                     [call.args[0] for call in client.sendall.call_args_list],
                     [f"{command}\n".encode() for command in commands])
 
+    def test_live_tv_channel_picker_sends_a_validated_direct_tune(self) -> None:
+        self.fixture.library.complete_setup({
+            "setup_code": "135790", "pin": "2468",
+            "channels": mabeltv_library.DEFAULT_CHANNELS,
+        })
+        with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True):
+            with mock.patch.object(mabeltv_library.socket, "socket") as socket_factory:
+                client = socket_factory.return_value.__enter__.return_value
+                client.recv.return_value = b"ok\n"
+                self.assertEqual(
+                    self.fixture.library.live_tv_control({
+                        "command": "tune-channel", "channel": 1,
+                    }),
+                    {"ok": True, "message": "Command sent"})
+                client.sendall.assert_called_once_with(
+                    b'{"command":"tune-channel","channel":1}\n')
+
+        with self.assertRaisesRegex(ValueError, "Choose a channel"):
+            self.fixture.library.live_tv_control({
+                "command": "tune-channel", "channel": "not-a-channel",
+            })
+
     def test_live_tv_status_reports_adult_mode_instead_of_hidden_kids_playback(self) -> None:
         self.fixture.library.live_stream.status = mock.Mock(return_value={
             "available": True, "channel_number": 5, "channel_name": "Films",
@@ -812,6 +834,8 @@ class LibraryUnitTests(unittest.TestCase):
         self.fixture.library.player_mode_status = mock.Mock(return_value={
             "mode": "adult", "playing": True,
             "programme": "The Fellowship of the Ring", "paused": True,
+            "volume": 48, "muted": False, "remote_locked": True,
+            "subtitles_available": True, "subtitles_visible": True,
         })
 
         status = self.fixture.library.live_tv_status()
@@ -821,6 +845,11 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertEqual(status["programme"], "The Fellowship of the Ring")
         self.assertTrue(status["paused"])
         self.assertEqual(status["channel_name"], "Films")
+        self.assertEqual(status["volume"], 48)
+        self.assertFalse(status["muted"])
+        self.assertTrue(status["remote_locked"])
+        self.assertTrue(status["subtitles_available"])
+        self.assertTrue(status["subtitles_visible"])
 
     def test_player_mode_status_tolerates_an_unavailable_player_socket(self) -> None:
         with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True):

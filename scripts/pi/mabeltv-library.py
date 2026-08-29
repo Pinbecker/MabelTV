@@ -2194,6 +2194,10 @@ class Library:
     def live_tv_status(self) -> dict[str, Any]:
         status = self.live_stream.status()
         mode = self.player_mode_status()
+        for field in ("volume", "muted", "remote_locked", "subtitles_available",
+                      "subtitles_visible"):
+            if field in mode:
+                status[field] = mode[field]
         if mode.get("mode") == "adult":
             playing = mode.get("playing") is True
             status.update({
@@ -2237,14 +2241,26 @@ class Library:
                    "toggle-pause", "toggle-subtitles", "volume-up", "volume-down", "toggle-mute", "toggle-power",
                    "open-parent-menu", "open-tv-guide", "close-overlay", "restart-programme",
                    "enter-adult-mode", "navigate-up", "navigate-down", "navigate-left",
-                   "navigate-right", "select"}
+                   "navigate-right", "select", "return-to-mabeltv", "toggle-remote-lock",
+                   "tune-channel"}
         if command not in allowed:
             raise ValueError("Unknown live TV control")
+        wire_command = command
+        if command == "tune-channel":
+            try:
+                channel_number = int(payload.get("channel"))
+            except (TypeError, ValueError) as error:
+                raise ValueError("Choose a channel") from error
+            channel = self.channel(channel_number)
+            if not channel.get("enabled", True):
+                raise ValueError("That channel is hidden from the television")
+            wire_command = json.dumps({"command": command, "channel": channel_number},
+                                      separators=(",", ":"))
         try:
             with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
                 client.settimeout(2)
                 client.connect("/run/mabeltv/portal-control.sock")
-                client.sendall((command + "\n").encode())
+                client.sendall((wire_command + "\n").encode())
                 reply = client.recv(32).decode(errors="replace").strip()
         except OSError as error:
             raise ValueError("The TV player is not ready for portal controls") from error

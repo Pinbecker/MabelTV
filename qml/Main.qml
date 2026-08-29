@@ -40,6 +40,7 @@ Window {
     property string pendingAdultLibraryPath: ""
     property int pendingPortalChannel: -1
     property string pendingPortalProgramme: ""
+    property int pendingPortalTuneChannel: -1
     property string pendingPowerAction: ""
     property bool pendingPowerOnWake: false
     property bool filmCountdownActive: false
@@ -50,6 +51,13 @@ Window {
     property double pendingFilmStart: 0
     readonly property real playbackOsdInsetX: Math.max(30, screen.width * 0.055)
     readonly property real playbackOsdInsetY: Math.max(28, screen.height * 0.065)
+    readonly property int portalVolume: tvController.volume
+    readonly property bool portalMuted: tvController.muted
+    readonly property bool portalRemoteLocked: tvController.remoteLocked
+    readonly property bool portalSubtitlesAvailable: adultMode.active
+        && adultPlayer.subtitlesAvailable
+    readonly property bool portalSubtitlesVisible: adultMode.active
+        && adultPlayer.subtitlesVisible
 
     function acceptRepeat(kind, isAutoRepeat) {
         const now = Date.now()
@@ -258,11 +266,35 @@ Window {
         }
     }
 
-    function portalCommand(command) {
+    function portalTuneChannel(channel) {
         if (tvController.remoteLocked || poweringOff
                 || pendingPowerAction.length > 0)
             return
-        if (command === "open-parent-menu") {
+        guideOverlay.close()
+        tvController.closeParent()
+        if (adultMode.active) {
+            pendingPortalTuneChannel = Number(channel)
+            adultMode.close()
+            return
+        }
+        tvController.tuneGuideChannel(Number(channel))
+    }
+
+    function portalCommand(command) {
+        if (command === "toggle-remote-lock") {
+            tvController.toggleRemoteLock()
+            showRemoteLockState()
+            return
+        }
+        if (tvController.remoteLocked || poweringOff
+                || pendingPowerAction.length > 0)
+            return
+        if (command === "return-to-mabeltv") {
+            guideOverlay.close()
+            tvController.closeParent()
+            if (adultMode.active)
+                adultMode.close()
+        } else if (command === "open-parent-menu") {
             if (adultMode.active)
                 adultMode.close()
             guideOverlay.close()
@@ -387,6 +419,10 @@ Window {
                 const action = root.pendingPowerAction
                 root.pendingPowerAction = ""
                 root.performPowerOff(action === "shutdown")
+            } else if (root.pendingPortalTuneChannel >= 0) {
+                const channel = root.pendingPortalTuneChannel
+                root.pendingPortalTuneChannel = -1
+                tvController.tuneGuideChannel(channel)
             } else if (root.pendingPortalChannel >= 0
                        && root.pendingPortalProgramme.length > 0) {
                 const channel = root.pendingPortalChannel
