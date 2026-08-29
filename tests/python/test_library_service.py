@@ -116,7 +116,13 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn('id="watchFilmHere"', index)
         self.assertIn('id="watchProgrammeSheet"', index)
         self.assertIn('id="watchManageAdult"', index)
-        self.assertIn('id="watchManageMabel"', index)
+        self.assertNotIn('id="watchManageMabel"', index)
+        self.assertNotIn('id="overviewChannels"', index)
+        self.assertIn("identity.className = 'mabel-show-identity watch-channel-manage'", index)
+        self.assertIn("identity.onclick = () => openChannel(channel.number, true)", index)
+        self.assertIn("channelWorkspaceReturnToWatch", index)
+        self.assertIn('id="watchMabelUtilities"', index)
+        self.assertIn("body.portal-v2 .watch-programme-sheet[open]", index)
         self.assertNotIn('data-view-button="channels"', index)
         self.assertNotIn('data-view-button="adult"', index)
         self.assertNotIn("api('/api/remote/stop-tv'", index)
@@ -1158,7 +1164,8 @@ class UsbAndMetadataTests(unittest.TestCase):
         context.__exit__.return_value = False
         client.recv.return_value = b"ok\n"
         with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
-                mock.patch.object(mabeltv_library.socket, "socket", return_value=context):
+                mock.patch.object(mabeltv_library.socket, "socket", return_value=context), \
+                mock.patch.object(mabeltv_library.time, "sleep") as sleep:
             channel_result = self.fixture.library.play_on_tv({
                 "kind": "channel", "channel": 1, "file": "Episode.mp4",
             })
@@ -1173,6 +1180,27 @@ class UsbAndMetadataTests(unittest.TestCase):
                          {"command": "play-adult-film", "file": "Films/Film.mkv"})
         self.assertTrue(channel_result["ok"])
         self.assertTrue(adult_result["ok"])
+        sleep.assert_not_called()
+
+        channels = self.fixture.library.channels()
+        channels[0]["content_type"] = "films"
+        self.fixture.library.write_json(
+            self.fixture.library.channels_path,
+            {"schema_version": 1, "channels": channels})
+        with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
+                mock.patch.object(mabeltv_library.socket, "socket", return_value=context), \
+                mock.patch.object(mabeltv_library.time, "sleep") as sleep:
+            film_channel_result = self.fixture.library.play_on_tv({
+                "kind": "channel", "channel": 1, "file": "Episode.mp4",
+            })
+        film_commands = [call.args[0].decode().strip()
+                         for call in client.sendall.call_args_list[-2:]]
+        self.assertEqual(json.loads(film_commands[0]),
+                         {"command": "play-programme", "channel": 1,
+                          "file": "Episode.mp4"})
+        self.assertEqual(film_commands[1], "select")
+        sleep.assert_called_once_with(0.8)
+        self.assertTrue(film_channel_result["ok"])
 
         with self.assertRaisesRegex(ValueError, "no longer"):
             self.fixture.library.play_on_tv({

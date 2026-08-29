@@ -2560,9 +2560,11 @@ class Library:
             source = self.safe_media_path(channel, str(payload.get("file", "")))
             command = {"command": "play-programme", "channel": int(channel["number"]),
                        "file": source.name}
+            skip_film_countdown = self.channel_content_type(channel) == "films"
         elif kind == "adult":
             source = self.safe_adult_path(str(payload.get("file", "")))
             command = {"command": "play-adult-film", "file": self.adult_relative_path(source)}
+            skip_film_countdown = False
         else:
             raise ValueError("Choose a programme or Adult film to play")
         if not source.is_file():
@@ -2577,6 +2579,23 @@ class Library:
             raise ValueError("The TV player is not ready to start that video") from error
         if reply != "ok":
             raise ValueError("The TV could not start that video")
+        if skip_film_countdown:
+            # Film channels normally show the child-friendly 10-second leader.
+            # A parent has already confirmed this explicit portal replacement,
+            # so use the existing Select action once tuning has opened the
+            # leader. This makes Play on TV immediate without adding a second
+            # playback path or weakening the player's validation.
+            time.sleep(0.8)
+            try:
+                with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+                    client.settimeout(2)
+                    client.connect("/run/mabeltv/portal-control.sock")
+                    client.sendall(b"select\n")
+                    skip_reply = client.recv(32).decode(errors="replace").strip()
+            except OSError as error:
+                raise ValueError("The film was selected, but Mabel TV could not start it immediately") from error
+            if skip_reply != "ok":
+                raise ValueError("The film was selected, but Mabel TV could not start it immediately")
         return {"ok": True,
                 "message": f"Playing {self.display_name(source.name)} on Mabel TV"}
 
