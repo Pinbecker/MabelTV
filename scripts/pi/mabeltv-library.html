@@ -1097,6 +1097,256 @@
     html[data-portal-theme="light"] body.portal-v2 .mobile-nav{background:#fffdf9;border-color:#d8d2c7;box-shadow:0 -10px 30px #51493616}
     html[data-portal-theme="light"] body.portal-v2 .mobile-nav button{color:#65706a}
     html[data-portal-theme="light"] body.portal-v2 .mobile-nav button.active{color:#d75e46}
+
+    /* Interaction repairs shared by both themes. */
+    body.portal-v2 #view-channels .channel-hero-main.workspace-head{border-bottom:0}
+    body.portal-v2 #view-channels .library-workspace-nav{border:0;box-shadow:none}
+    .watch-continue-item{position:relative;min-width:0;height:154px;scroll-snap-align:start}
+    .watch-continue-item .watch-continue-card{width:100%;height:100%;scroll-snap-align:none}
+    .watch-continue-more{position:absolute;z-index:3;right:9px;bottom:9px;width:34px;height:34px;min-height:34px;display:grid;place-items:center;border:1px solid #ffffff20;border-radius:50%;padding:0;background:#090d0cdb;color:#fff;font-size:1.15rem;line-height:1;box-shadow:0 6px 18px #0008;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+    .watch-continue-more:hover{border-color:#ffffff4a;background:#222b27;color:#fff}
+    .watch-continue-item .watch-continue-copy{padding-right:52px}
+    .watch-film-remove{color:#f2b1a7}
+    @media(max-width:720px){
+      body.portal-v2 .mobile-head{border-bottom:0!important;box-shadow:none!important}
+      body.portal-v2 .watch-top{border-bottom:0}
+      .watch-continue-item{height:138px}
+      .watch-continue-item .watch-continue-card{height:100%}
+      .watch-continue-item .watch-continue-copy{padding-right:49px}
+      .watch-continue-more{right:8px;bottom:8px}
+    }
+    @media(max-width:480px){
+      body.portal-v2 #view-adult .adult-film-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:21px 10px}
+      body.portal-v2 #view-adult .adult-film-copy strong{font-size:.76rem}
+      body.portal-v2 #view-adult .adult-film-copy small{font-size:.62rem}
+    }
+
+    /* Light mode is a full component theme, not a colour wash.  Every surface
+       that normally hard-codes the cinema palette gets an explicit daylight
+       material and matching foreground.  Video/player canvases stay black. */
+    html[data-portal-theme="light"] body.portal-v2{
+      color-scheme:light;
+      --ink:#1c2420;--muted:#67716b;--faint:#87908b;--canvas:#f3f0ea;
+      --surface:#fffdf9;--soft:#f1ede6;--rail:#ece7de;--rail2:#ded8ce;
+      --line:#d7d0c5;--accent:#e56950;--accent2:#c94e37;--accent-soft:#fde9e3;
+      --green:#24765a;--green-soft:#e3f2eb;--amber:#9b6318;--amber-soft:#fff1d7;
+      --red:#ad4138;--red-soft:#fbeae7;--shadow:0 1px 0 #fff inset,0 14px 38px #4b433319;
+      background:radial-gradient(circle at 82% -10%,#d9e6dd80 0,transparent 32rem),#f3f0ea;color:#1c2420;
+    }
+    html[data-portal-theme="light"]:has(body.portal-v2){background:#f3f0ea}
+    html[data-portal-theme="light"] body.portal-v2 h1,
+    html[data-portal-theme="light"] body.portal-v2 h2,
+    html[data-portal-theme="light"] body.portal-v2 h3{color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 .section-kicker{color:#68726c}
+    html[data-portal-theme="light"] body.portal-v2 code{background:#ebe6dd;color:#29312d}
+    html[data-portal-theme="light"] body.portal-v2 .surface{border-color:#d8d1c6;background:linear-gradient(145deg,#fff,#faf7f1);color:#1c2420;box-shadow:var(--shadow)}
+    html[data-portal-theme="light"] body.portal-v2 .view:not(#view-watch) button,
+    html[data-portal-theme="light"] body.portal-v2 .auth-shell button,
+    html[data-portal-theme="light"] body.portal-v2 .tmdb-dialog button{border-color:#cfc8bc;background:#fffdf9;color:#27302c;box-shadow:0 1px 0 #fff inset}
+    html[data-portal-theme="light"] body.portal-v2 .view:not(#view-watch) button:hover,
+    html[data-portal-theme="light"] body.portal-v2 .auth-shell button:hover,
+    html[data-portal-theme="light"] body.portal-v2 .tmdb-dialog button:hover{border-color:#aaa297;background:#f3efe8}
+    html[data-portal-theme="light"] body.portal-v2 .view:not(#view-watch) button.primary,
+    html[data-portal-theme="light"] body.portal-v2 .auth-shell button:not(.secondary){border-color:#e56950;background:#e56950;color:#25120d;box-shadow:0 8px 24px #d85f4529}
+    html[data-portal-theme="light"] body.portal-v2 .view:not(#view-watch) button.secondary,
+    html[data-portal-theme="light"] body.portal-v2 .view:not(#view-watch) .button.secondary,
+    html[data-portal-theme="light"] body.portal-v2 .auth-shell button.secondary,
+    html[data-portal-theme="light"] body.portal-v2 .tmdb-dialog button.secondary{border-color:#cfc8bc;background:#fffdf9;color:#27302c}
+    html[data-portal-theme="light"] body.portal-v2 .view:not(#view-watch) button.danger{border-color:#dab7b0;background:#fff9f7;color:#9e3d34}
+    html[data-portal-theme="light"] body.portal-v2 .view:not(#view-watch) label,
+    html[data-portal-theme="light"] body.portal-v2 .auth-shell label{color:#3d4742}
+    html[data-portal-theme="light"] body.portal-v2 .view:not(#view-watch) input,
+    html[data-portal-theme="light"] body.portal-v2 .view:not(#view-watch) select,
+    html[data-portal-theme="light"] body.portal-v2 .auth-shell input,
+    html[data-portal-theme="light"] body.portal-v2 .auth-shell select{border-color:#cec7bb;background:#fff;color:#1c2420;box-shadow:0 1px 0 #fff inset}
+    html[data-portal-theme="light"] body.portal-v2 input::placeholder{color:#8a928d}
+    html[data-portal-theme="light"] body.portal-v2 select option{background:#fff;color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 .count-badge{background:#ebe6de;color:#606a64}
+    html[data-portal-theme="light"] body.portal-v2 .callout{border-color:#d7d0c5;background:#f5f1ea;color:#4e5852}
+    html[data-portal-theme="light"] body.portal-v2 .zero-state,
+    html[data-portal-theme="light"] body.portal-v2 .empty,
+    html[data-portal-theme="light"] body.portal-v2 .watch-empty{border-color:#cfc8bc;background:#f5f1ea;color:#69736d}
+    html[data-portal-theme="light"] body.portal-v2 .zero-state strong,
+    html[data-portal-theme="light"] body.portal-v2 .empty strong{color:#1c2420}
+
+    /* Navigation and Home */
+    html[data-portal-theme="light"] body.portal-v2 .rail{border-color:#d4cdc2;background:linear-gradient(180deg,#eee9e1,#e5dfd5);color:#1c2420;box-shadow:inset -1px 0 #d4cdc2}
+    html[data-portal-theme="light"] body.portal-v2 .logo-mark{border-color:#303934;background:#ffffff66}
+    html[data-portal-theme="light"] body.portal-v2 .rail-tv{color:#717a75}
+    html[data-portal-theme="light"] body.portal-v2 .rail-tv strong{color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 nav button{color:#5e6963}
+    html[data-portal-theme="light"] body.portal-v2 nav button:hover{background:#dad4ca;color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 nav button.active{background:#fffdf9;color:#1c2420;box-shadow:0 7px 20px #51493617}
+    html[data-portal-theme="light"] body.portal-v2 .health-pill,
+    html[data-portal-theme="light"] body.portal-v2 .rail #logout{border-color:#ccc5b9;background:#ffffff55;color:#57615b}
+    html[data-portal-theme="light"] body.portal-v2 .home-greeting{border-color:#d5cec3;background:radial-gradient(circle at 90% 5%,#f2cbbb 0,transparent 35%),linear-gradient(145deg,#fffdf9,#e9e3da);color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 .home-greeting h1{color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 .home-greeting p{color:#65706a}
+    html[data-portal-theme="light"] body.portal-v2 .home-actions .secondary{border-color:#c9c2b7;background:#ffffffa8;color:#26302b}
+    html[data-portal-theme="light"] body.portal-v2 .home-status{border-color:#d8d1c6;background:linear-gradient(160deg,#fff,#f7f3ec);color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 .home-status h2,
+    html[data-portal-theme="light"] body.portal-v2 .home-status strong{color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 .health-summary,
+    html[data-portal-theme="light"] body.portal-v2 .quick-stat span{color:#68726c}
+    html[data-portal-theme="light"] body.portal-v2 .quick-stats,
+    html[data-portal-theme="light"] body.portal-v2 .quick-stat{border-color:#ddd6cc}
+    html[data-portal-theme="light"] body.portal-v2 .library-bar{border:1px solid #d8d1c6;background:#fffdf9}
+    html[data-portal-theme="light"] body.portal-v2 .library-stat{border-color:#ddd6cc}
+    html[data-portal-theme="light"] body.portal-v2 .library-stat strong{color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 .attention{border-color:#e4c98f;background:#fff9ec;color:#3d3528}
+    html[data-portal-theme="light"] body.portal-v2 .channel-card{border-color:#d7d0c5;background:linear-gradient(145deg,#fff,#f7f3ed);color:#1c2420;box-shadow:0 10px 28px #51493612}
+    html[data-portal-theme="light"] body.portal-v2 .channel-card:hover{border-color:#aaa297;background:#fff}
+    html[data-portal-theme="light"] body.portal-v2 .channel-card h3,
+    html[data-portal-theme="light"] body.portal-v2 .channel-card-footer{color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 .channel-meta,
+    html[data-portal-theme="light"] body.portal-v2 .channel-preview{border-color:#ddd6cc;color:#5f6963}
+
+    /* Live TV controls: the video remains untouched, the remote becomes light. */
+    html[data-portal-theme="light"] body.portal-v2 #view-live .live-side>section.remote-console{border-color:#d7d0c5;background:linear-gradient(145deg,#fff,#f5f1ea);color:#1c2420;box-shadow:0 24px 65px #5149361c}
+    html[data-portal-theme="light"] body.portal-v2 #view-live .remote-panel-head,
+    html[data-portal-theme="light"] body.portal-v2 #view-live .remote-mode-row{border-color:#ddd6cc;background:#faf7f1}
+    html[data-portal-theme="light"] body.portal-v2 #view-live .remote-heading h2,
+    html[data-portal-theme="light"] body.portal-v2 #view-live .remote-section-head h3{color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 #view-live .remote-heading p:last-child{color:#69736d}
+    html[data-portal-theme="light"] body.portal-v2 #view-live .remote-mark,
+    html[data-portal-theme="light"] body.portal-v2 #view-live .remote-feedback{border-color:#d5cec3;background:#eee9e1;color:#59635d}
+    html[data-portal-theme="light"] body.portal-v2 #view-live button.remote-mode{border-color:#d5cec3;background:#fff;color:#26302b}
+    html[data-portal-theme="light"] body.portal-v2 #view-live button.remote-mode.active{border-color:#26302b;background:#26302b;color:#fff}
+    html[data-portal-theme="light"] body.portal-v2 #view-live .remote-control-deck{background:#d8d1c6}
+    html[data-portal-theme="light"] body.portal-v2 #view-live .remote-everyday,
+    html[data-portal-theme="light"] body.portal-v2 #view-live .remote-playback{background:#fbf8f2}
+    html[data-portal-theme="light"] body.portal-v2 #view-live .remote-primary-cluster,
+    html[data-portal-theme="light"] body.portal-v2 #view-live .remote-transport{border-color:#d4cdc2;background:#eee9e1}
+    html[data-portal-theme="light"] body.portal-v2 #view-live .remote-rocker,
+    html[data-portal-theme="light"] body.portal-v2 #view-live .remote-pad{border-color:#bdb6aa;background:radial-gradient(circle,#fdfbf7 0 29%,#e4ded4 30% 64%,#f7f3ec 65% 100%);box-shadow:0 18px 36px #5149362b,0 1px #fff inset}
+    html[data-portal-theme="light"] body.portal-v2 #view-live .remote-rocker>button,
+    html[data-portal-theme="light"] body.portal-v2 #view-live .remote-pad button{color:#3e4842}
+    html[data-portal-theme="light"] body.portal-v2 #view-live .remote-rocker>span,
+    html[data-portal-theme="light"] body.portal-v2 #view-live button.remote-rocker-state{background:#ddd7cd;color:#38413d}
+    html[data-portal-theme="light"] body.portal-v2 #view-live .remote-rocker strong{color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 #view-live .remote-transport button{border-color:#cbc4b8;background:linear-gradient(145deg,#fff,#eee9e1);color:#4c5650;box-shadow:0 8px 18px #51493618}
+    html[data-portal-theme="light"] body.portal-v2 #view-live .remote-dock{background:#ece7de}
+    html[data-portal-theme="light"] body.portal-v2 #view-live button.remote-dock-main,
+    html[data-portal-theme="light"] body.portal-v2 #view-live button.remote-dock-action{border-color:#cec7bb;background:#fffdf9;color:#34403a}
+
+    /* Library hub, channel workspace and supporting sheets. */
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .library-hero{border-color:#d5cec3;background:radial-gradient(circle at 88% 8%,#f2cbbb 0,transparent 36%),linear-gradient(145deg,#fffdf9,#e9e3da);box-shadow:0 22px 58px #51493618}
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .library-hero h1{color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .library-hero p:not(.eyebrow),
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .library-overview-meta{color:#68726c}
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .library-overview-meta strong{color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 #view-channels button.library-main-card{border-color:#d6cfc4;background:linear-gradient(145deg,#fff,#f7f3ed);color:#1c2420;box-shadow:0 10px 28px #51493614}
+    html[data-portal-theme="light"] body.portal-v2 #view-channels button.library-utility{border-color:#d5cec3;background:#fffdf9;color:#27302c}
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .library-utility-icon{background:#ebe6dd;color:#56615a}
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .library-utility small{color:#707a74}
+    html[data-portal-theme="light"] body.portal-v2 #view-channels button.workspace-back{border-color:#d1cabf!important;background:#fffdf9!important;color:#3c4741!important}
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .channel-hero{border-color:#d5cec3;background:radial-gradient(circle at 88% 10%,#f0c9b733,transparent 35%),linear-gradient(145deg,#fff,#f2eee7);color:#1c2420;box-shadow:0 20px 52px #51493618}
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .workspace-head h1,
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .channel-fact strong{color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .workspace-head p,
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .channel-fact span{color:#68726c}
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .channel-facts{border-color:#d9d2c8;background:#ebe6de}
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .channel-fact{border-color:#d7d0c5}
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .workspace-main{border-color:#d7d0c5;background:#fffdf9;color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .programme-library-head,
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .library-toolbar,
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .programme,
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .pager{border-color:#ded7cd;background:#fffdf9}
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .programme-search input,
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .programme-filter{border-color:#d4cdc2;background:#f1ede6;color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .programme-search>span,
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .programme-copy small{color:#68726c}
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .programme-copy strong{color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 #view-channels .programme-index{border-color:#d4cdc2;background:#ebe6de;color:#606a64}
+    html[data-portal-theme="light"] body.portal-v2 #view-channels button.programme-filter-option{color:#5f6963}
+    html[data-portal-theme="light"] body.portal-v2 #view-channels button.programme-filter-option.active{background:#27302c;color:#fff}
+
+    /* Adult management, settings, and every modal/dropdown surface. */
+    html[data-portal-theme="light"] body.portal-v2 #view-adult .adult-hero{border-color:#d5cec3;background:radial-gradient(circle at 86% 12%,#efc0ad 0,transparent 38%),linear-gradient(145deg,#fffdf9,#e8e1d7);color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 #view-adult .adult-hero h1{color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 #view-adult .adult-hero p:not(.eyebrow),
+    html[data-portal-theme="light"] body.portal-v2 #view-adult .adult-hero-stat span{color:#5f6963}
+    html[data-portal-theme="light"] body.portal-v2 #view-adult .adult-hero-stat{border-color:#cfc7bb;background:#ffffff80}
+    html[data-portal-theme="light"] body.portal-v2 #view-adult .adult-library{border-color:#d7d0c5;background:#fffdf9;color:#1c2420;box-shadow:0 20px 55px #51493618}
+    html[data-portal-theme="light"] body.portal-v2 #view-adult .adult-search input,
+    html[data-portal-theme="light"] body.portal-v2 #view-adult .adult-tool{border-color:#d4cdc2;background:#f2eee7;color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 #view-adult .adult-tool small,
+    html[data-portal-theme="light"] body.portal-v2 #view-adult .adult-library-context{color:#68726c}
+    html[data-portal-theme="light"] body.portal-v2 .settings-section{border-color:#d7d0c5;background:linear-gradient(145deg,#fff,#f8f5ef);color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 .feature-control,
+    html[data-portal-theme="light"] body.portal-v2 .range-setting,
+    html[data-portal-theme="light"] body.portal-v2 .compact-details{border-color:#d7d0c5;background:#f7f3ed;color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 .combo{border-color:#cec7bb;background:#fff;color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 .definition dt,
+    html[data-portal-theme="light"] body.portal-v2 .definition dd,
+    html[data-portal-theme="light"] body.portal-v2 details.help{border-color:#ddd6cc}
+    html[data-portal-theme="light"] body.portal-v2 .definition dt,
+    html[data-portal-theme="light"] body.portal-v2 details.help p{color:#66706a}
+    html[data-portal-theme="light"] body.portal-v2 .design-option,
+    html[data-portal-theme="light"] body.portal-v2 .portal-theme-picker button{border-color:#d4cdc2;background:#fffdf9;color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 .design-copy small{color:#68726c}
+    html[data-portal-theme="light"] body.portal-v2 .danger-zone{border-color:#dfb8b1;background:#fff7f5}
+    html[data-portal-theme="light"] body.portal-v2 .tmdb-dialog,
+    html[data-portal-theme="light"] body.portal-v2 .library-sheet-panel,
+    html[data-portal-theme="light"] body.portal-v2 .remote-sheet-panel{border-color:#d4cdc2;background:#fffdf9;color:#1c2420;box-shadow:0 34px 100px #3f382a38}
+    html[data-portal-theme="light"] body.portal-v2 .tmdb-dialog-head,
+    html[data-portal-theme="light"] body.portal-v2 .library-sheet-head,
+    html[data-portal-theme="light"] body.portal-v2 .remote-sheet-panel>header{border-color:#ded7cd;background:#f7f3ed}
+    html[data-portal-theme="light"] body.portal-v2 .library-sheet-head h2,
+    html[data-portal-theme="light"] body.portal-v2 .remote-sheet-panel>header h2{color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 .library-sheet-head p:last-child,
+    html[data-portal-theme="light"] body.portal-v2 .remote-sheet-panel>header p:last-child{color:#68726c}
+    html[data-portal-theme="light"] body.portal-v2 .library-sheet .field-grid label{color:#3d4742}
+    html[data-portal-theme="light"] body.portal-v2 .library-sheet .field-grid input,
+    html[data-portal-theme="light"] body.portal-v2 .library-sheet .field-grid select{background:#fff;color:#1c2420}
+
+    /* Watch retains cinematic artwork, while its navigation and working
+       surfaces remain legible and unmistakably light. */
+    html[data-portal-theme="light"] body.portal-v2 #view-watch{background:#f3f0ea;color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-top{background:transparent;color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-top h1{color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-tabs{border-color:#d4cdc2;background:#e8e2d8}
+    html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-tabs button{color:#59635d}
+    html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-tabs button.active{background:#27302c;color:#fff}
+    html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-policy{border-color:#d4cdc2;background:#fffdf9;color:#5e6862}
+    html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-discovery{border-color:#d4cdc2;background:#fffdf9e8;box-shadow:0 14px 38px #51493620,inset 0 1px #fff}
+    html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-search,
+    html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-tool{border-color:#d7d0c5;background:#f1ede6;color:#1c2420;box-shadow:inset 0 0 0 1px #fff}
+    html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-search input{color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-tool-icon{background:#e3ddd3;color:#536059}
+    html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-tool-copy small,
+    html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-card-copy small{color:#68726c}
+    html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-section-head h2,
+    html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-library-head h2,
+    html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-card-copy strong{color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-library-count{border-color:#d4cdc2;background:#fffdf9;color:#68726c}
+    html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-feature h2{color:#fff}
+    html[data-portal-theme="light"] body.portal-v2 .watch-sheet-panel,
+    html[data-portal-theme="light"] body.portal-v2 .watch-film-panel{border-color:#d4cdc2;background:#fffdf9;color:#1c2420;box-shadow:0 34px 100px #3f382a42}
+    html[data-portal-theme="light"] body.portal-v2 .watch-sheet-panel header{border-color:#ded7cd;background:#f7f3ed}
+    html[data-portal-theme="light"] body.portal-v2 .watch-sheet-panel h2,
+    html[data-portal-theme="light"] body.portal-v2 .watch-film-body h2{color:#1c2420}
+    html[data-portal-theme="light"] body.portal-v2 .watch-collection-option{color:#303a35}
+    html[data-portal-theme="light"] body.portal-v2 .watch-collection-option:hover{background:#eee9e1}
+    html[data-portal-theme="light"] body.portal-v2 .watch-collection-option.active{background:#27302c;color:#fff}
+    html[data-portal-theme="light"] body.portal-v2 .watch-film-backdrop:before{background-image:linear-gradient(0deg,#fffdf9 0%,#fffdf908 65%),var(--watch-film-art,linear-gradient(135deg,#29342f,#101513))}
+    html[data-portal-theme="light"] body.portal-v2 .watch-film-backdrop:after{background:linear-gradient(90deg,#0a0e0c4a,#0a0e0c0a 45%,#0a0e0c3a),linear-gradient(0deg,#fffdf9,transparent 65%)}
+    html[data-portal-theme="light"] body.portal-v2 .watch-film-meta,
+    html[data-portal-theme="light"] body.portal-v2 .watch-film-overview{color:#5f6963}
+    html[data-portal-theme="light"] body.portal-v2 .watch-film-progress>div{color:#68726c}
+    html[data-portal-theme="light"] body.portal-v2 .watch-film-progress>div strong{color:#38423d}
+    html[data-portal-theme="light"] body.portal-v2 .watch-film-actions{background:#fffdf9ed}
+    html[data-portal-theme="light"] body.portal-v2 .watch-film-secondary{border-color:#d4cdc2;background:#f1ede6;color:#3f4943}
+    html[data-portal-theme="light"] body.portal-v2 .watch-film-remove{color:#a64439}
+
+    @media(max-width:720px){
+      html[data-portal-theme="light"] body.portal-v2{background:#f3f0ea}
+      html[data-portal-theme="light"] body.portal-v2 .mobile-head{background:#f3f0eaf2;color:#1c2420}
+      html[data-portal-theme="light"] body.portal-v2 .mobile-head button{border-color:#cbc4b8;background:#fffdf9;color:#27302c}
+      html[data-portal-theme="light"] body.portal-v2 .rail{border-color:#d4cdc2;background:#fffdf9f2;box-shadow:0 -10px 30px #51493616}
+      html[data-portal-theme="light"] body.portal-v2 nav button.active{background:#fbe9e3;color:#c94e37}
+      html[data-portal-theme="light"] body.portal-v2 #view-watch .watch-film-actions{background:#fffdf9f2}
+    }
   </style>
 </head>
 <body class="portal-v2">
@@ -1235,7 +1485,7 @@
     </main>
   </section>
   <dialog id="watchCollectionSheet" class="watch-sheet"><div class="watch-sheet-panel"><span class="watch-sheet-handle" aria-hidden="true"></span><header><div><p class="watch-section-kicker">Browse by</p><h2>Collections</h2></div><button id="watchCollectionClose" type="button" class="watch-sheet-close" aria-label="Close collections">×</button></header><div id="watchCollectionOptions" class="watch-collection-options"></div></div></dialog>
-  <dialog id="watchFilmSheet" class="watch-film-sheet"><article class="watch-film-panel"><button id="watchFilmClose" type="button" class="watch-film-close" aria-label="Close film details">×</button><div id="watchFilmBackdrop" class="watch-film-backdrop"><div id="watchFilmPoster" class="watch-film-poster"></div></div><div class="watch-film-body"><p id="watchFilmEyebrow" class="watch-film-eyebrow"></p><h2 id="watchFilmTitle"></h2><div id="watchFilmMeta" class="watch-film-meta"></div><div id="watchFilmProgress" class="watch-film-progress hidden"><div><span>Progress</span><strong id="watchFilmProgressLabel"></strong></div><span class="watch-film-progress-track"><i id="watchFilmProgressFill"></i></span></div><p id="watchFilmOverview" class="watch-film-overview"></p><p id="watchFilmAvailability" class="watch-film-availability hidden"></p><div class="watch-film-actions"><button id="watchFilmPlay" type="button" class="watch-film-play"><span class="watch-action-icon">▶</span><span><strong>Play film</strong><small>Open the native player</small></span></button><button id="watchFilmStartOver" type="button" class="watch-film-secondary hidden"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8V3m0 0h5M5 3l3.5 3.5A8 8 0 1 1 4 13"/></svg><span>Start over</span></button></div></div></article></dialog>
+  <dialog id="watchFilmSheet" class="watch-film-sheet"><article class="watch-film-panel"><button id="watchFilmClose" type="button" class="watch-film-close" aria-label="Close film details">×</button><div id="watchFilmBackdrop" class="watch-film-backdrop"><div id="watchFilmPoster" class="watch-film-poster"></div></div><div class="watch-film-body"><p id="watchFilmEyebrow" class="watch-film-eyebrow"></p><h2 id="watchFilmTitle"></h2><div id="watchFilmMeta" class="watch-film-meta"></div><div id="watchFilmProgress" class="watch-film-progress hidden"><div><span>Progress</span><strong id="watchFilmProgressLabel"></strong></div><span class="watch-film-progress-track"><i id="watchFilmProgressFill"></i></span></div><p id="watchFilmOverview" class="watch-film-overview"></p><p id="watchFilmAvailability" class="watch-film-availability hidden"></p><div class="watch-film-actions"><button id="watchFilmPlay" type="button" class="watch-film-play"><span class="watch-action-icon">▶</span><span><strong>Play film</strong><small>Open the native player</small></span></button><button id="watchFilmStartOver" type="button" class="watch-film-secondary hidden"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8V3m0 0h5M5 3l3.5 3.5A8 8 0 1 1 4 13"/></svg><span>Start over</span></button><button id="watchFilmRemoveProgress" type="button" class="watch-film-secondary watch-film-remove hidden" aria-label="Remove from Continue Watching"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16M9 7l-5 5 5 5"/></svg><span>Remove from Continue</span></button></div></div></article></dialog>
   <dialog id="adultUploadSheet" class="library-sheet adult-sheet"><section class="library-sheet-panel"><span class="library-sheet-handle"></span><header class="library-sheet-head"><div><p class="section-kicker">Add to Adult TV</p><h2>Upload films</h2><p>Choose one or several films. Their original quality is preserved.</p></div><button id="adultUploadClose" type="button" class="library-sheet-close" aria-label="Close upload">×</button></header><div class="library-sheet-body"><form id="adultUploadForm" class="upload-form"><label class="drop-field" for="adultFile"><input id="adultFile" type="file" accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg" multiple><span class="drop-copy"><span class="drop-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 14v5h14v-5"/></svg></span><strong>Choose films</strong><small>Pick one or several files from this device</small></span></label><label>Put new films in<select id="adultUploadFolder"><option value="">Unfiled</option></select></label><div id="adultSelectedFiles" class="callout" aria-live="polite">No films selected yet.</div><button id="adultUploadButton" type="submit" class="primary" disabled>Upload selected films</button></form><div id="adultUploadState" class="hidden callout" aria-live="polite"><p id="adultUploadText">Uploading…</p><progress id="adultProgress" max="1" value="0"></progress></div></div></section></dialog>
   <dialog id="adultCollectionSheet" class="library-sheet adult-sheet"><section class="library-sheet-panel"><span class="library-sheet-handle"></span><header class="library-sheet-head"><div><p class="section-kicker">Organise your library</p><h2>Collections</h2><p>A change here is reflected on Adult TV as well.</p></div><button id="adultCollectionClose" type="button" class="library-sheet-close" aria-label="Close collections">×</button></header><div class="library-sheet-body"><div id="adultFolderTabs" class="adult-folder-tabs"></div><div class="adult-folder-tools"><input id="adultFolderName" maxlength="80" placeholder="New collection name"><button id="adultCreateFolder" type="button" class="primary">Create collection</button><button id="adultRenameFolder" type="button" class="secondary" disabled>Rename selected</button><button id="adultDeleteFolder" type="button" class="danger" disabled>Delete selected</button></div></div></section></dialog>
   <dialog id="adultFilmSheet" class="library-sheet adult-film-sheet"><section class="library-sheet-panel"><span class="library-sheet-handle"></span><header class="library-sheet-head"><div><p id="adultFilmSheetEyebrow" class="section-kicker">Film options</p><h2 id="adultFilmSheetTitle">Film</h2><p id="adultFilmSheetMeta"></p></div><button id="adultFilmClose" type="button" class="library-sheet-close" aria-label="Close film options">×</button></header><div class="library-sheet-body"><div class="adult-film-sheet-summary"><span id="adultFilmSheetPoster" class="adult-film-sheet-poster"></span><p id="adultFilmSheetOverview">Choose what to do with this film.</p></div><button id="adultFilmPlay" type="button" class="adult-film-primary"><svg viewBox="0 0 24 24"><path d="m8 5 11 7-11 7Z"/></svg><span><strong>Play on TV</strong><small>Start this film immediately</small></span></button><label class="adult-film-move">Move to collection<select id="adultFilmFolder"></select></label><div class="adult-film-action-grid"><button id="adultFilmMove" type="button" class="secondary">Move film</button><button id="adultFilmScan" type="button" class="secondary">Scan metadata</button><button id="adultFilmRename" type="button" class="secondary">Rename</button><button id="adultFilmOptimise" type="button" class="secondary">Optimise for Pi</button><button id="adultFilmRemove" type="button" class="danger">Move to bin</button></div></div></section></dialog>
@@ -2669,6 +2919,8 @@
     }
 
     function continueWatchCard(film) {
+      const item = document.createElement('div')
+      item.className = 'watch-continue-item'
       const card = document.createElement('button')
       card.type = 'button'
       card.className = 'watch-continue-card'
@@ -2689,8 +2941,18 @@
       play.textContent = '▶'
       copy.append(label, title, time, play)
       card.append(art, copy)
-      card.onclick = () => openWatchFilmSheet(film)
-      return card
+      card.onclick = () => playWatchFilm(film, Number(film.remote_position || 0))
+      const more = document.createElement('button')
+      more.type = 'button'
+      more.className = 'watch-continue-more'
+      more.textContent = '⋯'
+      more.setAttribute('aria-label', `More actions for ${watchFilmTitle(film)}`)
+      more.onclick = event => {
+        event.stopPropagation()
+        openWatchFilmSheet(film)
+      }
+      item.append(card, more)
+      return item
     }
 
     function closeWatchFilmSheet() {
@@ -2703,6 +2965,21 @@
     function playWatchFilm(film, position) {
       closeWatchFilmSheet()
       openRemotePlayer({ kind: 'adult', file: film.path }, position)
+    }
+
+    async function clearWatchFilmProgress(film, playAfter = false) {
+      const source = { kind: 'adult', file: film.path }
+      await api('/api/remote/clear-position', {
+        method: 'POST', body: JSON.stringify(source),
+      })
+      const startFilm = { ...film, remote_position: 0, remote_last_watched: 0 }
+      if (playAfter) {
+        playWatchFilm(startFilm, 0)
+        return
+      }
+      closeWatchFilmSheet()
+      await load()
+      setNotice(`${watchFilmTitle(film)} was removed from Continue Watching.`)
     }
 
     function openWatchFilmSheet(film) {
@@ -2740,7 +3017,10 @@
       play.onclick = streamable ? () => playWatchFilm(film, resumable ? Number(film.remote_position || 0) : 0) : null
       const startOver = $('#watchFilmStartOver')
       startOver.classList.toggle('hidden', !streamable || !resumable)
-      startOver.onclick = streamable && resumable ? () => playWatchFilm(film, 0) : null
+      startOver.onclick = streamable && resumable ? () => clearWatchFilmProgress(film, true).catch(showError) : null
+      const removeProgress = $('#watchFilmRemoveProgress')
+      removeProgress.classList.toggle('hidden', !resumable)
+      removeProgress.onclick = resumable ? () => clearWatchFilmProgress(film).catch(showError) : null
       const dialog = $('#watchFilmSheet')
       if (!dialog.open) dialog.showModal()
       document.documentElement.style.overflow = 'hidden'

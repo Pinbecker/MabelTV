@@ -1461,6 +1461,37 @@ class Library:
             self.write_adult_media_states(states)
         return {"ok": True}
 
+    def remote_clear_position(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Explicitly remove a film from Continue Watching.
+
+        This does not depend on a browser player having opened or managed to
+        send its final time update.  The current on-TV bookmark is remembered
+        as ignored as well, so an older television position cannot immediately
+        put the film back into Continue Watching.
+        """
+        kind, source, _title, library_id, _resume = self.remote_source(payload)
+        if kind != "adult" or not library_id:
+            raise ValueError("Choose an Adult film to clear")
+        with self.config_lock:
+            states = self.adult_media_states()
+            relative = self.adult_relative_path(source)
+            state = states.get(relative, {})
+            if not isinstance(state, dict):
+                state = {}
+            state["remote_position"] = 0.0
+            state["remote_last_watched"] = 0.0
+            player_state = self.read_json(self.player_state_path, {})
+            positions = player_state.get("adult_positions", {}) \
+                if isinstance(player_state, dict) else {}
+            try:
+                state["ignored_player_position"] = float(
+                    positions.get(library_id, 0) or 0)
+            except (AttributeError, TypeError, ValueError):
+                state["ignored_player_position"] = 0.0
+            states[relative] = state
+            self.write_adult_media_states(states)
+        return {"ok": True}
+
     def remote_subtitles(self, token: str) -> bytes:
         session = self.remote_session(token)
         if session["kind"] != "adult":
@@ -3724,6 +3755,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.json(200, self.server.library.remote_stop_tv()); return
             if self.path == "/api/remote/position":
                 self.json(200, self.server.library.remote_save_position(payload)); return
+            if self.path == "/api/remote/clear-position":
+                self.json(200, self.server.library.remote_clear_position(payload)); return
             if self.path == "/api/remote/heartbeat":
                 self.server.library.remote_session(str(payload.get("stream", "")))
                 self.json(200, {"ok": True}); return

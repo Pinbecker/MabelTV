@@ -109,6 +109,9 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("classList.toggle('adult', result.kind === 'adult')", player)
         self.assertIn("set-remote-simultaneous", index)
         self.assertIn("/api/remote/start", player)
+        self.assertIn("/api/remote/clear-position", index)
+        self.assertIn('id="watchFilmRemoveProgress"', index)
+        self.assertIn("watch-continue-more", index)
 
     def test_remote_stream_requires_browser_format_and_resumes_adult_film(self) -> None:
         adult = self.fixture.media / ".adult"
@@ -177,6 +180,32 @@ class LibraryUnitTests(unittest.TestCase):
         finished = self.fixture.library.adult_library()[0]
         self.assertEqual(finished["remote_position"], 0)
         self.assertEqual(finished["remote_duration"], 7200)
+
+    def test_explicit_continue_watching_removal_clears_browser_and_tv_bookmarks(self) -> None:
+        adult = self.fixture.media / ".adult"
+        adult.mkdir(parents=True, exist_ok=True)
+        (adult / "Film.mp4").write_bytes(b"film")
+        self.fixture.library.player_state_path = self.fixture.root / "player-state.json"
+        item = self.fixture.library.adult_library()[0]
+        states = self.fixture.library.adult_media_states()
+        states["Film.mp4"]["remote_position"] = 900
+        states["Film.mp4"]["remote_last_watched"] = 12345
+        self.fixture.library.write_adult_media_states(states)
+        self.fixture.library.player_state_path.write_text(json.dumps({
+            "standby": True,
+            "adult_positions": {item["library_id"]: 600},
+            "adult_durations": {item["library_id"]: 7200},
+        }), encoding="utf-8")
+
+        self.fixture.library.remote_clear_position({
+            "kind": "adult", "file": "Film.mp4",
+        })
+
+        cleared = self.fixture.library.adult_library()[0]
+        self.assertEqual(cleared["remote_position"], 0)
+        self.assertEqual(cleared["remote_last_watched"], 0)
+        saved = self.fixture.library.adult_media_states()["Film.mp4"]
+        self.assertEqual(saved["ignored_player_position"], 600)
 
     def test_new_remote_stream_replaces_old_without_stale_token_clearing_it(self) -> None:
         adult = self.fixture.media / ".adult"
