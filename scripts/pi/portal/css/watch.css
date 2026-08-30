@@ -307,35 +307,6 @@
     background: var(--accent);
   }
 
-  .watch-continue-more {
-    position: absolute;
-    top: var(--space-2);
-    right: var(--space-2);
-    width: var(--control-min);
-    height: var(--control-min);
-    min-height: var(--control-min);
-    border-color: var(--border);
-    border-radius: var(--radius-round);
-    padding: 0;
-    background: color-mix(in srgb, var(--surface-1) 88%, transparent);
-    color: var(--text-soft);
-    font-size: 0;
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
-  }
-
-  .watch-continue-more::before {
-    content: "Options";
-    font-size: 0;
-  }
-
-  .watch-continue-more::after {
-    width: 18px;
-    height: 4px;
-    content: "";
-    background: radial-gradient(circle, currentColor 2px, transparent 2.5px) 0 50% / 6px 4px repeat-x;
-  }
-
   .watch-poster-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -512,15 +483,35 @@
     overflow: auto;
   }
 
-  .watch-film-close {
+  .watch-film-close-bar {
+    position: sticky;
+    z-index: 6;
+    top: 0;
+    height: 0;
+    pointer-events: none;
+  }
+
+  .watch-film-sheet .watch-film-close {
     position: absolute;
-    z-index: 5;
     top: var(--space-4);
     right: var(--space-4);
-    background: rgb(10 14 12 / 82%);
+    display: grid;
+    place-items: center;
+    border-color: rgb(255 255 255 / 24%);
+    background: rgb(10 14 12 / 88%);
     color: #fff;
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
+    pointer-events: auto;
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+  }
+
+  .watch-film-sheet .watch-film-close::before {
+    display: none;
+  }
+
+  .watch-film-sheet .watch-film-close svg {
+    width: 22px;
+    height: 22px;
   }
 
   .watch-film-backdrop {
@@ -543,11 +534,14 @@
     transform: scale(1.06);
   }
 
+  .watch-film-summary {
+    display: grid;
+    grid-template-columns: 132px minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-5);
+  }
+
   .watch-film-poster {
-    position: absolute;
-    z-index: 2;
-    bottom: -76px;
-    left: var(--space-6);
     width: 132px;
     aspect-ratio: 2 / 3;
     overflow: hidden;
@@ -564,8 +558,12 @@
     object-fit: cover;
   }
 
+  .watch-film-heading {
+    min-width: 0;
+  }
+
   .watch-film-body {
-    padding: 22px var(--space-6) var(--space-6) 188px;
+    padding: var(--space-6);
   }
 
   .watch-film-body h2 {

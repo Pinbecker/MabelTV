@@ -480,32 +480,29 @@
     }
 
     .watch-film-backdrop {
-      height: 220px;
+      height: 180px;
+    }
+
+    .watch-film-summary {
+      grid-template-columns: 96px minmax(0, 1fr);
+      align-items: center;
+      gap: var(--space-4);
     }
 
     .watch-film-poster {
-      bottom: -62px;
-      left: var(--space-4);
-      width: 104px;
+      width: 96px;
     }
 
     .watch-film-body {
-      padding: var(--space-4) var(--space-4) var(--space-5) 136px;
+      padding: var(--space-4) var(--space-4) var(--space-5);
     }
 
     .watch-film-body h2 {
-      font-size: 1.65rem;
-    }
-
-    .watch-film-overview,
-    .watch-film-progress,
-    .watch-film-availability,
-    .watch-film-actions {
-      margin-left: -120px;
+      font-size: clamp(1.35rem, 7vw, 1.75rem);
     }
 
     .watch-film-overview {
-      padding-top: var(--space-4);
+      padding-top: 0;
     }
 
     .watch-film-actions,
@@ -674,20 +671,6 @@
       padding: var(--space-5);
     }
 
-    .mabel-watch-player {
-      padding: 0;
-    }
-
-    .mabel-watch-screen {
-      border: 0;
-      border-radius: 0;
-    }
-
-    .mabel-watch-hud {
-      position: fixed;
-      z-index: 2;
-      inset: 0;
-    }
   }
 
   @media (max-width: 420px) {

@@ -185,7 +185,7 @@ function remoteTime(value) {
       clearTimeout(mabelControlsTimer)
       mabelControlsTimer = null
       if (!keepVisible && !video.paused) {
-        mabelControlsTimer = setTimeout(() => shell.classList.remove('controls-visible'), 7000)
+        mabelControlsTimer = setTimeout(() => shell.classList.remove('controls-visible'), 2800)
       }
     }
 
@@ -337,8 +337,8 @@ function remoteTime(value) {
     $('#mabelWatchSeek').oninput = event => { const video = $('#mabelWatchVideo'); showMabelWatchControls(true); if (video.duration) video.currentTime = Number(event.target.value) / 1000 * video.duration }
     $('#mabelWatchSeek').onchange = () => showMabelWatchControls()
     $('#mabelWatchScreen').onpointermove = () => showMabelWatchControls()
-    $('#mabelWatchPlayer').onpointerdown = event => {
-      if (!event.target.closest('button, input')) showMabelWatchControls()
+    $('#mabelWatchScreen').onpointerdown = event => {
+      if (event.target === $('#mabelWatchVideo')) showMabelWatchControls()
     }
     document.addEventListener('keydown', event => {
       if ($('#mabelWatchPlayer').classList.contains('hidden')) return
@@ -454,16 +454,7 @@ function remoteTime(value) {
       copy.append(label, title, time, play)
       card.append(art, copy)
       card.onclick = () => openWatchFilmSheet(film)
-      const more = document.createElement('button')
-      more.type = 'button'
-      more.className = 'watch-continue-more'
-      more.textContent = '⋯'
-      more.setAttribute('aria-label', `More actions for ${watchFilmTitle(film)}`)
-      more.onclick = event => {
-        event.stopPropagation()
-        openWatchFilmSheet(film)
-      }
-      item.append(card, more)
+      item.append(card)
       return item
     }
 
