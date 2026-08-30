@@ -1408,7 +1408,13 @@ class Library:
             if not source.is_file():
                 raise ValueError("That Mabel TV programme is no longer in the library")
             return kind, source, self.display_name(source.name), None, 0
-        raise ValueError("Choose an Adult film or a Mabel TV programme")
+        if kind == "usb":
+            source = self.usb_resolve(
+                str(payload.get("volume", "")), str(payload.get("file", "")))
+            if not source.is_file() or source.suffix.lower() not in SUPPORTED_EXTENSIONS:
+                raise ValueError("That USB video is no longer available")
+            return kind, source, self.display_name(source.name), None, 0
+        raise ValueError("Choose an Adult film, Mabel TV programme or USB video")
 
     def start_remote_stream(self, payload: dict[str, Any]) -> dict[str, Any]:
         kind, source, title, library_id, resume = self.remote_source(payload)
@@ -1670,6 +1676,7 @@ class Library:
                 "path": child_relative,
                 "type": "folder" if is_directory else "video",
                 "size": 0 if is_directory else item.stat().st_size,
+                "browser_ready": is_directory or self.remote_browser_ready(item),
             })
             if len(entries) >= 500:
                 break
@@ -1691,12 +1698,19 @@ class Library:
 
     def usb_eject(self, identity: str) -> dict[str, Any]:
         identity = self.usb_identity(identity)
+        mount_path = self.usb_mount_path(identity)
         with self.usb_import_lock:
             busy = any(job.get("volume") == identity
                        and job.get("status") not in {"complete", "error"}
                        for job in self.usb_imports.values())
         if busy:
             raise ValueError("Wait for the USB import to finish before ejecting the drive")
+        with self.remote_stream_lock:
+            stream = self.remote_stream
+            if stream and float(stream.get("expires", 0)) > time.time():
+                source = Path(stream.get("source", ""))
+                if source == mount_path or mount_path in source.parents:
+                    raise ValueError("Stop watching the USB video on this device before ejecting the drive")
         result = subprocess.run(
             ["sudo", "-n", "/usr/local/libexec/mabeltv-admin-action", "usb-eject", identity],
             capture_output=True, text=True, timeout=20)

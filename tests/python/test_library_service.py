@@ -1147,8 +1147,38 @@ class UsbAndMetadataTests(unittest.TestCase):
                          [("Films", "folder")])
         films = self.fixture.library.usb_browse("TEST-USB", "Films")
         self.assertEqual(films["entries"][0]["path"], "Films/Movie.mkv")
+        self.assertFalse(films["entries"][0]["browser_ready"])
         with self.assertRaisesRegex(ValueError, "path"):
             self.fixture.library.usb_browse("TEST-USB", "../")
+
+    def test_usb_browser_stream_uses_resolved_mounted_media(self) -> None:
+        movie = self.volume / "Phone Movie.mp4"
+        movie.write_bytes(b"browser-ready")
+        self.fixture.library.player_state_path = self.fixture.root / "player-state.json"
+        self.fixture.library.player_state_path.write_text('{"standby": true}', encoding="utf-8")
+        started = self.fixture.library.start_remote_stream({
+            "kind": "usb", "volume": "TEST-USB", "file": "Phone Movie.mp4",
+        })
+        token = started["stream_url"].split("stream=", 1)[1]
+        session = self.fixture.library.remote_session(token)
+        self.assertEqual(session["kind"], "usb")
+        self.assertEqual(session["source"], movie.resolve())
+        self.assertEqual(started["resume_position"], 0)
+        with self.assertRaisesRegex(ValueError, "path"):
+            self.fixture.library.start_remote_stream({
+                "kind": "usb", "volume": "TEST-USB", "file": "../outside.mp4",
+            })
+
+    def test_usb_eject_is_blocked_during_browser_stream(self) -> None:
+        movie = self.volume / "Phone Movie.mp4"
+        movie.write_bytes(b"browser-ready")
+        self.fixture.library.player_state_path = self.fixture.root / "player-state.json"
+        self.fixture.library.player_state_path.write_text('{"standby": true}', encoding="utf-8")
+        self.fixture.library.start_remote_stream({
+            "kind": "usb", "volume": "TEST-USB", "file": "Phone Movie.mp4",
+        })
+        with self.assertRaisesRegex(ValueError, "Stop watching"):
+            self.fixture.library.usb_eject("TEST-USB")
 
     def test_usb_folder_import_copies_atomically_into_adult_library(self) -> None:
         folder = self.volume / "Films"
