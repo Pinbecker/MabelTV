@@ -6,17 +6,20 @@ set -Eeuo pipefail
 action="${1:-}"
 
 usb_device() {
-    local device="${1:-}" parent removable transport type
+    local device="${1:-}" parent transport type root_source root_parent
     [[ "$device" =~ ^/dev/sd[a-z][0-9]+$ ]] \
         || { printf 'That is not a supported removable USB partition.\n' >&2; exit 2; }
     type="$(lsblk -dnro TYPE -- "$device" 2>/dev/null || true)"
     parent="$(lsblk -nro PKNAME -- "$device" 2>/dev/null | head -n1)"
     [[ "$type" == "part" && -n "$parent" ]] \
         || { printf 'Choose a partition on the external USB drive.\n' >&2; exit 2; }
-    removable="$(lsblk -dnro RM -- "/dev/$parent" 2>/dev/null || true)"
     transport="$(lsblk -dnro TRAN -- "/dev/$parent" 2>/dev/null || true)"
-    [[ "$removable" == "1" && "$transport" == "usb" ]] \
-        || { printf 'Only a removable USB drive can be mounted here.\n' >&2; exit 2; }
+    [[ "$transport" == "usb" ]] \
+        || { printf 'Only an external USB drive can be mounted here.\n' >&2; exit 2; }
+    root_source="$(findmnt -nro SOURCE / 2>/dev/null || true)"
+    root_parent="$(lsblk -nro PKNAME -- "$root_source" 2>/dev/null | head -n1)"
+    [[ -z "$root_parent" || "$parent" != "$root_parent" ]] \
+        || { printf 'The Raspberry Pi system drive cannot be mounted here.\n' >&2; exit 2; }
     printf '%s\n' "$device"
 }
 

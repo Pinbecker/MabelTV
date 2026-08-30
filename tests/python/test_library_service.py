@@ -1105,8 +1105,41 @@ class UsbAndMetadataTests(unittest.TestCase):
         self.fixture.library.cleanup_stale_temporary_files()
         self.assertFalse(partial.exists())
 
+    def test_usb_hard_disk_is_offered_even_when_not_marked_removable(self) -> None:
+        block_devices = {"blockdevices": [{
+            "name": "sda", "path": "/dev/sda", "type": "disk", "tran": "usb",
+            "rm": False, "mountpoints": [], "children": [{
+                "name": "sda1", "path": "/dev/sda1", "type": "part",
+                "pkname": "sda", "uuid": "WD-USB", "label": "My Passport",
+                "fstype": "ntfs", "size": 2_000_000_000_000, "mountpoints": [],
+            }],
+        }]}
+        completed = types.SimpleNamespace(stdout=json.dumps(block_devices))
+        self.fixture.library.usb_requires_mount = True
+        with mock.patch.object(mabeltv_library.subprocess, "run", return_value=completed):
+            result = self.fixture.library.usb_volumes()
+        self.assertEqual(result["volumes"][0]["device"], "/dev/sda1")
+        self.assertEqual(result["volumes"][0]["label"], "My Passport")
+
+    def test_usb_system_disk_is_never_offered(self) -> None:
+        block_devices = {"blockdevices": [{
+            "name": "sda", "path": "/dev/sda", "type": "disk", "tran": "usb",
+            "rm": False, "mountpoints": [], "children": [{
+                "name": "sda2", "path": "/dev/sda2", "type": "part",
+                "pkname": "sda", "uuid": "ROOT", "fstype": "ext4",
+                "size": 64_000_000_000, "mountpoints": ["/"],
+            }],
+        }]}
+        completed = types.SimpleNamespace(stdout=json.dumps(block_devices))
+        self.fixture.library.usb_requires_mount = True
+        with mock.patch.object(mabeltv_library.subprocess, "run", return_value=completed):
+            result = self.fixture.library.usb_volumes()
+        self.assertEqual(result["volumes"], [])
+
     def test_usb_browser_only_exposes_video_files_and_safe_relative_paths(self) -> None:
         (self.volume / "Films").mkdir()
+        (self.volume / "$RECYCLE.BIN").mkdir()
+        (self.volume / "System Volume Information").mkdir()
         (self.volume / "Films" / "Movie.mkv").write_bytes(b"video")
         (self.volume / "notes.txt").write_text("private", encoding="utf-8")
         listing = self.fixture.library.usb_browse("TEST-USB")

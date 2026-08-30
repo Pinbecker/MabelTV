@@ -1580,18 +1580,29 @@ class Library:
         try:
             result = subprocess.run([
                 "lsblk", "--json", "--bytes", "-o",
-                "NAME,PATH,LABEL,UUID,FSTYPE,SIZE,TYPE,RM,TRAN,MOUNTPOINTS,PKNAME",
+                "NAME,PATH,LABEL,MODEL,UUID,FSTYPE,SIZE,TYPE,RM,TRAN,MOUNTPOINTS,PKNAME",
             ], capture_output=True, text=True, check=True, timeout=5)
             devices = self._flatten_lsblk(json.loads(result.stdout).get("blockdevices", []))
         except (OSError, subprocess.SubprocessError, json.JSONDecodeError):
             devices = []
         parents = {str(item.get("name", "")): item for item in devices}
+        # USB hard disks commonly report RM=0 even though they are genuinely
+        # external.  Transport is the useful boundary here.  Exclude an entire
+        # parent disk if any of its partitions backs the running system so a
+        # USB-booted Pi can never offer its own boot drive in the portal.
+        system_parents = {
+            str(item.get("pkname", ""))
+            for item in devices
+            if item.get("type") == "part"
+            and any(str(point) == "/" or str(point).startswith("/boot")
+                    for point in (item.get("mountpoints") or []) if point)
+        }
         for item in devices:
             if item.get("type") != "part":
                 continue
             parent = parents.get(str(item.get("pkname", "")), {})
             if (str(parent.get("tran", "")) != "usb"
-                    or parent.get("rm") not in {True, 1, "1"}):
+                    or str(item.get("pkname", "")) in system_parents):
                 continue
             device = str(item.get("path", ""))
             raw_identity = str(item.get("uuid") or Path(device).name)
@@ -1608,7 +1619,7 @@ class Library:
             volumes.append({
                 "id": identity,
                 "device": device,
-                "label": str(item.get("label") or "USB drive"),
+                "label": str(item.get("label") or parent.get("model") or "USB drive").strip(),
                 "filesystem": str(item.get("fstype") or "unknown"),
                 "size": int(item.get("size") or 0),
                 "mounted": mounted and expected.is_dir(),
@@ -1646,7 +1657,8 @@ class Library:
             raise ValueError("Choose a folder on the USB drive")
         entries: list[dict[str, Any]] = []
         for item in sorted(directory.iterdir(), key=lambda path: (not path.is_dir(), path.name.lower())):
-            if item.is_symlink():
+            if (item.is_symlink() or item.name.startswith(".")
+                    or item.name.casefold() in {"$recycle.bin", "system volume information", "lost+found"}):
                 continue
             is_directory = item.is_dir()
             if not is_directory and (not item.is_file()
