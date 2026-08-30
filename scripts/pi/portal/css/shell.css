@@ -86,12 +86,12 @@
     white-space: nowrap;
   }
 
-  #mainNav {
+  .portal-nav {
     display: grid;
     gap: 5px;
   }
 
-  #mainNav button {
+  .portal-nav button {
     position: relative;
     width: 100%;
     min-height: 48px;
@@ -105,19 +105,19 @@
     text-align: left;
   }
 
-  #mainNav button:hover {
+  .portal-nav button:hover {
     background: var(--surface-2);
     color: var(--text-soft);
   }
 
-  #mainNav button.active {
+  .portal-nav button.active {
     border-color: var(--border);
     background: var(--surface-2);
     color: var(--text);
     box-shadow: 0 8px 24px rgb(0 0 0 / 16%);
   }
 
-  #mainNav button.active .icon {
+  .portal-nav button.active .icon {
     color: var(--accent);
   }
 
@@ -132,7 +132,7 @@
     transform: translateY(-50%);
   }
 
-  #mainNav button.active .nav-dot {
+  .portal-nav button.active .nav-dot {
     background: var(--accent);
   }
 
@@ -201,7 +201,7 @@
       var(--space-7)
       calc(var(--space-7) + var(--safe-bottom));
     background:
-      linear-gradient(155deg, rgb(38 78 61 / 65%), transparent 55%),
+      linear-gradient(155deg, var(--brand-wash), transparent 55%),
       var(--surface-1);
   }
 

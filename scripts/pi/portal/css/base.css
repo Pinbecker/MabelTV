@@ -58,7 +58,7 @@
 @layer base {
   body {
     background:
-      radial-gradient(circle at 84% 2%, rgb(52 80 66 / 14%), transparent 32rem),
+      radial-gradient(circle at 84% 2%, var(--ambient), transparent 32rem),
       var(--canvas);
     color: var(--text);
     font-family: var(--font-sans);

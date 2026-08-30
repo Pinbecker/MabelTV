@@ -40,7 +40,7 @@
     }
 
     .watch-discovery {
-      grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(140px, auto));
+      grid-template-columns: minmax(220px, 1fr) minmax(140px, auto);
     }
 
     .watch-top {
@@ -53,9 +53,6 @@
       justify-content: space-between;
     }
 
-    .watch-ready-toggle {
-      grid-column: 2 / -1;
-    }
   }
 
   @media (max-width: 899px) {
@@ -115,10 +112,6 @@
       grid-column: 1 / -1;
     }
 
-    .watch-ready-toggle {
-      grid-column: auto;
-    }
-
     .usb-layout {
       grid-template-columns: minmax(0, 1fr);
     }
@@ -173,14 +166,14 @@
       display: none;
     }
 
-    #mainNav {
+    .portal-nav {
       height: 60px;
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 3px;
     }
 
-    #mainNav button {
+    .portal-nav button {
       min-width: 0;
       min-height: 58px;
       align-content: center;
@@ -193,12 +186,12 @@
       text-align: center;
     }
 
-    #mainNav button .icon {
+    .portal-nav button .icon {
       width: 20px;
       height: 20px;
     }
 
-    #mainNav button.active {
+    .portal-nav button.active {
       border-color: transparent;
       background: var(--accent-soft);
       color: var(--accent);
@@ -382,10 +375,6 @@
       grid-column: 1 / -1;
     }
 
-    .watch-ready-toggle {
-      grid-column: auto;
-    }
-
     .watch-tool,
     .adult-tool {
       min-height: 50px;
@@ -434,9 +423,23 @@
       grid-template-columns: minmax(0, 1fr);
     }
 
-    .watch-card-copy strong,
-    .adult-film-copy strong {
+    .watch-card-copy strong {
       font-size: 0.78rem;
+    }
+
+    .adult-hero-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .adult-hero-stat {
+      grid-column: 1 / -1;
+      grid-row: 1;
+      justify-self: start;
+    }
+
+    .adult-hero-actions button {
+      justify-content: center;
     }
 
     dialog:is(.library-sheet, .watch-sheet, .watch-film-sheet, .watch-programme-sheet, .remote-sheet, .tmdb-dialog)[open] {
@@ -595,17 +598,40 @@
       margin-top: var(--space-4);
     }
 
-    .adult-folder-tools,
-    .adult-film-action-grid {
+    .adult-folder-tools {
       grid-template-columns: minmax(0, 1fr);
     }
 
     .adult-film-sheet-summary {
-      grid-template-columns: 72px minmax(0, 1fr);
+      grid-template-columns: 76px minmax(0, 1fr);
+      gap: var(--space-3);
+      margin-bottom: var(--space-3);
     }
 
     .adult-film-sheet-poster {
-      width: 72px;
+      width: 76px;
+    }
+
+    .adult-film-sheet-summary p {
+      display: -webkit-box;
+      overflow: hidden;
+      font-size: 0.92rem;
+      line-height: 1.45;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 6;
+    }
+
+    .adult-library {
+      padding: var(--space-4);
+    }
+
+    button.adult-film {
+      grid-template-columns: 76px minmax(0, 1fr) 40px;
+    }
+
+    button.adult-film .adult-film-poster {
+      width: 76px;
+      height: 114px;
     }
 
     .usb-layout {
@@ -705,8 +731,7 @@
     }
 
     .watch-search,
-    .adult-search,
-    .watch-ready-toggle {
+    .adult-search {
       grid-column: auto;
     }
 

@@ -66,9 +66,12 @@ function renderAdultLibrary() {
         const state = film.playback_state || 'original'
         const stateLabel = state === 'optimised' ? 'Pi ready' : state === 'processing' ? 'Optimising…' : state === 'queued' ? 'Queued' : state === 'error' ? 'Needs attention' : 'Original'
         meta.textContent = [metadata.year, film.folder || 'Unfiled', stateLabel].filter(Boolean).join(' · ')
-        const more = document.createElement('span'); more.className = 'adult-film-more'; more.textContent = 'Open'
+        const more = document.createElement('span'); more.className = 'adult-film-more'
+        more.setAttribute('aria-hidden', 'true')
+        more.innerHTML = '<svg viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg>'
         copy.append(title, meta)
         row.append(poster, copy, more)
+        row.setAttribute('aria-label', `Open details for ${title.textContent}`)
         row.onclick = () => openAdultFilmSheet(film)
         root.append(row)
       })
@@ -95,7 +98,10 @@ function renderAdultLibrary() {
       $('#adultFilmOptimise').textContent = film.playback_state === 'optimised' ? 'Already optimised' : busy ? 'Optimising…' : 'Optimise for Pi'
       $('#adultFilmScan').disabled = !tmdbConfigured
       $('#adultFilmScan').textContent = metadata.tmdb_id ? 'Refresh metadata' : 'Scan metadata'
-      $('#adultFilmSheet').showModal(); document.documentElement.style.overflow = 'hidden'
+      const sheet = $('#adultFilmSheet')
+      sheet.showModal()
+      sheet.querySelector('.library-sheet-panel').focus({ preventScroll: true })
+      document.documentElement.style.overflow = 'hidden'
     }
 
     async function scanTmdb(film) {
@@ -192,11 +198,12 @@ function renderAdultLibrary() {
         row.className = `usb-drive ${usbVolume === volume.id ? 'active' : ''}`
         const copy = document.createElement('div')
         copy.className = 'usb-drive-copy'
-        copy.innerHTML = `<strong>${escapeHtml(volume.label)}</strong><small>${escapeHtml(volume.filesystem)}${volume.size ? ` · ${formatBytes(volume.size)}` : ''}${volume.mounted ? ' · Ready' : ''}</small>`
+        const driveState = volume.mounted ? 'Ready' : volume.sleeping ? 'Sleeping · wakes automatically' : 'Ready to open'
+        copy.innerHTML = `<strong>${escapeHtml(volume.label)}</strong><small>${escapeHtml(volume.filesystem)}${volume.size ? ` · ${formatBytes(volume.size)}` : ''} · ${driveState}</small>`
         const button = document.createElement('button')
         button.type = 'button'
         button.className = 'secondary'
-        button.textContent = volume.mounted ? 'Browse' : 'Open safely'
+        button.textContent = volume.mounted ? 'Browse' : volume.sleeping ? 'Wake & open' : 'Open safely'
         button.onclick = async () => {
           button.disabled = true
           try {
@@ -312,12 +319,21 @@ function renderAdultLibrary() {
       renderUsbFiles()
     }
     $('#usbTarget').onchange = () => $('#usbChannelLabel').classList.toggle('hidden', $('#usbTarget').value !== 'channel')
-    $('#usbEject').onclick = async () => {
-      if (!confirm('Safely eject this USB drive? Stop any video playing from it first.')) return
+    $('#usbEject').onclick = () => openLibrarySheet($('#usbEjectSheet'), $('#cancelUsbEject'))
+    $('#closeUsbEject').onclick = $('#cancelUsbEject').onclick = () => closeLibrarySheet($('#usbEjectSheet'))
+    $('#usbEjectSheet').onclick = event => {
+      if (event.target === $('#usbEjectSheet')) closeLibrarySheet($('#usbEjectSheet'))
+    }
+    $('#usbEjectSheet').onclose = () => { document.documentElement.style.overflow = '' }
+    $('#confirmUsbEject').onclick = async () => {
+      const button = $('#confirmUsbEject')
+      button.disabled = true
       try {
+        closeLibrarySheet($('#usbEjectSheet'))
         const result = await api('/api/usb', { method: 'POST', body: JSON.stringify({ action: 'eject', volume: usbVolume }) })
         usbVolume = ''; usbPath = ''; usbEntries = []; usbSelection.clear(); renderUsbFiles(); await refreshUsb(); notice(result.message)
       } catch (error) { notice(error.message, true) }
+      finally { button.disabled = false }
     }
     $('#usbImport').onclick = async () => {
       const selectedCount = usbSelection.size
@@ -379,24 +395,9 @@ function renderAdultLibrary() {
       })
     }
 
-    function applyPortalTheme(theme) {
-      const next = theme === 'light' ? 'light' : 'dark'
-      document.documentElement.dataset.portalTheme = next
-      try { localStorage.setItem('mabeltv-portal-theme', next) } catch (_) {}
-      document.querySelector('meta[name="theme-color"]').content = next === 'light' ? '#f4f1eb' : '#101513'
-    }
-
     function renderPortalTheme() {
-      const theme = library?.appearance?.portal_theme || document.documentElement.dataset.portalTheme || 'dark'
-      applyPortalTheme(theme)
-      $$('[data-portal-theme-choice]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.portalThemeChoice === theme)))
+      window.MabelPortalAppearance?.render(library)
     }
-
-    $$('[data-portal-theme-choice]').forEach(button => button.onclick = () => {
-      const theme = button.dataset.portalThemeChoice
-      applyPortalTheme(theme)
-      manage('set-portal-theme', { theme })
-    })
 
     $$('[data-parent-style]').forEach(button => button.onclick = () => {
       const style = button.dataset.parentStyle
@@ -544,15 +545,30 @@ function renderAdultLibrary() {
       $('#backToChannels span').textContent = 'All channels'
     }
 
-    function openChannel(number, returnToWatch = false) {
+    function openChannel(number, returnToWatch = false, options = {}) {
       selectedManageChannel = Number(number)
       channelWorkspaceReturnToWatch = returnToWatch
       programmeSearch = ''
       programmeVisibility = 'all'
       programmePage = 1
       $('#backToChannels span').textContent = returnToWatch ? 'Back to MabelTV' : 'All channels'
+      if (options.updateHistory !== false) {
+        const parentHash = returnToWatch ? '#watch' : '#channels'
+        if (location.hash !== parentHash) history.replaceState({ channelParent: true }, '', parentHash)
+        history.pushState({ channelPage: true }, '', `#channel/${selectedManageChannel}/${returnToWatch ? 'watch' : 'library'}`)
+      }
       openView('channels')
       renderChannels()
+    }
+
+    function closeChannelPage() {
+      if (history.state?.channelPage) {
+        history.back()
+        return
+      }
+      const target = channelWorkspaceReturnToWatch ? 'watch' : 'channels'
+      history.replaceState({ channelParent: true }, '', `#${target}`)
+      openRequestedView()
     }
 
     function renderBin() {
@@ -599,61 +615,18 @@ function renderAdultLibrary() {
         const matchesVisibility = programmeVisibility === 'all' || (programmeVisibility === 'enabled' ? programme.enabled : !programme.enabled)
         return matchesSearch && matchesVisibility
       })
-      const pages = Math.max(1, Math.ceil(filtered.length / PROGRAMMES_PER_PAGE))
-      programmePage = Math.min(programmePage, pages)
-      const start = (programmePage - 1) * PROGRAMMES_PER_PAGE
-      const visible = filtered.slice(start, start + PROGRAMMES_PER_PAGE)
-      const root = $('#channels')
-      root.innerHTML = ''
-      $('#channelResultCount').textContent = `${filtered.length} result${filtered.length === 1 ? '' : 's'}`
-      $$('[data-programme-visibility]').forEach(button => {
-        const active = button.dataset.programmeVisibility === programmeVisibility
-        button.classList.toggle('active', active)
-        button.setAttribute('aria-pressed', String(active))
+      programmePage = Math.min(programmePage, Math.max(1, Math.ceil(filtered.length / PROGRAMMES_PER_PAGE)))
+      ChannelPageComponents.renderLibrary({
+        channel,
+        filtered,
+        page: programmePage,
+        pageSize: PROGRAMMES_PER_PAGE,
+        visibility: programmeVisibility,
+        search: programmeSearch,
+        onOpen: (selectedChannel, programme) => openWatchProgrammeSheet(selectedChannel, programme),
+        onManage: openProgrammeActions,
+        onLoadMore: () => { programmePage += 1; renderProgrammeList(channel) },
       })
-      $('#channelSummary').textContent = search || programmeVisibility !== 'all'
-        ? `${filtered.length} matching programme${filtered.length === 1 ? '' : 's'}`
-        : `${channel.programmes.length} programme${channel.programmes.length === 1 ? '' : 's'}`
-      if (!visible.length) {
-        root.innerHTML = channel.programmes.length
-          ? '<div class="zero-state"><strong>No programmes match</strong>Try a different search or filter.</div>'
-          : '<div class="zero-state"><strong>This channel is ready</strong>Add its first programme when you are ready.</div>'
-      } else {
-        const list = document.createElement('div')
-        list.className = 'programme-list'
-        visible.forEach((programme, index) => {
-          const row = document.createElement('div')
-          row.className = `programme ${programme.enabled ? '' : 'is-hidden'}`
-          const main = document.createElement('div')
-          main.className = 'programme-main'
-          const episode = programme.name.match(/^(S\d+E\d+)/i)?.[1]?.toUpperCase() || String(start + index + 1).padStart(2, '0')
-          const marker = document.createElement('span'); marker.className = 'programme-index'; marker.textContent = episode
-          const copy = document.createElement('span'); copy.className = 'programme-copy'
-          const name = document.createElement('strong'); name.textContent = programme.display_name
-          const status = document.createElement('small'); status.textContent = programme.enabled ? 'Available in channel' : 'Hidden in channel'
-          copy.append(name, status); main.append(marker, copy)
-          const actions = document.createElement('div')
-          actions.className = 'programme-actions'
-          const play = document.createElement('button')
-          play.type = 'button'; play.className = 'programme-play'; play.setAttribute('aria-label', `Play ${programme.display_name} on TV`)
-          play.innerHTML = '<svg aria-hidden="true"><use href="/portal/icons.svg#play"></use></svg><span>Play on TV</span>'
-          play.onclick = () => playOnTv({ kind: 'channel', channel: channel.number, file: programme.name }, programme.display_name)
-          const more = document.createElement('button')
-          more.type = 'button'; more.className = 'secondary programme-more'; more.setAttribute('aria-label', `More options for ${programme.display_name}`)
-          more.innerHTML = '<svg aria-hidden="true"><use href="/portal/icons.svg#more"></use></svg><span>More</span>'
-          more.onclick = () => openProgrammeActions(channel, programme, episode)
-          actions.append(play, more)
-          row.append(main, actions); list.append(row)
-        })
-        root.append(list)
-      }
-      const pager = $('#programmePager')
-      pager.classList.toggle('hidden', pages <= 1)
-      pager.innerHTML = pages <= 1 ? '' : `<span class="muted small">Showing ${start + 1}–${Math.min(start + PROGRAMMES_PER_PAGE, filtered.length)} of ${filtered.length}</span><div class="row"><button id="previousProgrammePage" type="button" class="secondary" ${programmePage === 1 ? 'disabled' : ''}>Previous</button><span class="small">Page ${programmePage} of ${pages}</span><button id="nextProgrammePage" type="button" class="secondary" ${programmePage === pages ? 'disabled' : ''}>Next</button></div>`
-      if (pages > 1) {
-        $('#previousProgrammePage').onclick = () => { programmePage -= 1; renderProgrammeList(channel) }
-        $('#nextProgrammePage').onclick = () => { programmePage += 1; renderProgrammeList(channel) }
-      }
     }
 
     function renderChannels() {
@@ -674,17 +647,16 @@ function renderAdultLibrary() {
       $('#editChannelName').value = channel.name
       $('#editChannelAspect').value = channel.aspect || 'crop'
       $('#editChannelContentType').value = channel.content_type || 'shows'
-      $('#workspaceEyebrow').textContent = `Channel ${channel.number} · ${contentLabel(channel.content_type)}`
-      $('#workspaceChannelBadge').textContent = `CH ${channel.number}`
-      $('#workspaceChannelName').textContent = channel.name
-      $('#workspaceChannelStatus').textContent = channel.enabled ? 'Available on the television now' : 'Currently hidden from the television'
-      $('#workspaceProgrammeCount').textContent = channel.programmes.length
-      $('#workspaceVisibleCount').textContent = channel.enabled ? channel.enabled_programmes : 0
-      $('#workspacePictureMode').textContent = aspectLabel(channel.aspect)
-      $('#workspaceToggleChannel .workspace-action-label').textContent = channel.enabled ? 'Hide' : 'Show'
+      ChannelPageComponents.renderHero(channel, { aspectLabel })
+      $('#workspaceToggleChannel span').textContent = channel.enabled ? 'Hide channel' : 'Show channel'
       $('#workspaceToggleChannel').onclick = () => manage('toggle-channel', { channel: channel.number })
       $('#channelSettingsTitle').textContent = `Edit ${channel.name}`
       $('#workspaceSettings').onclick = () => openLibrarySheet($('#channelSettingsSheet'), $('#editChannelName'))
+      const watchButton = $('#channelWatchTv')
+      watchButton.disabled = !channel.enabled
+      watchButton.querySelector('strong').textContent = channel.enabled ? `Open CH ${channel.number} on TV` : 'Channel hidden'
+      watchButton.querySelector('small').textContent = channel.enabled ? 'Switch MabelTV to this channel' : 'Show it in Manage to play it'
+      watchButton.onclick = () => sendLiveCommand('tune-channel', watchButton, { channel: channel.number })
       $('#channel').value = String(channel.number)
       $('#uploadDestination').textContent = channel.name
       $('#workspaceAddMedia').onclick = () => openLibrarySheet($('#channelUploadPanel'), $('#file'))

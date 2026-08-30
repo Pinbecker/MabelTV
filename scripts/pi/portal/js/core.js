@@ -38,7 +38,6 @@ const $ = selector => document.querySelector(selector)
     let remoteKind = 'adult'
     let watchFolder = '*'
     let watchSearchText = ''
-    let watchReadyOnly = false
     let selectedWatchFilm = null
     let selectedWatchProgramme = null
     let iosRemoteSession = null
@@ -54,18 +53,20 @@ const $ = selector => document.querySelector(selector)
     const pendingDownloads = new Map()
     let portalPlayerScrollY = 0
 
-    function lockPortalPlayerScroll() {
+    function lockPortalPlayerScroll(fixBody = true) {
       if (document.documentElement.classList.contains('portal-player-open')) return
       portalPlayerScrollY = window.scrollY
       document.documentElement.classList.add('portal-player-open')
       document.body.classList.add('portal-player-open')
-      document.body.style.top = `-${portalPlayerScrollY}px`
+      document.body.classList.toggle('portal-player-fixed', fixBody)
+      document.body.style.top = fixBody ? `-${portalPlayerScrollY}px` : ''
     }
 
     function unlockPortalPlayerScroll() {
       if (!document.documentElement.classList.contains('portal-player-open')) return
       document.documentElement.classList.remove('portal-player-open')
       document.body.classList.remove('portal-player-open')
+      document.body.classList.remove('portal-player-fixed')
       document.body.style.top = ''
       window.scrollTo(0, portalPlayerScrollY)
     }
@@ -119,12 +120,12 @@ const $ = selector => document.querySelector(selector)
       }
       $('#notice').textContent = message
       $('#notice').classList.toggle('bad', bad)
-      if (message && !message.endsWith('…')) {
+      if (message) {
         noticeTimer = setTimeout(() => {
           $('#notice').textContent = ''
           $('#notice').classList.remove('bad')
           noticeTimer = null
-        }, bad ? 7000 : 5000)
+        }, bad ? 7000 : 3500)
       }
     }
 
@@ -189,12 +190,28 @@ const $ = selector => document.querySelector(selector)
 
     function openRequestedView() {
       const requested = location.hash.replace(/^#/, '')
+      const channelRoute = requested.match(/^channel\/(\d+)\/(watch|library)$/)
+      if (channelRoute) {
+        openChannel(Number(channelRoute[1]), channelRoute[2] === 'watch', { updateHistory: false })
+        return
+      }
       const view = requested === 'home' ? 'overview' : requested
-      const allowed = new Set(['overview', 'live', 'channels', 'adult', 'watch', 'usb', 'system'])
-      if (allowed.has(view)) openView(view)
+      const allowed = new Set(['overview', 'live', 'channels', 'adult', 'watch', 'usb', 'system', 'components'])
+      if (allowed.has(view)) {
+        if (view === 'channels') showChannelHub()
+        if (view === 'watch' && selectedManageChannel !== null) {
+          selectedManageChannel = null
+          channelWorkspaceReturnToWatch = false
+          remoteKind = 'channel'
+          renderRemoteViewing()
+        }
+        openView(view)
+      }
       else if (new URLSearchParams(location.search).has('watch')) openView('watch')
       else openView('overview')
     }
+
+    window.addEventListener('popstate', openRequestedView)
 
     async function initialise() {
       try {
@@ -341,10 +358,16 @@ const $ = selector => document.querySelector(selector)
 
     function openView(name) {
       if (offlineMode && name !== 'watch') name = 'watch'
+      if (name !== 'components') window.MabelPortalAppearance?.clearPreview()
+      // A status belongs to the action that created it, not every page the
+      // parent subsequently visits. Clear it whenever navigation begins.
+      notice('')
+      const channelFromWatch = name === 'channels' && selectedManageChannel !== null && channelWorkspaceReturnToWatch
+      const activeNavigation = channelFromWatch ? 'watch' : name === 'components' ? 'system' : name
       $$('.view').forEach(view => view.classList.toggle('active', view.id === `view-${name}`))
-      document.body.classList.toggle('watch-mode', name === 'watch')
+      document.body.classList.toggle('watch-mode', name === 'watch' || channelFromWatch)
       $$('[data-view-button]').forEach(button => {
-        const active = button.dataset.viewButton === name
+        const active = button.dataset.viewButton === activeNavigation
         button.classList.toggle('active', active)
         if (active) button.setAttribute('aria-current', 'page')
         else button.removeAttribute('aria-current')
@@ -356,6 +379,7 @@ const $ = selector => document.querySelector(selector)
       else stopHomeStatusRefresh()
       if (name === 'usb') refreshUsb().catch(error => notice(error.message, true))
       if (name === 'watch' && remoteKind === 'downloads') renderDownloads().catch(showError)
+      if (name === 'components') window.MabelComponentGallery?.render(library)
     }
 
     function showLivePicture() {
@@ -609,6 +633,7 @@ const $ = selector => document.querySelector(selector)
 
     async function load(preferredUploadChannel = null) {
       library = await api('/api/library')
+      window.MabelPortalLibrary = library
       offlineMode = false
       document.body.classList.remove('offline-mode')
       applyTvName()

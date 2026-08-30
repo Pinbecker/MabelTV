@@ -26,7 +26,7 @@ SPEC.loader.exec_module(mabeltv_library)
 PORTAL_ROOT = PROJECT_ROOT / "scripts" / "pi" / "portal"
 PORTAL_SCRIPT = "\n".join(
     (PORTAL_ROOT / "js" / name).read_text(encoding="utf-8")
-    for name in ("core.js", "library.js", "playback.js", "actions.js")
+    for name in ("core.js", "channel-page.js", "library.js", "playback.js", "actions.js", "component-gallery.js")
 )
 PORTAL_STYLES = "\n".join(
     path.read_text(encoding="utf-8")
@@ -105,9 +105,10 @@ class LibraryUnitTests(unittest.TestCase):
         html = mabeltv_library.INDEX
         css_names = (
             "tokens", "base", "components", "shell", "home", "live",
-            "watch", "management", "usb", "settings", "responsive",
+            "watch", "management", "usb", "settings", "responsive", "channel-page",
+            "component-gallery", "component-direction-signal", "component-direction-aperture",
         )
-        js_names = ("core", "library", "playback", "actions")
+        js_names = ("core", "appearance", "channel-page", "library", "playback", "actions", "component-gallery")
 
         css_positions = [html.index(f'/portal/css/{name}.css') for name in css_names]
         js_positions = [html.index(f'/portal/js/{name}.js') for name in js_names]
@@ -121,6 +122,100 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("--control-min: 44px", PORTAL_STYLES)
         self.assertIn('/portal/icons.svg#home', html)
         self.assertTrue((PORTAL_ROOT / "icons.svg").is_file())
+
+    def test_component_gallery_catalogues_the_real_portal_system(self) -> None:
+        html = mabeltv_library.INDEX
+        gallery = (PORTAL_ROOT / "js" / "component-gallery.js").read_text(
+            encoding="utf-8")
+        styles = (PORTAL_ROOT / "css" / "component-gallery.css").read_text(
+            encoding="utf-8")
+        signal_styles = (PORTAL_ROOT / "css" / "component-direction-signal.css").read_text(
+            encoding="utf-8")
+        aperture_styles = (PORTAL_ROOT / "css" / "component-direction-aperture.css").read_text(
+            encoding="utf-8")
+        core = (PORTAL_ROOT / "js" / "core.js").read_text(encoding="utf-8")
+
+        self.assertIn('id="view-components"', html)
+        self.assertIn('id="openComponentGallery"', html)
+        self.assertIn('/portal/css/component-gallery.css', html)
+        self.assertIn('/portal/js/component-gallery.js', html)
+        self.assertIn('/portal/css/component-direction-signal.css', html)
+        self.assertIn('/portal/css/component-direction-aperture.css', html)
+        self.assertIn("'components'", core)
+        self.assertIn("name === 'components' ? 'system'", core)
+        self.assertIn("window.MabelComponentGallery?.render(library)", core)
+        self.assertIn("window.MabelPortalLibrary = library", core)
+        self.assertIn("const SECTIONS = [", gallery)
+        self.assertIn("01 · Signal", gallery)
+        self.assertIn("02 · Aperture", gallery)
+        self.assertIn("component-theme-signal", gallery)
+        self.assertIn("component-theme-aperture", gallery)
+        self.assertIn("renderInventory(sample, 'signal')", gallery)
+        self.assertIn("renderInventory(sample, 'aperture')", gallery)
+        self.assertIn("watch-continue-card", gallery)
+        self.assertIn("mabel-show-identity", gallery)
+        self.assertIn("channel-page-show-card", gallery)
+        self.assertIn("adult-film component-adult-row", gallery)
+        self.assertIn("ios-watch-head", gallery)
+        self.assertIn("portal-nav component-nav-preview", gallery)
+        self.assertIn("channel-card library-main-card component-channel-management", gallery)
+        self.assertIn("component-button-hierarchy", gallery)
+        self.assertIn("remote-mode-row component-remote-modes", gallery)
+        self.assertIn("portal-theme-picker component-theme-picker", gallery)
+        self.assertIn("drop-field component-drop-field", gallery)
+        self.assertIn("data-component-search", gallery)
+        self.assertIn("render(window.MabelPortalLibrary)", gallery)
+        self.assertNotIn("!important", styles)
+        self.assertIn("--signal-red: var(--accent)", signal_styles)
+        self.assertIn('html[data-portal-design="signal"]', signal_styles)
+        self.assertIn("data-apply-gallery-design", gallery)
+        self.assertIn(".signal-direction-intro", signal_styles)
+        self.assertIn(
+            ':where(.component-theme-signal, html[data-portal-design="signal"]) .component-nav-preview',
+            signal_styles)
+        self.assertIn(
+            ':where(.component-theme-signal, html[data-portal-design="signal"]) .watch-continue-card',
+            signal_styles)
+        self.assertIn(
+            ':where(.component-theme-signal, html[data-portal-design="signal"]) .notice:not(:empty)',
+            signal_styles)
+        self.assertNotIn("!important", signal_styles)
+        self.assertIn('html[data-portal-design="aperture"]', aperture_styles)
+        self.assertIn(".aperture-direction-intro", aperture_styles)
+        self.assertIn(
+            ':where(.component-theme-aperture, html[data-portal-design="aperture"]) .component-nav-preview',
+            aperture_styles)
+        self.assertIn(
+            ':where(.component-theme-aperture, html[data-portal-design="aperture"]) .watch-continue-card',
+            aperture_styles)
+        self.assertNotIn("!important", aperture_styles)
+        icons = (PORTAL_ROOT / "icons.svg").read_text(encoding="utf-8")
+        self.assertIn('id="signal-house"', icons)
+        self.assertIn('id="signal-play"', icons)
+        self.assertTrue((PORTAL_ROOT / "LICENSE-LUCIDE.txt").is_file())
+
+    def test_channel_detail_is_modular_watch_oriented_and_deep_linkable(self) -> None:
+        html = mabeltv_library.INDEX
+        channel_script = (PORTAL_ROOT / "js" / "channel-page.js").read_text(
+            encoding="utf-8")
+        channel_styles = (PORTAL_ROOT / "css" / "channel-page.css").read_text(
+            encoding="utf-8")
+
+        self.assertIn('id="channelWorkspace" class="hidden" data-channel-page-root', html)
+        self.assertNotIn('id="workspaceChannelName"', html)
+        self.assertNotIn('id="programmeActionPlay"', html)
+        self.assertIn("const ChannelPageComponents", channel_script)
+        self.assertIn("function createShowCard", channel_script)
+        self.assertIn("function createFilmCard", channel_script)
+        self.assertIn("function createOverflowButton", channel_script)
+        self.assertIn("openWatchProgrammeSheet(selectedChannel, programme)", PORTAL_SCRIPT)
+        self.assertIn("history.pushState({ channelPage: true }", PORTAL_SCRIPT)
+        self.assertIn("/^channel\\/(\\d+)\\/(watch|library)$/", PORTAL_SCRIPT)
+        self.assertIn(".channel-page-programmes.is-film-grid", channel_styles)
+        self.assertNotIn("!important", channel_styles)
+        self.assertNotIn("previousProgrammePage", PORTAL_SCRIPT)
+        self.assertNotIn("nextProgrammePage", PORTAL_SCRIPT)
+        self.assertNotIn("Available in channel", PORTAL_SCRIPT)
 
     def test_remote_browser_player_has_native_controls_and_safe_default(self) -> None:
         index = PORTAL_SOURCE
@@ -143,6 +238,10 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("/api/remote/start", player)
         self.assertIn("/api/remote/clear-position", index)
         self.assertIn('id="watchFilmRemoveProgress"', index)
+        self.assertIn("actionLabel.textContent = playAfter ? 'Starting from beginning…' : 'Removing…'", index)
+        self.assertIn("film.remote_position = 0", index)
+        self.assertIn("renderAdultWatch()", index)
+        self.assertNotIn("setNotice(", index)
         self.assertNotIn("watch-continue-more", index)
         self.assertIn('class="dialog-close-bar"', index)
         self.assertIn('class="watch-film-summary"', index)
@@ -153,6 +252,8 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("position: sticky", index)
         self.assertIn('id="watchFilmTv"', index)
         self.assertIn('id="watchFilmHere"', index)
+        self.assertNotIn("className = 'watch-play'", index)
+        self.assertNotIn('.watch-play {', index)
         self.assertIn("position: Number(film.remote_position || 0)", index)
         self.assertIn('id="watchProgrammeSheet"', index)
         self.assertIn('id="watchManageAdult"', index)
@@ -170,12 +271,48 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("grid-auto-columns: calc((100% - var(--space-3)) / 2)", index)
         self.assertIn(".watch-channel-rail:has(> :only-child)", index)
         self.assertIn("#remoteMabel", index)
+
         self.assertIn("max-width: 100%", index)
         self.assertIn(".programme-action-summary > span:last-child", index)
         self.assertIn("dialog:is(.library-sheet, .watch-sheet", index)
         self.assertIn("grid-template-columns: 50px minmax(142px, 176px) 50px", index)
         self.assertIn(".remote-mode small", index)
         self.assertNotIn('data-view-button="channels"', index)
+
+    def test_global_notices_expire_and_do_not_follow_navigation(self) -> None:
+        core = (PORTAL_ROOT / "js" / "core.js").read_text(encoding="utf-8")
+
+        self.assertIn("}, bad ? 7000 : 3500)", core)
+        self.assertNotIn("message.endsWith('…')", core)
+        open_view = core[core.index("function openView(name)"):]
+        self.assertIn("notice('')", open_view[:500])
+
+    def test_iphone_watch_saves_backward_seeks_and_uses_native_player(self) -> None:
+        portal = PORTAL_SOURCE
+
+        self.assertIn("Math.abs(video.currentTime - iosRemoteLastSaved) < 10", portal)
+        self.assertIn("video.onseeked = () => saveIosRemotePosition(false, true)", portal)
+        self.assertNotIn("const useNativeFullscreen", portal)
+        self.assertIn("if (nativeFullscreen || video.webkitDisplayingFullscreen", portal)
+        self.assertIn("nativeFullscreen = false", portal)
+        self.assertIn("restoreIosInlineVideoControls(video)", portal)
+        self.assertIn("lockPortalPlayerScroll(false)", portal)
+        self.assertIn("body.portal-player-open.portal-player-fixed", portal)
+        self.assertIn("video.style.pointerEvents = 'none'", portal)
+        self.assertIn("font-size: 1rem", portal)
+        self.assertNotIn('id="watchReadyToggle"', portal)
+        self.assertNotIn("watchReadyOnly", portal)
+        self.assertNotIn("watch-ready-toggle", portal)
+
+    def test_adult_organiser_uses_compact_accessible_components(self) -> None:
+        portal = PORTAL_SOURCE
+
+        self.assertIn('class="adult-film-move-panel"', portal)
+        self.assertIn('aria-labelledby="adultFilmSheetTitle"', portal)
+        self.assertIn("sheet.querySelector('.library-sheet-panel').focus", portal)
+        self.assertIn("row.setAttribute('aria-label', `Open details for", portal)
+        self.assertNotIn("more.textContent = 'Open'", portal)
+        self.assertNotIn("!important", portal)
 
     def test_mabel_remote_player_restores_original_tv_and_locks_page_scroll(self) -> None:
         index = PORTAL_SOURCE
@@ -229,6 +366,28 @@ class LibraryUnitTests(unittest.TestCase):
         self.fixture.library.manage({"action": "set-remote-simultaneous", "enabled": True})
         started = self.fixture.library.start_remote_stream({"kind": "adult", "file": "Film.mp4"})
         self.assertTrue(started["ok"])
+
+    def test_remote_session_accepts_a_large_backward_seek(self) -> None:
+        adult = self.fixture.media / ".adult"
+        adult.mkdir(parents=True, exist_ok=True)
+        (adult / "Film.mp4").write_bytes(b"film")
+        self.fixture.library.player_state_path = self.fixture.root / "player-state.json"
+        self.fixture.library.player_state_path.write_text(
+            '{"standby": true}', encoding="utf-8")
+        started = self.fixture.library.start_remote_stream({
+            "kind": "adult", "file": "Film.mp4",
+        })
+        token = started["stream_url"].split("stream=", 1)[1]
+
+        self.fixture.library.remote_save_position({
+            "stream": token, "position": 4800, "duration": 7200,
+        })
+        self.fixture.library.remote_save_position({
+            "stream": token, "position": 1200, "duration": 7200,
+        })
+
+        self.assertEqual(
+            self.fixture.library.adult_library()[0]["remote_position"], 1200)
 
     def test_remote_concurrent_setting_does_not_refresh_the_tv_player(self) -> None:
         self.fixture.library.refresh_tv = mock.Mock(return_value=True)
@@ -1056,9 +1215,9 @@ class LibraryUnitTests(unittest.TestCase):
     def test_portal_error_notices_clear_automatically(self) -> None:
         portal = PORTAL_SOURCE
 
-        self.assertIn("if (message && !message.endsWith('…'))", portal)
-        self.assertIn("bad ? 7000 : 5000", portal)
-        self.assertNotIn("message && !bad && !message.endsWith", portal)
+        self.assertIn("if (message)", portal)
+        self.assertIn("bad ? 7000 : 3500", portal)
+        self.assertNotIn("message.endsWith('…')", portal)
         self.assertIn("state.adult_mode ? 'ADULT TV · PRIVATE LIBRARY'", portal)
 
     def test_worker_survives_failure_while_persisting_an_error(self) -> None:
@@ -1184,6 +1343,81 @@ class UsbAndMetadataTests(unittest.TestCase):
             result = self.fixture.library.usb_volumes()
         self.assertEqual(result["volumes"][0]["device"], "/dev/sda1")
         self.assertEqual(result["volumes"][0]["label"], "My Passport")
+
+    def test_usb_drive_sleeps_after_one_idle_minute_without_disappearing(self) -> None:
+        library = self.fixture.library
+        library.usb_idle_seconds = 60
+        library.usb_last_activity["TEST-USB"] = 100
+        with mock.patch.object(library, "usb_busy_reason", return_value=None), \
+                mock.patch.object(library, "_run_usb_helper",
+                                  return_value="The USB drive is sleeping.") as helper:
+            library.usb_power_tick(now=161)
+        helper.assert_called_once_with("usb-sleep", "")
+        self.assertIn("TEST-USB", library.usb_sleeping)
+        volume = library.usb_volumes()["volumes"][0]
+        self.assertTrue(volume["sleeping"])
+        self.assertTrue(volume["mounted"])
+
+    def test_usb_activity_postpones_automatic_sleep(self) -> None:
+        library = self.fixture.library
+        movie = self.volume / "Still Playing.mp4"
+        movie.write_bytes(b"browser-ready")
+        library.player_state_path = self.fixture.root / "player-state.json"
+        library.player_state_path.write_text('{"standby": true}', encoding="utf-8")
+        library.start_remote_stream({
+            "kind": "usb", "volume": "TEST-USB", "file": movie.name,
+        })
+        library.usb_idle_seconds = 60
+        library.usb_last_activity["TEST-USB"] = 100
+        with mock.patch.object(library, "_run_usb_helper") as helper:
+            library.usb_power_tick(now=161)
+        helper.assert_not_called()
+        self.assertNotIn("TEST-USB", library.usb_sleeping)
+        self.assertGreater(library.usb_last_activity["TEST-USB"], 161)
+
+    def test_usb_import_postpones_automatic_sleep(self) -> None:
+        library = self.fixture.library
+        library.usb_imports["active"] = {
+            "id": "active", "volume": "TEST-USB", "status": "copying",
+        }
+        library.usb_idle_seconds = 60
+        library.usb_last_activity["TEST-USB"] = 100
+        with mock.patch.object(library, "_run_usb_helper") as helper:
+            library.usb_power_tick(now=161)
+        helper.assert_not_called()
+        self.assertNotIn("TEST-USB", library.usb_sleeping)
+
+    def test_usb_use_wakes_and_mounts_a_sleeping_drive(self) -> None:
+        library = self.fixture.library
+        library.usb_requires_mount = True
+        with mock.patch.object(library, "usb_mount_path",
+                               side_effect=[ValueError("sleeping"), self.volume.resolve()]), \
+                mock.patch.object(library, "_usb_volume",
+                                  return_value={"id": "TEST-USB", "device": "/dev/sda1"}), \
+                mock.patch.object(library, "usb_mount") as mount:
+            root = library.usb_ensure_awake("TEST-USB")
+        mount.assert_called_once_with("/dev/sda1")
+        self.assertEqual(root, self.volume.resolve())
+
+    def test_full_eject_works_while_drive_is_sleeping(self) -> None:
+        library = self.fixture.library
+        library.usb_sleeping.add("TEST-USB")
+        with mock.patch.object(library, "_usb_volume", return_value={
+                "id": "TEST-USB", "device": "/dev/sda1", "mounted": False,
+        }), mock.patch.object(library, "usb_busy_reason", return_value=None), \
+                mock.patch.object(library, "_run_usb_helper",
+                                  return_value="The USB drive can now be unplugged safely.") as helper:
+            result = library.usb_eject("TEST-USB")
+        helper.assert_called_once_with("usb-eject", "/dev/sda1")
+        self.assertTrue(result["ok"])
+        self.assertNotIn("TEST-USB", library.usb_sleeping)
+
+    def test_usb_portal_distinguishes_sleep_from_full_eject(self) -> None:
+        self.assertIn("Sleeps after 1 idle minute", PORTAL_SOURCE)
+        self.assertIn("volume.sleeping ? 'Wake & open'", PORTAL_SOURCE)
+        self.assertIn('id="usbEjectSheet"', PORTAL_SOURCE)
+        self.assertIn("You will need to unplug and reconnect it", PORTAL_SOURCE)
+        self.assertNotIn("confirm('Safely eject this USB drive?", PORTAL_SOURCE)
 
     def test_usb_system_disk_is_never_offered(self) -> None:
         block_devices = {"blockdevices": [{
@@ -1558,6 +1792,17 @@ class UsbAndMetadataTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "light or dark"):
             self.fixture.library.manage({"action": "set-portal-theme", "theme": "blue"})
 
+    def test_portal_design_and_palette_are_validated_and_exposed(self) -> None:
+        self.fixture.library.manage({"action": "set-portal-design", "design": "aperture"})
+        self.fixture.library.manage({"action": "set-portal-palette", "palette": "tide"})
+        appearance = self.fixture.library.library()["appearance"]
+        self.assertEqual(appearance["portal_design"], "aperture")
+        self.assertEqual(appearance["portal_palette"], "tide")
+        with self.assertRaisesRegex(ValueError, "current, Signal, or Aperture"):
+            self.fixture.library.manage({"action": "set-portal-design", "design": "retro"})
+        with self.assertRaisesRegex(ValueError, "available portal palettes"):
+            self.fixture.library.manage({"action": "set-portal-palette", "palette": "neon"})
+
     def test_adult_playback_state_updates_preserve_cached_metadata(self) -> None:
         self.fixture.library.write_adult_media_states({
             "Film.mkv": {"metadata": {"tmdb_id": 1, "title": "Film"}},
@@ -1689,9 +1934,11 @@ class LibraryHttpTests(unittest.TestCase):
                              ("/portal/css/components.css", b"@layer components"),
                              ("/portal/icons.svg", b'id="settings"'),
                              ("/portal/js/core.js", b"function initialise"),
+                             ("/portal/js/appearance.js", b"MabelPortalAppearance"),
                              ("/portal/js/actions.js", b"managementBusy")):
             with urllib.request.urlopen(self.base + path, timeout=5) as response:
                 self.assertEqual(response.status, 200)
+                self.assertEqual(response.headers.get("Connection"), "close")
                 self.assertIn(marker, response.read())
 
     def test_portal_asset_handler_rejects_path_traversal(self) -> None:

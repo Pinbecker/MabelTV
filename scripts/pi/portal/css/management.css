@@ -416,22 +416,45 @@
     margin-bottom: var(--space-4);
   }
 
+  .adult-hero-actions {
+    align-items: center;
+  }
+
+  .adult-hero-actions button {
+    min-height: 52px;
+    gap: var(--space-2);
+    white-space: nowrap;
+  }
+
+  .adult-hero-actions button svg {
+    width: 20px;
+    height: 20px;
+  }
+
   .adult-hero-stat {
-    min-width: 150px;
-    display: grid;
+    min-width: 112px;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 6px;
     border: 1px solid var(--border);
-    border-radius: var(--radius-card);
-    padding: var(--space-3) var(--space-4);
-    background: rgb(5 9 7 / 42%);
+    border-radius: var(--radius-round);
+    padding: 10px 14px;
+    background: color-mix(in srgb, var(--surface-2) 86%, transparent);
   }
 
   .adult-hero-stat strong {
-    font-size: 1.45rem;
+    color: var(--text);
+    font-size: 1.08rem;
   }
 
   .adult-hero-stat span {
     color: var(--text-muted);
     font-size: var(--type-caption);
+  }
+
+  .adult-library {
+    padding: var(--space-5);
   }
 
   .adult-discovery {
@@ -453,6 +476,15 @@
     margin: 0;
   }
 
+  .adult-library-context {
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+    padding-right: 0;
+    padding-left: 0;
+    background: transparent;
+  }
+
   .adult-film-more {
     display: inline-flex;
     align-items: center;
@@ -460,8 +492,16 @@
     flex: 0 0 auto;
     border: 1px solid var(--border);
     border-radius: var(--radius-round);
-    background: var(--surface-3);
+    background: var(--surface-2);
     color: var(--text-soft);
+  }
+
+  .adult-film-more svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
   }
 
   .adult-film-list {
@@ -474,11 +514,12 @@
     min-width: 0;
     min-height: 112px;
     display: grid;
-    grid-template-columns: 72px minmax(0, 1fr) 44px;
+    grid-template-columns: 82px minmax(0, 1fr) 44px;
     align-items: center;
     gap: var(--space-3);
     border-color: var(--border);
-    padding: var(--space-3);
+    border-radius: var(--radius-card);
+    padding: 12px;
     background: var(--surface-1);
     color: var(--text-soft);
     text-align: left;
@@ -490,9 +531,18 @@
   }
 
   button.adult-film .adult-film-poster {
-    width: 72px;
-    height: 108px;
+    width: 82px;
+    height: 123px;
     border-radius: 9px;
+  }
+
+  button.adult-film .adult-film-copy {
+    gap: var(--space-1);
+    padding: 0;
+  }
+
+  button.adult-film .adult-film-copy strong {
+    font-size: 1rem;
   }
 
   .adult-folder-tabs {
@@ -526,6 +576,12 @@
     gap: var(--space-4);
     align-items: start;
     margin-bottom: var(--space-4);
+  }
+
+  .adult-film-sheet-summary p {
+    margin: 0;
+    color: var(--text-soft);
+    line-height: 1.55;
   }
 
   .programme-action-summary > span:last-child {
@@ -562,7 +618,7 @@
     width: 100%;
     min-height: 64px;
     justify-content: flex-start;
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-3);
     text-align: left;
   }
 
@@ -576,12 +632,41 @@
   }
 
   .adult-film-move {
+    margin: 0;
+  }
+
+  .adult-film-move-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: var(--space-2);
     margin-bottom: var(--space-3);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    padding: var(--space-3);
+    background: var(--surface-2);
+  }
+
+  .adult-film-move-panel button {
+    min-height: 48px;
   }
 
   .adult-film-action-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+
+  .adult-film-action-grid button {
+    min-height: 48px;
+  }
+
+  .adult-film-action-grid .danger:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .adult-film-sheet .library-sheet-panel:focus {
+    outline: 0;
   }
 
   .library-recycle-list {
@@ -646,7 +731,7 @@
     overscroll-behavior: none;
   }
 
-  body.portal-player-open {
+  body.portal-player-open.portal-player-fixed {
     position: fixed;
     right: 0;
     left: 0;
@@ -665,6 +750,8 @@
   }
 
   .ios-watch-head {
+    position: relative;
+    z-index: 2;
     display: flex;
     align-items: center;
     gap: var(--space-3);
@@ -696,6 +783,7 @@
 
   .ios-watch-stage {
     position: relative;
+    z-index: 1;
     display: grid;
     place-items: center;
     overflow: hidden;

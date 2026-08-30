@@ -32,6 +32,33 @@ usb_mount_name() {
     printf '%s\n' "$identity"
 }
 
+usb_parent_device() {
+    local device="$1" parent
+    parent="$(lsblk -nro PKNAME -- "$device" 2>/dev/null | head -n1)"
+    [[ -n "$parent" ]] \
+        || { printf 'The USB drive has no parent disk.\n' >&2; exit 2; }
+    printf '/dev/%s\n' "$parent"
+}
+
+usb_unmount() {
+    local device="$1" identity target source unit deadline
+    identity="$(usb_mount_name "$device")"
+    target="/media/mabeltv-usb/$identity"
+    source="$(findmnt -rn -o SOURCE --mountpoint "$target" 2>/dev/null || true)"
+    if [[ -n "$source" ]]; then
+        unit="$(systemd-escape --path --suffix=mount "$target")"
+        systemctl stop "$unit"
+        deadline=$((SECONDS + 10))
+        while findmnt -rn --mountpoint "$target" >/dev/null 2>&1; do
+            (( SECONDS < deadline )) \
+                || { printf 'The USB drive is still busy.\n' >&2; exit 1; }
+            sleep 0.2
+        done
+    fi
+    systemd-run --quiet --wait --collect /usr/bin/rmdir -- "$target" \
+        >/dev/null 2>&1 || true
+}
+
 case "$action" in
     restart-player)
         systemctl restart mabeltv.service
@@ -68,6 +95,10 @@ case "$action" in
         ;;
     usb-mount)
         device="$(usb_device "${2:-}")"
+        parent="$(usb_parent_device "$device")"
+        command -v sg_start >/dev/null 2>&1 \
+            || { printf 'USB sleep support is not installed.\n' >&2; exit 1; }
+        sg_start --start "$parent" >/dev/null
         fstype="$(lsblk -dnro FSTYPE -- "$device" 2>/dev/null || true)"
         case "$fstype" in
             vfat|exfat|ntfs|ntfs3|ext2|ext3|ext4) ;;
@@ -91,26 +122,23 @@ case "$action" in
         done
         printf '%s\n' "$target"
         ;;
+    usb-sleep)
+        device="$(usb_device "${2:-}")"
+        parent="$(usb_parent_device "$device")"
+        command -v sg_start >/dev/null 2>&1 \
+            || { printf 'USB sleep support is not installed.\n' >&2; exit 1; }
+        usb_unmount "$device"
+        sync
+        sg_start --stop "$parent" >/dev/null
+        printf 'The USB drive is sleeping. It will wake automatically when used.\n'
+        ;;
     usb-eject)
-        identity="${2:-}"
-        [[ "$identity" =~ ^[A-Za-z0-9._-]+$ ]] \
-            || { printf 'That USB drive identity is not valid.\n' >&2; exit 2; }
-        target="/media/mabeltv-usb/$identity"
-        source="$(findmnt -rn -o SOURCE --mountpoint "$target" 2>/dev/null || true)"
-        [[ -n "$source" ]] || { printf 'That USB drive is not mounted.\n' >&2; exit 2; }
-        device="$(usb_device "$source")"
-        unit="$(systemd-escape --path --suffix=mount "$target")"
-        systemctl stop "$unit"
-        deadline=$((SECONDS + 10))
-        while findmnt -rn --mountpoint "$target" >/dev/null 2>&1; do
-            (( SECONDS < deadline )) || { printf 'The USB drive is still busy.\n' >&2; exit 1; }
-            sleep 0.2
-        done
-        systemd-run --quiet --wait --collect /usr/bin/rmdir -- "$target" \
-            >/dev/null 2>&1 || true
-        parent="$(lsblk -nro PKNAME -- "$device" | head -n1)"
+        device="$(usb_device "${2:-}")"
+        parent="$(usb_parent_device "$device")"
+        usb_unmount "$device"
         command -v udisksctl >/dev/null 2>&1 \
-            && udisksctl power-off --no-user-interaction -b "/dev/$parent" >/dev/null 2>&1 || true
+            || { printf 'USB eject support is not installed.\n' >&2; exit 1; }
+        udisksctl power-off --no-user-interaction -b "$parent" >/dev/null
         printf 'The USB drive can now be unplugged safely.\n'
         ;;
     *)

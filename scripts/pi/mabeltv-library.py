@@ -46,6 +46,8 @@ MAX_CONVERSION_TEMP_C = 78.0
 RESUME_CONVERSION_TEMP_C = 72.0
 USB_IMPORT_RESERVE_BYTES = 256 * 1024 * 1024
 USB_MAX_SELECTION_FILES = 2000
+USB_IDLE_SECONDS = 60.0
+USB_POWER_POLL_SECONDS = 5.0
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
 TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
 TMDB_BACKDROP_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w1280"
@@ -479,6 +481,14 @@ class Library:
         self.offline_preparations: dict[str, dict[str, Any]] = {}
         self.usb_imports: dict[str, dict[str, Any]] = {}
         self.usb_import_lock = threading.RLock()
+        self.usb_action_lock = threading.RLock()
+        self.usb_power_lock = threading.RLock()
+        self.usb_last_activity: dict[str, float] = {}
+        self.usb_sleeping: set[str] = set()
+        self.usb_idle_seconds = max(5.0, float(os.environ.get(
+            "MABELTV_USB_IDLE_SECONDS", USB_IDLE_SECONDS)))
+        self.usb_power_closed = threading.Event()
+        self.usb_power_worker: threading.Thread | None = None
         self.conversion_closed = threading.Event()
         self.media_root.mkdir(parents=True, exist_ok=True)
         self.incoming.mkdir(mode=0o750, exist_ok=True)
@@ -501,14 +511,24 @@ class Library:
         )
         self.conversion_worker.start()
         self.live_stream = LiveStream(self)
+        if os.name == "posix" and self.usb_requires_mount:
+            self.usb_power_worker = threading.Thread(
+                target=self.run_usb_power_worker,
+                name="mabeltv-usb-power",
+                daemon=True,
+            )
+            self.usb_power_worker.start()
 
     def close(self, timeout: float = 10.0) -> None:
         """Drain and stop the single media worker (primarily for clean tests)."""
         if self.conversion_closed.is_set():
             return
         self.conversion_closed.set()
+        self.usb_power_closed.set()
         self.conversion_queue.put(None)
         self.conversion_worker.join(timeout=timeout)
+        if self.usb_power_worker:
+            self.usb_power_worker.join(timeout=min(timeout, USB_POWER_POLL_SECONDS + 1))
         if self.conversion_worker.is_alive():
             raise RuntimeError("The media worker did not stop cleanly")
         self.live_stream.stop()
@@ -1504,6 +1524,9 @@ class Library:
             if not stream or not secrets.compare_digest(str(stream.get("token", "")), token):
                 raise ValueError("That external playback link has expired")
             source = Path(stream.get("source", ""))
+            usb_identity = self._usb_identity_for_source(source)
+            if usb_identity:
+                self.usb_ensure_awake(usb_identity)
             if not source.is_file():
                 self.external_streams.pop(token, None)
                 raise ValueError("That video is no longer available")
@@ -1517,10 +1540,17 @@ class Library:
             stream = self.external_streams.get(token)
             if stream:
                 stream["active"] = max(0, int(stream.get("active", 0)) - 1)
+                usb_identity = self._usb_identity_for_source(Path(stream.get("source", "")))
+                if usb_identity:
+                    self.usb_touch(usb_identity)
 
     def release_external_stream(self, token: str) -> dict[str, Any]:
         with self.external_stream_lock:
-            self.external_streams.pop(token, None)
+            stream = self.external_streams.pop(token, None)
+        if stream:
+            usb_identity = self._usb_identity_for_source(Path(stream.get("source", "")))
+            if usb_identity:
+                self.usb_touch(usb_identity)
         return {"ok": True}
 
     def external_subtitles(self, token: str) -> bytes:
@@ -1716,7 +1746,11 @@ class Library:
         with self.remote_stream_lock:
             if self.remote_stream and secrets.compare_digest(
                     str(self.remote_stream.get("token", "")), token):
+                usb_identity = self._usb_identity_for_source(
+                    Path(self.remote_stream.get("source", "")))
                 self.remote_stream = None
+                if usb_identity:
+                    self.usb_touch(usb_identity)
         return {"ok": True}
 
     def remote_save_position(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -1828,6 +1862,133 @@ class Library:
                 flattened.extend(Library._flatten_lsblk(children))
         return flattened
 
+    def usb_touch(self, identity: str, when: float | None = None) -> None:
+        """Record real USB use so standby starts one minute after it finishes."""
+        identity = self.usb_identity(identity)
+        with self.usb_power_lock:
+            self.usb_last_activity[identity] = time.time() if when is None else when
+            self.usb_sleeping.discard(identity)
+
+    def _usb_identity_for_source(self, source: Path) -> str | None:
+        try:
+            relative = source.resolve(strict=False).relative_to(self.usb_root)
+        except (OSError, ValueError):
+            return None
+        return relative.parts[0] if relative.parts else None
+
+    def _usb_source_matches(self, source: Path, identity: str) -> bool:
+        return self._usb_identity_for_source(source) == identity
+
+    def _usb_volume(self, identity: str) -> dict[str, Any]:
+        identity = self.usb_identity(identity)
+        volume = next((item for item in self.usb_volumes()["volumes"]
+                       if item.get("id") == identity), None)
+        if not volume:
+            raise ValueError("That USB drive is no longer connected")
+        return volume
+
+    @staticmethod
+    def _run_usb_helper(action: str, device: str, timeout: float = 30.0) -> str:
+        result = subprocess.run(
+            ["sudo", "-n", "/usr/local/libexec/mabeltv-admin-action", action, device],
+            capture_output=True, text=True, timeout=timeout)
+        if result.returncode != 0:
+            fallback = {
+                "usb-mount": "The USB drive could not be opened",
+                "usb-sleep": "The USB drive could not enter sleep mode",
+                "usb-eject": "The USB drive could not be fully ejected",
+            }.get(action, "The USB drive action did not complete")
+            raise ValueError(result.stderr.strip() or fallback)
+        return result.stdout.strip()
+
+    def usb_busy_reason(self, identity: str, include_processes: bool = True) -> str | None:
+        """Return why a drive must stay awake, or None when standby is safe."""
+        identity = self.usb_identity(identity)
+        with self.usb_import_lock:
+            if any(job.get("volume") == identity
+                   and job.get("status") not in {"complete", "error"}
+                   for job in self.usb_imports.values()):
+                return "Wait for the USB import to finish"
+        with self.remote_stream_lock:
+            stream = self.remote_stream
+            if stream and float(stream.get("expires", 0)) > time.time() \
+                    and self._usb_source_matches(Path(stream.get("source", "")), identity):
+                return "Stop watching the USB video on this device"
+        with self.external_stream_lock:
+            self._cleanup_external_streams_locked()
+            for stream in self.external_streams.values():
+                if int(stream.get("active", 0)) > 0 \
+                        and self._usb_source_matches(Path(stream.get("source", "")), identity):
+                    return "Wait for phone playback or downloading to finish"
+        with self.offline_preparation_lock:
+            for job in self.offline_preparations.values():
+                if job.get("status") in {"queued", "preparing"} \
+                        and self._usb_source_matches(Path(job.get("source", "")), identity):
+                    return "Wait for offline preparation to finish"
+        mount_path = self.usb_root / identity
+        if include_processes and self.usb_requires_mount and mount_path.is_mount():
+            try:
+                in_use = subprocess.run(
+                    ["fuser", "-m", str(mount_path)],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    timeout=3, check=False).returncode == 0
+            except (OSError, subprocess.TimeoutExpired):
+                # A failed inspection must never make automatic unmounting less safe.
+                return "The USB drive activity could not be checked"
+            if in_use:
+                return "Stop the video currently playing from this USB drive"
+        return None
+
+    def usb_sleep(self, identity: str, automatic: bool = False) -> dict[str, Any]:
+        identity = self.usb_identity(identity)
+        with self.usb_action_lock:
+            volume = self._usb_volume(identity)
+            reason = self.usb_busy_reason(identity, include_processes=bool(volume.get("mounted")))
+            if reason:
+                if automatic:
+                    self.usb_touch(identity)
+                    return {"ok": False, "busy": True, "message": reason}
+                raise ValueError(f"{reason} before putting the drive to sleep")
+            message = self._run_usb_helper("usb-sleep", str(volume.get("device", "")))
+            with self.usb_power_lock:
+                self.usb_sleeping.add(identity)
+                self.usb_last_activity.pop(identity, None)
+        return {"ok": True, "sleeping": True, "message": message}
+
+    def usb_power_tick(self, now: float | None = None) -> None:
+        """Put every connected drive into standby after one idle minute."""
+        current = time.time() if now is None else now
+        volumes = self.usb_volumes()["volumes"]
+        present = {str(volume.get("id", "")) for volume in volumes}
+        with self.usb_power_lock:
+            self.usb_sleeping.intersection_update(present)
+            self.usb_last_activity = {
+                identity: last for identity, last in self.usb_last_activity.items()
+                if identity in present
+            }
+            for identity in present:
+                if identity and identity not in self.usb_sleeping:
+                    self.usb_last_activity.setdefault(identity, current)
+            due = [volume for volume in volumes
+                   if str(volume.get("id", "")) not in self.usb_sleeping
+                   and current - self.usb_last_activity.get(
+                       str(volume.get("id", "")), current) >= self.usb_idle_seconds]
+        for volume in due:
+            identity = str(volume.get("id", ""))
+            try:
+                self.usb_sleep(identity, automatic=True)
+            except (OSError, subprocess.TimeoutExpired, ValueError) as error:
+                self.usb_touch(identity, current)
+                print(f"USB automatic sleep failed for {identity}: {error}", file=sys.stderr)
+
+    def run_usb_power_worker(self) -> None:
+        interval = min(USB_POWER_POLL_SECONDS, max(1.0, self.usb_idle_seconds / 4))
+        while not self.usb_power_closed.wait(interval):
+            try:
+                self.usb_power_tick()
+            except Exception as error:
+                print(f"USB power manager failed: {error}", file=sys.stderr)
+
     def usb_volumes(self) -> dict[str, Any]:
         volumes: list[dict[str, Any]] = []
         seen: set[str] = set()
@@ -1884,6 +2045,9 @@ class Library:
                 if path.is_dir() and path.name not in seen:
                     volumes.append({"id": path.name, "device": "", "label": path.name,
                                     "filesystem": "directory", "size": 0, "mounted": True})
+        with self.usb_power_lock:
+            for volume in volumes:
+                volume["sleeping"] = volume["id"] in self.usb_sleeping
         volumes.sort(key=lambda value: (not value["mounted"], value["label"].lower()))
         with self.usb_import_lock:
             jobs = [dict(job) for job in self.usb_imports.values()
@@ -1891,7 +2055,7 @@ class Library:
         return {"volumes": volumes, "imports": jobs}
 
     def usb_resolve(self, identity: str, relative: str = "") -> Path:
-        root = self.usb_mount_path(identity)
+        root = self.usb_ensure_awake(identity)
         relative_path = Path(relative)
         if relative_path.is_absolute() or ".." in relative_path.parts:
             raise ValueError("That USB path is not valid")
@@ -1905,8 +2069,8 @@ class Library:
         return resolved
 
     def usb_browse(self, identity: str, relative: str = "") -> dict[str, Any]:
-        root = self.usb_mount_path(identity)
         directory = self.usb_resolve(identity, relative)
+        root = self.usb_mount_path(identity)
         if not directory.is_dir():
             raise ValueError("Choose a folder on the USB drive")
         entries: list[dict[str, Any]] = []
@@ -1937,48 +2101,43 @@ class Library:
     def usb_mount(self, device: str) -> dict[str, Any]:
         if not re.fullmatch(r"/dev/sd[a-z][0-9]+", device):
             raise ValueError("Choose a removable USB partition")
-        result = subprocess.run(
-            ["sudo", "-n", "/usr/local/libexec/mabeltv-admin-action", "usb-mount", device],
-            capture_output=True, text=True, timeout=20)
-        if result.returncode != 0:
-            raise ValueError(result.stderr.strip() or "The USB drive could not be mounted")
-        return self.usb_volumes()
+        with self.usb_action_lock:
+            self._run_usb_helper("usb-mount", device)
+            result = self.usb_volumes()
+            mounted = next((volume for volume in result["volumes"]
+                            if volume.get("device") == device and volume.get("mounted")), None)
+            if not mounted:
+                raise ValueError("The USB drive did not become ready in time")
+            self.usb_touch(str(mounted["id"]))
+            mounted["sleeping"] = False
+            return result
+
+    def usb_ensure_awake(self, identity: str) -> Path:
+        identity = self.usb_identity(identity)
+        try:
+            root = self.usb_mount_path(identity)
+            self.usb_touch(identity)
+            return root
+        except ValueError:
+            if not self.usb_requires_mount:
+                raise
+        volume = self._usb_volume(identity)
+        self.usb_mount(str(volume.get("device", "")))
+        return self.usb_mount_path(identity)
 
     def usb_eject(self, identity: str) -> dict[str, Any]:
         identity = self.usb_identity(identity)
-        mount_path = self.usb_mount_path(identity)
-        with self.usb_import_lock:
-            busy = any(job.get("volume") == identity
-                       and job.get("status") not in {"complete", "error"}
-                       for job in self.usb_imports.values())
-        if busy:
-            raise ValueError("Wait for the USB import to finish before ejecting the drive")
-        with self.remote_stream_lock:
-            stream = self.remote_stream
-            if stream and float(stream.get("expires", 0)) > time.time():
-                source = Path(stream.get("source", ""))
-                if source == mount_path or mount_path in source.parents:
-                    raise ValueError("Stop watching the USB video on this device before ejecting the drive")
-        with self.external_stream_lock:
-            self._cleanup_external_streams_locked()
-            for stream in self.external_streams.values():
-                source = Path(stream.get("source", ""))
-                busy = (int(stream.get("active", 0)) > 0
-                        or stream.get("purpose") == "offline")
-                if busy and (source == mount_path or mount_path in source.parents):
-                    raise ValueError("Wait for phone playback or downloading to finish before ejecting the drive")
-        with self.offline_preparation_lock:
-            for job in self.offline_preparations.values():
-                source = Path(job.get("source", ""))
-                if job.get("status") in {"queued", "preparing"} \
-                        and (source == mount_path or mount_path in source.parents):
-                    raise ValueError("Wait for offline preparation to finish before ejecting the drive")
-        result = subprocess.run(
-            ["sudo", "-n", "/usr/local/libexec/mabeltv-admin-action", "usb-eject", identity],
-            capture_output=True, text=True, timeout=20)
-        if result.returncode != 0:
-            raise ValueError(result.stderr.strip() or "The USB drive could not be ejected")
-        return {"ok": True, "message": result.stdout.strip()}
+        with self.usb_action_lock:
+            volume = self._usb_volume(identity)
+            reason = self.usb_busy_reason(
+                identity, include_processes=bool(volume.get("mounted")))
+            if reason:
+                raise ValueError(f"{reason} before fully ejecting the drive")
+            message = self._run_usb_helper("usb-eject", str(volume.get("device", "")))
+            with self.usb_power_lock:
+                self.usb_sleeping.discard(identity)
+                self.usb_last_activity.pop(identity, None)
+        return {"ok": True, "message": message}
 
     def usb_play(self, identity: str, relative: str) -> dict[str, Any]:
         source = self.usb_resolve(identity, relative)
@@ -1996,6 +2155,7 @@ class Library:
             raise ValueError("The TV player is not ready for USB playback") from error
         if reply != "ok":
             raise ValueError("The TV could not start that USB video")
+        self.usb_touch(identity)
         return {"ok": True, "message": f"Playing {self.display_name(source.name)} from USB"}
 
     def _usb_selected_files(self, identity: str, selected: list[Any]) -> list[Path]:
@@ -2093,10 +2253,12 @@ class Library:
                 job.update(status="complete", current="",
                            message="Import complete" if refreshed else
                            "Copied successfully; TV refresh is still pending")
+            self.usb_touch(str(job.get("volume", "")))
         except Exception as error:
             with self.usb_import_lock:
                 job = self.usb_imports[job_id]
                 job.update(status="error", message=str(error), current="")
+            self.usb_touch(str(job.get("volume", "")))
 
     def usb_import_status(self, job_id: str) -> dict[str, Any]:
         if not re.fullmatch(r"[a-f0-9]{32}", job_id):
@@ -2589,6 +2751,12 @@ class Library:
                 "tv_guide_enabled": self.tv_guide_enabled(settings),
                 "portal_theme": settings.get("portal_theme")
                 if settings.get("portal_theme") in {"dark", "light"} else "dark",
+                "portal_design": settings.get("portal_design")
+                if settings.get("portal_design") in {"current", "signal", "aperture"} else "current",
+                "portal_palette": settings.get("portal_palette")
+                if settings.get("portal_palette") in {
+                    "ember", "tide", "grove", "plum", "ochre", "mono"
+                } else "ember",
             },
             "tv_settings": self.tv_settings(settings),
             "remote_viewing": self.remote_settings(),
@@ -3503,7 +3671,8 @@ class Library:
         with self.config_lock:
             self._manage(payload)
         if payload.get("action") in {
-                "optimise-adult", "set-portal-theme", "set-remote-simultaneous"}:
+                "optimise-adult", "set-portal-design", "set-portal-palette",
+                "set-portal-theme", "set-remote-simultaneous"}:
             # These settings belong to the portal/library service.  In
             # particular, allowing a browser stream alongside the television
             # must never refresh or otherwise disturb the TV player.
@@ -3526,6 +3695,23 @@ class Library:
                 raise ValueError("Choose the light or dark portal theme")
             settings = self.settings()
             settings["portal_theme"] = theme
+            self.write_json(self.settings_path, settings)
+            return
+        if action == "set-portal-design":
+            design = str(payload.get("design", ""))
+            if design not in {"current", "signal", "aperture"}:
+                raise ValueError("Choose the current, Signal, or Aperture portal design")
+            settings = self.settings()
+            settings["portal_design"] = design
+            self.write_json(self.settings_path, settings)
+            return
+        if action == "set-portal-palette":
+            palette = str(payload.get("palette", ""))
+            if palette not in {
+                    "ember", "tide", "grove", "plum", "ochre", "mono"}:
+                raise ValueError("Choose one of the available portal palettes")
+            settings = self.settings()
+            settings["portal_palette"] = palette
             self.write_json(self.settings_path, settings)
             return
         if action == "set-tv-guide-enabled":
@@ -3855,6 +4041,17 @@ class Handler(BaseHTTPRequestHandler):
     def setup(self) -> None:
         super().setup()
         self.connection.settimeout(120)
+
+    def end_headers(self) -> None:
+        # Cloudflare and phone browsers keep ordinary asset connections idle.
+        # A thread-per-connection server must close those after the response or
+        # a small upstream connection pool can occupy every bounded worker.
+        # Upload requests retain HTTP/1.1 keep-alive so multi-chunk phone
+        # transfers continue to reuse their connection as intended.
+        if not self.path.startswith("/api/uploads"):
+            self.send_header("Connection", "close")
+            self.close_connection = True
+        super().end_headers()
 
     def log_message(self, fmt: str, *args: Any) -> None: return
 

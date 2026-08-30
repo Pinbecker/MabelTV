@@ -86,7 +86,7 @@
   .watch-discovery,
   .adult-discovery {
     display: grid;
-    grid-template-columns: minmax(240px, 1fr) repeat(3, minmax(148px, auto));
+    grid-template-columns: minmax(240px, 1fr) minmax(180px, auto);
     gap: var(--space-2);
     margin-bottom: var(--space-6);
   }
@@ -120,6 +120,7 @@
     padding-right: 0;
     padding-left: 0;
     background: transparent;
+    font-size: 1rem;
   }
 
   .watch-search input:focus,
@@ -425,21 +426,6 @@
     height: 100%;
     display: block;
     background: var(--accent);
-  }
-
-  .watch-play {
-    position: absolute;
-    right: var(--space-2);
-    bottom: var(--space-2);
-    width: 44px;
-    height: 44px;
-    min-height: 44px;
-    display: grid;
-    place-items: center;
-    border-radius: var(--radius-round);
-    padding: 0;
-    background: var(--text);
-    color: var(--text-inverse);
   }
 
   .watch-sheet {

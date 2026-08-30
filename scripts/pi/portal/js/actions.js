@@ -30,16 +30,7 @@ let managementBusy = false
       if (name && name.trim()) await manage('rename', { channel: channel.number, file: programme.name, name: name.trim() })
     }
 
-    $('#backToChannels').onclick = () => {
-      if (channelWorkspaceReturnToWatch) {
-        selectedManageChannel = null
-        channelWorkspaceReturnToWatch = false
-        remoteKind = 'channel'
-        openView('watch')
-        renderRemoteViewing()
-      } else showChannelHub()
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    }
+    $('#backToChannels').onclick = closeChannelPage
     const showAddChannelSheet = () => openLibrarySheet($('#addChannelPanel'), $('#newChannelNumber'))
     $('#showAddChannel').onclick = showAddChannelSheet
     $('#openAddChannelUtility').onclick = showAddChannelSheet
@@ -89,12 +80,6 @@ let managementBusy = false
       const channel = library.channels.find(value => value.number === selectedManageChannel)
       if (channel) renderProgrammeList(channel)
     })
-    $('#programmeActionPlay').onclick = () => {
-      const item = selectedProgrammeAction
-      if (!item) return
-      closeLibrarySheet($('#programmeActionSheet'))
-      playOnTv({ kind: 'channel', channel: item.channel.number, file: item.programme.name }, item.programme.display_name)
-    }
     $('#programmeActionToggle').onclick = () => {
       const item = selectedProgrammeAction
       if (!item) return

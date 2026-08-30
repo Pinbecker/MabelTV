@@ -1,5 +1,7 @@
 'use strict'
 
+let iosInlineControlTimer = null
+
 function remoteTime(value) {
       const seconds = Math.max(0, Math.floor(Number(value) || 0))
       return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
@@ -36,34 +38,71 @@ function remoteTime(value) {
       return `/watch/player?${query}`
     }
 
-    function saveIosRemotePosition(finished = false) {
+    function saveIosRemotePosition(finished = false, force = false) {
       const video = $('#iosWatchVideo')
-      if (!iosRemoteSession || !Number.isFinite(video.currentTime) || (!finished && video.currentTime - iosRemoteLastSaved < 10)) return
-      iosRemoteLastSaved = video.currentTime
-      api('/api/remote/position', { method: 'POST', body: JSON.stringify({ stream: iosRemoteSession, position: finished ? video.duration : video.currentTime, duration: video.duration }) }).catch(() => {})
+      if (!iosRemoteSession || !Number.isFinite(video.currentTime) || (!finished && !force && Math.abs(video.currentTime - iosRemoteLastSaved) < 10)) return Promise.resolve(false)
+      const session = iosRemoteSession
+      const duration = Number.isFinite(video.duration) ? video.duration : 0
+      const position = finished && duration > 0 ? duration : video.currentTime
+      iosRemoteLastSaved = position
+      return api('/api/remote/position', { method: 'POST', body: JSON.stringify({ stream: session, position, duration }) })
+        .then(() => true).catch(() => false)
+    }
+
+    function beaconIosRemotePosition() {
+      const video = $('#iosWatchVideo')
+      if (!iosRemoteSession || !Number.isFinite(video.currentTime) || !navigator.sendBeacon) return
+      const duration = Number.isFinite(video.duration) ? video.duration : 0
+      navigator.sendBeacon('/api/remote/position', new Blob([
+        JSON.stringify({ stream: iosRemoteSession, position: video.currentTime, duration }),
+      ], { type: 'application/json' }))
     }
 
     function closeIosRemotePlayer() {
       const video = $('#iosWatchVideo')
-      saveIosRemotePosition()
-      if (iosRemoteSession) api('/api/remote/release', { method: 'POST', body: JSON.stringify({ stream: iosRemoteSession }) }).catch(() => {})
+      const session = iosRemoteSession
+      const saved = saveIosRemotePosition(false, true)
+      clearTimeout(iosInlineControlTimer); iosInlineControlTimer = null
       clearInterval(iosRemotePositionTimer); clearInterval(iosRemoteHeartbeatTimer)
       iosRemotePositionTimer = null; iosRemoteHeartbeatTimer = null; iosRemoteSession = null
       iosOfflineDownloadId = null
+      video.style.pointerEvents = ''; video.controls = true
       video.pause(); video.removeAttribute('src'); video.replaceChildren(); video.load()
         $('#iosWatchPlayer').classList.add('hidden')
         document.documentElement.classList.remove('native-video-fullscreen')
         unlockPortalPlayerScroll()
+      saved.finally(() => {
+        if (session) return api('/api/remote/release', { method: 'POST', body: JSON.stringify({ stream: session }) }).catch(() => {})
+      }).finally(() => load().catch(() => {}))
     }
 
     function setNativeVideoBackdrop(active) {
       document.documentElement.classList.toggle('native-video-fullscreen', active)
     }
 
+    function restoreIosInlineVideoControls(video) {
+      setNativeVideoBackdrop(false)
+      clearTimeout(iosInlineControlTimer)
+      // AVKit can hand the visible page back before its composited control
+      // layer has stopped receiving touches. Briefly removing the inline
+      // controls retires that layer; rebuilding them after the transition
+      // gives WebKit a fresh, correctly positioned interaction surface.
+      video.controls = false
+      video.style.pointerEvents = 'none'
+      iosInlineControlTimer = setTimeout(() => {
+        video.controls = true
+        video.style.pointerEvents = ''
+        iosInlineControlTimer = null
+      }, 80)
+    }
+
     async function startIosRemotePlayer(payload, position = 0) {
       const shell = $('#iosWatchPlayer'); const video = $('#iosWatchVideo'); const error = $('#iosWatchError')
       shell.classList.remove('hidden'); error.classList.add('hidden'); video.classList.remove('hidden')
-      lockPortalPlayerScroll()
+      // The fixed-body scroll lock causes incorrect touch coordinates in
+      // installed iOS web apps after AVKit changes the viewport. The player
+      // shell is already fixed, so overflow locking is sufficient here.
+      lockPortalPlayerScroll(false)
       try {
         let result
         result = await startRemoteStream(payload)
@@ -85,7 +124,7 @@ function remoteTime(value) {
         const resume = Number(position || result.resume_position || 0)
         let nativeFullscreen = false
         const requestNativeFullscreen = () => {
-          if (nativeFullscreen || typeof video.webkitEnterFullscreen !== 'function') return
+          if (nativeFullscreen || video.webkitDisplayingFullscreen || video.webkitPresentationMode === 'fullscreen' || typeof video.webkitEnterFullscreen !== 'function') return
           try { video.webkitEnterFullscreen() } catch (_) { /* wait for play */ }
         }
         video.onloadedmetadata = () => {
@@ -98,16 +137,24 @@ function remoteTime(value) {
         // movie is already accepted and the native AVPlayer can safely add CC.
         video.oncanplay = attachNativeCaptions
         video.onerror = () => { setNativeVideoBackdrop(false); error.textContent = `This video could not be played (media error ${video.error?.code || 'unknown'}).`; error.classList.remove('hidden'); video.classList.add('hidden') }
-        video.onwebkitendfullscreen = () => setNativeVideoBackdrop(false)
+        video.onwebkitendfullscreen = () => {
+          nativeFullscreen = false
+          restoreIosInlineVideoControls(video)
+          saveIosRemotePosition(false, true)
+        }
         video.onwebkitpresentationmodechanged = () => {
-          setNativeVideoBackdrop(video.webkitPresentationMode === 'fullscreen' || Boolean(video.webkitDisplayingFullscreen))
+          const active = video.webkitPresentationMode === 'fullscreen' || Boolean(video.webkitDisplayingFullscreen)
+          nativeFullscreen = active
+          if (active) setNativeVideoBackdrop(true)
+          else restoreIosInlineVideoControls(video)
         }
         video.onwebkitbeginfullscreen = () => { nativeFullscreen = true; setNativeVideoBackdrop(true) }
         // Ask for the true native player immediately from the library tap and
         // retry only once the media becomes ready. This avoids the old inline
         // hand-off before the Liquid Glass player opens.
         video.onplay = requestNativeFullscreen
-        video.onpause = () => saveIosRemotePosition()
+        video.onpause = () => saveIosRemotePosition(false, true)
+        video.onseeked = () => saveIosRemotePosition(false, true)
         video.onended = () => saveIosRemotePosition(true)
         $('#iosWatchStartOver').classList.toggle('hidden', resume <= 10)
         iosRemoteLastSaved = 0
@@ -128,7 +175,7 @@ function remoteTime(value) {
       iosRemoteSession = null
       iosOfflineDownloadId = manifest.id
       shell.classList.remove('hidden'); error.classList.add('hidden'); video.classList.remove('hidden')
-      lockPortalPlayerScroll()
+      lockPortalPlayerScroll(false)
       $('#iosWatchTitle').textContent = manifest.title
       $('#iosWatchContext').textContent = 'Downloaded · ready offline'
       $('#iosWatchStartOver').classList.add('hidden')
@@ -141,14 +188,20 @@ function remoteTime(value) {
       }
       let nativeFullscreen = false
       const requestNativeFullscreen = () => {
-        if (nativeFullscreen || typeof video.webkitEnterFullscreen !== 'function') return
+        if (nativeFullscreen || video.webkitDisplayingFullscreen || video.webkitPresentationMode === 'fullscreen' || typeof video.webkitEnterFullscreen !== 'function') return
         try { video.webkitEnterFullscreen() } catch (_) { /* retry when playback starts */ }
       }
       video.onloadedmetadata = requestNativeFullscreen
       video.oncanplay = requestNativeFullscreen
       video.onplay = requestNativeFullscreen
       video.onwebkitbeginfullscreen = () => { nativeFullscreen = true; setNativeVideoBackdrop(true) }
-      video.onwebkitendfullscreen = () => setNativeVideoBackdrop(false)
+      video.onwebkitendfullscreen = () => { nativeFullscreen = false; restoreIosInlineVideoControls(video) }
+      video.onwebkitpresentationmodechanged = () => {
+        const active = video.webkitPresentationMode === 'fullscreen' || Boolean(video.webkitDisplayingFullscreen)
+        nativeFullscreen = active
+        if (active) setNativeVideoBackdrop(true)
+        else restoreIosInlineVideoControls(video)
+      }
       video.onerror = () => {
         setNativeVideoBackdrop(false)
         error.textContent = 'This downloaded copy could not be opened. Try removing it and downloading it again.'
@@ -322,6 +375,10 @@ function remoteTime(value) {
 
     $('#iosWatchBack').onclick = closeIosRemotePlayer
     $('#iosWatchStartOver').onclick = () => { const video = $('#iosWatchVideo'); video.currentTime = 0; iosRemoteLastSaved = 0; video.play().catch(() => {}); $('#iosWatchStartOver').classList.add('hidden') }
+    window.addEventListener('pagehide', beaconIosRemotePosition)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') beaconIosRemotePosition()
+    })
     $('#mabelWatchBack').onclick = closeMabelWatchPlayer
     $$('[data-mabel-watch-action]').forEach(button => button.onclick = () => {
       const video = $('#mabelWatchVideo')
@@ -399,10 +456,6 @@ function remoteTime(value) {
       const art = document.createElement('span')
       art.className = 'watch-card-art'
       art.append(filmPoster(film))
-      const play = document.createElement('span')
-      play.className = 'watch-play'
-      play.textContent = '▶'
-      art.append(play)
       if (film.browser_ready === false) {
         const format = document.createElement('span')
         format.className = 'watch-format'
@@ -481,17 +534,36 @@ function remoteTime(value) {
 
     async function clearWatchFilmProgress(film, playAfter = false) {
       const source = { kind: 'adult', file: film.path }
-      await api('/api/remote/clear-position', {
-        method: 'POST', body: JSON.stringify(source),
-      })
-      const startFilm = { ...film, remote_position: 0, remote_last_watched: 0 }
-      if (playAfter) {
-        playWatchFilm(startFilm, 0)
-        return
+      const action = playAfter ? $('#watchFilmStartOver') : $('#watchFilmRemoveProgress')
+      const actionLabel = action.querySelector('span')
+      const originalLabel = actionLabel.textContent
+      action.disabled = true
+      action.setAttribute('aria-busy', 'true')
+      actionLabel.textContent = playAfter ? 'Starting from beginning…' : 'Removing…'
+      try {
+        await api('/api/remote/clear-position', {
+          method: 'POST', body: JSON.stringify(source),
+        })
+        film.remote_position = 0
+        film.remote_last_watched = 0
+        const storedFilm = (library?.adult_library || []).find(item => item.path === film.path)
+        if (storedFilm) {
+          storedFilm.remote_position = 0
+          storedFilm.remote_last_watched = 0
+        }
+        const startFilm = { ...film }
+        if (playAfter) {
+          playWatchFilm(startFilm, 0)
+          return
+        }
+        closeWatchFilmSheet()
+        renderAdultWatch()
+        notice(`${watchFilmTitle(film)} was removed from Continue Watching.`)
+      } finally {
+        action.disabled = false
+        action.removeAttribute('aria-busy')
+        actionLabel.textContent = originalLabel
       }
-      closeWatchFilmSheet()
-      await load()
-      setNotice(`${watchFilmTitle(film)} was removed from Continue Watching.`)
     }
 
     function openWatchFilmSheet(film) {
@@ -587,9 +659,6 @@ function remoteTime(value) {
       renderWatchCollections(allFilms, folders)
       const collectionName = watchFolder === '*' ? 'All films' : watchFolder
       $('#watchCollectionName').textContent = collectionName
-      const readyCount = allFilms.filter(film => film.browser_ready !== false).length
-      $('#watchReadyCount').textContent = readyCount
-      $('#watchReadyToggle').setAttribute('aria-pressed', String(watchReadyOnly))
       $('#watchSearch').value = watchSearchText
       $('#watchSearchClear').classList.toggle('hidden', !watchSearchText)
 
@@ -609,12 +678,11 @@ function remoteTime(value) {
         // Search is always global. A film should never look missing merely
         // because someone last browsed a different collection.
         if (!query && watchFolder !== '*' && film.folder !== watchFolder) return false
-        if (watchReadyOnly && film.browser_ready === false) return false
         if (!query) return true
         const metadata = film.metadata || {}
         return [watchFilmTitle(film), film.display_name, film.folder, metadata.year].filter(Boolean).join(' ').toLocaleLowerCase().includes(query)
       })
-      $('#watchLibraryKicker').textContent = query ? 'Search all films' : watchReadyOnly ? 'Ready to stream' : 'Your library'
+      $('#watchLibraryKicker').textContent = query ? 'Search all films' : 'Your library'
       $('#watchLibraryTitle').textContent = query ? `“${watchSearchText.trim()}”` : collectionName
       $('#watchLibraryCount').textContent = `${films.length} film${films.length === 1 ? '' : 's'}`
       const grid = document.createElement('div')
@@ -826,7 +894,6 @@ function remoteTime(value) {
     })
     $('#watchSearch').oninput = event => { watchSearchText = event.target.value; renderAdultWatch() }
     $('#watchSearchClear').onclick = event => { event.preventDefault(); watchSearchText = ''; renderAdultWatch(); $('#watchSearch').focus() }
-    $('#watchReadyToggle').onclick = () => { watchReadyOnly = !watchReadyOnly; renderAdultWatch() }
     $('#watchCollectionTrigger').onclick = () => { $('#watchCollectionSheet').showModal(); document.documentElement.style.overflow = 'hidden' }
     $('#watchCollectionClose').onclick = () => $('#watchCollectionSheet').close()
     $('#watchCollectionSheet').onclick = event => { if (event.target === $('#watchCollectionSheet')) $('#watchCollectionSheet').close() }

@@ -1,6 +1,6 @@
 'use strict'
 
-const SHELL_CACHE = 'mabeltv-shell-v13'
+const SHELL_CACHE = 'mabeltv-shell-v32'
 const SHELL_URLS = [
   '/',
   '/manifest.webmanifest',
@@ -16,11 +16,18 @@ const SHELL_URLS = [
   '/portal/css/usb.css',
   '/portal/css/settings.css',
   '/portal/css/responsive.css',
+  '/portal/css/channel-page.css',
+  '/portal/css/component-gallery.css',
+  '/portal/css/component-direction-signal.css',
+  '/portal/css/component-direction-aperture.css',
   '/portal/icons.svg',
   '/portal/js/core.js',
+  '/portal/js/appearance.js',
+  '/portal/js/channel-page.js',
   '/portal/js/library.js',
   '/portal/js/playback.js',
   '/portal/js/actions.js',
+  '/portal/js/component-gallery.js',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/apple-touch-icon.png',

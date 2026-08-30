@@ -1,0 +1,1743 @@
+/* Direction 01 — Signal
+   Shared by the component preview and the portal-wide Signal design. */
+
+.component-theme-signal,
+html[data-portal-design="signal"] {
+  --signal-ink: var(--text);
+  --signal-paper: var(--canvas);
+  --signal-wash: var(--surface-2);
+  --signal-rule: var(--border);
+  --signal-rule-dark: var(--border-strong);
+  --signal-red: var(--accent);
+  --signal-red-dark: var(--accent-hover);
+  --signal-red-soft: var(--accent-soft);
+  --signal-green: var(--success);
+  --signal-green-soft: var(--success-soft);
+  --radius-control: 6px;
+  --radius-card: 8px;
+  --radius-panel: 12px;
+  --radius-sheet: 12px;
+  --shadow-card: 0 1px 1px color-mix(in srgb, var(--text) 4%, transparent), 0 8px 22px color-mix(in srgb, var(--text) 7%, transparent);
+  --shadow-sheet: 0 24px 70px color-mix(in srgb, var(--text) 22%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+
+.component-theme-signal {
+  min-width: 0;
+  display: grid;
+  place-items: stretch;
+  gap: 48px;
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  padding: clamp(14px, 2.5vw, 28px);
+  background: var(--signal-paper);
+  color: var(--signal-ink);
+}
+
+html[data-portal-design="signal"] body {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--border-subtle) 44%, transparent) 1px, transparent 1px) 0 0 / 96px 100%,
+    radial-gradient(circle at 84% 2%, var(--ambient), transparent 32rem),
+    var(--canvas);
+}
+
+html[data-portal-design="signal"] :is(h1, h2, h3) {
+  letter-spacing: -.045em;
+}
+
+html[data-portal-design="signal"] h1 {
+  font-weight: 640;
+}
+
+html[data-portal-design="signal"] :is(h2, h3) {
+  font-weight: 660;
+}
+
+html[data-portal-design="signal"] :is(.eyebrow, .section-kicker, .watch-section-kicker) {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: .66rem;
+  font-weight: 700;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+
+html[data-portal-design="signal"] .surface {
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+html[data-portal-design="signal"] :is(button, a.button, input, select, textarea) {
+  border-radius: var(--radius-control);
+}
+
+html[data-portal-design="signal"] .logo-mark {
+  border-radius: 5px;
+}
+
+html[data-portal-design="signal"] .rail {
+  border-right-color: var(--border);
+  background: color-mix(in srgb, var(--canvas-raised) 97%, transparent);
+}
+
+html[data-portal-design="signal"] .portal-nav:not(.component-nav-preview) {
+  gap: 0;
+  border-top: 1px solid var(--border);
+}
+
+html[data-portal-design="signal"] .portal-nav:not(.component-nav-preview) button {
+  min-height: 52px;
+  border: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: 0;
+  padding-inline: 11px;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-portal-design="signal"] .portal-nav:not(.component-nav-preview) button.active {
+  border-bottom-color: var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-2) 74%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+html[data-portal-design="signal"] .portal-nav:not(.component-nav-preview) button.active .nav-dot {
+  display: none;
+}
+
+html[data-portal-design="signal"] :is(.portal-intro, .portal-page-head, .component-gallery-hero) {
+  border-radius: var(--radius-panel);
+}
+
+.signal-direction-intro {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) minmax(230px, 330px);
+  gap: clamp(24px, 5vw, 64px);
+  border-radius: 8px;
+  padding: clamp(28px, 6vw, 72px);
+  background: var(--hero-surface);
+  color: var(--hero-text);
+}
+
+.signal-direction-index {
+  align-self: start;
+  display: grid;
+  gap: 18px;
+}
+
+.signal-direction-index span {
+  color: var(--signal-red);
+  font-size: clamp(3.8rem, 8vw, 7rem);
+  font-weight: 300;
+  letter-spacing: -.08em;
+  line-height: .78;
+}
+
+.signal-direction-index small,
+.signal-direction-copy > p:first-child {
+  color: var(--hero-muted);
+  font-family: var(--font-mono);
+  font-size: .68rem;
+  font-weight: 650;
+  letter-spacing: .12em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.signal-direction-copy h2 {
+  margin: 8px 0 14px;
+  color: var(--hero-text);
+  font-size: clamp(3.4rem, 8vw, 7.4rem);
+  font-weight: 620;
+  letter-spacing: -.075em;
+  line-height: .84;
+}
+
+.signal-direction-copy > p:last-child {
+  max-width: 650px;
+  margin: 0;
+  color: color-mix(in srgb, var(--hero-text) 76%, var(--hero-surface));
+  font-size: clamp(1rem, 1.8vw, 1.3rem);
+  line-height: 1.55;
+}
+
+.signal-direction-intro dl {
+  align-self: stretch;
+  display: grid;
+  align-content: end;
+  gap: 0;
+  margin: 0;
+}
+
+.signal-direction-intro dl div {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  gap: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--hero-text) 24%, transparent);
+  padding: 13px 0;
+}
+
+.signal-direction-intro dt {
+  color: var(--hero-muted);
+  font-family: var(--font-mono);
+  font-size: .68rem;
+  text-transform: uppercase;
+}
+
+.signal-direction-intro dd {
+  margin: 0;
+  color: color-mix(in srgb, var(--hero-text) 90%, var(--hero-surface));
+  font-size: .78rem;
+  font-weight: 600;
+}
+
+.signal-principles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--signal-rule-dark);
+  border-bottom: 1px solid var(--signal-rule-dark);
+}
+
+.signal-principles span {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 16px 18px;
+  color: var(--text-soft);
+  font-size: .8rem;
+  font-weight: 650;
+}
+
+.signal-principles span + span {
+  border-left: 1px solid var(--signal-rule);
+}
+
+.signal-principles b {
+  color: var(--signal-red);
+  font-family: var(--font-mono);
+  font-size: .68rem;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-family {
+  gap: 18px;
+  scroll-margin-top: 112px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-family-head {
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 470px);
+  border-bottom-color: var(--signal-rule-dark);
+  padding: 0 0 14px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-family-head .section-kicker,
+:where(.component-theme-signal, html[data-portal-design="signal"]) .section-kicker,
+:where(.component-theme-signal, html[data-portal-design="signal"]) .eyebrow {
+  color: var(--signal-red);
+  font-family: var(--font-mono);
+  font-size: .66rem;
+  font-weight: 700;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-family-head h2 {
+  margin: 4px 0 0;
+  color: var(--signal-ink);
+  font-size: clamp(1.5rem, 2.5vw, 2.1rem);
+  font-weight: 620;
+  letter-spacing: -.04em;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-family-head > p {
+  color: var(--text-muted);
+  font-size: .84rem;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-inventory {
+  gap: 16px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-specimen {
+  border-color: var(--signal-rule);
+  border-radius: 8px;
+  background: var(--surface-1);
+  box-shadow: var(--shadow-card);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-specimen > header {
+  border-bottom-color: var(--signal-rule);
+  padding: 10px 13px;
+  background: var(--surface-2);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-specimen > header p {
+  color: var(--signal-ink);
+  font-size: .73rem;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-specimen > header span {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: .6rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-stage {
+  min-height: 188px;
+  padding: clamp(22px, 4vw, 40px);
+  background: var(--signal-wash);
+  background-image: none;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-stage-dark {
+  background: var(--signal-ink);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-button-hierarchy button,
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-button-hierarchy a.button {
+  min-height: 46px;
+  gap: 9px;
+  border: 1px solid var(--signal-ink);
+  border-radius: 6px;
+  padding: 10px 16px;
+  background: var(--signal-ink);
+  color: var(--canvas);
+  box-shadow: none;
+  font-size: .78rem;
+  font-weight: 680;
+  letter-spacing: .005em;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-button-hierarchy button:hover {
+  border-color: var(--text-soft);
+  background: color-mix(in srgb, var(--text) 86%, var(--canvas));
+  transform: none;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-button-hierarchy button.secondary {
+  border-color: var(--signal-rule-dark);
+  background: var(--surface-1);
+  color: var(--signal-ink);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-button-hierarchy button.danger {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-button-hierarchy button:disabled {
+  border-color: var(--border-subtle);
+  background: var(--surface-3);
+  color: var(--text-faint);
+  opacity: 1;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .signal-icon,
+:where(.component-theme-signal, html[data-portal-design="signal"]) button svg {
+  stroke-width: 1.8;
+}
+
+/* Foundations */
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-type-sample h1 {
+  color: var(--signal-ink);
+  font-size: clamp(2.2rem, 5vw, 4.2rem);
+  font-weight: 610;
+  letter-spacing: -.065em;
+  line-height: .96;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-type-sample h2 {
+  color: var(--signal-ink);
+  font-size: 1.35rem;
+  font-weight: 640;
+  letter-spacing: -.03em;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-type-sample p:not(.eyebrow) {
+  color: var(--text-soft);
+  font-size: .95rem;
+  line-height: 1.65;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-type-sample small {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: .68rem;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-swatches {
+  gap: 9px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-swatches span {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: .62rem;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-swatches i {
+  aspect-ratio: 4 / 5;
+  border-color: var(--signal-rule);
+  border-radius: 3px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-inline-wrap :is(.health-pill, .count-badge, .watch-format, .remote-state-pill) {
+  min-height: 27px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--signal-rule-dark);
+  border-radius: 3px;
+  padding: 5px 8px;
+  background: transparent;
+  color: var(--signal-ink);
+  font-family: var(--font-mono);
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-inline-wrap .health-pill {
+  border-color: var(--success);
+  background: var(--signal-green-soft);
+  color: var(--success);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-inline-wrap .health-pill::before {
+  width: 6px;
+  height: 6px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--signal-green);
+  content: '';
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-inline-wrap .remote-state-pill {
+  border-color: var(--signal-red);
+  background: var(--signal-red);
+  color: var(--accent-contrast);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .notice:not(:empty),
+:where(.component-theme-signal, html[data-portal-design="signal"]) .callout {
+  border: 0;
+  border-left: 3px solid var(--signal-green);
+  border-radius: 0;
+  padding: 13px 15px;
+  background: var(--surface-1);
+  color: var(--signal-ink);
+  box-shadow: none;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .notice.bad:not(:empty) {
+  border-left-color: var(--signal-red);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .callout p {
+  margin: 4px 0 12px;
+  color: var(--text-muted);
+  font-size: .8rem;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) progress {
+  height: 4px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: var(--border);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) progress::-webkit-progress-bar { background: var(--border); }
+:where(.component-theme-signal, html[data-portal-design="signal"]) progress::-webkit-progress-value { background: var(--signal-red); }
+:where(.component-theme-signal, html[data-portal-design="signal"]) progress::-moz-progress-bar { background: var(--signal-red); }
+
+/* Actions */
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-icon-row .dialog-close,
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-icon-row .channel-page-overflow,
+:where(.component-theme-signal, html[data-portal-design="signal"]) .library-sheet-close.dialog-close {
+  width: 40px;
+  min-height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: transparent;
+  color: var(--signal-ink);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .dialog-close::after,
+:where(.component-theme-signal, html[data-portal-design="signal"]) .library-sheet-close::after {
+  content: none;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-icon-row .dialog-close:hover,
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-icon-row .channel-page-overflow:hover {
+  border-color: transparent;
+  background: var(--surface-3);
+  color: var(--signal-ink);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-icon-row .signal-icon,
+:where(.component-theme-signal, html[data-portal-design="signal"]) .channel-page-overflow .signal-icon,
+:where(.component-theme-signal, html[data-portal-design="signal"]) .library-sheet-close .signal-icon {
+  width: 21px;
+  height: 21px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-action-list {
+  gap: 8px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-action-list .watch-film-play,
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-action-list .watch-film-secondary {
+  position: relative;
+  min-height: 62px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  justify-content: stretch;
+  border-color: var(--signal-rule);
+  border-radius: 6px;
+  padding: 10px 14px;
+  background: var(--surface-1);
+  color: var(--signal-ink);
+  text-align: left;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-action-list .watch-film-play::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--signal-red);
+  content: '';
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-action-list .watch-action-icon {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--signal-red);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-action-list .watch-action-icon svg {
+  width: 23px;
+  height: 23px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-action-list strong {
+  color: var(--signal-ink);
+  font-size: .84rem;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-action-list small {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: .68rem;
+}
+
+/* Forms and selection */
+:where(.component-theme-signal, html[data-portal-design="signal"]) label {
+  gap: 6px;
+  color: var(--text-soft);
+  font-family: var(--font-mono);
+  font-size: .65rem;
+  font-weight: 700;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) :is(input, select, textarea) {
+  min-height: 48px;
+  border: 1px solid var(--signal-rule-dark);
+  border-radius: 5px;
+  padding: 10px 12px;
+  background: var(--surface-1);
+  color: var(--signal-ink);
+  font-family: var(--font-sans);
+  font-size: .88rem;
+  font-weight: 530;
+  letter-spacing: normal;
+  text-transform: none;
+  box-shadow: inset 0 1px 0 rgb(23 27 26 / 3%);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-search {
+  position: relative;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-search .icon {
+  left: 13px;
+  color: var(--text-muted);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-search input {
+  padding-left: 43px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .range-setting {
+  grid-template-columns: minmax(0, 1fr) 48px;
+  gap: 10px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .range-setting label {
+  grid-column: 1 / -1;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) input[type="range"] {
+  height: 24px;
+  min-height: 24px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  accent-color: var(--signal-red);
+  box-shadow: none;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .range-setting output {
+  color: var(--signal-ink);
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  border: 0;
+  border-bottom: 1px solid var(--signal-rule-dark);
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-tabs button {
+  min-height: 43px;
+  justify-content: flex-start;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  padding: 8px 4px;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-tabs button.active {
+  border-bottom-color: var(--signal-red);
+  background: transparent;
+  color: var(--signal-ink);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .adult-folder-tabs {
+  margin: 0;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .adult-folder-tab {
+  min-height: 36px;
+  border-color: var(--signal-rule);
+  border-radius: 4px;
+  padding: 7px 10px;
+  background: var(--surface-1);
+  color: var(--text-soft);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .adult-folder-tab.active {
+  border-color: var(--signal-ink);
+  background: var(--signal-ink);
+  color: var(--canvas);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .feature-control {
+  border: 1px solid var(--signal-rule);
+  border-radius: 6px;
+  padding: 16px;
+  background: var(--surface-1);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .feature-control strong {
+  color: var(--signal-ink);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .feature-control p {
+  margin: 3px 0 0;
+  color: var(--text-muted);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .feature-control .feature-toggle {
+  min-height: 38px;
+  border-color: var(--signal-ink);
+  padding: 7px 11px;
+  background: var(--signal-ink);
+  color: var(--canvas);
+}
+
+/* Navigation and player chrome */
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-nav-preview {
+  height: 72px;
+  gap: 0;
+  border: 1px solid color-mix(in srgb, var(--hero-text) 18%, transparent);
+  border-radius: 8px;
+  padding: 5px 7px 0;
+  background: var(--hero-surface);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-nav-preview button {
+  position: relative;
+  min-height: 64px;
+  gap: 5px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  padding: 6px 3px 7px;
+  background: transparent;
+  color: var(--hero-muted);
+  font-size: .62rem;
+  font-weight: 650;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-nav-preview button.active {
+  border-bottom-color: var(--signal-red);
+  background: transparent;
+  color: var(--hero-text);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-nav-preview button.active .icon {
+  color: var(--signal-red);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-nav-preview .icon {
+  width: 21px;
+  height: 21px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-player-head {
+  min-height: 70px;
+  border: 1px solid color-mix(in srgb, var(--hero-text) 18%, transparent);
+  border-radius: 8px;
+  padding: 9px 12px;
+  background: var(--hero-surface);
+  color: var(--hero-text);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-player-head .ios-watch-back {
+  width: 42px;
+  min-height: 42px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: transparent;
+  color: var(--hero-text);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-player-head strong {
+  color: var(--hero-text);
+  font-size: .84rem;
+  font-weight: 660;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-player-head small {
+  color: var(--hero-muted);
+  font-size: .65rem;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-player-head > button:last-child {
+  min-height: 38px;
+  border-color: color-mix(in srgb, var(--hero-text) 34%, transparent);
+  background: transparent;
+  color: var(--hero-text);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .channel-page-nav {
+  width: 100%;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-stage .channel-page-back,
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-stage .channel-page-back:hover {
+  min-height: 40px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--signal-ink);
+}
+
+/* Film and playback cards */
+:where(.component-theme-signal, html[data-portal-design="signal"]) button.watch-card.component-film-card,
+:where(.component-theme-signal, html[data-portal-design="signal"]) button.watch-card.component-film-card:hover {
+  width: min(190px, 100%);
+  min-height: 0;
+  display: block;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--signal-ink);
+  text-align: left;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-card-art {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-3);
+  box-shadow: var(--shadow-card);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-card-copy {
+  gap: 3px;
+  padding-top: 10px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-card-copy strong {
+  color: var(--signal-ink);
+  font-size: .91rem;
+  font-weight: 660;
+  letter-spacing: -.018em;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-card-copy small {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: .62rem;
+  text-transform: uppercase;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-progress {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  border-radius: 0;
+  background: rgb(255 255 255 / 55%);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-progress span {
+  border-radius: 0;
+  background: var(--signal-red);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-continue-card {
+  height: 148px;
+  grid-template-columns: 102px minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--signal-rule);
+  border-radius: 7px;
+  padding: 0;
+  background: var(--surface-1);
+  color: var(--signal-ink);
+  box-shadow: var(--shadow-card);
+  text-align: left;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-stage .watch-continue-card:hover {
+  border-color: var(--signal-rule-dark);
+  background: var(--surface-1);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-continue-art {
+  border-radius: 0;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-continue-art::after {
+  height: 4px;
+  border-radius: 0;
+  background: linear-gradient(90deg, var(--signal-red) var(--watch-progress), var(--border) var(--watch-progress));
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-continue-copy {
+  position: relative;
+  gap: 3px;
+  padding: 17px 52px 17px 18px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-continue-copy small {
+  color: var(--signal-red);
+  font-family: var(--font-mono);
+  font-size: .61rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-continue-copy strong {
+  color: var(--signal-ink);
+  font-size: 1.05rem;
+  font-weight: 660;
+  letter-spacing: -.025em;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-continue-copy > span {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: .65rem;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-continue-copy i {
+  position: absolute;
+  top: 50%;
+  right: 17px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  background: var(--signal-red);
+  color: var(--accent-contrast);
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--accent) 28%, transparent);
+  transform: translateY(-50%);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-continue-copy i svg {
+  width: 16px;
+  height: 16px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) button.adult-film {
+  min-height: 126px;
+  grid-template-columns: 72px minmax(0, 1fr) 32px;
+  border-color: var(--signal-rule);
+  border-radius: 7px;
+  padding: 10px;
+  background: var(--surface-1);
+  color: var(--signal-ink);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-stage button.adult-film:hover {
+  border-color: var(--signal-rule-dark);
+  background: var(--surface-1);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) button.adult-film .adult-film-poster {
+  width: 72px;
+  height: 108px;
+  border-radius: 4px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .adult-film-copy strong {
+  color: var(--signal-ink);
+  font-size: .9rem;
+  font-weight: 660;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .adult-film-copy small {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: .62rem;
+  text-transform: uppercase;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .adult-film-more,
+:where(.component-theme-signal, html[data-portal-design="signal"]) .adult-film-more .channel-page-chevron {
+  color: var(--text);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .adult-film-more {
+  width: 32px;
+  height: 52px;
+  min-height: 52px;
+  display: grid;
+  place-items: center;
+  border-left: 1px solid var(--signal-rule);
+  border-radius: 0;
+  padding: 0 0 0 8px;
+  background: transparent;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .adult-film-more .channel-page-chevron {
+  width: 18px;
+  height: 18px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .download-card {
+  position: relative;
+  gap: 16px;
+  overflow: hidden;
+  border-color: var(--signal-rule);
+  border-radius: 7px;
+  padding: 17px 17px 17px 20px;
+  background: var(--surface-1);
+  box-shadow: var(--shadow-card);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .download-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--signal-green);
+  content: '';
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .download-card-icon {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--signal-green);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .download-card-copy strong {
+  color: var(--signal-ink);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .download-card-copy small {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: .63rem;
+}
+
+/* MabelTV and channel components */
+:where(.component-theme-signal, html[data-portal-design="signal"]) .mabel-show-identity {
+  min-height: 260px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 8px;
+  padding: 28px;
+  background-color: var(--hero-surface);
+  color: var(--hero-text);
+  box-shadow: var(--shadow-sheet);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-stage .mabel-show-identity:hover {
+  border-color: transparent;
+  background-color: var(--hero-surface);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .mabel-show-identity::after {
+  position: absolute;
+  inset: auto 0 0;
+  height: 4px;
+  background: var(--signal-red);
+  content: '';
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .mabel-show-identity div {
+  max-width: 540px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .mabel-show-identity div > span {
+  color: color-mix(in srgb, var(--signal-red) 82%, var(--hero-text));
+  font-family: var(--font-mono);
+  font-size: .67rem;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .mabel-show-identity h2 {
+  margin: 7px 0 8px;
+  color: var(--hero-text);
+  font-size: clamp(2.2rem, 5vw, 4.5rem);
+  font-weight: 620;
+  letter-spacing: -.06em;
+  line-height: .95;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .mabel-show-identity p {
+  max-width: 470px;
+  color: color-mix(in srgb, var(--hero-text) 76%, var(--hero-surface));
+  font-size: .9rem;
+  line-height: 1.5;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) button.watch-mabel-episode {
+  min-height: 152px;
+  align-items: end;
+  border: 1px solid var(--signal-rule);
+  border-radius: 7px;
+  padding: 17px;
+  background: var(--surface-1);
+  color: var(--signal-ink);
+  text-align: left;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-stage button.watch-mabel-episode:hover {
+  border-color: var(--signal-rule-dark);
+  background: var(--surface-1);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-mabel-copy {
+  gap: 5px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-mabel-copy small {
+  color: var(--signal-red);
+  font-family: var(--font-mono);
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-mabel-copy strong {
+  color: var(--signal-ink);
+  font-size: 1rem;
+  font-weight: 660;
+  letter-spacing: -.02em;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .watch-mabel-copy span {
+  color: var(--text-muted);
+  font-size: .68rem;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .channel-page-show-card {
+  grid-template-columns: minmax(0, 1fr) 46px;
+  overflow: hidden;
+  border: 1px solid var(--signal-rule);
+  border-radius: 7px;
+  background: var(--surface-1);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .channel-page-show-card:hover,
+:where(.component-theme-signal, html[data-portal-design="signal"]) .channel-page-show-card:focus-within {
+  background: var(--surface-2);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .channel-page-show-main {
+  min-height: 78px;
+  grid-template-columns: 72px minmax(0, 1fr) 18px;
+  gap: 16px;
+  border: 0;
+  border-radius: 0;
+  padding: 11px 14px;
+  background: transparent;
+  color: var(--signal-ink);
+  text-align: left;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-stage .channel-page-show-main:hover,
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-stage .channel-page-show-main:active,
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-stage .channel-page-show-main:focus-visible,
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-stage .channel-page-film-main:hover,
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-stage :is(.component-channel-management, .library-main-card):hover {
+  background: transparent;
+  color: var(--signal-ink);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .channel-page-episode {
+  align-self: stretch;
+  display: grid;
+  place-items: center start;
+  border-right: 1px solid var(--signal-rule);
+  border-radius: 0;
+  background: transparent;
+  color: var(--signal-red);
+  font-family: var(--font-mono);
+  font-size: .7rem;
+  font-weight: 700;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .channel-page-show-copy strong,
+:where(.component-theme-signal, html[data-portal-design="signal"]) .channel-page-film-copy strong {
+  color: var(--signal-ink);
+  font-size: .84rem;
+  font-weight: 660;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .channel-page-show-copy small,
+:where(.component-theme-signal, html[data-portal-design="signal"]) .channel-page-film-copy small {
+  color: var(--text-muted);
+  font-size: .65rem;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .channel-page-show-card > .channel-page-overflow,
+:where(.component-theme-signal, html[data-portal-design="signal"]) .channel-page-film-card > .channel-page-overflow {
+  width: 46px;
+  min-height: 46px;
+  align-self: center;
+  border: 0;
+  border-left: 1px solid var(--signal-rule);
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .channel-page-film-card {
+  border: 0;
+  border-radius: 0;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .channel-page-film-main {
+  min-height: 0;
+  display: block;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--signal-ink);
+  text-align: left;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .channel-page-poster {
+  overflow: hidden;
+  border: 1px solid var(--signal-rule);
+  border-radius: 5px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--hero-surface) 80%, var(--accent)), var(--hero-surface));
+  color: color-mix(in srgb, var(--signal-red) 82%, var(--hero-text));
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .channel-page-film-copy {
+  padding-top: 9px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .channel-page-film-card > .channel-page-overflow {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  min-height: 36px;
+  border: 1px solid color-mix(in srgb, var(--hero-text) 34%, transparent);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--hero-surface) 88%, transparent);
+  color: var(--hero-text);
+  box-shadow: 0 5px 16px rgb(0 0 0 / 20%);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) :is(.component-channel-management, .library-main-card) {
+  width: 100%;
+  display: block;
+  overflow: hidden;
+  border: 1px solid var(--signal-rule);
+  border-radius: 7px;
+  padding: 0;
+  background: var(--surface-1);
+  color: var(--signal-ink);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-stage :is(.component-channel-management, .library-main-card):hover {
+  border-color: var(--signal-rule-dark);
+  background: var(--surface-1);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) :is(.component-channel-management, .library-main-card) .library-card-top {
+  width: 100%;
+  display: flex;
+  min-height: 150px;
+  align-items: flex-start;
+  border-radius: 0;
+  padding: 14px;
+  background:
+    linear-gradient(140deg, transparent, color-mix(in srgb, var(--hero-surface) 84%, transparent)),
+    linear-gradient(145deg, color-mix(in srgb, var(--hero-surface) 68%, var(--accent)), var(--hero-surface));
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) :is(.library-channel-pill, .library-channel-state) {
+  border: 1px solid rgb(255 255 255 / 38%);
+  border-radius: 3px;
+  padding: 5px 7px;
+  background: transparent;
+  color: var(--hero-text);
+  font-family: var(--font-mono);
+  font-size: .61rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .channel-card-copy {
+  display: grid;
+  gap: 5px;
+  padding: 15px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .channel-card-copy h3 {
+  color: var(--signal-ink);
+  font-size: 1.08rem;
+  font-weight: 660;
+  letter-spacing: -.025em;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .library-card-preview,
+:where(.component-theme-signal, html[data-portal-design="signal"]) .channel-card-detail {
+  color: var(--text-muted);
+  font-size: .67rem;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .library-card-footer {
+  width: 100%;
+  display: flex;
+  border-top-color: var(--signal-rule);
+  padding: 11px 15px;
+  color: var(--text-soft);
+  font-family: var(--font-mono);
+  font-size: .62rem;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .programme {
+  border: 1px solid var(--signal-rule);
+  border-radius: 7px;
+  padding: 14px 15px;
+  background: var(--surface-1);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .programme > span strong {
+  color: var(--signal-ink);
+  font-size: .84rem;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .programme-actions button {
+  min-height: 36px;
+  padding: 7px 10px;
+  font-size: .68rem;
+}
+
+/* Remote, preferences and upload */
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-remote-modes {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--signal-rule);
+  border-radius: 7px;
+  padding: 0;
+  background: var(--surface-1);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-remote-modes .remote-mode {
+  min-height: 104px;
+  border: 0;
+  border-radius: 0;
+  padding: 14px 9px;
+  background: transparent;
+  color: var(--signal-ink);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-remote-modes .remote-mode + .remote-mode {
+  border-left: 1px solid var(--signal-rule);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .remote-mode-icon {
+  width: auto;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--signal-red);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .remote-mode-icon .icon {
+  width: 23px;
+  height: 23px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .remote-mode strong {
+  color: var(--signal-ink);
+  font-size: .72rem;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .remote-mode small {
+  color: var(--text-muted);
+  font-size: .6rem;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-remote-transport {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0;
+  border: 1px solid color-mix(in srgb, var(--hero-text) 18%, transparent);
+  border-radius: 8px;
+  padding: 6px;
+  background: var(--hero-surface);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-remote-transport button {
+  min-height: 74px;
+  flex-direction: column;
+  gap: 7px;
+  border: 0;
+  border-radius: 0;
+  padding: 8px 4px;
+  background: transparent;
+  color: var(--hero-muted);
+  font-size: .6rem;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-remote-transport button + button {
+  border-left: 1px solid color-mix(in srgb, var(--hero-text) 18%, transparent);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-remote-transport button.remote-play {
+  border-radius: 6px;
+  background: var(--signal-red);
+  color: var(--accent-contrast);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-remote-transport button.remote-play + button {
+  border-left-color: transparent;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-remote-transport svg {
+  width: 21px;
+  height: 21px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-theme-picker {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-theme-picker button {
+  border: 1px solid var(--signal-rule);
+  border-radius: 7px;
+  padding: 11px;
+  background: var(--surface-1);
+  color: var(--signal-ink);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-theme-picker button.active {
+  border-color: var(--signal-ink);
+  background: var(--surface-1);
+  box-shadow: inset 0 -3px 0 var(--signal-red);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .theme-preview {
+  overflow: hidden;
+  border: 0;
+  border-radius: 4px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-theme-picker strong {
+  color: var(--signal-ink);
+  font-size: .8rem;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-theme-picker small {
+  color: var(--text-muted);
+  font-size: .65rem;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-design-option {
+  border: 1px solid var(--signal-rule);
+  border-radius: 7px;
+  padding: 11px;
+  background: var(--surface-1);
+  color: var(--signal-ink);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .design-preview {
+  border-radius: 4px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .design-copy strong {
+  color: var(--signal-ink);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .design-copy small {
+  color: var(--text-muted);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-drop-field {
+  min-height: 188px;
+  border: 1px dashed var(--signal-rule-dark);
+  border-radius: 7px;
+  padding: 28px;
+  background: var(--surface-1);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .drop-icon {
+  width: auto;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--signal-red);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .drop-icon .icon {
+  width: 28px;
+  height: 28px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .drop-copy strong {
+  color: var(--signal-ink);
+  font-size: .9rem;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .drop-copy small {
+  color: var(--text-muted);
+  font-size: .68rem;
+}
+
+/* Sheets and storage */
+:where(.component-theme-signal, html[data-portal-design="signal"]) .component-sheet-preview {
+  overflow: hidden;
+  border: 1px solid var(--signal-rule);
+  border-radius: 10px;
+  background: var(--surface-1);
+  box-shadow: var(--shadow-sheet);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .library-sheet-handle {
+  width: 34px;
+  height: 2px;
+  border-radius: 0;
+  background: var(--signal-rule-dark);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .library-sheet-head {
+  border-bottom: 1px solid var(--signal-rule);
+  padding: 24px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .library-sheet-head h2 {
+  color: var(--signal-ink);
+  font-size: 1.35rem;
+  font-weight: 650;
+  letter-spacing: -.035em;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .library-sheet-head p:last-child {
+  color: var(--text-muted);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .library-sheet-body {
+  padding: 18px 24px 24px;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .library-sheet-actions {
+  justify-content: flex-end;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .usb-drive,
+:where(.component-theme-signal, html[data-portal-design="signal"]) .usb-file {
+  border: 1px solid var(--signal-rule);
+  border-radius: 7px;
+  padding: 15px;
+  background: var(--surface-1);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .usb-drive.active {
+  border-color: var(--success);
+  background: color-mix(in srgb, var(--success-soft) 72%, var(--surface-1));
+  box-shadow: inset 3px 0 0 var(--signal-green);
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .usb-drive-copy strong,
+:where(.component-theme-signal, html[data-portal-design="signal"]) .usb-file-copy strong {
+  color: var(--signal-ink);
+  font-size: .82rem;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .usb-drive-copy small,
+:where(.component-theme-signal, html[data-portal-design="signal"]) .usb-file-copy small {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: .61rem;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .usb-file-actions button {
+  min-height: 36px;
+  padding: 7px 11px;
+  font-size: .68rem;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .empty {
+  min-height: 150px;
+  align-content: center;
+  border: 0;
+  border-top: 1px solid var(--signal-rule-dark);
+  border-bottom: 1px solid var(--signal-rule-dark);
+  border-radius: 0;
+  padding: 24px 4px;
+  background: transparent;
+  color: var(--text-muted);
+  text-align: left;
+}
+
+:where(.component-theme-signal, html[data-portal-design="signal"]) .empty strong {
+  color: var(--signal-ink);
+  font-size: 1.2rem;
+  font-weight: 620;
+  letter-spacing: -.035em;
+}
+
+@media (max-width: 760px) {
+  .component-theme-signal {
+    gap: 34px;
+    border-radius: 8px;
+    padding: 10px;
+  }
+
+  .signal-direction-intro {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+    padding: 28px 22px;
+  }
+
+  .signal-direction-index {
+    grid-template-columns: 70px minmax(0, 1fr);
+    align-items: end;
+  }
+
+  .signal-direction-index span {
+    font-size: 4rem;
+  }
+
+  .signal-direction-copy h2 {
+    font-size: clamp(3.5rem, 20vw, 5.5rem);
+  }
+
+  .signal-direction-intro dl {
+    align-content: start;
+  }
+
+  .signal-principles,
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .component-family-head,
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .component-inventory {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .signal-principles span + span {
+    border-top: 1px solid var(--signal-rule);
+    border-left: 0;
+  }
+
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .component-stage {
+    min-height: 170px;
+    padding: 18px 13px;
+  }
+
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .component-specimen.wide {
+    grid-column: auto;
+  }
+
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .component-stage .component-inline-wrap > button:not(.dialog-close, .channel-page-overflow) {
+    width: 100%;
+  }
+
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .component-player-head {
+    padding-inline: 7px;
+  }
+
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .component-player-head > button:last-child {
+    padding-inline: 9px;
+  }
+
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .watch-continue-card {
+    grid-template-columns: 94px minmax(0, 1fr);
+  }
+
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .watch-continue-copy {
+    padding-right: 43px;
+    padding-left: 13px;
+  }
+
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .watch-continue-copy i {
+    right: 11px;
+  }
+
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .channel-page-show-main {
+    grid-template-columns: 62px minmax(0, 1fr) 16px;
+    gap: 10px;
+    padding-inline: 10px;
+  }
+
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .component-programme-row,
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .usb-file {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .programme-actions,
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .usb-file-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .component-remote-modes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .component-remote-modes .remote-mode:nth-child(3) {
+    border-top: 1px solid var(--signal-rule);
+    border-left: 0;
+  }
+
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .component-remote-modes .remote-mode:nth-child(4) {
+    border-top: 1px solid var(--signal-rule);
+  }
+
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .component-remote-transport {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .component-remote-transport button {
+    min-width: 0;
+    min-height: 68px;
+    font-size: .54rem;
+  }
+
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .component-theme-picker {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 420px) {
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .component-nav-preview {
+    width: 100%;
+    margin-inline: 0;
+  }
+
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .component-nav-preview button {
+    font-size: .55rem;
+  }
+
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .component-remote-transport {
+    padding: 4px;
+  }
+
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .component-remote-transport button span {
+    display: none;
+  }
+
+  :where(.component-theme-signal, html[data-portal-design="signal"]) .component-remote-transport button {
+    min-height: 52px;
+  }
+}
+
+@media (max-width: 720px) {
+  html[data-portal-design="signal"] .rail {
+    border-top: 1px solid var(--border);
+    border-right: 0;
+  }
+
+  html[data-portal-design="signal"] .portal-nav:not(.component-nav-preview) {
+    border-top: 0;
+  }
+
+  html[data-portal-design="signal"] .portal-nav:not(.component-nav-preview) button {
+    min-height: 58px;
+    border-right: 1px solid var(--border-subtle);
+    border-bottom: 0;
+    padding-inline: 3px;
+  }
+
+  html[data-portal-design="signal"] .portal-nav:not(.component-nav-preview) button:last-child {
+    border-right: 0;
+  }
+
+  html[data-portal-design="signal"] .portal-nav:not(.component-nav-preview) button.active {
+    background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+    box-shadow: inset 0 3px 0 var(--accent);
+  }
+}

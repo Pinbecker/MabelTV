@@ -181,4 +181,36 @@
     padding: var(--space-3);
     background: var(--surface-2);
   }
+
+  .usb-eject-warning {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: var(--space-3);
+    align-items: start;
+    border: 1px solid color-mix(in srgb, var(--danger) 36%, var(--border));
+    border-radius: var(--radius-card);
+    padding: var(--space-4);
+    background: var(--danger-soft);
+  }
+
+  .usb-eject-warning > span {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--danger);
+    color: white;
+    font-weight: 800;
+  }
+
+  .usb-eject-warning strong,
+  .usb-eject-warning p {
+    display: block;
+  }
+
+  .usb-eject-warning p {
+    margin: var(--space-1) 0 0;
+    color: var(--text-muted);
+  }
 }
