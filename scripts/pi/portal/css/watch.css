@@ -678,6 +678,9 @@
   }
 
   .watch-channel-rail {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
     grid-auto-columns: calc((100% - var(--space-3)) / 2);
     margin-top: var(--space-1);
   }
@@ -766,6 +769,8 @@
   }
 
   .mabel-channel-section {
+    width: 100%;
+    min-width: 0;
     margin-bottom: var(--space-6);
   }
 
@@ -781,7 +786,13 @@
   }
 
   .watch-mabel-layout {
+    width: 100%;
+    min-width: 0;
     display: grid;
+  }
+
+  #remoteMabel {
+    min-width: 0;
   }
 
   .watch-mabel-utilities {

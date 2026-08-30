@@ -168,6 +168,8 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertNotIn("Choose something once, then play it on the television", index)
         self.assertIn("grid-auto-columns: calc((100% - var(--space-3)) / 2)", index)
         self.assertIn(".watch-channel-rail:has(> :only-child)", index)
+        self.assertIn("#remoteMabel", index)
+        self.assertIn("max-width: 100%", index)
         self.assertIn(".programme-action-summary > span:last-child", index)
         self.assertIn("dialog:is(.library-sheet, .watch-sheet", index)
         self.assertIn("grid-template-columns: 50px minmax(142px, 176px) 50px", index)
