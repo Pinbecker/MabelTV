@@ -682,6 +682,12 @@
       border: 0;
       border-radius: 0;
     }
+
+    .mabel-watch-hud {
+      position: fixed;
+      z-index: 2;
+      inset: 0;
+    }
   }
 
   @media (max-width: 420px) {

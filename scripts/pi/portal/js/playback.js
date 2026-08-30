@@ -53,7 +53,7 @@ function remoteTime(value) {
       video.pause(); video.removeAttribute('src'); video.replaceChildren(); video.load()
         $('#iosWatchPlayer').classList.add('hidden')
         document.documentElement.classList.remove('native-video-fullscreen')
-        document.documentElement.style.overflow = ''
+        unlockPortalPlayerScroll()
     }
 
     function setNativeVideoBackdrop(active) {
@@ -63,7 +63,7 @@ function remoteTime(value) {
     async function startIosRemotePlayer(payload, position = 0) {
       const shell = $('#iosWatchPlayer'); const video = $('#iosWatchVideo'); const error = $('#iosWatchError')
       shell.classList.remove('hidden'); error.classList.add('hidden'); video.classList.remove('hidden')
-      document.documentElement.style.overflow = 'hidden'
+      lockPortalPlayerScroll()
       try {
         let result
         result = await startRemoteStream(payload)
@@ -128,7 +128,7 @@ function remoteTime(value) {
       iosRemoteSession = null
       iosOfflineDownloadId = manifest.id
       shell.classList.remove('hidden'); error.classList.add('hidden'); video.classList.remove('hidden')
-      document.documentElement.style.overflow = 'hidden'
+      lockPortalPlayerScroll()
       $('#iosWatchTitle').textContent = manifest.title
       $('#iosWatchContext').textContent = 'Downloaded · ready offline'
       $('#iosWatchStartOver').classList.add('hidden')
@@ -171,7 +171,7 @@ function remoteTime(value) {
       video.pause(); video.removeAttribute('src'); video.load()
       $('#mabelWatchPlayer').classList.add('hidden')
       $('#mabelWatchPlayer').classList.remove('controls-visible')
-      document.documentElement.style.overflow = ''
+      unlockPortalPlayerScroll()
     }
 
     function mabelWatchTime(value) {
@@ -192,7 +192,7 @@ function remoteTime(value) {
     async function startMabelWatchPlayer(payload) {
       const shell = $('#mabelWatchPlayer'); const video = $('#mabelWatchVideo'); const error = $('#mabelWatchError')
       shell.classList.remove('hidden'); error.classList.add('hidden')
-      document.documentElement.style.overflow = 'hidden'
+      lockPortalPlayerScroll()
       showMabelWatchControls(true)
       try {
         let result

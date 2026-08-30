@@ -52,6 +52,23 @@ const $ = selector => document.querySelector(selector)
     let offlineStorageReady = false
     let offlineMode = false
     const pendingDownloads = new Map()
+    let portalPlayerScrollY = 0
+
+    function lockPortalPlayerScroll() {
+      if (document.documentElement.classList.contains('portal-player-open')) return
+      portalPlayerScrollY = window.scrollY
+      document.documentElement.classList.add('portal-player-open')
+      document.body.classList.add('portal-player-open')
+      document.body.style.top = `-${portalPlayerScrollY}px`
+    }
+
+    function unlockPortalPlayerScroll() {
+      if (!document.documentElement.classList.contains('portal-player-open')) return
+      document.documentElement.classList.remove('portal-player-open')
+      document.body.classList.remove('portal-player-open')
+      document.body.style.top = ''
+      window.scrollTo(0, portalPlayerScrollY)
+    }
 
     async function api(path, options = {}) {
       const response = await fetch(path, {

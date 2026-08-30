@@ -158,6 +158,16 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("grid-template-columns: 50px minmax(142px, 176px) 50px", index)
         self.assertIn(".remote-mode small", index)
         self.assertNotIn('data-view-button="channels"', index)
+
+    def test_mabel_remote_player_keeps_exit_visible_and_locks_page_scroll(self) -> None:
+        index = PORTAL_SOURCE
+        self.assertIn('class="mabel-watch-icon-button mabel-watch-back"', index)
+        self.assertIn('<span>Exit</span>', index)
+        self.assertIn("lockPortalPlayerScroll()", index)
+        self.assertIn("unlockPortalPlayerScroll()", index)
+        self.assertIn("body.portal-player-open", index)
+        self.assertIn(".mabel-watch-player.controls-visible .mabel-watch-bottom", index)
+        self.assertNotIn(".mabel-watch-hud.visible", index)
         self.assertNotIn('data-view-button="adult"', index)
         self.assertNotIn("api('/api/remote/stop-tv'", index)
         self.assertNotIn("document.getElementById('logout').click()", index)
