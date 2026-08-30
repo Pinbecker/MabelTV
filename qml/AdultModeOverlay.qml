@@ -39,6 +39,7 @@ Item {
     property url queuedExternalSource: ""
     property string queuedExternalTitle: ""
     property string queuedLibraryFilmPath: ""
+    property real queuedLibraryFilmPosition: 0
 
     signal closed()
     signal powerRequested()
@@ -52,6 +53,7 @@ Item {
         rebuildCollections()
         libraryFilmStartTimer.stop()
         queuedLibraryFilmPath = ""
+        queuedLibraryFilmPosition = 0
         playing = false
         stopping = false
         closing = false
@@ -85,8 +87,9 @@ Item {
         }
     }
 
-    function requestLibraryFilm(filePath) {
+    function requestLibraryFilm(filePath, startPosition) {
         queuedLibraryFilmPath = filePath
+        queuedLibraryFilmPosition = Math.max(0, Number(startPosition) || 0)
         if (playing || stopping) {
             stopFilm()
         } else {
@@ -94,14 +97,14 @@ Item {
         }
     }
 
-    function playLibraryFilm(filePath) {
+    function playLibraryFilm(filePath, startPosition) {
         rebuildCollections()
         selectedCollectionIndex = 0
         applySelectedCollection()
         for (let index = 0; index < visibleFilms.length; ++index) {
             if (visibleFilms[index].path === filePath) {
                 selectedIndex = index
-                startSelectedFilm(0)
+                startSelectedFilm(Math.max(0, Number(startPosition) || 0))
                 return
             }
         }
@@ -115,6 +118,7 @@ Item {
         queuedExternalSource = ""
         queuedExternalTitle = ""
         queuedLibraryFilmPath = ""
+        queuedLibraryFilmPosition = 0
         errorMessage = ""
         playing = true
         stopping = false
@@ -137,6 +141,7 @@ Item {
         queuedExternalSource = ""
         queuedExternalTitle = ""
         queuedLibraryFilmPath = ""
+        queuedLibraryFilmPosition = 0
         externalSession = false
         active = false
         closing = false
@@ -1307,8 +1312,10 @@ Item {
         onTriggered: {
             if (!overlay.closing && overlay.queuedLibraryFilmPath.length > 0) {
                 const file = overlay.queuedLibraryFilmPath
+                const position = overlay.queuedLibraryFilmPosition
                 overlay.queuedLibraryFilmPath = ""
-                overlay.playLibraryFilm(file)
+                overlay.queuedLibraryFilmPosition = 0
+                overlay.playLibraryFilm(file, position)
             }
         }
     }

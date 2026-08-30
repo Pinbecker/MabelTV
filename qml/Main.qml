@@ -36,6 +36,7 @@ Window {
     property url pendingExternalSource: ""
     property string pendingExternalTitle: ""
     property string pendingAdultLibraryPath: ""
+    property real pendingAdultLibraryPosition: 0
     property int pendingPortalChannel: -1
     property string pendingPortalProgramme: ""
     property int pendingPortalTuneChannel: -1
@@ -466,16 +467,18 @@ Window {
         tvController.playPortalProgramme(Number(channel), String(file))
     }
 
-    function portalPlayAdultFilm(file) {
+    function portalPlayAdultFilm(file, position) {
         if (poweringOff || pendingPowerAction.length > 0)
             return
+        const startPosition = Math.max(0, Number(position) || 0)
         guideOverlay.close()
         tvController.closeParent()
         if (adultMode.active) {
-            adultMode.requestLibraryFilm(String(file))
+            adultMode.requestLibraryFilm(String(file), startPosition)
             return
         }
         pendingAdultLibraryPath = String(file)
+        pendingAdultLibraryPosition = startPosition
         enterAdultMode()
     }
 
@@ -928,8 +931,10 @@ Window {
                                 adultMode.open()
                                 if (root.pendingAdultLibraryPath.length > 0) {
                                     const file = root.pendingAdultLibraryPath
+                                    const position = root.pendingAdultLibraryPosition
                                     root.pendingAdultLibraryPath = ""
-                                    adultMode.requestLibraryFilm(file)
+                                    root.pendingAdultLibraryPosition = 0
+                                    adultMode.requestLibraryFilm(file, position)
                                 }
                             }
                         }

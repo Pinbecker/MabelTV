@@ -2857,8 +2857,10 @@ class Library:
                        "file": source.name}
             skip_film_countdown = self.channel_content_type(channel) == "films"
         elif kind == "adult":
-            source = self.safe_adult_path(str(payload.get("file", "")))
-            command = {"command": "play-adult-film", "file": self.adult_relative_path(source)}
+            _kind, source, _title, _library_id, resume = self.remote_source(payload)
+            command = {"command": "play-adult-film",
+                       "file": self.adult_relative_path(source),
+                       "position": resume}
             skip_film_countdown = False
         else:
             raise ValueError("Choose a programme or Adult film to play")

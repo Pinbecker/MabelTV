@@ -153,6 +153,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("position: sticky", index)
         self.assertIn('id="watchFilmTv"', index)
         self.assertIn('id="watchFilmHere"', index)
+        self.assertIn("position: Number(film.remote_position || 0)", index)
         self.assertIn('id="watchProgrammeSheet"', index)
         self.assertIn('id="watchManageAdult"', index)
         self.assertNotIn('id="watchManageMabel"', index)
@@ -1330,6 +1331,14 @@ class UsbAndMetadataTests(unittest.TestCase):
         adult_movie = self.fixture.library.adult_root / "Films" / "Film.mkv"
         adult_movie.parent.mkdir(parents=True, exist_ok=True)
         adult_movie.write_bytes(b"film")
+        self.fixture.library.adult_library()
+        adult_states = self.fixture.library.adult_media_states()
+        adult_states["Films/Film.mkv"].update({
+            "remote_position": 842.5,
+            "remote_duration": 7200,
+            "remote_last_watched": 200,
+        })
+        self.fixture.library.write_adult_media_states(adult_states)
         client = mock.MagicMock()
         context = mock.MagicMock()
         context.__enter__.return_value = client
@@ -1349,7 +1358,8 @@ class UsbAndMetadataTests(unittest.TestCase):
         self.assertEqual(channel_command,
                          {"command": "play-programme", "channel": 1, "file": "Episode.mp4"})
         self.assertEqual(adult_command,
-                         {"command": "play-adult-film", "file": "Films/Film.mkv"})
+                         {"command": "play-adult-film", "file": "Films/Film.mkv",
+                          "position": 842.5})
         self.assertTrue(channel_result["ok"])
         self.assertTrue(adult_result["ok"])
         sleep.assert_not_called()

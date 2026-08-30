@@ -363,7 +363,8 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("NO SUBTITLES AVAILABLE", adult_qml)
         self.assertIn("scrubberFocus === 1", adult_qml)
         self.assertIn("function openScrubber()", adult_qml)
-        self.assertIn("function requestLibraryFilm(filePath)", adult_qml)
+        self.assertIn("function requestLibraryFilm(filePath, startPosition)", adult_qml)
+        self.assertIn("startSelectedFilm(Math.max(0, Number(startPosition) || 0))", adult_qml)
         self.assertIn("id: libraryFilmStartTimer", adult_qml)
         self.assertIn("if (playing && scrubberActive)", adult_qml)
         self.assertIn("!scrubberActive && (key === Qt.Key_Up || key === Qt.Key_Down)", adult_qml)
@@ -374,9 +375,11 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("interval: 3000", main_qml)
         self.assertNotIn("adultMode.active ? 700 : 3000", main_qml)
         self.assertIn("function portalPlayChannelProgramme(channel, file)", main_qml)
-        self.assertIn("function portalPlayAdultFilm(file)", main_qml)
+        self.assertIn("function portalPlayAdultFilm(file, position)", main_qml)
+        self.assertIn("adultMode.requestLibraryFilm(String(file), startPosition)", main_qml)
         self.assertIn("portalPlayChannelProgramme", application)
         self.assertIn("portalPlayAdultFilm", application)
+        self.assertIn('QStringLiteral("position")).toDouble(0.0)', application)
 
 
 if __name__ == "__main__":

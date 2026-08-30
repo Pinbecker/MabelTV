@@ -553,7 +553,9 @@ int main(int argc, char *argv[])
                                                                   "portalPlayAdultFilm",
                                                                   Qt::QueuedConnection,
                                                                   Q_ARG(QVariant, object.value(
-                                                                      QStringLiteral("file")).toString()));
+                                                                      QStringLiteral("file")).toString()),
+                                                                  Q_ARG(QVariant, object.value(
+                                                                      QStringLiteral("position")).toDouble(0.0)));
                                                                socket->disconnectFromServer();
                                                                return;
                                                            }

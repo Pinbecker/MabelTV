@@ -472,7 +472,11 @@ function remoteTime(value) {
 
     function playWatchFilmOnTv(film) {
       closeWatchFilmSheet()
-      playOnTv({ kind: 'adult', file: film.path }, watchFilmTitle(film))
+      playOnTv({
+        kind: 'adult',
+        file: film.path,
+        position: Number(film.remote_position || 0),
+      }, watchFilmTitle(film))
     }
 
     async function clearWatchFilmProgress(film, playAfter = false) {
