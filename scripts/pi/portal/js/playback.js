@@ -742,16 +742,14 @@ function remoteTime(value) {
 
     function renderRemoteViewing() {
       const remote = library?.remote_viewing || {}; const simultaneous = remote.allow_simultaneous === true
-      $('#remotePolicy span').textContent = simultaneous ? 'TV + this device ready' : 'Choose TV or this device'
       $('#remoteConcurrentState').textContent = simultaneous ? 'TV and one remote stream can run together' : 'One player at a time'
       $('#remoteConcurrentToggle').textContent = simultaneous ? 'Use one player' : 'Allow both'
       $('#remoteConcurrentToggle').setAttribute('aria-pressed', String(simultaneous))
       $('#watchMabelTab').classList.toggle('active', remoteKind === 'channel'); $('#watchMabelTab').setAttribute('aria-selected', String(remoteKind === 'channel'))
       $('#watchAdultTab').classList.toggle('active', remoteKind === 'adult'); $('#watchAdultTab').setAttribute('aria-selected', String(remoteKind === 'adult'))
       $('#watchDownloadsTab').classList.toggle('active', remoteKind === 'downloads'); $('#watchDownloadsTab').setAttribute('aria-selected', String(remoteKind === 'downloads'))
-      $('#remoteMabel').classList.toggle('hidden', remoteKind !== 'channel'); $('#watchAdultLayout').classList.toggle('hidden', remoteKind !== 'adult')
+      $('#watchMabelLayout').classList.toggle('hidden', remoteKind !== 'channel'); $('#watchAdultLayout').classList.toggle('hidden', remoteKind !== 'adult')
       $('#watchDownloadsLayout').classList.toggle('hidden', remoteKind !== 'downloads')
-      $('#watchMabelUtilities').classList.toggle('hidden', remoteKind !== 'channel')
       $('#watchLibraryAdmin').classList.toggle('hidden', remoteKind !== 'adult')
       $('#watchAddAdult').classList.toggle('hidden', remoteKind !== 'adult')
       $('#watchManageAdult').classList.toggle('hidden', remoteKind !== 'adult')
@@ -767,16 +765,15 @@ function remoteTime(value) {
         const isFilms = channel.content_type === 'films'
         const section = document.createElement('section'); section.className = `watch-section mabel-channel-section ${isFilms ? 'mabel-film-channel' : 'mabel-show-channel'}`
         const metadata = channel.metadata || {}
-        const manageCue = '<span class="watch-channel-manage-cue"><span>Manage channel</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></span>'
         if (!isFilms) {
-          const identity = document.createElement('button'); identity.type = 'button'; identity.className = 'mabel-show-identity watch-channel-manage'
+          const identity = document.createElement('button'); identity.type = 'button'; identity.className = 'mabel-show-identity'
           if (metadata.artwork) identity.style.backgroundImage = `linear-gradient(90deg,rgba(7,12,10,.92) 0%,rgba(7,12,10,.62) 52%,rgba(7,12,10,.2) 100%),url('/api/channel/artwork/${encodeURIComponent(metadata.artwork)}')`
-          identity.innerHTML = `<div><span>CH ${channel.number} · ${channel.enabled ? `${programmes.length} episodes` : 'Hidden from TV'}</span><h2>${escapeHtml(metadata.title || channel.name)}</h2><p>${escapeHtml(metadata.overview || `Open ${channel.name} to manage its programmes.`)}</p></div>${manageCue}`
-          identity.setAttribute('aria-label', `Manage channel ${channel.number}, ${channel.name}`)
+          identity.innerHTML = `<div><span>CH ${channel.number} · ${channel.enabled ? `${programmes.length} episodes` : 'Hidden from TV'}</span><h2>${escapeHtml(metadata.title || channel.name)}</h2><p>${escapeHtml(metadata.overview || `${channel.name} on MabelTV.`)}</p></div>`
+          identity.setAttribute('aria-label', `Open channel ${channel.number}, ${channel.name}`)
           identity.onclick = () => openChannel(channel.number, true)
           section.append(identity)
         } else {
-          const head = document.createElement('button'); head.type = 'button'; head.className = 'watch-section-head mabel-film-head watch-channel-manage'; head.innerHTML = `<div><span>CH ${channel.number}${channel.enabled ? '' : ' · Hidden from TV'}</span><h2>${escapeHtml(channel.name)}</h2></div>${manageCue}`; head.setAttribute('aria-label', `Manage channel ${channel.number}, ${channel.name}`); head.onclick = () => openChannel(channel.number, true); section.append(head)
+          const head = document.createElement('button'); head.type = 'button'; head.className = 'watch-section-head mabel-film-head'; head.innerHTML = `<div><span>CH ${channel.number}${channel.enabled ? '' : ' · Hidden from TV'}</span><h2>${escapeHtml(channel.name)}</h2></div>`; head.setAttribute('aria-label', `Open channel ${channel.number}, ${channel.name}`); head.onclick = () => openChannel(channel.number, true); section.append(head)
         }
         if (programmes.length) {
           const rail = document.createElement('div'); rail.className = 'watch-channel-rail'

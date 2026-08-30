@@ -528,6 +528,21 @@
     margin-bottom: var(--space-4);
   }
 
+  .programme-action-summary > span:last-child {
+    min-width: 0;
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .programme-action-summary :is(strong, small) {
+    display: block;
+    overflow-wrap: anywhere;
+  }
+
+  .programme-action-summary small {
+    color: var(--text-muted);
+  }
+
   .adult-film-sheet-poster {
     width: 88px;
     aspect-ratio: 2 / 3;

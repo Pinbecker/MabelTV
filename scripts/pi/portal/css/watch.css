@@ -483,35 +483,11 @@
     overflow: auto;
   }
 
-  .watch-film-close-bar {
-    position: sticky;
-    z-index: 6;
-    top: 0;
-    height: 0;
-    pointer-events: none;
-  }
-
-  .watch-film-sheet .watch-film-close {
-    position: absolute;
-    top: var(--space-4);
-    right: var(--space-4);
-    display: grid;
-    place-items: center;
+  .watch-film-sheet .dialog-close,
+  .watch-programme-sheet .dialog-close {
     border-color: rgb(255 255 255 / 24%);
     background: rgb(10 14 12 / 88%);
     color: #fff;
-    pointer-events: auto;
-    -webkit-backdrop-filter: blur(16px);
-    backdrop-filter: blur(16px);
-  }
-
-  .watch-film-sheet .watch-film-close::before {
-    display: none;
-  }
-
-  .watch-film-sheet .watch-film-close svg {
-    width: 22px;
-    height: 22px;
   }
 
   .watch-film-backdrop {
@@ -691,11 +667,6 @@
     padding: var(--space-6);
   }
 
-  .watch-programme-sheet .watch-film-close {
-    top: var(--space-4);
-    right: var(--space-4);
-  }
-
   .watch-programme-sheet h2 {
     max-width: calc(100% - 60px);
   }
@@ -707,7 +678,16 @@
   }
 
   .watch-channel-rail {
-    grid-auto-columns: minmax(330px, 440px);
+    grid-auto-columns: calc((100% - var(--space-3)) / 2);
+    margin-top: var(--space-1);
+  }
+
+  .watch-channel-rail:has(> :only-child) {
+    grid-auto-columns: 100%;
+  }
+
+  .watch-channel-rail > .watch-programme {
+    scroll-snap-align: start;
   }
 
   button.watch-programme {
@@ -770,25 +750,9 @@
     text-align: left;
   }
 
-  .watch-channel-manage-cue {
-    position: absolute;
-    top: var(--space-3);
-    right: var(--space-3);
-    min-height: 32px;
-    display: inline-flex;
-    align-items: center;
-    border: 1px solid rgb(255 255 255 / 22%);
-    border-radius: var(--radius-round);
-    padding: 6px 10px;
-    background: rgb(5 9 7 / 68%);
-    color: #dce3df;
-    font-size: var(--type-caption);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
-  }
-
   .watch-mabel-copy {
     display: grid;
+    gap: var(--space-1);
   }
 
   .watch-mabel-copy strong {
@@ -802,7 +766,7 @@
   }
 
   .mabel-channel-section {
-    margin-bottom: var(--space-7);
+    margin-bottom: var(--space-6);
   }
 
   .mabel-film-head {
@@ -816,14 +780,27 @@
     width: 88px;
   }
 
+  .watch-mabel-layout {
+    display: grid;
+  }
+
   .watch-mabel-utilities {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
     gap: var(--space-2);
-    margin: var(--space-4) 0;
+  }
+
+  .watch-mabel-primary-tools {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 0 0 var(--space-5);
+  }
+
+  .watch-mabel-recycle-tools {
+    grid-template-columns: minmax(0, 1fr);
+    margin: 0 0 var(--space-4);
   }
 
   .watch-mabel-utilities button {
+    width: 100%;
     border-color: var(--border);
     background: var(--surface-2);
     color: var(--text-soft);

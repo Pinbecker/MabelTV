@@ -90,23 +90,56 @@
     background: color-mix(in srgb, var(--danger-soft) 78%, var(--danger));
   }
 
-  :is(.library-sheet-close, .watch-sheet-close, .watch-film-close, .remote-sheet-close) {
+  :is(.dialog-close, .library-sheet-close, .watch-sheet-close, .watch-film-close, .remote-sheet-close) {
+    position: relative;
     width: var(--control-min);
     height: var(--control-min);
     min-height: var(--control-min);
     flex: 0 0 var(--control-min);
+    display: grid;
+    place-items: center;
     border-radius: var(--radius-round);
     padding: 0;
     font-size: 0;
+    line-height: 0;
   }
 
-  :is(.library-sheet-close, .watch-sheet-close, .watch-film-close, .remote-sheet-close)::before {
+  :is(.dialog-close, .library-sheet-close, .watch-sheet-close, .watch-film-close, .remote-sheet-close)::before,
+  :is(.dialog-close, .library-sheet-close, .watch-sheet-close, .watch-film-close, .remote-sheet-close)::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
     width: 18px;
-    height: 18px;
+    height: 2px;
     content: "";
-    background:
-      linear-gradient(45deg, transparent 45%, currentColor 45%, currentColor 55%, transparent 55%),
-      linear-gradient(-45deg, transparent 45%, currentColor 45%, currentColor 55%, transparent 55%);
+    border-radius: var(--radius-round);
+    background: currentColor;
+    transform: translate(-50%, -50%) rotate(45deg);
+  }
+
+  :is(.dialog-close, .library-sheet-close, .watch-sheet-close, .watch-film-close, .remote-sheet-close)::after {
+    transform: translate(-50%, -50%) rotate(-45deg);
+  }
+
+  :is(.dialog-close, .library-sheet-close, .watch-sheet-close, .watch-film-close, .remote-sheet-close):active {
+    transform: none;
+  }
+
+  .dialog-close-bar {
+    position: sticky;
+    z-index: 6;
+    top: 0;
+    height: 0;
+    pointer-events: none;
+  }
+
+  .dialog-close-bar .dialog-close {
+    position: absolute;
+    top: var(--space-4);
+    right: var(--space-4);
+    pointer-events: auto;
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
   }
 
   .surface {

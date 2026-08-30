@@ -417,9 +417,12 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .watch-continue-rail,
-    .watch-channel-rail {
+    .watch-continue-rail {
       grid-auto-columns: min(84vw, 340px);
+    }
+
+    .mabel-film-channel .watch-channel-rail {
+      grid-auto-columns: 100%;
     }
 
     .watch-poster-grid {

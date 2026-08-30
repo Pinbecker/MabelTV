@@ -1,6 +1,6 @@
 'use strict'
 
-const SHELL_CACHE = 'mabeltv-shell-v11'
+const SHELL_CACHE = 'mabeltv-shell-v12'
 const SHELL_URLS = [
   '/',
   '/manifest.webmanifest',
