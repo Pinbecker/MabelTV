@@ -337,11 +337,8 @@ function remoteTime(value) {
     $('#mabelWatchSeek').oninput = event => { const video = $('#mabelWatchVideo'); showMabelWatchControls(true); if (video.duration) video.currentTime = Number(event.target.value) / 1000 * video.duration }
     $('#mabelWatchSeek').onchange = () => showMabelWatchControls()
     $('#mabelWatchScreen').onpointermove = () => showMabelWatchControls()
-    $('#mabelWatchScreen').onpointerdown = event => {
-      if (event.target === $('#mabelWatchVideo')) {
-        if ($('#mabelWatchPlayer').classList.contains('controls-visible')) showMabelWatchControls()
-        else showMabelWatchControls()
-      }
+    $('#mabelWatchPlayer').onpointerdown = event => {
+      if (!event.target.closest('button, input')) showMabelWatchControls()
     }
     document.addEventListener('keydown', event => {
       if ($('#mabelWatchPlayer').classList.contains('hidden')) return
