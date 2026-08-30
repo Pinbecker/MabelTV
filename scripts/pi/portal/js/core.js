@@ -196,7 +196,7 @@ const $ = selector => document.querySelector(selector)
         return
       }
       const view = requested === 'home' ? 'overview' : requested
-      const allowed = new Set(['overview', 'live', 'channels', 'adult', 'watch', 'usb', 'system', 'components'])
+      const allowed = new Set(['overview', 'live', 'channels', 'adult', 'watch', 'usb', 'system'])
       if (allowed.has(view)) {
         if (view === 'channels') showChannelHub()
         if (view === 'watch' && selectedManageChannel !== null) {
@@ -358,12 +358,11 @@ const $ = selector => document.querySelector(selector)
 
     function openView(name) {
       if (offlineMode && name !== 'watch') name = 'watch'
-      if (name !== 'components') window.MabelPortalAppearance?.clearPreview()
       // A status belongs to the action that created it, not every page the
       // parent subsequently visits. Clear it whenever navigation begins.
       notice('')
       const channelFromWatch = name === 'channels' && selectedManageChannel !== null && channelWorkspaceReturnToWatch
-      const activeNavigation = channelFromWatch ? 'watch' : name === 'components' ? 'system' : name
+      const activeNavigation = channelFromWatch ? 'watch' : name
       $$('.view').forEach(view => view.classList.toggle('active', view.id === `view-${name}`))
       document.body.classList.toggle('watch-mode', name === 'watch' || channelFromWatch)
       $$('[data-view-button]').forEach(button => {
@@ -379,7 +378,6 @@ const $ = selector => document.querySelector(selector)
       else stopHomeStatusRefresh()
       if (name === 'usb') refreshUsb().catch(error => notice(error.message, true))
       if (name === 'watch' && remoteKind === 'downloads') renderDownloads().catch(showError)
-      if (name === 'components') window.MabelComponentGallery?.render(library)
     }
 
     function showLivePicture() {
@@ -670,7 +668,6 @@ const $ = selector => document.querySelector(selector)
       renderTvGuideSetting()
       renderRemoteViewing()
       renderPortalPinSetting()
-      renderPortalTheme()
       refreshHomePowerState().catch(() => {})
       refreshTmdbStatus().catch(() => {})
     }

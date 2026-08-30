@@ -106,10 +106,34 @@ $('#uploadForm').onsubmit=async e=>{e.preventDefault();let f=$('#file').files[0]
 </script></body></html>"""
 
 
+PORTAL_INCLUDE = re.compile(
+    r"^[ \t]*<!-- portal-include:([A-Za-z0-9_./-]+\.html) -->[ \t]*$",
+    re.MULTILINE,
+)
+
+
+def load_portal_document(index_path: Path) -> str:
+    """Assemble the portal from private server-side HTML partials."""
+    portal_root = (index_path.parent / "portal").resolve()
+    document = index_path.read_text(encoding="utf-8")
+    for _ in range(8):
+        if not PORTAL_INCLUDE.search(document):
+            return document
+
+        def include(match: re.Match[str]) -> str:
+            candidate = (portal_root / match.group(1)).resolve()
+            if portal_root not in candidate.parents or not candidate.is_file():
+                raise OSError(f"Portal include is unavailable: {match.group(1)}")
+            return candidate.read_text(encoding="utf-8").rstrip()
+
+        document = PORTAL_INCLUDE.sub(include, document)
+    raise OSError("Portal includes are nested too deeply")
+
+
 def load_index() -> str:
     """Load the maintainable product UI, retaining the embedded legacy UI as fallback."""
     try:
-        return Path(__file__).with_name("mabeltv-library.html").read_text(encoding="utf-8")
+        return load_portal_document(Path(__file__).with_name("mabeltv-library.html"))
     except OSError:
         return INDEX
 

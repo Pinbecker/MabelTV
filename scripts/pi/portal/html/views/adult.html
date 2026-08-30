@@ -1,0 +1,11 @@
+      <section id="view-adult" class="view"><div class="page adult-page">
+        <header class="adult-hero surface portal-intro"><div><p class="eyebrow">Private cinema</p><h1>Your film library.</h1><p>Organise what appears on Adult TV, refresh artwork and send any film straight to the television.</p></div><div class="adult-hero-actions"><button type="button" class="secondary adult-back-watch" data-go="watch"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6M8 12h10"/></svg><span>Back to Watch</span></button><div class="adult-hero-stat"><strong id="adultHeroCount">0</strong><span>films ready</span></div><button id="adultAddFilms" type="button" class="adult-add-film"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Add films</span></button></div></header>
+        <section class="adult-library surface">
+          <div class="adult-library-head"><div><p class="section-kicker">Adult TV</p><h2>Browse and organise</h2></div><span id="adultFilmCount" class="adult-count">0 films</span></div>
+          <div class="adult-discovery"><label class="adult-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><input id="adultSearch" type="search" autocomplete="off" placeholder="Search your films"><button id="adultSearchClear" type="button" class="hidden" aria-label="Clear search">×</button></label><button id="adultCollectionTrigger" type="button" class="adult-tool"><span><small>Collection</small><strong id="adultCollectionName">All films</strong></span><svg viewBox="0 0 24 24"><path d="m9 10 3 3 3-3"/></svg></button></div>
+          <div class="adult-library-context"><p id="adultLibrarySummary">Every film, in one place.</p><span id="tmdbState" class="tmdb-state">Checking metadata…</span></div>
+          <div id="adultFilmList" class="adult-film-list"></div>
+        </section>
+        <footer><span data-tv-name>Your TV</span> · Adult mode is protected by the on-TV parent menu</footer>
+      </div></section>
+

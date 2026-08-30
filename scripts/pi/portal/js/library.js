@@ -395,10 +395,6 @@ function renderAdultLibrary() {
       })
     }
 
-    function renderPortalTheme() {
-      window.MabelPortalAppearance?.render(library)
-    }
-
     $$('[data-parent-style]').forEach(button => button.onclick = () => {
       const style = button.dataset.parentStyle
       if (style !== (library?.appearance?.parent_overlay_style || 'classic'))

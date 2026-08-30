@@ -1,0 +1,319 @@
+/* MabelTV portal product UI - responsive */
+
+@layer streaming {
+  @media (max-width: 1199px) {
+    .app-shell {
+      grid-template-columns: 190px minmax(0, 1fr);
+    }
+
+    .rail {
+      width: 190px;
+    }
+
+    .app-main {
+      padding-right: 26px;
+      padding-left: 26px;
+    }
+
+    .home-greeting {
+      min-height: 380px;
+    }
+
+    .home-intro {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  @media (max-width: 720px) {
+    body {
+      padding-bottom: calc(72px + var(--safe-bottom));
+    }
+
+    .rail {
+      z-index: 70;
+      inset: auto 0 0;
+      width: 100%;
+      height: calc(66px + var(--safe-bottom));
+      border: 0;
+      border-top: 1px solid var(--border-subtle);
+      border-radius: 0;
+      padding: 0 max(3px, var(--safe-right)) var(--safe-bottom) max(3px, var(--safe-left));
+      background: rgb(11 10 13 / 97%);
+      box-shadow: 0 -12px 34px rgb(0 0 0 / 34%);
+      -webkit-backdrop-filter: blur(18px) saturate(130%);
+      backdrop-filter: blur(18px) saturate(130%);
+    }
+
+    .portal-nav {
+      height: 65px;
+      gap: 0;
+      border: 0;
+    }
+
+    .portal-nav button {
+      position: relative;
+      min-height: 65px;
+      gap: 3px;
+      border: 0;
+      padding: 7px 2px 5px;
+      background: transparent;
+      color: #827b87;
+      font-size: 0.6rem;
+      font-weight: 720;
+    }
+
+    .portal-nav button::before {
+      position: absolute;
+      inset: 0 18% auto;
+      height: 2px;
+      background: transparent;
+      content: "";
+    }
+
+    .portal-nav button:hover {
+      background: transparent;
+    }
+
+    .portal-nav button.active {
+      background: transparent;
+      color: #fff;
+      box-shadow: none;
+    }
+
+    .portal-nav button.active::before {
+      background: var(--accent);
+    }
+
+    .portal-nav button.active .icon {
+      color: var(--accent);
+    }
+
+    .portal-nav button .icon {
+      width: 21px;
+      height: 21px;
+    }
+
+    .mobile-head {
+      position: sticky;
+      z-index: 55;
+      top: 0;
+      min-height: calc(55px + var(--safe-top));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-subtle);
+      padding: calc(10px + var(--safe-top)) calc(14px + var(--safe-right)) 10px calc(14px + var(--safe-left));
+      background: rgb(11 10 13 / 96%);
+      -webkit-backdrop-filter: blur(18px) saturate(130%);
+      backdrop-filter: blur(18px) saturate(130%);
+    }
+
+    .mobile-head .logo-mark {
+      width: 32px;
+      height: 32px;
+      flex-basis: 32px;
+    }
+
+    .app-main {
+      padding: 18px calc(12px + var(--safe-right)) 28px calc(12px + var(--safe-left));
+    }
+
+    .page-head,
+    .portal-page-head {
+      padding-bottom: 16px;
+    }
+
+    .page-head h1,
+    .portal-page-head h1 {
+      font-size: 2.25rem;
+    }
+
+    .home-intro {
+      gap: 12px;
+    }
+
+    .home-greeting {
+      width: calc(100% + 24px + var(--safe-left) + var(--safe-right));
+      min-height: 468px;
+      align-items: flex-end;
+      flex-direction: column;
+      justify-content: flex-end;
+      margin: -18px calc(-12px - var(--safe-right)) 0 calc(-12px - var(--safe-left));
+      padding: 34px calc(20px + var(--safe-right)) 24px calc(20px + var(--safe-left));
+    }
+
+    .home-greeting::before {
+      background-position: center 24%;
+    }
+
+    .home-greeting::after {
+      background:
+        linear-gradient(0deg, rgb(7 5 9 / 98%) 0%, rgb(7 5 9 / 76%) 43%, rgb(7 5 9 / 12%) 82%),
+        linear-gradient(90deg, rgb(7 5 9 / 38%), transparent);
+    }
+
+    .home-greeting h1 {
+      max-width: 340px;
+      font-size: 2.65rem;
+    }
+
+    .home-now-playing {
+      margin-top: 20px;
+    }
+
+    .home-actions {
+      width: 100%;
+      min-width: 0;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin-top: 20px;
+    }
+
+    .home-actions .primary {
+      grid-column: 1 / -1;
+    }
+
+    .home-actions button {
+      justify-content: center;
+    }
+
+    .home-status {
+      padding: 20px;
+    }
+
+    .watch-top {
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .watch-top h1 {
+      font-size: 2.25rem;
+    }
+
+    .watch-controls {
+      width: 100%;
+    }
+
+    .watch-library-admin {
+      align-items: stretch;
+      flex-direction: column;
+      gap: 11px;
+    }
+
+    .watch-library-admin > div {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .watch-continue-rail {
+      grid-auto-columns: min(84vw, 328px);
+      margin-right: -12px;
+      padding-right: 12px;
+    }
+
+    .watch-poster-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 24px 10px;
+    }
+
+    .watch-card-copy {
+      padding-top: 8px;
+    }
+
+    .watch-card-copy strong {
+      font-size: 0.78rem;
+    }
+
+    :is(.library-hero, .channel-hero, .adult-hero, .usb-hero) {
+      padding: 20px;
+    }
+
+    .settings-section {
+      padding: 20px;
+    }
+
+    .danger-zone .section-heading {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .danger-zone .section-heading > .row {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .danger-zone .section-heading button {
+      width: 100%;
+    }
+
+    :is(.library-sheet-panel, .watch-sheet-panel, .watch-film-panel,
+        .watch-programme-sheet > article, .remote-sheet-panel) {
+      border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+    }
+
+    :is(.library-sheet-handle, .watch-sheet-handle, .remote-sheet-handle) {
+      border-radius: 0;
+      background: var(--border-strong);
+    }
+
+    .auth-brand {
+      min-height: 280px;
+      padding: calc(22px + var(--safe-top)) 22px 28px;
+    }
+
+    .auth-brand h2 {
+      font-size: 2.3rem;
+    }
+
+    .auth-panel {
+      padding: 26px 20px calc(28px + var(--safe-bottom));
+    }
+  }
+
+  @media (max-width: 420px) {
+    .home-greeting {
+      min-height: 446px;
+    }
+
+    .home-actions {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .home-actions .primary {
+      grid-column: auto;
+    }
+
+    .watch-tabs button {
+      gap: 5px;
+      padding-inline: 4px;
+      font-size: 0.68rem;
+    }
+
+    .watch-tabs button svg {
+      width: 17px;
+      height: 17px;
+    }
+
+    .watch-discovery,
+    .adult-discovery {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .watch-search,
+    .adult-search {
+      grid-column: auto;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      scroll-behavior: auto;
+      transition-duration: 0.01ms;
+      animation-duration: 0.01ms;
+      animation-iteration-count: 1;
+    }
+  }
+}
+

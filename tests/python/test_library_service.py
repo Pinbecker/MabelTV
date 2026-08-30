@@ -26,7 +26,7 @@ SPEC.loader.exec_module(mabeltv_library)
 PORTAL_ROOT = PROJECT_ROOT / "scripts" / "pi" / "portal"
 PORTAL_SCRIPT = "\n".join(
     (PORTAL_ROOT / "js" / name).read_text(encoding="utf-8")
-    for name in ("core.js", "channel-page.js", "library.js", "playback.js", "actions.js", "component-gallery.js")
+    for name in ("core.js", "channel-page.js", "library.js", "playback.js", "actions.js")
 )
 PORTAL_STYLES = "\n".join(
     path.read_text(encoding="utf-8")
@@ -103,12 +103,13 @@ class LibraryUnitTests(unittest.TestCase):
 
     def test_portal_is_composed_from_ordered_component_assets(self) -> None:
         html = mabeltv_library.INDEX
+        source = MODULE_PATH.with_name("mabeltv-library.html").read_text(encoding="utf-8")
         css_names = (
             "tokens", "base", "components", "shell", "home", "live",
             "watch", "management", "usb", "settings", "responsive", "channel-page",
-            "component-gallery", "component-direction-signal", "component-direction-aperture",
+            "product-foundation", "product-shell", "product-library", "product-responsive",
         )
-        js_names = ("core", "appearance", "channel-page", "library", "playback", "actions", "component-gallery")
+        js_names = ("core", "channel-page", "library", "playback", "actions")
 
         css_positions = [html.index(f'/portal/css/{name}.css') for name in css_names]
         js_positions = [html.index(f'/portal/js/{name}.js') for name in js_names]
@@ -120,75 +121,45 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertNotIn("body.portal-v2", PORTAL_STYLES)
         self.assertIn("@layer reset, tokens, base, components", PORTAL_STYLES)
         self.assertIn("--control-min: 44px", PORTAL_STYLES)
-        self.assertIn('/portal/icons.svg#home', html)
+        self.assertIn('/portal/icons.svg#signal-house', html)
+        self.assertIn('class="logo-mark" src="/mabeltv-icon.png"', html)
         self.assertTrue((PORTAL_ROOT / "icons.svg").is_file())
+        self.assertIn('portal-include:html/app-shell.html', source)
+        self.assertLess(len(source), 5_000)
+        self.assertNotIn('portal-include:', html)
+        for name in ("overview", "live", "channels", "adult", "watch", "usb", "system"):
+            self.assertTrue((PORTAL_ROOT / "html" / "views" / f"{name}.html").is_file())
+        self.assertEqual(html.count('id="iosWatchPlayer"'), 1)
+        self.assertEqual(html.count('id="mabelWatchPlayer"'), 1)
 
-    def test_component_gallery_catalogues_the_real_portal_system(self) -> None:
+    def test_portal_uses_one_fixed_product_system(self) -> None:
         html = mabeltv_library.INDEX
-        gallery = (PORTAL_ROOT / "js" / "component-gallery.js").read_text(
-            encoding="utf-8")
-        styles = (PORTAL_ROOT / "css" / "component-gallery.css").read_text(
-            encoding="utf-8")
-        signal_styles = (PORTAL_ROOT / "css" / "component-direction-signal.css").read_text(
-            encoding="utf-8")
-        aperture_styles = (PORTAL_ROOT / "css" / "component-direction-aperture.css").read_text(
-            encoding="utf-8")
+        styles = "\n".join(
+            (PORTAL_ROOT / "css" / f"product-{name}.css").read_text(encoding="utf-8")
+            for name in ("foundation", "shell", "library", "responsive")
+        )
         core = (PORTAL_ROOT / "js" / "core.js").read_text(encoding="utf-8")
 
-        self.assertIn('id="view-components"', html)
-        self.assertIn('id="openComponentGallery"', html)
-        self.assertIn('/portal/css/component-gallery.css', html)
-        self.assertIn('/portal/js/component-gallery.js', html)
-        self.assertIn('/portal/css/component-direction-signal.css', html)
-        self.assertIn('/portal/css/component-direction-aperture.css', html)
-        self.assertIn("'components'", core)
-        self.assertIn("name === 'components' ? 'system'", core)
-        self.assertIn("window.MabelComponentGallery?.render(library)", core)
-        self.assertIn("window.MabelPortalLibrary = library", core)
-        self.assertIn("const SECTIONS = [", gallery)
-        self.assertIn("01 · Signal", gallery)
-        self.assertIn("02 · Aperture", gallery)
-        self.assertIn("component-theme-signal", gallery)
-        self.assertIn("component-theme-aperture", gallery)
-        self.assertIn("renderInventory(sample, 'signal')", gallery)
-        self.assertIn("renderInventory(sample, 'aperture')", gallery)
-        self.assertIn("watch-continue-card", gallery)
-        self.assertIn("mabel-show-identity", gallery)
-        self.assertIn("channel-page-show-card", gallery)
-        self.assertIn("adult-film component-adult-row", gallery)
-        self.assertIn("ios-watch-head", gallery)
-        self.assertIn("portal-nav component-nav-preview", gallery)
-        self.assertIn("channel-card library-main-card component-channel-management", gallery)
-        self.assertIn("component-button-hierarchy", gallery)
-        self.assertIn("remote-mode-row component-remote-modes", gallery)
-        self.assertIn("portal-theme-picker component-theme-picker", gallery)
-        self.assertIn("drop-field component-drop-field", gallery)
-        self.assertIn("data-component-search", gallery)
-        self.assertIn("render(window.MabelPortalLibrary)", gallery)
+        self.assertIn('/portal/css/product-foundation.css', html)
+        self.assertIn('/portal/css/product-shell.css', html)
+        self.assertIn('/portal/css/product-library.css', html)
+        self.assertIn('/portal/css/product-responsive.css', html)
+        self.assertNotIn('/portal/js/appearance.js', html)
+        self.assertNotIn('/portal/js/component-gallery.js', html)
+        self.assertNotIn('id="view-components"', html)
+        self.assertNotIn('id="portalAppearanceControl"', html)
+        self.assertNotIn('data-portal-design', html)
+        self.assertNotIn("'components'", core)
+        self.assertIn("@layer streaming", styles)
+        self.assertIn("--accent: #ff7a1a", styles)
+        self.assertIn(".portal-nav button.active::before", styles)
+        self.assertIn(".watch-poster-grid", styles)
+        self.assertIn(".channel-card", styles)
+        self.assertIn(".settings-section", styles)
+        self.assertIn("Dedicated video player", styles)
+        self.assertNotIn(".ios-watch-player", styles)
+        self.assertNotIn(".mabel-watch-player", styles)
         self.assertNotIn("!important", styles)
-        self.assertIn("--signal-red: var(--accent)", signal_styles)
-        self.assertIn('html[data-portal-design="signal"]', signal_styles)
-        self.assertIn("data-apply-gallery-design", gallery)
-        self.assertIn(".signal-direction-intro", signal_styles)
-        self.assertIn(
-            ':where(.component-theme-signal, html[data-portal-design="signal"]) .component-nav-preview',
-            signal_styles)
-        self.assertIn(
-            ':where(.component-theme-signal, html[data-portal-design="signal"]) .watch-continue-card',
-            signal_styles)
-        self.assertIn(
-            ':where(.component-theme-signal, html[data-portal-design="signal"]) .notice:not(:empty)',
-            signal_styles)
-        self.assertNotIn("!important", signal_styles)
-        self.assertIn('html[data-portal-design="aperture"]', aperture_styles)
-        self.assertIn(".aperture-direction-intro", aperture_styles)
-        self.assertIn(
-            ':where(.component-theme-aperture, html[data-portal-design="aperture"]) .component-nav-preview',
-            aperture_styles)
-        self.assertIn(
-            ':where(.component-theme-aperture, html[data-portal-design="aperture"]) .watch-continue-card',
-            aperture_styles)
-        self.assertNotIn("!important", aperture_styles)
         icons = (PORTAL_ROOT / "icons.svg").read_text(encoding="utf-8")
         self.assertIn('id="signal-house"', icons)
         self.assertIn('id="signal-play"', icons)
@@ -1934,7 +1905,7 @@ class LibraryHttpTests(unittest.TestCase):
                              ("/portal/css/components.css", b"@layer components"),
                              ("/portal/icons.svg", b'id="settings"'),
                              ("/portal/js/core.js", b"function initialise"),
-                             ("/portal/js/appearance.js", b"MabelPortalAppearance"),
+                             ("/portal/css/product-foundation.css", b"@layer streaming"),
                              ("/portal/js/actions.js", b"managementBusy")):
             with urllib.request.urlopen(self.base + path, timeout=5) as response:
                 self.assertEqual(response.status, 200)

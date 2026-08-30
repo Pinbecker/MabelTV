@@ -1,0 +1,25 @@
+  <section id="app" class="app-shell hidden">
+    <aside class="rail">
+      <div class="rail-head"><div class="logo"><img class="logo-mark" src="/mabeltv-icon.png" alt=""><span data-tv-name>Your TV</span></div><p class="rail-tv">Controlling<strong id="topTvName">Your TV</strong></p></div>
+      <nav id="mainNav" class="portal-nav" aria-label="TV sections">
+        <button class="active" data-view-button="overview" aria-current="page"><svg class="icon"><use href="/portal/icons.svg#signal-house"/></svg>Home<span class="nav-dot"></span></button>
+        <button data-view-button="live"><svg class="icon"><use href="/portal/icons.svg#signal-radio"/></svg>Live TV<span class="nav-dot"></span></button>
+        <button data-view-button="watch"><svg class="icon"><use href="/portal/icons.svg#signal-clapperboard"/></svg>Watch<span class="nav-dot"></span></button>
+        <button data-view-button="usb"><svg class="icon"><use href="/portal/icons.svg#signal-hard-drive"/></svg>USB<span class="nav-dot"></span></button>
+        <button data-view-button="system"><svg class="icon"><use href="/portal/icons.svg#signal-settings"/></svg>Settings<span class="nav-dot"></span></button>
+      </nav>
+      <div class="rail-foot"><span id="topHealth" class="health-pill">Checking TV…</span><button id="logout" class="secondary">Lock controls</button></div>
+    </aside>
+    <header class="mobile-head"><div class="logo"><img class="logo-mark" src="/mabeltv-icon.png" alt=""><span data-tv-name>Your TV</span></div><span class="mobile-context">Parent portal</span></header>
+    <main class="app-main">
+      <p id="notice" class="notice" role="status" aria-live="polite"></p>
+      <!-- portal-include:html/views/overview.html -->
+      <!-- portal-include:html/views/live.html -->
+      <!-- portal-include:html/views/channels.html -->
+      <!-- portal-include:html/views/adult.html -->
+      <!-- portal-include:html/views/watch.html -->
+      <!-- portal-include:html/views/usb.html -->
+      <!-- portal-include:html/views/system.html -->
+    </main>
+  </section>
+
