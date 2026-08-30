@@ -1,0 +1,184 @@
+@layer pages {
+  #view-usb {
+    container-type: inline-size;
+  }
+
+  .usb-hero {
+    margin-bottom: var(--space-4);
+  }
+
+  .usb-layout {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+    gap: var(--space-4);
+    align-items: start;
+  }
+
+  .usb-drives,
+  .usb-browser {
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-panel);
+    background: var(--surface-1);
+    box-shadow: var(--shadow-card);
+  }
+
+  .usb-drives {
+    position: sticky;
+    top: var(--space-5);
+    overflow: hidden;
+  }
+
+  .usb-drives .section-heading,
+  .usb-browser .section-heading,
+  .usb-import .section-heading {
+    align-items: center;
+    border-bottom: 1px solid var(--border-subtle);
+    padding: var(--space-4);
+  }
+
+  .usb-drives > .section-kicker {
+    margin: var(--space-4) var(--space-4) 0;
+  }
+
+  .usb-drives > h2 {
+    margin: var(--space-1) var(--space-4) var(--space-2);
+  }
+
+  .usb-drive-list,
+  .usb-file-list {
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-3);
+  }
+
+  .usb-drive {
+    min-width: 0;
+    display: grid;
+    gap: var(--space-3);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    padding: var(--space-3);
+    background: var(--surface-2);
+  }
+
+  .usb-drive.active {
+    border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+    background: var(--accent-soft);
+  }
+
+  .usb-drive-copy {
+    min-width: 0;
+  }
+
+  .usb-drive-copy strong,
+  .usb-drive-copy small {
+    display: block;
+    overflow-wrap: anywhere;
+  }
+
+  .usb-drive-copy small {
+    margin-top: 3px;
+    color: var(--text-muted);
+    font-size: var(--type-caption);
+  }
+
+  .usb-drive button {
+    width: 100%;
+  }
+
+  .usb-toolbar {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    border-bottom: 1px solid var(--border-subtle);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  #usbBreadcrumb {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: var(--text-muted);
+    font-size: var(--type-label);
+  }
+
+  .usb-file {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, auto);
+    align-items: center;
+    gap: var(--space-3);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    padding: var(--space-3);
+    background: var(--surface-2);
+  }
+
+  .usb-file:hover {
+    border-color: var(--border);
+  }
+
+  .usb-file-copy {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+  }
+
+  .usb-file-copy strong {
+    overflow-wrap: anywhere;
+    font-size: var(--type-label);
+  }
+
+  .usb-file-copy small {
+    color: var(--text-muted);
+    font-size: var(--type-caption);
+  }
+
+  .usb-file-actions {
+    justify-content: flex-end;
+  }
+
+  .usb-file-actions button {
+    flex: 0 1 auto;
+    white-space: normal;
+  }
+
+  .usb-import {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto;
+    align-items: end;
+    gap: var(--space-3);
+    border-top: 1px solid var(--border-subtle);
+    padding: var(--space-4);
+  }
+
+  .usb-safety {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+    color: var(--text-muted);
+    font-size: var(--type-label);
+  }
+
+  .usb-safety span {
+    border-radius: var(--radius-round);
+    padding: 5px 9px;
+    background: var(--surface-3);
+    color: var(--text-muted);
+    font-size: var(--type-caption);
+  }
+
+  .usb-job {
+    display: grid;
+    gap: var(--space-2);
+    margin: var(--space-3) 0;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    padding: var(--space-3);
+    background: var(--surface-2);
+  }
+}

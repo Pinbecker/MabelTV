@@ -1,0 +1,222 @@
+@layer pages {
+  .settings-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .settings-section {
+    min-width: 0;
+    padding: var(--space-5);
+  }
+
+  .settings-section.full {
+    grid-column: 1 / -1;
+  }
+
+  .settings-section h2 {
+    margin-bottom: var(--space-2);
+  }
+
+  .settings-section > p:not(.section-kicker) {
+    color: var(--text-muted);
+  }
+
+  .settings-section form {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .settings-note {
+    margin-top: 14px;
+  }
+
+  .settings-subhead {
+    margin-top: 26px;
+  }
+
+  .feature-control,
+  .feature-toggle,
+  .definition,
+  .range-setting {
+    min-width: 0;
+    display: grid;
+    gap: var(--space-2);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    padding: var(--space-3);
+    background: var(--surface-2);
+  }
+
+  .feature-control button {
+    border-color: var(--border);
+    background: var(--surface-3);
+    color: var(--text-soft);
+  }
+
+  .feature-toggle {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .feature-toggle input {
+    width: 22px;
+  }
+
+  .range-setting {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .range-setting input {
+    grid-column: 1;
+  }
+
+  .range-setting output {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    min-width: 48px;
+    border-radius: var(--radius-round);
+    padding: 6px 9px;
+    background: var(--surface-3);
+    color: var(--text-soft);
+    font-size: var(--type-caption);
+    font-weight: 740;
+    text-align: center;
+  }
+
+  .tv-settings-grid {
+    margin-top: var(--space-4);
+  }
+
+  .tv-settings-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    margin-top: var(--space-4);
+    border-top: 1px solid var(--border-subtle);
+    padding-top: var(--space-4);
+  }
+
+  .tv-settings-foot p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--type-label);
+  }
+
+  .design-picker,
+  .portal-theme-picker {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+
+  .design-option,
+  .portal-theme-picker button {
+    min-width: 0;
+    display: grid;
+    justify-items: stretch;
+    gap: var(--space-3);
+    border-color: var(--border);
+    padding: var(--space-3);
+    background: var(--surface-2);
+    color: var(--text-soft);
+    text-align: left;
+  }
+
+  .design-option.active,
+  .portal-theme-picker button.active {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--text);
+  }
+
+  .design-preview,
+  .theme-preview {
+    min-height: 100px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background: var(--canvas);
+  }
+
+  .design-copy {
+    display: grid;
+    gap: 3px;
+  }
+
+  .portal-theme-picker button > span:last-child {
+    display: grid;
+    gap: 3px;
+  }
+
+  .portal-theme-picker button small {
+    display: block;
+    color: var(--text-muted);
+    font-size: var(--type-caption);
+    font-weight: 520;
+  }
+
+  .definition {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+  }
+
+  .definition dt {
+    color: var(--text-muted);
+  }
+
+  .definition dd {
+    margin: 0;
+    color: var(--text-soft);
+    text-align: right;
+  }
+
+  .design-copy small {
+    color: var(--text-muted);
+    font-size: var(--type-caption);
+    font-weight: 520;
+  }
+
+  .mini-page {
+    height: 100%;
+    display: grid;
+    grid-template-columns: 26px 1fr;
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .mini-rail {
+    border-radius: 6px;
+    background: var(--surface-2);
+  }
+
+  .mini-line {
+    height: 7px;
+    margin-bottom: 6px;
+    border-radius: var(--radius-round);
+    background: var(--border);
+  }
+
+  .theme-preview-dark {
+    background: #0b100e;
+  }
+
+  .theme-preview-light {
+    background: #f3f0ea;
+  }
+
+  .portal-appearance {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .danger-zone {
+    border-color: color-mix(in srgb, var(--danger) 28%, var(--border));
+    background: color-mix(in srgb, var(--surface-1) 86%, var(--danger-soft));
+  }
+
+  .danger-zone h2 {
+    color: var(--danger);
+  }
+}

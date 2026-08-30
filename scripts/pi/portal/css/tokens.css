@@ -1,0 +1,116 @@
+@layer reset, tokens, base, components, layouts, pages, responsive, utilities;
+
+@layer tokens {
+  :root {
+    color-scheme: dark;
+
+    --font-sans: Inter, ui-rounded, "SF Pro Display", "SF Pro Text", -apple-system,
+      BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --space-7: 48px;
+    --space-8: 64px;
+
+    --radius-control: 10px;
+    --radius-card: 14px;
+    --radius-panel: 20px;
+    --radius-sheet: 24px;
+    --radius-round: 999px;
+
+    --control-min: 44px;
+    --control-prominent: 52px;
+    --sidebar-compact: 184px;
+    --sidebar-wide: 224px;
+    --content-max: 1440px;
+
+    --canvas: #0a0e0c;
+    --canvas-raised: #0d1210;
+    --surface-1: #111714;
+    --surface-2: #171e1b;
+    --surface-3: #202824;
+    --surface-hover: #27312d;
+    --field: #0d1310;
+    --overlay: rgb(2 5 3 / 78%);
+
+    --border-subtle: #26312c;
+    --border: #334039;
+    --border-strong: #4b5a53;
+
+    --text: #f3f6f4;
+    --text-soft: #c2cac6;
+    --text-muted: #89958f;
+    --text-faint: #68736e;
+    --text-inverse: #111613;
+
+    --accent: #f08070;
+    --accent-hover: #ff9789;
+    --accent-soft: #40231f;
+    --accent-contrast: #1c100e;
+
+    --success: #78d8aa;
+    --success-soft: #153126;
+    --warning: #e7bd72;
+    --warning-soft: #382b16;
+    --danger: #ff9182;
+    --danger-soft: #3b1f1b;
+    --info: #8bc5ee;
+    --info-soft: #172b39;
+
+    --shadow-card: 0 14px 38px rgb(0 0 0 / 24%);
+    --shadow-sheet: 0 32px 100px rgb(0 0 0 / 58%);
+    --focus-ring: 0 0 0 3px rgb(240 128 112 / 30%);
+
+    --type-display: clamp(2rem, 5vw, 3.6rem);
+    --type-page: clamp(1.85rem, 3.4vw, 2.8rem);
+    --type-title: clamp(1.25rem, 2vw, 1.55rem);
+    --type-section: 1.08rem;
+    --type-body: 0.94rem;
+    --type-label: 0.82rem;
+    --type-caption: 0.72rem;
+
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+  }
+
+  html[data-portal-theme="light"] {
+    color-scheme: light;
+    --canvas: #f4f1eb;
+    --canvas-raised: #ece8e0;
+    --surface-1: #fffdf9;
+    --surface-2: #f4f0e9;
+    --surface-3: #e9e4db;
+    --surface-hover: #dfd8ce;
+    --field: #fffefa;
+    --overlay: rgb(24 20 17 / 52%);
+    --border-subtle: #e3ddd3;
+    --border: #d2cabf;
+    --border-strong: #aaa197;
+    --text: #1a211e;
+    --text-soft: #46514c;
+    --text-muted: #68736d;
+    --text-faint: #858e89;
+    --text-inverse: #fff;
+    --accent: #c95f51;
+    --accent-hover: #b94d40;
+    --accent-soft: #f7ddd7;
+    --accent-contrast: #fff;
+    --success: #2f8f67;
+    --success-soft: #dff2e9;
+    --warning: #936d28;
+    --warning-soft: #f5e9cf;
+    --danger: #c54f42;
+    --danger-soft: #f8dfdb;
+    --info: #397da7;
+    --info-soft: #deedf6;
+    --shadow-card: 0 14px 38px rgb(73 63 52 / 10%);
+    --shadow-sheet: 0 32px 100px rgb(46 38 31 / 28%);
+  }
+}

@@ -1,0 +1,495 @@
+@layer pages {
+  .live-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(390px, 0.7fr);
+    gap: var(--space-4);
+    align-items: start;
+  }
+
+  .live-tv,
+  .remote-console {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-panel);
+    background: #050807;
+    box-shadow: var(--shadow-card);
+  }
+
+  .live-tv {
+    position: sticky;
+    top: var(--space-5);
+  }
+
+  .live-screen {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 50% 45%, rgb(59 93 76 / 30%), transparent 55%),
+      #050807;
+  }
+
+  .live-screen video,
+  .live-screen img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .live-off {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: var(--space-2);
+    padding: var(--space-5);
+    color: #f2f5f3;
+    text-align: center;
+  }
+
+  .live-off strong {
+    color: inherit;
+    font-size: clamp(1.2rem, 3vw, 1.8rem);
+  }
+
+  .live-off span {
+    color: #8f9b95;
+  }
+
+  .live-meta {
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    border-top: 1px solid #202824;
+    padding: 10px 14px;
+    background: #0c110f;
+  }
+
+  .live-caption {
+    min-width: 0;
+    overflow: hidden;
+    color: #adb7b2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .live-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #87928c;
+    white-space: nowrap;
+  }
+
+  .live-led {
+    width: 8px;
+    height: 8px;
+    display: inline-block;
+    flex: 0 0 auto;
+    border-radius: var(--radius-round);
+    background: var(--success);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--success) 14%, transparent);
+  }
+
+  .live-led.off {
+    background: var(--text-faint);
+    box-shadow: none;
+  }
+
+  .remote-console {
+    background: var(--surface-1);
+  }
+
+  .remote-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    border-bottom: 1px solid var(--border-subtle);
+    padding: var(--space-4);
+  }
+
+  .remote-heading {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .remote-heading h2,
+  .remote-heading p {
+    margin: 0;
+  }
+
+  .remote-heading p:last-child {
+    margin-top: 3px;
+    color: var(--text-muted);
+    font-size: var(--type-caption);
+  }
+
+  .remote-mark {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    background: var(--surface-2);
+    color: var(--accent);
+  }
+
+  .remote-mark svg {
+    width: 23px;
+    height: 23px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+  }
+
+  .remote-feedback {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-round);
+    padding: 6px 9px;
+    color: var(--text-muted);
+    font-size: var(--type-caption);
+    white-space: nowrap;
+  }
+
+  .remote-mode-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-2);
+    border-bottom: 1px solid var(--border-subtle);
+    padding: var(--space-3);
+  }
+
+  .remote-mode {
+    min-width: 0;
+    min-height: 78px;
+    align-items: center;
+    flex-direction: column;
+    gap: 6px;
+    border-color: var(--border-subtle);
+    padding: 10px 6px;
+    background: var(--surface-2);
+    color: var(--text-soft);
+  }
+
+  .remote-mode:hover {
+    border-color: var(--border-strong);
+    background: var(--surface-hover);
+    color: var(--text);
+  }
+
+  .remote-mode > span:last-child,
+  .remote-mode strong,
+  .remote-mode small {
+    min-width: 0;
+    display: block;
+    text-align: center;
+  }
+
+  .remote-mode strong {
+    overflow: hidden;
+    font-size: 0.72rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .remote-mode small {
+    display: none;
+    color: var(--text-muted);
+    font-size: 0.58rem;
+  }
+
+  .remote-mode-icon {
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    background: var(--surface-3);
+  }
+
+  .remote-mode-icon svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  .remote-control-deck {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-4);
+  }
+
+  .remote-everyday,
+  .remote-playback,
+  section.remote-power {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .remote-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .remote-section-head h3,
+  .remote-section-head p {
+    margin: 0;
+  }
+
+  .remote-back {
+    border-color: var(--border);
+    background: var(--surface-2);
+    color: var(--text-soft);
+  }
+
+  .remote-primary-cluster {
+    display: grid;
+    grid-template-columns: 50px minmax(142px, 176px) 50px;
+    justify-content: center;
+    gap: var(--space-2);
+  }
+
+  .remote-rocker {
+    min-height: 176px;
+    display: grid;
+    grid-template-rows: 48px 1fr 48px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-round);
+    background: var(--surface-2);
+  }
+
+  .remote-rocker button {
+    min-width: 0;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    background: transparent;
+    color: var(--text-soft);
+  }
+
+  .remote-rocker button:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+  }
+
+  .remote-rocker > span,
+  .remote-rocker-state {
+    min-width: 0;
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+  }
+
+  .remote-rocker small,
+  .remote-rocker strong {
+    display: block;
+  }
+
+  .remote-rocker small {
+    font-size: 0.52rem;
+    font-weight: 760;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .remote-rocker strong {
+    font-size: 0.72rem;
+  }
+
+  .remote-pad {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    display: grid;
+    grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: var(--surface-2);
+  }
+
+  .remote-pad-ring {
+    position: absolute;
+    inset: 30%;
+    border: 1px solid var(--border-subtle);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .remote-pad button {
+    z-index: 1;
+    min-width: 0;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    background: transparent;
+    color: var(--text-soft);
+  }
+
+  .remote-pad button:hover {
+    background: var(--surface-hover);
+  }
+
+  .remote-pad .up { grid-area: 1 / 2; }
+  .remote-pad .left { grid-area: 2 / 1; }
+  .remote-pad .select {
+    grid-area: 2 / 2;
+    align-self: center;
+    justify-self: center;
+    width: 58px;
+    height: 58px;
+    border: 1px solid var(--border-strong);
+    border-radius: 50%;
+    background: var(--surface-3);
+  }
+  .remote-pad .right { grid-area: 2 / 3; }
+  .remote-pad .down { grid-area: 3 / 2; }
+
+  .remote-transport {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+
+  .remote-transport button,
+  .remote-dock-action {
+    min-width: 0;
+    border-color: var(--border);
+    background: var(--surface-2);
+    color: var(--text-soft);
+  }
+
+  .remote-play {
+    background: var(--text);
+    color: var(--text-inverse);
+  }
+
+  .remote-dock {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .remote-dock-action {
+    width: 100%;
+    min-height: var(--control-prominent);
+    justify-content: flex-start;
+    padding: 9px 12px;
+    text-align: left;
+  }
+
+  button.remote-dock-main {
+    width: 100%;
+    min-height: 64px;
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) 20px;
+    align-items: center;
+    gap: var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-control);
+    padding: 10px 12px;
+    background: var(--surface-2);
+    color: var(--text-soft);
+    text-align: left;
+  }
+
+  button.remote-dock-main:hover {
+    border-color: var(--border-strong);
+    background: var(--surface-hover);
+  }
+
+  .remote-dock-main > span:nth-child(2) {
+    min-width: 0;
+    display: grid;
+  }
+
+  .remote-dock-main small {
+    color: var(--text-muted);
+    font-size: var(--type-caption);
+    font-weight: 520;
+  }
+
+  .remote-dock-chevron {
+    color: var(--text-faint);
+  }
+
+  .remote-sheet-panel {
+    width: 100%;
+  }
+
+  .remote-channel-options {
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-3);
+  }
+
+  .remote-channel-option {
+    width: 100%;
+    min-height: 56px;
+    justify-content: flex-start;
+    border-color: transparent;
+    background: transparent;
+    color: var(--text-soft);
+    text-align: left;
+  }
+
+  .remote-channel-option:hover,
+  .remote-channel-option.active {
+    border-color: var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+  }
+
+  .remote-channel-number {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 11px;
+    background: var(--surface-3);
+    color: var(--accent);
+    font-size: var(--type-label);
+  }
+
+  .remote-power-actions {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .remote-power-confirm {
+    min-height: 72px;
+    justify-content: flex-start;
+    border-color: color-mix(in srgb, var(--danger) 28%, var(--border));
+    background: var(--danger-soft);
+    color: var(--danger);
+    text-align: left;
+  }
+
+  .remote-power-confirm > span {
+    display: grid;
+  }
+
+  .remote-power-confirm small {
+    color: color-mix(in srgb, var(--danger) 68%, var(--text-muted));
+    font-size: var(--type-caption);
+  }
+}

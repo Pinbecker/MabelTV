@@ -23,6 +23,17 @@ assert SPEC and SPEC.loader
 mabeltv_library = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(mabeltv_library)
 
+PORTAL_ROOT = PROJECT_ROOT / "scripts" / "pi" / "portal"
+PORTAL_SCRIPT = "\n".join(
+    (PORTAL_ROOT / "js" / name).read_text(encoding="utf-8")
+    for name in ("core.js", "library.js", "playback.js", "actions.js")
+)
+PORTAL_STYLES = "\n".join(
+    path.read_text(encoding="utf-8")
+    for path in sorted((PORTAL_ROOT / "css").glob("*.css"))
+)
+PORTAL_SOURCE = "\n".join((mabeltv_library.INDEX, PORTAL_SCRIPT, PORTAL_STYLES))
+
 
 class LibraryFixture:
     def __init__(self) -> None:
@@ -76,7 +87,7 @@ class LibraryUnitTests(unittest.TestCase):
         process.wait.assert_called_once_with(timeout=3)
 
     def test_browser_upload_form_supports_resumable_multi_file_batches(self) -> None:
-        index = mabeltv_library.INDEX
+        index = PORTAL_SOURCE
         self.assertRegex(index, r'id="file"[^>]+\bmultiple\b')
         self.assertIn("let selectedUploadFiles = []", index)
         self.assertIn("$('#file').onchange", index)
@@ -90,8 +101,29 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertNotIn("KidsTV", index)
         self.assertIn("state.tv_name", index)
 
+    def test_portal_is_composed_from_ordered_component_assets(self) -> None:
+        html = mabeltv_library.INDEX
+        css_names = (
+            "tokens", "base", "components", "shell", "home", "live",
+            "watch", "management", "usb", "settings", "responsive",
+        )
+        js_names = ("core", "library", "playback", "actions")
+
+        css_positions = [html.index(f'/portal/css/{name}.css') for name in css_names]
+        js_positions = [html.index(f'/portal/js/{name}.js') for name in js_names]
+        self.assertEqual(css_positions, sorted(css_positions))
+        self.assertEqual(js_positions, sorted(js_positions))
+        self.assertNotIn("<style", html)
+        self.assertNotRegex(html, r"\sstyle=")
+        self.assertNotIn("!important", PORTAL_STYLES)
+        self.assertNotIn("body.portal-v2", PORTAL_STYLES)
+        self.assertIn("@layer reset, tokens, base, components", PORTAL_STYLES)
+        self.assertIn("--control-min: 44px", PORTAL_STYLES)
+        self.assertIn('/portal/icons.svg#home', html)
+        self.assertTrue((PORTAL_ROOT / "icons.svg").is_file())
+
     def test_remote_browser_player_has_native_controls_and_safe_default(self) -> None:
-        index = mabeltv_library.INDEX
+        index = PORTAL_SOURCE
         player = mabeltv_library.WATCH_PAGE
         self.assertIn('id="view-watch"', index)
         self.assertIn('watch-poster-grid', index)
@@ -105,7 +137,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("requestNativeFullscreen()", index)
         self.assertIn("webkitEnterFullscreen", player)
         self.assertIn("navigator.maxTouchPoints > 1", index)
-        self.assertIn("body>:not(#iosWatchPlayer)", index)
+        self.assertIn("body:has(.ios-watch-player:not(.hidden))", index)
         self.assertIn("classList.toggle('adult', result.kind === 'adult')", player)
         self.assertIn("set-remote-simultaneous", index)
         self.assertIn("/api/remote/start", player)
@@ -122,9 +154,9 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("identity.onclick = () => openChannel(channel.number, true)", index)
         self.assertIn("channelWorkspaceReturnToWatch", index)
         self.assertIn('id="watchMabelUtilities"', index)
-        self.assertIn("body.portal-v2 .watch-programme-sheet[open]", index)
-        self.assertIn("grid-template-columns:50px minmax(142px,176px) 50px", index)
-        self.assertIn("body.portal-v2 #view-live .remote-mode small{display:none}", index)
+        self.assertIn("dialog:is(.library-sheet, .watch-sheet", index)
+        self.assertIn("grid-template-columns: 50px minmax(142px, 176px) 50px", index)
+        self.assertIn(".remote-mode small", index)
         self.assertNotIn('data-view-button="channels"', index)
         self.assertNotIn('data-view-button="adult"', index)
         self.assertNotIn("api('/api/remote/stop-tv'", index)
@@ -988,9 +1020,7 @@ class LibraryUnitTests(unittest.TestCase):
                 self.assertEqual(self.fixture.library.player_mode_status(), {})
 
     def test_portal_error_notices_clear_automatically(self) -> None:
-        portal = (PROJECT_ROOT / "scripts" / "pi" / "mabeltv-library.html").read_text(
-            encoding="utf-8"
-        )
+        portal = PORTAL_SOURCE
 
         self.assertIn("if (message && !message.endsWith('…'))", portal)
         self.assertIn("bad ? 7000 : 5000", portal)
@@ -1611,10 +1641,21 @@ class LibraryHttpTests(unittest.TestCase):
 
     def test_offline_shell_assets_are_publicly_available(self) -> None:
         for path, marker in (("/service-worker.js", b"offline-media"),
-                             ("/mabeltv-offline.js", b"startDownload")):
+                             ("/mabeltv-offline.js", b"startDownload"),
+                             ("/portal/css/tokens.css", b"--control-min: 44px"),
+                             ("/portal/css/components.css", b"@layer components"),
+                             ("/portal/icons.svg", b'id="settings"'),
+                             ("/portal/js/core.js", b"function initialise"),
+                             ("/portal/js/actions.js", b"managementBusy")):
             with urllib.request.urlopen(self.base + path, timeout=5) as response:
                 self.assertEqual(response.status, 200)
                 self.assertIn(marker, response.read())
+
+    def test_portal_asset_handler_rejects_path_traversal(self) -> None:
+        with self.assertRaises(urllib.error.HTTPError) as raised:
+            urllib.request.urlopen(
+                self.base + "/portal/../mabeltv-library.py", timeout=5)
+        self.assertEqual(raised.exception.code, 404)
 
 
 if __name__ == "__main__":

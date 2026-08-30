@@ -1,10 +1,26 @@
 'use strict'
 
-const SHELL_CACHE = 'mabeltv-shell-v3'
+const SHELL_CACHE = 'mabeltv-shell-v6'
 const SHELL_URLS = [
   '/',
   '/manifest.webmanifest',
   '/mabeltv-offline.js',
+  '/portal/css/tokens.css',
+  '/portal/css/base.css',
+  '/portal/css/components.css',
+  '/portal/css/shell.css',
+  '/portal/css/home.css',
+  '/portal/css/live.css',
+  '/portal/css/watch.css',
+  '/portal/css/management.css',
+  '/portal/css/usb.css',
+  '/portal/css/settings.css',
+  '/portal/css/responsive.css',
+  '/portal/icons.svg',
+  '/portal/js/core.js',
+  '/portal/js/library.js',
+  '/portal/js/playback.js',
+  '/portal/js/actions.js',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/apple-touch-icon.png',
@@ -151,6 +167,9 @@ self.addEventListener('fetch', event => {
     return
   }
   if (SHELL_URLS.includes(url.pathname)) {
-    event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request)))
+    event.respondWith(fetch(event.request).then(response => {
+      if (response.ok) caches.open(SHELL_CACHE).then(cache => cache.put(event.request, response.clone()))
+      return response
+    }).catch(() => caches.match(event.request)))
   }
 })

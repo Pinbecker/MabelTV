@@ -214,6 +214,8 @@ install -o root -g root -m 0644 "$source_root/scripts/pi/service-worker.js" "$in
 install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-icon.png" "$incoming_dir/mabeltv-icon.png"
 install -o root -g root -m 0644 "$source_root/scripts/pi/apple-touch-icon.png" "$incoming_dir/apple-touch-icon.png"
 install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-manifest.json" "$incoming_dir/mabeltv-manifest.json"
+install -d -o root -g root -m 0755 "$incoming_dir/portal"
+cp -a "$source_root/scripts/pi/portal/." "$incoming_dir/portal/"
 install -d -o root -g root -m 0755 "$incoming_dir/icons"
 install -o root -g root -m 0644 "$source_root/scripts/pi/icons/icon-192.png" "$incoming_dir/icons/icon-192.png"
 install -o root -g root -m 0644 "$source_root/scripts/pi/icons/icon-512.png" "$incoming_dir/icons/icon-512.png"

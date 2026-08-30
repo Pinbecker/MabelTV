@@ -3,14 +3,25 @@ import unittest
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PORTAL_ROOT = PROJECT_ROOT / "scripts" / "pi" / "portal"
+PORTAL_HTML = (PROJECT_ROOT / "scripts" / "pi" / "mabeltv-library.html").read_text(
+    encoding="utf-8"
+)
+PORTAL_SCRIPT = "\n".join(
+    (PORTAL_ROOT / "js" / name).read_text(encoding="utf-8")
+    for name in ("core.js", "library.js", "playback.js", "actions.js")
+)
+PORTAL_STYLES = "\n".join(
+    path.read_text(encoding="utf-8")
+    for path in sorted((PORTAL_ROOT / "css").glob("*.css"))
+)
+PORTAL_SOURCE = "\n".join((PORTAL_HTML, PORTAL_SCRIPT, PORTAL_STYLES))
 
 
 class PlayerSafetyTests(unittest.TestCase):
     def test_child_remote_lock_never_blocks_parent_portal_commands(self) -> None:
         main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
-        portal = (PROJECT_ROOT / "scripts" / "pi" / "mabeltv-library.html").read_text(
-            encoding="utf-8"
-        )
+        portal = PORTAL_SOURCE
 
         self.assertNotIn("if (tvController.remoteLocked || poweringOff", main_qml)
         self.assertIn("if (poweringOff || pendingPowerAction.length > 0)", main_qml)
@@ -254,9 +265,7 @@ class PlayerSafetyTests(unittest.TestCase):
         cec = (PROJECT_ROOT / "src" / "hardware" / "CecTvControl.cpp").read_text(
             encoding="utf-8"
         )
-        portal = (PROJECT_ROOT / "scripts" / "pi" / "mabeltv-library.html").read_text(
-            encoding="utf-8"
-        )
+        portal = PORTAL_SOURCE
 
         self.assertIn("m_tvControl->turnOn()", controller)
         self.assertIn("m_tvControl->turnOff()", controller)
@@ -275,19 +284,17 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("body: JSON.stringify({ command, ...extra })", portal)
 
     def test_portal_uses_shared_intro_and_sheet_design_tokens(self) -> None:
-        portal = (PROJECT_ROOT / "scripts" / "pi" / "mabeltv-library.html").read_text(
-            encoding="utf-8"
-        )
+        portal = PORTAL_SOURCE
 
         self.assertEqual(portal.count('class="home-greeting surface portal-intro"'), 1)
         self.assertEqual(portal.count('library-hero portal-intro'), 1)
         self.assertEqual(portal.count('adult-hero surface portal-intro'), 1)
         self.assertEqual(portal.count('watch-top portal-intro'), 1)
         self.assertEqual(portal.count('<header class="page-head portal-page-head'), 2)
-        self.assertIn("--portal-intro-radius:20px", portal)
-        self.assertIn("--portal-sheet-radius:22px", portal)
-        self.assertIn(":is(.library-sheet,.remote-sheet,.watch-sheet)[open]", portal)
-        self.assertIn(":is(.library-sheet-panel,.remote-sheet-panel,.watch-sheet-panel)", portal)
+        self.assertIn("--radius-panel: 20px", portal)
+        self.assertIn("--radius-sheet: 24px", portal)
+        self.assertIn("dialog:is(.library-sheet, .watch-sheet", portal)
+        self.assertIn(":is(.library-sheet-panel, .watch-sheet-panel", portal)
 
     def test_health_monitor_resets_for_every_playback_request(self) -> None:
         source = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(

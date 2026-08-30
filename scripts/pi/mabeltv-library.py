@@ -4020,6 +4020,20 @@ class Handler(BaseHTTPRequestHandler):
                     self.json(404, {"error": "Static asset not found"}); return
                 data = asset_path.read_bytes(); self.send_response(200); self.send_header("Content-Type", content_type); self.send_header("Content-Length", str(len(data))); self.send_header("Cache-Control", "no-store"); self.security_headers(); self.end_headers(); self.wfile.write(data); return
             parsed = urlsplit(self.path)
+            if parsed.path.startswith("/portal/"):
+                relative_path = parsed.path.removeprefix("/portal/")
+                portal_root = (Path(__file__).parent / "portal").resolve()
+                asset_path = (portal_root / relative_path).resolve()
+                content_types = {
+                    ".css": "text/css; charset=utf-8",
+                    ".js": "text/javascript; charset=utf-8",
+                    ".svg": "image/svg+xml",
+                }
+                if (portal_root not in asset_path.parents
+                        or asset_path.suffix not in content_types
+                        or not asset_path.is_file()):
+                    self.json(404, {"error": "Portal asset not found"}); return
+                self.stream_file(asset_path, content_types[asset_path.suffix]); return
             query = parse_qs(parsed.query)
             if parsed.path in {"/api/external/media", "/api/offline/media"}:
                 token = str(query.get("stream", [""])[0])

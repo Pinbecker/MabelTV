@@ -1,0 +1,136 @@
+@layer pages {
+  .home-intro {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+    gap: var(--space-4);
+  }
+
+  .home-greeting,
+  .home-status {
+    min-width: 0;
+    padding: var(--space-6);
+  }
+
+  .home-greeting {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-5);
+    background:
+      radial-gradient(circle at 90% 8%, rgb(240 128 112 / 18%), transparent 22rem),
+      linear-gradient(145deg, var(--surface-1), color-mix(in srgb, var(--surface-1) 70%, #183328));
+  }
+
+  .home-greeting h1 {
+    max-width: 720px;
+    margin: 0;
+    font-size: clamp(2rem, 4vw, 3.65rem);
+  }
+
+  .home-actions {
+    min-width: 190px;
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .home-actions button {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .home-now-playing {
+    max-width: 620px;
+    display: grid;
+    gap: 2px;
+    margin-top: var(--space-6);
+    border-left: 2px solid var(--accent);
+    padding-left: var(--space-4);
+  }
+
+  .home-now-playing-label {
+    color: var(--text-muted);
+    font-size: var(--type-caption);
+    font-weight: 760;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .home-now-playing strong {
+    overflow-wrap: anywhere;
+    font-size: var(--type-section);
+  }
+
+  .home-now-playing-meta {
+    color: var(--text-muted);
+    font-size: var(--type-label);
+  }
+
+  .home-status {
+    display: grid;
+    align-content: start;
+  }
+
+  .status-top,
+  .attention-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .status-top h2,
+  .attention-head h2 {
+    margin: 0;
+  }
+
+  .health-summary {
+    margin: var(--space-4) 0;
+    color: var(--text-muted);
+  }
+
+  .quick-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+  }
+
+  .quick-stat {
+    min-width: 0;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    padding: var(--space-3);
+    background: var(--surface-2);
+  }
+
+  .quick-stat span,
+  .quick-stat strong {
+    display: block;
+  }
+
+  .quick-stat span {
+    color: var(--text-muted);
+    font-size: var(--type-caption);
+  }
+
+  .quick-stat strong {
+    margin-top: 3px;
+    overflow: hidden;
+    font-size: var(--type-label);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .attention {
+    margin-top: var(--space-4);
+  }
+
+  #warnings {
+    display: grid;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+  }
+
+  #warnings > * {
+    margin: 0;
+  }
+}
