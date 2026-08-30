@@ -185,7 +185,7 @@ function remoteTime(value) {
       clearTimeout(mabelControlsTimer)
       mabelControlsTimer = null
       if (!keepVisible && !video.paused) {
-        mabelControlsTimer = setTimeout(() => shell.classList.remove('controls-visible'), 2800)
+        mabelControlsTimer = setTimeout(() => shell.classList.remove('controls-visible'), 7000)
       }
     }
 

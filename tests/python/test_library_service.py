@@ -168,6 +168,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("body.portal-player-open", index)
         self.assertIn(".mabel-watch-player.controls-visible .mabel-watch-bottom", index)
         self.assertIn("$('#mabelWatchPlayer').onpointerdown", index)
+        self.assertIn("shell.classList.remove('controls-visible'), 7000", index)
         self.assertNotIn(".mabel-watch-hud.visible", index)
         self.assertNotIn('data-view-button="adult"', index)
         self.assertNotIn("api('/api/remote/stop-tv'", index)
