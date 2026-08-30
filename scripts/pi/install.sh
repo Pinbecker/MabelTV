@@ -209,6 +209,8 @@ install -o root -g root -m 0755 "$source_root/scripts/pi/mabeltv-library.py" "$i
 install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-library.html" "$incoming_dir/mabeltv-library.html"
 install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-watch.html" "$incoming_dir/mabeltv-watch.html"
 install -o root -g root -m 0644 "$source_root/scripts/pi/hls.min.js" "$incoming_dir/hls.min.js"
+install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-offline.js" "$incoming_dir/mabeltv-offline.js"
+install -o root -g root -m 0644 "$source_root/scripts/pi/service-worker.js" "$incoming_dir/service-worker.js"
 install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-icon.png" "$incoming_dir/mabeltv-icon.png"
 install -o root -g root -m 0644 "$source_root/scripts/pi/apple-touch-icon.png" "$incoming_dir/apple-touch-icon.png"
 install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-manifest.json" "$incoming_dir/mabeltv-manifest.json"

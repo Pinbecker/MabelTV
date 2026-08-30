@@ -1916,6 +1916,8 @@
       .watch-mabel-utilities button{padding:7px 5px;font-size:.62rem}
     }
     @media(max-width:720px){body.portal-v2 .rail nav#mainNav{grid-template-columns:repeat(5,minmax(0,1fr));grid-auto-flow:row}body.portal-v2 .rail nav#mainNav button{min-width:0;padding-right:2px;padding-left:2px}body.portal-v2 #view-usb .usb-layout{width:100%;max-width:100%;min-width:0;grid-template-columns:minmax(0,1fr)}body.portal-v2 #view-usb .usb-drives,body.portal-v2 #view-usb .usb-browser,body.portal-v2 #view-usb .usb-drive-list,body.portal-v2 #view-usb .usb-file-list,body.portal-v2 #view-usb .usb-file,body.portal-v2 #view-usb .usb-import{width:100%;max-width:100%;min-width:0}body.portal-v2 #view-usb .section-heading>div,body.portal-v2 #view-usb .usb-file-copy{min-width:0}body.portal-v2 #view-usb #usbBreadcrumb,body.portal-v2 #view-usb .usb-file-copy strong{white-space:normal;overflow-wrap:anywhere;word-break:break-word}body.portal-v2 #view-usb .usb-file-actions button{min-width:0;flex:1 1 130px;white-space:normal}}
+    .watch-downloads-layout{display:grid;gap:18px}.downloads-intro{display:flex;align-items:center;justify-content:space-between;gap:18px;border:1px solid #2f3b36;border-radius:18px;padding:22px;background:linear-gradient(135deg,#15231f,#101714)}.downloads-intro h2{margin:3px 0 7px}.downloads-intro p{max-width:650px;margin:0;color:#94a19b}.downloads-storage{flex:0 0 auto;border-radius:999px;padding:8px 12px;background:#26342e;color:#dce8e2;font-size:.78rem;font-weight:760}.downloads-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}.download-card{display:grid;gap:14px;border:1px solid #2d3833;border-radius:16px;padding:18px;background:#101614;box-shadow:0 16px 38px #0003}.download-card-head{display:flex;align-items:flex-start;gap:12px}.download-card-icon{display:grid;width:42px;height:42px;flex:0 0 auto;place-items:center;border-radius:12px;background:#263730;color:#98e0c1;font-size:1.05rem}.download-card-copy{min-width:0}.download-card-copy strong,.download-card-copy small{display:block}.download-card-copy strong{overflow-wrap:anywhere;color:#f1f5f3}.download-card-copy small{margin-top:5px;color:#7e8b85}.download-card progress{width:100%;height:8px}.download-card-actions{display:flex;gap:8px;flex-wrap:wrap}.download-card-actions button{min-width:0;flex:1 1 105px}.download-remove{color:#ff9b8b!important}.downloads-empty{border:1px dashed #35423c;border-radius:18px;padding:44px 22px;background:#0d1210;color:#829089;text-align:center}.downloads-empty strong{display:block;margin-bottom:7px;color:#e6ece9;font-size:1.15rem}.offline-banner{display:flex;align-items:center;gap:10px;border:1px solid #466656;border-radius:12px;padding:12px 14px;background:#15271f;color:#bfe9d4}.offline-banner i{width:9px;height:9px;border-radius:50%;background:#75d9aa;box-shadow:0 0 0 5px #75d9aa1f}.download-preparing{color:#d7b878}.watch-film-secondary.download-action{border-color:#416052;background:#18261f}.watch-film-secondary.metadata-action{border-color:#4b4a64;background:#1d1c2d}body.offline-mode #remotePolicy span:last-child{font-size:0}body.offline-mode #remotePolicy span:last-child::after{content:'Offline downloads ready';font-size:.76rem}body.offline-mode #watchAdultTab,body.offline-mode #watchMabelTab{display:none}body.offline-mode [data-view-button]:not([data-view-button="watch"]){opacity:.42;pointer-events:none}@media(max-width:720px){.downloads-intro{align-items:flex-start;flex-direction:column;padding:18px}.downloads-storage{align-self:flex-start}.downloads-grid{grid-template-columns:1fr}.watch-controls{align-items:stretch;flex-direction:column}.watch-tabs{width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.watch-tabs button{width:100%;padding-right:7px;padding-left:7px}.watch-policy{max-width:none;align-self:flex-start}}
+    @media(max-width:720px){body.portal-v2 #view-watch .watch-controls{display:flex!important;align-items:stretch!important;flex-direction:column!important}body.portal-v2 #view-watch .watch-tabs{width:100%!important;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important}body.portal-v2 #view-watch .watch-policy{width:max-content;max-width:100%;align-self:flex-start}.watch-film-actions :is(.download-action,.metadata-action) span{position:absolute!important;display:block!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}}
   </style>
 </head>
 <body class="portal-v2">
@@ -2021,7 +2023,7 @@
         <footer><span data-tv-name>Your TV</span> · Adult mode is protected by the on-TV parent menu</footer>
       </div></section>
       <section id="view-watch" class="view"><div class="page">
-        <header class="watch-top portal-intro"><div class="watch-heading"><p class="eyebrow watch-brand">Your complete library</p><h1>Watch anywhere.</h1><p>Choose something once, then play it on the television or watch it on this device.</p></div><div class="watch-controls"><div class="watch-tabs" role="tablist" aria-label="Choose a library"><button id="watchAdultTab" type="button" class="active" role="tab" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14v11H5zM8 7l2-3m3 3 2-3m3 3 2-3"/></svg><span>Adult</span></button><button id="watchMabelTab" type="button" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14v10H5zM9 4l3 4 3-4M9 12v3m6-3v3"/></svg><span>MabelTV</span></button></div><span id="remotePolicy" class="watch-policy"><i></i><span>Choose TV or this device</span></span></div></header>
+        <header class="watch-top portal-intro"><div class="watch-heading"><p class="eyebrow watch-brand">Your complete library</p><h1>Watch anywhere.</h1><p>Choose something once, then play it on the television or watch it on this device.</p></div><div class="watch-controls"><div class="watch-tabs" role="tablist" aria-label="Choose a library"><button id="watchAdultTab" type="button" class="active" role="tab" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14v11H5zM8 7l2-3m3 3 2-3m3 3 2-3"/></svg><span>Adult</span></button><button id="watchMabelTab" type="button" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14v10H5zM9 4l3 4 3-4M9 12v3m6-3v3"/></svg><span>MabelTV</span></button><button id="watchDownloadsTab" type="button" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m-4-4 4 4 4-4M5 19h14"/></svg><span>Downloads</span></button></div><span id="remotePolicy" class="watch-policy"><i></i><span>Choose TV or this device</span></span></div></header>
         <div id="watchLibraryAdmin" class="watch-library-admin" aria-label="Adult library tools"><span><strong>Library tools</strong><small>Add films or organise the Adult library</small></span><div><button id="watchAddAdult" type="button">Add films</button><button id="watchManageAdult" type="button">Organise films</button></div></div>
         <div id="remoteMabel"></div>
         <div id="watchMabelUtilities" class="watch-mabel-utilities hidden" aria-label="MabelTV channel tools"><button id="watchNewChannel" type="button">New channel</button><button id="watchRefreshArtwork" type="button">Refresh artwork</button><button id="watchRecycleBin" type="button">Recycle bin</button></div>
@@ -2033,7 +2035,8 @@
           </section>
           <section id="watchContinueSection" class="watch-continue hidden" aria-labelledby="watchContinueTitle"><header class="watch-section-head"><div><p class="watch-section-kicker">Back to it</p><h2 id="watchContinueTitle">Continue watching</h2></div><span id="watchContinueCount"></span></header><div id="watchContinueRail" class="watch-continue-rail"></div></section>
           <section class="watch-catalogue" aria-labelledby="watchLibraryTitle"><header class="watch-library-head"><div><p id="watchLibraryKicker" class="watch-section-kicker">Your library</p><h2 id="watchLibraryTitle">All films</h2></div><span id="watchLibraryCount" class="watch-library-count">0 films</span></header><div id="remoteAdult"></div></section>
-        </div><footer><span data-tv-name>Your TV</span> · Remote viewing</footer>
+        </div>
+        <div id="watchDownloadsLayout" class="watch-downloads-layout hidden"><div id="offlineModeBanner" class="offline-banner hidden"><i></i><span>You are offline. Everything shown here is stored privately on this device.</span></div><section class="downloads-intro"><div><p class="watch-section-kicker">On this device</p><h2>Ready when the internet isn’t.</h2><p>Downloads stay inside MabelTV’s private app storage. Open this section before travelling to check that each film says Ready offline.</p></div><span id="downloadsStorage" class="downloads-storage">Checking storage…</span></section><div id="downloadsGrid" class="downloads-grid"><div class="downloads-empty"><strong>No downloads yet</strong>Choose Download to this device on a film, programme, or USB video.</div></div></div><footer><span data-tv-name>Your TV</span> · Remote viewing</footer>
       </div></section>
       <section id="view-usb" class="view"><div class="page usb-page">
         <header class="usb-hero surface portal-intro"><div><p class="eyebrow">External storage</p><h1>USB drive.</h1><p>Keep removable media separate from your library. Play a video directly on the television, or copy selected films and folders into MabelTV.</p></div><button id="usbRefresh" type="button" class="secondary">Scan drives</button></header>
@@ -2059,8 +2062,8 @@
     </main>
   </section>
   <dialog id="watchCollectionSheet" class="watch-sheet"><div class="watch-sheet-panel"><span class="watch-sheet-handle" aria-hidden="true"></span><header><div><p class="watch-section-kicker">Browse by</p><h2>Collections</h2></div><button id="watchCollectionClose" type="button" class="watch-sheet-close" aria-label="Close collections">×</button></header><div id="watchCollectionOptions" class="watch-collection-options"></div></div></dialog>
-  <dialog id="watchFilmSheet" class="watch-film-sheet"><article class="watch-film-panel"><button id="watchFilmClose" type="button" class="watch-film-close" aria-label="Close film details">×</button><div id="watchFilmBackdrop" class="watch-film-backdrop"><div id="watchFilmPoster" class="watch-film-poster"></div></div><div class="watch-film-body"><p id="watchFilmEyebrow" class="watch-film-eyebrow"></p><h2 id="watchFilmTitle"></h2><div id="watchFilmMeta" class="watch-film-meta"></div><div id="watchFilmProgress" class="watch-film-progress hidden"><div><span>Progress</span><strong id="watchFilmProgressLabel"></strong></div><span class="watch-film-progress-track"><i id="watchFilmProgressFill"></i></span></div><p id="watchFilmOverview" class="watch-film-overview"></p><p id="watchFilmAvailability" class="watch-film-availability hidden"></p><div class="watch-film-actions"><button id="watchFilmTv" type="button" class="watch-film-play"><span class="watch-action-icon">TV</span><span><strong>Play on TV</strong><small>Replaces what is playing there</small></span></button><button id="watchFilmHere" type="button" class="watch-film-play"><span class="watch-action-icon">▶</span><span><strong>Watch on this device</strong><small>Uses the shared film position</small></span></button><button id="watchFilmStartOver" type="button" class="watch-film-secondary hidden"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8V3m0 0h5M5 3l3.5 3.5A8 8 0 1 1 4 13"/></svg><span>Start from beginning here</span></button><button id="watchFilmRemoveProgress" type="button" class="watch-film-secondary watch-film-remove hidden" aria-label="Remove from Continue Watching"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16M9 7l-5 5 5 5"/></svg><span>Remove from Continue</span></button></div></div></article></dialog>
-  <dialog id="watchProgrammeSheet" class="watch-programme-sheet"><article><button id="watchProgrammeClose" type="button" class="watch-film-close" aria-label="Close programme details">×</button><p class="watch-film-eyebrow" id="watchProgrammeEyebrow">MabelTV</p><h2 id="watchProgrammeTitle">Programme</h2><p id="watchProgrammeMeta"></p><div class="watch-destination-actions"><button id="watchProgrammeTv" type="button" class="watch-film-play"><span class="watch-action-icon">TV</span><span><strong>Play on TV</strong><small>Replaces what is playing there</small></span></button><button id="watchProgrammeHere" type="button" class="watch-film-play"><span class="watch-action-icon">▶</span><span><strong>Watch on this device</strong><small>Starts an independent stream</small></span></button></div><p class="watch-programme-note">MabelTV programmes do not appear in Continue Watching. Their normal TV channel position is unchanged.</p></article></dialog>
+  <dialog id="watchFilmSheet" class="watch-film-sheet"><article class="watch-film-panel"><button id="watchFilmClose" type="button" class="watch-film-close" aria-label="Close film details">×</button><div id="watchFilmBackdrop" class="watch-film-backdrop"><div id="watchFilmPoster" class="watch-film-poster"></div></div><div class="watch-film-body"><p id="watchFilmEyebrow" class="watch-film-eyebrow"></p><h2 id="watchFilmTitle"></h2><div id="watchFilmMeta" class="watch-film-meta"></div><div id="watchFilmProgress" class="watch-film-progress hidden"><div><span>Progress</span><strong id="watchFilmProgressLabel"></strong></div><span class="watch-film-progress-track"><i id="watchFilmProgressFill"></i></span></div><p id="watchFilmOverview" class="watch-film-overview"></p><p id="watchFilmAvailability" class="watch-film-availability hidden"></p><div class="watch-film-actions"><button id="watchFilmTv" type="button" class="watch-film-play"><span class="watch-action-icon">TV</span><span><strong>Play on TV</strong><small>Replaces what is playing there</small></span></button><button id="watchFilmHere" type="button" class="watch-film-play"><span class="watch-action-icon">▶</span><span><strong>Watch on this device</strong><small>Uses the shared film position</small></span></button><button id="watchFilmDownload" type="button" class="watch-film-secondary download-action"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m-4-4 4 4 4-4M5 19h14"/></svg><span>Download to this device</span></button><button id="watchFilmMetadata" type="button" class="watch-film-secondary metadata-action"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v12H4zM8 10h4m-4 4h8"/></svg><span>Find metadata &amp; subtitles</span></button><button id="watchFilmStartOver" type="button" class="watch-film-secondary hidden"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8V3m0 0h5M5 3l3.5 3.5A8 8 0 1 1 4 13"/></svg><span>Start from beginning here</span></button><button id="watchFilmRemoveProgress" type="button" class="watch-film-secondary watch-film-remove hidden" aria-label="Remove from Continue Watching"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16M9 7l-5 5 5 5"/></svg><span>Remove from Continue</span></button></div></div></article></dialog>
+  <dialog id="watchProgrammeSheet" class="watch-programme-sheet"><article><button id="watchProgrammeClose" type="button" class="watch-film-close" aria-label="Close programme details">×</button><p class="watch-film-eyebrow" id="watchProgrammeEyebrow">MabelTV</p><h2 id="watchProgrammeTitle">Programme</h2><p id="watchProgrammeMeta"></p><div class="watch-destination-actions"><button id="watchProgrammeTv" type="button" class="watch-film-play"><span class="watch-action-icon">TV</span><span><strong>Play on TV</strong><small>Replaces what is playing there</small></span></button><button id="watchProgrammeHere" type="button" class="watch-film-play"><span class="watch-action-icon">▶</span><span><strong>Watch on this device</strong><small>Starts an independent stream</small></span></button><button id="watchProgrammeDownload" type="button" class="watch-film-secondary download-action"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m-4-4 4 4 4-4M5 19h14"/></svg><span>Download to this device</span></button></div><p class="watch-programme-note">MabelTV programmes do not appear in Continue Watching. Their normal TV channel position is unchanged.</p></article></dialog>
   <dialog id="adultUploadSheet" class="library-sheet adult-sheet"><section class="library-sheet-panel"><span class="library-sheet-handle"></span><header class="library-sheet-head"><div><p class="section-kicker">Add to Adult TV</p><h2>Upload films</h2><p>Choose one or several films. Their original quality is preserved.</p></div><button id="adultUploadClose" type="button" class="library-sheet-close" aria-label="Close upload">×</button></header><div class="library-sheet-body"><form id="adultUploadForm" class="upload-form"><label class="drop-field" for="adultFile"><input id="adultFile" type="file" accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg" multiple><span class="drop-copy"><span class="drop-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4M5 14v5h14v-5"/></svg></span><strong>Choose films</strong><small>Pick one or several files from this device</small></span></label><label>Put new films in<select id="adultUploadFolder"><option value="">Unfiled</option></select></label><div id="adultSelectedFiles" class="callout" aria-live="polite">No films selected yet.</div><button id="adultUploadButton" type="submit" class="primary" disabled>Upload selected films</button></form><div id="adultUploadState" class="hidden callout" aria-live="polite"><p id="adultUploadText">Uploading…</p><progress id="adultProgress" max="1" value="0"></progress></div></div></section></dialog>
   <dialog id="adultCollectionSheet" class="library-sheet adult-sheet"><section class="library-sheet-panel"><span class="library-sheet-handle"></span><header class="library-sheet-head"><div><p class="section-kicker">Organise your library</p><h2>Collections</h2><p>A change here is reflected on Adult TV as well.</p></div><button id="adultCollectionClose" type="button" class="library-sheet-close" aria-label="Close collections">×</button></header><div class="library-sheet-body"><div id="adultFolderTabs" class="adult-folder-tabs"></div><div class="adult-folder-tools"><input id="adultFolderName" maxlength="80" placeholder="New collection name"><button id="adultCreateFolder" type="button" class="primary">Create collection</button><button id="adultRenameFolder" type="button" class="secondary" disabled>Rename selected</button><button id="adultDeleteFolder" type="button" class="danger" disabled>Delete selected</button></div></div></section></dialog>
   <dialog id="adultFilmSheet" class="library-sheet adult-film-sheet"><section class="library-sheet-panel"><span class="library-sheet-handle"></span><header class="library-sheet-head"><div><p id="adultFilmSheetEyebrow" class="section-kicker">Film options</p><h2 id="adultFilmSheetTitle">Film</h2><p id="adultFilmSheetMeta"></p></div><button id="adultFilmClose" type="button" class="library-sheet-close" aria-label="Close film options">×</button></header><div class="library-sheet-body"><div class="adult-film-sheet-summary"><span id="adultFilmSheetPoster" class="adult-film-sheet-poster"></span><p id="adultFilmSheetOverview">Choose what to do with this film.</p></div><button id="adultFilmPlay" type="button" class="adult-film-primary"><svg viewBox="0 0 24 24"><path d="m8 5 11 7-11 7Z"/></svg><span><strong>Play on TV</strong><small>Start this film immediately</small></span></button><label class="adult-film-move">Move to collection<select id="adultFilmFolder"></select></label><div class="adult-film-action-grid"><button id="adultFilmMove" type="button" class="secondary">Move film</button><button id="adultFilmScan" type="button" class="secondary">Scan metadata</button><button id="adultFilmRename" type="button" class="secondary">Rename</button><button id="adultFilmOptimise" type="button" class="secondary">Optimise for Pi</button><button id="adultFilmRemove" type="button" class="danger">Move to bin</button></div></div></section></dialog>
@@ -2075,6 +2078,7 @@
   <dialog id="programmeActionSheet" class="library-sheet"><section class="library-sheet-panel"><span class="library-sheet-handle" aria-hidden="true"></span><header class="library-sheet-head"><div><p class="section-kicker">Programme options</p><h2>What would you like to do?</h2><p>Play it now, change how it appears, or remove it from this channel.</p></div><button id="closeProgrammeActions" type="button" class="library-sheet-close" aria-label="Close programme options">×</button></header><div class="library-sheet-body"><div class="programme-action-summary"><span id="programmeActionIndex" class="programme-index">01</span><span><strong id="programmeActionTitle">Programme</strong><small id="programmeActionMeta">Available on TV</small></span></div><div class="programme-action-grid"><button id="programmeActionPlay" type="button"><svg viewBox="0 0 24 24"><path d="m8 5 11 7-11 7Z"/></svg><span>Play on TV</span></button><button id="programmeActionToggle" type="button" class="secondary"><svg viewBox="0 0 24 24"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z"/><circle cx="12" cy="12" r="2.5"/></svg><span>Hide from TV</span></button><button id="programmeActionRename" type="button" class="secondary"><svg viewBox="0 0 24 24"><path d="m4 20 4.5-1 10-10-3.5-3.5-10 10L4 20ZM13.5 6.5 17 10"/></svg><span>Rename</span></button><button id="programmeActionBin" type="button" class="danger"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13"/></svg><span>Move to bin</span></button></div></div></section></dialog>
   <dialog id="tmdbDialog" class="tmdb-dialog"><div class="tmdb-dialog-head"><div><p class="section-kicker">TMDB match</p><h2 id="tmdbDialogTitle">Choose the correct film</h2></div><button id="tmdbClose" type="button" class="secondary">Close</button></div><div id="tmdbResults" class="tmdb-results"></div></dialog>
 
+  <script src="/mabeltv-offline.js"></script>
   <script>
     const $ = selector => document.querySelector(selector)
     const $$ = selector => [...document.querySelectorAll(selector)]
@@ -2124,6 +2128,10 @@
     let mabelRemoteSession = null
     let mabelRemoteHeartbeatTimer = null
     let mabelControlsTimer = null
+    let iosOfflineDownloadId = null
+    let offlineStorageReady = false
+    let offlineMode = false
+    const pendingDownloads = new Map()
 
     async function api(path, options = {}) {
       const response = await fetch(path, {
@@ -2159,6 +2167,7 @@
 
     function applyTvName() {
       const name = tvName()
+      try { localStorage.setItem('mabeltv-tv-name', name) } catch (_) { /* optional */ }
       document.title = name
       $('#topTvName').textContent = name
       $('#mainNav').setAttribute('aria-label', `${name} sections`)
@@ -2180,6 +2189,10 @@
           noticeTimer = null
         }, bad ? 7000 : 5000)
       }
+    }
+
+    function showError(error) {
+      notice(error?.message || String(error || 'Something went wrong'), true)
     }
 
     function slug(value) {
@@ -2248,6 +2261,12 @@
 
     async function initialise() {
       try {
+        await window.MabelOffline?.initialise()
+        offlineStorageReady = Boolean(window.MabelOffline)
+      } catch (error) {
+        console.warn('Offline storage could not start', error)
+      }
+      try {
         const state = await api('/api/setup')
         configuredTvName = typeof state.tv_name === 'string' && state.tv_name.trim()
           ? state.tv_name.trim() : configuredTvName
@@ -2291,6 +2310,18 @@
           }
         }
       } catch (error) {
+        if (offlineStorageReady) {
+          offlineMode = true
+          document.body.classList.add('offline-mode')
+          try { configuredTvName = localStorage.getItem('mabeltv-tv-name') || configuredTvName } catch (_) { /* optional */ }
+          applyTvName()
+          showOnly('app')
+          remoteKind = 'downloads'
+          renderRemoteViewing()
+          openView('watch')
+          await renderDownloads()
+          return
+        }
         showOnly('login')
         $('#loginError').classList.add('bad')
         $('#loginError').textContent = `The portal connection was interrupted. ${tvName()} is still running — refresh in a moment.`
@@ -2372,6 +2403,7 @@
     $('#logout').onclick = async () => { await api('/api/logout', { method: 'POST' }); location.reload() }
 
     function openView(name) {
+      if (offlineMode && name !== 'watch') name = 'watch'
       $$('.view').forEach(view => view.classList.toggle('active', view.id === `view-${name}`))
       document.body.classList.toggle('watch-mode', name === 'watch')
       $$('[data-view-button]').forEach(button => {
@@ -2386,6 +2418,7 @@
       if (name === 'overview') startHomeStatusRefresh()
       else stopHomeStatusRefresh()
       if (name === 'usb') refreshUsb().catch(error => notice(error.message, true))
+      if (name === 'watch' && remoteKind === 'downloads') renderDownloads().catch(showError)
     }
 
     function showLivePicture() {
@@ -2639,6 +2672,8 @@
 
     async function load(preferredUploadChannel = null) {
       library = await api('/api/library')
+      offlineMode = false
+      document.body.classList.remove('offline-mode')
       applyTvName()
       const channels = library.channels || []
       const upload = $('#channel')
@@ -2810,7 +2845,7 @@
             choose.disabled = true
             try {
               await api('/api/tmdb/apply', { method: 'POST', body: JSON.stringify({ file: film.path, tmdb_id: match.id }) })
-              $('#tmdbDialog').close(); await load(); notice('Film metadata and artwork saved locally.')
+              $('#tmdbDialog').close(); await load(); notice('Film metadata, artwork, and available subtitles were saved locally.')
             } catch (error) { notice(error.message, true); choose.disabled = false }
           }
           row.append(poster, copy, choose); root.append(row)
@@ -2958,12 +2993,15 @@
         } else {
           const watch = document.createElement('button')
           watch.type = 'button'; watch.className = 'secondary'
-          watch.textContent = entry.browser_ready ? 'Watch on this device' : 'Not phone-ready'
-          watch.disabled = !entry.browser_ready
-          watch.title = entry.browser_ready ? 'Stream this file directly from the USB drive' : 'iPhone playback needs an MP4, M4V, MOV or WebM file'
+          watch.textContent = entry.browser_ready ? 'Watch on this device' : 'Play in VLC'
+          watch.title = entry.browser_ready ? 'Stream this file directly from the USB drive' : 'Open the original file directly in VLC'
           watch.onclick = entry.browser_ready
             ? () => openRemotePlayer({ kind: 'usb', volume: usbVolume, file: entry.path })
-            : null
+            : () => openInVlc({ kind: 'usb', volume: usbVolume, file: entry.path }, entry.name)
+          const download = document.createElement('button')
+          download.type = 'button'; download.className = 'secondary'; download.textContent = 'Download to this device'
+          download.onclick = () => downloadToDevice(
+            { kind: 'usb', volume: usbVolume, file: entry.path }, entry.name)
           const play = document.createElement('button')
           play.type = 'button'; play.className = 'secondary'; play.textContent = 'Play on TV'
           play.onclick = async () => {
@@ -2975,7 +3013,7 @@
             } catch (error) { notice(error.message, true) }
             finally { play.disabled = false }
           }
-          actions.append(watch, play)
+          actions.append(watch, download, play)
         }
         row.append(actions)
         root.append(row)
@@ -3427,6 +3465,7 @@
       if (iosRemoteSession) api('/api/remote/release', { method: 'POST', body: JSON.stringify({ stream: iosRemoteSession }) }).catch(() => {})
       clearInterval(iosRemotePositionTimer); clearInterval(iosRemoteHeartbeatTimer)
       iosRemotePositionTimer = null; iosRemoteHeartbeatTimer = null; iosRemoteSession = null
+      iosOfflineDownloadId = null
       video.pause(); video.removeAttribute('src'); video.replaceChildren(); video.load()
         $('#iosWatchPlayer').classList.add('hidden')
         document.documentElement.classList.remove('native-video-fullscreen')
@@ -3498,6 +3537,43 @@
       } catch (startError) {
         error.textContent = startError.message; error.classList.remove('hidden'); video.classList.add('hidden')
       }
+    }
+
+    async function startOfflinePlayer(manifest) {
+      const shell = $('#iosWatchPlayer'); const video = $('#iosWatchVideo'); const error = $('#iosWatchError')
+      iosRemoteSession = null
+      iosOfflineDownloadId = manifest.id
+      shell.classList.remove('hidden'); error.classList.add('hidden'); video.classList.remove('hidden')
+      document.documentElement.style.overflow = 'hidden'
+      $('#iosWatchTitle').textContent = manifest.title
+      $('#iosWatchContext').textContent = 'Downloaded · ready offline'
+      $('#iosWatchStartOver').classList.add('hidden')
+      video.pause(); video.removeAttribute('src'); video.replaceChildren()
+      if (manifest.subtitles) {
+        const track = document.createElement('track')
+        track.kind = 'subtitles'; track.srclang = 'en'; track.label = 'English'
+        track.src = MabelOffline.subtitleUrl(manifest.id)
+        video.append(track)
+      }
+      let nativeFullscreen = false
+      const requestNativeFullscreen = () => {
+        if (nativeFullscreen || typeof video.webkitEnterFullscreen !== 'function') return
+        try { video.webkitEnterFullscreen() } catch (_) { /* retry when playback starts */ }
+      }
+      video.onloadedmetadata = requestNativeFullscreen
+      video.oncanplay = requestNativeFullscreen
+      video.onplay = requestNativeFullscreen
+      video.onwebkitbeginfullscreen = () => { nativeFullscreen = true; setNativeVideoBackdrop(true) }
+      video.onwebkitendfullscreen = () => setNativeVideoBackdrop(false)
+      video.onerror = () => {
+        setNativeVideoBackdrop(false)
+        error.textContent = 'This downloaded copy could not be opened. Try removing it and downloading it again.'
+        error.classList.remove('hidden'); video.classList.add('hidden')
+      }
+      video.src = MabelOffline.playbackUrl(manifest.id)
+      video.load()
+      await video.play().catch(() => {})
+      requestNativeFullscreen()
     }
 
     function closeMabelWatchPlayer() {
@@ -3589,6 +3665,53 @@
     async function startRemoteStream(payload) {
       await allowIndependentViewing()
       return api('/api/remote/start', { method: 'POST', body: JSON.stringify(payload) })
+    }
+
+    async function openInVlc(payload, title) {
+      try {
+        notice(`Opening ${title} in VLC…`)
+        const result = await api('/api/external/start', {
+          method: 'POST', body: JSON.stringify(payload),
+        })
+        const mediaUrl = new URL(result.stream_url, location.origin).href
+        let deepLink = `vlc-x-callback://x-callback-url/stream?url=${encodeURIComponent(mediaUrl)}`
+        if (result.subtitle_url) {
+          deepLink += `&sub=${encodeURIComponent(new URL(result.subtitle_url, location.origin).href)}`
+        }
+        location.href = deepLink
+        setTimeout(() => {
+          if (document.visibilityState === 'visible') {
+            notice('VLC did not open. Install VLC for iPhone, then try again.', true)
+          }
+        }, 1800)
+      } catch (error) { showError(error) }
+    }
+
+    async function downloadToDevice(payload, title) {
+      if (!offlineStorageReady || !window.MabelOffline) {
+        notice('Offline storage is not available in this browser. Open the installed MabelTV app over HTTPS.', true)
+        return
+      }
+      const pendingId = JSON.stringify(payload)
+      pendingDownloads.set(pendingId, { title, phase: 'preparing', message: 'Preparing download…' })
+      remoteKind = 'downloads'
+      renderRemoteViewing()
+      openView('watch')
+      await renderDownloads()
+      try {
+        const manifest = await window.MabelOffline.startDownload(payload, title, update => {
+          pendingDownloads.set(pendingId, { title, ...update })
+          renderDownloads().catch(() => {})
+        })
+        pendingDownloads.delete(pendingId)
+        await renderDownloads()
+        notice(`${manifest.title} is ready offline.`)
+      } catch (error) {
+        const current = pendingDownloads.get(pendingId)
+        pendingDownloads.set(pendingId, { ...current, phase: 'error', message: error.message })
+        await renderDownloads()
+        notice(error.name === 'AbortError' ? 'Download paused.' : error.message, error.name !== 'AbortError')
+      }
     }
 
     async function openRemotePlayer(payload, position = 0) {
@@ -3702,7 +3825,7 @@
       if (film.browser_ready === false) {
         const format = document.createElement('span')
         format.className = 'watch-format'
-        format.textContent = 'TV ONLY'
+        format.textContent = 'VLC READY'
         art.append(format)
       }
       const progressValue = watchFilmProgress(film)
@@ -3806,7 +3929,7 @@
       $('#watchFilmBackdrop').style.setProperty('--watch-film-art', poster ? `url("${poster}")` : 'linear-gradient(135deg,#2e3a34,#101513)')
       const posterRoot = $('#watchFilmPoster')
       posterRoot.replaceChildren(filmPoster(film))
-      $('#watchFilmEyebrow').textContent = resumable ? 'Continue watching' : streamable ? 'Ready to watch' : 'On TV only'
+      $('#watchFilmEyebrow').textContent = resumable ? 'Continue watching' : streamable ? 'Ready to watch' : 'VLC playback available'
       $('#watchFilmTitle').textContent = title
       const metaRoot = $('#watchFilmMeta')
       metaRoot.innerHTML = ''
@@ -3822,16 +3945,29 @@
       $('#watchFilmProgressFill').style.width = `${progress}%`
       const availability = $('#watchFilmAvailability')
       availability.classList.toggle('hidden', streamable)
-      availability.textContent = streamable ? '' : 'This copy plays on the television, but needs an MP4 or M4V version before a browser can stream it.'
+      availability.textContent = streamable ? '' : 'This original can open directly in VLC. Downloading prepares a separate browser-compatible copy for offline MabelTV playback.'
       const tvPlay = $('#watchFilmTv')
       tvPlay.querySelector('strong').textContent = resumable ? 'Resume on TV' : 'Play on TV'
       tvPlay.querySelector('small').textContent = resumable ? `Continue from ${watchTimeLabel(film.remote_position)}` : 'Replaces what is playing there'
       tvPlay.onclick = () => playWatchFilmOnTv(film)
       const herePlay = $('#watchFilmHere')
-      herePlay.disabled = !streamable
-      herePlay.querySelector('strong').textContent = streamable ? resumable ? 'Resume on this device' : 'Watch on this device' : 'TV only'
-      herePlay.querySelector('small').textContent = streamable ? resumable ? `Continue from ${watchTimeLabel(film.remote_position)}` : 'Starts an independent stream' : 'Browser-ready copy needed'
-      herePlay.onclick = streamable ? () => playWatchFilm(film, resumable ? Number(film.remote_position || 0) : 0) : null
+      herePlay.disabled = false
+      herePlay.querySelector('strong').textContent = streamable ? resumable ? 'Resume on this device' : 'Watch on this device' : 'Play in VLC'
+      herePlay.querySelector('small').textContent = streamable ? resumable ? `Continue from ${watchTimeLabel(film.remote_position)}` : 'Starts an independent stream' : 'Opens the original without conversion'
+      herePlay.onclick = streamable
+        ? () => playWatchFilm(film, resumable ? Number(film.remote_position || 0) : 0)
+        : () => { closeWatchFilmSheet(); openInVlc({ kind: 'adult', file: film.path }, title) }
+      $('#watchFilmDownload').onclick = () => {
+        closeWatchFilmSheet()
+        downloadToDevice({ kind: 'adult', file: film.path }, title)
+      }
+      const metadataButton = $('#watchFilmMetadata')
+      metadataButton.disabled = !tmdbConfigured
+      metadataButton.querySelector('span').textContent = metadata.tmdb_id ? 'Refresh metadata & subtitles' : 'Find metadata & subtitles'
+      metadataButton.onclick = tmdbConfigured ? () => {
+        closeWatchFilmSheet()
+        scanTmdb(film)
+      } : null
       const startOver = $('#watchFilmStartOver')
       startOver.classList.toggle('hidden', !streamable || !resumable)
       startOver.onclick = streamable && resumable ? () => clearWatchFilmProgress(film, true).catch(showError) : null
@@ -3936,16 +4072,100 @@
         playOnTv({ kind: 'channel', channel: channel.number, file: programme.name }, title)
       }
       const here = $('#watchProgrammeHere')
-      here.disabled = programme.browser_ready === false
-      here.querySelector('strong').textContent = programme.browser_ready === false ? 'TV only' : 'Watch on this device'
-      here.querySelector('small').textContent = programme.browser_ready === false ? 'Browser-ready MP4 needed' : 'Starts an independent stream'
-      here.onclick = programme.browser_ready === false ? null : () => {
+      here.disabled = false
+      here.querySelector('strong').textContent = programme.browser_ready === false ? 'Play in VLC' : 'Watch on this device'
+      here.querySelector('small').textContent = programme.browser_ready === false ? 'Opens the original without conversion' : 'Starts an independent stream'
+      const source = { kind: 'channel', channel: channel.number, file: programme.name }
+      here.onclick = () => {
         closeWatchProgrammeSheet()
-        openRemotePlayer({ kind: 'channel', channel: channel.number, file: programme.name })
+        if (programme.browser_ready === false) openInVlc(source, title)
+        else openRemotePlayer(source)
+      }
+      $('#watchProgrammeDownload').onclick = () => {
+        closeWatchProgrammeSheet()
+        downloadToDevice(source, title)
       }
       const dialog = $('#watchProgrammeSheet')
       if (!dialog.open) dialog.showModal()
       document.documentElement.style.overflow = 'hidden'
+    }
+
+    async function renderDownloads() {
+      const root = $('#downloadsGrid')
+      $('#offlineModeBanner').classList.toggle('hidden', navigator.onLine && !offlineMode)
+      if (!offlineStorageReady || !window.MabelOffline) {
+        root.innerHTML = '<div class="downloads-empty"><strong>Offline storage unavailable</strong>Install MabelTV from an HTTPS address to keep private downloads on this device.</div>'
+        $('#downloadsStorage').textContent = 'Unavailable'
+        return
+      }
+      let downloads = []
+      try { downloads = await window.MabelOffline.listDownloads() }
+      catch (error) {
+        root.innerHTML = `<div class="downloads-empty"><strong>Downloads could not be opened</strong>${escapeHtml(error.message)}</div>`
+        return
+      }
+      if (navigator.storage?.estimate) {
+        try {
+          const estimate = await navigator.storage.estimate()
+          $('#downloadsStorage').textContent = `${window.MabelOffline.formatBytes(estimate.usage || 0)} used on this device`
+        } catch (_) { $('#downloadsStorage').textContent = `${downloads.length} saved` }
+      } else $('#downloadsStorage').textContent = `${downloads.length} saved`
+      root.innerHTML = ''
+      const completedIds = new Set(downloads.map(item => item.id))
+      pendingDownloads.forEach((pending, key) => {
+        if (pending.manifest?.id && completedIds.has(pending.manifest.id)) return
+        const card = document.createElement('article')
+        card.className = 'download-card'
+        const bad = pending.phase === 'error'
+        card.innerHTML = `<div class="download-card-head"><span class="download-card-icon">↓</span><span class="download-card-copy"><strong>${escapeHtml(pending.title)}</strong><small class="${bad ? 'bad' : 'download-preparing'}">${escapeHtml(pending.message || 'Preparing download…')}</small></span></div>`
+        if (!bad) {
+          const progress = document.createElement('progress')
+          progress.removeAttribute('value')
+          card.append(progress)
+        } else {
+          const actions = document.createElement('div'); actions.className = 'download-card-actions'
+          const dismiss = document.createElement('button'); dismiss.type = 'button'; dismiss.className = 'secondary'; dismiss.textContent = 'Dismiss'
+          dismiss.onclick = () => { pendingDownloads.delete(key); renderDownloads().catch(() => {}) }
+          actions.append(dismiss); card.append(actions)
+        }
+        root.append(card)
+      })
+      downloads.forEach(manifest => {
+        const card = document.createElement('article')
+        card.className = 'download-card'
+        const complete = manifest.status === 'complete'
+        const active = window.MabelOffline.activeDownloads.has(manifest.id)
+        const percent = manifest.size ? Math.min(100, Math.round(Number(manifest.downloadedBytes || 0) / manifest.size * 100)) : 0
+        const status = complete ? `Ready offline · ${window.MabelOffline.formatBytes(manifest.size)}`
+          : active ? `Downloading · ${percent}%`
+            : `Paused · ${percent}%${manifest.error ? ` · ${manifest.error}` : ''}`
+        card.innerHTML = `<div class="download-card-head"><span class="download-card-icon">${complete ? '▶' : '↓'}</span><span class="download-card-copy"><strong>${escapeHtml(manifest.title)}</strong><small>${escapeHtml(status)}</small></span></div>`
+        if (!complete) {
+          const progress = document.createElement('progress'); progress.max = 100; progress.value = percent; card.append(progress)
+        }
+        const actions = document.createElement('div'); actions.className = 'download-card-actions'
+        if (complete) {
+          const play = document.createElement('button'); play.type = 'button'; play.textContent = 'Watch offline'
+          play.onclick = () => startOfflinePlayer(manifest).catch(showError)
+          actions.append(play)
+        } else if (active) {
+          const pause = document.createElement('button'); pause.type = 'button'; pause.className = 'secondary'; pause.textContent = 'Pause'
+          pause.onclick = () => window.MabelOffline.pauseDownload(manifest.id)
+          actions.append(pause)
+        } else {
+          const resume = document.createElement('button'); resume.type = 'button'; resume.textContent = navigator.onLine ? 'Resume' : 'Reconnect to resume'; resume.disabled = !navigator.onLine
+          resume.onclick = () => downloadToDevice(manifest.source, manifest.title)
+          actions.append(resume)
+        }
+        const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'secondary download-remove'; remove.textContent = 'Remove'
+        remove.onclick = async () => {
+          if (!confirm(`Remove “${manifest.title}” from this device? The copy on the Pi or USB drive will not be changed.`)) return
+          await window.MabelOffline.removeDownload(manifest.id)
+          await renderDownloads()
+        }
+        actions.append(remove); card.append(actions); root.append(card)
+      })
+      if (!root.children.length) root.innerHTML = '<div class="downloads-empty"><strong>No downloads yet</strong>Choose Download to this device on a film, programme, or USB video.</div>'
     }
 
     function renderRemoteViewing() {
@@ -3956,11 +4176,17 @@
       $('#remoteConcurrentToggle').setAttribute('aria-pressed', String(simultaneous))
       $('#watchMabelTab').classList.toggle('active', remoteKind === 'channel'); $('#watchMabelTab').setAttribute('aria-selected', String(remoteKind === 'channel'))
       $('#watchAdultTab').classList.toggle('active', remoteKind === 'adult'); $('#watchAdultTab').setAttribute('aria-selected', String(remoteKind === 'adult'))
+      $('#watchDownloadsTab').classList.toggle('active', remoteKind === 'downloads'); $('#watchDownloadsTab').setAttribute('aria-selected', String(remoteKind === 'downloads'))
       $('#remoteMabel').classList.toggle('hidden', remoteKind !== 'channel'); $('#watchAdultLayout').classList.toggle('hidden', remoteKind !== 'adult')
+      $('#watchDownloadsLayout').classList.toggle('hidden', remoteKind !== 'downloads')
       $('#watchMabelUtilities').classList.toggle('hidden', remoteKind !== 'channel')
       $('#watchLibraryAdmin').classList.toggle('hidden', remoteKind !== 'adult')
       $('#watchAddAdult').classList.toggle('hidden', remoteKind !== 'adult')
       $('#watchManageAdult').classList.toggle('hidden', remoteKind !== 'adult')
+      if (remoteKind === 'downloads') {
+        renderDownloads().catch(showError)
+        return
+      }
       const mabel = $('#remoteMabel'); mabel.innerHTML = ''
       ;(library?.channels || []).forEach(channel => {
         const programmes = channel.enabled
@@ -3992,7 +4218,7 @@
             }
             const copy = document.createElement('span'); copy.className = 'watch-mabel-copy'
             const title = document.createElement('strong'); title.textContent = programmeMetadata.title || programme.display_name
-            const play = document.createElement('small'); play.textContent = programme.browser_ready === false ? 'TV only · choose where to play' : `${programmeMetadata.year ? `${programmeMetadata.year} · ` : ''}Choose where to watch  ›`
+            const play = document.createElement('small'); play.textContent = programme.browser_ready === false ? 'TV or VLC · choose where to play' : `${programmeMetadata.year ? `${programmeMetadata.year} · ` : ''}Choose where to watch  ›`
             copy.append(title, play); card.append(copy)
             card.onclick = () => openWatchProgrammeSheet(channel, programme)
             rail.append(card)
@@ -4009,6 +4235,22 @@
 
     $('#watchMabelTab').onclick = () => { remoteKind = 'channel'; renderRemoteViewing() }
     $('#watchAdultTab').onclick = () => { remoteKind = 'adult'; renderRemoteViewing() }
+    $('#watchDownloadsTab').onclick = () => { remoteKind = 'downloads'; renderRemoteViewing() }
+    window.addEventListener('mabeltv-downloads-changed', () => {
+      if (remoteKind === 'downloads') renderDownloads().catch(() => {})
+    })
+    window.addEventListener('offline', () => {
+      document.body.classList.add('offline-mode')
+      offlineMode = true
+      remoteKind = 'downloads'
+      openView('watch')
+      renderRemoteViewing()
+    })
+    window.addEventListener('online', () => {
+      offlineMode = false
+      document.body.classList.remove('offline-mode')
+      if (remoteKind === 'downloads') renderDownloads().catch(() => {})
+    })
     $('#watchSearch').oninput = event => { watchSearchText = event.target.value; renderAdultWatch() }
     $('#watchSearchClear').onclick = event => { event.preventDefault(); watchSearchText = ''; renderAdultWatch(); $('#watchSearch').focus() }
     $('#watchReadyToggle').onclick = () => { watchReadyOnly = !watchReadyOnly; renderAdultWatch() }

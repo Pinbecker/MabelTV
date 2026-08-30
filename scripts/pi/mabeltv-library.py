@@ -54,6 +54,9 @@ OPENSUBTITLES_USER_AGENT = "MabelTV/0.2.5"
 SUBTITLE_EXTENSIONS = {".srt", ".vtt", ".ass", ".ssa"}
 REMOTE_BROWSER_EXTENSIONS = {".mp4", ".m4v", ".mov", ".webm"}
 REMOTE_SESSION_SECONDS = 2 * 60
+EXTERNAL_VLC_SESSION_SECONDS = 6 * 60 * 60
+EXTERNAL_DOWNLOAD_SESSION_SECONDS = 30 * 60
+OFFLINE_PREPARED_CACHE_SECONDS = 2 * 24 * 60 * 60
 REMOTE_RESUME_MIN_SECONDS = 30.0
 REMOTE_COMPLETION_MIN_SECONDS = 180.0
 REMOTE_COMPLETION_FRACTION = 0.05
@@ -469,6 +472,11 @@ class Library:
         self.adult_optimisation_serial = threading.Lock()
         self.remote_stream_lock = threading.RLock()
         self.remote_stream: dict[str, Any] | None = None
+        self.external_stream_lock = threading.RLock()
+        self.external_streams: dict[str, dict[str, Any]] = {}
+        self.offline_cache = self.media_root / ".offline-prepared"
+        self.offline_preparation_lock = threading.RLock()
+        self.offline_preparations: dict[str, dict[str, Any]] = {}
         self.usb_imports: dict[str, dict[str, Any]] = {}
         self.usb_import_lock = threading.RLock()
         self.conversion_closed = threading.Event()
@@ -477,9 +485,11 @@ class Library:
         self.adult_root.mkdir(mode=0o750, exist_ok=True)
         self.adult_artwork_root.mkdir(mode=0o750, exist_ok=True)
         self.channel_artwork_root.mkdir(mode=0o750, exist_ok=True)
+        self.offline_cache.mkdir(mode=0o750, exist_ok=True)
         self.bin.mkdir(mode=0o750, exist_ok=True)
         self.reconcile_recycle_items()
         self.cleanup_stale_temporary_files()
+        self.cleanup_offline_prepared_cache()
         self.recover_adult_optimisations()
         self.migrate_legacy_owner()
         self.recover_final_results()
@@ -596,6 +606,17 @@ class Library:
                 metadata.pop("error", None)
                 self.write_json(manifest, metadata)
                 self.queue_conversion(upload_id)
+
+    def cleanup_offline_prepared_cache(self) -> None:
+        """Discard old phone-only conversions without touching customer media."""
+        cutoff = time.time() - OFFLINE_PREPARED_CACHE_SECONDS
+        for candidate in self.offline_cache.iterdir():
+            try:
+                if candidate.is_file() and candidate.stat().st_mtime < cutoff:
+                    candidate.unlink()
+            except OSError as error:
+                print(f"Could not remove offline cache file {candidate}: {error}",
+                      file=sys.stderr, flush=True)
 
     def recover_final_results(self) -> None:
         """Promote a publication interrupted only during final bookkeeping."""
@@ -1416,6 +1437,230 @@ class Library:
             return kind, source, self.display_name(source.name), None, 0
         raise ValueError("Choose an Adult film, Mabel TV programme or USB video")
 
+    @staticmethod
+    def _source_fingerprint(source: Path) -> str:
+        stat = source.stat()
+        identity = f"{source.resolve()}\0{stat.st_size}\0{stat.st_mtime_ns}"
+        return hashlib.sha256(identity.encode("utf-8")).hexdigest()
+
+    def _cleanup_external_streams_locked(self) -> None:
+        now = time.time()
+        self.external_streams = {
+            token: stream for token, stream in self.external_streams.items()
+            if float(stream.get("expires", 0)) > now or int(stream.get("active", 0)) > 0
+        }
+
+    def _issue_external_stream(self, kind: str, source: Path, title: str,
+                               purpose: str, subtitle_source: Path | None = None,
+                               content_id: str | None = None) -> dict[str, Any]:
+        if not source.is_file():
+            raise ValueError("That video is no longer available")
+        lifetime = (EXTERNAL_DOWNLOAD_SESSION_SECONDS
+                    if purpose == "offline" else EXTERNAL_VLC_SESSION_SECONDS)
+        token = secrets.token_urlsafe(32)
+        stream = {
+            "token": token, "kind": kind, "source": source, "title": title,
+            "purpose": purpose, "lifetime": lifetime,
+            "expires": time.time() + lifetime, "active": 0,
+        }
+        with self.external_stream_lock:
+            self._cleanup_external_streams_locked()
+            self.external_streams[token] = stream
+        content_type = mimetypes.guess_type(source.name)[0] or "application/octet-stream"
+        display_stem = SAFE_NAME.sub("", Path(title).stem).strip(". ") or "MabelTV video"
+        display_file_name = f"{display_stem}{source.suffix.lower()}"
+        subtitle_url = None
+        subtitles = None
+        if kind == "adult":
+            try:
+                caption_source = subtitle_source or source
+                if purpose == "vlc":
+                    self.browser_subtitles_for_source(caption_source)
+                    subtitle_url = f"/api/external/subtitles?{urlencode({'stream': token})}"
+                elif purpose == "offline":
+                    subtitles = self.browser_subtitles_for_source(caption_source).decode("utf-8")
+            except ValueError:
+                pass
+        return {
+            "ok": True, "status": "ready", "title": title,
+            "file_name": display_file_name, "size": source.stat().st_size,
+            "mime_type": content_type,
+            "content_id": content_id or self._source_fingerprint(source),
+            "stream": token,
+            "stream_url": f"/api/{'offline' if purpose == 'offline' else 'external'}/media?"
+                          + urlencode({"stream": token}),
+            "subtitle_url": subtitle_url,
+            "subtitles": subtitles,
+        }
+
+    def start_external_stream(self, payload: dict[str, Any]) -> dict[str, Any]:
+        kind, source, title, _library_id, _resume = self.remote_source(payload)
+        return self._issue_external_stream(kind, source, title, "vlc")
+
+    def external_stream_session(self, token: str, begin: bool = False) -> dict[str, Any]:
+        with self.external_stream_lock:
+            self._cleanup_external_streams_locked()
+            stream = self.external_streams.get(token)
+            if not stream or not secrets.compare_digest(str(stream.get("token", "")), token):
+                raise ValueError("That external playback link has expired")
+            source = Path(stream.get("source", ""))
+            if not source.is_file():
+                self.external_streams.pop(token, None)
+                raise ValueError("That video is no longer available")
+            stream["expires"] = time.time() + int(stream.get("lifetime", 0))
+            if begin:
+                stream["active"] = int(stream.get("active", 0)) + 1
+            return stream.copy()
+
+    def finish_external_request(self, token: str) -> None:
+        with self.external_stream_lock:
+            stream = self.external_streams.get(token)
+            if stream:
+                stream["active"] = max(0, int(stream.get("active", 0)) - 1)
+
+    def release_external_stream(self, token: str) -> dict[str, Any]:
+        with self.external_stream_lock:
+            self.external_streams.pop(token, None)
+        return {"ok": True}
+
+    def external_subtitles(self, token: str) -> bytes:
+        stream = self.external_stream_session(token)
+        if stream.get("kind") != "adult":
+            raise ValueError("That video has no external subtitle track")
+        return self.browser_subtitles_for_source(Path(stream["source"]))
+
+    def offline_media_profile(self, source: Path) -> str:
+        """Return direct, repack, audio, or convert for dependable iPhone playback."""
+        try:
+            result = subprocess.run(
+                ["ffprobe", "-v", "error", "-show_entries",
+                 "stream=codec_type,codec_name", "-of", "json", str(source)],
+                check=False, capture_output=True, text=True, timeout=30)
+            streams = json.loads(result.stdout).get("streams", [])
+        except (OSError, subprocess.TimeoutExpired, TypeError, ValueError) as error:
+            raise ValueError("MabelTV could not inspect that video for offline playback") from error
+        video = next((item for item in streams if item.get("codec_type") == "video"), None)
+        audio = next((item for item in streams if item.get("codec_type") == "audio"), None)
+        if result.returncode != 0 or not video:
+            raise ValueError("MabelTV could not find a playable picture in that file")
+        video_codec = str(video.get("codec_name", "")).lower()
+        audio_codec = str(audio.get("codec_name", "")).lower() if audio else ""
+        suffix = source.suffix.lower()
+        if suffix == ".webm":
+            return "direct"
+        apple_container = suffix in {".mp4", ".m4v", ".mov"}
+        apple_video = video_codec in {"h264", "hevc"}
+        apple_audio = not audio_codec or audio_codec == "aac"
+        if apple_container and apple_video and apple_audio:
+            return "direct"
+        if apple_video and apple_audio:
+            return "repack"
+        if apple_video:
+            return "audio"
+        return "convert"
+
+    def _offline_prepared_path(self, job_id: str) -> Path:
+        if not re.fullmatch(r"[a-f0-9]{64}", job_id):
+            raise ValueError("That offline preparation is not valid")
+        return self.offline_cache / f"{job_id}.mp4"
+
+    def _offline_job_response(self, job: dict[str, Any]) -> dict[str, Any]:
+        return {key: job[key] for key in
+                ("id", "status", "title", "preparation", "message") if key in job}
+
+    def start_offline_download(self, payload: dict[str, Any]) -> dict[str, Any]:
+        kind, source, title, _library_id, _resume = self.remote_source(payload)
+        preparation = self.offline_media_profile(source)
+        if preparation == "direct":
+            return self._issue_external_stream(kind, source, title, "offline")
+        job_id = self._source_fingerprint(source)
+        destination = self._offline_prepared_path(job_id)
+        if destination.is_file():
+            destination.touch()
+            return self._issue_external_stream(
+                kind, destination, title, "offline", source, job_id)
+        with self.offline_preparation_lock:
+            existing = self.offline_preparations.get(job_id)
+            if existing and existing.get("status") in {"preparing", "queued"}:
+                return self._offline_job_response(existing)
+            reserve = min(source.stat().st_size, 8 * 1024 * 1024 * 1024) + 512 * 1024 * 1024
+            if shutil.disk_usage(self.media_root).free < reserve:
+                raise ValueError("There is not enough Pi storage to prepare this video for offline viewing")
+            descriptions = {
+                "repack": "Quickly repackaging this video for iPhone",
+                "audio": "Preparing iPhone-compatible sound without changing the picture",
+                "convert": "Converting this video for dependable offline playback",
+            }
+            job = {
+                "id": job_id, "status": "queued", "kind": kind,
+                "source": source, "destination": destination, "title": title,
+                "preparation": preparation, "message": descriptions[preparation],
+            }
+            self.offline_preparations[job_id] = job
+        threading.Thread(target=self._run_offline_preparation, args=(job_id,),
+                         name=f"mabeltv-offline-{job_id[:8]}", daemon=True).start()
+        return self._offline_job_response(job)
+
+    def _run_offline_preparation(self, job_id: str) -> None:
+        with self.offline_preparation_lock:
+            job = self.offline_preparations[job_id]
+            job["status"] = "preparing"
+            source = Path(job["source"])
+            destination = Path(job["destination"])
+            preparation = str(job["preparation"])
+        temporary = self.offline_cache / f".{job_id}.part.mp4"
+        log_path = self.offline_cache / f".{job_id}.ffmpeg.log"
+        try:
+            with self.adult_optimisation_serial:
+                if not source.is_file():
+                    raise ValueError("The original video is no longer available")
+                if preparation == "convert":
+                    self.optimise_adult_for_playback(source, destination)
+                else:
+                    command = ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
+                               "-y", "-i", str(source), "-map", "0:v:0", "-map", "0:a:0?",
+                               "-sn", "-c:v", "copy", "-c:a",
+                               "copy" if preparation == "repack" else "aac"]
+                    if preparation == "audio":
+                        command += ["-b:a", "160k"]
+                    command += ["-movflags", "+faststart", str(temporary)]
+                    with log_path.open("wb") as errors:
+                        result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=errors,
+                                                timeout=45 * 60, check=False)
+                    if result.returncode != 0:
+                        raise ValueError("MabelTV could not prepare that video for iPhone")
+                    if self.offline_media_profile(temporary) != "direct":
+                        raise ValueError("The prepared video did not pass its iPhone playback check")
+                    os.replace(temporary, destination)
+            with self.offline_preparation_lock:
+                job["status"] = "ready"
+                job["message"] = "Ready to download"
+        except Exception as error:
+            with self.offline_preparation_lock:
+                job["status"] = "error"
+                job["message"] = (str(error) if isinstance(error, ValueError)
+                                  else "MabelTV could not prepare that video")
+        finally:
+            temporary.unlink(missing_ok=True)
+            log_path.unlink(missing_ok=True)
+
+    def offline_preparation_status(self, job_id: str) -> dict[str, Any]:
+        with self.offline_preparation_lock:
+            job = self.offline_preparations.get(job_id)
+            if not job:
+                destination = self._offline_prepared_path(job_id)
+                if destination.is_file():
+                    raise ValueError("Open the video again to resume its download")
+                raise ValueError("That offline preparation is no longer available")
+            snapshot = job.copy()
+        if snapshot.get("status") == "ready":
+            destination = Path(snapshot["destination"])
+            destination.touch()
+            return self._issue_external_stream(
+                str(snapshot["kind"]), destination, str(snapshot["title"]), "offline",
+                Path(snapshot["source"]), job_id)
+        return self._offline_job_response(snapshot)
+
     def start_remote_stream(self, payload: dict[str, Any]) -> dict[str, Any]:
         kind, source, title, library_id, resume = self.remote_source(payload)
         if not self.remote_browser_ready(source):
@@ -1542,7 +1787,10 @@ class Library:
         session = self.remote_session(token)
         if session["kind"] != "adult":
             raise ValueError("This Mabel TV programme has no browser subtitle track")
-        sidecars = self.subtitle_sidecars(session["source"])
+        return self.browser_subtitles_for_source(session["source"])
+
+    def browser_subtitles_for_source(self, source: Path) -> bytes:
+        sidecars = self.subtitle_sidecars(source)
         preferred = next((path for path in sidecars if path.suffix.lower() == ".vtt"), None)
         preferred = preferred or next((path for path in sidecars if path.suffix.lower() == ".srt"), None)
         if not preferred:
@@ -1711,6 +1959,20 @@ class Library:
                 source = Path(stream.get("source", ""))
                 if source == mount_path or mount_path in source.parents:
                     raise ValueError("Stop watching the USB video on this device before ejecting the drive")
+        with self.external_stream_lock:
+            self._cleanup_external_streams_locked()
+            for stream in self.external_streams.values():
+                source = Path(stream.get("source", ""))
+                busy = (int(stream.get("active", 0)) > 0
+                        or stream.get("purpose") == "offline")
+                if busy and (source == mount_path or mount_path in source.parents):
+                    raise ValueError("Wait for phone playback or downloading to finish before ejecting the drive")
+        with self.offline_preparation_lock:
+            for job in self.offline_preparations.values():
+                source = Path(job.get("source", ""))
+                if job.get("status") in {"queued", "preparing"} \
+                        and (source == mount_path or mount_path in source.parents):
+                    raise ValueError("Wait for offline preparation to finish before ejecting the drive")
         result = subprocess.run(
             ["sudo", "-n", "/usr/local/libexec/mabeltv-admin-action", "usb-eject", identity],
             capture_output=True, text=True, timeout=20)
@@ -3746,6 +4008,8 @@ class Handler(BaseHTTPRequestHandler):
                 "/icons/icon-192.png": ("icons/icon-192.png", "image/png"),
                 "/icons/icon-512.png": ("icons/icon-512.png", "image/png"),
                 "/hls.min.js": ("hls.min.js", "text/javascript; charset=utf-8"),
+                "/mabeltv-offline.js": ("mabeltv-offline.js", "text/javascript; charset=utf-8"),
+                "/service-worker.js": ("service-worker.js", "text/javascript; charset=utf-8"),
                 "/manifest.json": ("mabeltv-manifest.json", "application/manifest+json"),
                 "/manifest.webmanifest": ("mabeltv-manifest.json", "application/manifest+json"),
             }
@@ -3755,10 +4019,22 @@ class Handler(BaseHTTPRequestHandler):
                 if not asset_path.is_file():
                     self.json(404, {"error": "Static asset not found"}); return
                 data = asset_path.read_bytes(); self.send_response(200); self.send_header("Content-Type", content_type); self.send_header("Content-Length", str(len(data))); self.send_header("Cache-Control", "no-store"); self.security_headers(); self.end_headers(); self.wfile.write(data); return
-            if self.path == "/api/setup": self.json(200, self.server.library.public_setup()); return
-            if not self.require(): return
             parsed = urlsplit(self.path)
             query = parse_qs(parsed.query)
+            if parsed.path in {"/api/external/media", "/api/offline/media"}:
+                token = str(query.get("stream", [""])[0])
+                session = self.server.library.external_stream_session(token, begin=True)
+                try:
+                    self.stream_remote_media(Path(session["source"]))
+                finally:
+                    self.server.library.finish_external_request(token)
+                return
+            if parsed.path == "/api/external/subtitles":
+                data = self.server.library.external_subtitles(
+                    str(query.get("stream", [""])[0]))
+                self.stream_bytes(data, "text/vtt; charset=utf-8"); return
+            if self.path == "/api/setup": self.json(200, self.server.library.public_setup()); return
+            if not self.require(): return
             if parsed.path == "/watch/player":
                 data = WATCH_PAGE.encode(); self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8"); self.send_header("Content-Length", str(len(data))); self.send_header("Cache-Control", "no-store"); self.security_headers(); self.end_headers(); self.wfile.write(data); return
             if self.path == "/api/live":
@@ -3783,6 +4059,9 @@ class Handler(BaseHTTPRequestHandler):
                     str(query.get("volume", [""])[0]), str(query.get("path", [""])[0]))); return
             if parsed.path.startswith("/api/usb/imports/"):
                 self.json(200, self.server.library.usb_import_status(
+                    parsed.path.rsplit("/", 1)[1])); return
+            if parsed.path.startswith("/api/offline/preparations/"):
+                self.json(200, self.server.library.offline_preparation_status(
                     parsed.path.rsplit("/", 1)[1])); return
             if parsed.path == "/api/tmdb/status":
                 self.json(200, self.server.library.tmdb_status()); return
@@ -3857,6 +4136,13 @@ class Handler(BaseHTTPRequestHandler):
                 self.json(200, self.server.library.play_on_tv(payload)); return
             if self.path == "/api/remote/start":
                 self.json(200, self.server.library.start_remote_stream(payload)); return
+            if self.path == "/api/external/start":
+                self.json(200, self.server.library.start_external_stream(payload)); return
+            if self.path == "/api/offline/start":
+                self.json(200, self.server.library.start_offline_download(payload)); return
+            if self.path == "/api/external/release":
+                self.json(200, self.server.library.release_external_stream(
+                    str(payload.get("stream", "")))); return
             if self.path == "/api/remote/stop-tv":
                 self.json(200, self.server.library.remote_stop_tv()); return
             if self.path == "/api/remote/position":

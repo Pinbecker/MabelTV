@@ -1169,6 +1169,45 @@ class UsbAndMetadataTests(unittest.TestCase):
                 "kind": "usb", "volume": "TEST-USB", "file": "../outside.mp4",
             })
 
+    def test_incompatible_usb_video_gets_scoped_vlc_stream(self) -> None:
+        movie = self.volume / "Legacy Episode.avi"
+        movie.write_bytes(b"legacy-video")
+        started = self.fixture.library.start_external_stream({
+            "kind": "usb", "volume": "TEST-USB", "file": "Legacy Episode.avi",
+        })
+        self.assertIn("/api/external/media?", started["stream_url"])
+        self.assertEqual(started["title"], "Legacy Episode")
+        session = self.fixture.library.external_stream_session(started["stream"])
+        self.assertEqual(session["source"], movie.resolve())
+        self.fixture.library.release_external_stream(started["stream"])
+        with self.assertRaisesRegex(ValueError, "expired"):
+            self.fixture.library.external_stream_session(started["stream"])
+
+    def test_browser_ready_usb_video_can_start_private_offline_download(self) -> None:
+        movie = self.volume / "Phone Movie.mp4"
+        movie.write_bytes(b"phone-ready")
+        with mock.patch.object(self.fixture.library, "offline_media_profile",
+                               return_value="direct"):
+            started = self.fixture.library.start_offline_download({
+                "kind": "usb", "volume": "TEST-USB", "file": "Phone Movie.mp4",
+            })
+        self.assertEqual(started["status"], "ready")
+        self.assertIn("/api/offline/media?", started["stream_url"])
+        self.assertEqual(started["size"], len(b"phone-ready"))
+
+    def test_incompatible_usb_download_is_queued_for_browser_preparation(self) -> None:
+        movie = self.volume / "Legacy Episode.avi"
+        movie.write_bytes(b"legacy-video")
+        with mock.patch.object(self.fixture.library, "offline_media_profile",
+                               return_value="repack"), \
+                mock.patch.object(mabeltv_library.threading, "Thread") as thread:
+            queued = self.fixture.library.start_offline_download({
+                "kind": "usb", "volume": "TEST-USB", "file": "Legacy Episode.avi",
+            })
+        self.assertEqual(queued["status"], "queued")
+        self.assertEqual(queued["preparation"], "repack")
+        thread.assert_called_once()
+
     def test_usb_eject_is_blocked_during_browser_stream(self) -> None:
         movie = self.volume / "Phone Movie.mp4"
         movie.write_bytes(b"browser-ready")
@@ -1555,6 +1594,27 @@ class LibraryHttpTests(unittest.TestCase):
         }, origin="https://example.invalid")
         self.assertEqual(status, 403)
         self.assertIn("did not come from", body["error"])
+
+    def test_external_stream_token_works_without_browser_cookie_and_supports_range(self) -> None:
+        movie = self.fixture.media / ".adult" / "VLC Film.mkv"
+        movie.parent.mkdir(parents=True, exist_ok=True)
+        movie.write_bytes(b"0123456789")
+        started = self.fixture.library.start_external_stream({
+            "kind": "adult", "file": "VLC Film.mkv",
+        })
+        request = urllib.request.Request(self.base + started["stream_url"])
+        request.add_header("Range", "bytes=2-5")
+        with urllib.request.urlopen(request, timeout=5) as response:
+            self.assertEqual(response.status, 206)
+            self.assertEqual(response.headers["Content-Range"], "bytes 2-5/10")
+            self.assertEqual(response.read(), b"2345")
+
+    def test_offline_shell_assets_are_publicly_available(self) -> None:
+        for path, marker in (("/service-worker.js", b"offline-media"),
+                             ("/mabeltv-offline.js", b"startDownload")):
+            with urllib.request.urlopen(self.base + path, timeout=5) as response:
+                self.assertEqual(response.status, 200)
+                self.assertIn(marker, response.read())
 
 
 if __name__ == "__main__":
