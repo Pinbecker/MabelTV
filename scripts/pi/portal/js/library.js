@@ -24,7 +24,11 @@ function renderAdultLibrary() {
         const tab = document.createElement('button'); tab.type = 'button'
         tab.className = `adult-folder-tab${adultFolderFilter === item.value ? ' active' : ''}`
         tab.innerHTML = `<span>${escapeHtml(item.name)}</span><strong>${count}</strong>`
-        tab.onclick = () => { adultFolderFilter = item.value; $('#adultCollectionSheet').close(); renderAdultLibrary() }
+        tab.onclick = () => {
+          adultFolderFilter = item.value
+          if (currentPortalDesign !== 'experience') $('#adultCollectionSheet').close()
+          renderAdultLibrary()
+        }
         tabs.append(tab)
       })
       const realFolderSelected = adultFolderFilter !== '*' && adultFolderFilter !== ''
@@ -85,7 +89,7 @@ function renderAdultLibrary() {
       const metadata = film.metadata || {}; const folders = library?.adult_folders || []
       const title = metadata.title || film.display_name
       $('#adultFilmSheetTitle').textContent = title
-      $('#adultFilmSheetEyebrow').textContent = film.folder || 'Unfiled'
+      $('#adultFilmSheetEyebrow').textContent = currentPortalDesign === 'experience' ? 'Film settings' : (film.folder || 'Unfiled')
       $('#adultFilmSheetMeta').textContent = [metadata.year, `${(Number(film.size || 0) / 1073741824).toFixed(2)} GB`, film.playback_state === 'optimised' ? 'Optimised for Pi' : 'Original quality'].filter(Boolean).join(' · ')
       $('#adultFilmSheetOverview').textContent = metadata.overview || 'Artwork, organisation and playback controls for this film.'
       const poster = $('#adultFilmSheetPoster'); poster.innerHTML = ''

@@ -616,6 +616,13 @@ function remoteTime(value) {
         closeWatchFilmSheet()
         scanTmdb(film)
       } : null
+      const manageFilm = $('#watchFilmManage')
+      const managementAvailable = currentPortalDesign === 'experience'
+      manageFilm.classList.toggle('hidden', !managementAvailable)
+      manageFilm.onclick = managementAvailable ? () => {
+        closeWatchFilmSheet()
+        openAdultFilmSheet(film)
+      } : null
       const startOver = $('#watchFilmStartOver')
       startOver.classList.toggle('hidden', !streamable || !resumable)
       startOver.onclick = streamable && resumable ? () => clearWatchFilmProgress(film, true).catch(showError) : null
@@ -905,5 +912,5 @@ function remoteTime(value) {
     $('#watchProgrammeSheet').onclick = event => { if (event.target === $('#watchProgrammeSheet')) closeWatchProgrammeSheet() }
     $('#watchProgrammeSheet').onclose = () => { selectedWatchProgramme = null; document.documentElement.style.overflow = '' }
     $('#watchAddAdult').onclick = () => $('#adultAddFilms').click()
-    $('#watchManageAdult').onclick = () => { openView('adult'); refreshTmdbStatus().catch(() => {}) }
+    $('#watchManageAdult').onclick = () => openLibrarySheet($('#adultCollectionSheet'))
     $('#remoteConcurrentToggle').onclick = () => manage('set-remote-simultaneous', { enabled: library?.remote_viewing?.allow_simultaneous !== true })

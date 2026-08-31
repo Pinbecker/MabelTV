@@ -206,15 +206,20 @@
   }
 
   body.portal-v2 .watch-channel-rail {
-    grid-auto-columns: minmax(210px, 68%);
+    grid-auto-columns: minmax(236px, 84%);
   }
 
   body.portal-v2 .mabel-show-identity,
   body.portal-v2 .mabel-film-head {
+    width: 100%;
     min-height: 190px;
-    margin: 0 -18px;
-    border-radius: 0;
-    padding: 22px 18px;
+    margin: 0;
+    border-radius: 10px;
+    padding: 22px;
+  }
+
+  body.portal-v2 .watch-mabel-episode {
+    min-height: 70px;
   }
 
   body.portal-v2 .mabel-show-identity h2,

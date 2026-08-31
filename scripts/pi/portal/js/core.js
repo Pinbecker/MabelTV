@@ -198,6 +198,13 @@ const $ = selector => document.querySelector(selector)
       const view = requested === 'home' ? 'overview' : requested
       const allowed = new Set(['overview', 'live', 'channels', 'adult', 'watch', 'usb', 'system'])
       if (allowed.has(view)) {
+        if (currentPortalDesign === 'experience' && (view === 'channels' || view === 'adult')) {
+          remoteKind = view === 'channels' ? 'channel' : 'adult'
+          renderRemoteViewing()
+          history.replaceState({ consolidatedWatch: true }, '', '#watch')
+          openView('watch')
+          return
+        }
         if (view === 'channels') showChannelHub()
         if (view === 'watch' && selectedManageChannel !== null) {
           selectedManageChannel = null
@@ -375,10 +382,10 @@ const $ = selector => document.querySelector(selector)
       // parent subsequently visits. Clear it whenever navigation begins.
       notice('')
       const channelFromWatch = name === 'channels' && selectedManageChannel !== null && channelWorkspaceReturnToWatch
-      const groupedLibraryView = currentPortalDesign === 'experience' && (name === 'adult' || name === 'usb')
-      const activeNavigation = channelFromWatch ? 'watch' : (groupedLibraryView ? 'channels' : name)
+      const consolidatedWatchView = currentPortalDesign === 'experience' && (name === 'channels' || name === 'adult')
+      const activeNavigation = channelFromWatch || consolidatedWatchView ? 'watch' : name
       $$('.view').forEach(view => view.classList.toggle('active', view.id === `view-${name}`))
-      document.body.classList.toggle('watch-mode', name === 'watch' || channelFromWatch)
+      document.body.classList.toggle('watch-mode', name === 'watch' || channelFromWatch || consolidatedWatchView)
       $$('[data-view-button]').forEach(button => {
         const active = button.dataset.viewButton === activeNavigation
         button.classList.toggle('active', active)
