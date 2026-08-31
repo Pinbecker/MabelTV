@@ -497,6 +497,9 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertNotIn("const manageCue", index)
         self.assertIn("channelWorkspaceReturnToWatch", index)
         self.assertIn('id="watchMabelLayout"', index)
+        self.assertIn("let remoteKind = 'channel'", index)
+        self.assertIn('id="watchMabelTab" type="button" class="active" role="tab" aria-selected="true"', index)
+        self.assertIn('id="watchMabelLayout" class="watch-mabel-layout"', index)
         self.assertNotIn('id="watchMabelPrimaryTools"', index)
         self.assertIn('id="watchMabelAdmin"', index)
         self.assertIn('id="watchNewChannel" type="button" aria-label="Create a new channel"', index)
@@ -587,7 +590,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn('aria-labelledby="tmdbDialogTitle"', portal)
         self.assertIn("result.query || film.display_name", portal)
         self.assertIn("poster.className = 'tmdb-result-poster'", portal)
-        self.assertIn('poster.innerHTML = \'<svg viewBox="0 0 24 24"', portal)
+        self.assertIn("poster.append(librarySignalIcon('signal-clapperboard'))", portal)
         self.assertIn("choose.className = 'primary tmdb-result-choose'", portal)
         self.assertIn("grid-template-columns: 60px minmax(0, 1fr)", portal)
         self.assertIn(".tmdb-result-choose", portal)
@@ -2349,6 +2352,111 @@ class UsbAndMetadataTests(unittest.TestCase):
         state = self.fixture.library.adult_media_states()["Film.mkv"]
         self.assertEqual(state["metadata"]["tmdb_id"], 1)
         self.assertEqual(state["state"], "processing")
+
+    def test_viewing_history_joins_adjacent_samples_and_builds_summaries(self) -> None:
+        now = time.time()
+        activity = {
+            "item_key": "channel:5:film.mp4",
+            "title": "Film",
+            "kind": "film",
+            "surface": "tv",
+            "channel_number": 5,
+            "channel_name": "Films",
+        }
+        self.fixture.library.record_viewing(activity, 45, now - 60)
+        self.fixture.library.record_viewing(activity, 30, now - 20)
+
+        self.assertEqual(len(self.fixture.library.viewing_store["sessions"]), 1)
+        self.assertEqual(self.fixture.library.viewing_store["sessions"][0]["seconds"], 75)
+        summary = self.fixture.library.viewing_insights(30, 0)
+        self.assertEqual(summary["summary"]["sessions"], 1)
+        self.assertEqual(summary["summary"]["range_seconds"], 75)
+        self.assertEqual(summary["summary"]["active_days"], 1)
+        self.assertEqual(summary["top_titles"][0]["title"], "Film")
+        self.assertEqual(summary["by_surface"][0]["name"], "tv")
+
+    def test_viewing_history_counts_remote_playback_but_rejects_seeks(self) -> None:
+        session = {
+            "kind": "channel", "content_kind": "episode", "title": "Episode",
+            "channel": 1, "file": "Episode.mp4", "library_id": None,
+        }
+        self.fixture.library.write_json(self.fixture.channels, {
+            "channels": [{"number": 1, "name": "Series", "folder": "series",
+                          "content_type": "shows"}],
+        })
+        with mock.patch.object(mabeltv_library.time, "monotonic",
+                               side_effect=[100.0, 110.0, 120.0]):
+            self.fixture.library.record_remote_viewing(session, "token", 0)
+            self.fixture.library.record_remote_viewing(session, "token", 10)
+            self.fixture.library.record_remote_viewing(session, "token", 500)
+
+        sessions = self.fixture.library.viewing_store["sessions"]
+        self.assertEqual(len(sessions), 1)
+        self.assertEqual(sessions[0]["seconds"], 10)
+        self.assertEqual(sessions[0]["kind"], "episode")
+
+    def test_viewing_history_joins_each_concurrent_surface_session(self) -> None:
+        now = time.time()
+        tv = {"item_key": "channel:5:film.mp4", "title": "Film", "kind": "film",
+              "surface": "tv", "channel_number": 5, "channel_name": "Films"}
+        device = {**tv, "item_key": "browser:channel:5/film.mp4",
+                  "surface": "device"}
+        self.fixture.library.record_viewing(tv, 15, now - 45)
+        self.fixture.library.record_viewing(device, 15, now - 30)
+        self.fixture.library.record_viewing(tv, 15, now - 15)
+        self.fixture.library.record_viewing(device, 15, now)
+
+        sessions = self.fixture.library.viewing_store["sessions"]
+        self.assertEqual(len(sessions), 2)
+        self.assertEqual(sorted(item["seconds"] for item in sessions), [30, 30])
+
+    def test_tv_viewing_identity_handles_channels_and_adult_mode(self) -> None:
+        self.fixture.library.write_json(self.fixture.channels, {
+            "channels": [{"number": 5, "name": "Films", "folder": "films",
+                          "content_type": "films"}],
+        })
+        self.fixture.library.player_state_path = self.fixture.root / "player-state.json"
+        self.fixture.library.player_state_path.write_text(json.dumps({
+            "standby": False, "playback_paused": False, "current_channel": 5,
+            "channel_timelines": {"5": {"episode_name": "The Film.mp4"}},
+        }), encoding="utf-8")
+        self.fixture.library.player_mode_status = mock.Mock(return_value={"mode": "kids"})
+        channel = self.fixture.library.current_tv_viewing()
+        self.assertEqual(channel["title"], "The Film")
+        self.assertEqual(channel["kind"], "film")
+        self.assertEqual(channel["channel_name"], "Films")
+
+        self.fixture.library.player_mode_status.return_value = {
+            "mode": "adult", "standby": False, "playing": True,
+            "paused": False, "programme": "Adult Film",
+        }
+        adult = self.fixture.library.current_tv_viewing()
+        self.assertEqual(adult["title"], "Adult Film")
+        self.assertEqual(adult["kind"], "adult")
+
+    def test_experience_uses_shared_icons_and_clear_channel_pager(self) -> None:
+        channel_script = (PORTAL_ROOT / "js" / "channel-page.js").read_text(
+            encoding="utf-8")
+        system_view = (PORTAL_ROOT / "html" / "views" / "system.html").read_text(
+            encoding="utf-8")
+        experience_css = (PORTAL_ROOT / "css" / "experience-library.css").read_text(
+            encoding="utf-8")
+        playback_script = (PORTAL_ROOT / "js" / "playback.js").read_text(
+            encoding="utf-8")
+        design_switch = (PORTAL_ROOT / "html" / "portal-design-switch.html").read_text(
+            encoding="utf-8")
+        self.assertIn("signalIcon('signal-chevron-down')", channel_script)
+        self.assertIn("programmePager", channel_script)
+        self.assertNotIn('<svg viewBox="0 0 24 24"', channel_script)
+        self.assertIn("body.portal-v2 .channel-page-load-more", experience_css)
+        self.assertIn("border: 1px solid rgba(255, 122, 26, .48)", experience_css)
+        self.assertIn("mabelRemotePositionTimer = setInterval(saveMabelRemotePosition, 15000)",
+                      playback_script)
+        self.assertNotIn("viewBox=", design_switch)
+        self.assertEqual(design_switch.count("/portal/icons.svg#signal-check"), 2)
+        self.assertIn('id="viewingInsights"', system_view)
+        self.assertIn('/portal/icons.svg#signal-chart-column', system_view)
+        self.assertNotIn('<svg viewBox="0 0 24 24"', system_view)
 
 
 class LibraryHttpTests(unittest.TestCase):

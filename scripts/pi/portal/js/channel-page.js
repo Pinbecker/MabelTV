@@ -3,6 +3,16 @@
 const ChannelPageComponents = (() => {
   const artworkPath = name => `/api/channel/artwork/${encodeURIComponent(name)}`
 
+  function signalIcon(name, className = 'icon') {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use')
+    svg.classList.add(...className.split(' ').filter(Boolean))
+    svg.setAttribute('aria-hidden', 'true')
+    use.setAttribute('href', `/portal/icons.svg#${name}`)
+    svg.append(use)
+    return svg
+  }
+
   function mount() {
     const root = document.querySelector('[data-channel-page-root]')
     if (!root || root.dataset.mounted === 'true') return
@@ -11,7 +21,7 @@ const ChannelPageComponents = (() => {
     root.innerHTML = `
       <nav class="channel-page-nav" aria-label="Channel navigation">
         <button id="backToChannels" type="button" class="workspace-back channel-page-back">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+          <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-arrow-left"/></svg>
           <span>All channels</span>
         </button>
       </nav>
@@ -34,15 +44,15 @@ const ChannelPageComponents = (() => {
           </div>
           <div class="channel-page-actions">
             <button id="channelWatchTv" type="button" class="channel-page-primary">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14v11H5zM9 21h6M12 17v4M8 3l4 3 4-3"/></svg>
+              <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-monitor-play"/></svg>
               <span><strong>Open on TV</strong><small>Switch MabelTV to this channel</small></span>
             </button>
             <button id="workspaceAddMedia" type="button" class="channel-page-secondary" aria-label="Add videos">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-plus"/></svg>
               <span>Add videos</span>
             </button>
             <button id="workspaceSettings" type="button" class="channel-page-icon" aria-label="Manage channel">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.5 1A7 7 0 0 0 14.3 5L14 2h-4l-.4 3A7 7 0 0 0 7.5 7L5 6 3 9.3l2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.5-1a7 7 0 0 0 2.1 1.9l.4 3h4l.4-3a7 7 0 0 0 2.1-1.9l2.5 1 2-3.4-2-1.5c0-.4.1-.8.1-1.2Z"/></svg>
+              <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-settings"/></svg>
             </button>
           </div>
         </div>
@@ -58,7 +68,7 @@ const ChannelPageComponents = (() => {
         </header>
         <div class="channel-page-toolbar">
           <label class="channel-page-search">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+            <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-search"/></svg>
             <span>Find a programme</span>
             <input id="programmeSearch" type="search" placeholder="Search titles" autocomplete="off">
           </label>
@@ -92,7 +102,7 @@ const ChannelPageComponents = (() => {
     button.type = 'button'
     button.className = 'channel-page-overflow'
     button.setAttribute('aria-label', `Manage ${programme.display_name}`)
-    button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>'
+    button.append(signalIcon('signal-ellipsis'))
     button.onclick = () => onManage(channel, programme, marker)
     return button
   }
@@ -128,11 +138,7 @@ const ChannelPageComponents = (() => {
     hint.textContent = programme.enabled ? 'Choose where to watch' : 'Hidden from the TV channel'
     copy.append(title, hint)
 
-    const chevron = document.createElement('svg')
-    chevron.classList.add('channel-page-chevron')
-    chevron.setAttribute('viewBox', '0 0 24 24')
-    chevron.setAttribute('aria-hidden', 'true')
-    chevron.innerHTML = '<path d="m9 6 6 6-6 6"/>'
+    const chevron = signalIcon('signal-chevron-right', 'channel-page-chevron')
 
     main.append(marker, copy, chevron)
     main.onclick = () => onOpen(channel, programme)
@@ -306,7 +312,10 @@ const ChannelPageComponents = (() => {
       const button = document.createElement('button')
       button.type = 'button'
       button.className = 'channel-page-load-more'
-      button.textContent = `Show ${Math.min(pageSize, filtered.length - visibleCount)} more`
+      button.append(
+        signalIcon('signal-chevron-down'),
+        document.createTextNode(`Show ${Math.min(pageSize, filtered.length - visibleCount)} more`)
+      )
       button.onclick = onLoadMore
       more.append(status, button)
     }

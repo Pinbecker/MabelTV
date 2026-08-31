@@ -142,6 +142,88 @@ body.portal-v2 .settings-row-icon.security { background: #6e73c9; }
 body.portal-v2 .settings-row-icon.system { background: #65717d; }
 body.portal-v2 .settings-row-icon.help { background: #3f95a1; }
 
+body.portal-v2 .viewing-insights-group {
+  overflow: hidden;
+  border: 1px solid var(--experience-line);
+  border-radius: 14px;
+  background: var(--experience-raised);
+}
+
+body.portal-v2 .viewing-insights-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+  background: linear-gradient(135deg, rgba(255, 122, 26, .11), rgba(124, 47, 220, .08));
+}
+
+body.portal-v2 .viewing-insights-head h2 { margin: 0; font-size: 24px; letter-spacing: -.04em; }
+body.portal-v2 .viewing-insights-head p:not(.section-kicker) { margin: 4px 0 0; color: var(--experience-muted); font-size: 11px; }
+body.portal-v2 .viewing-insights-mark { width: 46px; height: 46px; border-radius: 12px; padding: 12px; background: rgba(255, 122, 26, .12); color: var(--experience-orange); }
+
+body.portal-v2 .viewing-range {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  border-top: 1px solid var(--experience-line);
+  border-bottom: 1px solid var(--experience-line);
+  background: var(--experience-elevated);
+  padding: 5px;
+}
+
+body.portal-v2 .viewing-range button { min-height: 39px; border: 0; background: transparent; color: var(--experience-dim); font-size: 10px; font-weight: 750; }
+body.portal-v2 .viewing-range button.active { background: var(--experience-raised); color: var(--experience-ink); box-shadow: inset 0 0 0 1px var(--experience-line); }
+body.portal-v2 .viewing-insights-loading { padding: 24px; color: var(--experience-dim); font-size: 11px; text-align: center; }
+body.portal-v2 .viewing-insights { display: grid; gap: 10px; padding: 12px; }
+
+body.portal-v2 .viewing-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+body.portal-v2 .viewing-stat-grid article { min-width: 0; display: grid; grid-template-columns: 26px minmax(0, 1fr); align-items: center; gap: 2px 8px; border: 1px solid var(--experience-line); border-radius: 11px; background: var(--experience-elevated); padding: 11px; }
+body.portal-v2 .viewing-stat-grid svg { grid-row: 1 / 3; width: 26px; height: 26px; border-radius: 7px; padding: 6px; background: rgba(255, 122, 26, .1); color: var(--experience-orange); }
+body.portal-v2 .viewing-stat-grid span { overflow: hidden; color: var(--experience-dim); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+body.portal-v2 .viewing-stat-grid strong { font-size: 17px; letter-spacing: -.025em; }
+
+body.portal-v2 .viewing-chart-grid,
+body.portal-v2 .viewing-detail-grid,
+body.portal-v2 .viewing-list-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+
+body.portal-v2 .viewing-panel { min-width: 0; border: 1px solid var(--experience-line); border-radius: 11px; background: var(--experience-elevated); padding: 13px; }
+body.portal-v2 .viewing-panel > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 9px; }
+body.portal-v2 .viewing-panel h3 { margin: 0; font-size: 14px; }
+body.portal-v2 .viewing-panel > header > strong { color: var(--experience-orange); font-size: 12px; }
+
+body.portal-v2 .viewing-bar-chart { min-height: 158px; }
+body.portal-v2 .viewing-bar-chart svg { display: block; width: 100%; height: 158px; overflow: visible; }
+body.portal-v2 .viewing-bar-chart rect { fill: var(--experience-line-strong); }
+body.portal-v2 .viewing-bar-chart rect.has-value { fill: var(--experience-orange); }
+body.portal-v2 .viewing-bar-chart text { fill: var(--experience-dim); font: 9px system-ui, sans-serif; }
+
+body.portal-v2 .viewing-breakdown { display: grid; gap: 10px; }
+body.portal-v2 .viewing-breakdown > div { display: grid; gap: 5px; }
+body.portal-v2 .viewing-breakdown span { display: flex; justify-content: space-between; gap: 10px; }
+body.portal-v2 .viewing-breakdown strong { font-size: 10px; }
+body.portal-v2 .viewing-breakdown small { color: var(--experience-dim); font-size: 9px; }
+body.portal-v2 .viewing-breakdown progress { width: 100%; height: 6px; overflow: hidden; border: 0; border-radius: 999px; background: var(--experience-line); appearance: none; }
+body.portal-v2 .viewing-breakdown progress::-webkit-progress-bar { background: var(--experience-line); }
+body.portal-v2 .viewing-breakdown progress::-webkit-progress-value { border-radius: 999px; background: var(--experience-orange); }
+body.portal-v2 .viewing-breakdown progress::-moz-progress-bar { border-radius: 999px; background: var(--experience-orange); }
+
+body.portal-v2 .viewing-ranked-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+body.portal-v2 .viewing-ranked-list li { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; border-top: 1px solid var(--experience-line); padding: 9px 0; }
+body.portal-v2 .viewing-ranked-list li:first-child { border-top: 0; }
+body.portal-v2 .viewing-ranked-list li > span { min-width: 0; display: grid; }
+body.portal-v2 .viewing-ranked-list strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+body.portal-v2 .viewing-ranked-list small { overflow: hidden; color: var(--experience-dim); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+body.portal-v2 .viewing-ranked-list b { color: var(--experience-muted); font-size: 9px; }
+body.portal-v2 .viewing-empty { margin: 0; color: var(--experience-dim); font-size: 10px; }
+body.portal-v2 .viewing-privacy-note { display: flex; align-items: center; gap: 8px; margin: 0; border: 1px solid rgba(79, 221, 160, .2); border-radius: 10px; background: rgba(79, 221, 160, .05); color: var(--experience-muted); padding: 10px 12px; font-size: 9px; line-height: 1.45; }
+body.portal-v2 .viewing-privacy-note svg { flex: 0 0 18px; width: 18px; height: 18px; color: var(--experience-good); }
+
 body.portal-v2 .settings-chevron {
   width: 17px;
   height: 17px;

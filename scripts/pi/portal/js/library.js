@@ -1,5 +1,17 @@
 'use strict'
 
+function librarySignalIcon(name, className = 'icon') {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+      const use = document.createElementNS('http://www.w3.org/2000/svg', 'use')
+      svg.classList.add(...className.split(' ').filter(Boolean))
+      svg.setAttribute('aria-hidden', 'true')
+      use.setAttribute('href', `/portal/icons.svg#${name}`)
+      svg.append(use)
+      return svg
+    }
+
+let viewingInsightsRange = 30
+
 function renderAdultLibrary() {
       const films = library?.adult_library || []
       const folders = library?.adult_folders || []
@@ -72,7 +84,7 @@ function renderAdultLibrary() {
         meta.textContent = [metadata.year, film.folder || 'Unfiled', stateLabel].filter(Boolean).join(' · ')
         const more = document.createElement('span'); more.className = 'adult-film-more'
         more.setAttribute('aria-hidden', 'true')
-        more.innerHTML = '<svg viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg>'
+        more.append(librarySignalIcon('signal-chevron-right'))
         copy.append(title, meta)
         row.append(poster, copy, more)
         row.setAttribute('aria-label', `Open details for ${title.textContent}`)
@@ -129,7 +141,7 @@ function renderAdultLibrary() {
           const poster = document.createElement('span')
           poster.className = 'tmdb-result-poster'
           poster.setAttribute('aria-hidden', 'true')
-          poster.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 6l2 4m3-4 2 4m3-4 2 4"/></svg>'
+          poster.append(librarySignalIcon('signal-clapperboard'))
           const copy = document.createElement('div')
           copy.innerHTML = `<strong>${escapeHtml(match.title)}${match.year ? ` (${escapeHtml(match.year)})` : ''}</strong><p>${escapeHtml(match.overview || 'No description supplied.')}</p>`
           const choose = document.createElement('button')
@@ -167,7 +179,7 @@ function renderAdultLibrary() {
           const poster = document.createElement('span')
           poster.className = 'tmdb-result-poster'
           poster.setAttribute('aria-hidden', 'true')
-          poster.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 6l2 4m3-4 2 4m3-4 2 4"/></svg>'
+          poster.append(librarySignalIcon('signal-clapperboard'))
           const copy = document.createElement('div')
           copy.innerHTML = `<strong>${escapeHtml(match.title)}${match.year ? ` (${escapeHtml(match.year)})` : ''}</strong><p>${escapeHtml(match.overview || 'No description supplied.')}</p>`
           const choose = document.createElement('button')
@@ -222,7 +234,7 @@ function renderAdultLibrary() {
           const poster = document.createElement('span')
           poster.className = 'tmdb-result-poster'
           poster.setAttribute('aria-hidden', 'true')
-          poster.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 6l2 4m3-4 2 4m3-4 2 4"/></svg>'
+          poster.append(librarySignalIcon('signal-clapperboard'))
           const copy = document.createElement('div')
           copy.innerHTML = `<strong>${escapeHtml(match.title)}${match.year ? ` (${escapeHtml(match.year)})` : ''}</strong><p>${escapeHtml(match.overview || 'No description supplied.')}</p>`
           const choose = document.createElement('button')
@@ -319,18 +331,22 @@ function renderAdultLibrary() {
       root.innerHTML = ''
       if (!usbState.volumes.length) root.innerHTML = '<div class="empty"><strong>No USB drive found</strong>Plug one into the Pi, wait a moment, then scan again.</div>'
       usbState.volumes.forEach(volume => {
-        const row = document.createElement('article')
+        const row = document.createElement('button')
+        row.type = 'button'
         row.className = `usb-drive ${usbVolume === volume.id ? 'active' : ''}`
+        row.append(librarySignalIcon('signal-hard-drive', 'usb-drive-icon'))
         const copy = document.createElement('div')
         copy.className = 'usb-drive-copy'
         const driveState = volume.mounted ? 'Ready' : volume.sleeping ? 'Sleeping · wakes automatically' : 'Ready to open'
         copy.innerHTML = `<strong>${escapeHtml(volume.label)}</strong><small>${escapeHtml(volume.filesystem)}${volume.size ? ` · ${formatBytes(volume.size)}` : ''} · ${driveState}</small>`
-        const button = document.createElement('button')
-        button.type = 'button'
-        button.className = 'secondary'
-        button.textContent = volume.mounted ? 'Browse' : volume.sleeping ? 'Wake & open' : 'Open safely'
-        button.onclick = async () => {
-          button.disabled = true
+        const action = document.createElement('span')
+        action.className = 'usb-drive-action'
+        action.append(
+          document.createTextNode(usbVolume === volume.id ? 'Browsing' : volume.mounted ? 'Browse' : volume.sleeping ? 'Wake & open' : 'Open safely'),
+          librarySignalIcon('signal-chevron-right')
+        )
+        row.onclick = async () => {
+          row.disabled = true
           try {
             if (!volume.mounted) await api('/api/usb', { method: 'POST', body: JSON.stringify({ action: 'mount', device: volume.device }) })
             usbVolume = volume.id
@@ -339,9 +355,9 @@ function renderAdultLibrary() {
             await refreshUsb()
             await browseUsb('')
           } catch (error) { notice(error.message, true) }
-          finally { button.disabled = false }
+          finally { row.disabled = false }
         }
-        row.append(copy, button)
+        row.append(copy, action)
         root.append(row)
       })
       const active = usbState.volumes.find(volume => volume.id === usbVolume && volume.mounted)
@@ -366,53 +382,86 @@ function renderAdultLibrary() {
       const root = $('#usbFileList')
       root.innerHTML = ''
       const volume = usbState.volumes.find(item => item.id === usbVolume)
-      $('#usbBreadcrumb').textContent = volume ? `${volume.label}${usbPath ? ' / ' + usbPath : ''}` : 'Choose a drive'
+      const breadcrumb = $('#usbBreadcrumb')
+      breadcrumb.replaceChildren()
+      if (volume) {
+        const rootButton = document.createElement('button')
+        rootButton.type = 'button'
+        rootButton.append(librarySignalIcon('signal-hard-drive'), document.createTextNode(volume.label))
+        rootButton.onclick = () => browseUsb('').catch(error => notice(error.message, true))
+        breadcrumb.append(rootButton)
+        const parts = usbPath.split('/').filter(Boolean)
+        parts.forEach((part, index) => {
+          const button = document.createElement('button')
+          button.type = 'button'
+          button.textContent = part
+          if (index === parts.length - 1) button.setAttribute('aria-current', 'page')
+          button.onclick = () => browseUsb(parts.slice(0, index + 1).join('/')).catch(error => notice(error.message, true))
+          breadcrumb.append(librarySignalIcon('signal-chevron-right', 'usb-breadcrumb-separator'), button)
+        })
+      } else {
+        const empty = document.createElement('span')
+        empty.textContent = 'Choose a connected drive to begin'
+        breadcrumb.append(empty)
+      }
       $('#usbUp').disabled = !usbVolume || !usbPath
       const visibleVideos = usbEntries.filter(entry => entry.type === 'video')
       const allVisibleSelected = visibleVideos.length > 0 && visibleVideos.every(entry => usbSelection.has(entry.path))
       $('#usbSelectAll').disabled = visibleVideos.length === 0
-      $('#usbSelectAll').textContent = allVisibleSelected ? 'Clear visible selection' : 'Select visible videos'
+      $('#usbSelectAll').querySelector('span').textContent = allVisibleSelected ? 'Clear visible selection' : 'Select visible videos'
       $('#usbEject').classList.toggle('hidden', !usbVolume)
       if (!usbEntries.length) root.innerHTML = `<div class="empty"><strong>${usbVolume ? 'No videos here' : 'No drive selected'}</strong>${usbVolume ? 'Open another folder.' : 'Select a connected USB drive to browse its videos.'}</div>`
       usbEntries.forEach(entry => {
         const row = document.createElement('article')
-        row.className = 'usb-file'
+        row.className = `usb-file is-${entry.type}${usbSelection.has(entry.path) ? ' selected' : ''}`
         if (entry.type === 'video') {
+          const selector = document.createElement('label')
+          selector.className = 'usb-file-select'
           const checkbox = document.createElement('input')
           checkbox.type = 'checkbox'
           checkbox.setAttribute('aria-label', `Select ${entry.name} to copy`)
           checkbox.checked = usbSelection.has(entry.path)
-          checkbox.onchange = () => { checkbox.checked ? usbSelection.add(entry.path) : usbSelection.delete(entry.path); updateUsbSelection() }
-          row.append(checkbox)
+          checkbox.onchange = () => { checkbox.checked ? usbSelection.add(entry.path) : usbSelection.delete(entry.path); renderUsbFiles() }
+          selector.append(checkbox, librarySignalIcon('signal-check'))
+          row.append(selector)
         }
-        const copy = document.createElement('div')
+        const main = document.createElement(entry.type === 'folder' ? 'button' : 'div')
+        if (entry.type === 'folder') main.type = 'button'
+        main.className = 'usb-file-main'
+        main.append(librarySignalIcon(entry.type === 'folder' ? 'signal-folder' : 'signal-film', 'usb-file-icon'))
+        const copy = document.createElement('span')
         copy.className = 'usb-file-copy'
-        copy.innerHTML = `<strong>${escapeHtml(entry.name)}</strong><small>${entry.type === 'folder' ? 'Folder' : formatBytes(entry.size)}</small>`
-        row.append(copy)
+        copy.innerHTML = `<strong>${escapeHtml(entry.name)}</strong><small>${entry.type === 'folder' ? 'Folder · tap to open' : formatBytes(entry.size)}</small>`
+        main.append(copy)
+        if (entry.type === 'folder') {
+          main.append(librarySignalIcon('signal-chevron-right', 'usb-file-chevron'))
+          main.onclick = () => browseUsb(entry.path).catch(error => notice(error.message, true))
+        }
+        row.append(main)
         const actions = document.createElement('div')
         actions.className = 'usb-file-actions'
         if (entry.type === 'folder') {
-          const open = document.createElement('button')
-          open.type = 'button'; open.className = 'secondary'; open.textContent = 'Open'
-          open.onclick = () => browseUsb(entry.path).catch(error => notice(error.message, true))
           const select = document.createElement('button')
-          select.type = 'button'; select.className = 'secondary'; select.textContent = usbSelection.has(entry.path) ? 'Folder selected' : 'Select folder'
+          select.type = 'button'; select.className = 'usb-folder-select'
+          select.append(librarySignalIcon(usbSelection.has(entry.path) ? 'signal-check' : 'signal-plus'), document.createTextNode(usbSelection.has(entry.path) ? 'Selected' : 'Select folder'))
           select.onclick = () => { usbSelection.has(entry.path) ? usbSelection.delete(entry.path) : usbSelection.add(entry.path); renderUsbFiles() }
-          actions.append(open, select)
+          actions.append(select)
         } else {
           const watch = document.createElement('button')
           watch.type = 'button'; watch.className = 'secondary'
-          watch.textContent = entry.browser_ready ? 'Watch on this device' : 'Play in VLC'
+          watch.append(librarySignalIcon('signal-play'), document.createTextNode(entry.browser_ready ? 'Watch here' : 'Play in VLC'))
           watch.title = entry.browser_ready ? 'Stream this file directly from the USB drive' : 'Open the original file directly in VLC'
           watch.onclick = entry.browser_ready
             ? () => openRemotePlayer({ kind: 'usb', volume: usbVolume, file: entry.path })
             : () => openInVlc({ kind: 'usb', volume: usbVolume, file: entry.path }, entry.name)
           const download = document.createElement('button')
-          download.type = 'button'; download.className = 'secondary'; download.textContent = 'Download to this device'
+          download.type = 'button'; download.className = 'secondary'
+          download.append(librarySignalIcon('signal-download'), document.createTextNode('Download'))
           download.onclick = () => downloadToDevice(
             { kind: 'usb', volume: usbVolume, file: entry.path }, entry.name)
           const play = document.createElement('button')
-          play.type = 'button'; play.className = 'secondary'; play.textContent = 'Play on TV'
+          play.type = 'button'; play.className = 'secondary'
+          play.append(librarySignalIcon('signal-monitor-play'), document.createTextNode('Play on TV'))
           play.onclick = async () => {
             if (!confirm(`Play “${entry.name}” directly from the USB drive on the TV?`)) return
             play.disabled = true
@@ -432,8 +481,153 @@ function renderAdultLibrary() {
 
     function updateUsbSelection() {
       $('#usbSelectionCount').textContent = usbSelection.size ? `${usbSelection.size} item${usbSelection.size === 1 ? '' : 's'} selected` : 'Nothing selected'
+      $('#usbImportSummary').textContent = usbSelection.size
+        ? `${usbSelection.size} item${usbSelection.size === 1 ? '' : 's'} ready to copy. Originals stay on the drive.`
+        : 'Choose videos or folders above.'
       $('#usbImport').disabled = !usbVolume || usbSelection.size === 0
     }
+
+    function viewingDuration(seconds) {
+      const minutes = Math.max(0, Math.round(Number(seconds || 0) / 60))
+      const hours = Math.floor(minutes / 60)
+      const remainder = minutes % 60
+      return hours ? `${hours}h ${remainder}m` : `${minutes}m`
+    }
+
+    function renderViewingChart(root, values) {
+      root.replaceChildren()
+      if (!values.length || !values.some(item => Number(item.seconds) > 0)) {
+        const empty = document.createElement('p')
+        empty.className = 'viewing-empty'
+        empty.textContent = 'Viewing will appear here as it is watched.'
+        root.append(empty)
+        return
+      }
+      const namespace = 'http://www.w3.org/2000/svg'
+      const svg = document.createElementNS(namespace, 'svg')
+      svg.setAttribute('viewBox', '0 0 640 190')
+      svg.setAttribute('preserveAspectRatio', 'none')
+      svg.setAttribute('aria-hidden', 'true')
+      const maximum = Math.max(...values.map(item => Number(item.seconds) || 0), 1)
+      const step = 640 / values.length
+      values.forEach((item, index) => {
+        const value = Number(item.seconds) || 0
+        const height = Math.max(value ? 5 : 2, value / maximum * 132)
+        const width = Math.max(5, step * .55)
+        const group = document.createElementNS(namespace, 'g')
+        const title = document.createElementNS(namespace, 'title')
+        title.textContent = `${item.label}: ${viewingDuration(value)}`
+        const bar = document.createElementNS(namespace, 'rect')
+        bar.setAttribute('x', String(index * step + (step - width) / 2))
+        bar.setAttribute('y', String(145 - height))
+        bar.setAttribute('width', String(width))
+        bar.setAttribute('height', String(height))
+        bar.setAttribute('rx', String(Math.min(5, width / 3)))
+        bar.classList.add(value ? 'has-value' : 'is-empty')
+        group.append(title, bar)
+        if (values.length <= 14 || index % Math.ceil(values.length / 8) === 0 || index === values.length - 1) {
+          const label = document.createElementNS(namespace, 'text')
+          label.setAttribute('x', String(index * step + step / 2))
+          label.setAttribute('y', '174')
+          label.setAttribute('text-anchor', 'middle')
+          label.textContent = item.label
+          group.append(label)
+        }
+        svg.append(group)
+      })
+      root.append(svg)
+      root.setAttribute('aria-label', values.map(item =>
+        `${item.label} ${viewingDuration(item.seconds)}`).join(', '))
+    }
+
+    function renderViewingBreakdown(root, values, labels) {
+      root.replaceChildren()
+      const maximum = Math.max(...values.map(item => Number(item.seconds) || 0), 1)
+      if (!values.length) {
+        root.innerHTML = '<p class="viewing-empty">No viewing in this period yet.</p>'
+        return
+      }
+      values.forEach(item => {
+        const row = document.createElement('div')
+        const heading = document.createElement('span')
+        const name = document.createElement('strong')
+        name.textContent = labels[item.name] || item.name
+        const duration = document.createElement('small')
+        duration.textContent = viewingDuration(item.seconds)
+        heading.append(name, duration)
+        const progress = document.createElement('progress')
+        progress.max = maximum
+        progress.value = Number(item.seconds) || 0
+        progress.setAttribute('aria-label', `${name.textContent}: ${duration.textContent}`)
+        row.append(heading, progress)
+        root.append(row)
+      })
+    }
+
+    function renderViewingList(root, values, recent = false) {
+      root.replaceChildren()
+      if (!values.length) {
+        const empty = document.createElement('li')
+        empty.className = 'viewing-empty'
+        empty.textContent = 'Nothing to show yet.'
+        root.append(empty)
+        return
+      }
+      values.forEach(item => {
+        const row = document.createElement('li')
+        const copy = document.createElement('span')
+        const title = document.createElement('strong')
+        title.textContent = item.title
+        const details = document.createElement('small')
+        const surface = item.surface === 'device' ? 'This device' : 'TV'
+        details.textContent = recent
+          ? `${item.source} · ${surface} · ${new Intl.DateTimeFormat(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' }).format(new Date(item.when))}`
+          : item.source
+        copy.append(title, details)
+        const value = document.createElement('b')
+        value.textContent = item.duration || viewingDuration(item.seconds)
+        row.append(copy, value)
+        root.append(row)
+      })
+    }
+
+    async function loadViewingInsights() {
+      const loading = $('#viewingInsightsLoading')
+      const root = $('#viewingInsights')
+      if (!loading || !root || offlineMode) return
+      loading.classList.remove('hidden')
+      try {
+        const data = await api(`/api/viewing-insights?days=${viewingInsightsRange}&timezone_offset=${new Date().getTimezoneOffset()}`)
+        $('#viewingToday').textContent = viewingDuration(data.summary.today_seconds)
+        $('#viewingWeek').textContent = viewingDuration(data.summary.week_seconds)
+        $('#viewingMonth').textContent = viewingDuration(data.summary.month_seconds)
+        $('#viewingActiveDays').textContent = String(data.summary.active_days)
+        $('#viewingRangeTotal').textContent = viewingDuration(data.summary.range_seconds)
+        renderViewingChart($('#viewingDailyChart'), data.daily || [])
+        const longValues = viewingInsightsRange === 365 ? data.monthly || [] : data.weekly || []
+        $('#viewingTrendTitle').textContent = viewingInsightsRange === 365 ? 'Monthly trend' : 'Weekly trend'
+        renderViewingChart($('#viewingTrendChart'), longValues)
+        renderViewingBreakdown($('#viewingSurfaceBreakdown'), data.by_surface || [], {
+          tv: 'On the TV', device: 'On this device',
+        })
+        renderViewingBreakdown($('#viewingKindBreakdown'), data.by_kind || [], {
+          adult: 'Adult TV films', film: 'MabelTV films', episode: 'MabelTV episodes', usb: 'USB videos',
+        })
+        renderViewingList($('#viewingTopTitles'), data.top_titles || [])
+        renderViewingList($('#viewingRecent'), data.recent || [], true)
+        root.classList.remove('hidden')
+        loading.classList.add('hidden')
+      } catch (error) {
+        loading.textContent = 'Viewing insights are temporarily unavailable.'
+      }
+    }
+
+    $$('[data-viewing-range]').forEach(button => button.onclick = () => {
+      viewingInsightsRange = Number(button.dataset.viewingRange)
+      $$('[data-viewing-range]').forEach(option => option.classList.toggle(
+        'active', Number(option.dataset.viewingRange) === viewingInsightsRange))
+      loadViewingInsights()
+    })
 
     $('#usbRefresh').onclick = () => refreshUsb().catch(error => notice(error.message, true))
     $('#usbUp').onclick = () => browseUsb(usbPath.split('/').slice(0, -1).join('/')).catch(error => notice(error.message, true))
@@ -648,7 +842,7 @@ function renderAdultLibrary() {
         return `<button type="button" class="channel-card library-main-card ${channel.enabled ? '' : 'hidden-channel'}" data-open-channel="${channel.number}" aria-label="Open channel ${channel.number}, ${escapeHtml(channel.name)}">
           <span class="library-card-top"><span class="library-channel-pill">CH ${channel.number}</span><span class="library-channel-state">${channel.enabled ? 'On TV' : 'Hidden'}</span></span>
           <span class="channel-card-copy"><h3>${escapeHtml(channel.name)}</h3><span class="channel-card-detail">${total} programme${total === 1 ? '' : 's'} · ${escapeHtml(channel.content_type === 'films' ? 'Films' : 'Shows')}</span>${first ? `<span class="library-card-preview">${escapeHtml(first)}${total > 1 ? ` <em>+ ${total - 1} more</em>` : ''}</span>` : '<span class="library-card-preview muted">Ready for its first programme</span>'}</span>
-          <span class="library-card-footer"><span>${shown} shown on TV</span><span>Open channel <svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></span></span>
+          <span class="library-card-footer"><span>${shown} shown on TV</span><span>Open channel <svg class="icon"><use href="/portal/icons.svg#signal-chevron-right"/></svg></span></span>
         </button>`
       }
       const channelArtwork = channel.metadata?.artwork
@@ -656,7 +850,7 @@ function renderAdultLibrary() {
         : ''
       return `<button type="button" class="channel-card library-main-card ${channel.enabled ? '' : 'hidden-channel'}" data-open-channel="${channel.number}" aria-label="Open channel ${channel.number}, ${escapeHtml(channel.name)}">
         <span class="library-channel-visual"${channelArtwork}><span class="library-card-top"><span class="library-channel-pill">CH ${channel.number}</span><span class="library-channel-state">${channel.enabled ? 'On TV' : 'Hidden'}</span></span><span class="library-channel-initial">${escapeHtml(channel.name.slice(0, 1).toUpperCase())}</span></span>
-        <span class="channel-card-copy"><span class="channel-card-heading"><h3>${escapeHtml(channel.name)}</h3><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></span><span class="channel-card-detail">${total} programme${total === 1 ? '' : 's'} · ${escapeHtml(channel.content_type === 'films' ? 'Films' : 'Shows')}</span>${first ? `<span class="library-card-preview">${escapeHtml(first)}${total > 1 ? ` <em>+ ${total - 1} more</em>` : ''}</span>` : '<span class="library-card-preview muted">Ready for its first programme</span>'}</span>
+        <span class="channel-card-copy"><span class="channel-card-heading"><h3>${escapeHtml(channel.name)}</h3><svg class="icon"><use href="/portal/icons.svg#signal-chevron-right"/></svg></span><span class="channel-card-detail">${total} programme${total === 1 ? '' : 's'} · ${escapeHtml(channel.content_type === 'films' ? 'Films' : 'Shows')}</span>${first ? `<span class="library-card-preview">${escapeHtml(first)}${total > 1 ? ` <em>+ ${total - 1} more</em>` : ''}</span>` : '<span class="library-card-preview muted">Ready for its first programme</span>'}</span>
         <span class="library-card-footer"><span>${shown} shown on TV</span><span>${channel.enabled ? 'Available' : 'Hidden'}</span></span>
       </button>`
     }

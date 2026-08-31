@@ -5,17 +5,18 @@
           <header class="library-intro usb-intro"><div><p class="section-kicker">External storage</p><h2>USB videos</h2><p>Browse first, then choose what to watch or copy into MabelTV.</p></div></header>
 
           <div class="usb-drive-stage">
-            <div class="usb-stage-heading"><strong>Connected drives</strong><span>Read-only until you choose Copy</span></div>
+            <div class="usb-stage-heading"><span class="usb-stage-title"><svg class="icon"><use href="/portal/icons.svg#signal-hard-drive"/></svg><strong>Connected drives</strong></span><span>Nothing is changed until you choose Copy</span></div>
             <div id="usbDriveList" class="usb-drive-list"><div class="empty">Connect a USB drive, then scan.</div></div>
           </div>
 
           <section class="usb-browser">
-            <header class="usb-browser-head"><div><p id="usbBreadcrumb">Choose a drive</p><h3>Videos</h3></div><button id="usbEject" type="button" class="usb-eject hidden">Eject safely</button></header>
-            <div class="usb-toolbar"><button id="usbUp" type="button" disabled><svg class="icon"><use href="/portal/icons.svg#signal-chevron-left"/></svg><span>Up</span></button><button id="usbSelectAll" type="button" disabled>Select all</button><span id="usbSelectionCount">Nothing selected</span></div>
+            <header class="usb-browser-head"><div><p class="section-kicker">Browse drive</p><h3>Videos and folders</h3></div><button id="usbEject" type="button" class="usb-eject hidden"><svg class="icon"><use href="/portal/icons.svg#signal-eject"/></svg><span>Eject safely</span></button></header>
+            <nav id="usbBreadcrumb" class="usb-breadcrumb" aria-label="Current USB folder"><span>Choose a drive</span></nav>
+            <div class="usb-toolbar"><button id="usbUp" type="button" disabled><svg class="icon"><use href="/portal/icons.svg#signal-arrow-left"/></svg><span>Up one folder</span></button><button id="usbSelectAll" type="button" disabled><svg class="icon"><use href="/portal/icons.svg#signal-check"/></svg><span>Select visible videos</span></button><span id="usbSelectionCount">Nothing selected</span></div>
             <div id="usbFileList" class="usb-file-list"><div class="empty"><strong>No drive selected</strong>Select a connected USB drive to browse its videos.</div></div>
           </section>
 
-          <section class="usb-import" aria-labelledby="usbImportTitle"><div><p class="section-kicker">Copy selected videos</p><h3 id="usbImportTitle">Add to MabelTV</h3></div><label>Destination<select id="usbTarget"><option value="adult">Adult library</option><option value="channel">Children’s channel</option></select></label><label id="usbChannelLabel" class="hidden">Channel<select id="usbChannel"></select></label><button id="usbImport" type="button" disabled>Copy selected videos</button></section>
+          <section class="usb-import" aria-labelledby="usbImportTitle"><span class="usb-import-icon"><svg class="icon"><use href="/portal/icons.svg#signal-download"/></svg></span><div><p class="section-kicker">Selected items</p><h3 id="usbImportTitle">Copy into MabelTV</h3><p id="usbImportSummary">Choose videos or folders above.</p></div><label>Destination<select id="usbTarget"><option value="adult">Adult library</option><option value="channel">Children’s channel</option></select></label><label id="usbChannelLabel" class="hidden">Channel<select id="usbChannel"></select></label><button id="usbImport" type="button" disabled><svg class="icon"><use href="/portal/icons.svg#signal-download"/></svg><span>Copy selected</span></button></section>
           <div id="usbJob" class="usb-job callout hidden"><strong id="usbJobTitle">Copying…</strong><p id="usbJobText"></p><progress id="usbJobProgress" max="1" value="0"></progress></div>
           <p class="usb-safety-note">Sleeps after 1 idle minute and wakes automatically. Always use Eject safely before unplugging it.</p>
         </section>

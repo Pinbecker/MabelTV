@@ -25,6 +25,7 @@ import sys
 import threading
 import time
 import uuid
+from datetime import datetime, timedelta, timezone
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -62,6 +63,10 @@ OFFLINE_PREPARED_CACHE_SECONDS = 2 * 24 * 60 * 60
 REMOTE_RESUME_MIN_SECONDS = 30.0
 REMOTE_COMPLETION_MIN_SECONDS = 180.0
 REMOTE_COMPLETION_FRACTION = 0.05
+VIEWING_SAMPLE_SECONDS = 15.0
+VIEWING_SESSION_GAP_SECONDS = 120.0
+VIEWING_MAX_SESSIONS = 5000
+VIEWING_RETENTION_DAYS = 370
 SAFE_NAME = re.compile(r"[^A-Za-z0-9 ._()&'\-]+")
 EPISODE_NAME = re.compile(r"^s(\d{1,2})e(\d{1,3})\s*-\s*(.+)$", re.IGNORECASE)
 PIN_PATTERN = re.compile(r"\d{4,8}")
@@ -479,6 +484,7 @@ class Library:
         self.owner_recovery_path = self.owner_path.with_name("owner-recovery-pending")
         self.config_path = Path(args.config).resolve()
         self.player_state_path = Path("/var/lib/mabeltv/state.json")
+        self.viewing_history_path = self.settings_path.with_name("viewing-history.json")
         self.incoming = self.media_root / ".incoming"
         self.adult_root = self.media_root / ".adult"
         self.adult_metadata_path = self.adult_root / ".mabeltv-adult.json"
@@ -509,6 +515,14 @@ class Library:
         self.adult_optimisation_serial = threading.Lock()
         self.remote_stream_lock = threading.RLock()
         self.remote_stream: dict[str, Any] | None = None
+        self.viewing_lock = threading.RLock()
+        self.viewing_closed = threading.Event()
+        self.viewing_worker: threading.Thread | None = None
+        self.viewing_last_tv_sample: tuple[dict[str, Any], float] | None = None
+        self.viewing_remote_samples: dict[str, tuple[float, float]] = {}
+        self.viewing_dirty = False
+        self.viewing_last_flush = 0.0
+        self.viewing_store = self.load_viewing_store()
         self.external_stream_lock = threading.RLock()
         self.external_streams: dict[str, dict[str, Any]] = {}
         self.offline_cache = self.media_root / ".offline-prepared"
@@ -560,13 +574,309 @@ class Library:
             return
         self.conversion_closed.set()
         self.usb_power_closed.set()
+        self.viewing_closed.set()
         self.conversion_queue.put(None)
         self.conversion_worker.join(timeout=timeout)
         if self.usb_power_worker:
             self.usb_power_worker.join(timeout=min(timeout, USB_POWER_POLL_SECONDS + 1))
+        if self.viewing_worker:
+            self.viewing_worker.join(timeout=min(timeout, VIEWING_SAMPLE_SECONDS + 1))
+        self.flush_viewing_store(force=True)
         if self.conversion_worker.is_alive():
             raise RuntimeError("The media worker did not stop cleanly")
         self.live_stream.stop()
+
+    def load_viewing_store(self) -> dict[str, Any]:
+        """Load the compact, private session history kept on this appliance."""
+        value = self.read_json(self.viewing_history_path, {})
+        sessions = value.get("sessions", []) if isinstance(value, dict) else []
+        if not isinstance(sessions, list):
+            sessions = []
+        clean = [item for item in sessions if isinstance(item, dict)]
+        try:
+            started = float(value.get("tracking_started", time.time()))
+        except (AttributeError, TypeError, ValueError):
+            started = time.time()
+        return {
+            "schema_version": 1,
+            "tracking_started": max(0.0, started),
+            "sessions": clean[-VIEWING_MAX_SESSIONS:],
+        }
+
+    def start_viewing_tracker(self) -> None:
+        """Start low-frequency on-TV sampling once the HTTP service is ready."""
+        with self.viewing_lock:
+            if self.viewing_worker and self.viewing_worker.is_alive():
+                return
+            self.viewing_closed.clear()
+            self.viewing_worker = threading.Thread(
+                target=self.run_viewing_tracker,
+                name="mabeltv-viewing-history",
+                daemon=True,
+            )
+            self.viewing_worker.start()
+
+    def run_viewing_tracker(self) -> None:
+        while not self.viewing_closed.is_set():
+            try:
+                self.sample_tv_viewing()
+                self.flush_viewing_store()
+            except Exception as error:
+                print(f"Viewing tracker skipped a sample: {error}",
+                      file=sys.stderr, flush=True)
+            if self.viewing_closed.wait(VIEWING_SAMPLE_SECONDS):
+                break
+
+    def current_tv_viewing(self) -> dict[str, Any] | None:
+        """Return one coarse active programme identity, never a frame timeline."""
+        mode = self.player_mode_status()
+        if mode.get("standby") is True:
+            return None
+        if mode.get("mode") == "adult":
+            title = str(mode.get("programme") or "").strip()
+            if mode.get("playing") is not True or mode.get("paused") is True or not title:
+                return None
+            return {
+                "item_key": f"adult:{title.casefold()}",
+                "title": title,
+                "kind": "adult",
+                "surface": "tv",
+                "channel_number": None,
+                "channel_name": "Adult TV",
+            }
+
+        state = self.read_json(self.player_state_path, {})
+        if (not isinstance(state, dict) or state.get("standby") is True
+                or state.get("playback_paused") is True):
+            return None
+        try:
+            number = int(state.get("current_channel"))
+            channel = self.channel(number)
+            timelines = state.get("channel_timelines", {})
+            timeline = timelines.get(str(number), {}) if isinstance(timelines, dict) else {}
+            file_name = str(timeline.get("episode_name", "")).strip()
+        except (AttributeError, TypeError, ValueError):
+            return None
+        if not file_name:
+            return None
+        is_film = self.channel_content_type(channel) == "films"
+        return {
+            "item_key": f"channel:{number}:{file_name.casefold()}",
+            "title": self.display_name(file_name),
+            "kind": "film" if is_film else "episode",
+            "surface": "tv",
+            "channel_number": number,
+            "channel_name": str(channel.get("name") or f"Channel {number}"),
+        }
+
+    def sample_tv_viewing(self) -> None:
+        now_monotonic = time.monotonic()
+        activity = self.current_tv_viewing()
+        previous = self.viewing_last_tv_sample
+        self.viewing_last_tv_sample = (activity, now_monotonic) if activity else None
+        if not activity or not previous:
+            return
+        previous_activity, previous_monotonic = previous
+        if previous_activity.get("item_key") != activity.get("item_key"):
+            return
+        watched = min(30.0, max(0.0, now_monotonic - previous_monotonic))
+        if watched >= 1.0:
+            self.record_viewing(activity, watched, time.time())
+
+    def record_remote_viewing(self, session: dict[str, Any], token: str,
+                              position: float) -> None:
+        """Count browser playback deltas while rejecting seeks and stale posts."""
+        now_monotonic = time.monotonic()
+        with self.viewing_lock:
+            previous = self.viewing_remote_samples.get(token)
+            self.viewing_remote_samples[token] = (position, now_monotonic)
+        if not previous:
+            return
+        previous_position, previous_monotonic = previous
+        elapsed = max(0.0, now_monotonic - previous_monotonic)
+        advanced = position - previous_position
+        if elapsed <= 0 or elapsed > 75 or advanced < 1 or advanced > elapsed + 6:
+            return
+        kind = str(session.get("kind", ""))
+        channel_number = session.get("channel") if kind == "channel" else None
+        channel_name = "Adult TV" if kind == "adult" else "MabelTV"
+        if kind == "channel":
+            try:
+                channel_name = str(self.channel(int(channel_number)).get("name") or "MabelTV")
+            except (TypeError, ValueError):
+                channel_name = "MabelTV"
+        activity = {
+            "item_key": f"browser:{kind}:{session.get('library_id') or session.get('file') or session.get('source')}",
+            "title": str(session.get("title") or self.display_name(
+                Path(str(session.get("source", "Video"))).name)),
+            "kind": "adult" if kind == "adult" else str(
+                session.get("content_kind") or "film") if kind == "channel" else "usb",
+            "surface": "device",
+            "channel_number": channel_number,
+            "channel_name": channel_name,
+        }
+        self.record_viewing(activity, min(advanced, elapsed), time.time())
+
+    def record_viewing(self, activity: dict[str, Any], watched: float,
+                       ended: float) -> None:
+        watched = max(0.0, min(float(watched), 60.0))
+        if watched < 1.0:
+            return
+        with self.viewing_lock:
+            sessions = self.viewing_store["sessions"]
+            matching = [item for item in sessions
+                        if isinstance(item, dict)
+                        and item.get("item_key") == activity.get("item_key")
+                        and item.get("surface") == activity.get("surface")]
+            previous = max(matching, key=lambda item: float(
+                item.get("ended", 0) or 0), default=None)
+            gap = ended - float(previous.get("ended", 0) or 0) if previous else None
+            can_merge = previous is not None and gap is not None and (
+                0 <= gap <= VIEWING_SESSION_GAP_SECONDS)
+            if can_merge:
+                previous["ended"] = ended
+                previous["seconds"] = round(
+                    float(previous.get("seconds", 0) or 0) + watched, 2)
+            else:
+                sessions.append({
+                    "started": ended - watched,
+                    "ended": ended,
+                    "seconds": round(watched, 2),
+                    **activity,
+                })
+            cutoff = ended - VIEWING_RETENTION_DAYS * 86400
+            self.viewing_store["sessions"] = [
+                item for item in sessions
+                if float(item.get("ended", 0) or 0) >= cutoff
+            ][-VIEWING_MAX_SESSIONS:]
+            self.viewing_dirty = True
+
+    def flush_viewing_store(self, *, force: bool = False) -> None:
+        with self.viewing_lock:
+            now = time.monotonic()
+            if not self.viewing_dirty or (not force and now - self.viewing_last_flush < 60):
+                return
+            self.write_json(self.viewing_history_path, self.viewing_store)
+            self.viewing_dirty = False
+            self.viewing_last_flush = now
+
+    @staticmethod
+    def viewing_duration_label(seconds: float) -> str:
+        minutes = max(0, int(round(seconds / 60)))
+        hours, remainder = divmod(minutes, 60)
+        return f"{hours}h {remainder}m" if hours else f"{minutes}m"
+
+    def viewing_insights(self, days: int = 30,
+                         timezone_offset_minutes: int = 0) -> dict[str, Any]:
+        days = days if days in {7, 30, 365} else 30
+        offset = max(-840, min(840, int(timezone_offset_minutes)))
+        local_zone = timezone(-timedelta(minutes=offset))
+        now = time.time()
+        now_local = datetime.fromtimestamp(now, local_zone)
+        today = now_local.date()
+        with self.viewing_lock:
+            sessions = [dict(item) for item in self.viewing_store["sessions"]]
+            tracking_started = float(self.viewing_store["tracking_started"])
+
+        def total_since(seconds: float) -> float:
+            cutoff = now - seconds
+            return sum(float(item.get("seconds", 0) or 0) for item in sessions
+                       if float(item.get("ended", 0) or 0) >= cutoff)
+
+        selected_cutoff = now - days * 86400
+        selected = [item for item in sessions
+                    if float(item.get("ended", 0) or 0) >= selected_cutoff]
+
+        daily: list[dict[str, Any]] = []
+        daily_span = 14 if days < 365 else 30
+        for ago in range(daily_span - 1, -1, -1):
+            date = today - timedelta(days=ago)
+            total = sum(float(item.get("seconds", 0) or 0) for item in sessions
+                        if datetime.fromtimestamp(float(item.get("ended", 0) or 0),
+                                                  local_zone).date() == date)
+            daily.append({"key": date.isoformat(), "label": date.strftime("%a"),
+                          "seconds": round(total)})
+
+        weekly: list[dict[str, Any]] = []
+        this_monday = today - timedelta(days=today.weekday())
+        for ago in range(7, -1, -1):
+            start = this_monday - timedelta(days=ago * 7)
+            end = start + timedelta(days=7)
+            total = sum(float(item.get("seconds", 0) or 0) for item in sessions
+                        if start <= datetime.fromtimestamp(
+                            float(item.get("ended", 0) or 0), local_zone).date() < end)
+            weekly.append({"key": start.isoformat(),
+                           "label": start.strftime("%-d %b") if os.name != "nt"
+                           else start.strftime("%d %b").lstrip("0"),
+                           "seconds": round(total)})
+
+        monthly: list[dict[str, Any]] = []
+        for ago in range(11, -1, -1):
+            month_index = now_local.year * 12 + now_local.month - 1 - ago
+            year, month_zero = divmod(month_index, 12)
+            month = month_zero + 1
+            total = sum(float(item.get("seconds", 0) or 0) for item in sessions
+                        if (lambda value: value.year == year and value.month == month)(
+                            datetime.fromtimestamp(float(item.get("ended", 0) or 0),
+                                                   local_zone)))
+            monthly.append({"key": f"{year:04d}-{month:02d}",
+                            "label": datetime(year, month, 1).strftime("%b"),
+                            "seconds": round(total)})
+
+        def grouped(field: str) -> list[dict[str, Any]]:
+            totals: dict[str, float] = {}
+            for item in selected:
+                key = str(item.get(field) or "Other")
+                totals[key] = totals.get(key, 0.0) + float(item.get("seconds", 0) or 0)
+            return [{"name": key, "seconds": round(value)}
+                    for key, value in sorted(totals.items(), key=lambda pair: -pair[1])]
+
+        title_totals: dict[tuple[str, str], float] = {}
+        for item in selected:
+            key = (str(item.get("title") or "Untitled"),
+                   str(item.get("channel_name") or "MabelTV"))
+            title_totals[key] = title_totals.get(key, 0.0) + float(
+                item.get("seconds", 0) or 0)
+        top_titles = [{"title": key[0], "source": key[1], "seconds": round(value),
+                       "duration": self.viewing_duration_label(value)}
+                      for key, value in sorted(title_totals.items(), key=lambda pair: -pair[1])[:8]]
+
+        recent = []
+        for item in sorted(selected, key=lambda value: float(value.get("ended", 0) or 0),
+                           reverse=True)[:8]:
+            ended = datetime.fromtimestamp(float(item.get("ended", 0) or 0), local_zone)
+            recent.append({
+                "title": str(item.get("title") or "Untitled"),
+                "source": str(item.get("channel_name") or "MabelTV"),
+                "surface": str(item.get("surface") or "tv"),
+                "seconds": round(float(item.get("seconds", 0) or 0)),
+                "duration": self.viewing_duration_label(float(item.get("seconds", 0) or 0)),
+                "when": ended.isoformat(),
+            })
+
+        active_days = len({datetime.fromtimestamp(
+            float(item.get("ended", 0) or 0), local_zone).date() for item in selected})
+        return {
+            "tracking_started": tracking_started,
+            "range_days": days,
+            "summary": {
+                "today_seconds": total_since(max(1.0, now - datetime.combine(
+                    today, datetime.min.time(), local_zone).timestamp())),
+                "week_seconds": total_since(7 * 86400),
+                "month_seconds": total_since(30 * 86400),
+                "range_seconds": sum(float(item.get("seconds", 0) or 0)
+                                     for item in selected),
+                "active_days": active_days,
+                "sessions": len(selected),
+            },
+            "daily": daily,
+            "weekly": weekly,
+            "monthly": monthly,
+            "by_surface": grouped("surface"),
+            "by_kind": grouped("kind"),
+            "top_titles": top_titles,
+            "recent": recent,
+        }
 
     def cleanup_stale_temporary_files(self) -> None:
         """Remove abandoned encoder outputs, never active or recent work."""
@@ -1802,10 +2112,13 @@ class Library:
             self.remote_stream = {"token": token, "kind": kind, "source": source,
                                   "title": title, "library_id": library_id,
                                   "expires": time.time() + REMOTE_SESSION_SECONDS}
-            if kind == "channel" and library_id:
-                channel_key, file_name = library_id.split("/", 1)
+            if kind == "channel":
+                channel_number = int(payload.get("channel", 0))
+                channel = self.channel(channel_number)
                 self.remote_stream.update({
-                    "channel": int(channel_key), "file": file_name,
+                    "channel": channel_number, "file": source.name,
+                    "content_kind": "film" if self.channel_content_type(channel) == "films"
+                    else "episode",
                 })
         base = urlencode({"stream": token})
         subtitle_url = None
@@ -1852,17 +2165,21 @@ class Library:
                 self.remote_stream = None
                 if usb_identity:
                     self.usb_touch(usb_identity)
+        with self.viewing_lock:
+            self.viewing_remote_samples.pop(token, None)
         return {"ok": True}
 
     def remote_save_position(self, payload: dict[str, Any]) -> dict[str, Any]:
-        session = self.remote_session(str(payload.get("stream", "")))
-        if not session.get("library_id"):
-            return {"ok": True}
+        token = str(payload.get("stream", ""))
+        session = self.remote_session(token)
         try:
             position = max(0.0, float(payload.get("position", 0)))
             duration = max(0.0, float(payload.get("duration", 0)))
         except (TypeError, ValueError) as error:
             raise ValueError("That playback position is not valid") from error
+        self.record_remote_viewing(session, token, position)
+        if not session.get("library_id"):
+            return {"ok": True}
         if session["kind"] == "channel":
             command = {
                 "command": "save-channel-film-position",
@@ -3269,7 +3586,8 @@ class Library:
                 client.connect("/run/mabeltv/portal-control.sock")
                 client.sendall(b"status\n")
                 response = json.loads(client.recv(4096).decode())
-        except (OSError, TimeoutError, UnicodeDecodeError, json.JSONDecodeError):
+        except (AttributeError, OSError, TimeoutError, UnicodeDecodeError,
+                json.JSONDecodeError):
             return {}
         return response if isinstance(response, dict) else {}
 
@@ -4667,6 +4985,13 @@ class Handler(BaseHTTPRequestHandler):
             if self.path.startswith("/api/live/segment-") or self.path == "/api/live/init.mp4":
                 self.json(410, {"error": "The live picture now uses the portal frame feed"}); return
             if self.path == "/api/library": self.json(200, self.server.library.library()); return
+            if parsed.path == "/api/viewing-insights":
+                try:
+                    days = int(query.get("days", ["30"])[0])
+                    offset = int(query.get("timezone_offset", ["0"])[0])
+                except (TypeError, ValueError):
+                    days, offset = 30, 0
+                self.json(200, self.server.library.viewing_insights(days, offset)); return
             if parsed.path == "/api/remote/media":
                 session = self.server.library.remote_session(str(query.get("stream", [""])[0]))
                 self.stream_remote_media(session["source"]); return
@@ -4849,6 +5174,7 @@ class LibraryServer(ThreadingHTTPServer):
         super().__init__(address, Handler)
         self.library = library
         self.worker_slots = threading.BoundedSemaphore(12)
+        self.library.start_viewing_tracker()
 
     def process_request(self, request: Any, client_address: Any) -> None:
         if not self.worker_slots.acquire(blocking=False):

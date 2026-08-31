@@ -239,7 +239,7 @@ function remoteTime(value) {
 
     function saveMabelRemotePosition(finished = false, force = false) {
       const video = $('#mabelWatchVideo')
-      if (!mabelRemoteSession || !mabelRemoteTracksPosition || !Number.isFinite(video.currentTime) ||
+      if (!mabelRemoteSession || !Number.isFinite(video.currentTime) ||
           (!finished && !force && Math.abs(video.currentTime - mabelRemoteLastSaved) < 10)) return Promise.resolve(false)
       const session = mabelRemoteSession
       const duration = Number.isFinite(video.duration) ? video.duration : 0
@@ -252,7 +252,7 @@ function remoteTime(value) {
 
     function beaconMabelRemotePosition() {
       const video = $('#mabelWatchVideo')
-      if (!mabelRemoteSession || !mabelRemoteTracksPosition ||
+      if (!mabelRemoteSession ||
           !Number.isFinite(video.currentTime) || !navigator.sendBeacon) return
       const duration = Number.isFinite(video.duration) ? video.duration : 0
       navigator.sendBeacon('/api/remote/position', new Blob([
@@ -346,8 +346,7 @@ function remoteTime(value) {
         clearInterval(mabelRemoteHeartbeatTimer)
         mabelRemoteHeartbeatTimer = setInterval(() => api('/api/remote/heartbeat', { method: 'POST', body: JSON.stringify({ stream: mabelRemoteSession }) }).catch(() => {}), 30000)
         clearInterval(mabelRemotePositionTimer)
-        mabelRemotePositionTimer = mabelRemoteTracksPosition
-          ? setInterval(saveMabelRemotePosition, 15000) : null
+        mabelRemotePositionTimer = setInterval(saveMabelRemotePosition, 15000)
         await video.play().catch(() => {})
       } catch (startError) {
         error.textContent = startError.message; error.classList.remove('hidden')

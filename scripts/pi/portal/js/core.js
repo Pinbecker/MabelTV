@@ -33,9 +33,9 @@ const $ = selector => document.querySelector(selector)
     let usbSelection = new Set()
     let usbJobTimer = null
     let tmdbConfigured = false
-    // Watch is an adult-library-first surface.  Mabel TV remains one tap away
-    // but is never restored as the accidental default from an earlier visit.
-    let remoteKind = 'adult'
+    // Watch opens on the family MabelTV library. Adult TV and downloads remain
+    // explicit choices rather than carrying over from an earlier visit.
+    let remoteKind = 'channel'
     let watchFolder = '*'
     let watchSearchText = ''
     let mabelSearchText = ''
@@ -210,6 +210,10 @@ const $ = selector => document.querySelector(selector)
           history.replaceState({ consolidatedWatch: true }, '', '#watch')
           openView('watch')
           return
+        }
+        if (view === 'watch' && !offlineMode) {
+          remoteKind = 'channel'
+          renderRemoteViewing()
         }
         if (view === 'channels') showChannelHub()
         if (view === 'watch' && selectedManageChannel !== null) {
@@ -686,11 +690,19 @@ const $ = selector => document.querySelector(selector)
       api('/api/live/stop', { method: 'POST', body: '{}' }).catch(() => {})
     }
     $$('[data-view-button]').forEach(button => button.onclick = () => {
+      if (button.dataset.viewButton === 'watch' && !offlineMode) {
+        remoteKind = 'channel'
+        renderRemoteViewing()
+      }
       if (button.dataset.viewButton === 'channels') showChannelHub()
       openView(button.dataset.viewButton)
       if (button.dataset.viewButton === 'adult') refreshTmdbStatus().catch(() => {})
     })
     $$('[data-go]').forEach(button => button.onclick = () => {
+      if (button.dataset.go === 'watch' && !offlineMode) {
+        remoteKind = 'channel'
+        renderRemoteViewing()
+      }
       if (button.dataset.go === 'channels') showChannelHub()
       openView(button.dataset.go)
       if (button.classList.contains('home-device-summary')) {
@@ -748,6 +760,7 @@ const $ = selector => document.querySelector(selector)
       renderTvGuideSetting()
       renderRemoteViewing()
       renderPortalPinSetting()
+      loadViewingInsights().catch(() => {})
       refreshHomePowerState().catch(() => {})
       refreshTmdbStatus().catch(() => {})
     }

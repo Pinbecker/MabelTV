@@ -323,12 +323,34 @@
 
   body.portal-v2 .adult-total strong { font-size: 23px; }
 
-  body.portal-v2 .usb-stage-heading span { display: none; }
-  body.portal-v2 .usb-drive { grid-template-columns: minmax(150px, 1fr); }
-  body.portal-v2 .usb-toolbar { flex-wrap: wrap; padding: 8px 0; }
-  body.portal-v2 #usbSelectionCount { width: 100%; margin: 0; padding: 0 8px 3px; }
+  body.portal-v2 .usb-stage-heading > span:last-child { display: none; }
+  body.portal-v2 .usb-drive-list { grid-template-columns: 1fr; }
+  body.portal-v2 .usb-drive { grid-template-columns: 40px minmax(0, 1fr) auto; }
+  body.portal-v2 .usb-drive-icon { width: 40px; height: 40px; }
+  body.portal-v2 .usb-browser { margin-top: 20px; }
+  body.portal-v2 .usb-browser-head { padding: 14px 12px; }
+  body.portal-v2 .usb-eject { padding: 0 9px; }
+  body.portal-v2 .usb-toolbar { flex-wrap: wrap; padding: 8px; }
+  body.portal-v2 #usbSelectionCount { width: 100%; margin: 0; padding: 0 5px 3px; }
+  body.portal-v2 .usb-file { grid-template-columns: auto minmax(0, 1fr); padding: 10px; }
+  body.portal-v2 .usb-file-main { grid-template-columns: 40px minmax(0, 1fr) auto; }
+  body.portal-v2 .usb-file-icon { width: 40px; height: 40px; }
+  body.portal-v2 .usb-file-actions { grid-column: 1 / -1; width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding-left: 36px; }
+  body.portal-v2 .is-folder .usb-file-actions { grid-column: 2; display: flex; width: auto; padding-left: 0; }
+  body.portal-v2 .usb-file-actions button { width: 100%; padding: 0 5px; }
   body.portal-v2 .usb-import { grid-template-columns: 1fr; }
   body.portal-v2 .usb-import > * { grid-column: 1; }
+  body.portal-v2 .usb-import-icon { display: none; }
+
+  body.portal-v2 .viewing-insights-head { padding: 15px; }
+  body.portal-v2 .viewing-insights-mark { width: 42px; height: 42px; }
+  body.portal-v2 .viewing-insights { padding: 9px; }
+  body.portal-v2 .viewing-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.portal-v2 .viewing-chart-grid,
+  body.portal-v2 .viewing-detail-grid,
+  body.portal-v2 .viewing-list-grid { grid-template-columns: 1fr; }
+  body.portal-v2 .viewing-bar-chart,
+  body.portal-v2 .viewing-bar-chart svg { min-height: 145px; height: 145px; }
 
   body.portal-v2 .channel-page-hero {
     grid-template-columns: 104px minmax(0, 1fr);
