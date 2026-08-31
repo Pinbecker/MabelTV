@@ -485,6 +485,24 @@
       padding: var(--space-4);
     }
 
+    .tmdb-dialog-head {
+      align-items: flex-start;
+    }
+
+    .tmdb-result {
+      grid-template-columns: 60px minmax(0, 1fr);
+      align-items: start;
+    }
+
+    .tmdb-result-poster {
+      width: 60px;
+    }
+
+    .tmdb-result-choose {
+      width: 100%;
+      grid-column: 1 / -1;
+    }
+
     .watch-film-backdrop {
       height: 180px;
     }

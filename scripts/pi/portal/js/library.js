@@ -114,7 +114,7 @@ function renderAdultLibrary() {
         const result = await api('/api/tmdb/search', {
           method: 'POST', body: JSON.stringify({ file: film.path })
         })
-        $('#tmdbDialogTitle').textContent = `Match “${film.display_name}”`
+        $('#tmdbDialogTitle').textContent = `Match “${result.query || film.display_name}”`
         const root = $('#tmdbResults')
         root.innerHTML = ''
         if (!result.results.length) {
@@ -124,10 +124,13 @@ function renderAdultLibrary() {
           const row = document.createElement('article')
           row.className = 'tmdb-result'
           const poster = document.createElement('span')
+          poster.className = 'tmdb-result-poster'
+          poster.setAttribute('aria-hidden', 'true')
+          poster.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 6l2 4m3-4 2 4m3-4 2 4"/></svg>'
           const copy = document.createElement('div')
           copy.innerHTML = `<strong>${escapeHtml(match.title)}${match.year ? ` (${escapeHtml(match.year)})` : ''}</strong><p>${escapeHtml(match.overview || 'No description supplied.')}</p>`
           const choose = document.createElement('button')
-          choose.type = 'button'; choose.textContent = 'Use this match'
+          choose.type = 'button'; choose.className = 'primary tmdb-result-choose'; choose.textContent = 'Use this match'
           choose.onclick = async () => {
             choose.disabled = true
             try {

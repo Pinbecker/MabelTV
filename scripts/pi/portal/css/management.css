@@ -682,6 +682,21 @@
     align-items: center;
   }
 
+  .tmdb-dialog-head > div,
+  .tmdb-result > div {
+    min-width: 0;
+  }
+
+  .tmdb-dialog-head h2,
+  .tmdb-result strong,
+  .tmdb-result p {
+    overflow-wrap: anywhere;
+  }
+
+  .tmdb-dialog-head button {
+    flex: 0 0 auto;
+  }
+
   .tmdb-results {
     display: grid;
     gap: var(--space-3);
@@ -699,11 +714,27 @@
     background: var(--surface-2);
   }
 
-  .tmdb-result img {
+  .tmdb-result-poster {
     width: 72px;
     aspect-ratio: 2 / 3;
+    display: block;
+    overflow: hidden;
     border-radius: 8px;
+    background: linear-gradient(145deg, var(--surface-3), var(--surface-2));
+  }
+
+  .tmdb-result-poster img {
+    width: 100%;
+    height: 100%;
+    display: block;
     object-fit: cover;
+  }
+
+  .tmdb-result p {
+    margin: var(--space-1) 0 0;
+    color: var(--text-muted);
+    font-size: var(--type-label);
+    line-height: 1.45;
   }
 
   .tmdb-state {
@@ -1026,6 +1057,16 @@
     pointer-events: auto;
   }
 
+  .mabel-watch-screen > .mabel-watch-icon-button {
+    position: absolute;
+    z-index: 3;
+    top: clamp(10px, 2vw, 24px);
+    left: clamp(10px, 2vw, 24px);
+    pointer-events: auto;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   .mabel-watch-player:not(.controls-visible) .mabel-watch-screen:hover .mabel-watch-hud,
   .mabel-watch-player:not(.controls-visible) .mabel-watch-screen:focus-within .mabel-watch-hud {
     opacity: 0;
@@ -1038,6 +1079,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
+    padding-left: 54px;
   }
 
   .mabel-watch-title {
@@ -1244,6 +1286,15 @@
       padding: 9px;
     }
 
+    .mabel-watch-screen > .mabel-watch-icon-button {
+      top: 9px;
+      left: 9px;
+    }
+
+    .mabel-watch-topbar {
+      padding-left: 50px;
+    }
+
     .mabel-watch-player .mabel-watch-controls button,
     .mabel-watch-player button.mabel-watch-icon-button {
       width: 38px;
@@ -1287,6 +1338,15 @@
 
     .mabel-watch-hud {
       padding: 8px;
+    }
+
+    .mabel-watch-screen > .mabel-watch-icon-button {
+      top: 8px;
+      left: 8px;
+    }
+
+    .mabel-watch-topbar {
+      padding-left: 48px;
     }
 
     .mabel-watch-brand {

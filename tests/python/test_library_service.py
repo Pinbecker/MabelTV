@@ -374,6 +374,11 @@ class LibraryUnitTests(unittest.TestCase):
         index = PORTAL_SOURCE
         self.assertIn('class="mabel-watch-icon-button" aria-label="Back to Mabel TV programmes"', index)
         self.assertNotIn('class="mabel-watch-icon-button mabel-watch-back"', index)
+        self.assertIn('</video><button id="mabelWatchBack"', index)
+        self.assertIn('</button><div id="mabelWatchControls"', index)
+        self.assertIn('.mabel-watch-screen > .mabel-watch-icon-button', index)
+        self.assertIn('touch-action: manipulation', index)
+        self.assertIn("$('#mabelWatchBack').onclick = closeMabelWatchPlayer", index)
         self.assertIn("lockPortalPlayerScroll()", index)
         self.assertIn("unlockPortalPlayerScroll()", index)
         self.assertIn("body.portal-player-open", index)
@@ -388,6 +393,21 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertNotIn('data-view-button="adult"', index)
         self.assertNotIn("api('/api/remote/stop-tv'", index)
         self.assertNotIn("document.getElementById('logout').click()", index)
+
+    def test_tmdb_matcher_uses_a_real_mobile_sheet_and_readable_results(self) -> None:
+        portal = PORTAL_SOURCE
+
+        self.assertIn('class="tmdb-dialog-panel"', portal)
+        self.assertIn('aria-labelledby="tmdbDialogTitle"', portal)
+        self.assertIn("result.query || film.display_name", portal)
+        self.assertIn("poster.className = 'tmdb-result-poster'", portal)
+        self.assertIn('poster.innerHTML = \'<svg viewBox="0 0 24 24"', portal)
+        self.assertIn("choose.className = 'primary tmdb-result-choose'", portal)
+        self.assertIn("grid-template-columns: 60px minmax(0, 1fr)", portal)
+        self.assertIn(".tmdb-result-choose", portal)
+        self.assertIn("overflow-wrap: anywhere", portal)
+        self.assertIn(".tmdb-dialog-panel", portal)
+        self.assertIn("body.portal-experience .tmdb-result", portal)
 
     def test_remote_stream_requires_browser_format_and_resumes_adult_film(self) -> None:
         adult = self.fixture.media / ".adult"
