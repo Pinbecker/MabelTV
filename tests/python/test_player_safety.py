@@ -11,11 +11,17 @@ PORTAL_SCRIPT = "\n".join(
     (PORTAL_ROOT / "js" / name).read_text(encoding="utf-8")
     for name in ("core.js", "library.js", "playback.js", "actions.js")
 )
+PORTAL_PARTIALS = "\n".join(
+    path.read_text(encoding="utf-8")
+    for path in sorted((PORTAL_ROOT / "html").rglob("*.html"))
+)
 PORTAL_STYLES = "\n".join(
     path.read_text(encoding="utf-8")
     for path in sorted((PORTAL_ROOT / "css").glob("*.css"))
 )
-PORTAL_SOURCE = "\n".join((PORTAL_HTML, PORTAL_SCRIPT, PORTAL_STYLES))
+PORTAL_SOURCE = "\n".join(
+    (PORTAL_HTML, PORTAL_PARTIALS, PORTAL_SCRIPT, PORTAL_STYLES)
+)
 
 
 class PlayerSafetyTests(unittest.TestCase):
@@ -291,8 +297,10 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertEqual(portal.count('adult-hero surface portal-intro'), 1)
         self.assertEqual(portal.count('watch-top portal-intro'), 1)
         self.assertEqual(portal.count('<header class="page-head portal-page-head'), 2)
-        self.assertIn("--radius-panel: 20px", portal)
-        self.assertIn("--radius-sheet: 24px", portal)
+        self.assertIn("--experience-radius: 12px", portal)
+        self.assertIn("--experience-sheet-gutter", portal)
+        self.assertIn("--radius-panel: 6px", portal)
+        self.assertIn("--radius-sheet: 10px", portal)
         self.assertIn("dialog:is(.library-sheet, .watch-sheet", portal)
         self.assertIn(":is(.library-sheet-panel, .watch-sheet-panel", portal)
 

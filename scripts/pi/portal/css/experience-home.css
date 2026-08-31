@@ -80,6 +80,11 @@ body.portal-v2 .home-now-playing h1 {
   letter-spacing: -0.065em;
   line-height: 0.9;
   text-wrap: balance;
+  color: #fff;
+}
+
+body.portal-v2 .home-spotlight .eyebrow {
+  color: var(--experience-orange-hot);
 }
 
 body.portal-v2 .home-now-playing p {
@@ -185,12 +190,12 @@ body.portal-v2 .destination-icon {
 
 body.portal-v2 .destination-library .destination-icon {
   background: linear-gradient(145deg, rgba(151, 85, 255, 0.26), rgba(151, 85, 255, 0.05));
-  color: #b994ff;
+  color: #7045b1;
 }
 
 body.portal-v2 .destination-adult .destination-icon {
   background: linear-gradient(145deg, rgba(255, 75, 120, 0.22), rgba(255, 75, 120, 0.05));
-  color: #ff7598;
+  color: #ad3157;
 }
 
 body.portal-v2 .destination-arrow,
@@ -230,7 +235,7 @@ body.portal-v2 .device-status-icon {
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  background: rgba(79, 221, 160, 0.12);
+  background: rgba(8, 116, 87, 0.1);
   color: var(--experience-good);
 }
 
@@ -307,9 +312,9 @@ body.portal-v2 .home-refresh {
 
 body.portal-v2 .attention {
   margin-top: 28px;
-  border: 1px solid rgba(255, 122, 26, 0.3);
+  border: 1px solid rgba(181, 72, 0, 0.26);
   border-radius: var(--experience-radius);
-  background: rgba(255, 122, 26, 0.06);
+  background: #fff6ef;
   padding: 18px;
 }
 
@@ -330,7 +335,7 @@ body.portal-v2 .status-icon.warn {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: rgba(255, 122, 26, 0.16);
+  background: rgba(181, 72, 0, 0.11);
   color: var(--experience-orange);
   font-weight: 900;
 }

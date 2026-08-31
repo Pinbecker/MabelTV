@@ -207,7 +207,7 @@ body.portal-v2 .settings-save {
   border: 1px solid var(--experience-line);
   border-top: 0;
   border-radius: 0 0 12px 12px;
-  background: #0e0e12;
+  background: var(--experience-elevated);
   padding: 13px 14px;
 }
 
@@ -221,8 +221,8 @@ body.portal-v2 .settings-save p {
 body.portal-v2 .settings-save button {
   flex: 0 0 auto;
   min-height: 40px;
-  background: var(--experience-orange);
-  color: #160a02;
+  background: var(--experience-orange-hot);
+  color: var(--experience-on-orange);
   padding: 0 14px;
   font-size: 11px;
   font-weight: 800;
@@ -255,8 +255,8 @@ body.portal-v2 .feature-toggle {
 }
 
 body.portal-v2 .feature-toggle[aria-pressed="true"] {
-  border-color: rgba(79, 221, 160, 0.35);
-  background: rgba(79, 221, 160, 0.1);
+  border-color: rgba(8, 116, 87, 0.3);
+  background: rgba(8, 116, 87, 0.08);
   color: var(--experience-good);
 }
 
@@ -272,7 +272,7 @@ body.portal-v2 .design-option {
   overflow: hidden;
   border: 1px solid var(--experience-line);
   border-radius: 10px;
-  background: #0c0c10;
+  background: var(--experience-raised);
   color: var(--experience-ink);
   padding: 0;
   text-align: left;
@@ -346,9 +346,9 @@ body.portal-v2 .settings-danger {
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  border: 1px solid rgba(255, 93, 108, 0.25);
+  border: 1px solid rgba(200, 50, 73, 0.24);
   border-radius: 12px;
-  background: rgba(255, 93, 108, 0.04);
+  background: #fff4f5;
   padding: 18px;
 }
 
