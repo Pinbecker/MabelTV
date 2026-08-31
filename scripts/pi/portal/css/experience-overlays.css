@@ -3,7 +3,7 @@ body.portal-experience {
   --experience-sheet-padding: clamp(20px, 3vw, 28px);
 }
 
-body.portal-experience dialog:is(.library-sheet, .watch-sheet, .watch-film-sheet, .watch-programme-sheet, .tmdb-dialog) {
+body.portal-experience dialog:is(.library-sheet, .watch-sheet, .watch-film-sheet, .watch-programme-sheet, .remote-sheet, .tmdb-dialog) {
   width: min(720px, calc(100vw - 32px));
   max-width: none;
   max-height: min(90dvh, 860px);
@@ -14,7 +14,7 @@ body.portal-experience dialog:is(.library-sheet, .watch-sheet, .watch-film-sheet
   color: var(--experience-ink);
 }
 
-body.portal-experience dialog:is(.library-sheet, .watch-sheet, .watch-film-sheet, .watch-programme-sheet, .tmdb-dialog)::backdrop {
+body.portal-experience dialog:is(.library-sheet, .watch-sheet, .watch-film-sheet, .watch-programme-sheet, .remote-sheet, .tmdb-dialog)::backdrop {
   background: rgba(5, 5, 8, 0.68);
   -webkit-backdrop-filter: blur(14px) saturate(60%);
   backdrop-filter: blur(14px) saturate(60%);
@@ -25,6 +25,7 @@ body.portal-experience :is(
   .watch-sheet-panel,
   .watch-film-panel,
   .watch-programme-sheet > article,
+  .remote-sheet-panel,
   .tmdb-dialog-panel
 ) {
   position: relative;
@@ -43,7 +44,7 @@ body.portal-experience .library-sheet-panel.wide {
   transform: translateX(calc((720px - min(920px, calc(100vw - 32px))) / 2));
 }
 
-body.portal-experience :is(.library-sheet-head, .tmdb-dialog-head) {
+body.portal-experience :is(.library-sheet-head, .remote-sheet-panel > header, .tmdb-dialog-head) {
   position: sticky;
   z-index: 4;
   top: 0;
@@ -58,18 +59,18 @@ body.portal-experience :is(.library-sheet-head, .tmdb-dialog-head) {
   backdrop-filter: blur(20px) saturate(130%);
 }
 
-body.portal-experience :is(.library-sheet-head, .tmdb-dialog-head) > div {
+body.portal-experience :is(.library-sheet-head, .remote-sheet-panel > header, .tmdb-dialog-head) > div {
   min-width: 0;
 }
 
-body.portal-experience :is(.library-sheet-head, .tmdb-dialog-head) h2 {
+body.portal-experience :is(.library-sheet-head, .remote-sheet-panel > header, .tmdb-dialog-head) h2 {
   margin: 0;
   font-size: clamp(24px, 5vw, 32px);
   letter-spacing: -0.04em;
   line-height: 1;
 }
 
-body.portal-experience .library-sheet-head p:last-child {
+body.portal-experience :is(.library-sheet-head, .remote-sheet-panel > header) p:last-child {
   max-width: 520px;
   margin: 7px 0 0;
   color: var(--experience-muted);
@@ -77,8 +78,68 @@ body.portal-experience .library-sheet-head p:last-child {
   line-height: 1.45;
 }
 
-body.portal-experience .library-sheet-body {
+body.portal-experience :is(.library-sheet-body, .remote-channel-options, .remote-power-actions) {
   padding: var(--experience-sheet-padding);
+}
+
+body.portal-experience .remote-channel-options {
+  gap: 9px;
+}
+
+body.portal-experience .remote-channel-option {
+  width: 100%;
+  min-width: 0;
+  min-height: 64px;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  justify-content: stretch;
+  gap: 12px;
+  border: 1px solid var(--experience-line);
+  border-radius: 12px;
+  padding: 9px 12px;
+  background: var(--experience-elevated);
+  color: var(--experience-ink);
+  text-align: left;
+}
+
+body.portal-experience .remote-channel-option:is(:hover, .active) {
+  border-color: rgba(255, 122, 26, 0.52);
+  background: rgba(255, 122, 26, 0.09);
+  color: var(--experience-ink);
+}
+
+body.portal-experience .remote-channel-number {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 122, 26, 0.12);
+  color: var(--experience-orange);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+body.portal-experience .remote-channel-option > span:last-child {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+body.portal-experience .remote-channel-option strong,
+body.portal-experience .remote-channel-option small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.portal-experience .remote-channel-option strong {
+  font-size: 14px;
+}
+
+body.portal-experience .remote-channel-option small {
+  color: var(--experience-muted);
+  font-size: 11px;
 }
 
 body.portal-experience .tmdb-results {
@@ -140,7 +201,7 @@ body.portal-experience .tmdb-result-choose {
   min-width: 132px;
 }
 
-body.portal-experience :is(.library-sheet-close, .watch-sheet-close, .watch-film-close) {
+body.portal-experience :is(.library-sheet-close, .watch-sheet-close, .watch-film-close, .remote-sheet-close) {
   position: relative;
   width: 44px;
   height: 44px;
@@ -154,8 +215,8 @@ body.portal-experience :is(.library-sheet-close, .watch-sheet-close, .watch-film
   font-size: 0;
 }
 
-body.portal-experience :is(.library-sheet-close, .watch-sheet-close, .watch-film-close)::before,
-body.portal-experience :is(.library-sheet-close, .watch-sheet-close, .watch-film-close)::after {
+body.portal-experience :is(.library-sheet-close, .watch-sheet-close, .watch-film-close, .remote-sheet-close)::before,
+body.portal-experience :is(.library-sheet-close, .watch-sheet-close, .watch-film-close, .remote-sheet-close)::after {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -167,7 +228,7 @@ body.portal-experience :is(.library-sheet-close, .watch-sheet-close, .watch-film
   transform: translate(-50%, -50%) rotate(45deg);
 }
 
-body.portal-experience :is(.library-sheet-close, .watch-sheet-close, .watch-film-close)::after {
+body.portal-experience :is(.library-sheet-close, .watch-sheet-close, .watch-film-close, .remote-sheet-close)::after {
   transform: translate(-50%, -50%) rotate(-45deg);
 }
 
@@ -689,7 +750,7 @@ body.portal-experience .adult-film-action-grid #adultFilmOptimise {
 }
 
 @media (max-width: 620px) {
-  body.portal-experience dialog:is(.library-sheet, .watch-sheet, .watch-film-sheet, .watch-programme-sheet, .tmdb-dialog)[open] {
+  body.portal-experience dialog:is(.library-sheet, .watch-sheet, .watch-film-sheet, .watch-programme-sheet, .remote-sheet, .tmdb-dialog)[open] {
     inset: 0;
     width: 100%;
     height: 100dvh;
@@ -708,6 +769,7 @@ body.portal-experience .adult-film-action-grid #adultFilmOptimise {
     .watch-sheet-panel,
     .watch-film-panel,
     .watch-programme-sheet > article,
+    .remote-sheet-panel,
     .tmdb-dialog-panel
   ) {
     width: 100%;
@@ -722,7 +784,7 @@ body.portal-experience .adult-film-action-grid #adultFilmOptimise {
     transform: none;
   }
 
-  body.portal-experience .library-sheet-handle {
+  body.portal-experience :is(.library-sheet-handle, .remote-sheet-handle) {
     display: block;
     width: 38px;
     height: 4px;
@@ -748,11 +810,11 @@ body.portal-experience .adult-film-action-grid #adultFilmOptimise {
     padding: 10px 8px 14px;
   }
 
-  body.portal-experience :is(.library-sheet-head, .tmdb-dialog-head) {
+  body.portal-experience :is(.library-sheet-head, .remote-sheet-panel > header, .tmdb-dialog-head) {
     padding: 13px 18px 16px;
   }
 
-  body.portal-experience :is(.library-sheet-body, .tmdb-results) {
+  body.portal-experience :is(.library-sheet-body, .remote-channel-options, .remote-power-actions, .tmdb-results) {
     padding: 18px;
   }
 

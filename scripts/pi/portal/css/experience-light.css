@@ -133,6 +133,7 @@ html[data-experience-theme="light"] body.portal-experience dialog:is(
   .watch-sheet,
   .watch-film-sheet,
   .watch-programme-sheet,
+  .remote-sheet,
   .tmdb-dialog
 )::backdrop {
   background: rgba(31, 27, 24, 0.42);
@@ -143,6 +144,7 @@ html[data-experience-theme="light"] body.portal-experience :is(
   .watch-sheet-panel,
   .watch-film-panel,
   .watch-programme-sheet > article,
+  .remote-sheet-panel,
   .tmdb-dialog-panel
 ) {
   background: var(--experience-raised);
@@ -152,6 +154,7 @@ html[data-experience-theme="light"] body.portal-experience :is(
 html[data-experience-theme="light"] body.portal-experience :is(
   .library-sheet-head,
   .watch-sheet-panel > header,
+  .remote-sheet-panel > header,
   .tmdb-dialog-head
 ) {
   background: rgba(255, 255, 255, 0.94);
@@ -168,7 +171,8 @@ html[data-experience-theme="light"] body.portal-experience .tmdb-result-poster {
 html[data-experience-theme="light"] body.portal-experience :is(
   .library-sheet-close,
   .watch-sheet-close,
-  .watch-film-close
+  .watch-film-close,
+  .remote-sheet-close
 ) {
   background: var(--experience-elevated);
 }

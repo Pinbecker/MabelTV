@@ -230,6 +230,37 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn('id="signal-play"', icons)
         self.assertTrue((PORTAL_ROOT / "LICENSE-LUCIDE.txt").is_file())
 
+    def test_experience_overlay_system_covers_every_portal_dialog_family(self) -> None:
+        markup = (PORTAL_ROOT / "html" / "overlays.html").read_text(
+            encoding="utf-8")
+        styles = (PORTAL_ROOT / "css" / "experience-overlays.css").read_text(
+            encoding="utf-8")
+        light_styles = (PORTAL_ROOT / "css" / "experience-light.css").read_text(
+            encoding="utf-8")
+        dialog_selector = styles.split("dialog:is(", 1)[1].split(")", 1)[0]
+        light_dialog_selector = light_styles.split("dialog:is(", 1)[1].split(")", 1)[0]
+
+        families = (
+            "library-sheet", "watch-sheet", "watch-film-sheet",
+            "watch-programme-sheet", "remote-sheet", "tmdb-dialog",
+        )
+        for family in families:
+            with self.subTest(family=family):
+                self.assertIn(f"class=\"{family}", markup)
+                self.assertIn(f".{family}", dialog_selector)
+                self.assertIn(f".{family}", light_dialog_selector)
+
+        self.assertIn(".remote-sheet-panel", styles)
+        self.assertIn(".remote-sheet-panel > header", styles)
+        self.assertIn(".remote-sheet-close", styles)
+        self.assertIn(".remote-sheet-handle", styles)
+        self.assertIn(".remote-channel-options, .remote-power-actions", styles)
+        self.assertIn("grid-template-columns: 44px minmax(0, 1fr)", styles)
+        self.assertIn(".remote-channel-option > span:last-child", styles)
+        self.assertIn(".remote-sheet-panel", light_styles)
+        self.assertIn(".remote-sheet-panel > header", light_styles)
+        self.assertIn(".remote-sheet-close", light_styles)
+
     def test_classic_portal_is_preserved_from_the_previous_core_design(self) -> None:
         classic_root = MODULE_PATH.with_name("mabeltv-library-classic.html")
         classic = mabeltv_library.CLASSIC_INDEX
