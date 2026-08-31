@@ -529,7 +529,7 @@ const $ = selector => document.querySelector(selector)
       $('#remoteChannelPickerLabel').textContent = adult
         ? 'Adult TV is open' : (available ? `CH ${state.channel_number} · ${state.channel_name}` : 'Choose a channel')
       $('#remoteLock').classList.toggle('active', locked)
-      $('#remoteLock').querySelector('span').textContent = locked ? 'Unlock kids' : 'Lock kids'
+      $('#remoteLock').querySelector('.remote-dock-action-label').textContent = locked ? 'Unlock kids' : 'Lock kids'
       $('#remoteLock').setAttribute('aria-label', locked ? 'Unlock kids’ physical remote' : 'Lock kids’ physical remote')
       $$('[data-live-command]').forEach(button => {
         const adultSubtitles = button.dataset.liveCommand !== 'toggle-subtitles'

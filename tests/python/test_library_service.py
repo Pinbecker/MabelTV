@@ -241,6 +241,12 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("/api/adult/artwork/", core)
         self.assertIn("status.scrollIntoView", core)
         self.assertIn('class="remote-app"', html)
+        self.assertIn('href="/portal/icons.svg#signal-tv"', html)
+        self.assertIn('href="/portal/icons.svg#signal-volume"', html)
+        self.assertIn('class="remote-dock-action-label"', html)
+        self.assertIn("querySelector('.remote-dock-action-label')", core)
+        self.assertIn(".remote-mode-icon", styles)
+        self.assertIn(".remote-pad .select", styles)
         self.assertNotIn('class="home-intro"', html)
         self.assertNotIn('class="settings-grid"', html)
         self.assertNotIn('class="usb-layout"', html)
@@ -251,6 +257,8 @@ class LibraryUnitTests(unittest.TestCase):
         icons = (PORTAL_ROOT / "icons.svg").read_text(encoding="utf-8")
         self.assertIn('id="signal-house"', icons)
         self.assertIn('id="signal-play"', icons)
+        self.assertIn('id="signal-volume"', icons)
+        self.assertIn('id="signal-power"', icons)
         self.assertTrue((PORTAL_ROOT / "LICENSE-LUCIDE.txt").is_file())
 
     def test_experience_overlay_system_covers_every_portal_dialog_family(self) -> None:

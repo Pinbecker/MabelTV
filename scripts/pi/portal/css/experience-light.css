@@ -246,7 +246,11 @@ html[data-experience-theme="light"] body.portal-experience .remote-pad {
 
 html[data-experience-theme="light"] body.portal-experience .remote-pad button { color: var(--experience-muted); }
 html[data-experience-theme="light"] body.portal-experience .remote-pad .select,
-html[data-experience-theme="light"] body.portal-experience .remote-transport .remote-play { background: var(--experience-ink); color: #fff; }
+html[data-experience-theme="light"] body.portal-experience .remote-transport .remote-play {
+  border-color: var(--experience-orange-hot);
+  background: var(--experience-orange-hot);
+  color: var(--experience-on-orange);
+}
 
 html[data-experience-theme="light"] body.portal-experience .settings-save { background: var(--experience-elevated); }
 

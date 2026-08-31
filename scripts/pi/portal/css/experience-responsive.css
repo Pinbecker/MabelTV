@@ -447,19 +447,20 @@
   }
 
   body.portal-v2 .remote-core {
-    grid-template-columns: 58px minmax(166px, 1fr) 58px;
+    grid-template-columns: 66px minmax(158px, 1fr) 66px;
     gap: 5px;
     min-height: 210px;
     padding: 15px 0;
   }
 
   body.portal-v2 .remote-rocker {
-    grid-template-rows: 43px 45px 43px;
-    width: 54px;
-    border-radius: 28px;
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+    width: 62px;
+    height: 185px;
+    border-radius: 31px;
   }
 
-  body.portal-v2 .remote-rocker svg { width: 18px; height: 18px; }
+  body.portal-v2 .remote-rocker svg { width: 21px; height: 21px; }
   body.portal-v2 .remote-rocker strong { font-size: 9px; }
 
   body.portal-v2 .remote-pad {
@@ -494,7 +495,7 @@
   body.portal-v2 .home-feed { padding-right: 15px; padding-left: 15px; }
   body.portal-v2 .destination-rail { margin-right: -15px; padding-right: 15px; }
   body.portal-v2 .remote-app { margin-right: -7px; margin-left: -7px; }
-  body.portal-v2 .remote-core { grid-template-columns: 54px minmax(158px, 1fr) 54px; }
+  body.portal-v2 .remote-core { grid-template-columns: 66px minmax(146px, 1fr) 66px; }
   body.portal-v2 .remote-pad { width: 136px; height: 136px; }
   body.portal-v2 .remote-destinations { gap: 4px; }
   body.portal-v2 .remote-mode { font-size: 9px; }
@@ -540,7 +541,8 @@
   }
 
   body.portal-v2 .remote-rocker {
-    grid-template-rows: 36px 38px 36px;
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+    height: 138px;
   }
 
   body.portal-v2 .remote-centre { gap: 6px; }
