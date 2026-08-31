@@ -44,6 +44,13 @@ body.portal-v2 .settings-form {
   min-width: 0;
 }
 
+body.portal-v2 .settings-stack {
+  overflow: hidden;
+  border: 1px solid var(--experience-line);
+  border-radius: 12px;
+  background: var(--experience-raised);
+}
+
 body.portal-v2 .settings-form,
 body.portal-v2 .settings-group:not(:first-child) {
   border-radius: 12px;
@@ -72,6 +79,16 @@ body.portal-v2 .settings-group .settings-disclosure:only-of-type,
 body.portal-v2 .settings-group .settings-toggle-row:only-of-type {
   border-bottom: 1px solid var(--experience-line);
   border-radius: 12px;
+}
+
+body.portal-v2 .settings-group > .settings-stack > :is(.settings-disclosure, .settings-toggle-row) {
+  border: 0;
+  border-bottom: 1px solid var(--experience-line);
+  border-radius: 0;
+}
+
+body.portal-v2 .settings-group > .settings-stack > :last-child {
+  border-bottom: 0;
 }
 
 body.portal-v2 .settings-disclosure > summary {

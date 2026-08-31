@@ -264,8 +264,8 @@
 
   body.portal-v2 .channel-page-hero {
     min-height: 430px;
-    margin: 0 -18px;
-    border-radius: 0;
+    margin: 0;
+    border-radius: 14px;
   }
 
   body.portal-v2 .channel-page-hero-content {
@@ -273,11 +273,70 @@
     padding: 24px 18px;
   }
 
-  body.portal-v2 .channel-page-identity h1 { font-size: 48px; }
-  body.portal-v2 .channel-page-facts { gap: 9px 13px; }
-  body.portal-v2 .channel-page-actions { flex-wrap: wrap; }
-  body.portal-v2 .channel-page-primary { flex: 1 1 100%; }
-  body.portal-v2 .channel-page-secondary { flex: 1; }
+  body.portal-v2 .channel-page-identity {
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  body.portal-v2 .channel-page-identity h1 { font-size: 44px; }
+
+  body.portal-v2 .channel-page-facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  body.portal-v2 .channel-page-facts > span,
+  body.portal-v2 .channel-page-facts > span:last-child {
+    min-width: 0;
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,.16);
+    border-radius: 9px;
+    background: rgba(8,8,11,.52);
+    padding: 0 7px;
+    font-size: 9px;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  body.portal-v2 .channel-page-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 48px;
+    gap: 8px;
+  }
+
+  body.portal-v2 .channel-page-primary {
+    width: 100%;
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+
+  body.portal-v2 .channel-page-secondary {
+    width: auto;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 14px;
+  }
+
+  body.portal-v2 .channel-page-secondary span {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+  }
+
+  body.portal-v2 .channel-page-icon {
+    width: 48px;
+  }
   body.portal-v2 .channel-page-library-head { align-items: flex-start; }
   body.portal-v2 .channel-page-library-head h2 { font-size: 25px; }
   body.portal-v2 .channel-page-toolbar { display: grid; }

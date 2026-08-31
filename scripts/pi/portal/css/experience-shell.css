@@ -215,6 +215,10 @@ body.portal-v2 .mobile-head {
     box-sizing: content-box;
   }
 
+  body.portal-v2 .portal-nav button.nav-remote.active .icon {
+    color: #170a02;
+  }
+
   body.portal-v2 .portal-nav .nav-remote span {
     margin-top: 2px;
   }

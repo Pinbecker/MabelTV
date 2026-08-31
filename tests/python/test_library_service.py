@@ -141,7 +141,7 @@ class LibraryUnitTests(unittest.TestCase):
         styles = "\n".join(
             (PORTAL_ROOT / "css" / f"experience-{name}.css").read_text(encoding="utf-8")
             for name in ("foundation", "shell", "home", "remote", "watch",
-                         "library", "settings", "responsive")
+                         "library", "settings", "responsive", "overlays")
         )
         core = (PORTAL_ROOT / "js" / "core.js").read_text(encoding="utf-8")
 
@@ -153,6 +153,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn('/portal/css/experience-library.css', html)
         self.assertIn('/portal/css/experience-settings.css', html)
         self.assertIn('/portal/css/experience-responsive.css', html)
+        self.assertIn('/portal/css/experience-overlays.css', html)
         self.assertIn('/portal/css/portal-design-switch.css', html)
         self.assertNotIn('/portal/css/product-', html)
         self.assertIn('class="portal-v2 portal-experience"', html)
@@ -177,7 +178,9 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertNotIn("'components'", core)
         self.assertIn("mabeltv_portal_design=${design}", core)
         self.assertIn("--experience-orange: #ff7a1a", styles)
+        self.assertIn("--experience-sheet-gutter", styles)
         self.assertIn(".portal-nav button.active::before", styles)
+        self.assertIn('class="settings-stack"', html)
         self.assertIn(".home-spotlight", styles)
         self.assertIn(".remote-core", styles)
         self.assertIn(".watch-poster-grid", styles)
@@ -1959,6 +1962,7 @@ class LibraryHttpTests(unittest.TestCase):
                              ("/portal/js/core.js", b"function initialise"),
                              ("/portal/css/experience-foundation.css", b"--experience-orange"),
                              ("/portal/css/experience-shell.css", b".portal-nav"),
+                             ("/portal/css/experience-overlays.css", b"--experience-sheet-gutter"),
                              ("/portal/css/classic-foundation.css", b"--accent: #ff7a1a"),
                              ("/portal/css/portal-design-switch.css", b".portal-design-option"),
                              ("/portal/js/actions.js", b"managementBusy")):
