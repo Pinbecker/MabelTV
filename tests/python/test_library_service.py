@@ -107,7 +107,9 @@ class LibraryUnitTests(unittest.TestCase):
         css_names = (
             "tokens", "base", "components", "shell", "home", "live",
             "watch", "management", "usb", "settings", "responsive", "channel-page",
-            "product-foundation", "product-shell", "product-library", "product-responsive",
+            "experience-foundation", "experience-shell", "experience-home",
+            "experience-remote", "experience-watch", "experience-library",
+            "experience-settings", "experience-responsive",
         )
         js_names = ("core", "channel-page", "library", "playback", "actions")
 
@@ -118,7 +120,6 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertNotIn("<style", html)
         self.assertNotRegex(html, r"\sstyle=")
         self.assertNotIn("!important", PORTAL_STYLES)
-        self.assertNotIn("body.portal-v2", PORTAL_STYLES)
         self.assertIn("@layer reset, tokens, base, components", PORTAL_STYLES)
         self.assertIn("--control-min: 44px", PORTAL_STYLES)
         self.assertIn('/portal/icons.svg#signal-house', html)
@@ -132,31 +133,46 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertEqual(html.count('id="iosWatchPlayer"'), 1)
         self.assertEqual(html.count('id="mabelWatchPlayer"'), 1)
 
-    def test_portal_uses_one_fixed_product_system(self) -> None:
+    def test_portal_uses_one_fixed_experience_system(self) -> None:
         html = mabeltv_library.INDEX
         styles = "\n".join(
-            (PORTAL_ROOT / "css" / f"product-{name}.css").read_text(encoding="utf-8")
-            for name in ("foundation", "shell", "library", "responsive")
+            (PORTAL_ROOT / "css" / f"experience-{name}.css").read_text(encoding="utf-8")
+            for name in ("foundation", "shell", "home", "remote", "watch",
+                         "library", "settings", "responsive")
         )
         core = (PORTAL_ROOT / "js" / "core.js").read_text(encoding="utf-8")
 
-        self.assertIn('/portal/css/product-foundation.css', html)
-        self.assertIn('/portal/css/product-shell.css', html)
-        self.assertIn('/portal/css/product-library.css', html)
-        self.assertIn('/portal/css/product-responsive.css', html)
+        self.assertIn('/portal/css/experience-foundation.css', html)
+        self.assertIn('/portal/css/experience-shell.css', html)
+        self.assertIn('/portal/css/experience-home.css', html)
+        self.assertIn('/portal/css/experience-remote.css', html)
+        self.assertIn('/portal/css/experience-watch.css', html)
+        self.assertIn('/portal/css/experience-library.css', html)
+        self.assertIn('/portal/css/experience-settings.css', html)
+        self.assertIn('/portal/css/experience-responsive.css', html)
+        self.assertNotIn('/portal/css/product-', html)
         self.assertNotIn('/portal/js/appearance.js', html)
         self.assertNotIn('/portal/js/component-gallery.js', html)
         self.assertNotIn('id="view-components"', html)
         self.assertNotIn('id="portalAppearanceControl"', html)
         self.assertNotIn('data-portal-design', html)
         self.assertNotIn("'components'", core)
-        self.assertIn("@layer streaming", styles)
-        self.assertIn("--accent: #ff7a1a", styles)
+        self.assertIn("--experience-orange: #ff7a1a", styles)
         self.assertIn(".portal-nav button.active::before", styles)
+        self.assertIn(".home-spotlight", styles)
+        self.assertIn(".remote-core", styles)
         self.assertIn(".watch-poster-grid", styles)
-        self.assertIn(".channel-card", styles)
-        self.assertIn(".settings-section", styles)
-        self.assertIn("Dedicated video player", styles)
+        self.assertIn(".library-main-card", styles)
+        self.assertIn(".settings-disclosure", styles)
+        self.assertIn('data-view-button="channels"', html)
+        self.assertNotIn('data-view-button="usb"', html)
+        self.assertIn('class="library-switch"', html)
+        self.assertIn('class="home-spotlight"', html)
+        self.assertIn('class="remote-app"', html)
+        self.assertNotIn('class="home-intro"', html)
+        self.assertNotIn('class="settings-grid"', html)
+        self.assertNotIn('class="usb-layout"', html)
+        self.assertNotIn('class="library-hero', html)
         self.assertNotIn(".ios-watch-player", styles)
         self.assertNotIn(".mabel-watch-player", styles)
         self.assertNotIn("!important", styles)
@@ -248,7 +264,8 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("dialog:is(.library-sheet, .watch-sheet", index)
         self.assertIn("grid-template-columns: 50px minmax(142px, 176px) 50px", index)
         self.assertIn(".remote-mode small", index)
-        self.assertNotIn('data-view-button="channels"', index)
+        self.assertIn('data-view-button="channels"', index)
+        self.assertNotIn('data-view-button="usb"', index)
 
     def test_global_notices_expire_and_do_not_follow_navigation(self) -> None:
         core = (PORTAL_ROOT / "js" / "core.js").read_text(encoding="utf-8")
@@ -1905,7 +1922,8 @@ class LibraryHttpTests(unittest.TestCase):
                              ("/portal/css/components.css", b"@layer components"),
                              ("/portal/icons.svg", b'id="settings"'),
                              ("/portal/js/core.js", b"function initialise"),
-                             ("/portal/css/product-foundation.css", b"@layer streaming"),
+                             ("/portal/css/experience-foundation.css", b"--experience-orange"),
+                             ("/portal/css/experience-shell.css", b".portal-nav"),
                              ("/portal/js/actions.js", b"managementBusy")):
             with urllib.request.urlopen(self.base + path, timeout=5) as response:
                 self.assertEqual(response.status, 200)

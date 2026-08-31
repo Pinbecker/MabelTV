@@ -1,9 +1,46 @@
-      <section id="view-overview" class="view active"><div class="page">
-        <div class="home-intro">
-          <article class="home-greeting surface portal-intro"><div><p class="eyebrow">Now on MabelTV</p><h1><span data-tv-name>Your TV</span>, ready to watch.</h1><div class="home-now-playing" aria-live="polite"><span class="home-now-playing-label">Now playing</span><strong id="homeNowPlayingTitle">Checking MabelTV…</strong><span id="homeNowPlayingMeta" class="home-now-playing-meta">Getting the current programme</span></div></div><div class="home-actions"><button class="primary" data-go="watch"><svg class="icon"><use href="/portal/icons.svg#signal-play"/></svg>Browse library</button><button id="enterAdultMode" type="button" class="secondary">Enter Adult Mode</button><button id="homePowerToggle" type="button" class="secondary home-power-toggle">Checking power…</button></div></article>
-          <article class="home-status surface"><div class="status-top"><span id="homeStatusIcon" class="status-icon"><svg class="icon" viewBox="0 0 24 24"><path d="m6 12 4 4 8-9"/></svg></span><div><p class="section-kicker">TV status</p><h2 id="healthTitle">Checking everything…</h2></div></div><p id="healthSummary" class="health-summary">Checking the player, temperature, power, and storage.</p><div class="quick-stats"><div class="quick-stat"><span>MabelTV</span><strong id="homePowerState">Checking…</strong></div><div class="quick-stat"><span>Temperature</span><strong id="temperature">—</strong></div><div class="quick-stat"><span>Storage available</span><strong id="storageFree">—</strong></div><div class="quick-stat"><span>Running for</span><strong id="uptime">—</strong></div></div><button id="refreshLibrary" class="secondary">Refresh TV library</button></article>
+      <section id="view-overview" class="view active"><div class="page home-page">
+        <section class="home-spotlight" aria-labelledby="homeNowPlayingTitle">
+          <div class="home-spotlight-art" aria-hidden="true"><span class="home-orbit orbit-one"></span><span class="home-orbit orbit-two"></span><span class="home-monogram">M</span></div>
+          <div class="home-spotlight-content">
+            <p class="eyebrow">On <span data-tv-name>Your TV</span> now</p>
+            <div class="home-now-playing" aria-live="polite">
+              <h1 id="homeNowPlayingTitle">Checking MabelTV…</h1>
+              <p id="homeNowPlayingMeta">Getting the current programme</p>
+            </div>
+            <div class="home-spotlight-actions">
+              <button type="button" class="primary" data-go="live"><svg class="icon"><use href="/portal/icons.svg#signal-radio"/></svg><span>Open remote</span></button>
+              <button id="homePowerToggle" type="button" class="home-power-toggle">Checking power…</button>
+            </div>
+          </div>
+        </section>
+
+        <div class="home-feed">
+          <section class="home-destinations" aria-labelledby="homeDestinationsTitle">
+            <header class="feed-heading"><div><p class="section-kicker">Your MabelTV</p><h2 id="homeDestinationsTitle">What would you like to do?</h2></div></header>
+            <div class="destination-rail">
+              <button type="button" class="destination-card destination-watch" data-go="watch"><span class="destination-icon"><svg class="icon"><use href="/portal/icons.svg#signal-play"/></svg></span><span><strong>Watch here</strong><small>Films, programmes and downloads</small></span><svg class="destination-arrow"><use href="/portal/icons.svg#signal-chevron-right"/></svg></button>
+              <button type="button" class="destination-card destination-library" data-go="channels"><span class="destination-icon"><svg class="icon"><use href="/portal/icons.svg#signal-library"/></svg></span><span><strong>Manage library</strong><small>Channels, Adult TV and USB</small></span><svg class="destination-arrow"><use href="/portal/icons.svg#signal-chevron-right"/></svg></button>
+              <button id="enterAdultMode" type="button" class="destination-card destination-adult"><span class="destination-icon"><svg class="icon"><use href="/portal/icons.svg#signal-clapperboard"/></svg></span><span><strong>Adult TV</strong><small>Open the private library on TV</small></span><svg class="destination-arrow"><use href="/portal/icons.svg#signal-chevron-right"/></svg></button>
+            </div>
+          </section>
+
+          <section class="home-device" aria-labelledby="healthTitle">
+            <button type="button" class="home-device-summary" data-go="system">
+              <span id="homeStatusIcon" class="device-status-icon"><svg class="icon" viewBox="0 0 24 24"><path d="m6 12 4 4 8-9"/></svg></span>
+              <span class="device-status-copy"><small>System health</small><strong id="healthTitle">Checking everything…</strong><span id="healthSummary">Checking the player, temperature, power, and storage.</span></span>
+              <svg class="device-status-arrow"><use href="/portal/icons.svg#signal-chevron-right"/></svg>
+            </button>
+            <div class="home-facts" aria-label="MabelTV status">
+              <div><span>Power</span><strong id="homePowerState">Checking…</strong></div>
+              <div><span>Temperature</span><strong id="temperature">—</strong></div>
+              <div><span>Storage free</span><strong id="storageFree">—</strong></div>
+              <div><span>Uptime</span><strong id="uptime">—</strong></div>
+            </div>
+            <button id="refreshLibrary" class="home-refresh"><svg class="icon"><use href="/portal/icons.svg#signal-restart"/></svg><span>Refresh library from the television</span></button>
+          </section>
+
+          <article id="warningsCard" class="attention hidden"><div class="attention-head"><span class="status-icon warn">!</span><div><p class="section-kicker">Needs attention</p><h2>There’s a small job to do</h2></div></div><div id="warnings"></div></article>
         </div>
-        <article id="warningsCard" class="attention surface surface-pad hidden"><div class="attention-head"><span class="status-icon warn">!</span><div><p class="section-kicker">Needs attention</p><h2>There’s a small job to do</h2></div></div><div id="warnings"></div></article>
         <footer><span data-tv-name>Your TV</span> <span data-version></span> · Local to your home network</footer>
       </div></section>
 

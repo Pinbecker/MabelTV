@@ -362,7 +362,7 @@ const $ = selector => document.querySelector(selector)
       // parent subsequently visits. Clear it whenever navigation begins.
       notice('')
       const channelFromWatch = name === 'channels' && selectedManageChannel !== null && channelWorkspaceReturnToWatch
-      const activeNavigation = channelFromWatch ? 'watch' : name
+      const activeNavigation = channelFromWatch ? 'watch' : (name === 'adult' || name === 'usb' ? 'channels' : name)
       $$('.view').forEach(view => view.classList.toggle('active', view.id === `view-${name}`))
       document.body.classList.toggle('watch-mode', name === 'watch' || channelFromWatch)
       $$('[data-view-button]').forEach(button => {

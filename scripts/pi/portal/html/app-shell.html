@@ -1,16 +1,27 @@
   <section id="app" class="app-shell hidden">
-    <aside class="rail">
-      <div class="rail-head"><div class="logo"><img class="logo-mark" src="/mabeltv-icon.png" alt=""><span data-tv-name>Your TV</span></div><p class="rail-tv">Controlling<strong id="topTvName">Your TV</strong></p></div>
-      <nav id="mainNav" class="portal-nav" aria-label="TV sections">
-        <button class="active" data-view-button="overview" aria-current="page"><svg class="icon"><use href="/portal/icons.svg#signal-house"/></svg>Home<span class="nav-dot"></span></button>
-        <button data-view-button="live"><svg class="icon"><use href="/portal/icons.svg#signal-radio"/></svg>Live TV<span class="nav-dot"></span></button>
-        <button data-view-button="watch"><svg class="icon"><use href="/portal/icons.svg#signal-clapperboard"/></svg>Watch<span class="nav-dot"></span></button>
-        <button data-view-button="usb"><svg class="icon"><use href="/portal/icons.svg#signal-hard-drive"/></svg>USB<span class="nav-dot"></span></button>
-        <button data-view-button="system"><svg class="icon"><use href="/portal/icons.svg#signal-settings"/></svg>Settings<span class="nav-dot"></span></button>
+    <aside class="rail" aria-label="MabelTV portal">
+      <div class="rail-brand">
+        <img class="logo-mark" src="/mabeltv-icon.png" alt="">
+        <div><strong>MabelTV</strong><span id="topTvName">Your TV</span></div>
+      </div>
+      <nav id="mainNav" class="portal-nav" aria-label="Main navigation">
+        <button class="active" data-view-button="overview" aria-current="page"><svg class="icon"><use href="/portal/icons.svg#signal-house"/></svg><span>Home</span></button>
+        <button data-view-button="watch"><svg class="icon"><use href="/portal/icons.svg#signal-clapperboard"/></svg><span>Watch</span></button>
+        <button class="nav-remote" data-view-button="live"><svg class="icon"><use href="/portal/icons.svg#signal-radio"/></svg><span>Remote</span></button>
+        <button data-view-button="channels"><svg class="icon"><use href="/portal/icons.svg#signal-library"/></svg><span>Library</span></button>
+        <button data-view-button="system"><svg class="icon"><use href="/portal/icons.svg#signal-settings"/></svg><span>Settings</span></button>
       </nav>
-      <div class="rail-foot"><span id="topHealth" class="health-pill">Checking TV…</span><button id="logout" class="secondary">Lock controls</button></div>
+      <div class="rail-foot">
+        <span id="topHealth" class="health-pill">Checking MabelTV…</span>
+        <button id="logout" class="rail-lock"><svg class="icon"><use href="/portal/icons.svg#signal-lock"/></svg><span>Lock parent portal</span></button>
+      </div>
     </aside>
-    <header class="mobile-head"><div class="logo"><img class="logo-mark" src="/mabeltv-icon.png" alt=""><span data-tv-name>Your TV</span></div><span class="mobile-context">Parent portal</span></header>
+
+    <header class="mobile-head">
+      <div class="mobile-brand"><img class="logo-mark" src="/mabeltv-icon.png" alt=""><strong>MabelTV</strong></div>
+      <button type="button" class="mobile-health" data-go="overview" aria-label="Open TV status"><span class="mobile-health-dot"></span><span data-tv-name>Your TV</span></button>
+    </header>
+
     <main class="app-main">
       <p id="notice" class="notice" role="status" aria-live="polite"></p>
       <!-- portal-include:html/views/overview.html -->
