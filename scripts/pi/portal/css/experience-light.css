@@ -1,0 +1,298 @@
+html[data-experience-theme="light"] {
+  --experience-canvas: #f4f3f1;
+  --experience-raised: #ffffff;
+  --experience-elevated: #faf9f7;
+  --experience-soft: #ece9e5;
+  --experience-line: rgba(35, 31, 28, 0.11);
+  --experience-line-strong: rgba(35, 31, 28, 0.2);
+  --experience-ink: #19171b;
+  --experience-muted: #55525a;
+  --experience-dim: #6e6a73;
+  --experience-orange: #b54800;
+  --experience-orange-hot: #ff7a1a;
+  --experience-on-orange: #241006;
+  --experience-good: #087457;
+  --experience-danger: #c83249;
+  --experience-shadow: rgba(39, 32, 27, 0.14);
+  color-scheme: light;
+}
+
+html[data-experience-theme="light"] body.portal-experience :is(
+  button,
+  a,
+  input,
+  select,
+  summary
+):focus-visible {
+  outline-color: rgba(181, 72, 0, 0.42);
+}
+
+html[data-experience-theme="light"] body.portal-experience :is(
+  .screen-action,
+  button.primary,
+  .button:not(.secondary),
+  button[type="submit"]:not([class]),
+  #setupNext,
+  #setupFinish,
+  #usbImport
+) {
+  background: var(--experience-orange-hot);
+  color: var(--experience-on-orange);
+}
+
+html[data-experience-theme="light"] body.portal-experience :is(
+  .screen-action,
+  button.primary,
+  button[type="submit"]:not([class]),
+  .button:not(.secondary),
+  button.danger,
+  #setupNext,
+  #setupFinish,
+  #usbImport
+) :is(strong, span, small) {
+  color: inherit;
+}
+
+html[data-experience-theme="light"] body.portal-experience button:disabled {
+  border-color: var(--experience-line);
+  background: #e6e2dd;
+  color: #68636b;
+  opacity: 1;
+}
+
+html[data-experience-theme="light"] body.portal-experience :is(input, select, textarea) {
+  background: var(--experience-raised);
+}
+
+html[data-experience-theme="light"] body.portal-experience :is(input, textarea)::placeholder {
+  color: #77727a;
+  opacity: 1;
+}
+
+html[data-experience-theme="light"] body.portal-experience :is(input, select, textarea):disabled {
+  background: #e9e6e2;
+  color: #68636b;
+  opacity: 1;
+}
+
+html[data-experience-theme="light"] body.portal-experience .notice {
+  border-color: rgba(8, 116, 87, 0.28);
+  background: rgba(235, 248, 242, 0.98);
+  color: #075d45;
+  box-shadow: 0 18px 60px var(--experience-shadow);
+}
+
+html[data-experience-theme="light"] body.portal-experience .notice.bad {
+  border-color: rgba(200, 50, 73, 0.3);
+  background: rgba(255, 240, 243, 0.98);
+  color: #9f2437;
+}
+
+html[data-experience-theme="light"] body.portal-experience .home-now-playing h1,
+html[data-experience-theme="light"] body.portal-experience .channel-page-identity h1,
+html[data-experience-theme="light"] body.portal-experience :is(.mabel-show-identity, .mabel-film-head) h2 {
+  color: #fff;
+}
+
+html[data-experience-theme="light"] body.portal-experience .home-spotlight .eyebrow,
+html[data-experience-theme="light"] body.portal-experience :is(.mabel-show-identity, .mabel-film-head) > span {
+  color: var(--experience-orange-hot);
+}
+
+html[data-experience-theme="light"] body.portal-experience .destination-library .destination-icon { color: #7045b1; }
+html[data-experience-theme="light"] body.portal-experience .destination-adult .destination-icon { color: #ad3157; }
+html[data-experience-theme="light"] body.portal-experience .device-status-icon { background: rgba(8, 116, 87, 0.1); }
+
+html[data-experience-theme="light"] body.portal-experience .attention {
+  border-color: rgba(181, 72, 0, 0.26);
+  background: #fff6ef;
+}
+
+html[data-experience-theme="light"] body.portal-experience .status-icon.warn { background: rgba(181, 72, 0, 0.11); }
+
+html[data-experience-theme="light"] body.portal-experience .library-switch button.active {
+  background: var(--experience-ink);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(39, 32, 27, 0.18);
+}
+
+html[data-experience-theme="light"] body.portal-experience .usb-eject {
+  border-color: rgba(200, 50, 73, 0.3);
+  color: var(--experience-danger);
+}
+
+html[data-experience-theme="light"] body.portal-experience :is(.usb-import button, .channel-page-primary, .channel-page-badge) {
+  background: var(--experience-orange-hot);
+  color: var(--experience-on-orange);
+}
+
+html[data-experience-theme="light"] body.portal-experience .channel-page-eyebrow { color: var(--experience-orange-hot); }
+
+html[data-experience-theme="light"] body.portal-experience dialog:is(
+  .library-sheet,
+  .watch-sheet,
+  .watch-film-sheet,
+  .watch-programme-sheet
+)::backdrop {
+  background: rgba(31, 27, 24, 0.42);
+}
+
+html[data-experience-theme="light"] body.portal-experience :is(
+  .library-sheet-panel,
+  .watch-sheet-panel,
+  .watch-film-panel,
+  .watch-programme-sheet > article
+) {
+  background: var(--experience-raised);
+  box-shadow: 0 28px 90px rgba(39, 32, 27, 0.28);
+}
+
+html[data-experience-theme="light"] body.portal-experience :is(
+  .library-sheet-head,
+  .watch-sheet-panel > header
+) {
+  background: rgba(255, 255, 255, 0.94);
+}
+
+html[data-experience-theme="light"] body.portal-experience :is(
+  .library-sheet-close,
+  .watch-sheet-close,
+  .watch-film-close
+) {
+  background: var(--experience-elevated);
+}
+
+html[data-experience-theme="light"] body.portal-experience #adultFolderTabs .adult-folder-tab.active {
+  border-color: rgba(181, 72, 0, 0.52);
+  background: #fff0e5;
+}
+
+html[data-experience-theme="light"] body.portal-experience #adultFolderTabs .adult-folder-tab.active strong {
+  background: var(--experience-orange-hot);
+  color: var(--experience-on-orange);
+}
+
+html[data-experience-theme="light"] body.portal-experience .watch-collection-option.active {
+  border-color: rgba(181, 72, 0, 0.24);
+  background: #fff0e5;
+}
+
+html[data-experience-theme="light"] body.portal-experience .watch-film-panel { background: var(--experience-raised); }
+
+html[data-experience-theme="light"] body.portal-experience .watch-film-backdrop::after {
+  background:
+    linear-gradient(180deg, rgba(7, 7, 10, 0.18), rgba(7, 7, 10, 0.28) 44%, rgba(255, 255, 255, 0.88) 82%, #fff 100%),
+    linear-gradient(90deg, rgba(7, 7, 10, 0.3), transparent 60%);
+}
+
+html[data-experience-theme="light"] body.portal-experience .watch-film-poster {
+  border-color: var(--experience-line-strong);
+  box-shadow: 0 18px 42px rgba(39, 32, 27, 0.24);
+}
+
+html[data-experience-theme="light"] body.portal-experience :is(.watch-film-eyebrow, .watch-film-overview) {
+  color: var(--experience-muted);
+}
+
+html[data-experience-theme="light"] body.portal-experience .watch-programme-sheet > article { background: var(--experience-raised); }
+
+html[data-experience-theme="light"] body.portal-experience .live-led,
+html[data-experience-theme="light"] body.portal-experience .mobile-head-dot {
+  box-shadow: 0 0 0 4px rgba(8, 116, 87, 0.1);
+}
+
+html[data-experience-theme="light"] body.portal-experience .live-off strong { color: #fff; }
+
+html[data-experience-theme="light"] body.portal-experience .remote-app {
+  background: linear-gradient(180deg, #ffffff, #f8f6f3);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.8), 0 24px 60px var(--experience-shadow);
+}
+
+html[data-experience-theme="light"] body.portal-experience :is(.remote-mode, .remote-back, .remote-dock button) {
+  background: var(--experience-elevated);
+}
+
+html[data-experience-theme="light"] body.portal-experience :is(.remote-mode.active, .remote-dock-action.active) {
+  border-color: rgba(181, 72, 0, 0.38);
+  background: #fff0e5;
+}
+
+html[data-experience-theme="light"] body.portal-experience .remote-rocker {
+  background: var(--experience-raised);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.8), 0 10px 22px rgba(39, 32, 27, 0.12);
+}
+
+html[data-experience-theme="light"] body.portal-experience .remote-pad {
+  background: radial-gradient(circle, #e6e2dd 0 30%, #ffffff 31% 68%, #f0eeeb 69%);
+  box-shadow: inset 0 2px 2px rgba(255, 255, 255, 0.85), 0 18px 36px rgba(39, 32, 27, 0.14);
+}
+
+html[data-experience-theme="light"] body.portal-experience .remote-pad button { color: var(--experience-muted); }
+html[data-experience-theme="light"] body.portal-experience .remote-pad .select,
+html[data-experience-theme="light"] body.portal-experience .remote-transport .remote-play { background: var(--experience-ink); color: #fff; }
+
+html[data-experience-theme="light"] body.portal-experience .settings-save { background: var(--experience-elevated); }
+
+html[data-experience-theme="light"] body.portal-experience .settings-save button {
+  background: var(--experience-orange-hot);
+  color: var(--experience-on-orange);
+}
+
+html[data-experience-theme="light"] body.portal-experience .feature-toggle[aria-pressed="true"] {
+  border-color: rgba(8, 116, 87, 0.3);
+  background: rgba(8, 116, 87, 0.08);
+}
+
+html[data-experience-theme="light"] body.portal-experience .design-option { background: var(--experience-raised); }
+
+html[data-experience-theme="light"] body.portal-experience .settings-danger {
+  border-color: rgba(200, 50, 73, 0.24);
+  background: #fff4f5;
+}
+
+html[data-experience-theme="light"] body.portal-experience .rail { background: var(--experience-raised); }
+html[data-experience-theme="light"] body.portal-experience .portal-nav button { color: var(--experience-muted); }
+html[data-experience-theme="light"] body.portal-experience .portal-nav button.active { background: #f7e8dd; color: var(--experience-ink); }
+
+html[data-experience-theme="light"] body.portal-experience .watch-switch-wrap {
+  background: rgba(244, 243, 241, 0.92);
+}
+
+html[data-experience-theme="light"] body.portal-experience .watch-continue-card {
+  box-shadow: 0 8px 24px rgba(39, 32, 27, 0.07);
+}
+
+html[data-experience-theme="light"] body.portal-experience .portal-design-copy strong small {
+  background: rgba(181, 72, 0, 0.1);
+}
+
+html[data-experience-theme="light"] body.portal-experience .portal-design-option[aria-pressed="true"] .portal-design-check {
+  background: var(--experience-orange-hot);
+  color: var(--experience-on-orange);
+}
+
+@media (max-width: 860px) {
+  html[data-experience-theme="light"] body.portal-experience .portal-nav {
+    border-top-color: var(--experience-line-strong);
+    background: rgba(255, 255, 255, 0.94);
+  }
+
+  html[data-experience-theme="light"] body.portal-experience .portal-nav button.nav-remote .icon {
+    background: var(--experience-orange-hot);
+    color: var(--experience-on-orange);
+    box-shadow: 0 0 0 6px var(--experience-raised), 0 9px 24px rgba(181, 72, 0, 0.2);
+  }
+
+  html[data-experience-theme="light"] body.portal-experience .portal-nav button.nav-remote.active .icon {
+    color: var(--experience-on-orange);
+  }
+
+  html[data-experience-theme="light"] body.portal-experience .mobile-head {
+    border-bottom-color: var(--experience-line);
+    background: rgba(255, 255, 255, 0.91);
+  }
+
+  html[data-experience-theme="light"] body.portal-experience .mobile-head-status {
+    background: var(--experience-elevated);
+  }
+}

@@ -45,7 +45,7 @@ body.portal-v2 .watch-switch-wrap {
   top: 0;
   margin: 0 calc(var(--experience-gutter) * -1) 28px;
   border-bottom: 1px solid var(--experience-line);
-  background: rgba(244, 243, 241, 0.92);
+  background: rgba(8, 8, 11, 0.92);
   padding: 0 var(--experience-gutter);
   -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
@@ -207,7 +207,6 @@ body.portal-v2 .watch-continue-card {
   color: var(--experience-ink);
   padding: 0;
   text-align: left;
-  box-shadow: 0 8px 24px rgba(39, 32, 27, 0.07);
 }
 
 body.portal-v2 .watch-continue-art {
@@ -342,9 +341,9 @@ body.portal-v2 .mabel-film-head {
 }
 
 body.portal-v2 .mabel-show-identity h2,
-body.portal-v2 .mabel-film-head h2 { margin: 4px 0 5px; color: #fff; font-size: clamp(27px, 4vw, 42px); letter-spacing: -0.045em; }
+body.portal-v2 .mabel-film-head h2 { margin: 4px 0 5px; font-size: clamp(27px, 4vw, 42px); letter-spacing: -0.045em; }
 body.portal-v2 .mabel-show-identity span,
-body.portal-v2 .mabel-film-head span { color: var(--experience-orange-hot); font-size: 9px; font-weight: 800; text-transform: uppercase; }
+body.portal-v2 .mabel-film-head span { color: var(--experience-orange); font-size: 9px; font-weight: 800; text-transform: uppercase; }
 body.portal-v2 .mabel-show-identity p { max-width: 560px; margin: 0; color: rgba(255,255,255,.72); font-size: 12px; }
 
 body.portal-v2 .watch-channel-rail { grid-auto-columns: minmax(200px, 24%); margin-top: 13px; }

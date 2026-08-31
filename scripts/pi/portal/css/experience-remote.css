@@ -33,7 +33,7 @@ body.portal-v2 .live-led {
   height: 7px;
   border-radius: 50%;
   background: var(--experience-good);
-  box-shadow: 0 0 0 4px rgba(8, 116, 87, 0.1);
+  box-shadow: 0 0 0 4px rgba(79, 221, 160, 0.1);
 }
 
 body.portal-v2 .live-led.off {
@@ -80,7 +80,7 @@ body.portal-v2 .live-off {
 }
 
 body.portal-v2 .live-off.hidden { display: none; }
-body.portal-v2 .live-off strong { color: #fff; font-size: 15px; }
+body.portal-v2 .live-off strong { font-size: 15px; }
 body.portal-v2 .live-off span { font-size: 12px; }
 
 body.portal-v2 .live-now {
@@ -131,8 +131,8 @@ body.portal-v2 .remote-app {
   overflow: hidden;
   border: 1px solid var(--experience-line);
   border-radius: 20px;
-  background: linear-gradient(180deg, #ffffff, #f8f6f3);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.8), 0 24px 60px var(--experience-shadow);
+  background: linear-gradient(180deg, #17171c, #0e0e12);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.04), 0 24px 60px rgba(0, 0, 0, 0.22);
   padding: 16px;
 }
 
@@ -151,7 +151,7 @@ body.portal-v2 .remote-mode {
   min-height: 68px;
   border: 1px solid transparent;
   border-radius: 11px;
-  background: var(--experience-elevated);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--experience-muted);
   padding: 9px 3px;
   font-size: 10px;
@@ -177,8 +177,8 @@ body.portal-v2 .remote-dock svg {
 }
 
 body.portal-v2 .remote-mode.active {
-  border-color: rgba(181, 72, 0, 0.38);
-  background: #fff0e5;
+  border-color: rgba(255, 122, 26, 0.46);
+  background: rgba(255, 122, 26, 0.1);
   color: var(--experience-orange);
 }
 
@@ -205,8 +205,8 @@ body.portal-v2 .remote-rocker {
   overflow: hidden;
   border: 1px solid var(--experience-line-strong);
   border-radius: 33px;
-  background: var(--experience-raised);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.8), 0 10px 22px rgba(39, 32, 27, 0.12);
+  background: #0b0b0e;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.05), 0 10px 22px rgba(0, 0, 0, 0.24);
 }
 
 body.portal-v2 .remote-rocker > button,
@@ -254,7 +254,7 @@ body.portal-v2 .remote-back {
   min-height: 34px;
   border: 1px solid var(--experience-line);
   border-radius: 999px;
-  background: var(--experience-elevated);
+  background: rgba(255, 255, 255, 0.035);
   color: var(--experience-muted);
   padding: 0 13px;
   font-size: 10px;
@@ -271,8 +271,8 @@ body.portal-v2 .remote-pad {
   height: 218px;
   border: 1px solid var(--experience-line-strong);
   border-radius: 50%;
-  background: radial-gradient(circle, #e6e2dd 0 30%, #ffffff 31% 68%, #f0eeeb 69%);
-  box-shadow: inset 0 2px 2px rgba(255, 255, 255, 0.85), 0 18px 36px rgba(39, 32, 27, 0.14);
+  background: radial-gradient(circle, #1d1d23 0 30%, #111116 31% 68%, #18181e 69%);
+  box-shadow: inset 0 2px 2px rgba(255, 255, 255, 0.04), 0 18px 36px rgba(0, 0, 0, 0.28);
   padding: 11px;
 }
 
@@ -282,12 +282,12 @@ body.portal-v2 .remote-pad button {
   min-height: 0;
   border-radius: 50%;
   background: transparent;
-  color: var(--experience-muted);
+  color: #a8a8b1;
 }
 
 body.portal-v2 .remote-pad .up { grid-area: 1 / 2; }
 body.portal-v2 .remote-pad .left { grid-area: 2 / 1; }
-body.portal-v2 .remote-pad .select { grid-area: 2 / 2; background: var(--experience-ink); color: #fff; font-size: 13px; font-weight: 850; }
+body.portal-v2 .remote-pad .select { grid-area: 2 / 2; background: #292930; color: #fff; font-size: 13px; font-weight: 850; }
 body.portal-v2 .remote-pad .right { grid-area: 2 / 3; }
 body.portal-v2 .remote-pad .down { grid-area: 3 / 2; }
 
@@ -337,7 +337,7 @@ body.portal-v2 .remote-transport button {
 
 body.portal-v2 .remote-transport .remote-play {
   background: var(--experience-ink);
-  color: #fff;
+  color: #111116;
 }
 
 body.portal-v2 .remote-play .remote-play-icon { display: none; }
@@ -356,7 +356,7 @@ body.portal-v2 .remote-dock button {
   min-width: 0;
   min-height: 62px;
   border-radius: 10px;
-  background: var(--experience-elevated);
+  background: rgba(255, 255, 255, 0.045);
   color: var(--experience-muted);
 }
 
@@ -383,5 +383,5 @@ body.portal-v2 .remote-dock-action {
   font-weight: 700;
 }
 
-body.portal-v2 .remote-dock-action.active { background: #fff0e5; color: var(--experience-orange); }
+body.portal-v2 .remote-dock-action.active { background: rgba(255, 122, 26, 0.12); color: var(--experience-orange); }
 body.portal-v2 .remote-power { color: var(--experience-danger); }

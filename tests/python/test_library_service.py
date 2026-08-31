@@ -109,7 +109,8 @@ class LibraryUnitTests(unittest.TestCase):
             "watch", "management", "usb", "settings", "responsive", "channel-page",
             "experience-foundation", "experience-shell", "experience-home",
             "experience-remote", "experience-watch", "experience-library",
-            "experience-settings", "experience-responsive", "portal-design-switch",
+            "experience-settings", "experience-responsive", "experience-overlays",
+            "portal-design-switch", "experience-light",
         )
         js_names = ("core", "channel-page", "library", "playback", "actions")
 
@@ -117,6 +118,8 @@ class LibraryUnitTests(unittest.TestCase):
         js_positions = [html.index(f'/portal/js/{name}.js') for name in js_names]
         self.assertEqual(css_positions, sorted(css_positions))
         self.assertEqual(js_positions, sorted(js_positions))
+        self.assertLess(html.index('/portal/js/experience-theme.js'),
+                        html.index('/portal/css/experience-foundation.css'))
         self.assertNotIn("<style", html)
         self.assertNotRegex(html, r"\sstyle=")
         self.assertNotIn("!important", PORTAL_STYLES)
@@ -143,6 +146,10 @@ class LibraryUnitTests(unittest.TestCase):
             for name in ("foundation", "shell", "home", "remote", "watch",
                          "library", "settings", "responsive", "overlays")
         )
+        light_styles = (PORTAL_ROOT / "css" / "experience-light.css").read_text(
+            encoding="utf-8")
+        theme_script = (PORTAL_ROOT / "js" / "experience-theme.js").read_text(
+            encoding="utf-8")
         core = (PORTAL_ROOT / "js" / "core.js").read_text(encoding="utf-8")
 
         self.assertIn('/portal/css/experience-foundation.css', html)
@@ -155,6 +162,8 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn('/portal/css/experience-responsive.css', html)
         self.assertIn('/portal/css/experience-overlays.css', html)
         self.assertIn('/portal/css/portal-design-switch.css', html)
+        self.assertIn('/portal/css/experience-light.css', html)
+        self.assertIn('/portal/js/experience-theme.js', html)
         self.assertNotIn('/portal/css/product-', html)
         self.assertIn('class="portal-v2 portal-experience"', html)
         self.assertIn('/portal/css/classic-foundation.css', classic)
@@ -163,6 +172,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn('/portal/css/classic-responsive.css', classic)
         self.assertIn('/portal/css/portal-design-switch.css', classic)
         self.assertNotIn('/portal/css/experience-', classic)
+        self.assertNotIn('/portal/js/experience-theme.js', classic)
         self.assertNotIn('/portal/css/product-', classic)
         self.assertIn('class="portal-v2 portal-classic"', classic)
         for document in (html, classic):
@@ -177,12 +187,19 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertFalse(any((PORTAL_ROOT / "css").glob("component-direction-*.css")))
         self.assertNotIn("'components'", core)
         self.assertIn("mabeltv_portal_design=${design}", core)
-        self.assertIn("--experience-orange: #b54800", styles)
-        self.assertIn("--experience-orange-hot: #ff7a1a", styles)
-        self.assertIn("color-scheme: light", styles)
-        self.assertIn('<meta name="theme-color" content="#f4f3f1">', html)
-        self.assertIn('<meta name="apple-mobile-web-app-status-bar-style" content="default">', html)
+        self.assertIn("--experience-orange: #ff7a1a", styles)
+        self.assertIn("color-scheme: dark", styles)
+        self.assertIn("--experience-orange: #b54800", light_styles)
+        self.assertIn("--experience-orange-hot: #ff7a1a", light_styles)
+        self.assertIn("color-scheme: light", light_styles)
+        self.assertIn('html[data-experience-theme="light"]', light_styles)
+        self.assertIn('<meta name="theme-color" content="#0b0a0d">', html)
+        self.assertIn('<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">', html)
         self.assertIn('<meta name="theme-color" content="#0b0a0d">', classic)
+        self.assertIn('id="experienceThemeToggle"', html)
+        self.assertIn('role="switch"', html)
+        self.assertIn("mabeltv-experience-theme", theme_script)
+        self.assertIn("localStorage.setItem(STORAGE_KEY, theme)", theme_script)
         self.assertIn("--experience-sheet-gutter", styles)
         self.assertIn("dialog:is(.library-sheet, .watch-sheet, .watch-film-sheet", styles)
         self.assertIn(".watch-collection-option.active", styles)
@@ -1976,6 +1993,8 @@ class LibraryHttpTests(unittest.TestCase):
                              ("/portal/css/experience-foundation.css", b"--experience-orange"),
                              ("/portal/css/experience-shell.css", b".portal-nav"),
                              ("/portal/css/experience-overlays.css", b"--experience-sheet-gutter"),
+                             ("/portal/css/experience-light.css", b'data-experience-theme="light"'),
+                             ("/portal/js/experience-theme.js", b"mabeltv-experience-theme"),
                              ("/portal/css/classic-foundation.css", b"--accent: #ff7a1a"),
                              ("/portal/css/portal-design-switch.css", b".portal-design-option"),
                              ("/portal/js/actions.js", b"managementBusy")):

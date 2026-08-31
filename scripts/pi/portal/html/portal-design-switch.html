@@ -4,6 +4,16 @@
     <div><h2 id="portalDesignTitle">Choose this portal’s design</h2><p>The new Experience stays the default. Classic is the complete previous portal, kept here as a familiar alternative.</p></div>
     <span class="portal-design-device">This device</span>
   </div>
+  <div class="experience-theme-choice" aria-labelledby="experienceThemeTitle" aria-describedby="experienceThemeDescription">
+    <span class="experience-theme-copy">
+      <strong id="experienceThemeTitle">Light mode</strong>
+      <span id="experienceThemeDescription">Use a brighter version of Experience on this device. Dark mode remains the default.</span>
+    </span>
+    <button type="button" id="experienceThemeToggle" class="experience-theme-toggle" role="switch" aria-checked="false" aria-labelledby="experienceThemeTitle experienceThemeState">
+      <span class="experience-theme-track" aria-hidden="true"><span></span></span>
+      <span id="experienceThemeState" class="experience-theme-state">Off</span>
+    </button>
+  </div>
   <div class="portal-design-options" role="group" aria-label="Portal design">
     <button type="button" class="portal-design-option" data-portal-design="experience" aria-pressed="false">
       <span class="portal-design-preview experience" aria-hidden="true"><span class="preview-brand"></span><span class="preview-hero"></span><span class="preview-dock"></span></span>

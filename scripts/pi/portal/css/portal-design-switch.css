@@ -32,6 +32,97 @@ body.portal-v2 .portal-design-device {
   text-transform: uppercase;
 }
 
+body.portal-classic .experience-theme-choice {
+  display: none;
+}
+
+body.portal-experience .experience-theme-choice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  margin-top: 20px;
+  border: 1px solid var(--experience-line);
+  border-radius: 11px;
+  background: var(--experience-raised);
+  padding: 15px 16px;
+}
+
+body.portal-experience .experience-theme-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+body.portal-experience .experience-theme-copy strong {
+  font-size: 14px;
+}
+
+body.portal-experience .experience-theme-copy > span {
+  color: var(--experience-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+body.portal-experience .experience-theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  min-width: 82px;
+  min-height: 44px;
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: var(--experience-muted);
+  padding: 0;
+}
+
+body.portal-experience .experience-theme-track {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  flex: 0 0 42px;
+  border: 1px solid var(--experience-line-strong);
+  border-radius: 999px;
+  background: var(--experience-soft);
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+body.portal-experience .experience-theme-track > span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--experience-muted);
+  box-shadow: 0 2px 5px var(--experience-shadow);
+  transition: transform 150ms ease, background 150ms ease;
+}
+
+body.portal-experience .experience-theme-state {
+  width: 21px;
+  color: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  text-align: left;
+}
+
+body.portal-experience .experience-theme-toggle[aria-checked="true"] {
+  color: var(--experience-orange);
+}
+
+body.portal-experience .experience-theme-toggle[aria-checked="true"] .experience-theme-track {
+  border-color: var(--experience-orange);
+  background: var(--experience-orange-hot);
+}
+
+body.portal-experience .experience-theme-toggle[aria-checked="true"] .experience-theme-track > span {
+  background: var(--experience-on-orange);
+  transform: translateX(18px);
+}
+
 body.portal-v2 .portal-design-options {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -254,6 +345,11 @@ body.portal-experience .portal-design-option[aria-pressed="true"] .portal-design
 
   body.portal-v2 .portal-design-device {
     justify-self: start;
+  }
+
+  body.portal-experience .experience-theme-choice {
+    gap: 14px;
+    padding: 13px;
   }
 
   body.portal-v2 .portal-design-option {
