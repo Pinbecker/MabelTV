@@ -109,7 +109,7 @@ class LibraryUnitTests(unittest.TestCase):
             "watch", "management", "usb", "settings", "responsive", "channel-page",
             "experience-foundation", "experience-shell", "experience-home",
             "experience-remote", "experience-watch", "experience-library",
-            "experience-settings", "experience-responsive",
+            "experience-settings", "experience-responsive", "portal-design-switch",
         )
         js_names = ("core", "channel-page", "library", "playback", "actions")
 
@@ -132,9 +132,12 @@ class LibraryUnitTests(unittest.TestCase):
             self.assertTrue((PORTAL_ROOT / "html" / "views" / f"{name}.html").is_file())
         self.assertEqual(html.count('id="iosWatchPlayer"'), 1)
         self.assertEqual(html.count('id="mabelWatchPlayer"'), 1)
+        self.assertEqual(mabeltv_library.CLASSIC_INDEX.count('id="iosWatchPlayer"'), 1)
+        self.assertEqual(mabeltv_library.CLASSIC_INDEX.count('id="mabelWatchPlayer"'), 1)
 
-    def test_portal_uses_one_fixed_experience_system(self) -> None:
+    def test_portal_uses_experience_by_default_and_one_isolated_classic_system(self) -> None:
         html = mabeltv_library.INDEX
+        classic = mabeltv_library.CLASSIC_INDEX
         styles = "\n".join(
             (PORTAL_ROOT / "css" / f"experience-{name}.css").read_text(encoding="utf-8")
             for name in ("foundation", "shell", "home", "remote", "watch",
@@ -150,13 +153,29 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn('/portal/css/experience-library.css', html)
         self.assertIn('/portal/css/experience-settings.css', html)
         self.assertIn('/portal/css/experience-responsive.css', html)
+        self.assertIn('/portal/css/portal-design-switch.css', html)
         self.assertNotIn('/portal/css/product-', html)
-        self.assertNotIn('/portal/js/appearance.js', html)
-        self.assertNotIn('/portal/js/component-gallery.js', html)
-        self.assertNotIn('id="view-components"', html)
-        self.assertNotIn('id="portalAppearanceControl"', html)
-        self.assertNotIn('data-portal-design', html)
+        self.assertIn('class="portal-v2 portal-experience"', html)
+        self.assertIn('/portal/css/classic-foundation.css', classic)
+        self.assertIn('/portal/css/classic-shell.css', classic)
+        self.assertIn('/portal/css/classic-library.css', classic)
+        self.assertIn('/portal/css/classic-responsive.css', classic)
+        self.assertIn('/portal/css/portal-design-switch.css', classic)
+        self.assertNotIn('/portal/css/experience-', classic)
+        self.assertNotIn('/portal/css/product-', classic)
+        self.assertIn('class="portal-v2 portal-classic"', classic)
+        for document in (html, classic):
+            self.assertNotIn('/portal/js/appearance.js', document)
+            self.assertNotIn('/portal/js/component-gallery.js', document)
+            self.assertNotIn('id="view-components"', document)
+            self.assertNotIn('id="portalAppearanceControl"', document)
+            self.assertIn('data-portal-design="experience"', document)
+            self.assertIn('data-portal-design="classic"', document)
+        for retired in ("appearance.js", "component-gallery.js"):
+            self.assertFalse((PORTAL_ROOT / "js" / retired).exists())
+        self.assertFalse(any((PORTAL_ROOT / "css").glob("component-direction-*.css")))
         self.assertNotIn("'components'", core)
+        self.assertIn("mabeltv_portal_design=${design}", core)
         self.assertIn("--experience-orange: #ff7a1a", styles)
         self.assertIn(".portal-nav button.active::before", styles)
         self.assertIn(".home-spotlight", styles)
@@ -166,6 +185,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn(".settings-disclosure", styles)
         self.assertIn('data-view-button="channels"', html)
         self.assertNotIn('data-view-button="usb"', html)
+        self.assertIn('data-view-button="usb"', classic)
         self.assertIn('class="library-switch"', html)
         self.assertIn('class="home-spotlight"', html)
         self.assertIn('class="remote-app"', html)
@@ -180,6 +200,21 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn('id="signal-house"', icons)
         self.assertIn('id="signal-play"', icons)
         self.assertTrue((PORTAL_ROOT / "LICENSE-LUCIDE.txt").is_file())
+
+    def test_classic_portal_is_preserved_from_the_previous_core_design(self) -> None:
+        classic_root = MODULE_PATH.with_name("mabeltv-library-classic.html")
+        classic = mabeltv_library.CLASSIC_INDEX
+        self.assertTrue(classic_root.is_file())
+        self.assertLess(len(classic_root.read_text(encoding="utf-8")), 5_000)
+        self.assertNotIn("portal-include:", classic)
+        self.assertIn('class="home-intro"', classic)
+        self.assertIn('class="settings-grid"', classic)
+        self.assertIn('class="usb-layout"', classic)
+        self.assertIn('class="library-hero', classic)
+        for name in ("overview", "live", "channels", "adult", "watch", "usb", "system"):
+            self.assertTrue(
+                (PORTAL_ROOT / "html" / "classic" / "views" / f"{name}.html").is_file()
+            )
 
     def test_channel_detail_is_modular_watch_oriented_and_deep_linkable(self) -> None:
         html = mabeltv_library.INDEX
@@ -1924,11 +1959,27 @@ class LibraryHttpTests(unittest.TestCase):
                              ("/portal/js/core.js", b"function initialise"),
                              ("/portal/css/experience-foundation.css", b"--experience-orange"),
                              ("/portal/css/experience-shell.css", b".portal-nav"),
+                             ("/portal/css/classic-foundation.css", b"--accent: #ff7a1a"),
+                             ("/portal/css/portal-design-switch.css", b".portal-design-option"),
                              ("/portal/js/actions.js", b"managementBusy")):
             with urllib.request.urlopen(self.base + path, timeout=5) as response:
                 self.assertEqual(response.status, 200)
                 self.assertEqual(response.headers.get("Connection"), "close")
                 self.assertIn(marker, response.read())
+
+    def test_portal_design_cookie_selects_classic_while_experience_is_default(self) -> None:
+        with urllib.request.urlopen(self.base + "/", timeout=5) as response:
+            default_html = response.read().decode()
+        self.assertIn('class="portal-v2 portal-experience"', default_html)
+        self.assertNotIn('/portal/css/classic-foundation.css', default_html)
+
+        request = urllib.request.Request(self.base + "/")
+        request.add_header("Cookie", "mabeltv_portal_design=classic")
+        with urllib.request.urlopen(request, timeout=5) as response:
+            classic_html = response.read().decode()
+        self.assertIn('class="portal-v2 portal-classic"', classic_html)
+        self.assertIn('/portal/css/classic-foundation.css', classic_html)
+        self.assertNotIn('/portal/css/experience-foundation.css', classic_html)
 
     def test_portal_asset_handler_rejects_path_traversal(self) -> None:
         with self.assertRaises(urllib.error.HTTPError) as raised:

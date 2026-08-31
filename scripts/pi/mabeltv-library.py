@@ -141,6 +141,17 @@ def load_index() -> str:
 INDEX = load_index()
 
 
+def load_classic_index() -> str:
+    """Load the preserved previous portal as an optional presentation shell."""
+    try:
+        return load_portal_document(Path(__file__).with_name("mabeltv-library-classic.html"))
+    except OSError:
+        return INDEX
+
+
+CLASSIC_INDEX = load_classic_index()
+
+
 def load_watch_page() -> str:
     try:
         return Path(__file__).with_name("mabeltv-watch.html").read_text(encoding="utf-8")
@@ -4194,6 +4205,12 @@ class Handler(BaseHTTPRequestHandler):
         cookie = SimpleCookie(self.headers.get("Cookie")); token = cookie.get("mabeltv_library")
         return token.value if token else None
 
+    def portal_design(self) -> str:
+        """Return the requested presentation without changing authentication state."""
+        cookie = SimpleCookie(self.headers.get("Cookie"))
+        design = cookie.get("mabeltv_portal_design")
+        return "classic" if design and design.value == "classic" else "experience"
+
     def authorised(self) -> bool:
         return (self.server.library.configured()
                 and not self.server.library.portal_pin_required()) \
@@ -4222,7 +4239,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         try:
             if self.path == "/":
-                data = INDEX.encode(); self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8"); self.send_header("Content-Length", str(len(data))); self.send_header("Cache-Control", "no-store"); self.security_headers(); self.end_headers(); self.wfile.write(data); return
+                document = CLASSIC_INDEX if self.portal_design() == "classic" else INDEX
+                data = document.encode(); self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8"); self.send_header("Content-Length", str(len(data))); self.send_header("Cache-Control", "no-store"); self.security_headers(); self.end_headers(); self.wfile.write(data); return
             static_assets = {
                 "/mabeltv-icon.png": ("mabeltv-icon.png", "image/png"),
                 "/mabeltv-pwa-icon.png": ("icons/icon-512.png", "image/png"),

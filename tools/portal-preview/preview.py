@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import mimetypes
 import re
+from http.cookies import SimpleCookie
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -42,8 +43,10 @@ PORTAL_INCLUDE = re.compile(
 )
 
 
-def portal_document() -> bytes:
-    document = (PI_ROOT / "mabeltv-library.html").read_text(encoding="utf-8")
+def portal_document(design: str = "experience") -> bytes:
+    source = "mabeltv-library-classic.html" if design == "classic" \
+        else "mabeltv-library.html"
+    document = (PI_ROOT / source).read_text(encoding="utf-8")
     for _ in range(8):
         if not PORTAL_INCLUDE.search(document):
             return document.encode()
@@ -67,7 +70,10 @@ class PreviewHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         parsed = urlsplit(self.path)
         if parsed.path == "/":
-            self._serve_bytes(portal_document(), "text/html; charset=utf-8")
+            cookie = SimpleCookie(self.headers.get("Cookie"))
+            selected = cookie.get("mabeltv_portal_design")
+            design = "classic" if selected and selected.value == "classic" else "experience"
+            self._serve_bytes(portal_document(design), "text/html; charset=utf-8")
             return
         if parsed.path in LOCAL_ASSETS:
             self._serve_file(LOCAL_ASSETS[parsed.path])

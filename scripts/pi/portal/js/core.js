@@ -356,13 +356,27 @@ const $ = selector => document.querySelector(selector)
     }
     $('#logout').onclick = async () => { await api('/api/logout', { method: 'POST' }); location.reload() }
 
+    const currentPortalDesign = document.body.classList.contains('portal-classic') ? 'classic' : 'experience'
+    $$('[data-portal-design]').forEach(button => {
+      const selected = button.dataset.portalDesign === currentPortalDesign
+      button.setAttribute('aria-pressed', selected ? 'true' : 'false')
+      button.onclick = () => {
+        const design = button.dataset.portalDesign === 'classic' ? 'classic' : 'experience'
+        if (design === currentPortalDesign) return
+        document.cookie = `mabeltv_portal_design=${design}; Path=/; Max-Age=31536000; SameSite=Strict`
+        $$('[data-portal-design]').forEach(choice => { choice.disabled = true })
+        location.reload()
+      }
+    })
+
     function openView(name) {
       if (offlineMode && name !== 'watch') name = 'watch'
       // A status belongs to the action that created it, not every page the
       // parent subsequently visits. Clear it whenever navigation begins.
       notice('')
       const channelFromWatch = name === 'channels' && selectedManageChannel !== null && channelWorkspaceReturnToWatch
-      const activeNavigation = channelFromWatch ? 'watch' : (name === 'adult' || name === 'usb' ? 'channels' : name)
+      const groupedLibraryView = currentPortalDesign === 'experience' && (name === 'adult' || name === 'usb')
+      const activeNavigation = channelFromWatch ? 'watch' : (groupedLibraryView ? 'channels' : name)
       $$('.view').forEach(view => view.classList.toggle('active', view.id === `view-${name}`))
       document.body.classList.toggle('watch-mode', name === 'watch' || channelFromWatch)
       $$('[data-view-button]').forEach(button => {

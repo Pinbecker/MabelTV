@@ -1,0 +1,315 @@
+/* MabelTV portal product UI - shell */
+
+@layer streaming {
+  /* App shell and navigation */
+  .app-shell {
+    grid-template-columns: 228px minmax(0, 1fr);
+  }
+
+  .rail {
+    width: 228px;
+    border-right: 1px solid var(--border-subtle);
+    padding: calc(24px + var(--safe-top)) 16px calc(18px + var(--safe-bottom));
+    background: #0e0d10;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .rail-head {
+    gap: 30px;
+    padding: 0 7px 24px;
+  }
+
+  .rail-tv {
+    color: var(--text-faint);
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  .rail-tv strong {
+    margin-top: 6px;
+    color: var(--text-soft);
+    font-size: 0.78rem;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .portal-nav {
+    gap: 0;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .portal-nav button {
+    min-height: 52px;
+    gap: 12px;
+    border: 0;
+    border-bottom: 1px solid var(--border-subtle);
+    border-radius: 0;
+    padding: 13px 9px;
+    background: transparent;
+    color: var(--text-muted);
+    box-shadow: none;
+    font-size: 0.77rem;
+  }
+
+  .portal-nav button:hover {
+    background: var(--surface-1);
+    color: var(--text);
+  }
+
+  .portal-nav button.active {
+    border-color: var(--border-subtle);
+    background: var(--surface-1);
+    color: #fff;
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+
+  .portal-nav button.active .icon {
+    color: var(--accent);
+  }
+
+  .nav-dot {
+    display: none;
+  }
+
+  .rail-foot .health-pill {
+    min-height: 34px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: var(--surface-1);
+    color: var(--success);
+    font-size: 0.65rem;
+  }
+
+  .app-main {
+    padding: calc(40px + var(--safe-top)) calc(42px + var(--safe-right))
+      calc(42px + var(--safe-bottom)) calc(42px + var(--safe-left));
+  }
+
+  .page {
+    max-width: 1380px;
+  }
+
+  .mobile-context {
+    color: var(--text-faint);
+    font-size: 0.62rem;
+    font-weight: 760;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .page-head,
+  .portal-page-head {
+    margin-bottom: 28px;
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 0 0 20px;
+    background: transparent;
+  }
+
+  .page-head h1,
+  .portal-page-head h1 {
+    margin: 3px 0 8px;
+    font-size: var(--type-page);
+  }
+
+  .page-head p:last-child,
+  .portal-page-head p:last-child {
+    max-width: 720px;
+    margin: 0;
+    color: var(--text-muted);
+  }
+
+  /* Sign in and setup */
+  .auth-shell {
+    background: var(--canvas);
+  }
+
+  .auth-brand {
+    position: relative;
+    overflow: hidden;
+    background:
+      linear-gradient(145deg, rgb(12 7 16 / 48%), rgb(12 7 16 / 92%)),
+      url("/mabeltv-icon.png") center / cover;
+  }
+
+  .auth-brand::after {
+    position: absolute;
+    inset: 0;
+    border-right: 1px solid rgb(255 255 255 / 9%);
+    background: linear-gradient(180deg, transparent, rgb(0 0 0 / 34%));
+    content: "";
+    pointer-events: none;
+  }
+
+  .auth-brand > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .auth-brand h2 {
+    max-width: 620px;
+    color: #fff;
+    font-weight: 820;
+    letter-spacing: -0.06em;
+  }
+
+  .auth-brand p {
+    color: #c8c1cd;
+  }
+
+  .auth-panel {
+    background: #0b0a0d;
+  }
+
+  .step-list li::before {
+    border-radius: 0;
+  }
+
+  /* Home */
+  .home-intro {
+    grid-template-columns: minmax(0, 1.45fr) minmax(310px, 0.55fr);
+    gap: 16px;
+  }
+
+  .home-greeting {
+    position: relative;
+    min-height: 420px;
+    align-items: flex-end;
+    overflow: hidden;
+    border: 0;
+    border-radius: 0;
+    padding: clamp(28px, 5vw, 58px);
+    background: #151018;
+    color: #fff;
+    isolation: isolate;
+  }
+
+  .home-greeting::before {
+    position: absolute;
+    z-index: -2;
+    inset: -8%;
+    background: url("/mabeltv-icon.png") center 38% / cover no-repeat;
+    content: "";
+    filter: saturate(1.15);
+    transform: scale(1.04);
+  }
+
+  .home-greeting::after {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    background:
+      linear-gradient(90deg, rgb(7 5 9 / 92%) 0%, rgb(7 5 9 / 72%) 52%, rgb(7 5 9 / 18%) 100%),
+      linear-gradient(0deg, rgb(7 5 9 / 96%) 0%, transparent 60%);
+    content: "";
+  }
+
+  .home-greeting > div:first-child {
+    max-width: 720px;
+  }
+
+  .home-greeting h1 {
+    max-width: 660px;
+    margin: 7px 0 0;
+    color: #fff;
+    font-size: clamp(2.45rem, 5.6vw, 4.8rem);
+    font-weight: 830;
+    letter-spacing: -0.065em;
+  }
+
+  .home-now-playing {
+    max-width: 540px;
+    gap: 3px;
+    margin-top: 30px;
+    border: 0;
+    border-left: 3px solid var(--accent);
+    padding-left: 14px;
+  }
+
+  .home-now-playing-label {
+    color: #bdb5c0;
+    font-size: 0.63rem;
+    letter-spacing: 0.12em;
+  }
+
+  .home-now-playing strong {
+    color: #fff;
+    font-size: 1.08rem;
+  }
+
+  .home-now-playing-meta {
+    color: #bdb5c0;
+    font-size: 0.75rem;
+  }
+
+  .home-actions {
+    min-width: 196px;
+    gap: 9px;
+  }
+
+  .home-actions button {
+    min-height: 48px;
+    justify-content: flex-start;
+  }
+
+  .home-actions .secondary {
+    border-color: rgb(255 255 255 / 28%);
+    background: rgb(6 4 8 / 72%);
+    color: #fff;
+  }
+
+  .home-status {
+    align-content: start;
+    border-radius: 0;
+    padding: 26px;
+    background: var(--surface-1);
+  }
+
+  .status-icon {
+    border-radius: 3px;
+    background: var(--success-soft);
+    color: var(--success);
+  }
+
+  .health-summary {
+    border-bottom: 1px solid var(--border-subtle);
+    margin: 16px 0 0;
+    padding-bottom: 18px;
+  }
+
+  .quick-stats {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    margin: 0 0 18px;
+  }
+
+  .quick-stat {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border: 0;
+    border-bottom: 1px solid var(--border-subtle);
+    border-radius: 0;
+    padding: 13px 0;
+    background: transparent;
+  }
+
+  .quick-stat span,
+  .quick-stat strong {
+    margin: 0;
+    font-size: 0.75rem;
+  }
+
+  .quick-stat strong {
+    color: var(--text);
+    text-align: right;
+  }
+
+  .attention {
+    border-radius: 0;
+  }
+}
+
