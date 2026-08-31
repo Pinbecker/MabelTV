@@ -539,7 +539,28 @@ int main(int argc, char *argv[])
                                                                   Q_ARG(QVariant, object.value(
                                                                       QStringLiteral("channel")).toInt()),
                                                                   Q_ARG(QVariant, object.value(
-                                                                      QStringLiteral("file")).toString()));
+                                                                      QStringLiteral("file")).toString()),
+                                                                  Q_ARG(QVariant, object.value(
+                                                                      QStringLiteral("position")).toDouble(0.0)));
+                                                              socket->disconnectFromServer();
+                                                              return;
+                                                          }
+                                                          if (request.isObject()
+                                                              && object.value(QStringLiteral("command")).toString()
+                                                                  == QStringLiteral("save-channel-film-position")) {
+                                                              QMetaObject::invokeMethod(
+                                                                  rootObject,
+                                                                  "portalSetChannelFilmPosition",
+                                                                  Qt::QueuedConnection,
+                                                                  Q_ARG(QVariant, object.value(
+                                                                      QStringLiteral("channel")).toInt()),
+                                                                  Q_ARG(QVariant, object.value(
+                                                                      QStringLiteral("file")).toString()),
+                                                                  Q_ARG(QVariant, object.value(
+                                                                      QStringLiteral("position")).toDouble(0.0)),
+                                                                  Q_ARG(QVariant, object.value(
+                                                                      QStringLiteral("duration")).toDouble(0.0)));
+                                                              socket->write("ok\n");
                                                               socket->disconnectFromServer();
                                                               return;
                                                           }

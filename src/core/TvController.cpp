@@ -90,14 +90,63 @@ TvController::TvController(QObject *parent)
                     }
                     return;
                 }
-                emit stopPlaybackRequested();
+                const bool wasStarted = m_started;
+                const bool wasPaused = m_playbackPaused;
+                QString activeProgrammePath;
+                if (m_currentChannelIndex >= 0 && m_currentChannelIndex < m_channels.size()) {
+                    const ChannelRuntime &active = m_channels[m_currentChannelIndex];
+                    if (active.currentEpisode >= 0
+                        && active.currentEpisode < active.channel.episodes.size()) {
+                        activeProgrammePath = QFileInfo(
+                            active.channel.episodes[active.currentEpisode].path).absoluteFilePath();
+                    }
+                }
                 saveState();
-                loadSettings(m_settingsPath);
+                loadSettings(m_settingsPath, true);
                 const bool loaded = applyLibrary(std::move(library));
                 setParentMessage(loaded ? QStringLiteral("Channel library reloaded")
                                         : m_libraryStatus);
                 if (loaded) {
-                    start();
+                    int preservedChannel = -1;
+                    int preservedEpisode = -1;
+                    if (wasStarted && !m_standby && !activeProgrammePath.isEmpty()) {
+                        for (int channelIndex = 0;
+                             channelIndex < m_channels.size() && preservedChannel < 0;
+                             ++channelIndex) {
+                            const ChannelRuntime &candidate = m_channels[channelIndex];
+                            for (int episodeIndex = 0;
+                                 episodeIndex < candidate.channel.episodes.size();
+                                 ++episodeIndex) {
+                                if (QFileInfo(candidate.channel.episodes[episodeIndex].path)
+                                        .absoluteFilePath() == activeProgrammePath) {
+                                    preservedChannel = channelIndex;
+                                    preservedEpisode = episodeIndex;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (preservedChannel >= 0) {
+                        m_currentChannelIndex = preservedChannel;
+                        m_channels[preservedChannel].currentEpisode = preservedEpisode;
+                        m_started = true;
+                        m_playbackPaused = wasPaused;
+                        setNoSignal(false);
+                        setTuning(false);
+                        emit channelChanged();
+                        saveState();
+                        qInfo() << "Library refreshed without interrupting the active programme";
+                    } else if (wasStarted && m_standby) {
+                        // The decoder is already stopped in standby. Keep the
+                        // controller started without producing a tuning flash.
+                        m_started = true;
+                    } else if (wasStarted) {
+                        // The active file really disappeared (for example it
+                        // was moved to the bin), so selecting a valid item is
+                        // the only safe recovery.
+                        start();
+                    }
                 }
                 if (m_libraryReloadRequested) {
                     m_libraryReloadRequested = false;
@@ -762,6 +811,18 @@ void TvController::updatePlaybackPosition(double positionSeconds, bool paused)
     if (runtime.currentEpisode >= 0
         && runtime.currentEpisode < runtime.programmePositions.size()) {
         runtime.programmePositions[runtime.currentEpisode] = runtime.anchorPositionSeconds;
+        if (runtime.channel.contentType == QStringLiteral("films")) {
+            const Episode &episode = runtime.channel.episodes[runtime.currentEpisode];
+            const QString key = QStringLiteral("%1/%2")
+                                    .arg(runtime.channel.number)
+                                    .arg(QFileInfo(episode.path).fileName());
+            m_channelFilmPlaybackPositions.insert(key, runtime.anchorPositionSeconds);
+            if (episode.durationSeconds >= 10.0) {
+                m_channelFilmPlaybackDurations.insert(key, episode.durationSeconds);
+            }
+            m_channelFilmPlaybackUpdatedUtcMs.insert(
+                key, QDateTime::currentMSecsSinceEpoch());
+        }
     }
     m_playbackPaused = paused;
     saveState();
@@ -1127,7 +1188,9 @@ void TvController::setTvControl(CecTvControl *tvControl)
     m_tvControl = tvControl;
 }
 
-void TvController::playPortalProgramme(int channelNumber, const QString &fileName)
+void TvController::playPortalProgramme(int channelNumber,
+                                       const QString &fileName,
+                                       double positionSeconds)
 {
     // This is an explicit, parent-authenticated portal choice. It may start a
     // hidden programme, but it never accepts an arbitrary path: the filename
@@ -1164,8 +1227,11 @@ void TvController::playPortalProgramme(int channelNumber, const QString &fileNam
     m_currentChannelIndex = channelIndex;
     target.currentEpisode = episodeIndex;
     target.anchorMilliseconds = m_broadcastClock.elapsed();
-    target.anchorPositionSeconds = 0.0;
-    target.programmePositions[episodeIndex] = 0.0;
+    const double startPosition = target.channel.contentType == QStringLiteral("films")
+        ? clampPlaybackPosition(target, episodeIndex, positionSeconds)
+        : 0.0;
+    target.anchorPositionSeconds = startPosition;
+    target.programmePositions[episodeIndex] = startPosition;
     m_playbackPaused = false;
     emit channelChanged();
     if (changingChannel) {
@@ -1175,6 +1241,44 @@ void TvController::playPortalProgramme(int channelNumber, const QString &fileNam
     setNoSignal(false);
     setTuning(true);
     m_tuningTimer.start();
+    saveState();
+}
+
+void TvController::setChannelFilmPlaybackState(int channelNumber,
+                                               const QString &fileName,
+                                               double positionSeconds,
+                                               double durationSeconds)
+{
+    if (fileName.isEmpty() || !std::isfinite(positionSeconds)
+        || !std::isfinite(durationSeconds)) {
+        return;
+    }
+    const int channelIndex = findChannelByNumber(channelNumber, true);
+    if (channelIndex < 0
+        || m_channels[channelIndex].channel.contentType != QStringLiteral("films")) {
+        return;
+    }
+    const ChannelRuntime &runtime = m_channels[channelIndex];
+    const bool knownFilm = std::any_of(
+        runtime.channel.episodes.cbegin(), runtime.channel.episodes.cend(),
+        [&fileName](const Episode &episode) {
+            return QFileInfo(episode.path).fileName() == fileName;
+        });
+    if (!knownFilm) {
+        return;
+    }
+
+    const QString key = QStringLiteral("%1/%2").arg(channelNumber).arg(fileName);
+    const double position = std::max(0.0, positionSeconds);
+    if (position < 2.0) {
+        m_channelFilmPlaybackPositions.remove(key);
+    } else {
+        m_channelFilmPlaybackPositions.insert(key, position);
+    }
+    if (durationSeconds >= 10.0) {
+        m_channelFilmPlaybackDurations.insert(key, durationSeconds);
+    }
+    m_channelFilmPlaybackUpdatedUtcMs.insert(key, QDateTime::currentMSecsSinceEpoch());
     saveState();
 }
 
@@ -1348,7 +1452,7 @@ void TvController::requestParentCommand(const QString &command)
     }
 }
 
-void TvController::loadSettings(const QString &settingsPath)
+void TvController::loadSettings(const QString &settingsPath, bool preserveRuntimeVolume)
 {
     m_settingsRoot = QJsonObject{};
     m_disabledChannelNumbers.clear();
@@ -1395,9 +1499,11 @@ void TvController::loadSettings(const QString &settingsPath)
         emit tvGuideEnabledChanged();
     }
     const QJsonObject volumeSettings = m_settingsRoot.value(QStringLiteral("volume")).toObject();
-    m_volume = std::clamp(volumeSettings.value(QStringLiteral("initial")).toInt(20), 0, 100);
+    const int configuredInitialVolume = std::clamp(
+        volumeSettings.value(QStringLiteral("initial")).toInt(20), 0, 100);
     m_maximumVolume = std::clamp(volumeSettings.value(QStringLiteral("maximum")).toInt(60), 0, 100);
     m_volumeLimitEnabled = volumeSettings.value(QStringLiteral("limit_enabled")).toBool(true);
+    m_volume = preserveRuntimeVolume ? previousVolume : configuredInitialVolume;
     m_volume = std::min(m_volume, maximumVolume());
 
     const QString playbackMode = m_settingsRoot.value(QStringLiteral("playback_mode"))
@@ -1665,6 +1771,36 @@ void TvController::loadState()
             m_adultPlaybackDurations.insert(iterator.key(), duration);
         }
     }
+    const QJsonObject channelFilmPositions =
+        object.value(QStringLiteral("channel_film_positions")).toObject();
+    m_channelFilmPlaybackPositions.clear();
+    for (auto iterator = channelFilmPositions.constBegin();
+         iterator != channelFilmPositions.constEnd(); ++iterator) {
+        const double position = iterator.value().toDouble(0.0);
+        if (!iterator.key().isEmpty() && std::isfinite(position) && position >= 2.0) {
+            m_channelFilmPlaybackPositions.insert(iterator.key(), position);
+        }
+    }
+    const QJsonObject channelFilmDurations =
+        object.value(QStringLiteral("channel_film_durations")).toObject();
+    m_channelFilmPlaybackDurations.clear();
+    for (auto iterator = channelFilmDurations.constBegin();
+         iterator != channelFilmDurations.constEnd(); ++iterator) {
+        const double duration = iterator.value().toDouble(0.0);
+        if (!iterator.key().isEmpty() && std::isfinite(duration) && duration >= 10.0) {
+            m_channelFilmPlaybackDurations.insert(iterator.key(), duration);
+        }
+    }
+    const QJsonObject channelFilmUpdates =
+        object.value(QStringLiteral("channel_film_position_updated_utc_ms")).toObject();
+    m_channelFilmPlaybackUpdatedUtcMs.clear();
+    for (auto iterator = channelFilmUpdates.constBegin();
+         iterator != channelFilmUpdates.constEnd(); ++iterator) {
+        const qint64 updated = static_cast<qint64>(iterator.value().toDouble(0.0));
+        if (updated > 0) {
+            m_channelFilmPlaybackUpdatedUtcMs.insert(iterator.key(), updated);
+        }
+    }
     const QJsonObject timelines = object.value(QStringLiteral("channel_timelines")).toObject();
 
     for (ChannelRuntime &runtime : m_channels) {
@@ -1781,6 +1917,28 @@ void TvController::saveState() const
         adultDurations.insert(iterator.key(), iterator.value());
     }
     object.insert(QStringLiteral("adult_durations"), adultDurations);
+
+    QJsonObject channelFilmPositions;
+    for (auto iterator = m_channelFilmPlaybackPositions.constBegin();
+         iterator != m_channelFilmPlaybackPositions.constEnd(); ++iterator) {
+        channelFilmPositions.insert(iterator.key(), iterator.value());
+    }
+    object.insert(QStringLiteral("channel_film_positions"), channelFilmPositions);
+
+    QJsonObject channelFilmDurations;
+    for (auto iterator = m_channelFilmPlaybackDurations.constBegin();
+         iterator != m_channelFilmPlaybackDurations.constEnd(); ++iterator) {
+        channelFilmDurations.insert(iterator.key(), iterator.value());
+    }
+    object.insert(QStringLiteral("channel_film_durations"), channelFilmDurations);
+
+    QJsonObject channelFilmUpdates;
+    for (auto iterator = m_channelFilmPlaybackUpdatedUtcMs.constBegin();
+         iterator != m_channelFilmPlaybackUpdatedUtcMs.constEnd(); ++iterator) {
+        channelFilmUpdates.insert(iterator.key(), static_cast<double>(iterator.value()));
+    }
+    object.insert(QStringLiteral("channel_film_position_updated_utc_ms"),
+                  channelFilmUpdates);
 
     QJsonObject timelines;
     const qint64 elapsedNow = m_broadcastClock.isValid() ? m_broadcastClock.elapsed() : 0;

@@ -86,7 +86,7 @@ INDEX = r"""<!doctype html>
 </style></head><body><main>
 <section id="login" class="card"><h1>Mabel TV<br>Library</h1><p>Put new programmes onto Mabel TV from this phone or computer.</p><form id="loginForm" class="row"><input id="pin" class="grow" inputmode="numeric" autocomplete="current-password" type="password" placeholder="Parent PIN" required><button>Open library</button></form><p id="loginError" class="danger"></p></section>
 <section id="app" class="hidden"><div class="card"><div class="row"><div class="grow"><h1>Mabel TV<br>Library</h1><span id="storage" class="muted"></span></div><button id="refresh" class="plain">Refresh TV library</button><button id="logout" class="plain">Lock</button></div><p id="notice"></p></div>
-<section class="card"><h2>Add something new</h2><p class="muted">Choose its channel and a video. Large phone videos are automatically optimised to 720p for smooth Mabel TV playback; the final step can take a little longer. Uploads resume safely if the connection drops.</p><form id="uploadForm" class="upload-form"><select id="channel" required></select><input id="file" type="file" accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg" required><button>Upload &amp; publish</button></form><div id="uploadState" class="hidden"><p id="uploadText"></p><progress id="progress" max="1" value="0"></progress></div></section>
+<section class="card"><h2>Add something new</h2><p class="muted">Choose its channel and a video. Mabel TV checks the file, then publishes the original straight to that channel. Uploads resume safely if the connection drops.</p><form id="uploadForm" class="upload-form"><select id="channel" required></select><input id="file" type="file" accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg" required><button>Upload &amp; publish</button></form><div id="uploadState" class="hidden"><p id="uploadText"></p><progress id="progress" max="1" value="0"></progress></div></section>
 <section class="card"><h2>Channels &amp; programmes</h2><div class="channel-toolbar"><label>Show channel<select id="manageChannel"></select></label><span id="channelSummary" class="muted"></span></div><div id="channels"></div></section>
 <section class="card"><h2>Recycle bin</h2><p class="muted">Deleted programmes are kept here until permanently removed.</p><div id="bin"></div></section></section>
 </main><script>
@@ -102,7 +102,7 @@ $('#loginForm').onsubmit=async e=>{e.preventDefault();try{await api('/api/login'
 $('#logout').onclick=async()=>{await api('/api/logout',{method:'POST'});location.reload()}; $('#refresh').onclick=()=>manage('refresh'); $('#manageChannel').onchange=e=>{selectedManageChannel=Number(e.target.value);render()};
 function uploadChunk(id,offset,part,finalChunk=false){return new Promise((resolve,reject)=>{let request=new XMLHttpRequest();request.open('PATCH','/api/uploads/'+id,true);request.withCredentials=true;request.timeout=finalChunk?2700000:30000;request.setRequestHeader('Upload-Offset',String(offset));request.setRequestHeader('Content-Type','application/offset+octet-stream');request.onload=()=>{let body={};try{body=JSON.parse(request.responseText)}catch(_){}if(request.status<200||request.status>=300){reject(new Error(body.error||'Upload failed'));return}resolve(body)};request.onerror=()=>reject(new Error('The connection to Mabel TV was lost'));request.ontimeout=()=>reject(new Error(finalChunk?'Optimising took too long. Choose the same file to resume.':'The phone did not receive this chunk response'));request.send(part)})}
 async function resilientUploadChunk(id,offset,part,finalChunk=false){try{return await uploadChunk(id,offset,part,finalChunk)}catch(error){if(finalChunk)throw error;let saved=await api('/api/uploads/'+id);if(Number.isFinite(saved.offset)&&saved.offset>offset)return saved;throw error}}
-$('#uploadForm').onsubmit=async e=>{e.preventDefault();let f=$('#file').files[0];if(!f)return;let channel=Number($('#channel').value),finalResult={};$('#uploadState').classList.remove('hidden');$('#progress').max=f.size;$('#progress').value=0;try{notice('Preparing upload…');let created=await api('/api/uploads',{method:'POST',body:JSON.stringify({channel,file_name:f.name,size:f.size})});let offset=created.offset||0;while(offset<f.size){let part=f.slice(offset,Math.min(offset+8388608,f.size)),finalChunk=offset+part.size>=f.size;if(finalChunk)$('#uploadText').textContent='Uploading final chunk, then optimising for smooth Mabel TV playback…';finalResult=await resilientUploadChunk(created.id,offset,part,finalChunk);offset=finalResult.offset;$('#progress').value=offset;if(!finalChunk)$('#uploadText').textContent=`Uploading ${(offset/1048576).toFixed(0)} MB of ${(f.size/1048576).toFixed(0)} MB…`}selectedManageChannel=channel;await load(channel);$('#file').value='';$('#progress').value=0;$('#uploadText').textContent='';$('#uploadState').classList.add('hidden');notice(finalResult.refreshed?`Published${finalResult.optimised?' and optimised':''} to CH ${channel}. Choose another video to upload.`:`Published to CH ${channel}. The TV library refresh is still running.`)}catch(e){notice(e.message,true);$('#uploadText').textContent='Upload paused. Choose the same file and upload again to resume.'}}
+$('#uploadForm').onsubmit=async e=>{e.preventDefault();let f=$('#file').files[0];if(!f)return;let channel=Number($('#channel').value),finalResult={};$('#uploadState').classList.remove('hidden');$('#progress').max=f.size;$('#progress').value=0;try{notice('Preparing upload…');let created=await api('/api/uploads',{method:'POST',body:JSON.stringify({channel,file_name:f.name,size:f.size})});let offset=created.offset||0;while(offset<f.size){let part=f.slice(offset,Math.min(offset+8388608,f.size)),finalChunk=offset+part.size>=f.size;if(finalChunk)$('#uploadText').textContent='Uploading final chunk, then publishing the original video…';finalResult=await resilientUploadChunk(created.id,offset,part,finalChunk);offset=finalResult.offset;$('#progress').value=offset;if(!finalChunk)$('#uploadText').textContent=`Uploading ${(offset/1048576).toFixed(0)} MB of ${(f.size/1048576).toFixed(0)} MB…`}selectedManageChannel=channel;await load(channel);$('#file').value='';$('#progress').value=0;$('#uploadText').textContent='';$('#uploadState').classList.add('hidden');notice(finalResult.refreshed?`Published to CH ${channel} and available now. Choose another video to upload.`:`Published to CH ${channel}. The TV library refresh is still running.`)}catch(e){notice(e.message,true);$('#uploadText').textContent='Upload paused. Choose the same file and upload again to resume.'}}
 </script></body></html>"""
 
 
@@ -787,11 +787,27 @@ class Library:
                 metadata["updated"] = time.time()
                 metadata.pop("error", None)
                 self.write_json(self.incoming / f"{upload_id}.json", metadata)
-                stream = self.video_info(part)
-                conversion_required = False if adult_upload else self.needs_playback_optimisation(
-                    Path(source_name), stream)
-                metadata["conversion_required"] = bool(conversion_required)
+                self.video_info(part)
+                # Channel uploads are published exactly as supplied. Automatic
+                # optimisation made successful uploads look stuck and delayed
+                # films and episodes appearing in their chosen channel.
+                conversion_required = False
+                metadata["conversion_required"] = False
                 previous_status = "validated"
+
+            if conversion_required and not adult_upload:
+                legacy_destination = original_destination.with_suffix(".mp4")
+                legacy_published = (legacy_destination.is_file()
+                                    and previous_status in {
+                                        "processing", "publishing", "finalising", "error"
+                                    })
+                if not legacy_published:
+                    # Resume old queued uploads under the new direct-publish
+                    # policy instead of sending them back through the encoder.
+                    conversion_required = False
+                    metadata["conversion_required"] = False
+                    metadata["updated"] = time.time()
+                    self.write_json(self.incoming / f"{upload_id}.json", metadata)
 
             destination = original_destination.with_suffix(".mp4") \
                 if conversion_required else original_destination
@@ -1260,6 +1276,38 @@ class Library:
     def channel_programme_key(channel_number: int, file_name: str) -> str:
         return f"{int(channel_number)}/{file_name}"
 
+    def channel_film_resume_state(self, channel_number: int,
+                                  file_name: str) -> dict[str, float]:
+        """Return the shared TV/browser bookmark for a film-channel item."""
+        key = self.channel_programme_key(channel_number, file_name)
+        state = self.read_json(self.player_state_path, {})
+        if not isinstance(state, dict):
+            state = {}
+        positions = state.get("channel_film_positions", {})
+        durations = state.get("channel_film_durations", {})
+        updates = state.get("channel_film_position_updated_utc_ms", {})
+        try:
+            position = float(positions.get(key, 0) or 0) \
+                if isinstance(positions, dict) else 0.0
+        except (TypeError, ValueError):
+            position = 0.0
+        try:
+            duration = float(durations.get(key, 0) or 0) \
+                if isinstance(durations, dict) else 0.0
+        except (TypeError, ValueError):
+            duration = 0.0
+        try:
+            updated = float(updates.get(key, 0) or 0) / 1000.0 \
+                if isinstance(updates, dict) else 0.0
+        except (TypeError, ValueError):
+            updated = 0.0
+        return {
+            "position": self.normalise_resume_position(max(0.0, position),
+                                                       max(0.0, duration)),
+            "duration": max(0.0, duration),
+            "updated": max(0.0, updated),
+        }
+
     def write_adult_media_states(self, values: dict[str, dict[str, Any]]) -> None:
         self.write_json(self.adult_metadata_path, values)
 
@@ -1324,6 +1372,7 @@ class Library:
                     "playback_message": state.get("message", ""),
                     "metadata": state.get("metadata", {})
                     if isinstance(state.get("metadata"), dict) else {},
+                    "favourite": state.get("favourite") is True,
                     "browser_ready": item.suffix.lower() in REMOTE_BROWSER_EXTENSIONS,
                     "remote_position": self.remote_resume_position(state["library_id"], state),
                     "remote_duration": self.remote_resume_duration(
@@ -1483,6 +1532,12 @@ class Library:
             source = self.safe_media_path(channel, str(payload.get("file", "")))
             if not source.is_file():
                 raise ValueError("That Mabel TV programme is no longer in the library")
+            if self.channel_content_type(channel) == "films":
+                channel_number = int(channel["number"])
+                resume = self.channel_film_resume_state(channel_number, source.name)
+                return (kind, source, self.display_name(source.name),
+                        self.channel_programme_key(channel_number, source.name),
+                        resume["position"])
             return kind, source, self.display_name(source.name), None, 0
         if kind == "usb":
             source = self.usb_resolve(
@@ -1728,6 +1783,11 @@ class Library:
 
     def start_remote_stream(self, payload: dict[str, Any]) -> dict[str, Any]:
         kind, source, title, library_id, resume = self.remote_source(payload)
+        if "position" in payload:
+            try:
+                resume = max(0.0, float(payload.get("position", 0)))
+            except (TypeError, ValueError) as error:
+                raise ValueError("That playback position is not valid") from error
         if not self.remote_browser_ready(source):
             raise ValueError("This file is not browser-ready. Use an MP4 or M4V version for remote viewing.")
         settings = self.remote_settings()
@@ -1742,6 +1802,11 @@ class Library:
             self.remote_stream = {"token": token, "kind": kind, "source": source,
                                   "title": title, "library_id": library_id,
                                   "expires": time.time() + REMOTE_SESSION_SECONDS}
+            if kind == "channel" and library_id:
+                channel_key, file_name = library_id.split("/", 1)
+                self.remote_stream.update({
+                    "channel": int(channel_key), "file": file_name,
+                })
         base = urlencode({"stream": token})
         subtitle_url = None
         if kind == "adult":
@@ -1749,7 +1814,8 @@ class Library:
                                 if path.suffix.lower() in {".vtt", ".srt"}]
             if browser_sidecars:
                 subtitle_url = f"/api/remote/subtitles?{base}"
-        return {"ok": True, "title": title, "kind": kind, "resume_position": resume,
+        return {"ok": True, "title": title, "kind": kind,
+                "resume_enabled": bool(library_id), "resume_position": resume,
                 "stream_url": f"/api/remote/media?{base}",
                 # The browser attaches this only after the video itself has
                 # reached canplay. That keeps iOS source negotiation isolated
@@ -1790,13 +1856,35 @@ class Library:
 
     def remote_save_position(self, payload: dict[str, Any]) -> dict[str, Any]:
         session = self.remote_session(str(payload.get("stream", "")))
-        if session["kind"] != "adult" or not session.get("library_id"):
+        if not session.get("library_id"):
             return {"ok": True}
         try:
             position = max(0.0, float(payload.get("position", 0)))
             duration = max(0.0, float(payload.get("duration", 0)))
         except (TypeError, ValueError) as error:
             raise ValueError("That playback position is not valid") from error
+        if session["kind"] == "channel":
+            command = {
+                "command": "save-channel-film-position",
+                "channel": int(session["channel"]),
+                "file": str(session["file"]),
+                "position": self.normalise_resume_position(position, duration),
+                "duration": duration,
+            }
+            try:
+                with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+                    client.settimeout(2)
+                    client.connect("/run/mabeltv/portal-control.sock")
+                    client.sendall((json.dumps(command, separators=(",", ":"))
+                                    + "\n").encode())
+                    reply = client.recv(32).decode(errors="replace").strip()
+            except OSError as error:
+                raise ValueError("Mabel TV could not save that film position") from error
+            if reply != "ok":
+                raise ValueError("Mabel TV could not save that film position")
+            return {"ok": True}
+        if session["kind"] != "adult":
+            return {"ok": True}
         with self.config_lock:
             states = self.adult_media_states()
             relative = self.adult_relative_path(session["source"])
@@ -1851,6 +1939,57 @@ class Library:
             states[relative] = state
             self.write_adult_media_states(states)
         return {"ok": True}
+
+    def set_favourite(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Persist a portal-only film favourite without refreshing the TV player."""
+        enabled = payload.get("enabled")
+        if not isinstance(enabled, bool):
+            raise ValueError("Choose whether this film is a favourite")
+        kind = str(payload.get("kind", ""))
+        if kind == "adult":
+            source = self.safe_adult_path(str(payload.get("file", "")))
+            if not source.is_file():
+                raise ValueError("That Adult film is no longer in the library")
+            relative = self.adult_relative_path(source)
+            with self.config_lock:
+                states = self.adult_media_states()
+                state = states.get(relative, {})
+                if not isinstance(state, dict):
+                    state = {}
+                if not state.get("library_id"):
+                    state["library_id"] = uuid.uuid4().hex
+                state["favourite"] = enabled
+                states[relative] = state
+                self.write_adult_media_states(states)
+            return {"ok": True, "kind": kind, "file": relative,
+                    "favourite": enabled}
+        if kind == "channel":
+            try:
+                channel = self.channel(int(payload.get("channel", 0)))
+            except (TypeError, ValueError):
+                raise ValueError("Choose a valid Mabel TV film") from None
+            if self.channel_content_type(channel) != "films":
+                raise ValueError("Only Mabel TV films can be favourites")
+            source = self.safe_media_path(channel, str(payload.get("file", "")))
+            if not source.is_file():
+                raise ValueError("That Mabel TV film is no longer in the library")
+            key = self.channel_programme_key(int(channel["number"]), source.name)
+            with self.config_lock:
+                states = self.channel_media_states()
+                stored_favourites = states.get("favourites", [])
+                favourites = set(stored_favourites) \
+                    if isinstance(stored_favourites, list) else set()
+                if enabled:
+                    favourites.add(key)
+                else:
+                    favourites.discard(key)
+                states.update({"favourites": sorted(favourites),
+                               "updated": time.time()})
+                self.write_channel_media_states(states)
+            return {"ok": True, "kind": kind,
+                    "channel": int(channel["number"]), "file": source.name,
+                    "favourite": enabled}
+        raise ValueError("Choose an Adult TV or Mabel TV film")
 
     def remote_subtitles(self, token: str) -> bytes:
         session = self.remote_session(token)
@@ -2486,6 +2625,12 @@ class Library:
     @staticmethod
     def tmdb_title_query(value: str) -> tuple[str, int | None]:
         title = re.sub(r"[._]+", " ", str(value or "")).strip()
+        # get_iplayer output names can end in a BBC PID plus a quality label.
+        # Neither is part of the film title and both make an otherwise exact
+        # TMDB search much less reliable.
+        title = re.sub(
+            r"\s*-\s*[a-z][a-z0-9]{7}\s+(?:original|technical)\s*$",
+            "", title, flags=re.IGNORECASE).strip()
         title = re.sub(
             r"\b(?:1080p|720p|2160p|bluray|web[- ]?dl|x26[45]|hevc)\b.*$",
             "", title, flags=re.IGNORECASE).strip()
@@ -2494,6 +2639,56 @@ class Library:
         if year:
             title = title.replace(str(year), "").strip(" .-()[]")
         return title, year
+
+    def channel_film_search(self, item: Path) -> tuple[str, list[dict[str, Any]]]:
+        """Return selectable TMDB matches for one MabelTV film."""
+        title, year = self.tmdb_title_query(self.display_name(item.name))
+        parameters: dict[str, Any] = {
+            "query": title, "include_adult": "false", "language": "en-GB",
+        }
+        if year:
+            parameters["year"] = year
+        response = self.tmdb_request("search/movie", parameters)
+        matches = response.get("results", []) if isinstance(response, dict) else []
+        results = []
+        for value in matches[:12]:
+            if not isinstance(value, dict) or not value.get("id"):
+                continue
+            results.append({
+                "id": int(value["id"]),
+                "title": str(value.get("title", "")),
+                "original_title": str(value.get("original_title", "")),
+                "year": str(value.get("release_date", ""))[:4],
+                "overview": str(value.get("overview", "")),
+                "poster_path": str(value.get("poster_path") or ""),
+            })
+        return title, results
+
+    def channel_film_metadata_for_id(
+            self, channel: dict[str, Any], item: Path, tmdb_id: int) -> dict[str, Any]:
+        """Cache one explicitly selected TMDB match for a MabelTV film."""
+        number = int(channel["number"])
+        details = self.tmdb_request(f"movie/{tmdb_id}", {"language": "en-GB"})
+        poster_name = self.cache_channel_artwork(
+            str(details.get("poster_path") or ""),
+            f"mabel-film-{number}-{tmdb_id}.jpg")
+        return {
+            "tmdb_id": tmdb_id,
+            "title": str(details.get("title") or self.display_name(item.name)),
+            "overview": str(details.get("overview") or ""),
+            "year": str(details.get("release_date") or "")[:4],
+            "poster": poster_name,
+            "updated": time.time(), "provider": "TMDB",
+        }
+
+    def channel_film_metadata(self, channel: dict[str, Any], item: Path) -> dict[str, Any] | None:
+        """Find and cache the best automatic TMDB match for a bulk refresh."""
+        _, matches = self.channel_film_search(item)
+        match = next((value for value in matches if value.get("id")), None)
+        if not isinstance(match, dict):
+            return None
+        tmdb_id = int(match["id"])
+        return self.channel_film_metadata_for_id(channel, item, tmdb_id)
 
     def cache_channel_artwork(self, remote_path: str, file_name: str,
                               *, backdrop: bool = False) -> str:
@@ -2514,6 +2709,74 @@ class Library:
         except (HTTPError, URLError, TimeoutError, OSError):
             return ""
 
+    def channel_show_search(self, channel: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
+        """Return parent-selectable TMDB matches for one series channel."""
+        query = str(channel.get("name", "")).strip()
+        response = self.tmdb_request("search/tv", {
+            "query": query, "include_adult": "false", "language": "en-GB",
+        })
+        matches = response.get("results", []) if isinstance(response, dict) else []
+        results = []
+        for value in matches[:12]:
+            if not isinstance(value, dict) or not value.get("id"):
+                continue
+            results.append({
+                "id": int(value["id"]),
+                "title": str(value.get("name", "")),
+                "original_title": str(value.get("original_name", "")),
+                "year": str(value.get("first_air_date", ""))[:4],
+                "overview": str(value.get("overview", "")),
+                "poster_path": str(value.get("poster_path") or ""),
+            })
+        return query, results
+
+    def channel_show_metadata_for_id(
+            self, channel: dict[str, Any], tmdb_id: int) -> dict[str, Any]:
+        """Cache one explicitly selected TMDB match for a series channel."""
+        number = int(channel["number"])
+        details = self.tmdb_request(f"tv/{tmdb_id}", {"language": "en-GB"})
+        remote_art = str(details.get("backdrop_path") or details.get("poster_path") or "")
+        art_name = self.cache_channel_artwork(
+            remote_art, f"mabel-show-{number}-{tmdb_id}.jpg",
+            backdrop=bool(details.get("backdrop_path")))
+        return {
+            "tmdb_id": tmdb_id,
+            "title": str(details.get("name") or channel.get("name", "")),
+            "overview": str(details.get("overview") or ""),
+            "year": str(details.get("first_air_date") or "")[:4],
+            "artwork": art_name,
+            "updated": time.time(), "provider": "TMDB",
+        }
+
+    def refresh_channel_show_metadata(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Search or apply a parent-selected match for one series channel."""
+        try:
+            channel = self.channel(int(payload.get("channel", 0)))
+        except (TypeError, ValueError):
+            raise ValueError("Choose a valid show channel") from None
+        if self.channel_content_type(channel) != "shows":
+            raise ValueError("Channel metadata is only available for show channels")
+        try:
+            tmdb_id = int(payload.get("tmdb_id", 0))
+        except (TypeError, ValueError):
+            raise ValueError("Choose a TMDB match") from None
+        if tmdb_id <= 0:
+            query, results = self.channel_show_search(channel)
+            return {"ok": True, "channel": int(channel["number"]),
+                    "query": query, "results": results}
+
+        metadata = self.channel_show_metadata_for_id(channel, tmdb_id)
+        with self.config_lock:
+            states = self.channel_media_states()
+            channels = states.get("channels", {})
+            if not isinstance(channels, dict):
+                channels = {}
+            channels[str(channel["number"])] = metadata
+            states.update({"channels": channels, "updated": time.time()})
+            self.write_channel_media_states(states)
+        return {"ok": True, "channel": int(channel["number"]),
+                "metadata": metadata}
+
     def refresh_channel_metadata(self) -> dict[str, Any]:
         """Cache one show image per series channel and posters for film channels."""
         states = self.channel_media_states()
@@ -2529,30 +2792,14 @@ class Library:
             number = int(channel["number"])
             content_type = self.channel_content_type(channel)
             if content_type != "films":
-                response = self.tmdb_request("search/tv", {
-                    "query": str(channel.get("name", "")),
-                    "include_adult": "false", "language": "en-GB",
-                })
-                matches = response.get("results", []) if isinstance(response, dict) else []
-                match = next((value for value in matches
-                              if isinstance(value, dict) and value.get("id")), None)
+                _, matches = self.channel_show_search(channel)
+                match = next((value for value in matches if value.get("id")), None)
                 if not isinstance(match, dict):
                     skipped += 1
                     continue
                 tmdb_id = int(match["id"])
-                details = self.tmdb_request(f"tv/{tmdb_id}", {"language": "en-GB"})
-                remote_art = str(details.get("backdrop_path") or details.get("poster_path") or "")
-                art_name = self.cache_channel_artwork(
-                    remote_art, f"mabel-show-{number}-{tmdb_id}.jpg",
-                    backdrop=bool(details.get("backdrop_path")))
-                channels_state[str(number)] = {
-                    "tmdb_id": tmdb_id,
-                    "title": str(details.get("name") or channel.get("name", "")),
-                    "overview": str(details.get("overview") or ""),
-                    "year": str(details.get("first_air_date") or "")[:4],
-                    "artwork": art_name,
-                    "updated": time.time(), "provider": "TMDB",
-                }
+                channels_state[str(number)] = self.channel_show_metadata_for_id(
+                    channel, tmdb_id)
                 updated += 1
                 continue
 
@@ -2562,37 +2809,48 @@ class Library:
                  and item.suffix.lower() in SUPPORTED_EXTENSIONS),
                 key=lambda path: path.name.casefold()) if folder.is_dir() else []
             for item in candidates:
-                title, year = self.tmdb_title_query(self.display_name(item.name))
-                parameters: dict[str, Any] = {
-                    "query": title, "include_adult": "false", "language": "en-GB",
-                }
-                if year:
-                    parameters["year"] = year
-                response = self.tmdb_request("search/movie", parameters)
-                matches = response.get("results", []) if isinstance(response, dict) else []
-                match = next((value for value in matches
-                              if isinstance(value, dict) and value.get("id")), None)
-                if not isinstance(match, dict):
+                metadata = self.channel_film_metadata(channel, item)
+                if metadata is None:
                     skipped += 1
                     continue
-                tmdb_id = int(match["id"])
-                details = self.tmdb_request(f"movie/{tmdb_id}", {"language": "en-GB"})
-                poster_name = self.cache_channel_artwork(
-                    str(details.get("poster_path") or ""),
-                    f"mabel-film-{number}-{tmdb_id}.jpg")
-                programmes_state[self.channel_programme_key(number, item.name)] = {
-                    "tmdb_id": tmdb_id,
-                    "title": str(details.get("title") or self.display_name(item.name)),
-                    "overview": str(details.get("overview") or ""),
-                    "year": str(details.get("release_date") or "")[:4],
-                    "poster": poster_name,
-                    "updated": time.time(), "provider": "TMDB",
-                }
+                programmes_state[self.channel_programme_key(number, item.name)] = metadata
                 updated += 1
         states.update({"channels": channels_state, "programmes": programmes_state,
                        "updated": time.time()})
         self.write_channel_media_states(states)
         return {"ok": True, "updated": updated, "skipped": skipped}
+
+    def refresh_channel_programme_metadata(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Search or apply a parent-selected match for one MabelTV film."""
+        try:
+            channel = self.channel(int(payload.get("channel", 0)))
+        except (TypeError, ValueError):
+            raise ValueError("Choose a valid film channel") from None
+        if self.channel_content_type(channel) != "films":
+            raise ValueError("Metadata refresh is only available for film channels")
+        source = self.safe_media_path(channel, str(payload.get("file", "")))
+        if not source.is_file() or source.suffix.lower() not in SUPPORTED_EXTENSIONS:
+            raise ValueError("That film is no longer in this channel")
+        try:
+            tmdb_id = int(payload.get("tmdb_id", 0))
+        except (TypeError, ValueError):
+            raise ValueError("Choose a TMDB match") from None
+        if tmdb_id <= 0:
+            query, results = self.channel_film_search(source)
+            return {"ok": True, "channel": int(channel["number"]),
+                    "file": source.name, "query": query, "results": results}
+
+        metadata = self.channel_film_metadata_for_id(channel, source, tmdb_id)
+        with self.config_lock:
+            states = self.channel_media_states()
+            programmes = states.get("programmes", {})
+            if not isinstance(programmes, dict):
+                programmes = {}
+            programmes[self.channel_programme_key(int(channel["number"]), source.name)] = metadata
+            states.update({"programmes": programmes, "updated": time.time()})
+            self.write_channel_media_states(states)
+        return {"ok": True, "channel": int(channel["number"]),
+                "file": source.name, "metadata": metadata}
 
     def channel_artwork(self, name: str) -> Path:
         if not re.fullmatch(r"mabel-(?:show|film)-[0-9]+-[0-9]+\.jpg", name):
@@ -2750,6 +3008,9 @@ class Library:
         channel_media = self.channel_media_states()
         channel_metadata = channel_media.get("channels", {})
         programme_metadata = channel_media.get("programmes", {})
+        stored_channel_favourites = channel_media.get("favourites", [])
+        channel_favourites = set(stored_channel_favourites) \
+            if isinstance(stored_channel_favourites, list) else set()
         if not isinstance(channel_metadata, dict):
             channel_metadata = {}
         if not isinstance(programme_metadata, dict):
@@ -2758,17 +3019,34 @@ class Library:
         for channel in self.channels():
             folder = self.media_root / str(channel["folder"])
             programmes = []
-            for item in sorted(folder.glob("*") if folder.is_dir() else [], key=lambda p: p.name.lower()):
+            is_film_channel = self.channel_content_type(channel) == "films"
+            for item in sorted(
+                    folder.glob("*") if folder.is_dir() else [],
+                    key=lambda path: (
+                        re.sub(r"^the\s+", "", self.display_name(path.name), flags=re.IGNORECASE).casefold(),
+                        self.display_name(path.name).casefold(),
+                    ) if is_film_channel else (path.name.casefold(), "")):
                 if item.is_file() and item.suffix.lower() in SUPPORTED_EXTENSIONS:
                     disabled = set(disabled_programmes.get(str(channel["number"]), []))
-                    programmes.append({
+                    programme = {
                         "name": item.name,
                         "display_name": self.display_name(item.name),
                         "enabled": item.name not in disabled,
                         "browser_ready": self.remote_browser_ready(item),
                         "metadata": programme_metadata.get(
                             self.channel_programme_key(channel["number"], item.name), {}),
-                    })
+                        "favourite": self.channel_programme_key(
+                            channel["number"], item.name) in channel_favourites,
+                    }
+                    if is_film_channel:
+                        resume = self.channel_film_resume_state(
+                            int(channel["number"]), item.name)
+                        programme.update({
+                            "remote_position": resume["position"],
+                            "remote_duration": resume["duration"],
+                            "remote_last_watched": resume["updated"],
+                        })
+                    programmes.append(programme)
             response.append({"number": channel["number"], "name": channel["name"],
                              "aspect": channel.get("aspect", "crop"),
                              "content_type": self.channel_content_type(channel),
@@ -3046,21 +3324,27 @@ class Library:
 
     def play_on_tv(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Start a known library item through the private player socket."""
-        state = self.read_json(self.player_state_path, {})
-        if isinstance(state, dict) and state.get("standby"):
-            raise ValueError("Turn Mabel TV on before choosing Play on TV")
         kind = str(payload.get("kind", ""))
         if kind == "channel":
-            try:
-                channel = self.channel(int(payload.get("channel", 0)))
-            except (TypeError, ValueError):
-                raise ValueError("Choose a valid channel programme") from None
-            source = self.safe_media_path(channel, str(payload.get("file", "")))
+            _kind, source, _title, library_id, resume = self.remote_source(payload)
+            if "position" in payload:
+                try:
+                    resume = max(0.0, float(payload.get("position", 0)))
+                except (TypeError, ValueError) as error:
+                    raise ValueError("That playback position is not valid") from error
+            channel = self.channel(int(payload.get("channel", 0)))
             command = {"command": "play-programme", "channel": int(channel["number"]),
                        "file": source.name}
+            if library_id:
+                command["position"] = resume
             skip_film_countdown = self.channel_content_type(channel) == "films"
         elif kind == "adult":
             _kind, source, _title, _library_id, resume = self.remote_source(payload)
+            if "position" in payload:
+                try:
+                    resume = max(0.0, float(payload.get("position", 0)))
+                except (TypeError, ValueError) as error:
+                    raise ValueError("That playback position is not valid") from error
             command = {"command": "play-adult-film",
                        "file": self.adult_relative_path(source),
                        "position": resume}
@@ -3069,6 +3353,11 @@ class Library:
             raise ValueError("Choose a programme or Adult film to play")
         if not source.is_file():
             raise ValueError("That video is no longer in the Mabel TV library")
+        state = self.read_json(self.player_state_path, {})
+        woke_tv = False
+        if isinstance(state, dict) and state.get("standby"):
+            self.live_tv_control({"command": "turn-on"})
+            woke_tv = True
         sent_to_player = False
         accepted_without_reply = False
         try:
@@ -3110,7 +3399,10 @@ class Library:
                 raise ValueError("The film was selected, but Mabel TV could not start it immediately")
         verb = "Starting" if accepted_without_reply else "Playing"
         return {"ok": True,
-                "message": f"{verb} {self.display_name(source.name)} on Mabel TV"}
+                "message": (f"Turned on Mabel TV and {verb.lower()} "
+                            f"{self.display_name(source.name)}"
+                            if woke_tv else
+                            f"{verb} {self.display_name(source.name)} on Mabel TV")}
 
     def support_bundle(self) -> Path:
         self.admin_action("diagnostics")
@@ -3503,10 +3795,7 @@ class Library:
                 if isinstance(saved_result, dict) and saved_result.get("complete"):
                     return saved_result
                 offset = part.stat().st_size if part.exists() else 0
-                output_reserve = 0 if (destination.exists()
-                                               or destination.with_suffix(".mp4").exists()) \
-                    else size
-                reserve = max(0, size - offset) + output_reserve + 512 * 1024 * 1024
+                reserve = max(0, size - offset) + 512 * 1024 * 1024
                 if shutil.disk_usage(self.media_root).free < reserve:
                     raise ValueError("There is not enough free space to safely resume that video")
                 if value.get("status") == "error" and offset == size \
@@ -3533,9 +3822,9 @@ class Library:
 
         if destination.exists() or destination.with_suffix(".mp4").exists():
             raise ValueError("A file with that name already exists in this channel")
-        reserve = size * 2 + 512 * 1024 * 1024
+        reserve = size + 512 * 1024 * 1024
         if shutil.disk_usage(self.media_root).free < reserve:
-            raise ValueError("There is not enough free space to upload and safely prepare that video")
+            raise ValueError("There is not enough free space to upload that video")
         self.clear_superseded_upload_errors(number, file_name)
         upload_id = uuid.uuid4().hex
         self.write_json(self.incoming / (upload_id + ".json"), {"id": upload_id, "channel": number, "file_name": file_name, "size": size, "created": time.time()})
@@ -4008,7 +4297,8 @@ class Library:
                 raise
             self.remove_adult_media_state(relative)
             return
-        if action in {"toggle-channel", "toggle-programme", "rename", "trash"}:
+        if action in {"toggle-channel", "toggle-programme", "move-programme",
+                      "rename", "trash"}:
             channel = self.channel(int(payload.get("channel")))
         if action == "toggle-channel":
             number = channel["number"]
@@ -4020,6 +4310,62 @@ class Library:
             def change(library: dict[str, Any]) -> None:
                 key = str(channel["number"]); values = set(library["disabled_programmes"].get(key, [])); values.symmetric_difference_update({file_name}); library["disabled_programmes"][key] = sorted(values)
             self.update_settings(change)
+        elif action == "move-programme":
+            if self.channel_content_type(channel) != "films":
+                raise ValueError("Only films can move between film channels")
+            try:
+                target = self.channel(int(payload.get("target_channel")))
+            except (TypeError, ValueError):
+                raise ValueError("Choose another film channel") from None
+            if self.channel_content_type(target) != "films":
+                raise ValueError("Choose another film channel")
+            source_number = int(channel["number"])
+            target_number = int(target["number"])
+            if source_number == target_number:
+                raise ValueError("Choose another film channel")
+            source = self.safe_media_path(channel, str(payload.get("file", "")))
+            if not source.is_file():
+                raise ValueError("Film not found")
+            target_folder = self.media_root / str(target["folder"])
+            target_folder.mkdir(mode=0o750, exist_ok=True)
+            destination = self.safe_media_path(target, source.name)
+            if destination.exists():
+                raise ValueError("That film channel already contains a film with this name")
+            source.rename(destination)
+
+            def move_visibility(library: dict[str, Any]) -> None:
+                disabled = library.setdefault("disabled_programmes", {})
+                source_values = set(disabled.get(str(source_number), []))
+                was_disabled = source.name in source_values
+                source_values.discard(source.name)
+                disabled[str(source_number)] = sorted(source_values)
+                target_values = set(disabled.get(str(target_number), []))
+                if was_disabled:
+                    target_values.add(destination.name)
+                disabled[str(target_number)] = sorted(target_values)
+            self.update_settings(move_visibility)
+
+            states = self.channel_media_states()
+            programmes = states.get("programmes", {})
+            if not isinstance(programmes, dict):
+                programmes = {}
+            source_key = self.channel_programme_key(source_number, source.name)
+            target_key = self.channel_programme_key(target_number, destination.name)
+            stored_favourites = states.get("favourites", [])
+            favourites = set(stored_favourites) \
+                if isinstance(stored_favourites, list) else set()
+            favourite_moved = source_key in favourites
+            metadata_moved = source_key in programmes
+            if favourite_moved:
+                favourites.discard(source_key)
+                favourites.add(target_key)
+            if metadata_moved:
+                programmes[target_key] = programmes.pop(source_key)
+            if metadata_moved or favourite_moved:
+                states.update({"programmes": programmes,
+                               "favourites": sorted(favourites),
+                               "updated": time.time()})
+                self.write_channel_media_states(states)
         elif action == "rename":
             source = self.safe_media_path(channel, str(payload.get("file", "")))
             if not source.is_file(): raise ValueError("Programme not found")
@@ -4031,6 +4377,26 @@ class Library:
             def change(library: dict[str, Any]) -> None:
                 key = str(channel["number"]); values = library["disabled_programmes"].get(key, []); library["disabled_programmes"][key] = [destination.name if v == source.name else v for v in values]
             self.update_settings(change)
+            states = self.channel_media_states()
+            programmes = states.get("programmes", {})
+            old_key = self.channel_programme_key(int(channel["number"]), source.name)
+            new_key = self.channel_programme_key(int(channel["number"]), destination.name)
+            stored_favourites = states.get("favourites", [])
+            favourites = set(stored_favourites) \
+                if isinstance(stored_favourites, list) else set()
+            changed = False
+            if isinstance(programmes, dict) and old_key in programmes:
+                programmes[new_key] = programmes.pop(old_key)
+                changed = True
+            if old_key in favourites:
+                favourites.discard(old_key)
+                favourites.add(new_key)
+                changed = True
+            if changed:
+                states.update({"programmes": programmes,
+                               "favourites": sorted(favourites),
+                               "updated": time.time()})
+                self.write_channel_media_states(states)
         elif action == "trash":
             source = self.safe_media_path(channel, str(payload.get("file", "")))
             if not source.is_file(): raise ValueError("Programme not found")
@@ -4404,6 +4770,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.json(200, self.server.library.remote_save_position(payload)); return
             if self.path == "/api/remote/clear-position":
                 self.json(200, self.server.library.remote_clear_position(payload)); return
+            if self.path == "/api/favourite":
+                self.json(200, self.server.library.set_favourite(payload)); return
             if self.path == "/api/remote/heartbeat":
                 self.server.library.remote_session(str(payload.get("stream", "")))
                 self.json(200, {"ok": True}); return
@@ -4421,8 +4789,12 @@ class Handler(BaseHTTPRequestHandler):
                 self.json(200, self.server.library.tmdb_search(payload)); return
             if self.path == "/api/tmdb/apply":
                 self.json(200, self.server.library.tmdb_apply(payload)); return
+            if self.path == "/api/tmdb/channel":
+                self.json(200, self.server.library.refresh_channel_show_metadata(payload)); return
             if self.path == "/api/tmdb/channels":
                 self.json(200, self.server.library.refresh_channel_metadata()); return
+            if self.path == "/api/tmdb/programme":
+                self.json(200, self.server.library.refresh_channel_programme_metadata(payload)); return
             if self.path == "/api/adult/uploads":
                 self.json(201, self.server.library.adult_upload_create(payload)); return
             if self.path == "/api/uploads": self.json(201, self.server.library.upload_create(payload)); return

@@ -38,14 +38,20 @@ const $ = selector => document.querySelector(selector)
     let remoteKind = 'adult'
     let watchFolder = '*'
     let watchSearchText = ''
+    let mabelSearchText = ''
+    let homeSearchText = ''
     let selectedWatchFilm = null
     let selectedWatchProgramme = null
+    let selectedHomeFilmEntry = null
     let iosRemoteSession = null
     let iosRemotePositionTimer = null
     let iosRemoteHeartbeatTimer = null
     let iosRemoteLastSaved = 0
     let mabelRemoteSession = null
     let mabelRemoteHeartbeatTimer = null
+    let mabelRemotePositionTimer = null
+    let mabelRemoteLastSaved = 0
+    let mabelRemoteTracksPosition = false
     let mabelControlsTimer = null
     let iosOfflineDownloadId = null
     let offlineStorageReady = false
@@ -541,6 +547,7 @@ const $ = selector => document.querySelector(selector)
       $('#remotePowerActionTitle').textContent = waking ? 'Wake the television' : 'Put TV in standby'
       $('#remotePowerActionHint').textContent = waking ? 'Return to the last channel' : 'The screen will switch off safely'
       $('#cancelRemotePower').textContent = waking ? 'Not now' : 'Keep watching'
+      $('#confirmRemotePower').classList.toggle('is-wake', waking)
     }
 
     function renderLiveTv(state) {
@@ -573,6 +580,7 @@ const $ = selector => document.querySelector(selector)
     async function refreshHomePowerState() {
       const state = await api('/api/live')
       liveTvState = state || {}
+      setHomeSpotlightArtwork(state)
       const standby = state.standby === true
       $('#homePowerState').textContent = standby ? 'Standby' : 'On'
       $('#homePowerToggle').textContent = standby ? 'Turn On' : 'Turn Off'
@@ -593,6 +601,50 @@ const $ = selector => document.querySelector(selector)
         $('#homeNowPlayingMeta').textContent = state.reason || 'Waiting for the current programme'
       }
       return state
+    }
+
+    function homeMediaKey(value) {
+      return String(value || '').trim().toLocaleLowerCase()
+    }
+
+    function homeArtworkUrl(kind, name) {
+      if (!name) return ''
+      const endpoint = kind === 'adult' ? '/api/adult/artwork/' : '/api/channel/artwork/'
+      return `${endpoint}${encodeURIComponent(name)}`
+    }
+
+    function homeArtworkForState(state) {
+      const currentTitle = homeMediaKey(state?.programme)
+      if (!currentTitle) return ''
+      if (state?.adult_mode === true) {
+        const film = (library?.adult_library || []).find(item => [
+          item.metadata?.title,
+          item.display_name,
+          item.name,
+        ].some(value => homeMediaKey(value) === currentTitle))
+        if (film?.metadata?.poster) return homeArtworkUrl('adult', film.metadata.poster)
+      } else {
+        const channel = (library?.channels || []).find(item => Number(item.number) === Number(state?.channel_number))
+        const programme = channel?.programmes?.find(item => [
+          item.metadata?.title,
+          item.display_name,
+          item.name,
+        ].some(value => homeMediaKey(value) === currentTitle))
+        if (programme?.metadata?.poster) return homeArtworkUrl('channel', programme.metadata.poster)
+        if (channel?.metadata?.artwork) return homeArtworkUrl('channel', channel.metadata.artwork)
+        const channelPoster = channel?.programmes?.find(item => item.metadata?.poster)?.metadata?.poster
+        if (channelPoster) return homeArtworkUrl('channel', channelPoster)
+      }
+      return ''
+    }
+
+    function setHomeSpotlightArtwork(state) {
+      const artwork = $('#homeSpotlightArt') || $('.home-spotlight-art')
+      if (!artwork) return
+      const source = homeArtworkForState(state)
+      artwork.style.backgroundImage = source ? `url("${source}")` : ''
+      artwork.classList.toggle('has-artwork', Boolean(source))
+      artwork.classList.toggle('is-empty', !source)
     }
 
     function startHomeStatusRefresh() {
@@ -641,6 +693,13 @@ const $ = selector => document.querySelector(selector)
     $$('[data-go]').forEach(button => button.onclick = () => {
       if (button.dataset.go === 'channels') showChannelHub()
       openView(button.dataset.go)
+      if (button.classList.contains('home-device-summary')) {
+        const status = $('#systemStatusDisclosure') || $('#systemDetails')?.closest('details')
+        if (status) {
+          status.open = true
+          requestAnimationFrame(() => status.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+        }
+      }
     })
 
     function duration(seconds) {

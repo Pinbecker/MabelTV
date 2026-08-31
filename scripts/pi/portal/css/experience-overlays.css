@@ -82,6 +82,66 @@ body.portal-experience :is(.library-sheet-body, .remote-channel-options, .remote
   padding: var(--experience-sheet-padding);
 }
 
+body.portal-experience .remote-power-actions {
+  display: grid;
+  gap: 8px;
+}
+
+body.portal-experience .remote-power-confirm {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 76px;
+  border: 1px solid rgba(255, 90, 110, .42);
+  border-radius: 10px;
+  background: rgba(255, 90, 110, .09);
+  color: #ff8797;
+  padding: 13px 15px;
+  text-align: left;
+}
+
+body.portal-experience .remote-power-confirm.is-wake {
+  border-color: rgba(255, 122, 26, .52);
+  background: rgba(255, 122, 26, .09);
+  color: var(--experience-ink);
+}
+
+body.portal-experience .remote-power-confirm:hover {
+  border-color: currentColor;
+  background: var(--experience-soft);
+}
+
+body.portal-experience .remote-power-confirm svg {
+  width: 25px;
+  height: 25px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+}
+
+body.portal-experience .remote-power-confirm.is-wake svg {
+  color: var(--experience-orange);
+}
+
+body.portal-experience .remote-power-confirm > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+body.portal-experience .remote-power-confirm strong {
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+body.portal-experience .remote-power-confirm small {
+  color: var(--experience-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 body.portal-experience .remote-channel-options {
   gap: 9px;
 }
@@ -246,6 +306,32 @@ body.portal-experience .field-grid > label {
 
 body.portal-experience .field-grid > .wide {
   grid-column: 1 / -1;
+}
+
+body.portal-experience .channel-metadata-action {
+  border-color: var(--experience-line);
+  border-radius: 12px;
+  background: var(--experience-raised);
+  color: var(--experience-ink);
+}
+
+body.portal-experience .channel-metadata-action:hover {
+  border-color: rgba(255, 122, 26, 0.55);
+}
+
+body.portal-experience .channel-metadata-action:disabled {
+  cursor: default;
+  opacity: 0.58;
+}
+
+body.portal-experience .channel-metadata-action small,
+body.portal-experience .channel-metadata-arrow {
+  color: var(--experience-muted);
+}
+
+body.portal-experience .channel-metadata-icon {
+  background: var(--experience-soft);
+  color: var(--experience-orange);
 }
 
 body.portal-experience .library-sheet-actions {
@@ -575,6 +661,19 @@ body.portal-experience .watch-destination-actions {
   margin-top: 22px;
 }
 
+/* The experience theme does not load the classic spacing tokens. Give the
+   lower action groups their own explicit rhythm so adjacent cards never
+   collapse into one segmented control. */
+body.portal-experience .watch-programme-film-tools {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+body.portal-experience .watch-programme-film-tools.hidden {
+  display: none;
+}
+
 body.portal-experience :is(.watch-film-play, .watch-film-secondary) {
   width: 100%;
   min-width: 0;
@@ -620,6 +719,16 @@ body.portal-experience .watch-action-icon {
   color: var(--experience-orange);
   font-size: 10px;
   font-weight: 850;
+}
+
+body.portal-experience .watch-programme-danger {
+  border-color: rgba(255, 91, 111, 0.42);
+  background: rgba(255, 91, 111, 0.08);
+}
+
+body.portal-experience .watch-programme-danger .watch-action-icon {
+  background: rgba(255, 91, 111, 0.14);
+  color: #ff687f;
 }
 
 body.portal-experience .watch-programme-sheet {

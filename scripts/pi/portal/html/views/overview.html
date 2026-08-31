@@ -1,6 +1,6 @@
       <section id="view-overview" class="view active"><div class="page home-page">
         <section class="home-spotlight" aria-labelledby="homeNowPlayingTitle">
-          <div class="home-spotlight-art" aria-hidden="true"><span class="home-orbit orbit-one"></span><span class="home-orbit orbit-two"></span><span class="home-monogram">M</span></div>
+          <div id="homeSpotlightArt" class="home-spotlight-art" aria-hidden="true"></div>
           <div class="home-spotlight-content">
             <p class="eyebrow">On <span data-tv-name>Your TV</span> now</p>
             <div class="home-now-playing" aria-live="polite">
@@ -15,15 +15,12 @@
         </section>
 
         <div class="home-feed">
-          <section class="home-destinations" aria-labelledby="homeDestinationsTitle">
-            <header class="feed-heading"><div><p class="section-kicker">Your MabelTV</p><h2 id="homeDestinationsTitle">What would you like to do?</h2></div></header>
-            <div class="destination-rail">
-              <button type="button" class="destination-card destination-watch" data-go="watch"><span class="destination-icon"><svg class="icon"><use href="/portal/icons.svg#signal-play"/></svg></span><span><strong>Watch here</strong><small>Films, programmes and downloads</small></span><svg class="destination-arrow"><use href="/portal/icons.svg#signal-chevron-right"/></svg></button>
-              <button type="button" class="destination-card destination-library" data-go="usb"><span class="destination-icon"><svg class="icon"><use href="/portal/icons.svg#signal-hard-drive"/></svg></span><span><strong>Browse USB</strong><small>Play or copy videos from a connected drive</small></span><svg class="destination-arrow"><use href="/portal/icons.svg#signal-chevron-right"/></svg></button>
-              <button id="enterAdultMode" type="button" class="destination-card destination-adult"><span class="destination-icon"><svg class="icon"><use href="/portal/icons.svg#signal-clapperboard"/></svg></span><span><strong>Adult TV</strong><small>Open the private library on TV</small></span><svg class="destination-arrow"><use href="/portal/icons.svg#signal-chevron-right"/></svg></button>
-            </div>
+          <section class="home-library" aria-label="Your films">
+            <label class="home-global-search"><svg class="icon"><use href="/portal/icons.svg#signal-search"/></svg><input id="homeFilmSearch" type="search" autocomplete="off" placeholder="Search all films" aria-label="Search Adult TV and MabelTV films"><button id="homeFilmSearchClear" type="button" class="hidden" aria-label="Clear global film search">×</button></label>
+            <section id="homeSearchSection" class="home-media-section hidden" aria-labelledby="homeSearchTitle"><header><h2 id="homeSearchTitle">Search results</h2><span id="homeSearchCount"></span></header><div id="homeSearchRail" class="home-poster-rail"></div></section>
+            <section id="homeContinueSection" class="home-media-section hidden" aria-labelledby="homeContinueTitle"><header><h2 id="homeContinueTitle">Continue playing</h2><span id="homeContinueCount"></span></header><div id="homeContinueRail" class="watch-continue-rail home-continue-rail"></div></section>
+            <section id="homeFavouritesSection" class="home-media-section" aria-labelledby="homeFavouritesTitle"><header><h2 id="homeFavouritesTitle">Favourites</h2><span id="homeFavouritesCount"></span></header><div id="homeFavouritesRail" class="home-poster-rail"></div><p id="homeFavouritesEmpty" class="home-media-empty hidden">Mark a film as a favourite and it will appear here.</p></section>
           </section>
-
           <section class="home-device" aria-labelledby="healthTitle">
             <button type="button" class="home-device-summary" data-go="system">
               <span id="homeStatusIcon" class="device-status-icon"><svg class="icon" viewBox="0 0 24 24"><path d="m6 12 4 4 8-9"/></svg></span>

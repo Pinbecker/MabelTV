@@ -136,7 +136,13 @@ public:
     Q_INVOKABLE void updatePlaybackPosition(double positionSeconds, bool paused);
     Q_INVOKABLE void restartCurrentProgramme();
     Q_INVOKABLE void restartPortalProgramme();
-    Q_INVOKABLE void playPortalProgramme(int channelNumber, const QString &fileName);
+    Q_INVOKABLE void playPortalProgramme(int channelNumber,
+                                         const QString &fileName,
+                                         double positionSeconds = 0.0);
+    Q_INVOKABLE void setChannelFilmPlaybackState(int channelNumber,
+                                                 const QString &fileName,
+                                                 double positionSeconds,
+                                                 double durationSeconds);
     Q_INVOKABLE void requestParentAccess();
     Q_INVOKABLE void requestPortalParentAccess();
     Q_INVOKABLE void parentConfirm();
@@ -230,7 +236,7 @@ private:
         bool enabled = true;
     };
 
-    void loadSettings(const QString &settingsPath);
+    void loadSettings(const QString &settingsPath, bool preserveRuntimeVolume = false);
     void saveSettings();
     void loadState();
     void saveState() const;
@@ -304,6 +310,9 @@ private:
     QHash<QString, double> m_adultPlaybackPositions;
     QHash<QString, double> m_adultPlaybackDurations;
     QHash<QString, qint64> m_adultPlaybackUpdatedUtcMs;
+    QHash<QString, double> m_channelFilmPlaybackPositions;
+    QHash<QString, double> m_channelFilmPlaybackDurations;
+    QHash<QString, qint64> m_channelFilmPlaybackUpdatedUtcMs;
     int m_currentChannelIndex = -1;
     int m_initialChannelNumber = -1;
     int m_previousChannelNumber = -1;

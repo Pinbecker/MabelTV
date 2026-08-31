@@ -88,8 +88,10 @@ html[data-experience-theme="light"] body.portal-experience .notice.bad {
   color: #9f2437;
 }
 
-html[data-experience-theme="light"] body.portal-experience .home-now-playing h1,
-html[data-experience-theme="light"] body.portal-experience .channel-page-identity h1,
+html[data-experience-theme="light"] body.portal-experience .channel-page-identity h1 {
+  color: var(--experience-ink);
+}
+
 html[data-experience-theme="light"] body.portal-experience :is(.mabel-show-identity, .mabel-film-head) h2 {
   color: #fff;
 }

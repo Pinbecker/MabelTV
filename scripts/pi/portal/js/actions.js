@@ -35,18 +35,7 @@ let managementBusy = false
     $('#showAddChannel').onclick = showAddChannelSheet
     $('#openAddChannelUtility').onclick = showAddChannelSheet
     $('#watchNewChannel').onclick = showAddChannelSheet
-    $('#refreshChannelArtwork').onclick = async () => {
-      const button = $('#refreshChannelArtwork'); button.disabled = true
-      try {
-        notice('Finding artwork for MabelTV programmes…')
-        const result = await api('/api/tmdb/channels', { method: 'POST', body: '{}' })
-        await load()
-        notice(`Artwork refreshed for ${Number(result.updated || 0)} item${Number(result.updated || 0) === 1 ? '' : 's'}.`)
-      } catch (error) { notice(error.message, true) }
-      finally { button.disabled = false }
-    }
     $('#openRecycleBin').onclick = () => openLibrarySheet($('#recycleSheet'))
-    $('#watchRefreshArtwork').onclick = () => $('#refreshChannelArtwork').click()
     $('#watchRecycleBin').onclick = () => $('#openRecycleBin').click()
     $('#closeAddChannel').onclick = () => closeLibrarySheet($('#addChannelPanel'))
     $('#cancelAddChannel').onclick = () => closeLibrarySheet($('#addChannelPanel'))
@@ -54,7 +43,8 @@ let managementBusy = false
     $('#closeChannelUpload').onclick = () => closeLibrarySheet($('#channelUploadPanel'))
     $('#closeChannelSettings').onclick = () => closeLibrarySheet($('#channelSettingsSheet'))
     $('#closeProgrammeActions').onclick = () => closeLibrarySheet($('#programmeActionSheet'))
-    ;[$('#addChannelPanel'), $('#recycleSheet'), $('#channelUploadPanel'), $('#channelSettingsSheet'), $('#programmeActionSheet')].forEach(dialog => {
+    $('#watchProgrammeMoveClose').onclick = () => closeLibrarySheet($('#watchProgrammeMoveSheet'))
+    ;[$('#addChannelPanel'), $('#recycleSheet'), $('#channelUploadPanel'), $('#channelSettingsSheet'), $('#programmeActionSheet'), $('#watchProgrammeMoveSheet')].forEach(dialog => {
       dialog.onclick = event => { if (event.target === dialog) closeLibrarySheet(dialog) }
       dialog.onclose = () => {
         document.documentElement.style.overflow = ''
@@ -157,9 +147,9 @@ let managementBusy = false
         if (state.status === 'error') throw new Error(state.error || `${tvName()} could not prepare this video`)
         const messages = {
           validating: 'Checking that this is a playable video…',
-          queued: 'Waiting behind another video in the preparation queue…',
-          processing: 'Preparing the video for smooth Raspberry Pi playback…',
-          publishing: 'Publishing the prepared video…',
+          queued: 'Waiting briefly to publish this video…',
+          processing: 'Finishing an older queued upload…',
+          publishing: 'Publishing the original video…',
           finalising: 'Refreshing the TV library…'
         }
         $('#uploadText').textContent = `${messages[state.status] || 'Finishing the video…'} You may close this page and return later.`
@@ -247,7 +237,7 @@ let managementBusy = false
       notice(files.length === 1 ? 'Preparing upload…' : `Uploading ${files.length} videos one at a time…`)
       for (let index = 0; index < files.length; index += 1) {
         try {
-          const result = await sendSelectedFile(files[index], channel, index + 1, files.length, files.length === 1)
+          const result = await sendSelectedFile(files[index], channel, index + 1, files.length, true)
           accepted += 1
           singleResult = result
         } catch (error) {
@@ -265,10 +255,10 @@ let managementBusy = false
       } else {
         $('#uploadState').classList.add('hidden')
         if (files.length > 1) {
-          notice(`${accepted} videos uploaded to CH ${channel}. ${tvName()} is checking and preparing them in the background.`)
+          notice(`${accepted} videos published to CH ${channel} and available now.`)
         } else {
           notice(singleResult?.refreshed
-            ? `Published${singleResult.optimised ? ' and prepared' : ''} on CH ${channel}.`
+            ? `Published on CH ${channel} and available now.`
             : `The video is safely stored on CH ${channel}, but the TV could not refresh. Use Retry TV refresh below.`,
             !singleResult?.refreshed)
         }
@@ -462,8 +452,9 @@ let managementBusy = false
     ;[$('#liveChannelSheet'), $('#remotePowerSheet')].forEach(dialog => dialog.onclick = event => {
       if (event.target === dialog) dialog.close()
     })
-    $('#enterAdultMode').onclick = async () => {
-      const button = $('#enterAdultMode')
+    const enterAdultMode = $('#enterAdultMode')
+    if (enterAdultMode) enterAdultMode.onclick = async () => {
+      const button = enterAdultMode
       button.disabled = true
       try {
         await api('/api/live/control', { method: 'POST', body: JSON.stringify({ command: 'enter-adult-mode' }) })

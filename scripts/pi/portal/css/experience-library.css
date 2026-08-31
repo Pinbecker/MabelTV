@@ -416,7 +416,10 @@ body.portal-v2 .usb-safety-note { margin: 15px 0 0; color: var(--experience-dim)
 
 /* Channel workspace becomes a focused detail screen. */
 body.portal-v2 .channel-page {
+  width: 100%;
   max-width: 1120px;
+  min-width: 0;
+  overflow-x: clip;
   margin: 0 auto;
 }
 
@@ -426,24 +429,49 @@ body.portal-v2 .channel-page-back svg { width: 17px; height: 17px; fill: none; s
 
 body.portal-v2 .channel-page-hero {
   position: relative;
-  min-height: 360px;
-  overflow: hidden;
-  border-radius: 14px;
-  background: radial-gradient(circle at 80% 20%, rgba(126,42,255,.42), transparent 36%), #18131d;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: clamp(130px, 14vw, 178px) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(18px, 3vw, 34px);
+  min-height: 0;
+  overflow: visible;
+  border: 0;
+  border-bottom: 1px solid var(--experience-line);
+  border-radius: 0;
+  background: var(--experience-canvas);
+  padding: 10px 0 24px;
 }
 
 body.portal-v2 .channel-page-hero-art,
-body.portal-v2 .channel-page-hero-shade { position: absolute; inset: 0; background-position: center; background-size: cover; }
-body.portal-v2 .channel-page-hero-shade { background: linear-gradient(90deg, rgba(7,7,10,.96), rgba(7,7,10,.52) 62%, rgba(7,7,10,.18)); }
-body.portal-v2 .channel-page-hero-content { position: relative; z-index: 2; display: grid; align-content: end; min-height: 360px; padding: 32px; }
-body.portal-v2 .channel-page-identity { display: flex; align-items: center; gap: 12px; }
-body.portal-v2 .channel-page-badge { border-radius: 999px; background: var(--experience-orange); color: #160a02; padding: 5px 8px; font-size: 9px; font-weight: 850; }
+body.portal-v2 .channel-page-hero-shade { background-position: center; background-size: cover; }
+body.portal-v2 .channel-page-hero-art {
+  position: relative;
+  z-index: auto;
+  inset: auto;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  border: 1px solid var(--experience-line);
+  border-radius: 12px;
+  background: var(--channel-page-art) center 32% / cover no-repeat, linear-gradient(145deg, #201e24, #111014);
+  box-shadow: 0 14px 34px rgba(0,0,0,.24);
+  transform: none;
+}
+body.portal-v2 .channel-page-hero-shade { display: none; }
+body.portal-v2 .channel-page-hero-content { position: relative; z-index: 1; display: grid; width: 100%; max-width: 100%; align-content: center; min-width: 0; min-height: 0; padding: 0; }
+body.portal-v2 .channel-page-identity { display: block; min-width: 0; }
+body.portal-v2 .channel-page-badge { display: none; }
 body.portal-v2 .channel-page-eyebrow { margin: 0; color: var(--experience-orange); font-size: 9px; font-weight: 800; text-transform: uppercase; }
-body.portal-v2 .channel-page-identity h1 { margin: 2px 0 0; font-size: clamp(40px, 7vw, 70px); letter-spacing: -0.055em; }
-body.portal-v2 .channel-page-overview { max-width: 580px; margin: 13px 0 0; color: rgba(255,255,255,.7); font-size: 13px; }
-body.portal-v2 .channel-page-facts { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 18px; color: rgba(255,255,255,.58); font-size: 10px; }
-body.portal-v2 .channel-page-actions { display: flex; align-items: center; gap: 8px; margin-top: 22px; }
-body.portal-v2 .channel-page-actions button { min-height: 46px; }
+body.portal-v2 .channel-page-identity h1 { margin: 3px 0 0; color: var(--experience-ink); font-size: clamp(32px, 5vw, 48px); letter-spacing: -0.055em; }
+body.portal-v2 .channel-page-overview { display: none; }
+body.portal-v2 .channel-page-facts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; color: var(--experience-muted); font-size: 10px; }
+body.portal-v2 .channel-page-actions { display: flex; width: 100%; max-width: 100%; min-width: 0; align-items: center; gap: 8px; margin-top: 16px; }
+body.portal-v2 .channel-page-actions > * { min-width: 0; }
+body.portal-v2 .channel-page-actions button { min-height: 42px; }
 body.portal-v2 .channel-page-primary { display: inline-flex; align-items: center; gap: 10px; background: var(--experience-orange); color: #160a02; padding: 0 15px; }
 body.portal-v2 .channel-page-primary svg,
 body.portal-v2 .channel-page-secondary svg,
@@ -452,27 +480,38 @@ body.portal-v2 .channel-page-primary span { display: grid; text-align: left; }
 body.portal-v2 .channel-page-primary strong { color: inherit; font-size: 11px; }
 body.portal-v2 .channel-page-primary small { font-size: 8px; }
 body.portal-v2 .channel-page-secondary,
-body.portal-v2 .channel-page-icon { border: 1px solid rgba(255,255,255,.25); background: rgba(8,8,11,.45); color: #fff; padding: 0 14px; }
+body.portal-v2 .channel-page-icon { border: 1px solid var(--experience-line); background: var(--experience-raised); color: var(--experience-ink); padding: 0 14px; }
 body.portal-v2 .channel-page-secondary span { position: static; width: auto; height: auto; overflow: visible; }
 body.portal-v2 .channel-page-icon { width: 46px; padding: 0; }
 
-body.portal-v2 .channel-page-library { padding-top: 42px; }
+body.portal-v2 .channel-page-library { width: 100%; max-width: 100%; min-width: 0; padding-top: 30px; }
 body.portal-v2 .channel-page-library-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
 body.portal-v2 .channel-page-library-head h2 { margin: 0; font-size: 30px; letter-spacing: -0.04em; }
 body.portal-v2 .channel-page-library-head p:not(.channel-page-kicker) { margin: 5px 0 0; color: var(--experience-muted); font-size: 12px; }
 body.portal-v2 .channel-page-result-count { color: var(--experience-dim); font-size: 10px; }
-body.portal-v2 .channel-page-toolbar { display: flex; align-items: center; gap: 10px; margin: 20px 0; }
+body.portal-v2 .channel-page-toolbar { display: flex; width: 100%; max-width: 100%; min-width: 0; align-items: center; gap: 10px; margin: 20px 0; }
 body.portal-v2 .channel-page-search { display: grid; grid-template-columns: auto auto minmax(120px,1fr); align-items: center; gap: 8px; flex: 1; min-height: 46px; border: 1px solid var(--experience-line); border-radius: 8px; background: var(--experience-raised); padding: 0 12px; }
 body.portal-v2 .channel-page-search svg { width: 17px; height: 17px; fill: none; stroke: var(--experience-dim); stroke-width: 2; }
 body.portal-v2 .channel-page-search > span { display: none; }
 body.portal-v2 .channel-page-search input { min-height: 44px; margin: 0; border: 0; background: transparent; padding: 0; }
+body.portal-v2 .channel-page-search:focus-within { border-color: var(--experience-orange); box-shadow: 0 0 0 3px rgba(255, 122, 26, 0.32); }
+body.portal-v2 .channel-page-search input:focus-visible { outline: 0; box-shadow: none; }
 body.portal-v2 .channel-page-filters { display: flex; gap: 4px; }
+body.portal-v2 .channel-page-filters.hidden { display: none; }
+body.portal-v2 .channel-page.is-film-channel .channel-page-library { padding-top: 18px; }
+body.portal-v2 .channel-page.is-film-channel .channel-page-toolbar { margin: 12px 0 16px; }
 body.portal-v2 .channel-page-filter { min-height: 36px; border-radius: 999px; background: transparent; color: var(--experience-dim); padding: 0 10px; font-size: 10px; font-weight: 700; }
 body.portal-v2 .channel-page-filter.active { background: var(--experience-soft); color: var(--experience-ink); }
-body.portal-v2 .channel-page-programmes { display: grid; gap: 1px; }
+body.portal-v2 .channel-page-programmes { display: grid; width: 100%; max-width: 100%; min-width: 0; gap: 1px; }
+body.portal-v2 .channel-page-programmes.is-film-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 24px 12px;
+}
 body.portal-v2 .channel-page-show-card { display: grid; grid-template-columns: minmax(0,1fr) 44px; border-bottom: 1px solid var(--experience-line); }
 body.portal-v2 .channel-page-show-main { display: grid; grid-template-columns: 48px minmax(0,1fr) auto; align-items: center; gap: 12px; min-width: 0; border-radius: 0; background: transparent; color: var(--experience-ink); padding: 9px 0; text-align: left; }
-body.portal-v2 .channel-page-episode { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 8px; background: var(--experience-soft); color: var(--experience-orange); font-size: 10px; font-weight: 800; }
+body.portal-v2 .channel-page-episode { display: flex; align-items: center; justify-content: center; flex-direction: column; width: 42px; height: 42px; border-radius: 8px; background: var(--experience-soft); color: var(--experience-orange); font-size: 10px; font-weight: 800; line-height: 1; }
+body.portal-v2 .channel-page-season { color: var(--experience-muted); font-size: 8px; letter-spacing: .08em; }
+body.portal-v2 .channel-page-episode-number { margin-top: 2px; font-size: 10px; letter-spacing: .06em; }
 body.portal-v2 .channel-page-show-copy { display: grid; min-width: 0; }
 body.portal-v2 .channel-page-show-copy strong,
 body.portal-v2 .channel-page-show-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

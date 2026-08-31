@@ -2,6 +2,7 @@
         <header class="screen-title watch-title">
           <div><p class="eyebrow">Stream from your library</p><h1>Watch</h1></div>
           <div id="watchLibraryAdmin" class="watch-library-admin" aria-label="Adult library tools"><button id="watchAddAdult" type="button" aria-label="Add films"><svg class="icon"><use href="/portal/icons.svg#signal-upload"/></svg><span>Add</span></button><button id="watchManageAdult" type="button" aria-label="Organise collections"><svg class="icon"><use href="/portal/icons.svg#folder"/></svg><span>Collections</span></button></div>
+          <div id="watchMabelAdmin" class="watch-library-admin watch-mabel-admin hidden" aria-label="MabelTV channel tools"><button id="watchNewChannel" type="button" aria-label="Create a new channel"><svg class="icon"><use href="/portal/icons.svg#signal-plus"/></svg><span>New channel</span></button></div>
         </header>
 
         <div class="watch-switch-wrap"><div class="watch-tabs" role="tablist" aria-label="Choose a library"><button id="watchAdultTab" type="button" class="active" role="tab" aria-selected="true"><span>Adult TV</span></button><button id="watchMabelTab" type="button" role="tab" aria-selected="false"><span>MabelTV</span></button><button id="watchDownloadsTab" type="button" role="tab" aria-selected="false"><span>Downloads</span></button></div></div>
@@ -9,14 +10,18 @@
         <div id="watchAdultLayout" class="watch-adult-layout hidden">
           <section class="watch-discovery" aria-label="Find a film">
             <label class="watch-search"><svg class="icon"><use href="/portal/icons.svg#signal-search"/></svg><input id="watchSearch" type="search" autocomplete="off" placeholder="Search your films" aria-label="Search Adult films"><button id="watchSearchClear" type="button" class="hidden" aria-label="Clear film search">×</button></label>
-            <button id="watchCollectionTrigger" type="button" class="watch-tool" aria-haspopup="dialog" aria-controls="watchCollectionSheet"><span><small>Collection</small><strong id="watchCollectionName">All films</strong></span><svg class="icon"><use href="/portal/icons.svg#signal-chevron-right"/></svg></button>
+            <label class="watch-tool watch-native-select"><span><small>Collection</small><select id="watchCollectionSelect" aria-label="Choose a film collection"></select></span></label>
           </section>
           <section id="watchContinueSection" class="watch-continue hidden" aria-labelledby="watchContinueTitle"><header class="watch-section-head"><div><p class="watch-section-kicker">Pick up where you left off</p><h2 id="watchContinueTitle">Continue watching</h2></div><span id="watchContinueCount"></span></header><div id="watchContinueRail" class="watch-continue-rail"></div></section>
           <section class="watch-catalogue" aria-labelledby="watchLibraryTitle"><header class="watch-library-head"><div><p id="watchLibraryKicker" class="watch-section-kicker">Your library</p><h2 id="watchLibraryTitle">All films</h2></div><span id="watchLibraryCount" class="watch-library-count">0 films</span></header><div id="remoteAdult"></div></section>
         </div>
 
         <div id="watchMabelLayout" class="watch-mabel-layout hidden">
-          <div id="watchMabelPrimaryTools" class="watch-mabel-utilities watch-mabel-primary-tools" aria-label="MabelTV channel tools"><button id="watchNewChannel" type="button">New channel</button><button id="watchRefreshArtwork" type="button">Refresh artwork</button></div>
+          <section class="watch-discovery watch-mabel-discovery" aria-label="Find a MabelTV film">
+            <label class="watch-search"><svg class="icon"><use href="/portal/icons.svg#signal-search"/></svg><input id="watchMabelSearch" type="search" autocomplete="off" placeholder="Search MabelTV films" aria-label="Search MabelTV films"><button id="watchMabelSearchClear" type="button" class="hidden" aria-label="Clear MabelTV film search">×</button></label>
+          </section>
+          <section id="watchMabelContinueSection" class="watch-continue hidden" aria-labelledby="watchMabelContinueTitle"><header class="watch-section-head"><div><p class="watch-section-kicker">Pick up where you left off</p><h2 id="watchMabelContinueTitle">Continue watching</h2></div><span id="watchMabelContinueCount"></span></header><div id="watchMabelContinueRail" class="watch-continue-rail"></div></section>
+          <section id="watchMabelSearchSection" class="watch-mabel-search-results hidden" aria-labelledby="watchMabelSearchTitle"><header class="watch-library-head"><div><p class="watch-section-kicker">MabelTV films</p><h2 id="watchMabelSearchTitle">Search results</h2></div><span id="watchMabelSearchCount" class="watch-library-count"></span></header><div id="watchMabelSearchGrid" class="watch-poster-grid"></div></section>
           <div id="remoteMabel"></div>
           <div id="watchMabelUtilities" class="watch-mabel-utilities watch-mabel-recycle-tools" aria-label="MabelTV recycle bin"><button id="watchRecycleBin" type="button">Open recycle bin</button></div>
         </div>

@@ -35,6 +35,8 @@ private slots:
     void parentControlsRequireThreeConfirmationsAndPersistSettings();
     void tvGuideBuildsOrderedScheduleAndTunesChannels();
     void parentLibraryControlsPersistAndAffectPlayback();
+    void controllerReloadPreservesPlaybackAndRuntimeVolume();
+    void filmChannelBookmarksPersistAcrossTvAndPortalPlayback();
     void adultLibraryIsSeparateAndParentOnly();
 };
 
@@ -1020,6 +1022,135 @@ void CoreTests::parentLibraryControlsPersistAndAffectPlayback()
                  .value(QStringLiteral("enabledProgrammeCount"))
                  .toInt(),
              1);
+}
+
+void CoreTests::controllerReloadPreservesPlaybackAndRuntimeVolume()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/films")));
+
+    const QString mediaPath = directory.filePath(QStringLiteral("media/films/Film.mp4"));
+    QFile episode(mediaPath);
+    QVERIFY(episode.open(QIODevice::WriteOnly));
+    episode.write("film-data");
+    episode.close();
+
+    QFile configuration(directory.filePath(QStringLiteral("channels.json")));
+    QVERIFY(configuration.open(QIODevice::WriteOnly));
+    configuration.write(R"({"schema_version":1,"channels":[
+        {"number":5,"name":"Films","folder":"films","content_type":"films"}
+    ]})");
+    configuration.close();
+
+    QFile settings(directory.filePath(QStringLiteral("settings.json")));
+    QVERIFY(settings.open(QIODevice::WriteOnly));
+    settings.write(R"({"schema_version":1,
+        "volume":{"initial":65,"maximum":100,"limit_enabled":true}})");
+    settings.close();
+
+    TvController controller;
+    QVERIFY(controller.initialize(configuration.fileName(), settings.fileName(),
+                                  directory.filePath(QStringLiteral("media")),
+                                  directory.filePath(QStringLiteral("state.json")),
+                                  [](const QString &) {
+                                      return MediaInspection{true, true, 7200.0,
+                                                             QStringLiteral("h264"), {}};
+                                  }));
+    QSignalSpy playbackRequests(&controller, &TvController::playbackRequested);
+    QSignalSpy stopRequests(&controller, &TvController::stopPlaybackRequested);
+    controller.start();
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 1, 1500);
+    while (controller.volume() < 95) {
+        controller.dispatch(TvController::VolumeUp);
+    }
+    QCOMPARE(controller.volume(), 95);
+
+    const QFileInfo mediaInfo(mediaPath);
+    QJsonObject cachedInspection{
+        {QStringLiteral("size"), static_cast<double>(mediaInfo.size())},
+        {QStringLiteral("modified_utc_ms"),
+         static_cast<double>(mediaInfo.lastModified().toUTC().toMSecsSinceEpoch())},
+        {QStringLiteral("usable"), true},
+        {QStringLiteral("inspected"), true},
+        {QStringLiteral("duration_seconds"), 7200.0},
+        {QStringLiteral("video_codec"), QStringLiteral("h264")},
+        {QStringLiteral("error"), QString()},
+    };
+    QJsonObject entries;
+    entries.insert(mediaInfo.absoluteFilePath(), cachedInspection);
+    QFile cache(directory.filePath(QStringLiteral("media-index.json")));
+    QVERIFY(cache.open(QIODevice::WriteOnly));
+    cache.write(QJsonDocument(QJsonObject{
+        {QStringLiteral("schema_version"), 1},
+        {QStringLiteral("entries"), entries},
+    }).toJson());
+    cache.close();
+
+    playbackRequests.clear();
+    stopRequests.clear();
+    QSignalSpy libraryChanges(&controller, &TvController::parentLibraryChanged);
+    controller.reloadLibrary();
+    QTRY_COMPARE_WITH_TIMEOUT(libraryChanges.count(), 1, 10000);
+
+    QCOMPARE(controller.currentChannelNumber(), 5);
+    QCOMPARE(controller.volume(), 95);
+    QCOMPARE(playbackRequests.count(), 0);
+    QCOMPARE(stopRequests.count(), 0);
+    QVERIFY(!controller.tuning());
+}
+
+void CoreTests::filmChannelBookmarksPersistAcrossTvAndPortalPlayback()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/films")));
+    QFile episode(directory.filePath(QStringLiteral("media/films/Film.mp4")));
+    QVERIFY(episode.open(QIODevice::WriteOnly));
+    episode.write("film-data");
+    episode.close();
+    QFile configuration(directory.filePath(QStringLiteral("channels.json")));
+    QVERIFY(configuration.open(QIODevice::WriteOnly));
+    configuration.write(R"({"schema_version":1,"channels":[
+        {"number":5,"name":"Films","folder":"films","content_type":"films"}
+    ]})");
+    configuration.close();
+
+    TvController controller;
+    QVERIFY(controller.initialize(configuration.fileName(),
+                                  directory.filePath(QStringLiteral("settings.json")),
+                                  directory.filePath(QStringLiteral("media")),
+                                  directory.filePath(QStringLiteral("state.json")),
+                                  [](const QString &) {
+                                      return MediaInspection{true, true, 7200.0,
+                                                             QStringLiteral("h264"), {}};
+                                  }));
+    QSignalSpy playbackRequests(&controller, &TvController::playbackRequested);
+    controller.playPortalProgramme(5, QStringLiteral("Film.mp4"), 1800.0);
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 1, 1500);
+    QVERIFY(std::abs(playbackRequests.constFirst().at(1).toDouble() - 1800.0) < 0.5);
+
+    controller.updatePlaybackPosition(1950.0, false);
+    QFile state(directory.filePath(QStringLiteral("state.json")));
+    QVERIFY(state.open(QIODevice::ReadOnly));
+    QJsonObject saved = QJsonDocument::fromJson(state.readAll()).object();
+    state.close();
+    QCOMPARE(saved.value(QStringLiteral("channel_film_positions")).toObject()
+                 .value(QStringLiteral("5/Film.mp4")).toDouble(),
+             1950.0);
+    QCOMPARE(saved.value(QStringLiteral("channel_film_durations")).toObject()
+                 .value(QStringLiteral("5/Film.mp4")).toDouble(),
+             7200.0);
+    QVERIFY(saved.value(QStringLiteral("channel_film_position_updated_utc_ms"))
+                .toObject().value(QStringLiteral("5/Film.mp4")).toDouble() > 0.0);
+
+    controller.setChannelFilmPlaybackState(
+        5, QStringLiteral("Film.mp4"), 2400.0, 7200.0);
+    QVERIFY(state.open(QIODevice::ReadOnly));
+    saved = QJsonDocument::fromJson(state.readAll()).object();
+    QCOMPARE(saved.value(QStringLiteral("channel_film_positions")).toObject()
+                 .value(QStringLiteral("5/Film.mp4")).toDouble(),
+             2400.0);
 }
 
 void CoreTests::adultLibraryIsSeparateAndParentOnly()

@@ -102,6 +102,9 @@ function renderAdultLibrary() {
       $('#adultFilmOptimise').textContent = film.playback_state === 'optimised' ? 'Already optimised' : busy ? 'Optimising…' : 'Optimise for Pi'
       $('#adultFilmScan').disabled = !tmdbConfigured
       $('#adultFilmScan').textContent = metadata.tmdb_id ? 'Refresh metadata' : 'Scan metadata'
+      $('#adultFilmFavourite').textContent = film.favourite
+        ? 'Remove from favourites' : 'Add to favourites'
+      $('#adultFilmFavourite').classList.toggle('active', film.favourite === true)
       const sheet = $('#adultFilmSheet')
       sheet.showModal()
       sheet.querySelector('.library-sheet-panel').focus({ preventScroll: true })
@@ -144,6 +147,112 @@ function renderAdultLibrary() {
       } catch (error) { notice(error.message, true) }
     }
 
+    async function scanProgrammeTmdb(channel, programme) {
+      const title = programme.metadata?.title || programme.display_name
+      try {
+        notice(`Searching TMDB for ${programme.display_name}…`)
+        const result = await api('/api/tmdb/programme', {
+          method: 'POST',
+          body: JSON.stringify({ channel: channel.number, file: programme.name })
+        })
+        $('#tmdbDialogTitle').textContent = `Match “${result.query || title}”`
+        const root = $('#tmdbResults')
+        root.innerHTML = ''
+        if (!result.results.length) {
+          root.innerHTML = '<div class="empty"><strong>No matches found</strong>Rename the film more precisely and search again.</div>'
+        }
+        result.results.forEach(match => {
+          const row = document.createElement('article')
+          row.className = 'tmdb-result'
+          const poster = document.createElement('span')
+          poster.className = 'tmdb-result-poster'
+          poster.setAttribute('aria-hidden', 'true')
+          poster.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 6l2 4m3-4 2 4m3-4 2 4"/></svg>'
+          const copy = document.createElement('div')
+          copy.innerHTML = `<strong>${escapeHtml(match.title)}${match.year ? ` (${escapeHtml(match.year)})` : ''}</strong><p>${escapeHtml(match.overview || 'No description supplied.')}</p>`
+          const choose = document.createElement('button')
+          choose.type = 'button'
+          choose.className = 'primary tmdb-result-choose'
+          choose.textContent = 'Use this match'
+          choose.onclick = async () => {
+            choose.disabled = true
+            try {
+              await api('/api/tmdb/programme', {
+                method: 'POST',
+                body: JSON.stringify({
+                  channel: channel.number,
+                  file: programme.name,
+                  tmdb_id: match.id
+                })
+              })
+              $('#tmdbDialog').close()
+              selectedManageChannel = Number(channel.number)
+              await load(channel.number)
+              notice('The selected film metadata and artwork were saved locally.')
+            } catch (error) {
+              notice(error.message, true)
+              choose.disabled = false
+            }
+          }
+          row.append(poster, copy, choose)
+          root.append(row)
+        })
+        $('#tmdbDialog').showModal()
+        notice('')
+      } catch (error) { notice(error.message, true) }
+    }
+
+    async function scanChannelTmdb(channel) {
+      const title = channel.metadata?.title || channel.name
+      try {
+        notice(`Searching TMDB for ${channel.name}…`)
+        const result = await api('/api/tmdb/channel', {
+          method: 'POST',
+          body: JSON.stringify({ channel: channel.number })
+        })
+        $('#tmdbDialogTitle').textContent = `Match “${result.query || title}”`
+        const root = $('#tmdbResults')
+        root.innerHTML = ''
+        if (!result.results.length) {
+          root.innerHTML = '<div class="empty"><strong>No matches found</strong>Check the channel name, save it, and search again.</div>'
+        }
+        result.results.forEach(match => {
+          const row = document.createElement('article')
+          row.className = 'tmdb-result'
+          const poster = document.createElement('span')
+          poster.className = 'tmdb-result-poster'
+          poster.setAttribute('aria-hidden', 'true')
+          poster.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 6l2 4m3-4 2 4m3-4 2 4"/></svg>'
+          const copy = document.createElement('div')
+          copy.innerHTML = `<strong>${escapeHtml(match.title)}${match.year ? ` (${escapeHtml(match.year)})` : ''}</strong><p>${escapeHtml(match.overview || 'No description supplied.')}</p>`
+          const choose = document.createElement('button')
+          choose.type = 'button'
+          choose.className = 'primary tmdb-result-choose'
+          choose.textContent = 'Use this match'
+          choose.onclick = async () => {
+            choose.disabled = true
+            try {
+              await api('/api/tmdb/channel', {
+                method: 'POST',
+                body: JSON.stringify({ channel: channel.number, tmdb_id: match.id })
+              })
+              $('#tmdbDialog').close()
+              selectedManageChannel = Number(channel.number)
+              await load(channel.number)
+              notice('The selected show metadata and channel artwork were saved locally.')
+            } catch (error) {
+              notice(error.message, true)
+              choose.disabled = false
+            }
+          }
+          row.append(poster, copy, choose)
+          root.append(row)
+        })
+        $('#tmdbDialog').showModal()
+        notice('')
+      } catch (error) { notice(error.message, true) }
+    }
+
     $('#tmdbClose').onclick = () => $('#tmdbDialog').close()
     $('#adultSearch').oninput = event => { adultSearchText = event.target.value; renderAdultLibrary() }
     $('#adultSearchClear').onclick = () => { adultSearchText = ''; $('#adultSearch').value = ''; renderAdultLibrary(); $('#adultSearch').focus() }
@@ -162,6 +271,15 @@ function renderAdultLibrary() {
     }
     $('#adultFilmMove').onclick = async () => { if (selectedAdultFilm) { const film = selectedAdultFilm; closeLibrarySheet($('#adultFilmSheet')); await manage('move-adult', { file: film.path, folder: $('#adultFilmFolder').value }) } }
     $('#adultFilmScan').onclick = () => { const film = selectedAdultFilm; if (film) { closeLibrarySheet($('#adultFilmSheet')); scanTmdb(film) } }
+    $('#adultFilmFavourite').onclick = () => {
+      const film = selectedAdultFilm
+      if (!film) return
+      setFilmFavourite(adultFilmEntry(film), film.favourite !== true).then(() => {
+        $('#adultFilmFavourite').textContent = film.favourite
+          ? 'Remove from favourites' : 'Add to favourites'
+        $('#adultFilmFavourite').classList.toggle('active', film.favourite === true)
+      }).catch(showError)
+    }
     $('#adultFilmRename').onclick = () => { const film = selectedAdultFilm; if (!film) return; const name = prompt('Film name:', film.display_name); if (name?.trim()) { closeLibrarySheet($('#adultFilmSheet')); manage('rename-adult', { file: film.path, name: name.trim() }) } }
     $('#adultFilmOptimise').onclick = () => { const film = selectedAdultFilm; if (film && confirm(`Optimise “${film.display_name}” for the Pi? The original is replaced only after the new copy passes its checks.`)) { closeLibrarySheet($('#adultFilmSheet')); manage('optimise-adult', { file: film.path }) } }
     $('#adultFilmRemove').onclick = () => { const film = selectedAdultFilm; if (film && confirm(`Move “${film.display_name}” to the recycle bin?`)) { closeLibrarySheet($('#adultFilmSheet')); manage('trash-adult', { file: film.path }) } }
@@ -665,9 +783,32 @@ function renderAdultLibrary() {
       $('#workspaceToggleChannel').onclick = () => manage('toggle-channel', { channel: channel.number })
       $('#channelSettingsTitle').textContent = `Edit ${channel.name}`
       $('#workspaceSettings').onclick = () => openLibrarySheet($('#channelSettingsSheet'), $('#editChannelName'))
+      const contentType = $('#editChannelContentType')
+      const metadataAction = $('#channelMetadataAction')
+      const syncChannelMetadataAction = () => {
+        const selectedAsShow = contentType.value === 'shows'
+        const savedAsShow = channel.content_type === 'shows'
+        metadataAction.classList.toggle('hidden', !selectedAsShow)
+        metadataAction.disabled = !tmdbConfigured || !savedAsShow
+        $('#channelMetadataActionTitle').textContent = channel.metadata?.tmdb_id
+          ? 'Refresh channel metadata'
+          : 'Add channel metadata'
+        $('#channelMetadataActionHint').textContent = !savedAsShow
+          ? 'Save this as a Shows / episodes channel first.'
+          : tmdbConfigured
+            ? 'Search TMDB and choose the correct show.'
+            : 'Connect TMDB in Settings to search for this show.'
+      }
+      contentType.onchange = syncChannelMetadataAction
+      metadataAction.onclick = () => {
+        if (channel.content_type !== 'shows') return
+        closeLibrarySheet($('#channelSettingsSheet'))
+        scanChannelTmdb(channel)
+      }
+      syncChannelMetadataAction()
       const watchButton = $('#channelWatchTv')
       watchButton.disabled = !channel.enabled
-      watchButton.querySelector('strong').textContent = channel.enabled ? `Open CH ${channel.number} on TV` : 'Channel hidden'
+      watchButton.querySelector('strong').textContent = channel.enabled ? 'Open on TV' : 'Channel hidden'
       watchButton.querySelector('small').textContent = channel.enabled ? 'Switch MabelTV to this channel' : 'Show it in Manage to play it'
       watchButton.onclick = () => sendLiveCommand('tune-channel', watchButton, { channel: channel.number })
       $('#channel').value = String(channel.number)

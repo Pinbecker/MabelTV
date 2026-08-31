@@ -71,7 +71,7 @@
 
           <section class="settings-group" aria-labelledby="settingsSystemGroup">
             <h2 id="settingsSystemGroup">Raspberry Pi</h2>
-            <details class="settings-disclosure">
+            <details id="systemStatusDisclosure" class="settings-disclosure" open>
               <summary><span class="settings-row-icon system"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9zM9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M20 9h3M1 15h3M20 15h3"/></svg></span><span><strong>System status</strong><small>Player, temperature, storage and version</small></span><svg class="settings-chevron"><use href="/portal/icons.svg#signal-chevron-right"/></svg></summary>
               <div class="settings-panel"><dl id="systemDetails" class="definition"></dl><div class="settings-system-actions"><button id="checkAgain" class="secondary">Check again</button><button id="restartPlayer" class="secondary">Restart TV player</button><a class="button secondary" href="/api/support" download>Download support bundle</a></div><p class="small muted settings-note">Diagnostics never include the parent PIN or video files.</p></div>
             </details>

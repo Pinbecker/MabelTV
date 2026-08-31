@@ -39,6 +39,7 @@ Window {
     property real pendingAdultLibraryPosition: 0
     property int pendingPortalChannel: -1
     property string pendingPortalProgramme: ""
+    property real pendingPortalProgrammePosition: 0
     property int pendingPortalTuneChannel: -1
     property string pendingPowerAction: ""
     property bool pendingPowerOnWake: false
@@ -430,9 +431,11 @@ Window {
                        && root.pendingPortalProgramme.length > 0) {
                 const channel = root.pendingPortalChannel
                 const programme = root.pendingPortalProgramme
+                const position = root.pendingPortalProgrammePosition
                 root.pendingPortalChannel = -1
                 root.pendingPortalProgramme = ""
-                tvController.playPortalProgramme(channel, programme)
+                root.pendingPortalProgrammePosition = 0
+                tvController.playPortalProgramme(channel, programme, position)
             } else {
                 tvController.resumeFromStandby()
             }
@@ -453,7 +456,7 @@ Window {
         enterAdultMode()
     }
 
-    function portalPlayChannelProgramme(channel, file) {
+    function portalPlayChannelProgramme(channel, file, position) {
         if (poweringOff || pendingPowerAction.length > 0)
             return
         guideOverlay.close()
@@ -461,10 +464,18 @@ Window {
         if (adultMode.active) {
             pendingPortalChannel = Number(channel)
             pendingPortalProgramme = String(file)
+            pendingPortalProgrammePosition = Math.max(0, Number(position) || 0)
             adultMode.close()
             return
         }
-        tvController.playPortalProgramme(Number(channel), String(file))
+        tvController.playPortalProgramme(Number(channel), String(file),
+                                         Math.max(0, Number(position) || 0))
+    }
+
+    function portalSetChannelFilmPosition(channel, file, position, duration) {
+        tvController.setChannelFilmPlaybackState(
+            Number(channel), String(file), Math.max(0, Number(position) || 0),
+            Math.max(0, Number(duration) || 0))
     }
 
     function portalPlayAdultFilm(file, position) {
@@ -1523,6 +1534,18 @@ Window {
             else
                 --root.filmCountdownValue
         }
+    }
+
+    // Match Adult TV's ten-second bookmark cadence, but only for film
+    // channels. This makes a film already playing on the television appear at
+    // its current point when the portal is opened, without turning ordinary
+    // episode channels into resumable items.
+    Timer {
+        interval: 10000
+        repeat: true
+        running: !directMediaMode && !tvController.standby
+                 && tvController.currentContentType === "films"
+        onTriggered: root.syncPlaybackPosition()
     }
 
     Timer {

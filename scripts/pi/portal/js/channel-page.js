@@ -37,7 +37,7 @@ const ChannelPageComponents = (() => {
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14v11H5zM9 21h6M12 17v4M8 3l4 3 4-3"/></svg>
               <span><strong>Open on TV</strong><small>Switch MabelTV to this channel</small></span>
             </button>
-            <button id="workspaceAddMedia" type="button" class="channel-page-secondary">
+            <button id="workspaceAddMedia" type="button" class="channel-page-secondary" aria-label="Add videos">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
               <span>Add videos</span>
             </button>
@@ -109,7 +109,16 @@ const ChannelPageComponents = (() => {
 
     const marker = document.createElement('span')
     marker.className = 'channel-page-episode'
-    marker.textContent = details.marker
+    const markerParts = details.marker.match(/^(S\d+)(E\d+)$/i)
+    if (markerParts) {
+      const season = document.createElement('span')
+      season.className = 'channel-page-season'
+      season.textContent = markerParts[1]
+      const episode = document.createElement('span')
+      episode.className = 'channel-page-episode-number'
+      episode.textContent = markerParts[2]
+      marker.append(season, episode)
+    } else marker.textContent = details.marker
 
     const copy = document.createElement('span')
     copy.className = 'channel-page-show-copy'
@@ -134,10 +143,17 @@ const ChannelPageComponents = (() => {
   function createPoster(programme) {
     const metadata = programme.metadata || {}
     const visual = document.createElement('span')
-    visual.className = 'channel-page-poster'
+    visual.className = 'watch-card-art'
+
+    const showPlaceholder = () => {
+      const placeholder = document.createElement('span')
+      placeholder.className = 'watch-card-placeholder'
+      placeholder.textContent = (metadata.title || programme.display_name).slice(0, 1).toUpperCase()
+      visual.replaceChildren(placeholder)
+    }
+
     if (!metadata.poster) {
-      visual.classList.add('is-placeholder')
-      visual.textContent = (metadata.title || programme.display_name).slice(0, 1).toUpperCase()
+      showPlaceholder()
       return visual
     }
     const image = document.createElement('img')
@@ -145,43 +161,70 @@ const ChannelPageComponents = (() => {
     image.alt = ''
     image.loading = 'lazy'
     image.decoding = 'async'
-    image.onerror = () => {
-      visual.replaceChildren()
-      visual.classList.add('is-placeholder')
-      visual.textContent = (metadata.title || programme.display_name).slice(0, 1).toUpperCase()
-    }
+    image.onerror = showPlaceholder
     visual.append(image)
     return visual
   }
 
-  function createFilmCard(channel, programme, ordinal, onOpen, onManage) {
+  function filmTimeLabel(value) {
+    const seconds = Math.max(0, Math.floor(Number(value) || 0))
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    if (hours) return `${hours}h ${minutes}m`
+    return `${Math.max(1, minutes)}m`
+  }
+
+  function filmResumeState(programme) {
+    const position = Math.max(0, Number(programme.remote_position) || 0)
+    const duration = Math.max(0, Number(programme.remote_duration) || 0)
+    const completionWindow = duration
+      ? Math.min(Math.max(180, duration * .05), duration * .2)
+      : 0
+    const resumable = position >= 30 && (!duration || position < duration - completionWindow)
+    const progress = duration > 0 ? Math.max(0, Math.min(100, position / duration * 100)) : 0
+    return { position, resumable, progress }
+  }
+
+  function createFilmCard(channel, programme, onOpen) {
     const metadata = programme.metadata || {}
     const title = metadata.title || programme.display_name
-    const marker = String(ordinal).padStart(2, '0')
-    const card = document.createElement('article')
-    card.className = `channel-page-film-card${programme.enabled ? '' : ' is-hidden'}`
-
-    const main = document.createElement('button')
-    main.type = 'button'
-    main.className = 'channel-page-film-main'
-    main.setAttribute('aria-label', `Choose where to watch ${title}`)
+    const resume = filmResumeState(programme)
+    const card = document.createElement('button')
+    card.type = 'button'
+    card.className = `watch-card channel-page-film-card${programme.enabled ? '' : ' is-hidden'}`
+    card.setAttribute('aria-label', `${title}${resume.resumable ? `, resume at ${filmTimeLabel(resume.position)}` : ''}`)
     const visual = createPoster(programme)
+    if (programme.browser_ready === false) {
+      const format = document.createElement('span')
+      format.className = 'watch-format'
+      format.textContent = 'VLC READY'
+      visual.append(format)
+    }
     if (!programme.enabled) {
       const hidden = document.createElement('span')
       hidden.className = 'channel-page-hidden-chip'
       hidden.textContent = 'Hidden'
       visual.append(hidden)
     }
+    if (resume.resumable && resume.progress) {
+      const progress = document.createElement('span')
+      progress.className = 'watch-progress'
+      const fill = document.createElement('span')
+      fill.style.width = `${resume.progress}%`
+      progress.append(fill)
+      visual.append(progress)
+    }
     const copy = document.createElement('span')
-    copy.className = 'channel-page-film-copy'
+    copy.className = 'watch-card-copy'
     const heading = document.createElement('strong')
     heading.textContent = title
     const meta = document.createElement('small')
-    meta.textContent = [metadata.year, 'Choose where to watch'].filter(Boolean).join(' · ')
+    meta.textContent = resume.resumable
+      ? `Resume · ${filmTimeLabel(resume.position)}`
+      : [metadata.year, channel.name].filter(Boolean).join(' · ') || 'Film'
     copy.append(heading, meta)
-    main.append(visual, copy)
-    main.onclick = () => onOpen(channel, programme)
-    card.append(main, createOverflowButton(channel, programme, marker, onManage))
+    card.append(visual, copy)
+    card.onclick = () => onOpen(channel, programme)
     return card
   }
 
@@ -193,10 +236,11 @@ const ChannelPageComponents = (() => {
       ? channel.programmes.find(programme => programme.metadata?.poster)?.metadata.poster
       : '')
     const hero = document.querySelector('#channelPageHero')
+    document.querySelector('[data-channel-page-root]').classList.toggle('is-film-channel', isFilms)
     hero.style.setProperty('--channel-page-art', heroArtwork ? `url("${artworkPath(heroArtwork)}")` : 'none')
     hero.classList.toggle('has-artwork', Boolean(heroArtwork))
     document.querySelector('#workspaceChannelBadge').textContent = `CH ${channel.number}`
-    document.querySelector('#workspaceEyebrow').textContent = isFilms ? 'MabelTV film channel' : 'MabelTV series channel'
+    document.querySelector('#workspaceEyebrow').textContent = `CH ${channel.number} · ${isFilms ? 'Film channel' : 'Series channel'}`
     document.querySelector('#workspaceChannelName').textContent = title
     document.querySelector('#workspaceChannelStatus').textContent = metadata.overview || (isFilms
       ? 'Your own film channel, ready to play on the television or this device.'
@@ -211,20 +255,23 @@ const ChannelPageComponents = (() => {
 
   function renderLibrary({ channel, filtered, page, pageSize, visibility, search, onOpen, onManage, onLoadMore }) {
     const isFilms = channel.content_type === 'films'
-    const visibleCount = Math.min(filtered.length, page * pageSize)
+    const visibleCount = isFilms
+      ? filtered.length
+      : Math.min(filtered.length, page * pageSize)
     const visible = filtered.slice(0, visibleCount)
     const root = document.querySelector('#channels')
     root.replaceChildren()
-    root.className = `channel-page-programmes ${isFilms ? 'is-film-grid' : 'is-show-list'}`
+    root.className = `channel-page-programmes ${isFilms ? 'is-film-grid watch-poster-grid' : 'is-show-list'}`
 
     document.querySelector('#channelLibraryTitle').textContent = isFilms ? 'Films in this channel' : 'Episodes in this channel'
     document.querySelector('#channelSummary').textContent = search || visibility !== 'all'
       ? `${filtered.length} matching ${isFilms ? 'film' : 'episode'}${filtered.length === 1 ? '' : 's'}`
-      : isFilms ? 'Choose a film, then decide where to watch it.' : 'Choose an episode, then decide where to watch it.'
+      : isFilms ? `${filtered.length} films in this channel.` : 'Choose an episode, then decide where to watch it.'
     document.querySelector('#channelResultCount').textContent = `${filtered.length} ${isFilms ? 'film' : 'episode'}${filtered.length === 1 ? '' : 's'}`
     document.querySelector('#programmeSearch').placeholder = isFilms ? 'Search films' : 'Search episodes'
     document.querySelector('#programmeSearch').value = search
     document.querySelector('#programmeVisibility').value = visibility
+    document.querySelector('.channel-page-filters').classList.toggle('hidden', isFilms)
     document.querySelectorAll('[data-programme-visibility]').forEach(button => {
       const active = button.dataset.programmeVisibility === visibility
       button.classList.toggle('active', active)
@@ -244,15 +291,16 @@ const ChannelPageComponents = (() => {
       visible.forEach((programme, index) => {
         const ordinal = filtered.indexOf(programme) + 1
         root.append(isFilms
-          ? createFilmCard(channel, programme, ordinal, onOpen, onManage)
+          ? createFilmCard(channel, programme, onOpen)
           : createShowCard(channel, programme, ordinal, onOpen, onManage))
       })
     }
 
     const more = document.querySelector('#programmePager')
     more.replaceChildren()
-    more.classList.toggle('hidden', visibleCount >= filtered.length)
-    if (visibleCount < filtered.length) {
+    const hasMore = !isFilms && visibleCount < filtered.length
+    more.classList.toggle('hidden', !hasMore)
+    if (hasMore) {
       const status = document.createElement('span')
       status.textContent = `Showing ${visibleCount} of ${filtered.length}`
       const button = document.createElement('button')

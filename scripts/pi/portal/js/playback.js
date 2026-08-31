@@ -1,6 +1,30 @@
 'use strict'
 
 let iosInlineControlTimer = null
+let mabelFilmArtCycleTimer = null
+
+function startMabelFilmArtCycle() {
+      clearInterval(mabelFilmArtCycleTimer)
+      const headers = Array.from(document.querySelectorAll('.mabel-film-head[data-film-art]'))
+      if (!headers.some(header => header._mabelFilmArtworks?.length > 1)) {
+        mabelFilmArtCycleTimer = null
+        return
+      }
+      mabelFilmArtCycleTimer = setInterval(() => {
+        headers.forEach(header => {
+          const artworks = header._mabelFilmArtworks || []
+          if (!header.isConnected || artworks.length < 2) return
+          header._mabelFilmArtIndex = (Number(header._mabelFilmArtIndex) + 1) % artworks.length
+          const layers = header.querySelectorAll('.mabel-film-head-art-layer')
+          const current = header._mabelFilmArtLayer === 1 ? 1 : 0
+          const next = current === 0 ? 1 : 0
+          layers[next].style.backgroundImage = `url('/api/channel/artwork/${encodeURIComponent(artworks[header._mabelFilmArtIndex])}')`
+          layers[next].classList.add('is-visible')
+          layers[current].classList.remove('is-visible')
+          header._mabelFilmArtLayer = next
+        })
+      }, 12000)
+    }
 
 function remoteTime(value) {
       const seconds = Math.max(0, Math.floor(Number(value) || 0))
@@ -213,18 +237,50 @@ function remoteTime(value) {
       requestNativeFullscreen()
     }
 
+    function saveMabelRemotePosition(finished = false, force = false) {
+      const video = $('#mabelWatchVideo')
+      if (!mabelRemoteSession || !mabelRemoteTracksPosition || !Number.isFinite(video.currentTime) ||
+          (!finished && !force && Math.abs(video.currentTime - mabelRemoteLastSaved) < 10)) return Promise.resolve(false)
+      const session = mabelRemoteSession
+      const duration = Number.isFinite(video.duration) ? video.duration : 0
+      const position = finished && duration > 0 ? duration : video.currentTime
+      mabelRemoteLastSaved = position
+      return api('/api/remote/position', {
+        method: 'POST', body: JSON.stringify({ stream: session, position, duration }),
+      }).then(() => true).catch(() => false)
+    }
+
+    function beaconMabelRemotePosition() {
+      const video = $('#mabelWatchVideo')
+      if (!mabelRemoteSession || !mabelRemoteTracksPosition ||
+          !Number.isFinite(video.currentTime) || !navigator.sendBeacon) return
+      const duration = Number.isFinite(video.duration) ? video.duration : 0
+      navigator.sendBeacon('/api/remote/position', new Blob([
+        JSON.stringify({ stream: mabelRemoteSession, position: video.currentTime, duration }),
+      ], { type: 'application/json' }))
+    }
+
     function closeMabelWatchPlayer() {
       const video = $('#mabelWatchVideo')
-      if (mabelRemoteSession) api('/api/remote/release', { method: 'POST', body: JSON.stringify({ stream: mabelRemoteSession }) }).catch(() => {})
+      const session = mabelRemoteSession
+      const saved = saveMabelRemotePosition(false, true)
       clearInterval(mabelRemoteHeartbeatTimer)
+      clearInterval(mabelRemotePositionTimer)
       clearTimeout(mabelControlsTimer)
       mabelRemoteHeartbeatTimer = null
+      mabelRemotePositionTimer = null
       mabelControlsTimer = null
       mabelRemoteSession = null
+      mabelRemoteTracksPosition = false
       video.pause(); video.removeAttribute('src'); video.load()
       $('#mabelWatchPlayer').classList.add('hidden')
       $('#mabelWatchPlayer').classList.remove('controls-visible')
       unlockPortalPlayerScroll()
+      saved.finally(() => {
+        if (session) return api('/api/remote/release', {
+          method: 'POST', body: JSON.stringify({ stream: session }),
+        }).catch(() => {})
+      }).finally(() => load().catch(() => {}))
     }
 
     function mabelWatchTime(value) {
@@ -251,6 +307,8 @@ function remoteTime(value) {
         let result
         result = await startRemoteStream(payload)
         mabelRemoteSession = new URL(result.stream_url, location.origin).searchParams.get('stream')
+        mabelRemoteTracksPosition = result.resume_enabled === true
+        mabelRemoteLastSaved = 0
         $('#mabelWatchTitle').textContent = result.title
         const channel = (library?.channels || []).find(value => Number(value.number) === Number(payload.channel))
         $('#mabelWatchChannel').textContent = channel ? `CH ${channel.number} · ${channel.name}` : 'Remote Mabel TV'
@@ -262,18 +320,34 @@ function remoteTime(value) {
         cabinet.style.setProperty('--glass', String(Math.min(.5, Math.max(0, Number(settings.crt_glass || 35) / 100 * .65))))
         cabinet.style.setProperty('--distortion', String(Math.min(1, Math.max(0, Number(settings.video_distortion || 20) / 100))))
         video.pause(); video.removeAttribute('src')
-        video.onloadedmetadata = () => { $('#mabelWatchDuration').textContent = mabelWatchTime(video.duration); $('#mabelWatchSeek').value = '0' }
+        const resume = Number(result.resume_position || 0)
+        video.onloadedmetadata = () => {
+          $('#mabelWatchDuration').textContent = mabelWatchTime(video.duration)
+          if (mabelRemoteTracksPosition && resume > 10 && resume < video.duration - 5) {
+            video.currentTime = resume
+          }
+          $('#mabelWatchSeek').value = String(video.duration ? Math.round(video.currentTime / video.duration * 1000) : 0)
+        }
         video.ontimeupdate = () => {
           $('#mabelWatchCurrent').textContent = mabelWatchTime(video.currentTime)
           $('#mabelWatchSeek').value = String(video.duration ? Math.round(video.currentTime / video.duration * 1000) : 0)
         }
         video.onplay = () => { $('[data-mabel-watch-action="play"]').classList.add('playing'); showMabelWatchControls() }
-        video.onpause = () => { $('[data-mabel-watch-action="play"]').classList.remove('playing'); showMabelWatchControls(true) }
+        video.onpause = () => {
+          $('[data-mabel-watch-action="play"]').classList.remove('playing')
+          showMabelWatchControls(true)
+          saveMabelRemotePosition(false, true)
+        }
+        video.onseeked = () => saveMabelRemotePosition(false, true)
+        video.onended = () => saveMabelRemotePosition(true, true)
         video.onerror = () => { error.textContent = `This programme could not be played (media error ${video.error?.code || 'unknown'}).`; error.classList.remove('hidden') }
         video.src = result.stream_url
         video.load()
         clearInterval(mabelRemoteHeartbeatTimer)
         mabelRemoteHeartbeatTimer = setInterval(() => api('/api/remote/heartbeat', { method: 'POST', body: JSON.stringify({ stream: mabelRemoteSession }) }).catch(() => {}), 30000)
+        clearInterval(mabelRemotePositionTimer)
+        mabelRemotePositionTimer = mabelRemoteTracksPosition
+          ? setInterval(saveMabelRemotePosition, 15000) : null
         await video.play().catch(() => {})
       } catch (startError) {
         error.textContent = startError.message; error.classList.remove('hidden')
@@ -359,7 +433,10 @@ function remoteTime(value) {
       const playerWindow = desktopAdult ? window.open('about:blank', '_blank') : null
       try {
         await allowIndependentViewing()
-        if (payload.kind === 'channel') { await startMabelWatchPlayer(payload); return }
+        if (payload.kind === 'channel') {
+          await startMabelWatchPlayer({ ...payload, position: Math.max(0, Number(position) || 0) })
+          return
+        }
         if (payload.kind === 'usb') { await startIosRemotePlayer(payload, 0); return }
         const url = playerUrl(payload, position)
         if (isAppleMobilePlayer()) await startIosRemotePlayer(payload, position)
@@ -407,7 +484,10 @@ function remoteTime(value) {
         else video.pause()
       }
     })
-    window.addEventListener('pagehide', () => { if (mabelRemoteSession) navigator.sendBeacon('/api/remote/release', JSON.stringify({ stream: mabelRemoteSession })) })
+    window.addEventListener('pagehide', () => {
+      beaconMabelRemotePosition()
+      if (mabelRemoteSession) navigator.sendBeacon('/api/remote/release', JSON.stringify({ stream: mabelRemoteSession }))
+    })
 
     function watchFilmTitle(film) {
       return film?.metadata?.title || film?.display_name || 'Untitled film'
@@ -428,6 +508,86 @@ function remoteTime(value) {
       const minutes = Math.floor((seconds % 3600) / 60)
       if (hours) return `${hours}h ${minutes}m`
       return `${Math.max(1, minutes)}m`
+    }
+
+    function filmSortTitle(value) {
+      return watchFilmTitle(value).replace(/^the\s+/i, '').trim()
+    }
+
+    function adultFilmEntry(film) {
+      return { kind: 'adult', film }
+    }
+
+    function mabelFilmEntries() {
+      return (library?.channels || [])
+        .filter(channel => channel.content_type === 'films')
+        .flatMap(channel => (channel.programmes || []).map(film => ({
+          kind: 'channel', channel, film,
+        })))
+    }
+
+    function allFilmEntries() {
+      return [
+        ...(library?.adult_library || []).map(adultFilmEntry),
+        ...mabelFilmEntries(),
+      ].sort((left, right) => filmSortTitle(left.film).localeCompare(
+        filmSortTitle(right.film), undefined, { sensitivity: 'base' }))
+    }
+
+    function filmEntryPoster(entry) {
+      const film = entry.film
+      const metadata = film.metadata || {}
+      const fallback = watchFilmTitle(film).slice(0, 1).toUpperCase()
+      if (entry.kind === 'adult') return filmPoster(film)
+      if (metadata.poster) {
+        const image = document.createElement('img')
+        image.src = `/api/channel/artwork/${encodeURIComponent(metadata.poster)}`
+        image.alt = ''
+        image.loading = 'lazy'
+        image.decoding = 'async'
+        return image
+      }
+      const placeholder = document.createElement('span')
+      placeholder.className = 'watch-card-placeholder'
+      placeholder.textContent = fallback
+      return placeholder
+    }
+
+    function filmEntrySourceLabel(entry) {
+      return entry.kind === 'adult' ? 'Adult TV' : entry.channel.name
+    }
+
+    function filmEntrySearchText(entry) {
+      const film = entry.film
+      const metadata = film.metadata || {}
+      return [watchFilmTitle(film), film.display_name, metadata.year,
+        filmEntrySourceLabel(entry)].filter(Boolean).join(' ').toLocaleLowerCase()
+    }
+
+    function openFilmEntry(entry) {
+      if (entry.kind === 'adult') openWatchFilmSheet(entry.film)
+      else openWatchProgrammeSheet(entry.channel, entry.film)
+    }
+
+    function closeHomeResumeSheet() {
+      const dialog = $('#homeResumeSheet')
+      if (dialog?.open) dialog.close()
+      selectedHomeFilmEntry = null
+      document.documentElement.style.overflow = ''
+    }
+
+    function openHomeFilmEntry(entry) {
+      if (!watchFilmResumable(entry.film)) {
+        openFilmEntry(entry)
+        return
+      }
+      selectedHomeFilmEntry = entry
+      $('#homeResumeTitle').textContent = watchFilmTitle(entry.film)
+      $('#homeResumeMeta').textContent = `${filmEntrySourceLabel(entry)} · ${watchTimeLabel(entry.film.remote_position)} watched`
+      $('#homeResumeContinueHint').textContent = `Continue from ${watchTimeLabel(entry.film.remote_position)}`
+      const dialog = $('#homeResumeSheet')
+      if (!dialog.open) dialog.showModal()
+      document.documentElement.style.overflow = 'hidden'
     }
 
     function watchFilmProgress(film) {
@@ -483,7 +643,9 @@ function remoteTime(value) {
       return card
     }
 
-    function continueWatchCard(film) {
+    function continueWatchCard(value) {
+      const entry = value?.film ? value : adultFilmEntry(value)
+      const film = entry.film
       const item = document.createElement('div')
       item.className = 'watch-continue-item'
       const card = document.createElement('button')
@@ -493,7 +655,7 @@ function remoteTime(value) {
       const art = document.createElement('span')
       art.className = 'watch-continue-art'
       art.style.setProperty('--watch-progress', `${watchFilmProgress(film)}%`)
-      art.append(filmPoster(film))
+      art.append(filmEntryPoster(entry))
       const copy = document.createElement('span')
       copy.className = 'watch-continue-copy'
       const label = document.createElement('small')
@@ -506,9 +668,91 @@ function remoteTime(value) {
       play.textContent = '▶'
       copy.append(label, title, time, play)
       card.append(art, copy)
-      card.onclick = () => openWatchFilmSheet(film)
+      card.onclick = () => openFilmEntry(entry)
       item.append(card)
       return item
+    }
+
+    function homePosterTile(entry) {
+      const card = document.createElement('button')
+      card.type = 'button'
+      card.className = 'home-poster-card'
+      card.setAttribute('aria-label', `Open ${watchFilmTitle(entry.film)} from ${filmEntrySourceLabel(entry)}`)
+      const art = document.createElement('span')
+      art.className = 'home-poster-art'
+      art.append(filmEntryPoster(entry))
+      if (entry.film.favourite) {
+        const favourite = document.createElement('span')
+        favourite.className = 'home-favourite-mark'
+        favourite.textContent = '♥'
+        art.append(favourite)
+      }
+      const copy = document.createElement('span')
+      copy.className = 'home-poster-copy'
+      const title = document.createElement('strong')
+      title.textContent = watchFilmTitle(entry.film)
+      const source = document.createElement('small')
+      source.textContent = filmEntrySourceLabel(entry)
+      copy.append(title, source)
+      card.append(art, copy)
+      card.onclick = () => openHomeFilmEntry(entry)
+      return card
+    }
+
+    function renderHomeLibrary() {
+      const search = $('#homeFilmSearch')
+      if (!search) return
+      const entries = allFilmEntries()
+      const query = homeSearchText.trim().toLocaleLowerCase()
+      search.value = homeSearchText
+      $('#homeFilmSearchClear').classList.toggle('hidden', !homeSearchText)
+
+      const results = query
+        ? entries.filter(entry => filmEntrySearchText(entry).includes(query)).slice(0, 18)
+        : []
+      $('#homeSearchSection').classList.toggle('hidden', !query)
+      $('#homeSearchCount').textContent = query ? `${results.length} found` : ''
+      const searchRail = $('#homeSearchRail')
+      searchRail.innerHTML = ''
+      results.forEach(entry => searchRail.append(homePosterTile(entry)))
+      if (query && !results.length) {
+        const empty = document.createElement('p')
+        empty.className = 'home-media-empty'
+        empty.textContent = 'No films match that search.'
+        searchRail.append(empty)
+      }
+
+      const favourites = entries.filter(entry => entry.film.favourite)
+      $('#homeFavouritesCount').textContent = favourites.length
+        ? `${favourites.length} film${favourites.length === 1 ? '' : 's'}` : ''
+      const favouriteRail = $('#homeFavouritesRail')
+      favouriteRail.innerHTML = ''
+      favourites.forEach(entry => favouriteRail.append(homePosterTile(entry)))
+      $('#homeFavouritesEmpty').classList.toggle('hidden', Boolean(favourites.length))
+
+      const continuing = entries
+        .filter(entry => watchFilmResumable(entry.film))
+        .sort((left, right) => Number(right.film.remote_last_watched || 0) - Number(left.film.remote_last_watched || 0))
+        .slice(0, 10)
+      $('#homeContinueSection').classList.toggle('hidden', !continuing.length)
+      $('#homeContinueCount').textContent = continuing.length
+        ? `${continuing.length} in progress` : ''
+      const continueRail = $('#homeContinueRail')
+      continueRail.innerHTML = ''
+      continuing.forEach(entry => continueRail.append(continueWatchCard(entry)))
+    }
+
+    async function setFilmFavourite(entry, enabled) {
+      const payload = entry.kind === 'adult'
+        ? { kind: 'adult', file: entry.film.path, enabled }
+        : { kind: 'channel', channel: entry.channel.number,
+            file: entry.film.name, enabled }
+      await api('/api/favourite', { method: 'POST', body: JSON.stringify(payload) })
+      entry.film.favourite = enabled
+      renderHomeLibrary()
+      renderAdultWatch()
+      notice(enabled ? `${watchFilmTitle(entry.film)} was added to Favourites.`
+        : `${watchFilmTitle(entry.film)} was removed from Favourites.`)
     }
 
     function closeWatchFilmSheet() {
@@ -609,6 +853,16 @@ function remoteTime(value) {
         closeWatchFilmSheet()
         downloadToDevice({ kind: 'adult', file: film.path }, title)
       }
+      const favouriteButton = $('#watchFilmFavourite')
+      favouriteButton.classList.toggle('active', film.favourite === true)
+      favouriteButton.querySelector('span').textContent = film.favourite
+        ? 'Remove from favourites' : 'Add to favourites'
+      favouriteButton.onclick = () => setFilmFavourite(
+        adultFilmEntry(film), film.favourite !== true).then(() => {
+          favouriteButton.classList.toggle('active', film.favourite === true)
+          favouriteButton.querySelector('span').textContent = film.favourite
+            ? 'Remove from favourites' : 'Add to favourites'
+        }).catch(showError)
       const metadataButton = $('#watchFilmMetadata')
       metadataButton.disabled = !tmdbConfigured
       metadataButton.querySelector('span').textContent = metadata.tmdb_id ? 'Refresh metadata & subtitles' : 'Find metadata & subtitles'
@@ -635,26 +889,16 @@ function remoteTime(value) {
     }
 
     function renderWatchCollections(allFilms, folders) {
-      const options = $('#watchCollectionOptions')
-      options.innerHTML = ''
+      const select = $('#watchCollectionSelect')
+      select.innerHTML = ''
       folders.forEach(folder => {
         const count = folder === '*' ? allFilms.length : allFilms.filter(film => film.folder === folder).length
-        const button = document.createElement('button')
-        button.type = 'button'
-        button.className = `watch-collection-option${watchFolder === folder ? ' active' : ''}`
-        const label = document.createElement('span')
-        label.textContent = folder === '*' ? 'All films' : folder
-        const total = document.createElement('small')
-        total.textContent = `${count} film${count === 1 ? '' : 's'}`
-        button.append(label, total)
-        button.onclick = () => {
-          watchFolder = folder
-          $('#watchCollectionSheet').close()
-          document.documentElement.style.overflow = ''
-          renderAdultWatch()
-        }
-        options.append(button)
+        const option = document.createElement('option')
+        option.value = folder
+        option.textContent = `${folder === '*' ? 'All films' : folder} (${count})`
+        select.append(option)
       })
+      select.value = watchFolder
     }
 
     function renderAdultWatch() {
@@ -665,7 +909,6 @@ function remoteTime(value) {
       if (!folders.includes(watchFolder)) watchFolder = '*'
       renderWatchCollections(allFilms, folders)
       const collectionName = watchFolder === '*' ? 'All films' : watchFolder
-      $('#watchCollectionName').textContent = collectionName
       $('#watchSearch').value = watchSearchText
       $('#watchSearchClear').classList.toggle('hidden', !watchSearchText)
 
@@ -711,30 +954,154 @@ function remoteTime(value) {
       document.documentElement.style.overflow = ''
     }
 
+    function closeWatchProgrammeMoreSheet() {
+      const dialog = $('#watchProgrammeMoreSheet')
+      if (dialog.open) dialog.close()
+      document.documentElement.style.overflow = ''
+    }
+
     function openWatchProgrammeSheet(channel, programme) {
       selectedWatchProgramme = { channel, programme }
       const metadata = programme.metadata || {}
       const title = metadata.title || programme.display_name
+      const filmChannel = channel.content_type === 'films'
+      const resumable = filmChannel && watchFilmResumable(programme)
       $('#watchProgrammeEyebrow').textContent = `CH ${channel.number} · ${channel.name}`
       $('#watchProgrammeTitle').textContent = title
-      $('#watchProgrammeMeta').textContent = [metadata.year, channel.content_type === 'films' ? 'Film' : 'MabelTV programme'].filter(Boolean).join(' · ')
+      $('#watchProgrammeMeta').textContent = [metadata.year, resumable ? `Resume at ${watchTimeLabel(programme.remote_position)}` : filmChannel ? 'Film' : 'MabelTV programme'].filter(Boolean).join(' · ')
+      $('#watchProgrammeTv').querySelector('small').textContent = resumable
+        ? `Continue from ${watchTimeLabel(programme.remote_position)}`
+        : 'Replaces what is playing there'
       $('#watchProgrammeTv').onclick = () => {
         closeWatchProgrammeSheet()
-        playOnTv({ kind: 'channel', channel: channel.number, file: programme.name }, title)
+        playOnTv({ kind: 'channel', channel: channel.number, file: programme.name,
+          position: filmChannel ? Number(programme.remote_position || 0) : undefined }, title)
       }
       const here = $('#watchProgrammeHere')
       here.disabled = false
       here.querySelector('strong').textContent = programme.browser_ready === false ? 'Play in VLC' : 'Watch on this device'
-      here.querySelector('small').textContent = programme.browser_ready === false ? 'Opens the original without conversion' : 'Starts an independent stream'
+      here.querySelector('small').textContent = programme.browser_ready === false
+        ? 'Opens the original without conversion'
+        : resumable ? `Continue from ${watchTimeLabel(programme.remote_position)}` : 'Starts an independent stream'
       const source = { kind: 'channel', channel: channel.number, file: programme.name }
+      if (filmChannel) source.position = Number(programme.remote_position || 0)
       here.onclick = () => {
         closeWatchProgrammeSheet()
         if (programme.browser_ready === false) openInVlc(source, title)
-        else openRemotePlayer(source)
+        else openRemotePlayer(source, filmChannel ? Number(programme.remote_position || 0) : 0)
       }
       $('#watchProgrammeDownload').onclick = () => {
         closeWatchProgrammeSheet()
         downloadToDevice(source, title)
+      }
+      const filmTools = $('#watchProgrammeFilmTools')
+      filmTools.classList.toggle('hidden', !filmChannel)
+      if (filmChannel) filmTools.style.removeProperty('display')
+      else filmTools.style.setProperty('display', 'none', 'important')
+
+      const moreButton = $('#watchProgrammeMore')
+      moreButton.onclick = filmChannel ? () => {
+        closeWatchProgrammeSheet()
+        $('#watchProgrammeMoreEyebrow').textContent = `CH ${channel.number} · ${channel.name}`
+        $('#watchProgrammeMoreTitle').textContent = title
+        $('#watchProgrammeMoreMeta').textContent = [metadata.year, 'More film options'].filter(Boolean).join(' · ')
+        const moreDialog = $('#watchProgrammeMoreSheet')
+        if (!moreDialog.open) moreDialog.showModal()
+        document.documentElement.style.overflow = 'hidden'
+      } : null
+
+      const metadataButton = $('#watchProgrammeMetadata')
+      metadataButton.disabled = !tmdbConfigured
+      metadataButton.onclick = filmChannel && tmdbConfigured ? () => {
+        closeWatchProgrammeMoreSheet()
+        scanProgrammeTmdb(channel, programme)
+      } : null
+
+      const favouriteButton = $('#watchProgrammeFavourite')
+      favouriteButton.classList.toggle('active', programme.favourite === true)
+      favouriteButton.querySelector('strong').textContent = programme.favourite
+        ? 'Remove from favourites' : 'Add to favourites'
+      favouriteButton.querySelector('small').textContent = programme.favourite
+        ? 'Remove this film from Home' : 'Show this film on Home'
+      favouriteButton.onclick = filmChannel ? () => setFilmFavourite(
+        { kind: 'channel', channel, film: programme }, programme.favourite !== true
+      ).then(() => {
+        favouriteButton.classList.toggle('active', programme.favourite === true)
+        favouriteButton.querySelector('strong').textContent = programme.favourite
+          ? 'Remove from favourites' : 'Add to favourites'
+        favouriteButton.querySelector('small').textContent = programme.favourite
+          ? 'Remove this film from Home' : 'Show this film on Home'
+      }).catch(showError) : null
+
+      const toggleButton = $('#watchProgrammeToggle')
+      toggleButton.querySelector('strong').textContent = programme.enabled ? 'Hide from TV' : 'Show on TV'
+      toggleButton.querySelector('small').textContent = programme.enabled
+        ? 'Keep the film without showing it on this channel'
+        : 'Return the film to this TV channel'
+      toggleButton.onclick = filmChannel ? () => {
+        closeWatchProgrammeMoreSheet()
+        manage('toggle-programme', { channel: channel.number, file: programme.name })
+      } : null
+
+      const renameButton = $('#watchProgrammeRename')
+      renameButton.onclick = filmChannel ? () => {
+        closeWatchProgrammeMoreSheet()
+        renameProgramme(channel, programme)
+      } : null
+
+      const binButton = $('#watchProgrammeBin')
+      binButton.onclick = filmChannel ? () => {
+        closeWatchProgrammeSheet()
+        if (confirm(`Move “${title}” to the recycle bin?`)) {
+          manage('trash', { channel: channel.number, file: programme.name })
+        }
+      } : null
+
+      const moveButton = $('#watchProgrammeMove')
+      const otherFilmChannels = (library?.channels || [])
+        .filter(value => value.content_type === 'films' && Number(value.number) !== Number(channel.number))
+        .sort((left, right) => Number(left.number) - Number(right.number))
+      if (filmChannel && otherFilmChannels.length) {
+        moveButton.disabled = false
+        moveButton.querySelector('small').textContent = otherFilmChannels.length === 1
+          ? `Move to CH ${otherFilmChannels[0].number} · ${otherFilmChannels[0].name}`
+          : `Choose from ${otherFilmChannels.length} other film channels`
+        moveButton.onclick = () => {
+          closeWatchProgrammeMoreSheet()
+          $('#watchProgrammeMoveTitle').textContent = `Move “${title}”`
+          const options = $('#watchProgrammeChannelOptions')
+          options.innerHTML = ''
+          otherFilmChannels.forEach(value => {
+            const button = document.createElement('button')
+            button.type = 'button'
+            button.className = 'watch-film-play'
+            button.setAttribute('aria-label', `Move ${title} to CH ${value.number}, ${value.name}`)
+            const icon = document.createElement('span')
+            icon.className = 'watch-action-icon'
+            icon.textContent = String(value.number)
+            const copy = document.createElement('span')
+            const heading = document.createElement('strong')
+            heading.textContent = `CH ${value.number} · ${value.name}`
+            const hint = document.createElement('small')
+            hint.textContent = 'Move this film here'
+            copy.append(heading, hint)
+            button.append(icon, copy)
+            button.onclick = () => {
+              closeLibrarySheet($('#watchProgrammeMoveSheet'))
+              manage('move-programme', {
+                channel: channel.number,
+                file: programme.name,
+                target_channel: value.number
+              }, value.number)
+            }
+            options.append(button)
+          })
+          openLibrarySheet($('#watchProgrammeMoveSheet'))
+        }
+      } else {
+        moveButton.disabled = true
+        moveButton.querySelector('small').textContent = 'Create another film channel to move this film'
+        moveButton.onclick = null
       }
       const dialog = $('#watchProgrammeSheet')
       if (!dialog.open) dialog.showModal()
@@ -819,6 +1186,80 @@ function remoteTime(value) {
       if (!root.children.length) root.innerHTML = '<div class="downloads-empty"><strong>No downloads yet</strong>Choose Download to this device on a film, programme, or USB video.</div>'
     }
 
+    function mabelSearchCard(entry) {
+      const film = entry.film
+      const metadata = film.metadata || {}
+      const resumable = watchFilmResumable(film)
+      const card = document.createElement('button')
+      card.type = 'button'
+      card.className = 'watch-card watch-mabel-film-card'
+      card.setAttribute('aria-label', `${watchFilmTitle(film)} from ${entry.channel.name}${resumable ? `, resume at ${watchTimeLabel(film.remote_position)}` : ''}`)
+      const art = document.createElement('span')
+      art.className = 'watch-card-art'
+      art.append(filmEntryPoster(entry))
+      const progressValue = watchFilmProgress(film)
+      if (resumable && progressValue) {
+        const progress = document.createElement('span')
+        progress.className = 'watch-progress'
+        const fill = document.createElement('span')
+        fill.style.width = `${progressValue}%`
+        progress.append(fill)
+        art.append(progress)
+      }
+      const copy = document.createElement('span')
+      copy.className = 'watch-card-copy'
+      const title = document.createElement('strong')
+      title.textContent = watchFilmTitle(film)
+      const detail = document.createElement('small')
+      detail.textContent = resumable
+        ? `Resume · ${watchTimeLabel(film.remote_position)}`
+        : [metadata.year, entry.channel.name].filter(Boolean).join(' · ') || 'Film'
+      copy.append(title, detail)
+      card.append(art, copy)
+      card.onclick = () => openFilmEntry(entry)
+      return card
+    }
+
+    function renderMabelDiscovery(entries) {
+      const input = $('#watchMabelSearch')
+      if (!input) return
+      const sorted = [...entries].sort((left, right) => filmSortTitle(left.film)
+        .localeCompare(filmSortTitle(right.film), undefined, { sensitivity: 'base' }))
+      const query = mabelSearchText.trim().toLocaleLowerCase()
+      input.value = mabelSearchText
+      $('#watchMabelSearchClear').classList.toggle('hidden', !mabelSearchText)
+
+      const continuing = sorted
+        .filter(entry => watchFilmResumable(entry.film))
+        .sort((left, right) => Number(right.film.remote_last_watched || 0) - Number(left.film.remote_last_watched || 0))
+        .slice(0, 10)
+      $('#watchMabelContinueSection').classList.toggle(
+        'hidden', !continuing.length || Boolean(query))
+      $('#watchMabelContinueCount').textContent = continuing.length
+        ? `${continuing.length} in progress` : ''
+      const continueRail = $('#watchMabelContinueRail')
+      continueRail.innerHTML = ''
+      continuing.forEach(entry => continueRail.append(continueWatchCard(entry)))
+
+      const matches = query
+        ? sorted.filter(entry => filmEntrySearchText(entry).includes(query)) : []
+      $('#watchMabelSearchSection').classList.toggle('hidden', !query)
+      $('#watchMabelSearchTitle').textContent = query
+        ? `“${mabelSearchText.trim()}”` : 'Search results'
+      $('#watchMabelSearchCount').textContent = query
+        ? `${matches.length} film${matches.length === 1 ? '' : 's'}` : ''
+      const grid = $('#watchMabelSearchGrid')
+      grid.innerHTML = ''
+      matches.forEach(entry => grid.append(mabelSearchCard(entry)))
+      if (query && !matches.length) {
+        const empty = document.createElement('div')
+        empty.className = 'watch-empty'
+        empty.innerHTML = '<strong>No matching films</strong><br>Try another title.'
+        grid.append(empty)
+      }
+      $('#remoteMabel').classList.toggle('hidden', Boolean(query))
+    }
+
     function renderRemoteViewing() {
       const remote = library?.remote_viewing || {}; const simultaneous = remote.allow_simultaneous === true
       $('#remoteConcurrentState').textContent = simultaneous ? 'TV and one remote stream can run together' : 'One player at a time'
@@ -830,6 +1271,8 @@ function remoteTime(value) {
       $('#watchMabelLayout').classList.toggle('hidden', remoteKind !== 'channel'); $('#watchAdultLayout').classList.toggle('hidden', remoteKind !== 'adult')
       $('#watchDownloadsLayout').classList.toggle('hidden', remoteKind !== 'downloads')
       $('#watchLibraryAdmin').classList.toggle('hidden', remoteKind !== 'adult')
+      const mabelAdmin = $('#watchMabelAdmin')
+      if (mabelAdmin) mabelAdmin.classList.toggle('hidden', remoteKind !== 'channel')
       $('#watchAddAdult').classList.toggle('hidden', remoteKind !== 'adult')
       $('#watchManageAdult').classList.toggle('hidden', remoteKind !== 'adult')
       if (remoteKind === 'downloads') {
@@ -837,6 +1280,8 @@ function remoteTime(value) {
         return
       }
       const mabel = $('#remoteMabel'); mabel.innerHTML = ''
+      const mabelFilms = mabelFilmEntries()
+      renderMabelDiscovery(mabelFilms)
       ;(library?.channels || []).forEach(channel => {
         const programmes = channel.enabled
           ? (channel.programmes || []).filter(programme => programme.enabled)
@@ -852,22 +1297,76 @@ function remoteTime(value) {
           identity.onclick = () => openChannel(channel.number, true)
           section.append(identity)
         } else {
-          const head = document.createElement('button'); head.type = 'button'; head.className = 'watch-section-head mabel-film-head'; head.innerHTML = `<div><span>CH ${channel.number}${channel.enabled ? '' : ' · Hidden from TV'}</span><h2>${escapeHtml(channel.name)}</h2></div>`; head.setAttribute('aria-label', `Open channel ${channel.number}, ${channel.name}`); head.onclick = () => openChannel(channel.number, true); section.append(head)
+          const artworks = [...new Set((channel.programmes || [])
+            .map(programme => programme.metadata?.poster)
+            .filter(Boolean))]
+          const firstArtwork = artworks.length ? Math.floor(Math.random() * artworks.length) : 0
+          const head = document.createElement('button'); head.type = 'button'; head.className = 'watch-section-head mabel-film-head'
+          head.innerHTML = `<span class="mabel-film-head-art" aria-hidden="true"><span class="mabel-film-head-art-layer is-visible"></span><span class="mabel-film-head-art-layer"></span></span><span class="mabel-film-head-copy"><span>CH ${channel.number} · Film channel${channel.enabled ? '' : ' · Hidden from TV'}</span><h2>${escapeHtml(channel.name)}</h2></span>`
+          if (artworks.length) {
+            head.dataset.filmArt = 'true'
+            head._mabelFilmArtworks = artworks
+            head._mabelFilmArtIndex = firstArtwork
+            head._mabelFilmArtLayer = 0
+            head.querySelector('.mabel-film-head-art-layer').style.backgroundImage = `url('/api/channel/artwork/${encodeURIComponent(artworks[firstArtwork])}')`
+          }
+          head.setAttribute('aria-label', `Open channel ${channel.number}, ${channel.name}`); head.onclick = () => openChannel(channel.number, true); section.append(head)
         }
         if (programmes.length) {
-          const rail = document.createElement('div'); rail.className = 'watch-channel-rail'
+          const rail = document.createElement('div')
+          rail.className = `watch-channel-rail${isFilms ? ' watch-film-channel-rail' : ''}`
+          rail.setAttribute('aria-label', `${channel.name} ${isFilms ? 'films' : 'episodes'}`)
           programmes.forEach(programme => {
-            const card = document.createElement('button'); card.type = 'button'; card.className = `watch-programme ${isFilms ? 'watch-mabel-film' : 'watch-mabel-episode'}`
+            const card = document.createElement('button'); card.type = 'button'
             const programmeMetadata = programme.metadata || {}
             if (isFilms) {
-              const art = document.createElement(programmeMetadata.poster ? 'img' : 'span'); art.className = 'watch-mabel-film-art'
-              if (programmeMetadata.poster) { art.src = `/api/channel/artwork/${encodeURIComponent(programmeMetadata.poster)}`; art.alt = '' }
-              card.append(art)
+              const resumable = watchFilmResumable(programme)
+              const progressValue = watchFilmProgress(programme)
+              card.className = 'watch-card watch-mabel-film-card'
+              card.setAttribute('aria-label', `${watchFilmTitle(programme)}${resumable ? `, resume at ${watchTimeLabel(programme.remote_position)}` : ''}`)
+              const art = document.createElement('span'); art.className = 'watch-card-art'
+              if (programmeMetadata.poster) {
+                const image = document.createElement('img')
+                image.src = `/api/channel/artwork/${encodeURIComponent(programmeMetadata.poster)}`
+                image.alt = ''
+                image.loading = 'lazy'
+                art.append(image)
+              } else {
+                const placeholder = document.createElement('span')
+                placeholder.className = 'watch-card-placeholder'
+                placeholder.textContent = watchFilmTitle(programme).slice(0, 1).toUpperCase()
+                art.append(placeholder)
+              }
+              if (programme.browser_ready === false) {
+                const format = document.createElement('span')
+                format.className = 'watch-format'
+                format.textContent = 'VLC READY'
+                art.append(format)
+              }
+              if (resumable && progressValue) {
+                const progress = document.createElement('span')
+                progress.className = 'watch-progress'
+                const fill = document.createElement('span')
+                fill.style.width = `${progressValue}%`
+                progress.append(fill)
+                art.append(progress)
+              }
+              const copy = document.createElement('span'); copy.className = 'watch-card-copy'
+              const title = document.createElement('strong'); title.textContent = watchFilmTitle(programme)
+              const detail = document.createElement('small')
+              detail.textContent = resumable
+                ? `Resume · ${watchTimeLabel(programme.remote_position)}`
+                : [programmeMetadata.year, channel.name].filter(Boolean).join(' · ') || 'Film'
+              copy.append(title, detail)
+              card.append(art, copy)
+            } else {
+              card.className = 'watch-programme watch-mabel-episode'
+              const copy = document.createElement('span'); copy.className = 'watch-mabel-copy'
+              const title = document.createElement('strong'); title.textContent = programmeMetadata.title || programme.display_name
+              const play = document.createElement('small')
+              play.textContent = programme.browser_ready === false ? 'TV or VLC · choose where to play' : 'Choose where to watch  ›'
+              copy.append(title, play); card.append(copy)
             }
-            const copy = document.createElement('span'); copy.className = 'watch-mabel-copy'
-            const title = document.createElement('strong'); title.textContent = programmeMetadata.title || programme.display_name
-            const play = document.createElement('small'); play.textContent = programme.browser_ready === false ? 'TV or VLC · choose where to play' : `${programmeMetadata.year ? `${programmeMetadata.year} · ` : ''}Choose where to watch  ›`
-            copy.append(title, play); card.append(copy)
             card.onclick = () => openWatchProgrammeSheet(channel, programme)
             rail.append(card)
           })
@@ -878,7 +1377,9 @@ function remoteTime(value) {
         mabel.append(section)
       })
       if (!mabel.children.length) mabel.innerHTML = '<div class="watch-empty">No MabelTV channels have been created yet.</div>'
+      startMabelFilmArtCycle()
       renderAdultWatch()
+      renderHomeLibrary()
     }
 
     $('#watchMabelTab').onclick = () => { remoteKind = 'channel'; renderRemoteViewing() }
@@ -901,16 +1402,37 @@ function remoteTime(value) {
     })
     $('#watchSearch').oninput = event => { watchSearchText = event.target.value; renderAdultWatch() }
     $('#watchSearchClear').onclick = event => { event.preventDefault(); watchSearchText = ''; renderAdultWatch(); $('#watchSearch').focus() }
-    $('#watchCollectionTrigger').onclick = () => { $('#watchCollectionSheet').showModal(); document.documentElement.style.overflow = 'hidden' }
-    $('#watchCollectionClose').onclick = () => $('#watchCollectionSheet').close()
-    $('#watchCollectionSheet').onclick = event => { if (event.target === $('#watchCollectionSheet')) $('#watchCollectionSheet').close() }
-    $('#watchCollectionSheet').onclose = () => { document.documentElement.style.overflow = '' }
+    $('#watchCollectionSelect').onchange = event => { watchFolder = event.target.value; renderAdultWatch() }
+    $('#watchMabelSearch').oninput = event => { mabelSearchText = event.target.value; renderMabelDiscovery(mabelFilmEntries()) }
+    $('#watchMabelSearchClear').onclick = event => { event.preventDefault(); mabelSearchText = ''; renderMabelDiscovery(mabelFilmEntries()); $('#watchMabelSearch').focus() }
+    const homeFilmSearch = $('#homeFilmSearch')
+    const homeFilmSearchClear = $('#homeFilmSearchClear')
+    if (homeFilmSearch) homeFilmSearch.oninput = event => { homeSearchText = event.target.value; renderHomeLibrary() }
+    if (homeFilmSearchClear) homeFilmSearchClear.onclick = event => { event.preventDefault(); homeSearchText = ''; renderHomeLibrary(); homeFilmSearch.focus() }
+    $('#homeResumeClose').onclick = closeHomeResumeSheet
+    $('#homeResumeSheet').onclick = event => { if (event.target === $('#homeResumeSheet')) closeHomeResumeSheet() }
+    $('#homeResumeSheet').onclose = () => { selectedHomeFilmEntry = null; document.documentElement.style.overflow = '' }
+    $('#homeResumeContinue').onclick = () => {
+      const entry = selectedHomeFilmEntry
+      closeHomeResumeSheet()
+      if (entry) openFilmEntry(entry)
+    }
+    $('#homeResumeStart').onclick = () => {
+      const entry = selectedHomeFilmEntry
+      closeHomeResumeSheet()
+      if (entry) openFilmEntry({ ...entry, film: {
+        ...entry.film, remote_position: 0, remote_last_watched: 0,
+      } })
+    }
     $('#watchFilmClose').onclick = closeWatchFilmSheet
     $('#watchFilmSheet').onclick = event => { if (event.target === $('#watchFilmSheet')) closeWatchFilmSheet() }
     $('#watchFilmSheet').onclose = () => { selectedWatchFilm = null; document.documentElement.style.overflow = '' }
     $('#watchProgrammeClose').onclick = closeWatchProgrammeSheet
     $('#watchProgrammeSheet').onclick = event => { if (event.target === $('#watchProgrammeSheet')) closeWatchProgrammeSheet() }
     $('#watchProgrammeSheet').onclose = () => { selectedWatchProgramme = null; document.documentElement.style.overflow = '' }
+    $('#watchProgrammeMoreClose').onclick = closeWatchProgrammeMoreSheet
+    $('#watchProgrammeMoreSheet').onclick = event => { if (event.target === $('#watchProgrammeMoreSheet')) closeWatchProgrammeMoreSheet() }
+    $('#watchProgrammeMoreSheet').onclose = () => { document.documentElement.style.overflow = '' }
     $('#watchAddAdult').onclick = () => $('#adultAddFilms').click()
     $('#watchManageAdult').onclick = () => openLibrarySheet($('#adultCollectionSheet'))
     $('#remoteConcurrentToggle').onclick = () => manage('set-remote-simultaneous', { enabled: library?.remote_viewing?.allow_simultaneous !== true })
