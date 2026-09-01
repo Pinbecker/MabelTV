@@ -22,7 +22,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            build-essential cmake ninja-build pkg-config python3 \
+            build-essential cmake ninja-build pkg-config python3 nodejs \
             qt6-base-dev qt6-declarative-dev qt6-shadertools-dev \
             libqt6opengl6-dev libegl1-mesa-dev libgl1-mesa-dev libdrm-dev \
             libmpv-dev libsystemd-dev

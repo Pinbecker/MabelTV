@@ -1976,8 +1976,6 @@ class Library:
         video_codec = str(video.get("codec_name", "")).lower()
         audio_codec = str(audio.get("codec_name", "")).lower() if audio else ""
         suffix = source.suffix.lower()
-        if suffix == ".webm":
-            return "direct"
         apple_container = suffix in {".mp4", ".m4v", ".mov"}
         apple_video = video_codec in {"h264", "hevc"}
         apple_audio = not audio_codec or audio_codec == "aac"

@@ -22,6 +22,21 @@ A fresh installation has no universal PIN. The installer generates a one-time si
 
 HTTP is intentionally local-network-only. Never forward port 8080 through a router or expose it to the internet. Use trusted home Wi-Fi.
 
+## iPhone offline app
+
+Install the iPhone Home Screen app from MabelTV's HTTPS remote address. That
+trusted origin lets the app cache its complete shell and keep private downloads
+in the browser's device storage without installing a local certificate. The
+normal `http://…:8080` dashboard remains a home-network fallback, but browsers
+do not provide offline service workers to that address.
+
+Before travelling, open the installed HTTPS app while online, visit
+**Downloads**, and check that every item says **Ready offline**. Airplane mode
+then opens the cached MabelTV shell directly on the Downloads tab. The offline
+player serves saved video with the byte-range responses required by iPhone's
+native video player. Downloads belong to that HTTPS app's private storage on the
+individual iPhone and are not copied to other browsers or devices.
+
 ## Dashboard sections
 
 ### Overview

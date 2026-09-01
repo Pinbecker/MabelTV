@@ -1819,6 +1819,18 @@ class UsbAndMetadataTests(unittest.TestCase):
         self.assertIn("/api/offline/media?", started["stream_url"])
         self.assertEqual(started["size"], len(b"phone-ready"))
 
+    def test_webm_is_converted_for_dependable_iphone_offline_playback(self) -> None:
+        inspected = types.SimpleNamespace(
+            returncode=0,
+            stdout=json.dumps({"streams": [
+                {"codec_type": "video", "codec_name": "vp9"},
+                {"codec_type": "audio", "codec_name": "opus"},
+            ]}),
+        )
+        with mock.patch.object(mabeltv_library.subprocess, "run", return_value=inspected):
+            profile = self.fixture.library.offline_media_profile(self.volume / "Episode.webm")
+        self.assertEqual(profile, "convert")
+
     def test_incompatible_usb_download_is_queued_for_browser_preparation(self) -> None:
         movie = self.volume / "Legacy Episode.avi"
         movie.write_bytes(b"legacy-video")

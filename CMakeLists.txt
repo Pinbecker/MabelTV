@@ -148,6 +148,14 @@ if(BUILD_TESTING)
                 -s "${CMAKE_CURRENT_SOURCE_DIR}/tests/python"
                 -p "test_*.py"
     )
+    find_program(NODE_EXECUTABLE node)
+    if(NODE_EXECUTABLE)
+        add_test(
+            NAME mabeltv_offline_service_worker_tests
+            COMMAND "${NODE_EXECUTABLE}" --test
+                    "${CMAKE_CURRENT_SOURCE_DIR}/tests/js/test-offline-service-worker.mjs"
+        )
+    endif()
     add_test(NAME milestone0_libmpv_self_test COMMAND mabeltv --self-test)
     set_tests_properties(milestone0_libmpv_self_test PROPERTIES TIMEOUT 15)
 endif()

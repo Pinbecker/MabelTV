@@ -275,6 +275,8 @@
     border-radius: 0;
     background: var(--surface-1);
   }
+  .offline-setup { align-items: flex-start; text-align: left; gap: 12px; }
+  .offline-setup p { margin: 0; line-height: 1.5; }
 
   /* Library management */
   :is(.library-hero, .channel-hero, .adult-hero, .usb-hero) {
@@ -557,4 +559,3 @@
     color: var(--accent);
   }
 }
-

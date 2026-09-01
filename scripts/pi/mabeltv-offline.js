@@ -6,6 +6,16 @@
   const CHUNK_SIZE = 4 * 1024 * 1024
   const activeDownloads = new Map()
 
+  function offlineSupportError() {
+    if (!window.isSecureContext) {
+      return new Error('Offline downloads are available in the MabelTV Home Screen app installed from its secure HTTPS address.')
+    }
+    if (!('serviceWorker' in navigator)) {
+      return new Error('This browser cannot run the MabelTV offline player.')
+    }
+    return null
+  }
+
   function requestResult(request) {
     return new Promise((resolve, reject) => {
       request.onsuccess = () => resolve(request.result)
@@ -171,12 +181,15 @@
         if (!(response.status === 206 || (response.status === 200 && start === 0))) {
           throw new Error('The Pi did not provide the next part of this download')
         }
-        const data = await response.arrayBuffer()
+        // Store each part as a Blob. WebKit can keep these file-backed and the
+        // service worker can compose byte-range responses without copying a
+        // whole film into memory. Legacy ArrayBuffer chunks remain readable.
+        const data = await response.blob()
         const expected = end - start + 1
-        if (data.byteLength !== expected) throw new Error('The download stopped before this part was complete')
+        if (data.size !== expected) throw new Error('The download stopped before this part was complete')
         manifest = {
           ...manifest,
-          downloadedBytes: start + data.byteLength,
+          downloadedBytes: start + data.size,
           updatedAt: Date.now(),
         }
         await putDownload(manifest, index, data)
@@ -229,11 +242,38 @@
   }
 
   async function initialise() {
+    const unsupported = offlineSupportError()
+    if (unsupported) throw unsupported
     if (!('indexedDB' in window)) throw new Error('Private device storage is not supported here')
     await openDatabase().then(database => database.close())
-    if ('serviceWorker' in navigator) {
-      await navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
-      await navigator.serviceWorker.ready
+
+    let registration = await navigator.serviceWorker.getRegistration('/')
+    if (!registration) {
+      registration = await navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+    } else {
+      registration.update().catch(() => {})
+    }
+    await navigator.serviceWorker.ready
+
+    if (!navigator.serviceWorker.controller) {
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          navigator.serviceWorker.removeEventListener('controllerchange', controlled)
+          reject(new Error('The offline app is finishing setup. Close and reopen MabelTV, then try again.'))
+        }, 6000)
+        function controlled() {
+          if (!navigator.serviceWorker.controller) return
+          clearTimeout(timeout)
+          navigator.serviceWorker.removeEventListener('controllerchange', controlled)
+          resolve()
+        }
+        navigator.serviceWorker.addEventListener('controllerchange', controlled)
+      })
+    }
+
+    const check = await fetch('/offline-ready', { cache: 'no-store' })
+    if (!check.ok) {
+      throw new Error('The MabelTV offline player did not finish starting. Close and reopen the app, then try again.')
     }
   }
 

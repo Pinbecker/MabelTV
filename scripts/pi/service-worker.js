@@ -1,9 +1,10 @@
 'use strict'
 
-const SHELL_CACHE = 'mabeltv-shell-v67'
+const SHELL_CACHE = 'mabeltv-shell-v68'
 const SHELL_URLS = [
   '/',
   '/manifest.webmanifest',
+  '/hls.min.js',
   '/mabeltv-offline.js',
   '/portal/css/tokens.css',
   '/portal/css/base.css',
@@ -78,10 +79,15 @@ async function storedDownload(id) {
   } finally { database.close() }
 }
 
-async function storedChunk(id, index) {
+async function storedChunks(id, firstIndex, lastIndex) {
   const database = await openDatabase()
   try {
-    return await requestResult(database.transaction('chunks').objectStore('chunks').get(`${id}:${index}`))
+    const store = database.transaction('chunks').objectStore('chunks')
+    const requests = []
+    for (let index = firstIndex; index <= lastIndex; index++) {
+      requests.push(requestResult(store.get(`${id}:${index}`)))
+    }
+    return await Promise.all(requests)
   } finally { database.close() }
 }
 
@@ -129,26 +135,22 @@ async function offlineMediaResponse(request, id) {
   if (request.method === 'HEAD') {
     return new Response(null, { status: range.partial ? 206 : 200, headers })
   }
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        let position = range.start
-        while (position <= range.end) {
-          const index = Math.floor(position / manifest.chunkSize)
-          const chunk = await storedChunk(id, index)
-          if (!chunk?.data) throw new Error(`Offline video part ${index + 1} is missing`)
-          const bytes = new Uint8Array(chunk.data)
-          const chunkStart = index * manifest.chunkSize
-          const from = Math.max(0, position - chunkStart)
-          const to = Math.min(bytes.byteLength, range.end - chunkStart + 1)
-          controller.enqueue(bytes.slice(from, to))
-          position = chunkStart + to
-        }
-        controller.close()
-      } catch (error) { controller.error(error) }
-    },
-  })
-  return new Response(stream, { status: range.partial ? 206 : 200, headers })
+  const firstIndex = Math.floor(range.start / manifest.chunkSize)
+  const lastIndex = Math.floor(range.end / manifest.chunkSize)
+  const chunks = await storedChunks(id, firstIndex, lastIndex)
+  const parts = []
+  for (let index = firstIndex; index <= lastIndex; index++) {
+    const chunk = chunks[index - firstIndex]
+    if (!chunk?.data) throw new Error(`Offline video part ${index + 1} is missing`)
+    const blob = chunk.data instanceof Blob ? chunk.data : new Blob([chunk.data])
+    const chunkStart = index * manifest.chunkSize
+    const from = Math.max(0, range.start - chunkStart)
+    const to = Math.min(blob.size, range.end - chunkStart + 1)
+    parts.push(blob.slice(from, to))
+  }
+  const body = new Blob(parts, { type: manifest.mimeType || 'video/mp4' })
+  if (body.size !== length) throw new Error('The stored offline video range is incomplete')
+  return new Response(body, { status: range.partial ? 206 : 200, headers })
 }
 
 self.addEventListener('install', event => {
@@ -165,6 +167,12 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url)
   if (url.origin !== self.location.origin) return
+  if (url.pathname === '/offline-ready') {
+    event.respondWith(new Response(JSON.stringify({ ready: true }), {
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+    }))
+    return
+  }
   if (url.pathname.startsWith('/offline-media/')) {
     const id = decodeURIComponent(url.pathname.slice('/offline-media/'.length))
     event.respondWith(offlineMediaResponse(event.request, id).catch(() => new Response('Offline video unavailable', { status: 500 })))
@@ -178,16 +186,24 @@ self.addEventListener('fetch', event => {
     return
   }
   if (event.request.mode === 'navigate') {
-    event.respondWith(fetch(event.request).then(response => {
-      if (response.ok) caches.open(SHELL_CACHE).then(cache => cache.put('/', response.clone()))
+    const response = fetch(event.request).then(async response => {
+      if (response.ok) {
+        await caches.open(SHELL_CACHE).then(cache => cache.put('/', response.clone()))
+      }
       return response
-    }).catch(() => caches.match('/')))
+    }).catch(async () => (await caches.match('/')) || new Response('MabelTV is not available offline yet', {
+      status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    }))
+    event.respondWith(response)
     return
   }
   if (SHELL_URLS.includes(url.pathname)) {
-    event.respondWith(fetch(event.request).then(response => {
-      if (response.ok) caches.open(SHELL_CACHE).then(cache => cache.put(event.request, response.clone()))
+    const response = fetch(event.request).then(async response => {
+      if (response.ok) {
+        await caches.open(SHELL_CACHE).then(cache => cache.put(event.request, response.clone()))
+      }
       return response
-    }).catch(() => caches.match(event.request)))
+    }).catch(async () => (await caches.match(event.request)) || new Response('Offline asset unavailable', { status: 503 }))
+    event.respondWith(response)
   }
 })

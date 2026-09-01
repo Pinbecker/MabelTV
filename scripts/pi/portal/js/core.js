@@ -55,6 +55,7 @@ const $ = selector => document.querySelector(selector)
     let mabelControlsTimer = null
     let iosOfflineDownloadId = null
     let offlineStorageReady = false
+    let offlineStorageError = ''
     let offlineMode = false
     const pendingDownloads = new Map()
     let portalPlayerScrollY = 0
@@ -137,6 +138,14 @@ const $ = selector => document.querySelector(selector)
 
     function showError(error) {
       notice(error?.message || String(error || 'Something went wrong'), true)
+    }
+
+    function offlineSetupMarkup() {
+      const message = offlineStorageError || 'Offline downloads are not ready in this copy of MabelTV.'
+      if (window.isSecureContext) {
+        return `<div class="downloads-empty offline-setup"><strong>Finish offline setup</strong><p>${escapeHtml(message)}</p><p>Close MabelTV completely, reopen it while online, then return to Downloads.</p></div>`
+      }
+      return `<div class="downloads-empty offline-setup"><strong>Open the secure MabelTV app</strong><p>Offline downloads work in the Home Screen app installed from MabelTV's HTTPS address.</p><small>${escapeHtml(message)}</small></div>`
     }
 
     function slug(value) {
@@ -235,6 +244,7 @@ const $ = selector => document.querySelector(selector)
         await window.MabelOffline?.initialise()
         offlineStorageReady = Boolean(window.MabelOffline)
       } catch (error) {
+        offlineStorageError = error?.message || 'Offline storage could not start'
         console.warn('Offline storage could not start', error)
       }
       try {

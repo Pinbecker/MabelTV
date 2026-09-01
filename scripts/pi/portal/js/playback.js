@@ -399,7 +399,10 @@ function remoteTime(value) {
 
     async function downloadToDevice(payload, title) {
       if (!offlineStorageReady || !window.MabelOffline) {
-        notice('Offline storage is not available in this browser. Open the installed MabelTV app over HTTPS.', true)
+        notice(offlineStorageError || 'Set up the secure MabelTV app from the Downloads tab first.', true)
+        remoteKind = 'downloads'
+        renderRemoteViewing()
+        openView('watch')
         return
       }
       const pendingId = JSON.stringify(payload)
@@ -1111,8 +1114,8 @@ function remoteTime(value) {
       const root = $('#downloadsGrid')
       $('#offlineModeBanner').classList.toggle('hidden', navigator.onLine && !offlineMode)
       if (!offlineStorageReady || !window.MabelOffline) {
-        root.innerHTML = '<div class="downloads-empty"><strong>Offline storage unavailable</strong>Install MabelTV from an HTTPS address to keep private downloads on this device.</div>'
-        $('#downloadsStorage').textContent = 'Unavailable'
+        root.innerHTML = offlineSetupMarkup()
+        $('#downloadsStorage').textContent = 'Setup needed'
         return
       }
       let downloads = []
