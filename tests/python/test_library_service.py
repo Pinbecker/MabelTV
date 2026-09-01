@@ -549,6 +549,14 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertNotIn("watchReadyOnly", portal)
         self.assertNotIn("watch-ready-toggle", portal)
 
+        head_styles = portal[portal.index(".ios-watch-head {"):portal.index(".ios-watch-head > div")]
+        self.assertNotIn("position:", head_styles)
+        self.assertNotIn("z-index:", head_styles)
+        stage_styles = portal[portal.index(".ios-watch-stage {"):portal.index(".ios-watch-stage video")]
+        self.assertNotIn("z-index:", stage_styles)
+        self.assertIn("@media (orientation: portrait) and (max-width: 600px)", portal)
+        self.assertIn("margin-top: 72px", portal)
+
     def test_adult_organiser_uses_compact_accessible_components(self) -> None:
         portal = PORTAL_SOURCE
 
