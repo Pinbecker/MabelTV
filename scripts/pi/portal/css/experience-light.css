@@ -310,7 +310,7 @@ html[data-experience-theme="light"] body.portal-experience .portal-design-option
 
   html[data-experience-theme="light"] body.portal-experience .mobile-head {
     border-bottom-color: var(--experience-line);
-    background: rgba(255, 255, 255, 0.91);
+    background: #fff;
   }
 
   html[data-experience-theme="light"] body.portal-experience .mobile-head-status {

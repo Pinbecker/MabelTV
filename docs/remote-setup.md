@@ -59,6 +59,7 @@ The normal mapping is deliberately simple:
 | OK | Enter | pause / play; confirm channel number or parent access |
 | Navigation Up / Down | Up / Down | next / previous channel; navigate the parent panel |
 | Navigation Left / Right | Left / Right | previous / next episode or film; adjust parent settings |
+| Home | Home | hold to open the current channel's episode or film list |
 | 0–9 | 0–9 | direct channel entry |
 | Source or spare button | R | random episode |
 

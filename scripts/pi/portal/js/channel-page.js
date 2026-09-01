@@ -97,17 +97,7 @@ const ChannelPageComponents = (() => {
     return { marker, title: withoutMarker || original }
   }
 
-  function createOverflowButton(channel, programme, marker, onManage) {
-    const button = document.createElement('button')
-    button.type = 'button'
-    button.className = 'channel-page-overflow'
-    button.setAttribute('aria-label', `Manage ${programme.display_name}`)
-    button.append(signalIcon('signal-ellipsis'))
-    button.onclick = () => onManage(channel, programme, marker)
-    return button
-  }
-
-  function createShowCard(channel, programme, ordinal, onOpen, onManage) {
+  function createShowCard(channel, programme, ordinal, onOpen) {
     const details = episodeDetails(programme, ordinal)
     const card = document.createElement('article')
     card.className = `channel-page-show-card${programme.enabled ? '' : ' is-hidden'}`
@@ -142,7 +132,7 @@ const ChannelPageComponents = (() => {
 
     main.append(marker, copy, chevron)
     main.onclick = () => onOpen(channel, programme)
-    card.append(main, createOverflowButton(channel, programme, details.marker, onManage))
+    card.append(main)
     return card
   }
 
@@ -259,7 +249,7 @@ const ChannelPageComponents = (() => {
     document.querySelector('#workspacePictureMode').textContent = handlers.aspectLabel(channel.aspect)
   }
 
-  function renderLibrary({ channel, filtered, page, pageSize, visibility, search, onOpen, onManage, onLoadMore }) {
+  function renderLibrary({ channel, filtered, page, pageSize, visibility, search, onOpen, onLoadMore }) {
     const isFilms = channel.content_type === 'films'
     const visibleCount = isFilms
       ? filtered.length
@@ -298,7 +288,7 @@ const ChannelPageComponents = (() => {
         const ordinal = filtered.indexOf(programme) + 1
         root.append(isFilms
           ? createFilmCard(channel, programme, onOpen)
-          : createShowCard(channel, programme, ordinal, onOpen, onManage))
+          : createShowCard(channel, programme, ordinal, onOpen))
       })
     }
 

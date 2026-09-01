@@ -427,6 +427,103 @@ QVariantList TvController::parentLibrary() const
     return channels;
 }
 
+QVariantMap TvController::currentChannelSummary() const
+{
+    if (m_currentChannelIndex < 0
+        || m_currentChannelIndex >= static_cast<int>(m_channels.size())) {
+        return {};
+    }
+
+    const ChannelRuntime &runtime = m_channels[m_currentChannelIndex];
+    QJsonObject channelMetadata;
+    QJsonObject programmeMetadata;
+    QFile metadataFile(QDir(m_mediaRoot).filePath(QStringLiteral(".mabeltv-channels.json")));
+    if (metadataFile.open(QIODevice::ReadOnly)) {
+        const QJsonObject metadataRoot = QJsonDocument::fromJson(metadataFile.readAll()).object();
+        channelMetadata = metadataRoot.value(QStringLiteral("channels"))
+                              .toObject()
+                              .value(QString::number(runtime.channel.number))
+                              .toObject();
+        programmeMetadata = metadataRoot.value(QStringLiteral("programmes")).toObject();
+    }
+
+    const QString artworkDirectory =
+        QDir(m_mediaRoot).filePath(QStringLiteral(".channel-metadata"));
+    const auto artworkUrl = [&artworkDirectory](const QString &fileName) -> QUrl {
+        if (fileName.isEmpty()) {
+            return {};
+        }
+        const QString path = QDir(artworkDirectory).filePath(fileName);
+        return QFileInfo::exists(path) ? QUrl::fromLocalFile(path) : QUrl();
+    };
+
+    QVariantList programmes;
+    int selectedIndex = 0;
+    int enabledIndex = 0;
+    QUrl selectedPoster;
+    QUrl firstPoster;
+    for (int index = 0; index < runtime.channel.episodes.size(); ++index) {
+        if (runtime.disabledEpisodes.contains(index)) {
+            continue;
+        }
+
+        const Episode &episode = runtime.channel.episodes[index];
+        const QString fileName = QFileInfo(episode.path).fileName();
+        const QString metadataKey = QStringLiteral("%1/%2")
+                                        .arg(runtime.channel.number)
+                                        .arg(fileName);
+        const QJsonObject metadata = programmeMetadata.value(metadataKey).toObject();
+        const QString metadataTitle = metadata.value(QStringLiteral("title")).toString();
+        const QUrl poster = artworkUrl(metadata.value(QStringLiteral("poster")).toString());
+        const QString playbackKey = metadataKey;
+        const double position = m_channelFilmPlaybackPositions.contains(playbackKey)
+            ? m_channelFilmPlaybackPositions.value(playbackKey)
+            : (index < runtime.programmePositions.size()
+                   ? runtime.programmePositions[index] : 0.0);
+        const double duration = m_channelFilmPlaybackDurations.contains(playbackKey)
+            ? m_channelFilmPlaybackDurations.value(playbackKey)
+            : episode.durationSeconds;
+        const double progress = duration >= 10.0
+            ? std::clamp(position / duration, 0.0, 1.0) : 0.0;
+        const bool current = index == runtime.currentEpisode;
+        if (current) {
+            selectedIndex = enabledIndex;
+            selectedPoster = poster;
+        }
+        if (firstPoster.isEmpty() && !poster.isEmpty()) {
+            firstPoster = poster;
+        }
+
+        programmes.append(QVariantMap{
+            {QStringLiteral("fileName"), fileName},
+            {QStringLiteral("name"), metadataTitle.isEmpty()
+                 ? displayNameForEpisodePath(fileName) : metadataTitle},
+            {QStringLiteral("year"), metadata.value(QStringLiteral("year")).toString()},
+            {QStringLiteral("poster"), poster},
+            {QStringLiteral("position"), std::max(0.0, position)},
+            {QStringLiteral("duration"), std::max(0.0, duration)},
+            {QStringLiteral("progress"), progress},
+            {QStringLiteral("current"), current},
+        });
+        ++enabledIndex;
+    }
+
+    QUrl headerArtwork = artworkUrl(channelMetadata.value(QStringLiteral("artwork")).toString());
+    if (headerArtwork.isEmpty()) {
+        headerArtwork = !selectedPoster.isEmpty() ? selectedPoster : firstPoster;
+    }
+
+    return QVariantMap{
+        {QStringLiteral("number"), runtime.channel.number},
+        {QStringLiteral("name"), runtime.channel.name},
+        {QStringLiteral("contentType"), runtime.channel.contentType},
+        {QStringLiteral("artwork"), headerArtwork},
+        {QStringLiteral("programmeCount"), programmes.size()},
+        {QStringLiteral("selectedIndex"), selectedIndex},
+        {QStringLiteral("programmes"), programmes},
+    };
+}
+
 QVariantList TvController::adultLibrary() const
 {
     QVariantList films;

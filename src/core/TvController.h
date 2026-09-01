@@ -13,6 +13,7 @@
 #include <QTimer>
 #include <QUrl>
 #include <QVariantList>
+#include <QVariantMap>
 #include <QVector>
 
 #include <functional>
@@ -120,6 +121,7 @@ public:
     [[nodiscard]] bool scrubbingEnabled() const;
     [[nodiscard]] QVariantList parentLibrary() const;
     [[nodiscard]] QVariantList adultLibrary() const;
+    Q_INVOKABLE QVariantMap currentChannelSummary() const;
 
     Q_INVOKABLE void start();
     Q_INVOKABLE void dispatch(Action action);

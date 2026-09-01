@@ -690,6 +690,10 @@ body.portal-experience :is(.watch-film-play, .watch-film-secondary) {
   text-align: left;
 }
 
+body.portal-experience :is(.watch-film-actions, .watch-destination-actions) > .hidden {
+  display: none;
+}
+
 body.portal-experience .watch-film-play > span:last-child,
 body.portal-experience .watch-film-secondary > span:last-child {
   display: grid;
@@ -779,83 +783,55 @@ body.portal-experience .watch-programme-note {
   line-height: 1.55;
 }
 
-body.portal-experience .adult-film-sheet #adultFilmPlay {
-  display: none;
+body.portal-experience .adult-film-collection-action {
+  grid-column: 1 / -1;
+  align-items: flex-start;
 }
 
-body.portal-experience .adult-film-sheet-summary {
-  display: grid;
-  grid-template-columns: 88px minmax(0, 1fr);
-  align-items: start;
-  gap: 16px;
-  margin-bottom: 20px;
+body.portal-experience .adult-film-collection-content {
+  flex: 1;
 }
 
-body.portal-experience .adult-film-sheet-poster {
-  width: 88px;
-  aspect-ratio: 2 / 3;
-  overflow: hidden;
-  border: 1px solid var(--experience-line);
-  border-radius: 9px;
-  background: var(--experience-raised);
-}
-
-body.portal-experience .adult-film-sheet-poster img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-body.portal-experience .adult-film-sheet-summary p {
-  margin: 0;
-  color: var(--experience-muted);
-  font-size: 13px;
-  line-height: 1.55;
-}
-
-body.portal-experience .adult-film-move-panel {
+body.portal-experience .adult-film-collection-controls {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 10px;
-  margin-bottom: 10px;
-  border: 1px solid var(--experience-line);
-  border-radius: 10px;
-  background: var(--experience-raised);
-  padding: 13px;
+  gap: 8px;
+  margin-top: 10px;
 }
 
-body.portal-experience .adult-film-move-panel label {
+body.portal-experience .adult-film-collection-controls select,
+body.portal-experience .adult-film-collection-controls button {
   min-width: 0;
+  min-height: 44px;
   margin: 0;
+  border: 1px solid var(--experience-line);
+  border-radius: 8px;
 }
 
-body.portal-experience .adult-film-move-panel select {
-  margin-bottom: 0;
-}
-
-body.portal-experience .adult-film-move-panel button {
-  min-height: 48px;
-}
-
-body.portal-experience .adult-film-action-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px;
-}
-
-body.portal-experience .adult-film-action-grid button {
+body.portal-experience .adult-film-collection-controls select {
   width: 100%;
-  min-width: 0;
-  min-height: 48px;
+  background: var(--experience-soft);
+  color: var(--experience-ink);
+  padding: 0 36px 0 12px;
 }
 
-body.portal-experience .adult-film-action-grid .danger:last-child {
-  grid-column: 1 / -1;
+body.portal-experience .adult-film-collection-controls button {
+  background: rgba(255, 122, 26, 0.14);
+  color: var(--experience-orange);
+  padding: 0 14px;
+  font-size: 11px;
+  font-weight: 800;
 }
 
-body.portal-experience .adult-film-action-grid #adultFilmOptimise {
+body.portal-experience .adult-film-danger {
   grid-column: 1 / -1;
+  border-color: rgba(255, 91, 111, 0.42);
+  background: rgba(255, 91, 111, 0.08);
+}
+
+body.portal-experience .adult-film-danger .watch-action-icon {
+  background: rgba(255, 91, 111, 0.14);
+  color: #ff687f;
 }
 
 @media (max-width: 620px) {
@@ -1033,10 +1009,12 @@ body.portal-experience .adult-film-action-grid #adultFilmOptimise {
     margin-top: 20px;
   }
 
+  body.portal-experience .adult-film-collection-controls,
   body.portal-experience .adult-film-move-panel {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  body.portal-experience .adult-film-collection-controls button,
   body.portal-experience .adult-film-move-panel button {
     width: 100%;
   }

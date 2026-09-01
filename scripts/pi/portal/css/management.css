@@ -792,16 +792,6 @@
     background: #090d0b;
   }
 
-  /* Move the complete back/title bar below the portrait status area. This is
-     deliberately a physical row offset rather than safe-area padding: AVKit
-     can leave the whole row at its landscape origin after fullscreen. */
-  @media (orientation: portrait) and (max-width: 600px) {
-    .ios-watch-head {
-      margin-top: 72px;
-      padding-top: var(--space-3);
-    }
-  }
-
   .ios-watch-head > div {
     min-width: 0;
     display: grid;

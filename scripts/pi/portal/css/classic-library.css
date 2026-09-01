@@ -360,8 +360,7 @@
     color: var(--accent);
   }
 
-  .channel-page-back,
-  .channel-page-overflow {
+  .channel-page-back {
     border-radius: 2px;
   }
 

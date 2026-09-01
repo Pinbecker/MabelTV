@@ -83,6 +83,7 @@ qt_add_resources(mabeltv "mabeltv_qml"
     PREFIX "/"
     FILES
         qml/Main.qml
+        qml/ChannelSummaryOverlay.qml
         qml/TvGuideOverlay.qml
         qml/ParentOverlay.qml
         qml/ClassicParentOverlay.qml

@@ -384,10 +384,10 @@ function remoteTime(value) {
           method: 'POST', body: JSON.stringify(payload),
         })
         const mediaUrl = new URL(result.stream_url, location.origin).href
-        let deepLink = `vlc-x-callback://x-callback-url/stream?url=${encodeURIComponent(mediaUrl)}`
-        if (result.subtitle_url) {
-          deepLink += `&sub=${encodeURIComponent(new URL(result.subtitle_url, location.origin).href)}`
-        }
+        // VLC's x-callback stream action can open the app and then immediately
+        // abandon playback. Its direct URL scheme hands the same tokenised HTTPS
+        // source to VLC without that brittle callback lifecycle.
+        const deepLink = `vlc://${mediaUrl}`
         location.href = deepLink
         setTimeout(() => {
           if (document.visibilityState === 'visible') {
@@ -778,10 +778,10 @@ function remoteTime(value) {
       }, watchFilmTitle(film))
     }
 
-    async function clearWatchFilmProgress(film, playAfter = false) {
+    async function clearWatchFilmProgress(film, playAfter = false, actionOverride = null) {
       const source = { kind: 'adult', file: film.path }
-      const action = playAfter ? $('#watchFilmStartOver') : $('#watchFilmRemoveProgress')
-      const actionLabel = action.querySelector('span')
+      const action = actionOverride || $('#watchFilmStartOver')
+      const actionLabel = action.querySelector('strong') || action.querySelector('span:last-child')
       const originalLabel = actionLabel.textContent
       action.disabled = true
       action.setAttribute('aria-busy', 'true')
@@ -865,13 +865,6 @@ function remoteTime(value) {
           favouriteButton.querySelector('span').textContent = film.favourite
             ? 'Remove from favourites' : 'Add to favourites'
         }).catch(showError)
-      const metadataButton = $('#watchFilmMetadata')
-      metadataButton.disabled = !tmdbConfigured
-      metadataButton.querySelector('span').textContent = metadata.tmdb_id ? 'Refresh metadata & subtitles' : 'Find metadata & subtitles'
-      metadataButton.onclick = tmdbConfigured ? () => {
-        closeWatchFilmSheet()
-        scanTmdb(film)
-      } : null
       const manageFilm = $('#watchFilmManage')
       const managementAvailable = currentPortalDesign === 'experience'
       manageFilm.classList.toggle('hidden', !managementAvailable)
@@ -882,9 +875,6 @@ function remoteTime(value) {
       const startOver = $('#watchFilmStartOver')
       startOver.classList.toggle('hidden', !streamable || !resumable)
       startOver.onclick = streamable && resumable ? () => clearWatchFilmProgress(film, true).catch(showError) : null
-      const removeProgress = $('#watchFilmRemoveProgress')
-      removeProgress.classList.toggle('hidden', !resumable)
-      removeProgress.onclick = resumable ? () => clearWatchFilmProgress(film).catch(showError) : null
       const dialog = $('#watchFilmSheet')
       if (!dialog.open) dialog.showModal()
       document.documentElement.style.overflow = 'hidden'
@@ -1000,6 +990,34 @@ function remoteTime(value) {
       filmTools.classList.toggle('hidden', !filmChannel)
       if (filmChannel) filmTools.style.removeProperty('display')
       else filmTools.style.setProperty('display', 'none', 'important')
+
+      const episodeTools = $('#watchProgrammeEpisodeTools')
+      episodeTools.classList.toggle('hidden', filmChannel)
+      if (filmChannel) episodeTools.style.setProperty('display', 'none', 'important')
+      else episodeTools.style.removeProperty('display')
+      const progressNote = $('#watchProgrammeSheet .watch-programme-note')
+      progressNote.classList.toggle('hidden', !filmChannel)
+      if (!filmChannel) {
+        const toggleButton = $('#watchProgrammeEpisodeToggle')
+        toggleButton.querySelector('strong').textContent = programme.enabled ? 'Hide from TV' : 'Show on TV'
+        toggleButton.querySelector('small').textContent = programme.enabled
+          ? 'Keep the episode without showing it on this channel'
+          : 'Put this episode back on its channel'
+        toggleButton.onclick = () => {
+          closeWatchProgrammeSheet()
+          manage('toggle-programme', { channel: channel.number, file: programme.name })
+        }
+        $('#watchProgrammeEpisodeRename').onclick = () => {
+          closeWatchProgrammeSheet()
+          renameProgramme(channel, programme)
+        }
+        $('#watchProgrammeEpisodeBin').onclick = () => {
+          closeWatchProgrammeSheet()
+          if (confirm(`Move “${title}” to the recycle bin?`)) {
+            manage('trash', { channel: channel.number, file: programme.name })
+          }
+        }
+      }
 
       const moreButton = $('#watchProgrammeMore')
       moreButton.onclick = filmChannel ? () => {

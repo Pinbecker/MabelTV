@@ -655,6 +655,48 @@
     stroke-linejoin: round;
   }
 
+  .adult-film-settings-actions .adult-film-collection-action {
+    grid-column: 1 / -1;
+    align-items: flex-start;
+    cursor: default;
+  }
+
+  .adult-film-collection-content {
+    flex: 1;
+  }
+
+  .adult-film-collection-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+  }
+
+  .adult-film-collection-controls select,
+  .adult-film-collection-controls button {
+    min-width: 0;
+    min-height: var(--control-min);
+    margin: 0;
+  }
+
+  .adult-film-collection-controls button {
+    padding-inline: var(--space-4);
+    border-color: color-mix(in srgb, var(--accent) 48%, var(--border));
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  .adult-film-danger {
+    grid-column: 1 / -1;
+    border-color: color-mix(in srgb, var(--danger) 44%, var(--border));
+    background: color-mix(in srgb, var(--danger) 10%, var(--surface-2));
+  }
+
+  .adult-film-danger .watch-action-icon {
+    background: color-mix(in srgb, var(--danger) 18%, var(--surface-3));
+    color: var(--danger);
+  }
+
   .watch-programme-sheet {
     width: min(620px, calc(100% - 32px));
   }

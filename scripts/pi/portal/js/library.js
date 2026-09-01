@@ -101,25 +101,36 @@ function renderAdultLibrary() {
       const metadata = film.metadata || {}; const folders = library?.adult_folders || []
       const title = metadata.title || film.display_name
       $('#adultFilmSheetTitle').textContent = title
-      $('#adultFilmSheetEyebrow').textContent = currentPortalDesign === 'experience' ? 'Film settings' : (film.folder || 'Unfiled')
-      $('#adultFilmSheetMeta').textContent = [metadata.year, `${(Number(film.size || 0) / 1073741824).toFixed(2)} GB`, film.playback_state === 'optimised' ? 'Optimised for Pi' : 'Original quality'].filter(Boolean).join(' · ')
-      $('#adultFilmSheetOverview').textContent = metadata.overview || 'Artwork, organisation and playback controls for this film.'
-      const poster = $('#adultFilmSheetPoster'); poster.innerHTML = ''
-      if (metadata.poster) poster.innerHTML = `<img src="/api/adult/artwork/${encodeURIComponent(metadata.poster)}" alt="">`
+      $('#adultFilmSheetEyebrow').textContent = 'Film settings'
+      const metaRoot = $('#adultFilmSheetMeta')
+      metaRoot.innerHTML = ''
+      ;[metadata.year, film.folder || 'Unfiled', `${(Number(film.size || 0) / 1073741824).toFixed(2)} GB`, film.playback_state === 'optimised' ? 'Optimised for Pi' : 'Original quality'].filter(Boolean).forEach(value => {
+        const span = document.createElement('span')
+        span.textContent = value
+        metaRoot.append(span)
+      })
+      $('#adultFilmSheetOverview').textContent = metadata.overview || 'Manage this film without changing where you left off.'
+      const artwork = metadata.poster ? artworkUrl(metadata.poster) : ''
+      $('#adultFilmBackdrop').style.setProperty('--watch-film-art', artwork ? `url("${artwork}")` : 'linear-gradient(135deg,#2e3a34,#101513)')
+      $('#adultFilmSheetPoster').replaceChildren(filmPoster(film))
       const select = $('#adultFilmFolder'); select.innerHTML = '<option value="">Unfiled</option>'
       folders.forEach(folder => { const option = document.createElement('option'); option.value = folder; option.textContent = folder; select.append(option) })
       select.value = film.folder || ''
       const busy = ['processing', 'queued'].includes(film.playback_state)
-      $('#adultFilmOptimise').disabled = busy || film.playback_state === 'optimised'
-      $('#adultFilmOptimise').textContent = film.playback_state === 'optimised' ? 'Already optimised' : busy ? 'Optimising…' : 'Optimise for Pi'
-      $('#adultFilmScan').disabled = !tmdbConfigured
-      $('#adultFilmScan').textContent = metadata.tmdb_id ? 'Refresh metadata' : 'Scan metadata'
-      $('#adultFilmFavourite').textContent = film.favourite
-        ? 'Remove from favourites' : 'Add to favourites'
-      $('#adultFilmFavourite').classList.toggle('active', film.favourite === true)
+      const optimise = $('#adultFilmOptimise')
+      optimise.disabled = busy || film.playback_state === 'optimised'
+      optimise.querySelector('strong').textContent = film.playback_state === 'optimised' ? 'Already optimised' : busy ? 'Optimising…' : 'Optimise for Pi'
+      optimise.querySelector('small').textContent = film.playback_state === 'optimised'
+        ? 'This film already uses the TV playback profile'
+        : busy ? 'The playback copy is being prepared' : 'Prepare a smoother TV playback copy'
+      const scan = $('#adultFilmScan')
+      scan.disabled = !tmdbConfigured
+      scan.querySelector('strong').textContent = metadata.tmdb_id ? 'Refresh metadata & subtitles' : 'Find metadata & subtitles'
+      const removeProgress = $('#adultFilmRemoveProgress')
+      removeProgress.classList.toggle('hidden', !watchFilmResumable(film))
       const sheet = $('#adultFilmSheet')
       sheet.showModal()
-      sheet.querySelector('.library-sheet-panel').focus({ preventScroll: true })
+      sheet.querySelector('.watch-film-panel').focus({ preventScroll: true })
       document.documentElement.style.overflow = 'hidden'
     }
 
@@ -277,23 +288,17 @@ function renderAdultLibrary() {
       dialog.onclick = event => { if (event.target === dialog) closeLibrarySheet(dialog) }
       dialog.onclose = () => { document.documentElement.style.overflow = ''; if (dialog === $('#adultFilmSheet')) selectedAdultFilm = null }
     })
-    $('#adultFilmPlay').onclick = () => {
-      const film = selectedAdultFilm; if (!film) return
-      playOnTv({ kind: 'adult', file: film.path }, film.metadata?.title || film.display_name)
-    }
     $('#adultFilmMove').onclick = async () => { if (selectedAdultFilm) { const film = selectedAdultFilm; closeLibrarySheet($('#adultFilmSheet')); await manage('move-adult', { file: film.path, folder: $('#adultFilmFolder').value }) } }
     $('#adultFilmScan').onclick = () => { const film = selectedAdultFilm; if (film) { closeLibrarySheet($('#adultFilmSheet')); scanTmdb(film) } }
-    $('#adultFilmFavourite').onclick = () => {
-      const film = selectedAdultFilm
-      if (!film) return
-      setFilmFavourite(adultFilmEntry(film), film.favourite !== true).then(() => {
-        $('#adultFilmFavourite').textContent = film.favourite
-          ? 'Remove from favourites' : 'Add to favourites'
-        $('#adultFilmFavourite').classList.toggle('active', film.favourite === true)
-      }).catch(showError)
-    }
     $('#adultFilmRename').onclick = () => { const film = selectedAdultFilm; if (!film) return; const name = prompt('Film name:', film.display_name); if (name?.trim()) { closeLibrarySheet($('#adultFilmSheet')); manage('rename-adult', { file: film.path, name: name.trim() }) } }
     $('#adultFilmOptimise').onclick = () => { const film = selectedAdultFilm; if (film && confirm(`Optimise “${film.display_name}” for the Pi? The original is replaced only after the new copy passes its checks.`)) { closeLibrarySheet($('#adultFilmSheet')); manage('optimise-adult', { file: film.path }) } }
+    $('#adultFilmRemoveProgress').onclick = () => {
+      const film = selectedAdultFilm
+      if (!film) return
+      const action = $('#adultFilmRemoveProgress')
+      closeLibrarySheet($('#adultFilmSheet'))
+      clearWatchFilmProgress(film, false, action).catch(showError)
+    }
     $('#adultFilmRemove').onclick = () => { const film = selectedAdultFilm; if (film && confirm(`Move “${film.display_name}” to the recycle bin?`)) { closeLibrarySheet($('#adultFilmSheet')); manage('trash-adult', { file: film.path }) } }
 
     $('#adultCreateFolder').onclick = async () => {
@@ -924,15 +929,6 @@ function renderAdultLibrary() {
       if (dialog.open) dialog.close()
     }
 
-    function openProgrammeActions(channel, programme, episode) {
-      selectedProgrammeAction = { channel, programme, episode }
-      $('#programmeActionIndex').textContent = episode
-      $('#programmeActionTitle').textContent = programme.display_name
-      $('#programmeActionMeta').textContent = programme.enabled ? `Available on CH ${channel.number}` : `Hidden from CH ${channel.number}`
-      $('#programmeActionToggle span').textContent = programme.enabled ? 'Hide from TV' : 'Show on TV'
-      openLibrarySheet($('#programmeActionSheet'))
-    }
-
     function renderProgrammeList(channel) {
       const search = programmeSearch.trim().toLowerCase()
       const filtered = channel.programmes.filter(programme => {
@@ -949,7 +945,6 @@ function renderAdultLibrary() {
         visibility: programmeVisibility,
         search: programmeSearch,
         onOpen: (selectedChannel, programme) => openWatchProgrammeSheet(selectedChannel, programme),
-        onManage: openProgrammeActions,
         onLoadMore: () => { programmePage += 1; renderProgrammeList(channel) },
       })
     }

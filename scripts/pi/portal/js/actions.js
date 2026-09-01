@@ -42,13 +42,11 @@ let managementBusy = false
     $('#closeRecycleBin').onclick = () => closeLibrarySheet($('#recycleSheet'))
     $('#closeChannelUpload').onclick = () => closeLibrarySheet($('#channelUploadPanel'))
     $('#closeChannelSettings').onclick = () => closeLibrarySheet($('#channelSettingsSheet'))
-    $('#closeProgrammeActions').onclick = () => closeLibrarySheet($('#programmeActionSheet'))
     $('#watchProgrammeMoveClose').onclick = () => closeLibrarySheet($('#watchProgrammeMoveSheet'))
-    ;[$('#addChannelPanel'), $('#recycleSheet'), $('#channelUploadPanel'), $('#channelSettingsSheet'), $('#programmeActionSheet'), $('#watchProgrammeMoveSheet')].forEach(dialog => {
+    ;[$('#addChannelPanel'), $('#recycleSheet'), $('#channelUploadPanel'), $('#channelSettingsSheet'), $('#watchProgrammeMoveSheet')].forEach(dialog => {
       dialog.onclick = event => { if (event.target === dialog) closeLibrarySheet(dialog) }
       dialog.onclose = () => {
         document.documentElement.style.overflow = ''
-        if (dialog === $('#programmeActionSheet')) selectedProgrammeAction = null
       }
     })
     $('#programmeSearch').oninput = event => {
@@ -70,24 +68,6 @@ let managementBusy = false
       const channel = library.channels.find(value => value.number === selectedManageChannel)
       if (channel) renderProgrammeList(channel)
     })
-    $('#programmeActionToggle').onclick = () => {
-      const item = selectedProgrammeAction
-      if (!item) return
-      closeLibrarySheet($('#programmeActionSheet'))
-      manage('toggle-programme', { channel: item.channel.number, file: item.programme.name })
-    }
-    $('#programmeActionRename').onclick = () => {
-      const item = selectedProgrammeAction
-      if (!item) return
-      closeLibrarySheet($('#programmeActionSheet'))
-      renameProgramme(item.channel, item.programme)
-    }
-    $('#programmeActionBin').onclick = () => {
-      const item = selectedProgrammeAction
-      if (!item) return
-      closeLibrarySheet($('#programmeActionSheet'))
-      if (confirm(`Move “${item.programme.display_name}” to the recycle bin?`)) manage('trash', { channel: item.channel.number, file: item.programme.name })
-    }
     $('#refreshLibrary').onclick = () => manage('refresh')
     $('#editChannelForm').onsubmit = async event => {
       event.preventDefault()

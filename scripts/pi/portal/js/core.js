@@ -8,7 +8,6 @@ const $ = selector => document.querySelector(selector)
     let programmeSearch = ''
     let programmeVisibility = 'all'
     let programmePage = 1
-    let selectedProgrammeAction = null
     let adultOptimisationRefresh = null
     let adultFolderFilter = '*'
     let adultSearchText = ''

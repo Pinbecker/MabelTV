@@ -607,7 +607,7 @@ body.portal-v2 .channel-page-programmes.is-film-grid {
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 24px 12px;
 }
-body.portal-v2 .channel-page-show-card { display: grid; grid-template-columns: minmax(0,1fr) 44px; border-bottom: 1px solid var(--experience-line); }
+body.portal-v2 .channel-page-show-card { display: grid; grid-template-columns: minmax(0,1fr); border-bottom: 1px solid var(--experience-line); }
 body.portal-v2 .channel-page-show-main { display: grid; grid-template-columns: 48px minmax(0,1fr) auto; align-items: center; gap: 12px; min-width: 0; border-radius: 0; background: transparent; color: var(--experience-ink); padding: 9px 0; text-align: left; }
 body.portal-v2 .channel-page-episode { display: flex; align-items: center; justify-content: center; flex-direction: column; width: 42px; height: 42px; border-radius: 8px; background: var(--experience-soft); color: var(--experience-orange); font-size: 10px; font-weight: 800; line-height: 1; }
 body.portal-v2 .channel-page-season { color: var(--experience-muted); font-size: 8px; letter-spacing: .08em; }
@@ -618,5 +618,3 @@ body.portal-v2 .channel-page-show-copy small { overflow: hidden; text-overflow: 
 body.portal-v2 .channel-page-show-copy strong { font-size: 12px; }
 body.portal-v2 .channel-page-show-copy small { color: var(--experience-dim); font-size: 9px; }
 body.portal-v2 .channel-page-chevron { width: 16px; height: 16px; fill: none; stroke: var(--experience-dim); stroke-width: 2; }
-body.portal-v2 .channel-page-overflow { min-width: 44px; min-height: 60px; border-radius: 0; background: transparent; color: var(--experience-dim); }
-body.portal-v2 .channel-page-overflow svg { width: 18px; height: 18px; fill: currentColor; }

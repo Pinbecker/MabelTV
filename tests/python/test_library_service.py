@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import http.cookiejar
 import importlib.util
+import inspect
 import json
 import os
 import tempfile
@@ -194,12 +195,19 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("color-scheme: light", light_styles)
         self.assertIn('html[data-experience-theme="light"]', light_styles)
         self.assertIn('<meta name="theme-color" content="#0b0a0d">', html)
-        self.assertIn('<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">', html)
+        self.assertIn('<meta name="apple-mobile-web-app-status-bar-style" content="default">', html)
+        self.assertIn('<meta name="apple-mobile-web-app-status-bar-style" content="default">', classic)
         self.assertIn('<meta name="theme-color" content="#0b0a0d">', classic)
         self.assertIn('id="experienceThemeToggle"', html)
         self.assertIn('role="switch"', html)
         self.assertIn("mabeltv-experience-theme", theme_script)
         self.assertIn("localStorage.setItem(STORAGE_KEY, theme)", theme_script)
+        self.assertIn("dark: 'default'", theme_script)
+        self.assertIn("light: 'default'", theme_script)
+        self.assertNotIn("black-translucent", theme_script)
+        mobile_head = styles[styles.rindex("body.portal-v2 .mobile-head {"):]
+        mobile_head = mobile_head[:mobile_head.index("}")]
+        self.assertIn("backdrop-filter: none", mobile_head)
         self.assertIn("--experience-sheet-gutter", styles)
         self.assertIn("dialog:is(.library-sheet, .watch-sheet, .watch-film-sheet", styles)
         self.assertIn(".watch-native-select", styles)
@@ -328,7 +336,8 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("const ChannelPageComponents", channel_script)
         self.assertIn("function createShowCard", channel_script)
         self.assertIn("function createFilmCard", channel_script)
-        self.assertIn("function createOverflowButton", channel_script)
+        self.assertNotIn("function createOverflowButton", channel_script)
+        self.assertNotIn("channel-page-overflow", channel_script)
         self.assertIn("openWatchProgrammeSheet(selectedChannel, programme)", PORTAL_SCRIPT)
         self.assertIn('id="watchProgrammeMore"', html)
         self.assertIn('id="watchProgrammeMoreSheet"', html)
@@ -341,6 +350,11 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn('id="watchProgrammeToggle"', html)
         self.assertIn('id="watchProgrammeRename"', html)
         self.assertIn('id="watchProgrammeBin"', html)
+        self.assertIn('id="watchProgrammeEpisodeTools"', html)
+        self.assertIn('id="watchProgrammeEpisodeToggle"', html)
+        self.assertIn('id="watchProgrammeEpisodeRename"', html)
+        self.assertIn('id="watchProgrammeEpisodeBin"', html)
+        self.assertNotIn('id="programmeActionSheet"', html)
         for action_id in (
                 "watchProgrammeMore", "watchProgrammeMetadata", "watchProgrammeToggle",
                 "watchProgrammeRename", "watchProgrammeMove",
@@ -372,7 +386,12 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("scanProgrammeTmdb(channel, programme)", PORTAL_SCRIPT)
         self.assertIn("manage('move-programme'", PORTAL_SCRIPT)
         self.assertIn("card.append(visual, copy)", channel_script)
-        self.assertNotIn("card.append(main, createOverflowButton(channel, programme, marker, onManage))", channel_script)
+        self.assertIn("card.append(main)", channel_script)
+        self.assertNotIn("onManage", channel_script)
+        self.assertIn("manage('toggle-programme'", PORTAL_SCRIPT)
+        self.assertIn("renameProgramme(channel, programme)", PORTAL_SCRIPT)
+        self.assertIn("const deepLink = `vlc://${mediaUrl}`", PORTAL_SCRIPT)
+        self.assertNotIn("vlc-x-callback://", PORTAL_SCRIPT)
         self.assertIn("history.pushState({ channelPage: true }", PORTAL_SCRIPT)
         self.assertIn("/^channel\\/(\\d+)\\/(watch|library)$/", PORTAL_SCRIPT)
         self.assertIn(".channel-page-programmes.is-film-grid", channel_styles)
@@ -467,7 +486,8 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("set-remote-simultaneous", index)
         self.assertIn("/api/remote/start", player)
         self.assertIn("/api/remote/clear-position", index)
-        self.assertIn('id="watchFilmRemoveProgress"', index)
+        self.assertNotIn('id="watchFilmRemoveProgress"', index)
+        self.assertIn('id="adultFilmRemoveProgress"', index)
         self.assertIn("actionLabel.textContent = playAfter ? 'Starting from beginning…' : 'Removing…'", index)
         self.assertIn("film.remote_position = 0", index)
         self.assertIn("renderAdultWatch()", index)
@@ -554,15 +574,22 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertNotIn("z-index:", head_styles)
         stage_styles = portal[portal.index(".ios-watch-stage {"):portal.index(".ios-watch-stage video")]
         self.assertNotIn("z-index:", stage_styles)
-        self.assertIn("@media (orientation: portrait) and (max-width: 600px)", portal)
-        self.assertIn("margin-top: 72px", portal)
+        self.assertNotIn("margin-top: 72px", portal)
+        self.assertIn("calc(var(--space-3) + var(--safe-top))", head_styles)
 
     def test_adult_organiser_uses_compact_accessible_components(self) -> None:
         portal = PORTAL_SOURCE
 
-        self.assertIn('class="adult-film-move-panel"', portal)
+        self.assertIn('class="watch-film-sheet adult-film-sheet"', portal)
+        self.assertIn('class="watch-film-play adult-film-collection-action"', portal)
         self.assertIn('aria-labelledby="adultFilmSheetTitle"', portal)
-        self.assertIn("sheet.querySelector('.library-sheet-panel').focus", portal)
+        self.assertIn("sheet.querySelector('.watch-film-panel').focus", portal)
+        self.assertIn('Refresh metadata &amp; subtitles', portal)
+        self.assertIn('id="adultFilmOptimise"', portal)
+        self.assertIn('id="adultFilmRemoveProgress"', portal)
+        self.assertIn('id="adultFilmRemove"', portal)
+        self.assertNotIn('id="adultFilmFavourite"', portal)
+        self.assertNotIn('id="adultFilmPlay"', portal)
         self.assertIn("row.setAttribute('aria-label', `Open details for", portal)
         self.assertNotIn("more.textContent = 'Open'", portal)
         self.assertNotIn("!important", portal)
@@ -1851,6 +1878,31 @@ class UsbAndMetadataTests(unittest.TestCase):
         self.assertEqual(queued["status"], "queued")
         self.assertEqual(queued["preparation"], "repack")
         thread.assert_called_once()
+
+    def test_incompatible_usb_conversion_uses_dedicated_fast_offline_path(self) -> None:
+        movie = self.volume / "Legacy Episode.avi"
+        movie.write_bytes(b"legacy-video")
+        with mock.patch.object(self.fixture.library, "offline_media_profile",
+                               return_value="convert"), \
+                mock.patch.object(mabeltv_library.threading, "Thread"):
+            queued = self.fixture.library.start_offline_download({
+                "kind": "usb", "volume": "TEST-USB", "file": "Legacy Episode.avi",
+            })
+        with mock.patch.object(self.fixture.library, "_convert_for_offline_playback") as convert:
+            convert.side_effect = lambda _source, destination, _job: destination.write_bytes(b"ready")
+            self.fixture.library._run_offline_preparation(queued["id"])
+        convert.assert_called_once()
+        ready = self.fixture.library.offline_preparation_status(queued["id"])
+        self.assertEqual(ready["status"], "ready")
+        self.assertEqual(ready["size"], len(b"ready"))
+
+    def test_offline_conversion_is_fast_reports_progress_and_never_upscales(self) -> None:
+        source = inspect.getsource(self.fixture.library._convert_for_offline_playback)
+        self.assertIn("min(1280,iw)", source)
+        self.assertIn("min(720,ih)", source)
+        self.assertIn('"ultrafast"', source)
+        self.assertIn('"-progress", "pipe:1"', source)
+        self.assertIn("Converting for offline playback · {percent}%", source)
 
     def test_usb_eject_is_blocked_during_browser_stream(self) -> None:
         movie = self.volume / "Phone Movie.mp4"

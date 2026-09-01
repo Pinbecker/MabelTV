@@ -35,6 +35,7 @@ private slots:
     void parentControlsRequireThreeConfirmationsAndPersistSettings();
     void tvGuideBuildsOrderedScheduleAndTunesChannels();
     void parentLibraryControlsPersistAndAffectPlayback();
+    void currentChannelSummaryIncludesArtworkMetadataAndFilmProgress();
     void controllerReloadPreservesPlaybackAndRuntimeVolume();
     void filmChannelBookmarksPersistAcrossTvAndPortalPlayback();
     void adultLibraryIsSeparateAndParentOnly();
@@ -1022,6 +1023,87 @@ void CoreTests::parentLibraryControlsPersistAndAffectPlayback()
                  .value(QStringLiteral("enabledProgrammeCount"))
                  .toInt(),
              1);
+}
+
+void CoreTests::currentChannelSummaryIncludesArtworkMetadataAndFilmProgress()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const QString mediaRoot = directory.filePath(QStringLiteral("media"));
+    QVERIFY(QDir(mediaRoot).mkpath(QStringLiteral("shows")));
+    QVERIFY(QDir(mediaRoot).mkpath(QStringLiteral("films")));
+    QVERIFY(QDir(mediaRoot).mkpath(QStringLiteral(".channel-metadata")));
+
+    for (const QString &path : {QStringLiteral("shows/S01E01 - Hello.mp4"),
+                                QStringLiteral("films/Film One.mp4"),
+                                QStringLiteral("films/Film Two.mp4")}) {
+        QFile media(QDir(mediaRoot).filePath(path));
+        QVERIFY(media.open(QIODevice::WriteOnly));
+        media.write("media");
+    }
+    for (const QString &path : {QStringLiteral("show.jpg"),
+                                QStringLiteral("film-one.jpg")}) {
+        QFile artwork(QDir(mediaRoot).filePath(QStringLiteral(".channel-metadata/%1").arg(path)));
+        QVERIFY(artwork.open(QIODevice::WriteOnly));
+        artwork.write("image");
+    }
+
+    QFile configuration(directory.filePath(QStringLiteral("channels.json")));
+    QVERIFY(configuration.open(QIODevice::WriteOnly));
+    configuration.write(R"({"schema_version":1,"channels":[
+        {"number":1,"name":"Show Time","folder":"shows","content_type":"shows"},
+        {"number":5,"name":"Film Time","folder":"films","content_type":"films"}
+    ]})");
+    configuration.close();
+
+    QFile settings(directory.filePath(QStringLiteral("settings.json")));
+    QVERIFY(settings.open(QIODevice::WriteOnly));
+    settings.write(R"({"schema_version":1,"library":{"disabled_programmes":{
+        "5":["Film Two.mp4"]
+    }}})");
+    settings.close();
+
+    QFile metadata(QDir(mediaRoot).filePath(QStringLiteral(".mabeltv-channels.json")));
+    QVERIFY(metadata.open(QIODevice::WriteOnly));
+    metadata.write(R"({
+        "channels":{"1":{"artwork":"show.jpg"}},
+        "programmes":{"5/Film One.mp4":{
+            "title":"The First Film","year":"1999","poster":"film-one.jpg"
+        }}
+    })");
+    metadata.close();
+
+    TvController controller;
+    QVERIFY(controller.initialize(configuration.fileName(), settings.fileName(), mediaRoot,
+                                  directory.filePath(QStringLiteral("state.json")),
+                                  [](const QString &) {
+                                      return MediaInspection{true, true, 600.0,
+                                                             QStringLiteral("h264"), {}};
+                                  }));
+    QSignalSpy playbackRequests(&controller, &TvController::playbackRequested);
+    controller.start();
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 1, 1500);
+
+    const QVariantMap show = controller.currentChannelSummary();
+    QCOMPARE(show.value(QStringLiteral("number")).toInt(), 1);
+    QCOMPARE(show.value(QStringLiteral("programmeCount")).toInt(), 1);
+    QVERIFY(show.value(QStringLiteral("artwork")).toUrl().isLocalFile());
+    QCOMPARE(show.value(QStringLiteral("programmes")).toList().constFirst().toMap()
+                 .value(QStringLiteral("name")).toString(),
+             QStringLiteral("S01  E01  ·  Hello"));
+
+    controller.playPortalProgramme(5, QStringLiteral("Film One.mp4"), 0.0);
+    controller.setChannelFilmPlaybackState(5, QStringLiteral("Film One.mp4"), 150.0, 600.0);
+    const QVariantMap films = controller.currentChannelSummary();
+    QCOMPARE(films.value(QStringLiteral("contentType")).toString(), QStringLiteral("films"));
+    QCOMPARE(films.value(QStringLiteral("programmeCount")).toInt(), 1);
+    QVERIFY(films.value(QStringLiteral("artwork")).toUrl().isLocalFile());
+    const QVariantMap film = films.value(QStringLiteral("programmes")).toList().constFirst().toMap();
+    QCOMPARE(film.value(QStringLiteral("name")).toString(), QStringLiteral("The First Film"));
+    QCOMPARE(film.value(QStringLiteral("year")).toString(), QStringLiteral("1999"));
+    QCOMPARE(film.value(QStringLiteral("position")).toDouble(), 150.0);
+    QCOMPARE(film.value(QStringLiteral("duration")).toDouble(), 600.0);
+    QCOMPARE(film.value(QStringLiteral("progress")).toDouble(), 0.25);
 }
 
 void CoreTests::controllerReloadPreservesPlaybackAndRuntimeVolume()

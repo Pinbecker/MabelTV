@@ -29,6 +29,7 @@ BUTTONS = [
     ("NAVIGATION DOWN (optional)", "KEY_DOWN", False),
     ("NAVIGATION LEFT (optional)", "KEY_LEFT", False),
     ("NAVIGATION RIGHT (optional)", "KEY_RIGHT", False),
+    ("HOME / CHANNEL LIST (optional)", "KEY_HOME", False),
     ("SOURCE / SUBTITLES (optional)", "KEY_R", False),
     *[(str(number), f"KEY_{number}", False) for number in range(10)],
 ]

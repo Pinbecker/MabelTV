@@ -2043,7 +2043,7 @@ class Library:
                 if not source.is_file():
                     raise ValueError("The original video is no longer available")
                 if preparation == "convert":
-                    self.optimise_adult_for_playback(source, destination)
+                    self._convert_for_offline_playback(source, destination, job_id)
                 else:
                     command = ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
                                "-y", "-i", str(source), "-map", "0:v:0", "-map", "0:a:0?",
@@ -2071,6 +2071,76 @@ class Library:
         finally:
             temporary.unlink(missing_ok=True)
             log_path.unlink(missing_ok=True)
+
+    def _convert_for_offline_playback(self, source: Path, destination: Path,
+                                      job_id: str) -> None:
+        """Create an iPhone-safe copy quickly, without upscaling small USB videos."""
+        temporary = self.offline_cache / f".{job_id}.part.mp4"
+        error_log = self.offline_cache / f".{job_id}.ffmpeg.log"
+        try:
+            duration_result = subprocess.run(
+                ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                 "-of", "default=noprint_wrappers=1:nokey=1", str(source)],
+                check=False, capture_output=True, text=True, timeout=30)
+            duration = max(0.0, float(duration_result.stdout.strip()))
+        except (OSError, subprocess.TimeoutExpired, TypeError, ValueError):
+            duration = 0.0
+        command = [
+            "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
+            "-threads", "2", "-filter_threads", "2", "-i", str(source),
+            "-map", "0:v:0", "-map", "0:a:0?", "-sn",
+            "-vf", "scale=w='min(1280,iw)':h='min(720,ih)':"
+                   "force_original_aspect_ratio=decrease:force_divisible_by=2",
+            "-c:v", "libx264", "-preset", "ultrafast", "-profile:v", "main",
+            "-level:v", "3.1", "-crf", "23", "-maxrate", "2500k",
+            "-bufsize", "5000k", "-pix_fmt", "yuv420p", "-c:a", "aac",
+            "-b:a", "128k", "-movflags", "+faststart", "-progress", "pipe:1",
+            "-nostats", str(temporary),
+        ]
+        process: subprocess.Popen[str] | None = None
+        deadline = time.monotonic() + 45 * 60
+        last_percent = -1
+        try:
+            with error_log.open("wb") as errors:
+                process = subprocess.Popen(
+                    command, stdout=subprocess.PIPE, stderr=errors, text=True,
+                    start_new_session=True)
+                while process.poll() is None:
+                    if time.monotonic() >= deadline:
+                        os.killpg(process.pid, signal.SIGTERM)
+                        raise ValueError("MabelTV stopped this conversion because it took too long")
+                    line = process.stdout.readline() if process.stdout else ""
+                    if not line.startswith(("out_time_us=", "out_time_ms=")) or duration <= 0:
+                        continue
+                    try:
+                        completed = float(line.split("=", 1)[1].strip()) / 1_000_000
+                    except (TypeError, ValueError):
+                        continue
+                    percent = min(99, max(0, int(completed * 100 / duration)))
+                    if percent < last_percent + 2:
+                        continue
+                    last_percent = percent
+                    with self.offline_preparation_lock:
+                        job = self.offline_preparations.get(job_id)
+                        if job:
+                            job["message"] = f"Converting for offline playback · {percent}%"
+                if process.returncode != 0:
+                    details = error_log.read_text(encoding="utf-8", errors="replace").strip()
+                    if details:
+                        print(details[-4000:], file=sys.stderr, flush=True)
+                    raise ValueError("MabelTV could not convert that video for offline playback")
+            if self.offline_media_profile(temporary) != "direct":
+                raise ValueError("The converted video did not pass its iPhone playback check")
+            os.replace(temporary, destination)
+        finally:
+            if process is not None and process.poll() is None:
+                os.killpg(process.pid, signal.SIGTERM)
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    os.killpg(process.pid, signal.SIGKILL)
+            temporary.unlink(missing_ok=True)
+            error_log.unlink(missing_ok=True)
 
     def offline_preparation_status(self, job_id: str) -> dict[str, Any]:
         with self.offline_preparation_lock:

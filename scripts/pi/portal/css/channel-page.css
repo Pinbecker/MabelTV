@@ -349,7 +349,7 @@
   .channel-page-show-card {
     min-width: 0;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 52px;
+    grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
     background: var(--surface-2);
   }
@@ -420,29 +420,6 @@
     fill: none;
     stroke: var(--text-faint);
     stroke-width: 1.8;
-  }
-
-  .channel-page-overflow {
-    width: 52px;
-    min-height: 52px;
-    align-self: center;
-    border: 0;
-    border-left: 1px solid var(--border-subtle);
-    border-radius: 0;
-    padding: 0;
-    background: transparent;
-    color: var(--text-muted);
-  }
-
-  .channel-page-overflow:hover {
-    background: rgb(255 255 255 / 4%);
-    color: var(--text);
-  }
-
-  .channel-page-overflow svg {
-    width: 20px;
-    height: 20px;
-    fill: currentColor;
   }
 
   .channel-page-programmes.is-film-grid {
@@ -519,17 +496,6 @@
     display: grid;
     gap: 3px;
     padding-right: 38px;
-  }
-
-  .channel-page-film-card > .channel-page-overflow {
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    width: 34px;
-    height: 34px;
-    min-height: 34px;
-    border: 0;
-    border-radius: var(--radius-round);
   }
 
   .channel-page-empty {
@@ -718,14 +684,6 @@
       grid-template-columns: 58px minmax(0, 1fr) 18px;
       gap: var(--space-2);
       padding: var(--space-2) var(--space-3);
-    }
-
-    .channel-page-show-card {
-      grid-template-columns: minmax(0, 1fr) 46px;
-    }
-
-    .channel-page-overflow {
-      width: 46px;
     }
 
     .channel-page-programmes.is-film-grid {

@@ -4,7 +4,9 @@
   const STORAGE_KEY = 'mabeltv-experience-theme'
   const THEMES = Object.freeze({ dark: 'dark', light: 'light' })
   const THEME_COLOURS = Object.freeze({ dark: '#0b0a0d', light: '#f4f3f1' })
-  const STATUS_BAR_STYLES = Object.freeze({ dark: 'black-translucent', light: 'default' })
+  // Match the original installed PWA contract. iOS fixes this choice when the
+  // Home Screen app is created, so themes must not switch viewport modes.
+  const STATUS_BAR_STYLES = Object.freeze({ dark: 'default', light: 'default' })
 
   function normaliseTheme(value) {
     return value === THEMES.light ? THEMES.light : THEMES.dark

@@ -30,6 +30,7 @@ Window {
     property double lastChannelRepeatMs: 0
     property double lastVolumeRepeatMs: 0
     property bool okHeldForGuide: false
+    property bool homeHeldForChannelSummary: false
     property bool childWasPausedBeforeAdult: false
     property bool restoreChildPauseAfterAdult: false
     property bool openingAdultMode: false
@@ -1460,6 +1461,13 @@ Window {
         controller: tvController
     }
 
+    ChannelSummaryOverlay {
+        id: channelSummaryOverlay
+        anchors.fill: parent
+        z: 195
+        controller: tvController
+    }
+
     ParentOverlay {
         id: parentOverlay
         anchors.fill: parent
@@ -1600,6 +1608,21 @@ Window {
         onTriggered: {
             root.muteHeldForLock = true
             tvController.toggleRemoteLock()
+        }
+    }
+
+    Timer {
+        id: channelSummaryHoldTimer
+        interval: 900
+        onTriggered: {
+            if (!directMediaMode && !tvController.standby && !root.introPlaying
+                    && !root.filmCountdownActive && !adultMode.active
+                    && !guideOverlay.visible && !parentOverlay.visible
+                    && !channelSummaryOverlay.visible) {
+                root.homeHeldForChannelSummary = true
+                root.syncPlaybackPosition()
+                channelSummaryOverlay.open()
+            }
         }
     }
 
@@ -1770,6 +1793,14 @@ Window {
                 } else {
                     event.accepted = adultMode.handleKey(event.key, event.isAutoRepeat)
                 }
+            } else if (channelSummaryOverlay.visible
+                       && root.homeHeldForChannelSummary
+                       && event.key === Qt.Key_Home) {
+                // Ignore the repeat tail of the Home hold that opened this
+                // overlay. A fresh Home press still closes it normally.
+                event.accepted = true
+            } else if (channelSummaryOverlay.visible) {
+                event.accepted = channelSummaryOverlay.handleKey(event.key)
             } else if (guideOverlay.visible && root.okHeldForGuide
                        && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
                 // Ignore the repeat tail of the same OK hold that opened the
@@ -1813,6 +1844,13 @@ Window {
                     root.previousHeldForRestart = false
                     parentHoldTimer.restart()
                     emergencyRestartTimer.restart()
+                }
+                event.accepted = true
+            } else if (event.key === Qt.Key_Home && !directMediaMode
+                       && !tvController.standby) {
+                if (!event.isAutoRepeat) {
+                    root.homeHeldForChannelSummary = false
+                    channelSummaryHoldTimer.restart()
                 }
                 event.accepted = true
             } else if (event.key === Qt.Key_P) {
@@ -1922,6 +1960,11 @@ Window {
                     parentHoldTimer.stop()
                 root.previousHeldForParent = false
                 root.previousHeldForRestart = false
+                event.accepted = true
+            } else if (event.key === Qt.Key_Home && !event.isAutoRepeat) {
+                if (channelSummaryHoldTimer.running)
+                    channelSummaryHoldTimer.stop()
+                root.homeHeldForChannelSummary = false
                 event.accepted = true
             } else if (event.key === Qt.Key_P && !event.isAutoRepeat) {
                 if (tvController.standby)
