@@ -95,9 +95,10 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("$('#file').onchange", index)
         self.assertIn("selectedUploadFiles.push(file)", index)
         self.assertIn("const files = selectedUploadFiles.slice()", index)
-        self.assertIn("for (let index = 0; index < files.length; index += 1)", index)
-        self.assertIn("await sendSelectedFile(files[index]", index)
-        self.assertIn("failures.push({ file: files[index], message: error.message })", index)
+        self.assertIn("const uploadSourceId", index)
+        self.assertIn("waitForUploadTurn", index)
+        self.assertIn("source_id: uploadSourceId", index)
+        self.assertIn("Promise.all(queued.map", index)
         self.assertIn('id="childName"', index)
         self.assertIn("/api/identity", index)
         self.assertNotIn("KidsTV", index)
@@ -1801,6 +1802,28 @@ class LibraryUnitTests(unittest.TestCase):
         self.fixture.library.finish_conversion_job(deferred["id"])
         self.fixture.library.conversion_queue.join()
         self.assertTrue(self.fixture.library.upload_status(deferred["id"])["complete"])
+
+    def test_upload_queue_has_one_transfer_slot_and_can_promote_a_waiting_file(self) -> None:
+        self.fixture.library.complete_setup({
+            "setup_code": "135790", "pin": "2468",
+            "channels": mabeltv_library.DEFAULT_CHANNELS,
+        })
+        source = "a" * 32
+        first = self.fixture.library.upload_create({
+            "channel": 1, "file_name": "first.mp4", "size": 4, "source_id": source,
+        })
+        second = self.fixture.library.upload_create({
+            "channel": 1, "file_name": "second.mp4", "size": 4, "source_id": source,
+        })
+        jobs = self.fixture.library.upload_jobs()
+        self.assertEqual([job["id"] for job in jobs], [first["id"], second["id"]])
+        self.assertEqual([job["transfer_state"] for job in jobs], ["active", "waiting"])
+        with self.assertRaisesRegex(ValueError, "waiting in the queue"):
+            self.fixture.library.append_upload(second["id"], 0, b"next")
+        self.fixture.library.upload_action(second["id"], "start")
+        self.assertEqual(self.fixture.library.upload_status(first["id"])["transfer_state"], "paused")
+        self.assertEqual(self.fixture.library.upload_status(second["id"])["transfer_state"], "active")
+        self.fixture.library.append_upload(second["id"], 0, b"next")
 
     def test_legacy_queued_conversion_publishes_original_without_optimising(self) -> None:
         self.fixture.library.complete_setup({

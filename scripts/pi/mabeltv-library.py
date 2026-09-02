@@ -68,6 +68,7 @@ VIEWING_SESSION_GAP_SECONDS = 120.0
 VIEWING_MIN_SESSION_SECONDS = 120.0
 VIEWING_MAX_SESSIONS = 50000
 VIEWING_RETENTION_DAYS = 3650
+UPLOAD_SOURCE_GRACE_SECONDS = 45
 SAFE_NAME = re.compile(r"[^A-Za-z0-9 ._()&'\-]+")
 EPISODE_NAME = re.compile(r"^s(\d{1,2})e(\d{1,3})\s*-\s*(.+)$", re.IGNORECASE)
 PIN_PATTERN = re.compile(r"\d{4,8}")
@@ -4530,6 +4531,8 @@ class Library:
                 number = -1 if adult or adult_series else int(value.get("channel", -1))
             except (OSError, TypeError, ValueError):
                 continue
+            transfer_state = str(value.get("transfer_state", "active" if status == "uploading" else "complete"))
+            source_seen = float(value.get("source_seen", 0) or 0)
             jobs.append({
                 "id": value["id"],
                 "file_name": str(value.get("file_name", "Video")),
@@ -4542,6 +4545,9 @@ class Library:
                 "status": status,
                 "error": value.get("error"),
                 "created": float(value.get("created", 0)),
+                "queue_order": int(value.get("queue_order", 0) or 0),
+                "transfer_state": transfer_state,
+                "source_available": bool(source_seen and time.time() - source_seen <= UPLOAD_SOURCE_GRACE_SECONDS),
                 "cancelable": status in {
                     "uploading", "queued", "error"
                 },
@@ -4573,7 +4579,51 @@ class Library:
                 "retryable": False,
                 "refreshable": value.get("status") == "refresh-error",
             })
-        return sorted(jobs, key=lambda value: value["created"])
+        return sorted(jobs, key=lambda value: (value.get("queue_order", 0), value["created"]))
+
+    def next_upload_queue_order(self) -> int:
+        orders = []
+        for manifest in self.incoming.glob("*.json"):
+            if manifest.name.endswith(".result.json"):
+                continue
+            value = self.read_json(manifest, {})
+            if isinstance(value, dict):
+                try: orders.append(int(value.get("queue_order", 0)))
+                except (TypeError, ValueError): pass
+        return max(orders, default=0) + 1
+
+    def initialise_upload_queue(self, metadata: dict[str, Any], source_id: str) -> None:
+        """Give every browser-selected file a durable, Pi-owned place in line."""
+        if not re.fullmatch(r"[a-f0-9]{32}", source_id):
+            source_id = ""
+        has_active = any(item.get("status") == "uploading" and
+                         item.get("transfer_state") == "active"
+                         for item in self.upload_jobs())
+        metadata["queue_order"] = self.next_upload_queue_order()
+        metadata["transfer_state"] = "waiting" if has_active else "active"
+        if source_id:
+            metadata["source_id"] = source_id
+            metadata["source_seen"] = time.time()
+
+    def promote_next_upload(self) -> None:
+        """Hand the one transfer slot to the earliest waiting, incomplete job."""
+        candidates: list[tuple[int, Path, dict[str, Any]]] = []
+        for manifest in self.incoming.glob("*.json"):
+            if manifest.name.endswith(".result.json"):
+                continue
+            value = self.read_json(manifest, {})
+            if not isinstance(value, dict) or value.get("status", "uploading") != "uploading":
+                continue
+            if value.get("transfer_state") != "waiting":
+                continue
+            try: order = int(value.get("queue_order", 0) or 0)
+            except (TypeError, ValueError): order = 0
+            candidates.append((order, manifest, value))
+        if candidates:
+            _, manifest, value = min(candidates, key=lambda item: item[0])
+            value["transfer_state"] = "active"
+            value["updated"] = time.time()
+            self.write_json(manifest, value)
 
     def live_status(self) -> dict[str, Any]:
         """Small polling payload that cannot overwrite an in-progress form."""
@@ -5289,15 +5339,17 @@ class Library:
             if shutil.disk_usage(self.media_root).free < reserve:
                 raise ValueError("There is not enough free space to upload that film")
             upload_id = uuid.uuid4().hex
-            self.write_json(self.incoming / f"{upload_id}.json", {
+            metadata = {
                 "id": upload_id,
                 "kind": "adult",
                 "file_name": file_name,
                 "folder": folder,
                 "size": size,
                 "created": time.time(),
-            })
-            return {"id": upload_id, "offset": 0}
+            }
+            self.initialise_upload_queue(metadata, str(payload.get("source_id", "")))
+            self.write_json(self.incoming / f"{upload_id}.json", metadata)
+            return {"id": upload_id, "offset": 0, "transfer_state": metadata["transfer_state"]}
 
     def adult_series_upload_create(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Reserve a resumable episode upload into one explicit series season."""
@@ -5356,7 +5408,7 @@ class Library:
                 raise ValueError("There is not enough free space to upload that episode")
             (series_root / season_name).mkdir(mode=0o750, exist_ok=True)
             upload_id = uuid.uuid4().hex
-            self.write_json(self.incoming / f"{upload_id}.json", {
+            metadata = {
                 "id": upload_id,
                 "kind": "adult-series",
                 "series_id": series_id,
@@ -5364,8 +5416,10 @@ class Library:
                 "file_name": file_name,
                 "size": size,
                 "created": time.time(),
-            })
-            return {"id": upload_id, "offset": 0}
+            }
+            self.initialise_upload_queue(metadata, str(payload.get("source_id", "")))
+            self.write_json(self.incoming / f"{upload_id}.json", metadata)
+            return {"id": upload_id, "offset": 0, "transfer_state": metadata["transfer_state"]}
 
     def _upload_create(self, payload: dict[str, Any]) -> dict[str, Any]:
         number, file_name, size = int(payload.get("channel")), str(payload.get("file_name", "")), int(payload.get("size", 0))
@@ -5435,13 +5489,16 @@ class Library:
             raise ValueError("There is not enough free space to upload that video")
         self.clear_superseded_upload_errors(number, file_name)
         upload_id = uuid.uuid4().hex
-        self.write_json(self.incoming / (upload_id + ".json"), {"id": upload_id, "channel": number, "file_name": file_name, "size": size, "created": time.time()})
-        return {"id": upload_id, "offset": 0}
+        metadata = {"id": upload_id, "channel": number, "file_name": file_name,
+                    "size": size, "created": time.time()}
+        self.initialise_upload_queue(metadata, str(payload.get("source_id", "")))
+        self.write_json(self.incoming / (upload_id + ".json"), metadata)
+        return {"id": upload_id, "offset": 0, "transfer_state": metadata["transfer_state"]}
 
     def upload_action(self, upload_id: str, action: str) -> dict[str, Any]:
         if not re.fullmatch(r"[a-f0-9]{32}", upload_id):
             raise ValueError("Invalid upload")
-        if action not in {"cancel", "retry", "refresh", "pause", "resume"}:
+        if action not in {"cancel", "retry", "refresh", "pause", "resume", "start", "heartbeat"}:
             raise ValueError("Unknown upload action")
         if action == "refresh":
             result_path = self.incoming / f"{upload_id}.result.json"
@@ -5468,6 +5525,27 @@ class Library:
                 result_path = self.incoming / f"{upload_id}.result.json"
                 metadata = self.read_json(manifest, None)
                 result = self.read_json(result_path, None)
+                if action == "heartbeat":
+                    if not isinstance(metadata, dict):
+                        raise ValueError("Upload not found")
+                    metadata["source_seen"] = time.time()
+                    self.write_json(manifest, metadata)
+                    return {"ok": True, "transfer_state": metadata.get("transfer_state", "active")}
+                if action == "start":
+                    if not isinstance(metadata, dict) or metadata.get("status", "uploading") != "uploading":
+                        raise ValueError("This upload cannot be started now")
+                    for other_path in self.incoming.glob("*.json"):
+                        if other_path == manifest or other_path.name.endswith(".result.json"):
+                            continue
+                        other = self.read_json(other_path, {})
+                        if isinstance(other, dict) and other.get("status", "uploading") == "uploading" and other.get("transfer_state") == "active":
+                            other["transfer_state"] = "paused"
+                            other["updated"] = time.time()
+                            self.write_json(other_path, other)
+                    metadata["transfer_state"] = "active"
+                    metadata["updated"] = time.time()
+                    self.write_json(manifest, metadata)
+                    return {"ok": True, "message": "This upload will start next on its source laptop."}
                 if action == "retry":
                     if not isinstance(metadata, dict) or metadata.get("status") != "error":
                         raise ValueError("This upload is not waiting to be retried")
@@ -5496,6 +5574,7 @@ class Library:
                     if not isinstance(metadata, dict) or metadata.get("status", "uploading") not in {"uploading", "queued"}:
                         raise ValueError("This upload cannot be paused now")
                     metadata["status"] = "paused"
+                    metadata["transfer_state"] = "paused"
                     metadata["updated"] = time.time()
                     self.write_json(manifest, metadata)
                     return {"ok": True, "message": "Upload paused. It will keep its received files."}
@@ -5506,6 +5585,11 @@ class Library:
                     part = self.incoming / f"{upload_id}.part"
                     complete = part.is_file() and part.stat().st_size == int(metadata.get("size", 0))
                     metadata["status"] = "queued" if complete else "uploading"
+                    if not complete:
+                        active_exists = any(item.get("status") == "uploading" and
+                                            item.get("transfer_state") == "active"
+                                            for item in self.upload_jobs())
+                        metadata["transfer_state"] = "waiting" if active_exists else "active"
                     metadata["updated"] = time.time()
                     self.write_json(manifest, metadata)
                     if complete:
@@ -5524,6 +5608,8 @@ class Library:
                 if upload_id in self.queued_conversions:
                     self.cancelled_conversions.add(upload_id)
                 self.upload_locks.pop(upload_id, None)
+                if metadata and metadata.get("transfer_state") == "active":
+                    self.promote_next_upload()
                 return {"ok": True, "message": "The upload was removed and its space was freed."}
             finally:
                 lock.release()
@@ -5572,6 +5658,7 @@ class Library:
             "complete": False,
             "processing": status in processing_statuses,
             "status": status,
+            "transfer_state": str(metadata.get("transfer_state", "active")),
             "error": metadata.get("error"),
         }
 
@@ -5585,6 +5672,8 @@ class Library:
         meta = self.upload_meta(upload_id)
         if meta.get("status") == "paused":
             raise ValueError("This upload is paused")
+        if meta.get("transfer_state", "active") != "active":
+            raise ValueError("This upload is waiting in the queue")
         part = self.incoming / (upload_id + ".part")
         current = part.stat().st_size if part.exists() else 0
         if offset != current:
@@ -5598,14 +5687,17 @@ class Library:
         current += len(content)
         result = {"offset": current, "complete": current == int(meta["size"])}
         meta["updated"] = time.time()
+        meta["source_seen"] = time.time()
         if result["complete"]:
             # Persist receipt before any potentially slow probe. The one media
             # worker validates, converts if necessary, publishes, then refreshes
             # the TV. A lost final PATCH response can therefore be polled safely.
             meta["status"] = "validating"
+            meta["transfer_state"] = "complete"
             meta["updated"] = time.time()
             self.write_json(self.incoming / (upload_id + ".json"), meta)
             self.queue_conversion(upload_id)
+            self.promote_next_upload()
             result["complete"] = False
             result["processing"] = True
             result["status"] = "validating"

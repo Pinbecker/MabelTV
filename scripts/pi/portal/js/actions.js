@@ -1,6 +1,26 @@
 'use strict'
 
 let managementBusy = false
+    const uploadSourceId = (() => {
+      const key = 'mabeltv-upload-source-id'
+      let value = localStorage.getItem(key)
+      if (!/^[a-f0-9]{32}$/.test(value || '')) {
+        value = crypto.randomUUID().replace(/-/g, '')
+        localStorage.setItem(key, value)
+      }
+      return value
+    })()
+
+    async function waitForUploadTurn(id, label) {
+      while (true) {
+        await api('/api/uploads/' + id, { method: 'POST', body: JSON.stringify({ action: 'heartbeat' }) })
+        const state = await api('/api/uploads/' + id)
+        if (state.status === 'error') throw new Error(state.error || 'This upload was cancelled')
+        if (state.transfer_state === 'active') return state
+        $('#uploadText').textContent = `${label} is waiting in the upload queue. You can change its priority from Activity.`
+        await new Promise(resolve => setTimeout(resolve, 1200))
+      }
+    }
     async function manage(action, extra = {}, preferredChannel = null) {
       if (managementBusy) return
       managementBusy = true
@@ -183,13 +203,13 @@ let managementBusy = false
       renderSelectedUploadFiles()
     }
 
-    async function sendSelectedFile(file, channel, position, total, waitUntilPublished) {
+    async function sendSelectedFile(file, created, channel, position, total, waitUntilPublished) {
       let finalResult = {}
       const prefix = total > 1 ? `Video ${position} of ${total}: ` : ''
       $('#progress').max = file.size; $('#progress').value = 0
       $('#uploadText').textContent = `${prefix}preparing ${file.name}…`
-      const created = await api('/api/uploads', { method: 'POST', body: JSON.stringify({ channel, file_name: file.name, size: file.size }) })
       finalResult = created
+      if (!finalResult.complete) finalResult = await waitForUploadTurn(created.id, file.name)
       let offset = Number(created.offset) || 0
       $('#progress').value = offset
       while (offset < file.size) {
@@ -218,15 +238,22 @@ let managementBusy = false
       $('#file').disabled = true
       $('#uploadState').classList.remove('hidden')
       notice(files.length === 1 ? 'Preparing upload…' : `Uploading ${files.length} videos one at a time…`)
-      for (let index = 0; index < files.length; index += 1) {
+      const queued = []
+      for (const file of files) {
         try {
-          const result = await sendSelectedFile(files[index], channel, index + 1, files.length, true)
-          accepted += 1
-          singleResult = result
+          queued.push(await api('/api/uploads', { method: 'POST', body: JSON.stringify({ channel, file_name: file.name, size: file.size, source_id: uploadSourceId }) }))
         } catch (error) {
-          failures.push({ file: files[index], message: error.message })
+          failures.push({ file, message: error.message })
         }
       }
+      await Promise.all(queued.map(async (created, index) => {
+        const file = files.find(item => item.name === created.file_name) || files[index]
+        try {
+          const result = await sendSelectedFile(file, created, channel, index + 1, queued.length, true)
+          accepted += 1
+          singleResult = result
+        } catch (error) { failures.push({ file, message: error.message }) }
+      }))
       const stillOnUploadChannel = sameChannelSelection(
         (library.channels || []).find(value => value.number === channel))
       await load(stillOnUploadChannel ? channel : null).catch(() => {})
@@ -303,14 +330,12 @@ let managementBusy = false
       }
     }
 
-    async function sendAdultFile(file, position, total) {
+    async function sendAdultFile(file, created, position, total) {
       const prefix = total > 1 ? `Film ${position} of ${total}: ` : ''
       $('#adultProgress').max = file.size; $('#adultProgress').value = 0
-      const created = await api('/api/adult/uploads', {
-        method: 'POST', body: JSON.stringify({ file_name: file.name, size: file.size,
-                                               folder: $('#adultUploadFolder').value })
-      })
-      let offset = Number(created.offset) || 0, result = created
+      let result = created
+      if (!result.complete) result = await waitForUploadTurn(created.id, file.name)
+      let offset = Number(result.offset) || 0
       while (offset < file.size) {
         const part = file.slice(offset, Math.min(offset + 8388608, file.size))
         const finalChunk = offset + part.size >= file.size
@@ -334,13 +359,14 @@ let managementBusy = false
       $('#adultFile').disabled = true
       $('#adultUploadState').classList.remove('hidden')
       notice(files.length === 1 ? 'Uploading film…' : `Uploading ${files.length} films one at a time…`)
-      for (let index = 0; index < files.length; index += 1) {
-        try {
-          await sendAdultFile(files[index], index + 1, files.length)
-        } catch (error) {
-          failures.push({ file: files[index], message: error.message })
-        }
-      }
+      const queued = await Promise.all(files.map(async file => ({ file, created: await api('/api/adult/uploads', {
+        method: 'POST', body: JSON.stringify({ file_name: file.name, size: file.size,
+          folder: $('#adultUploadFolder').value, source_id: uploadSourceId })
+      }) })))
+      await Promise.all(queued.map(async ({ file, created }, index) => {
+        try { await sendAdultFile(file, created, index + 1, queued.length) }
+        catch (error) { failures.push({ file, message: error.message }) }
+      }))
       selectedAdultFiles = failures.map(failure => failure.file)
       renderSelectedAdultFiles()
       $('#adultProgress').value = 0
@@ -415,18 +441,13 @@ let managementBusy = false
       }
     }
 
-    async function sendAdultSeriesFile(file, position, total, season) {
+    async function sendAdultSeriesFile(file, created, position, total, season) {
       const prefix = total > 1 ? `Episode ${position} of ${total}: ` : ''
       $('#adultSeriesProgress').max = file.size
       $('#adultSeriesProgress').value = 0
-      const created = await api('/api/adult/series/uploads', {
-        method: 'POST', body: JSON.stringify({
-          series: adultSeriesUploadTarget.id, season,
-          file_name: file.name, size: file.size,
-        }),
-      })
-      let offset = Number(created.offset) || 0
       let result = created
+      if (!result.complete) result = await waitForUploadTurn(created.id, file.name)
+      let offset = Number(result.offset) || 0
       while (offset < file.size) {
         const part = file.slice(offset, Math.min(offset + 8388608, file.size))
         const finalChunk = offset + part.size >= file.size
@@ -452,13 +473,14 @@ let managementBusy = false
       $('#adultSeriesFile').disabled = true
       $('#adultSeriesUploadState').classList.remove('hidden')
       notice(files.length === 1 ? 'Uploading episode…' : `Uploading ${files.length} episodes one at a time…`)
-      for (let index = 0; index < files.length; index += 1) {
-        try {
-          await sendAdultSeriesFile(files[index], index + 1, files.length, season)
-        } catch (error) {
-          failures.push({ file: files[index], message: error.message })
-        }
-      }
+      const queued = await Promise.all(files.map(async file => ({ file, created: await api('/api/adult/series/uploads', {
+        method: 'POST', body: JSON.stringify({ series: target.id, season, file_name: file.name,
+          size: file.size, source_id: uploadSourceId }),
+      }) })))
+      await Promise.all(queued.map(async ({ file, created }, index) => {
+        try { await sendAdultSeriesFile(file, created, index + 1, queued.length, season) }
+        catch (error) { failures.push({ file, message: error.message }) }
+      }))
       selectedAdultSeriesFiles = failures.map(failure => failure.file)
       renderSelectedAdultSeriesFiles()
       $('#adultSeriesProgress').value = 0
