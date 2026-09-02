@@ -134,8 +134,14 @@ let managementBusy = false
             await new Promise(resolve => setTimeout(resolve, 1200))
             const resumed = await api('/api/uploads/' + id)
             if (resumed.status === 'error') throw new Error(resumed.error || 'This upload was cancelled')
-            if (resumed.status !== 'paused') return resumed
+            if (resumed.status !== 'paused') {
+              if (resumed.transfer_state !== 'active') return waitForUploadTurn(id, 'This file')
+              return resumed
+            }
           }
+        }
+        if (saved.status === 'uploading' && saved.transfer_state !== 'active') {
+          return waitForUploadTurn(id, 'This file')
         }
         if (saved.complete || saved.processing || saved.status === 'validating' ||
             (Number.isFinite(saved.offset) && saved.offset > offset)) return saved

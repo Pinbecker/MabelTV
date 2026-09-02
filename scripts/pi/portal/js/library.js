@@ -1504,7 +1504,7 @@ function renderAdultLibrary() {
       const isOptimising = kind === 'optimising'
       const percent = Math.max(0, Math.min(100, Number(job.progress ?? (job.size ? (job.offset || 0) * 100 / job.size : 0)) || 0))
       const transfer = job.transfer_state || 'active'
-      const state = isOptimising ? (job.state === 'queued' ? 'Waiting for the encoder' : job.message || 'Optimising for Pi') : (transfer === 'waiting' ? 'Waiting in upload queue' : transfer === 'paused' ? 'Paused' : !job.source_available && job.status === 'uploading' ? 'Waiting for source laptop' : ({ uploading: 'Uploading', validating: 'Checking video', queued: 'Waiting to publish', processing: 'Preparing video', publishing: 'Publishing', finalising: 'Refreshing TV', error: job.error || 'Needs attention', 'refresh-error': 'TV refresh needed' }[job.status] || job.status))
+      const state = isOptimising ? (job.state === 'queued' ? 'Waiting for the encoder' : job.message || 'Optimising for Pi') : (transfer === 'waiting' ? 'Waiting in upload queue' : transfer === 'paused' ? 'Paused' : !job.source_available && job.status === 'uploading' ? 'Waiting for source file — select the same file again on the laptop to resume' : ({ uploading: 'Uploading', validating: 'Checking video', queued: 'Waiting to publish', processing: 'Preparing video', publishing: 'Publishing', finalising: 'Refreshing TV', error: job.error || 'Needs attention', 'refresh-error': 'TV refresh needed' }[job.status] || job.status))
       const detail = isOptimising ? activityDuration(job.eta_seconds) : `${job.channel_name || 'MabelTV'} · ${Math.round(percent)}%`
       const paused = isOptimising ? job.state === 'paused' : (job.status === 'paused' || transfer === 'paused')
       const cancellable = isOptimising ? ['queued', 'processing', 'paused'].includes(job.state) : ['uploading', 'queued', 'paused'].includes(job.status)
@@ -1546,7 +1546,12 @@ function renderAdultLibrary() {
 
     async function activityAction(button) {
       const action = button.dataset.activityAction
-      if (action === 'cancel' && !confirm('Cancel this background job? Its completed progress will be kept only where it is safe to resume.')) return
+      if (action === 'cancel') {
+        const message = button.dataset.activityKind === 'optimising'
+          ? 'Cancel this optimisation? The unfinished optimised copy will be deleted. Your original film will be kept.'
+          : 'Cancel this upload? All partially uploaded data for it will be deleted and its storage freed.'
+        if (!confirm(message)) return
+      }
       button.disabled = true
       try {
         if (button.dataset.activityKind === 'optimising') {

@@ -99,6 +99,8 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("waitForUploadTurn", index)
         self.assertIn("source_id: uploadSourceId", index)
         self.assertIn("Promise.all(queued.map", index)
+        self.assertIn("All partially uploaded data for it will be deleted", index)
+        self.assertIn("Your original film will be kept", index)
         self.assertIn('id="childName"', index)
         self.assertIn("/api/identity", index)
         self.assertNotIn("KidsTV", index)
@@ -1821,9 +1823,49 @@ class LibraryUnitTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "waiting in the queue"):
             self.fixture.library.append_upload(second["id"], 0, b"next")
         self.fixture.library.upload_action(second["id"], "start")
+        self.assertEqual(self.fixture.library.upload_status(first["id"])["status"], "paused")
         self.assertEqual(self.fixture.library.upload_status(first["id"])["transfer_state"], "paused")
         self.assertEqual(self.fixture.library.upload_status(second["id"])["transfer_state"], "active")
         self.fixture.library.append_upload(second["id"], 0, b"next")
+
+    def test_reselecting_source_files_reconnects_and_resumes_the_queue(self) -> None:
+        self.fixture.library.complete_setup({
+            "setup_code": "135790", "pin": "2468",
+            "channels": mabeltv_library.DEFAULT_CHANNELS,
+        })
+        old_source = "a" * 32
+        new_source = "b" * 32
+        first = self.fixture.library.upload_create({
+            "channel": 1, "file_name": "first.mp4", "size": 8,
+            "source_id": old_source,
+        })
+        second = self.fixture.library.upload_create({
+            "channel": 1, "file_name": "second.mp4", "size": 8,
+            "source_id": old_source,
+        })
+        self.fixture.library.append_upload(first["id"], 0, b"1234")
+        self.fixture.library.upload_action(second["id"], "start")
+
+        reconnected_first = self.fixture.library.upload_create({
+            "channel": 1, "file_name": "first.mp4", "size": 8,
+            "source_id": new_source,
+        })
+        reconnected_second = self.fixture.library.upload_create({
+            "channel": 1, "file_name": "second.mp4", "size": 8,
+            "source_id": new_source,
+        })
+
+        self.assertEqual(reconnected_first["id"], first["id"])
+        self.assertEqual(reconnected_first["offset"], 4)
+        self.assertEqual(reconnected_first["transfer_state"], "waiting")
+        self.assertEqual(reconnected_second["id"], second["id"])
+        self.assertEqual(reconnected_second["transfer_state"], "active")
+        jobs = {job["id"]: job for job in self.fixture.library.upload_jobs()}
+        self.assertEqual(jobs[first["id"]]["status"], "uploading")
+        self.assertEqual(jobs[first["id"]]["source_available"], True)
+        self.assertEqual(jobs[second["id"]]["source_available"], True)
+        self.assertEqual(
+            self.fixture.library.upload_meta(first["id"])["source_id"], new_source)
 
     def test_legacy_queued_conversion_publishes_original_without_optimising(self) -> None:
         self.fixture.library.complete_setup({
@@ -3115,6 +3157,8 @@ class UsbAndMetadataTests(unittest.TestCase):
         self.assertNotIn("createElementNS(namespace, 'polyline')", library_script)
         self.assertIn("viewing-destinations", settings_css)
         self.assertIn("viewing-catalog-grid", settings_css)
+        self.assertIn(".activity-job-top > div { min-width: 0", settings_css)
+        self.assertIn(".activity-job h2 { max-width: 100%; overflow-wrap: anywhere", settings_css)
         self.assertIn('id="viewingItemDetail"', insights_view)
         self.assertIn('id="viewingItemWeekdays"', insights_view)
         self.assertIn('id="viewingDiary"', insights_view)

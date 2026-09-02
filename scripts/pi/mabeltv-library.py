@@ -4605,6 +4605,24 @@ class Library:
             metadata["source_id"] = source_id
             metadata["source_seen"] = time.time()
 
+    def reconnect_upload_source(self, manifest: Path, metadata: dict[str, Any],
+                                source_id: str) -> None:
+        """Reconnect a reselected local file to its durable upload reservation."""
+        if re.fullmatch(r"[a-f0-9]{32}", source_id):
+            metadata["source_id"] = source_id
+            metadata["source_seen"] = time.time()
+        if metadata.get("status") == "paused":
+            active_exists = any(
+                item.get("id") != metadata.get("id")
+                and item.get("status") == "uploading"
+                and item.get("transfer_state") == "active"
+                for item in self.upload_jobs()
+            )
+            metadata["status"] = "uploading"
+            metadata["transfer_state"] = "waiting" if active_exists else "active"
+        metadata["updated"] = time.time()
+        self.write_json(manifest, metadata)
+
     def promote_next_upload(self) -> None:
         """Hand the one transfer slot to the earliest waiting, incomplete job."""
         candidates: list[tuple[int, Path, dict[str, Any]]] = []
@@ -5320,6 +5338,8 @@ class Library:
                 result = self.read_json(self.incoming / f"{value['id']}.result.json", None)
                 if isinstance(result, dict) and result.get("complete"):
                     return result
+                self.reconnect_upload_source(
+                    manifest, value, str(payload.get("source_id", "")))
                 offset = part.stat().st_size if part.is_file() else 0
                 if offset == size and value.get("status", "uploading") == "uploading":
                     value["status"] = "validating"
@@ -5327,6 +5347,7 @@ class Library:
                     self.write_json(manifest, value)
                     self.queue_conversion(str(value["id"]))
                 return {"id": value["id"], "offset": offset,
+                        "transfer_state": value.get("transfer_state", "active"),
                         "processing": value.get("status") in {
                             "validating", "queued", "processing", "publishing", "finalising"
                         }, "status": value.get("status", "uploading")}
@@ -5390,6 +5411,8 @@ class Library:
                     self.incoming / f"{value['id']}.result.json", None)
                 if isinstance(result, dict) and result.get("complete"):
                     return result
+                self.reconnect_upload_source(
+                    manifest, value, str(payload.get("source_id", "")))
                 offset = part.stat().st_size if part.is_file() else 0
                 if offset == size and value.get("status", "uploading") == "uploading":
                     value["status"] = "validating"
@@ -5397,6 +5420,7 @@ class Library:
                     self.write_json(manifest, value)
                     self.queue_conversion(str(value["id"]))
                 return {"id": value["id"], "offset": offset,
+                        "transfer_state": value.get("transfer_state", "active"),
                         "processing": value.get("status") in {
                             "validating", "queued", "processing", "publishing", "finalising"
                         }, "status": value.get("status", "uploading")}
@@ -5456,6 +5480,8 @@ class Library:
                     self.incoming / f"{value['id']}.result.json", None)
                 if isinstance(saved_result, dict) and saved_result.get("complete"):
                     return saved_result
+                self.reconnect_upload_source(
+                    meta, value, str(payload.get("source_id", "")))
                 offset = part.stat().st_size if part.exists() else 0
                 reserve = max(0, size - offset) + 512 * 1024 * 1024
                 if shutil.disk_usage(self.media_root).free < reserve:
@@ -5477,6 +5503,7 @@ class Library:
                     value["updated"] = time.time()
                     self.write_json(meta, value)
                 return {"id": value["id"], "offset": offset,
+                        "transfer_state": value.get("transfer_state", "active"),
                         "processing": value.get("status") in {
                             "validating", "queued", "processing", "publishing", "finalising"
                         },
@@ -5532,16 +5559,18 @@ class Library:
                     self.write_json(manifest, metadata)
                     return {"ok": True, "transfer_state": metadata.get("transfer_state", "active")}
                 if action == "start":
-                    if not isinstance(metadata, dict) or metadata.get("status", "uploading") != "uploading":
+                    if not isinstance(metadata, dict) or metadata.get("status", "uploading") not in {"uploading", "paused"}:
                         raise ValueError("This upload cannot be started now")
                     for other_path in self.incoming.glob("*.json"):
                         if other_path == manifest or other_path.name.endswith(".result.json"):
                             continue
                         other = self.read_json(other_path, {})
                         if isinstance(other, dict) and other.get("status", "uploading") == "uploading" and other.get("transfer_state") == "active":
+                            other["status"] = "paused"
                             other["transfer_state"] = "paused"
                             other["updated"] = time.time()
                             self.write_json(other_path, other)
+                    metadata["status"] = "uploading"
                     metadata["transfer_state"] = "active"
                     metadata["updated"] = time.time()
                     self.write_json(manifest, metadata)

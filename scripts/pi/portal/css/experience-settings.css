@@ -163,7 +163,7 @@ body.portal-v2 .settings-link-row strong { font-size: 13px; }
 body.portal-v2 .settings-link-row small { overflow: hidden; color: var(--experience-dim); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 body.portal-v2 .settings-link-row:hover { border-color: var(--experience-line-strong); background: var(--experience-elevated); }
 
-body.portal-v2 .activity-page { max-width: 760px; }
+body.portal-v2 .activity-page { width: 100%; min-width: 0; max-width: 760px; }
 body.portal-v2 .activity-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin: 0 0 10px; }
 body.portal-v2 .activity-hero h1 { margin: 3px 0 5px; font-size: clamp(31px, 5vw, 44px); letter-spacing: -.055em; }
 body.portal-v2 .activity-hero p:not(.eyebrow) { max-width: 470px; margin: 0; color: var(--experience-muted); font-size: 12px; line-height: 1.45; }
@@ -172,15 +172,18 @@ body.portal-v2 .activity-tabs { display: grid; grid-template-columns: 1fr 1fr; g
 body.portal-v2 .activity-tabs button { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 42px; border: 1px solid var(--experience-line); border-radius: 10px; background: var(--experience-raised); color: var(--experience-muted); font-size: 11px; font-weight: 800; }
 body.portal-v2 .activity-tabs button.active { border-color: rgba(255, 122, 26, .55); background: rgba(255, 122, 26, .13); color: var(--experience-orange); }
 body.portal-v2 .activity-tabs span { display: inline-grid; min-width: 17px; height: 17px; place-items: center; border-radius: 999px; background: rgba(255, 255, 255, .09); color: inherit; font-size: 9px; }
+body.portal-v2 :is(.activity-panel, .activity-list) { width: 100%; min-width: 0; max-width: 100%; }
 body.portal-v2 .activity-list { display: grid; gap: 9px; }
-body.portal-v2 .activity-job { border: 1px solid var(--experience-line); border-radius: 13px; background: var(--experience-raised); padding: 14px; }
+body.portal-v2 .activity-job { width: 100%; min-width: 0; max-width: 100%; border: 1px solid var(--experience-line); border-radius: 13px; background: var(--experience-raised); padding: 14px; }
 body.portal-v2 .activity-job-top { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
-body.portal-v2 .activity-job h2 { overflow: hidden; margin: 0; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+body.portal-v2 .activity-job-top > div { min-width: 0; flex: 1 1 auto; }
+body.portal-v2 .activity-job h2 { max-width: 100%; overflow-wrap: anywhere; margin: 0; font-size: 14px; line-height: 1.3; }
 body.portal-v2 .activity-job p { margin: 4px 0 0; color: var(--experience-muted); font-size: 10px; }
 body.portal-v2 .activity-job strong { flex: 0 0 auto; color: var(--experience-orange); font-size: 11px; }
 body.portal-v2 .activity-progress { height: 5px; margin-top: 12px; overflow: hidden; border-radius: 999px; background: rgba(255, 255, 255, .1); }
 body.portal-v2 .activity-progress i { display: block; height: 100%; border-radius: inherit; background: var(--experience-orange); }
-body.portal-v2 .activity-job-meta { display: flex; justify-content: space-between; gap: 8px; margin-top: 7px; color: var(--experience-dim); font-size: 10px; }
+body.portal-v2 .activity-job-meta { min-width: 0; display: flex; justify-content: space-between; gap: 8px; margin-top: 7px; color: var(--experience-dim); font-size: 10px; }
+body.portal-v2 .activity-job-meta span { min-width: 0; overflow-wrap: anywhere; }
 body.portal-v2 .activity-job-controls { display: flex; justify-content: flex-end; gap: 7px; margin-top: 12px; }
 body.portal-v2 .activity-job-controls button { min-height: 31px; border: 1px solid var(--experience-line); border-radius: 8px; background: rgba(255,255,255,.04); color: var(--experience-ink); padding: 0 10px; font-size: 10px; font-weight: 800; }
 body.portal-v2 .activity-job-controls .danger { border-color: rgba(237, 91, 91, .36); color: #ff8d8d; }
