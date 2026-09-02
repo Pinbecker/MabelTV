@@ -108,6 +108,15 @@ let managementBusy = false
       catch (error) {
         const saved = await api('/api/uploads/' + id)
         if (saved.status === 'error') throw new Error(saved.error || `${tvName()} could not check this video`)
+        if (saved.status === 'paused') {
+          $('#uploadText').textContent = 'Upload paused. Resume it from Activity to continue.'
+          while (true) {
+            await new Promise(resolve => setTimeout(resolve, 1200))
+            const resumed = await api('/api/uploads/' + id)
+            if (resumed.status === 'error') throw new Error(resumed.error || 'This upload was cancelled')
+            if (resumed.status !== 'paused') return resumed
+          }
+        }
         if (saved.complete || saved.processing || saved.status === 'validating' ||
             (Number.isFinite(saved.offset) && saved.offset > offset)) return saved
         throw error

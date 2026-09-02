@@ -12,6 +12,7 @@
 }
 
 @media (max-width: 860px) {
+  body.portal-v2 .activity-page { padding-top: 0; }
   body.portal-v2 .page {
     padding: 28px 18px 46px;
   }

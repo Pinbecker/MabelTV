@@ -2036,7 +2036,8 @@ class Library:
         self.write_json(self.adult_metadata_path, values)
 
     def set_adult_media_state(self, file_name: str, state: str,
-                              message: str = "", progress: int | None = None) -> None:
+                              message: str = "", progress: int | None = None,
+                              **details: Any) -> None:
         values = self.adult_media_states()
         current = values.get(file_name, {})
         if not isinstance(current, dict):
@@ -2046,6 +2047,11 @@ class Library:
             current.pop("progress", None)
         else:
             current["progress"] = max(0, min(100, int(progress)))
+        for key, value in details.items():
+            if value is None:
+                current.pop(key, None)
+            else:
+                current[key] = value
         values[file_name] = current
         self.write_adult_media_states(values)
 
@@ -2126,17 +2132,20 @@ class Library:
             if not isinstance(value, dict):
                 continue
             state = str(value.get("state", "original"))
-            if state not in {"queued", "processing", "optimised", "error"}:
+            if state not in {"queued", "processing", "paused", "optimised", "error"}:
                 continue
             items.append({
                 "path": path,
+                "title": self.display_name(Path(path).name),
                 "state": state,
                 "progress": max(0, min(100, int(value.get("progress", 0) or 0))),
                 "message": str(value.get("message", "")),
                 "updated": float(value.get("updated", 0) or 0),
+                "started": float(value.get("started", 0) or 0),
+                "eta_seconds": max(0, int(value.get("eta_seconds", 0) or 0)),
             })
         return {"items": items, "active": any(
-            item["state"] in {"queued", "processing"} for item in items)}
+            item["state"] in {"queued", "processing", "paused"} for item in items)}
 
     def adult_series_states(self) -> dict[str, Any]:
         value = self.read_json(self.adult_series_state_path, {})
@@ -4577,6 +4586,22 @@ class Library:
             "system": self.system_status(),
         }
 
+    def activity_status(self) -> dict[str, Any]:
+        """Small, durable owner-facing queue for background media work."""
+        uploads = self.upload_jobs()
+        optimisations = self.adult_optimisations()["items"]
+        active_uploads = [item for item in uploads if item.get("status") not in {"error", "refresh-error"}]
+        active_optimisations = [item for item in optimisations
+                                if item.get("state") in {"queued", "processing", "paused"}]
+        temperature = self.cpu_temperature_c()
+        return {
+            "uploads": uploads,
+            "optimisations": optimisations,
+            "temperature_c": round(temperature, 1),
+            "temperature_warning": temperature >= 65,
+            "active": bool(active_uploads or active_optimisations),
+        }
+
     @staticmethod
     def command_output(command: list[str], timeout: int = 4) -> str:
         try:
@@ -5032,6 +5057,30 @@ class Library:
         threading.Thread(target=self.optimise_adult_file, args=(relative,),
                          name="mabeltv-adult-optimise", daemon=True).start()
 
+    def adult_optimisation_action(self, file_name: str, action: str) -> None:
+        if action not in {"pause", "resume", "cancel"}:
+            raise ValueError("Unknown optimisation action")
+        source = self.safe_adult_path(file_name)
+        relative = self.adult_relative_path(source)
+        with self.config_lock:
+            state = self.adult_media_states().get(relative, {})
+            current = str(state.get("state", "")) if isinstance(state, dict) else ""
+            if action == "pause":
+                if current not in {"queued", "processing"}:
+                    raise ValueError("This optimisation cannot be paused now")
+                self.set_adult_media_state(relative, "paused", "Paused by you",
+                                           progress=int(state.get("progress", 0) or 0))
+            elif action == "resume":
+                if current != "paused":
+                    raise ValueError("This optimisation is not paused")
+                self.set_adult_media_state(relative, "processing", "",
+                                           progress=int(state.get("progress", 0) or 0))
+            else:
+                if current not in {"queued", "processing", "paused"}:
+                    raise ValueError("This optimisation cannot be cancelled now")
+                self.set_adult_media_state(relative, "error", "Optimisation cancelled",
+                                           progress=int(state.get("progress", 0) or 0))
+
     def optimise_adult_file(self, file_name: str) -> None:
         source = self.safe_adult_path(file_name)
         try:
@@ -5044,12 +5093,20 @@ class Library:
                 if destination != source and destination.exists():
                     raise ValueError("An MP4 with this film name already exists")
                 with self.config_lock:
-                    self.set_adult_media_state(file_name, "processing", progress=0)
+                    started = time.time()
+                    self.set_adult_media_state(file_name, "processing", progress=0,
+                                               started=started, eta_seconds=None)
 
                 def save_progress(percent: int, message: str = "") -> None:
+                    elapsed = max(0.0, time.time() - started)
+                    eta = int(elapsed * (100 - percent) / percent) if percent > 0 else 0
                     with self.config_lock:
+                        current = self.adult_media_states().get(file_name, {})
+                        saved_state = "paused" if isinstance(current, dict) \
+                            and current.get("state") == "paused" else "processing"
                         self.set_adult_media_state(
-                            file_name, "processing", message, progress=percent)
+                            file_name, saved_state, message, progress=percent,
+                            started=started, eta_seconds=eta or None)
 
                 self.adult_optimisation_progress_callback = save_progress
                 self.optimise_adult_for_playback(source, destination)
@@ -5116,16 +5173,22 @@ class Library:
                     if time.monotonic() >= deadline:
                         os.killpg(process.pid, signal.SIGTERM)
                         raise ValueError("Mabel TV stopped this optimisation because it took too long")
+                    saved = self.adult_media_states().get(self.adult_relative_path(source), {})
+                    requested_state = str(saved.get("state", "")) if isinstance(saved, dict) else ""
+                    if requested_state == "error" and str(saved.get("message", "")) == "Optimisation cancelled":
+                        os.killpg(process.pid, signal.SIGTERM)
+                        raise ValueError("Optimisation cancelled")
+                    user_paused = requested_state == "paused"
                     temperature = self.cpu_temperature_c()
-                    if not paused and temperature >= MAX_CONVERSION_TEMP_C:
+                    if not paused and (user_paused or temperature >= MAX_CONVERSION_TEMP_C):
                         os.killpg(process.pid, signal.SIGSTOP)
                         paused = True
                         if progress_callback:
                             progress_callback(max(0, last_percent),
-                                              f"Paused to cool at {temperature:.0f}°C")
+                                              "Paused by you" if user_paused else f"Paused to cool at {temperature:.0f}°C")
                         print(f"Paused video optimisation at {temperature:.1f}C", file=sys.stderr,
                               flush=True)
-                    elif paused and temperature <= RESUME_CONVERSION_TEMP_C:
+                    elif paused and not user_paused and temperature <= RESUME_CONVERSION_TEMP_C:
                         os.killpg(process.pid, signal.SIGCONT)
                         paused = False
                         if progress_callback:
@@ -5378,7 +5441,7 @@ class Library:
     def upload_action(self, upload_id: str, action: str) -> dict[str, Any]:
         if not re.fullmatch(r"[a-f0-9]{32}", upload_id):
             raise ValueError("Invalid upload")
-        if action not in {"cancel", "retry", "refresh"}:
+        if action not in {"cancel", "retry", "refresh", "pause", "resume"}:
             raise ValueError("Unknown upload action")
         if action == "refresh":
             result_path = self.incoming / f"{upload_id}.result.json"
@@ -5429,10 +5492,30 @@ class Library:
                         self.queue_conversion(upload_id)
                     return {"ok": True, "message": "The video is back in the preparation queue."}
 
+                if action == "pause":
+                    if not isinstance(metadata, dict) or metadata.get("status", "uploading") not in {"uploading", "queued"}:
+                        raise ValueError("This upload cannot be paused now")
+                    metadata["status"] = "paused"
+                    metadata["updated"] = time.time()
+                    self.write_json(manifest, metadata)
+                    return {"ok": True, "message": "Upload paused. It will keep its received files."}
+
+                if action == "resume":
+                    if not isinstance(metadata, dict) or metadata.get("status") != "paused":
+                        raise ValueError("This upload is not paused")
+                    part = self.incoming / f"{upload_id}.part"
+                    complete = part.is_file() and part.stat().st_size == int(metadata.get("size", 0))
+                    metadata["status"] = "queued" if complete else "uploading"
+                    metadata["updated"] = time.time()
+                    self.write_json(manifest, metadata)
+                    if complete:
+                        self.queue_conversion(upload_id)
+                    return {"ok": True, "message": "Upload resumed."}
+
                 status = str(metadata.get("status", "uploading")) \
                     if isinstance(metadata, dict) else str(
                         result.get("status", "") if isinstance(result, dict) else "")
-                if status not in {"uploading", "queued", "error"}:
+                if status not in {"uploading", "queued", "paused", "error"}:
                     raise ValueError("This upload is already being prepared and can no longer be cancelled")
                 self.unlink_with_retry(self.incoming / f"{upload_id}.part")
                 self.unlink_with_retry(manifest)
@@ -5500,6 +5583,8 @@ class Library:
 
     def _append_upload(self, upload_id: str, offset: int, content: bytes) -> dict[str, Any]:
         meta = self.upload_meta(upload_id)
+        if meta.get("status") == "paused":
+            raise ValueError("This upload is paused")
         part = self.incoming / (upload_id + ".part")
         current = part.stat().st_size if part.exists() else 0
         if offset != current:
@@ -5542,7 +5627,7 @@ class Library:
         if payload.get("action") in {
                 "optimise-adult", "set-portal-design", "set-portal-palette",
                 "set-portal-theme", "set-remote-simultaneous",
-                "create-adult-series", "trash-adult-series"}:
+                "create-adult-series", "trash-adult-series", "optimisation-action"}:
             # These settings belong to the portal/library service.  In
             # particular, allowing a browser stream alongside the television
             # must never refresh or otherwise disturb the TV player.
@@ -5551,6 +5636,10 @@ class Library:
 
     def _manage(self, payload: dict[str, Any]) -> None:
         action = payload.get("action")
+        if action == "optimisation-action":
+            self.adult_optimisation_action(str(payload.get("file", "")),
+                                           str(payload.get("operation", "")))
+            return
         if action == "create-adult-series":
             self.create_adult_series(str(payload.get("name", "")))
             return
@@ -6286,6 +6375,8 @@ class Handler(BaseHTTPRequestHandler):
                     str(query.get("volume", [""])[0]), str(query.get("path", [""])[0]))); return
             if parsed.path == "/api/adult/optimisations":
                 self.json(200, self.server.library.adult_optimisations()); return
+            if parsed.path == "/api/activity":
+                self.json(200, self.server.library.activity_status()); return
             if parsed.path.startswith("/api/usb/imports/"):
                 self.json(200, self.server.library.usb_import_status(
                     parsed.path.rsplit("/", 1)[1])); return

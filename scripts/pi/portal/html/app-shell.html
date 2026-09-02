@@ -19,7 +19,7 @@
 
     <header class="mobile-head">
       <div class="mobile-brand"><img class="logo-mark" src="/mabeltv-icon.png" alt=""><strong>MabelTV</strong></div>
-      <button type="button" class="mobile-health" data-go="overview" aria-label="Open TV status"><span class="mobile-health-dot"></span><span data-tv-name>Your TV</span></button>
+      <button id="mobileActivityStatus" type="button" class="mobile-activity-status hidden" data-go="activity" aria-label="Open background activity"><span class="mobile-activity-dot"></span><span id="mobileActivityText"></span></button>
     </header>
 
     <main class="app-main">
@@ -32,6 +32,7 @@
       <!-- portal-include:html/views/usb.html -->
       <!-- portal-include:html/views/system.html -->
       <!-- portal-include:html/views/insights.html -->
+      <!-- portal-include:html/views/activity.html -->
     </main>
   </section>
 

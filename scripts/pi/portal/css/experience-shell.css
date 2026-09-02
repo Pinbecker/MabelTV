@@ -276,6 +276,13 @@ body.portal-v2 .mobile-head {
     box-shadow: 0 0 0 4px rgba(79, 221, 160, 0.1);
   }
 
+  body.portal-v2 .mobile-activity-status { display: inline-flex; align-items: center; gap: 7px; min-width: 128px; max-width: 176px; min-height: 32px; overflow: hidden; border: 1px solid var(--experience-line); border-radius: 999px; background: rgba(255, 255, 255, .04); color: var(--experience-muted); padding: 0 10px; font-size: 10px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; transition: width 160ms ease, min-width 160ms ease, padding 160ms ease; }
+  body.portal-v2 .mobile-activity-status > span:last-child { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  body.portal-v2 .mobile-activity-status.is-idle { display: grid; width: 42px; min-width: 42px; max-width: 42px; place-items: center; padding: 0; }
+  body.portal-v2 .mobile-activity-status.is-idle > span:last-child { display: none; }
+  body.portal-v2 .mobile-activity-dot { display: block; width: 7px; height: 7px; flex: 0 0 auto; align-self: center; border-radius: 50%; background: var(--experience-orange); box-shadow: 0 0 0 4px rgba(255, 122, 26, .12); }
+  body.portal-v2 .mobile-activity-status.is-warning .mobile-activity-dot { background: #ff554c; box-shadow: 0 0 0 4px rgba(255, 85, 76, .13); }
+
   body.portal-v2 .app-main {
     padding-top: calc(54px + env(safe-area-inset-top));
     padding-right: 0;

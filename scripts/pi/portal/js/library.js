@@ -1493,6 +1493,84 @@ function renderAdultLibrary() {
       renderUploads()
     }
 
+    function activityDuration(seconds) {
+      const value = Math.max(0, Number(seconds) || 0)
+      if (!value) return 'Estimating time left'
+      const minutes = Math.ceil(value / 60)
+      return minutes >= 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m left` : `${minutes}m left`
+    }
+
+    function activityJobMarkup(job, kind) {
+      const isOptimising = kind === 'optimising'
+      const percent = Math.max(0, Math.min(100, Number(job.progress ?? (job.size ? (job.offset || 0) * 100 / job.size : 0)) || 0))
+      const state = isOptimising ? (job.state === 'queued' ? 'Waiting for the encoder' : job.message || 'Optimising for Pi') : ({ uploading: 'Uploading', validating: 'Checking video', queued: 'Waiting to publish', processing: 'Preparing video', publishing: 'Publishing', finalising: 'Refreshing TV', error: job.error || 'Needs attention', 'refresh-error': 'TV refresh needed' }[job.status] || job.status)
+      const detail = isOptimising ? activityDuration(job.eta_seconds) : `${job.channel_name || 'MabelTV'} · ${Math.round(percent)}%`
+      const paused = isOptimising ? job.state === 'paused' : job.status === 'paused'
+      const cancellable = isOptimising ? ['queued', 'processing', 'paused'].includes(job.state) : ['uploading', 'queued', 'paused'].includes(job.status)
+      const pausable = isOptimising ? ['queued', 'processing'].includes(job.state) : ['uploading', 'queued'].includes(job.status)
+      const controls = cancellable ? `<div class="activity-job-controls">${paused ? `<button type="button" data-activity-action="resume" data-activity-kind="${kind}" data-activity-id="${escapeHtml(job.path || job.id)}">Resume</button>` : pausable ? `<button type="button" data-activity-action="pause" data-activity-kind="${kind}" data-activity-id="${escapeHtml(job.path || job.id)}">Pause</button>` : ''}<button type="button" class="danger" data-activity-action="cancel" data-activity-kind="${kind}" data-activity-id="${escapeHtml(job.path || job.id)}">Cancel</button></div>` : ''
+      return `<article class="activity-job"><div class="activity-job-top"><div><h2>${escapeHtml(job.title || job.file_name || 'Video')}</h2><p>${escapeHtml(state)}</p></div><strong>${Math.round(percent)}%</strong></div><div class="activity-progress"><i style="width:${percent}%"></i></div><div class="activity-job-meta"><span>${escapeHtml(detail)}</span><span>${isOptimising && job.started ? 'In progress' : ''}</span></div>${controls}</article>`
+    }
+
+    function renderActivity(activity) {
+      const uploads = activity.uploads || [], optimisations = activity.optimisations || []
+      const activeUploads = uploads.filter(job => !['error', 'refresh-error'].includes(job.status))
+      const activeOptimisations = optimisations.filter(job => ['queued', 'processing'].includes(job.state))
+      const uploadsRoot = $('#activityUploadList'), optimisationRoot = $('#activityOptimisationList')
+      if (!uploadsRoot || !optimisationRoot) return
+      $('#activityUploadCount').textContent = String(activeUploads.length)
+      $('#activityOptimisationCount').textContent = String(activeOptimisations.length)
+      $('#activitySummary').textContent = activity.active
+        ? `${activeUploads.length + activeOptimisations.length} background job${activeUploads.length + activeOptimisations.length === 1 ? '' : 's'} in progress.`
+        : 'Nothing is uploading or being prepared right now.'
+      const temperature = $('#activityTemperature')
+      temperature.classList.toggle('hidden', !activity.temperature_warning)
+      temperature.textContent = activity.temperature_warning ? `${Number(activity.temperature_c).toFixed(0)}°C · watching temperature` : ''
+      uploadsRoot.innerHTML = uploads.length ? uploads.map(job => activityJobMarkup(job, 'upload')).join('') : '<div class="activity-empty">No uploads are waiting or in progress.</div>'
+      optimisationRoot.innerHTML = optimisations.length ? optimisations.map(job => activityJobMarkup(job, 'optimising')).join('') : '<div class="activity-empty">No films are being optimised right now.</div>'
+      $$('[data-activity-action]').forEach(button => button.onclick = () => activityAction(button))
+      const header = $('#mobileActivityStatus')
+      const headerText = $('#mobileActivityText')
+      const warning = activity.temperature_warning
+      const firstOptimisation = activeOptimisations[0]
+      header.classList.remove('hidden')
+      header.classList.toggle('is-warning', warning)
+      header.classList.toggle('is-idle', !activity.active && !warning)
+      const firstUpload = activeUploads[0]
+      headerText.textContent = warning ? `${Number(activity.temperature_c).toFixed(0)}°C · Pi warming up`
+        : firstOptimisation ? `Optimising · ${Math.round(firstOptimisation.progress || 0)}%`
+          : activeUploads.length ? `${firstUpload.status === 'paused' ? 'Paused' : 'Uploading'} · ${Math.round((firstUpload.size ? firstUpload.offset * 100 / firstUpload.size : 0) || 0)}%` : ''
+    }
+
+    async function activityAction(button) {
+      const action = button.dataset.activityAction
+      if (action === 'cancel' && !confirm('Cancel this background job? Its completed progress will be kept only where it is safe to resume.')) return
+      button.disabled = true
+      try {
+        if (button.dataset.activityKind === 'optimising') {
+          await api('/api/manage', { method: 'POST', body: JSON.stringify({ action: 'optimisation-action', operation: action, file: button.dataset.activityId }) })
+        } else {
+          await api(`/api/uploads/${button.dataset.activityId}`, { method: 'POST', body: JSON.stringify({ action }) })
+        }
+        await loadActivity()
+      } catch (error) { notice(error.message, true); button.disabled = false }
+    }
+
+    async function loadActivity() {
+      const activity = await api('/api/activity')
+      renderActivity(activity)
+      return activity
+    }
+
+    $$('[data-activity-tab]').forEach(button => button.onclick = () => {
+      const optimisation = button.dataset.activityTab === 'optimising'
+      $$('[data-activity-tab]').forEach(item => item.classList.toggle('active', item === button))
+      $('#activityUploads').classList.toggle('hidden', optimisation)
+      $('#activityOptimising').classList.toggle('hidden', !optimisation)
+    })
+
+    window.setInterval(() => loadActivity().catch(() => {}), 5000)
+
     function actionButton(text, action, kind = 'secondary') {
       const button = document.createElement('button')
       button.type = 'button'; button.textContent = text; button.className = kind; button.onclick = action

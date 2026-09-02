@@ -501,7 +501,7 @@ const $ = selector => document.querySelector(selector)
       const channelFromWatch = name === 'channels' && selectedManageChannel !== null && channelWorkspaceReturnToWatch
       const consolidatedWatchView = currentPortalDesign === 'experience' && (name === 'channels' || name === 'adult')
       const activeNavigation = channelFromWatch || consolidatedWatchView ? 'watch'
-        : name === 'insights' ? 'system' : name
+        : (name === 'insights' || name === 'activity') ? 'system' : name
       $$('.view').forEach(view => view.classList.toggle('active', view.id === `view-${name}`))
       document.body.classList.toggle('watch-mode', name === 'watch' || channelFromWatch || consolidatedWatchView)
       $$('[data-view-button]').forEach(button => {
@@ -523,6 +523,7 @@ const $ = selector => document.querySelector(selector)
       if (name === 'usb') refreshUsb().catch(error => notice(error.message, true))
       if (name === 'watch' && remoteKind === 'downloads') renderDownloads().catch(showError)
       if (name === 'insights') loadViewingInsights().catch(() => {})
+      if (name === 'activity') loadActivity().catch(error => notice(error.message, true))
     }
 
     function showLivePicture() {

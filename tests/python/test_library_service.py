@@ -1317,10 +1317,13 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertTrue(progress["active"])
         self.assertEqual(progress["items"], [{
             "path": "Long Film.mkv",
+            "title": "Long Film",
             "state": "processing",
             "progress": 37,
             "message": "",
             "updated": mock.ANY,
+            "started": 0.0,
+            "eta_seconds": 0,
         }])
         self.assertEqual(self.fixture.library.adult_library()[0]["playback_progress"], 37)
         self.assertIn("/api/adult/optimisations", PORTAL_SOURCE)
