@@ -1,11 +1,10 @@
 <dialog id="watchFilmSheet" class="watch-film-sheet">
   <article class="watch-film-panel">
     <div class="dialog-close-bar">
-      <button id="watchFilmFavourite" type="button" class="sheet-favourite" aria-label="Add film to favourites"><svg class="icon"><use href="/portal/icons.svg#signal-heart" /></svg></button>
       <button
         id="watchFilmClose"
         type="button"
-        class="watch-film-close dialog-close"
+        class="portal-sheet-close watch-film-close dialog-close"
         aria-label="Close film details"
       ></button>
     </div>
@@ -15,7 +14,10 @@
         <div id="watchFilmPoster" class="watch-film-poster"></div>
         <div class="watch-film-heading">
           <p id="watchFilmEyebrow" class="watch-film-eyebrow"></p>
-          <h2 id="watchFilmTitle"></h2>
+          <div class="portal-sheet-title-row">
+            <h2 id="watchFilmTitle"></h2>
+            <button id="watchFilmFavourite" type="button" class="sheet-favourite" aria-label="Add film to favourites"><svg class="icon"><use href="/portal/icons.svg#signal-heart" /></svg></button>
+          </div>
           <div id="watchFilmMeta" class="watch-film-meta"></div>
         </div>
       </div>
@@ -62,16 +64,18 @@
 <dialog id="watchProgrammeSheet" class="watch-programme-sheet">
   <article>
     <div class="dialog-close-bar">
-      <button id="watchProgrammeFavourite" type="button" class="sheet-favourite hidden" aria-label="Add film to favourites"><svg class="icon"><use href="/portal/icons.svg#signal-heart" /></svg></button>
       <button
         id="watchProgrammeClose"
         type="button"
-        class="watch-film-close dialog-close"
+        class="portal-sheet-close watch-film-close dialog-close"
         aria-label="Close programme details"
       ></button>
     </div>
     <p class="watch-film-eyebrow" id="watchProgrammeEyebrow">MabelTV</p>
-    <h2 id="watchProgrammeTitle">Programme</h2>
+    <div class="portal-sheet-title-row">
+      <h2 id="watchProgrammeTitle">Programme</h2>
+      <button id="watchProgrammeFavourite" type="button" class="sheet-favourite hidden" aria-label="Add film to favourites"><svg class="icon"><use href="/portal/icons.svg#signal-heart" /></svg></button>
+    </div>
     <p id="watchProgrammeMeta"></p>
     <div class="watch-destination-actions">
       <button id="watchProgrammeTv" type="button" class="watch-film-play">
@@ -117,7 +121,7 @@
 </dialog>
 <dialog id="watchProgrammeEpisodeMoreSheet" class="watch-programme-sheet">
   <article>
-    <div class="dialog-close-bar"><button id="watchProgrammeEpisodeMoreClose" type="button" class="watch-film-close dialog-close" aria-label="Close episode options"></button></div>
+    <div class="dialog-close-bar"><button id="watchProgrammeEpisodeMoreClose" type="button" class="portal-sheet-close watch-film-close dialog-close" aria-label="Close episode options"></button></div>
     <p id="watchProgrammeEpisodeMoreEyebrow" class="watch-film-eyebrow">Episode options</p>
     <h2 id="watchProgrammeEpisodeMoreTitle">Episode</h2>
     <p id="watchProgrammeEpisodeMoreMeta"></p>
@@ -174,7 +178,7 @@
       <button
         id="watchProgrammeMoreClose"
         type="button"
-        class="watch-film-close dialog-close"
+        class="portal-sheet-close watch-film-close dialog-close"
         aria-label="Close more film options"
       ></button>
     </div>
@@ -244,7 +248,7 @@
       <button
         id="watchProgrammeMoveClose"
         type="button"
-        class="library-sheet-close"
+        class="portal-sheet-close library-sheet-close"
         aria-label="Close film channel picker"
       >
         ×
@@ -268,7 +272,7 @@
       <button
         id="adultUploadClose"
         type="button"
-        class="library-sheet-close"
+        class="portal-sheet-close library-sheet-close"
         aria-label="Close upload"
       >
         ×
@@ -327,7 +331,7 @@
       <button
         id="adultCollectionClose"
         type="button"
-        class="library-sheet-close"
+        class="portal-sheet-close library-sheet-close"
         aria-label="Close collections"
       >
         ×
@@ -377,7 +381,7 @@
       <button
         id="adultFilmClose"
         type="button"
-        class="watch-film-close dialog-close"
+        class="portal-sheet-close watch-film-close dialog-close"
         aria-label="Close film settings"
       ></button>
     </div>
@@ -486,14 +490,16 @@
       ></span>
       <div>
         <p class="section-kicker">Adult TV series</p>
-        <h2 id="adultSeriesSheetTitle">Series</h2>
+        <div class="portal-sheet-title-row">
+          <h2 id="adultSeriesSheetTitle">Series</h2>
+          <button id="adultSeriesFavourite" type="button" class="sheet-favourite" aria-label="Add series to favourites"><svg class="icon"><use href="/portal/icons.svg#signal-heart" /></svg></button>
+        </div>
         <p id="adultSeriesSheetMeta"></p>
       </div>
-      <button id="adultSeriesFavourite" type="button" class="sheet-favourite series-header-favourite" aria-label="Add series to favourites"><svg class="icon"><use href="/portal/icons.svg#signal-heart" /></svg></button>
       <button
         id="adultSeriesClose"
         type="button"
-        class="library-sheet-close"
+        class="portal-sheet-close library-sheet-close"
         aria-label="Close series"
       >
         ×
@@ -553,7 +559,7 @@
       <button
         id="adultSeasonClose"
         type="button"
-        class="library-sheet-close"
+        class="portal-sheet-close library-sheet-close"
         aria-label="Close series"
       >
         ×
@@ -624,7 +630,7 @@
         <h2 id="adultSeriesRestartTitle">Restart watching?</h2>
         <p id="adultSeriesRestartDescription">This clears watched marks and resume positions.</p>
       </div>
-      <button id="adultSeriesRestartClose" type="button" class="library-sheet-close" aria-label="Keep watch progress">×</button>
+      <button id="adultSeriesRestartClose" type="button" class="portal-sheet-close library-sheet-close" aria-label="Keep watch progress">×</button>
     </header>
     <div class="library-sheet-body">
       <div class="adult-series-restart-warning">
@@ -657,7 +663,7 @@
       <button
         id="adultSeriesUploadClose"
         type="button"
-        class="library-sheet-close"
+        class="portal-sheet-close library-sheet-close"
         aria-label="Close episode upload"
       >
         ×
@@ -738,7 +744,7 @@
       <button
         id="adultSeriesSourceClose"
         type="button"
-        class="library-sheet-close"
+        class="portal-sheet-close library-sheet-close"
         aria-label="Back to episode upload"
       >
         ×
@@ -781,7 +787,7 @@
       <button
         id="adultEpisodeClose"
         type="button"
-        class="watch-film-close dialog-close"
+        class="portal-sheet-close watch-film-close dialog-close"
         aria-label="Close episode"
       ></button>
     </div>
@@ -827,7 +833,7 @@
 </dialog>
 <dialog id="adultEpisodeMoreSheet" class="watch-programme-sheet adult-episode-more-sheet">
   <article>
-    <div class="dialog-close-bar"><button id="adultEpisodeMoreClose" type="button" class="watch-film-close dialog-close" aria-label="Close episode options"></button></div>
+    <div class="dialog-close-bar"><button id="adultEpisodeMoreClose" type="button" class="portal-sheet-close watch-film-close dialog-close" aria-label="Close episode options"></button></div>
     <p id="adultEpisodeMoreEyebrow" class="watch-film-eyebrow">Episode options</p>
     <h2 id="adultEpisodeMoreTitle">Episode</h2>
     <p id="adultEpisodeMoreMeta"></p>
@@ -843,18 +849,20 @@
 >
   <article>
     <div class="dialog-close-bar">
-      <button id="watchChannelFavourite" type="button" class="sheet-favourite" aria-label="Add channel to favourites"><svg class="icon"><use href="/portal/icons.svg#signal-heart" /></svg></button>
       <button
         id="watchChannelClose"
         type="button"
-        class="watch-film-close dialog-close"
+        class="portal-sheet-close watch-film-close dialog-close"
         aria-label="Close channel details"
       ></button>
     </div>
     <p id="watchChannelEyebrow" class="watch-film-eyebrow">
       MabelTV series channel
     </p>
-    <h2 id="watchChannelTitle">Channel</h2>
+    <div class="portal-sheet-title-row">
+      <h2 id="watchChannelTitle">Channel</h2>
+      <button id="watchChannelFavourite" type="button" class="sheet-favourite" aria-label="Add channel to favourites"><svg class="icon"><use href="/portal/icons.svg#signal-heart" /></svg></button>
+    </div>
     <p id="watchChannelMeta"></p>
     <div class="watch-destination-actions">
       <button id="watchChannelTv" type="button" class="watch-film-play">
@@ -898,7 +906,7 @@
       <button
         id="filmResumeChoiceClose"
         type="button"
-        class="watch-film-close dialog-close"
+        class="portal-sheet-close watch-film-close dialog-close"
         aria-label="Close playback choice"
       ></button>
     </div>
@@ -1075,7 +1083,7 @@
       <button
         id="closeLiveChannels"
         type="button"
-        class="remote-sheet-close"
+        class="portal-sheet-close remote-sheet-close"
         aria-label="Close channel picker"
       >
         ×
@@ -1098,7 +1106,7 @@
       <button
         id="closeRemotePower"
         type="button"
-        class="remote-sheet-close"
+        class="portal-sheet-close remote-sheet-close"
         aria-label="Close power controls"
       >
         ×
@@ -1147,7 +1155,7 @@
       <button
         id="closeUsbEject"
         type="button"
-        class="library-sheet-close"
+        class="portal-sheet-close library-sheet-close"
         aria-label="Close USB eject warning"
       >
         ×
@@ -1189,7 +1197,7 @@
       <button
         id="closeAddChannel"
         type="button"
-        class="library-sheet-close"
+        class="portal-sheet-close library-sheet-close"
         aria-label="Close new channel"
       >
         ×
@@ -1246,7 +1254,7 @@
       <button
         id="closeRecycleBin"
         type="button"
-        class="library-sheet-close"
+        class="portal-sheet-close library-sheet-close"
         aria-label="Close recycle bin"
       >
         ×
@@ -1255,7 +1263,7 @@
     <div id="bin" class="library-sheet-body library-recycle-list"></div>
   </section>
 </dialog>
-<dialog id="channelUploadPanel" class="library-sheet">
+<dialog id="channelUploadPanel" class="library-sheet channel-upload-sheet">
   <section class="library-sheet-panel wide">
     <span class="library-sheet-handle" aria-hidden="true"></span>
     <header class="library-sheet-head">
@@ -1270,14 +1278,14 @@
       <button
         id="closeChannelUpload"
         type="button"
-        class="library-sheet-close"
+        class="portal-sheet-close library-sheet-close"
         aria-label="Close video upload"
       >
         ×
       </button>
     </header>
     <div class="library-sheet-body">
-      <form id="uploadForm" class="upload-form">
+      <form id="uploadForm" class="upload-form channel-upload-form">
         <select
           id="channel"
           class="hidden"
@@ -1299,18 +1307,18 @@
             ><small>Select one or several files for this channel</small></span
           ></label
         >
-        <div id="selectedFiles" class="callout" aria-live="polite">
+        <div id="selectedFiles" class="upload-selection channel-upload-selection" aria-live="polite">
           No videos selected yet.
         </div>
         <button id="uploadButton" type="submit" class="primary" disabled>
           Upload selected videos
         </button>
       </form>
-      <div id="uploadState" class="hidden callout" aria-live="polite">
+      <div id="uploadState" class="hidden upload-state channel-upload-state" aria-live="polite">
         <p id="uploadText">Preparing…</p>
         <progress id="progress" max="1" value="0"></progress>
       </div>
-      <div class="upload-activity">
+      <div class="upload-activity channel-upload-activity">
         <p class="section-kicker">Upload activity</p>
         <div id="uploadJobs" aria-live="polite">No videos are waiting.</div>
       </div>
@@ -1329,7 +1337,7 @@
       <button
         id="closeChannelSettings"
         type="button"
-        class="library-sheet-close"
+        class="portal-sheet-close library-sheet-close"
         aria-label="Close channel settings"
       >
         ×
@@ -1451,7 +1459,7 @@
         <p class="section-kicker">TMDB match</p>
         <h2 id="tmdbDialogTitle">Choose the correct film</h2>
       </div>
-      <button id="tmdbClose" type="button" class="secondary">Close</button>
+      <button id="tmdbClose" type="button" class="portal-sheet-close" aria-label="Close metadata choices"></button>
     </div>
     <div id="tmdbResults" class="tmdb-results"></div>
   </section>

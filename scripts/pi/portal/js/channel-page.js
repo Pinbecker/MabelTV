@@ -33,7 +33,12 @@ const ChannelPageComponents = (() => {
             <span id="workspaceChannelBadge" class="channel-page-badge">CH</span>
             <div>
               <p id="workspaceEyebrow" class="channel-page-eyebrow">MabelTV channel</p>
-              <h1 id="workspaceChannelName">Channel</h1>
+              <div class="channel-page-title-row">
+                <h1 id="workspaceChannelName">Channel</h1>
+                <button id="workspaceFavourite" type="button" class="channel-page-favourite hidden" aria-label="Add channel to favourites">
+                  <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-heart"/></svg>
+                </button>
+              </div>
             </div>
           </div>
           <p id="workspaceChannelStatus" class="channel-page-overview"></p>
@@ -50,9 +55,6 @@ const ChannelPageComponents = (() => {
             <button id="workspaceAddMedia" type="button" class="channel-page-secondary" aria-label="Add videos">
               <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-plus"/></svg>
               <span>Add videos</span>
-            </button>
-            <button id="workspaceFavourite" type="button" class="channel-page-icon channel-page-favourite hidden" aria-label="Add channel to favourites">
-              <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-heart"/></svg>
             </button>
             <button id="workspaceSettings" type="button" class="channel-page-icon" aria-label="Manage channel">
               <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-settings"/></svg>

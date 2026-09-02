@@ -2,11 +2,6 @@
 
 let iosInlineControlTimer = null
 let mabelFilmArtCycleTimer = null
-let watchProgrammeMoreReturn = null
-let watchProgrammeEpisodeMoreReturn = null
-let selectedWatchProgramme = null
-let selectedAdultEpisode = null
-let adultEpisodeMoreReturn = null
 
 function startMabelFilmArtCycle() {
       clearInterval(mabelFilmArtCycleTimer)
@@ -629,29 +624,27 @@ function remoteTime(value) {
       else openWatchProgrammeSheet(entry.channel, entry.film, context)
     }
 
-    function closeFilmResumeChoiceSheet() {
+    function closeFilmResumeChoiceSheet(restoreParent = true) {
       const dialog = $('#filmResumeChoiceSheet')
-      if (dialog?.open) dialog.close()
-      document.documentElement.style.overflow = ''
+      portalSheets.close(dialog, { restore: restoreParent })
     }
 
     function openFilmResumeChoice({ title, destination, position,
-      continueAction, restartAction }) {
+      continueAction, restartAction, returnTo = null }) {
       $('#filmResumeChoiceEyebrow').textContent = destination
       $('#filmResumeChoiceTitle').textContent = title
       $('#filmResumeChoiceMeta').textContent = `Continue from ${watchTimeLabel(position)}, or start this film from the beginning?`
       $('#filmResumeContinue').querySelector('small').textContent = `Resume from ${watchTimeLabel(position)}`
       $('#filmResumeContinue').onclick = () => {
-        closeFilmResumeChoiceSheet()
+        closeFilmResumeChoiceSheet(false)
         continueAction()
       }
       $('#filmResumeRestart').onclick = () => {
-        closeFilmResumeChoiceSheet()
+        closeFilmResumeChoiceSheet(false)
         restartAction()
       }
       const dialog = $('#filmResumeChoiceSheet')
-      if (!dialog.open) dialog.showModal()
-      document.documentElement.style.overflow = 'hidden'
+      portalSheets.open(dialog, { returnTo })
     }
 
     function watchFilmProgress(film) {
@@ -795,7 +788,7 @@ function remoteTime(value) {
       card.append(art, copy)
       // Continue Watching is a direct launch surface, not a drill-down into
       // series management. Its close action must return to Adult TV.
-      card.onclick = () => openAdultEpisodeSheet(series, episode, () => {})
+      card.onclick = () => openAdultEpisodeSheet(series, episode)
       item.append(card)
       return item
     }
@@ -984,20 +977,19 @@ function remoteTime(value) {
         : `${series.title} was removed from Favourites.`)
     }
 
-    function closeWatchFilmSheet() {
+    function closeWatchFilmSheet(restoreParent = true) {
       const dialog = $('#watchFilmSheet')
-      if (dialog.open) dialog.close()
+      portalSheets.close(dialog, { restore: restoreParent })
       selectedWatchFilm = null
-      document.documentElement.style.overflow = ''
     }
 
     function playWatchFilm(film, position) {
-      closeWatchFilmSheet()
+      closeWatchFilmSheet(false)
       openRemotePlayer({ kind: 'adult', file: film.path }, position)
     }
 
     function playWatchFilmOnTv(film, position = null) {
-      closeWatchFilmSheet()
+      closeWatchFilmSheet(false)
       playOnTv({
         kind: 'adult',
         file: film.path,
@@ -1006,7 +998,7 @@ function remoteTime(value) {
       }, watchFilmTitle(film))
     }
 
-    function openWatchFilmSheet(film, context = 'library') {
+    function openWatchFilmSheet(film, context = 'library', returnTo = null) {
       selectedWatchFilm = film
       const metadata = film.metadata || {}
       const title = watchFilmTitle(film)
@@ -1043,9 +1035,10 @@ function remoteTime(value) {
         : resumable ? `Continue from ${watchTimeLabel(film.remote_position)}`
           : 'Replaces what is playing there'
       tvPlay.onclick = favouriteResumeChoice ? () => {
-        closeWatchFilmSheet()
+        closeWatchFilmSheet(false)
         openFilmResumeChoice({
           title, destination: 'Play on TV', position: film.remote_position,
+          returnTo: () => openWatchFilmSheet(film, context, returnTo),
           continueAction: () => playWatchFilmOnTv(film),
           restartAction: () => playWatchFilmOnTv(film, 0),
         })
@@ -1062,14 +1055,15 @@ function remoteTime(value) {
             : 'Starts an independent stream'
         : 'Opens the original without conversion'
       herePlay.onclick = streamable ? favouriteResumeChoice ? () => {
-        closeWatchFilmSheet()
+        closeWatchFilmSheet(false)
         openFilmResumeChoice({
           title, destination: 'Play on this device', position: film.remote_position,
+          returnTo: () => openWatchFilmSheet(film, context, returnTo),
           continueAction: () => playWatchFilm(film, Number(film.remote_position || 0)),
           restartAction: () => playWatchFilm(film, 0),
         })
       } : () => playWatchFilm(film, resumable ? Number(film.remote_position || 0) : 0)
-        : () => { closeWatchFilmSheet(); openInVlc({ kind: 'adult', file: film.path }, title) }
+        : () => { closeWatchFilmSheet(false); openInVlc({ kind: 'adult', file: film.path }, title) }
       const favouriteButton = $('#watchFilmFavourite')
       favouriteButton.classList.toggle('active', film.favourite === true)
       favouriteButton.setAttribute('aria-label', film.favourite
@@ -1084,25 +1078,11 @@ function remoteTime(value) {
       const managementAvailable = currentPortalDesign === 'experience'
       manageFilm.classList.toggle('hidden', !managementAvailable)
       manageFilm.onclick = managementAvailable ? () => {
-        closeWatchFilmSheet()
-        openAdultFilmSheet(film)
+        closeWatchFilmSheet(false)
+        openAdultFilmSheet(film, () => openWatchFilmSheet(film, context, returnTo))
       } : null
       const dialog = $('#watchFilmSheet')
-      if (!dialog.open) dialog.showModal()
-      document.documentElement.style.overflow = 'hidden'
-    }
-
-    function renderWatchCollections(allFilms, folders) {
-      const select = $('#watchCollectionSelect')
-      select.innerHTML = ''
-      folders.forEach(folder => {
-        const count = folder === '*' ? allFilms.length : allFilms.filter(film => film.folder === folder).length
-        const option = document.createElement('option')
-        option.value = folder
-        option.textContent = `${folder === '*' ? 'All films' : folder} (${count})`
-        select.append(option)
-      })
-      select.value = watchFolder
+      portalSheets.open(dialog, { returnTo })
     }
 
     function adultSeriesArtwork(series, className = 'adult-series-card-art') {
@@ -1146,8 +1126,17 @@ function remoteTime(value) {
 
     function openAdultSeriesUpload(series, season, isNew = false) {
       const number = Number(season)
+      const seasonParent = selectedAdultSeason?.returnTo || null
+      const seriesParent = selectedAdultSeries?.returnTo || null
+      const returnTo = selectedAdultSeason
+        ? () => openAdultSeasonSheet(series, number, seasonParent)
+        : () => openAdultSeriesSheet(series, seriesParent)
+      const seasonReturnTo = selectedAdultSeason
+        ? seasonParent
+        : () => openAdultSeriesSheet(series, seriesParent)
       adultSeriesUploadTarget = {
-        id: series.id, title: series.title, season: number, isNew,
+        id: series.id, title: series.title, season: number, isNew, returnTo,
+        successReturn: () => openAdultSeasonSheet(series, number, seasonReturnTo),
       }
       $('#adultSeriesUploadEyebrow').textContent = `${series.title} · Series ${number}`
       $('#adultSeriesUploadTitle').textContent = isNew
@@ -1161,9 +1150,9 @@ function remoteTime(value) {
         : 'Existing episodes stay exactly where they are.'
       selectedAdultSeriesFiles = []
       renderSelectedAdultSeriesFiles()
-      closeAdultSeasonSheet()
-      closeAdultSeriesSheet()
-      openLibrarySheet($('#adultSeriesUploadSheet'), $('#adultSeriesFile'))
+      closeAdultSeasonSheet(false)
+      closeAdultSeriesSheet(false)
+      openLibrarySheet($('#adultSeriesUploadSheet'), $('#adultSeriesFile'), returnTo)
     }
 
     function openAdultSeriesSourceSheet() {
@@ -1171,34 +1160,30 @@ function remoteTime(value) {
       const source = $('#adultSeriesSourceSheet')
       if (!upload || !source || !adultSeriesUploadTarget) return
       adultSeriesSourcePickerOpen = true
-      closeLibrarySheet(upload)
-      if (!source.open) source.showModal()
-      document.documentElement.style.overflow = 'hidden'
+      closeLibrarySheet(upload, false)
+      portalSheets.open(source, {
+        returnTo: () => openLibrarySheet(upload, null, adultSeriesUploadTarget?.returnTo),
+      })
     }
 
     function returnToAdultSeriesUploadSheet() {
       const source = $('#adultSeriesSourceSheet')
-      if (source?.open) source.close()
+      portalSheets.close(source)
       adultSeriesSourcePickerOpen = false
-      if (!adultSeriesUploadTarget) return
-      setTimeout(() => openLibrarySheet($('#adultSeriesUploadSheet')), 0)
     }
 
     function chooseAdultSeriesFiles() {
       const source = $('#adultSeriesSourceSheet')
-      if (source?.open) source.close()
+      portalSheets.close(source)
       adultSeriesSourcePickerOpen = false
       if (!adultSeriesUploadTarget) return
-      setTimeout(() => {
-        openLibrarySheet($('#adultSeriesUploadSheet'))
-        setTimeout(() => $('#adultSeriesFile')?.click(), 40)
-      }, 0)
+      setTimeout(() => $('#adultSeriesFile')?.click(), 80)
     }
 
     function chooseAdultSeriesUsb() {
       const target = adultSeriesUploadTarget
       const source = $('#adultSeriesSourceSheet')
-      if (source?.open) source.close()
+      portalSheets.dismiss(source)
       adultSeriesSourcePickerOpen = false
       adultSeriesUploadTarget = null
       if (!target) return
@@ -1245,38 +1230,26 @@ function remoteTime(value) {
       }
     }
 
-    function closeAdultSeriesSheet() {
+    function closeAdultSeriesSheet(restoreParent = true) {
       const dialog = $('#adultSeriesSheet')
-      if (dialog.open) dialog.close()
+      portalSheets.close(dialog, { restore: restoreParent })
       selectedAdultSeries = null
-      document.documentElement.style.overflow = ''
     }
 
-    function closeAdultSeasonSheet() {
+    function closeAdultSeasonSheet(restoreParent = true) {
       const dialog = $('#adultSeasonSheet')
-      if (dialog?.open) dialog.close()
+      portalSheets.close(dialog, { restore: restoreParent })
       selectedAdultSeason = null
-      document.documentElement.style.overflow = ''
     }
 
     function returnToAdultSeriesSheet() {
-      const series = selectedAdultSeason?.series
       closeAdultSeasonSheet()
-      if (series) openAdultSeriesSheet(series)
     }
 
     function returnFromAdultSeriesRestartSheet() {
-      const target = adultSeriesRestartTarget
       const dialog = $('#adultSeriesRestartSheet')
-      if (dialog?.open) dialog.close()
+      portalSheets.close(dialog)
       adultSeriesRestartTarget = null
-      document.documentElement.style.overflow = ''
-      if (!target) return
-      const series = library?.adult_series?.find(value => value.id === target.seriesId)
-      if (!series) return
-      setTimeout(() => target.scope === 'season'
-        ? openAdultSeasonSheet(series, target.season)
-        : openAdultSeriesSheet(series), 0)
     }
 
     function openAdultSeriesRestartSheet(series, season = null) {
@@ -1296,11 +1269,15 @@ function remoteTime(value) {
         : 'Every episode in every series will be marked unwatched and lose its resume point.'
       $('#adultSeriesRestartTarget').textContent = scope === 'season'
         ? `${current.title} · Series ${seasonNumber}` : current.title
-      closeAdultSeasonSheet()
-      closeAdultSeriesSheet()
+      const seasonReturn = selectedAdultSeason?.returnTo || null
+      const seriesReturn = selectedAdultSeries?.returnTo || null
+      const parentReturn = selectedAdultSeason
+        ? () => openAdultSeasonSheet(current, seasonNumber, seasonReturn)
+        : () => openAdultSeriesSheet(current, seriesReturn)
+      closeAdultSeasonSheet(false)
+      closeAdultSeriesSheet(false)
       const dialog = $('#adultSeriesRestartSheet')
-      if (!dialog.open) dialog.showModal()
-      document.documentElement.style.overflow = 'hidden'
+      portalSheets.open(dialog, { returnTo: parentReturn })
     }
 
     async function confirmAdultSeriesRestart() {
@@ -1317,7 +1294,7 @@ function remoteTime(value) {
           }),
         })
         const dialog = $('#adultSeriesRestartSheet')
-        if (dialog.open) dialog.close()
+        portalSheets.dismiss(dialog)
         adultSeriesRestartTarget = null
         await reloadLibraryWithoutLosingPlace()
         const series = library?.adult_series?.find(value => value.id === target.seriesId)
@@ -1332,39 +1309,28 @@ function remoteTime(value) {
       }
     }
 
-    function closeAdultEpisodeSheet() {
+    function closeAdultEpisodeSheet(restoreParent = true) {
       const dialog = $('#adultEpisodeSheet')
-      if (dialog.open) dialog.close()
+      portalSheets.close(dialog, { restore: restoreParent })
       selectedAdultEpisode = null
-      document.documentElement.style.overflow = ''
     }
 
     function closeAdultEpisodeMoreSheet(restoreParent = true) {
       const dialog = $('#adultEpisodeMoreSheet')
-      if (dialog?.open) dialog.close()
-      document.documentElement.style.overflow = ''
-      if (!restoreParent) return
-      const returnToParent = adultEpisodeMoreReturn
-      adultEpisodeMoreReturn = null
-      if (typeof returnToParent === 'function') returnToParent()
+      portalSheets.close(dialog, { restore: restoreParent })
     }
 
     function returnToAdultSeasonSheet() {
-      const selection = selectedAdultEpisode
       closeAdultEpisodeSheet()
-      if (selection?.returnTo) selection.returnTo()
     }
 
     function openAdultEpisodeSheet(series, episode, returnTo = null) {
       const current = library?.adult_series?.find(value => value.id === series.id) || series
-      const defaultReturn = () => {
-        if (current?.id) openAdultSeasonSheet(current, episode.season)
-      }
       selectedAdultEpisode = {
         series: current,
         season: episode.season,
         episode,
-        returnTo: returnTo || defaultReturn,
+        returnTo,
       }
       $('#adultEpisodeEyebrow').textContent = `${series.title} · Series ${episode.season}`
       $('#adultEpisodeTitle').textContent = episode.display_name
@@ -1372,7 +1338,7 @@ function remoteTime(value) {
       const source = { kind: 'adult-series', series: series.id,
         file: episode.path, position: Number(episode.remote_position || 0) }
       $('#adultEpisodeTv').onclick = () => {
-        closeAdultEpisodeSheet()
+        closeAdultEpisodeSheet(false)
         playOnTv(source, episode.display_name)
       }
       const here = $('#adultEpisodeHere')
@@ -1383,7 +1349,7 @@ function remoteTime(value) {
         ? episode.remote_position > 10 ? `Continue from ${watchTimeLabel(episode.remote_position)}` : 'Starts an independent stream'
         : 'Open the original file without conversion'
       here.onclick = () => {
-        closeAdultEpisodeSheet()
+        closeAdultEpisodeSheet(false)
         if (episode.browser_ready) openRemotePlayer(source, episode.remote_position)
         else openInVlc(source, episode.display_name)
       }
@@ -1405,8 +1371,8 @@ function remoteTime(value) {
             episode.remote_last_watched = 0
           }
           series.watched_count += episode.watched ? 1 : -1
-          closeAdultEpisodeSheet()
-          openAdultSeasonSheet(series, episode.season)
+          closeAdultEpisodeSheet(false)
+          if (returnTo) returnTo()
           renderAdultWatch()
           renderHomeLibrary()
         } catch (error) { showError(error); watched.disabled = false }
@@ -1415,11 +1381,11 @@ function remoteTime(value) {
         $('#adultEpisodeMoreEyebrow').textContent = `${series.title} · Series ${episode.season}`
         $('#adultEpisodeMoreTitle').textContent = episode.display_name
         $('#adultEpisodeMoreMeta').textContent = `S${String(episode.season).padStart(2, '0')} E${String(episode.episode).padStart(2, '0')} · More episode options`
-        adultEpisodeMoreReturn = () => openAdultEpisodeSheet(current, episode, returnTo)
-        closeAdultEpisodeSheet()
+        closeAdultEpisodeSheet(false)
         const dialog = $('#adultEpisodeMoreSheet')
-        if (!dialog.open) dialog.showModal()
-        document.documentElement.style.overflow = 'hidden'
+        portalSheets.open(dialog, {
+          returnTo: () => openAdultEpisodeSheet(current, episode, returnTo),
+        })
       }
       $('#adultEpisodeDownload').onclick = () => {
         closeAdultEpisodeMoreSheet(false)
@@ -1433,24 +1399,17 @@ function remoteTime(value) {
             series: series.id, scope: 'episode', file: episode.path,
           })
           notice('Episode moved to the recycle bin.')
-          const updated = library?.adult_series?.find(value => value.id === series.id)
-          if (updated && updated.episodes.some(value => Number(value.season) === Number(episode.season))) {
-            openAdultSeasonSheet(updated, episode.season)
-          } else if (updated) {
-            openAdultSeriesSheet(updated)
-          }
         } catch (error) { showError(error) }
       }
       const dialog = $('#adultEpisodeSheet')
-      if (!dialog.open) dialog.showModal()
-      document.documentElement.style.overflow = 'hidden'
+      portalSheets.open(dialog, { returnTo })
     }
 
-    function openAdultSeasonSheet(series, season) {
+    function openAdultSeasonSheet(series, season, returnTo = null) {
       const current = library?.adult_series?.find(value => value.id === series.id) || series
       const number = Number(season)
       const episodes = (current.episodes || []).filter(episode => Number(episode.season) === number)
-      selectedAdultSeason = { series: current, season: number }
+      selectedAdultSeason = { series: current, season: number, returnTo }
       $('#adultSeasonEyebrow').textContent = current.title
       $('#adultSeasonTitle').textContent = `Series ${number}`
       const watched = episodes.filter(episode => episode.watched).length
@@ -1493,8 +1452,9 @@ function remoteTime(value) {
         row.style.setProperty('--episode-progress', `${progress}%`)
         row.append(artwork, copy, librarySignalIcon('signal-chevron-right'))
         row.onclick = () => {
-          closeAdultSeasonSheet()
-          openAdultEpisodeSheet(current, episode)
+          closeAdultSeasonSheet(false)
+          openAdultEpisodeSheet(current, episode, () =>
+            openAdultSeasonSheet(current, number, returnTo))
         }
         root.append(row)
       })
@@ -1504,30 +1464,27 @@ function remoteTime(value) {
       $('#adultSeasonUpload').onclick = () => openAdultSeriesUpload(current, number)
       $('#adultSeasonMetadata').disabled = !tmdbConfigured
       $('#adultSeasonMetadata').onclick = () => {
-        closeAdultSeasonSheet()
-        scanAdultSeriesTmdb(current)
+        closeAdultSeasonSheet(false)
+        scanAdultSeriesTmdb(current, () => openAdultSeasonSheet(current, number, returnTo))
       }
       $('#adultSeasonRestart').onclick = () => openAdultSeriesRestartSheet(current, number)
       $('#adultSeasonDelete').onclick = async () => {
         if (!confirm(`Move every episode in Series ${number} of “${current.title}” to the recycle bin?`)) return
-        closeAdultSeasonSheet()
+        closeAdultSeasonSheet(false)
         try {
           await manage('trash-adult-series', {
             series: current.id, scope: 'season', season: number,
           })
           notice(`Series ${number} moved to the recycle bin.`)
-          const updated = library?.adult_series?.find(value => value.id === current.id)
-          if (updated) openAdultSeriesSheet(updated)
         } catch (error) { showError(error) }
       }
       const dialog = $('#adultSeasonSheet')
-      if (!dialog.open) dialog.showModal()
-      document.documentElement.style.overflow = 'hidden'
+      portalSheets.open(dialog, { returnTo })
     }
 
-    function openAdultSeriesSheet(series) {
+    function openAdultSeriesSheet(series, returnTo = null) {
       const current = library?.adult_series?.find(value => value.id === series.id) || series
-      selectedAdultSeries = current
+      selectedAdultSeries = { series: current, returnTo }
       $('#adultSeriesSheetTitle').textContent = current.title
       $('#adultSeriesSheetMeta').textContent = `${current.season_count} series · ${current.episode_count} episodes · ${current.watched_count} watched`
       $('#adultSeriesOverview').textContent = current.metadata?.overview
@@ -1574,8 +1531,8 @@ function remoteTime(value) {
         progress.style.setProperty('--season-progress', `${episodes.length ? watched / episodes.length * 100 : 0}%`)
         card.append(art, shade, copy, progress, librarySignalIcon('signal-chevron-right', 'icon adult-season-card-chevron'))
         card.onclick = () => {
-          closeAdultSeriesSheet()
-          openAdultSeasonSheet(current, season)
+          closeAdultSeriesSheet(false)
+          openAdultSeasonSheet(current, season, () => openAdultSeriesSheet(current, returnTo))
         }
         root.append(card)
       })
@@ -1589,24 +1546,23 @@ function remoteTime(value) {
       root.append(addCard)
       $('#adultSeriesMetadata').disabled = !tmdbConfigured
       $('#adultSeriesMetadata').onclick = () => {
-        closeAdultSeriesSheet()
-        scanAdultSeriesTmdb(current)
+        closeAdultSeriesSheet(false)
+        scanAdultSeriesTmdb(current, () => openAdultSeriesSheet(current, returnTo))
       }
       $('#adultSeriesRestart').onclick = () => openAdultSeriesRestartSheet(current)
       $('#adultSeriesDelete').onclick = async () => {
         if (!confirm(`Move the complete “${current.title}” show and every series and episode to the recycle bin?`)) return
-        closeAdultSeriesSheet()
+        closeAdultSeriesSheet(false)
         try {
           await manage('trash-adult-series', { series: current.id, scope: 'series' })
           notice(`${current.title} moved to the recycle bin.`)
         } catch (error) { showError(error) }
       }
       const dialog = $('#adultSeriesSheet')
-      if (!dialog.open) dialog.showModal()
-      document.documentElement.style.overflow = 'hidden'
+      portalSheets.open(dialog, { returnTo })
     }
 
-    async function scanAdultSeriesTmdb(series) {
+    async function scanAdultSeriesTmdb(series, returnTo = null) {
       try {
         notice(`Searching TMDB for ${series.title}…`)
         const result = await api('/api/tmdb/adult-series/search', {
@@ -1634,7 +1590,7 @@ function remoteTime(value) {
               await api('/api/tmdb/adult-series/apply', { method: 'POST', body: JSON.stringify({
                 series: series.id, tmdb_id: match.id,
               }) })
-              $('#tmdbDialog').close()
+              portalSheets.dismiss($('#tmdbDialog'))
               await reloadLibraryWithoutLosingPlace()
               notice('Series, season and episode metadata was saved locally.')
             } catch (error) { showError(error); choose.disabled = false }
@@ -1642,7 +1598,7 @@ function remoteTime(value) {
           row.append(poster, copy, choose)
           root.append(row)
         })
-        $('#tmdbDialog').showModal()
+        portalSheets.open($('#tmdbDialog'), { returnTo })
         notice('')
       } catch (error) { showError(error) }
     }
@@ -1651,10 +1607,7 @@ function remoteTime(value) {
       const adult = $('#remoteAdult')
       adult.innerHTML = ''
       const allFilms = [...(library?.adult_library || [])].sort((left, right) => watchFilmTitle(left).localeCompare(watchFilmTitle(right), undefined, { sensitivity: 'base' }))
-      const folders = ['*', ...(library?.adult_folders || [])]
-      if (!folders.includes(watchFolder)) watchFolder = '*'
-      renderWatchCollections(allFilms, folders)
-      const collectionName = watchFolder === '*' ? 'All films' : watchFolder
+      watchFolder = '*'
       $('#watchSearch').value = watchSearchText
       $('#watchSearchClear').classList.toggle('hidden', !watchSearchText)
 
@@ -1677,13 +1630,12 @@ function remoteTime(value) {
       const films = allFilms.filter(film => {
         // Search is always global. A film should never look missing merely
         // because someone last browsed a different collection.
-        if (!query && watchFolder !== '*' && film.folder !== watchFolder) return false
         if (!query) return true
         const metadata = film.metadata || {}
         return [watchFilmTitle(film), film.display_name, film.folder, metadata.year].filter(Boolean).join(' ').toLocaleLowerCase().includes(query)
       })
       $('#watchLibraryKicker').textContent = query ? 'Search all films' : 'Your library'
-      $('#watchLibraryTitle').textContent = query ? `“${watchSearchText.trim()}”` : collectionName
+      $('#watchLibraryTitle').textContent = query ? `“${watchSearchText.trim()}”` : 'All films'
       $('#watchLibraryCount').textContent = `${films.length} film${films.length === 1 ? '' : 's'}`
       const grid = document.createElement('div')
       grid.className = 'watch-poster-grid'
@@ -1697,43 +1649,25 @@ function remoteTime(value) {
       adult.append(grid)
     }
 
-    function closeWatchProgrammeSheet() {
+    function closeWatchProgrammeSheet(restoreParent = true) {
       const dialog = $('#watchProgrammeSheet')
-      if (dialog.open) dialog.close()
+      portalSheets.close(dialog, { restore: restoreParent })
       selectedWatchProgramme = null
-      document.documentElement.style.overflow = ''
     }
 
     function closeWatchProgrammeMoreSheet(restoreParent = true) {
       const dialog = $('#watchProgrammeMoreSheet')
-      if (dialog.open) dialog.close()
-      document.documentElement.style.overflow = ''
-      if (!restoreParent) {
-        watchProgrammeMoreReturn = null
-        return
-      }
-      const returnToParent = watchProgrammeMoreReturn
-      watchProgrammeMoreReturn = null
-      if (typeof returnToParent === 'function') returnToParent()
+      portalSheets.close(dialog, { restore: restoreParent })
     }
 
     function closeWatchProgrammeEpisodeMoreSheet(restoreParent = true) {
       const dialog = $('#watchProgrammeEpisodeMoreSheet')
-      if (dialog?.open) dialog.close()
-      document.documentElement.style.overflow = ''
-      if (!restoreParent) {
-        watchProgrammeEpisodeMoreReturn = null
-        return
-      }
-      const returnToParent = watchProgrammeEpisodeMoreReturn
-      watchProgrammeEpisodeMoreReturn = null
-      if (typeof returnToParent === 'function') returnToParent()
+      portalSheets.close(dialog, { restore: restoreParent })
     }
 
-    function closeWatchChannelSheet() {
+    function closeWatchChannelSheet(restoreParent = true) {
       const dialog = $('#watchChannelSheet')
-      if (dialog?.open) dialog.close()
-      document.documentElement.style.overflow = ''
+      portalSheets.close(dialog, { restore: restoreParent })
     }
 
     function openWatchChannelSheet(channel) {
@@ -1760,7 +1694,7 @@ function remoteTime(value) {
         : position > 10 ? `Continue ${episodeTitle} from ${watchTimeLabel(position)}`
           : episodeTitle ? `Start with ${episodeTitle}` : 'This channel has no available episodes'
       tv.onclick = programme && channel.enabled ? () => {
-        closeWatchChannelSheet()
+        closeWatchChannelSheet(false)
         playOnTv({ kind: 'channel', channel: channel.number,
           file: programme.name, position }, title)
       } : null
@@ -1777,7 +1711,7 @@ function remoteTime(value) {
           : position > 10 ? `Continue ${episodeTitle} from ${watchTimeLabel(position)}`
             : `Start with ${episodeTitle}`
       here.onclick = programme ? () => {
-        closeWatchChannelSheet()
+        closeWatchChannelSheet(false)
         const source = { kind: 'channel', channel: channel.number,
           file: programme.name, position }
         if (browserReady) openRemotePlayer(source, position)
@@ -1795,12 +1729,32 @@ function remoteTime(value) {
             ? 'Remove channel from favourites' : 'Add channel to favourites')
         }).catch(showError)
       $('#watchChannelOpen').onclick = () => {
-        closeWatchChannelSheet()
+        closeWatchChannelSheet(false)
         openChannel(channel, false)
       }
       const dialog = $('#watchChannelSheet')
-      if (!dialog.open) dialog.showModal()
-      document.documentElement.style.overflow = 'hidden'
+      portalSheets.open(dialog)
+    }
+
+    function openWatchProgrammeEpisodeMoreSheet(channel, programme, context, returnTo) {
+      const title = programme.metadata?.title || programme.display_name
+      $('#watchProgrammeEpisodeMoreEyebrow').textContent = `CH ${channel.number} · ${channel.name}`
+      $('#watchProgrammeEpisodeMoreTitle').textContent = title
+      $('#watchProgrammeEpisodeMoreMeta').textContent = 'More episode options'
+      portalSheets.open($('#watchProgrammeEpisodeMoreSheet'), {
+        returnTo: () => openWatchProgrammeSheet(channel, programme, context, returnTo),
+      })
+    }
+
+    function openWatchProgrammeMoreSheet(channel, programme, context, returnTo) {
+      const metadata = programme.metadata || {}
+      const title = metadata.title || programme.display_name
+      $('#watchProgrammeMoreEyebrow').textContent = `CH ${channel.number} · ${channel.name}`
+      $('#watchProgrammeMoreTitle').textContent = title
+      $('#watchProgrammeMoreMeta').textContent = [metadata.year, 'More film options'].filter(Boolean).join(' · ')
+      portalSheets.open($('#watchProgrammeMoreSheet'), {
+        returnTo: () => openWatchProgrammeSheet(channel, programme, context, returnTo),
+      })
     }
 
     function openWatchProgrammeSheet(channel, programme, context = 'library', returnTo = null) {
@@ -1820,16 +1774,17 @@ function remoteTime(value) {
         : resumable ? `Continue from ${watchTimeLabel(programme.remote_position)}`
           : 'Replaces what is playing there'
       $('#watchProgrammeTv').onclick = favouriteResumeChoice ? () => {
-        closeWatchProgrammeSheet()
+        closeWatchProgrammeSheet(false)
         openFilmResumeChoice({
           title, destination: 'Play on TV', position: programme.remote_position,
+          returnTo: () => openWatchProgrammeSheet(channel, programme, context, returnTo),
           continueAction: () => playOnTv({ kind: 'channel', channel: channel.number,
             file: programme.name, position: Number(programme.remote_position || 0) }, title),
           restartAction: () => playOnTv({ kind: 'channel', channel: channel.number,
             file: programme.name, position: 0 }, title),
         })
       } : () => {
-        closeWatchProgrammeSheet()
+        closeWatchProgrammeSheet(false)
         playOnTv({ kind: 'channel', channel: channel.number, file: programme.name,
           position: filmChannel ? Number(programme.remote_position || 0) : undefined }, title)
       }
@@ -1846,9 +1801,10 @@ function remoteTime(value) {
       const source = { kind: 'channel', channel: channel.number, file: programme.name }
       if (filmChannel) source.position = Number(programme.remote_position || 0)
       here.onclick = favouriteResumeChoice && programme.browser_ready !== false ? () => {
-        closeWatchProgrammeSheet()
+        closeWatchProgrammeSheet(false)
         openFilmResumeChoice({
           title, destination: 'Play on this device', position: programme.remote_position,
+          returnTo: () => openWatchProgrammeSheet(channel, programme, context, returnTo),
           continueAction: () => openRemotePlayer({ kind: 'channel',
             channel: channel.number, file: programme.name,
             position: Number(programme.remote_position || 0) }, Number(programme.remote_position || 0)),
@@ -1856,7 +1812,7 @@ function remoteTime(value) {
             channel: channel.number, file: programme.name, position: 0 }, 0),
         })
       } : () => {
-        closeWatchProgrammeSheet()
+        closeWatchProgrammeSheet(false)
         if (programme.browser_ready === false) openInVlc(source, title)
         else openRemotePlayer(source, filmChannel ? Number(programme.remote_position || 0) : 0)
       }
@@ -1866,25 +1822,16 @@ function remoteTime(value) {
       }
       const filmTools = $('#watchProgrammeFilmTools')
       filmTools.classList.toggle('hidden', !filmChannel)
-      if (filmChannel) filmTools.style.removeProperty('display')
-      else filmTools.style.setProperty('display', 'none', 'important')
 
       const episodeTools = $('#watchProgrammeEpisodeTools')
       episodeTools.classList.toggle('hidden', filmChannel)
-      if (filmChannel) episodeTools.style.setProperty('display', 'none', 'important')
-      else episodeTools.style.removeProperty('display')
       const progressNote = $('#watchProgrammeSheet .watch-programme-note')
       progressNote.classList.toggle('hidden', !filmChannel)
       if (!filmChannel) {
         $('#watchProgrammeEpisodeMore').onclick = () => {
-          watchProgrammeEpisodeMoreReturn = () => openWatchProgrammeSheet(channel, programme, context, selectedWatchProgramme.returnTo)
-          closeWatchProgrammeSheet()
-          $('#watchProgrammeEpisodeMoreEyebrow').textContent = `CH ${channel.number} · ${channel.name}`
-          $('#watchProgrammeEpisodeMoreTitle').textContent = title
-          $('#watchProgrammeEpisodeMoreMeta').textContent = 'More episode options'
-          const dialog = $('#watchProgrammeEpisodeMoreSheet')
-          if (!dialog.open) dialog.showModal()
-          document.documentElement.style.overflow = 'hidden'
+          const parentReturn = selectedWatchProgramme?.returnTo || returnTo
+          closeWatchProgrammeSheet(false)
+          openWatchProgrammeEpisodeMoreSheet(channel, programme, context, parentReturn)
         }
         $('#watchProgrammeEpisodeDownload').onclick = () => {
           closeWatchProgrammeEpisodeMoreSheet(false)
@@ -1913,21 +1860,17 @@ function remoteTime(value) {
 
       const moreButton = $('#watchProgrammeMore')
       moreButton.onclick = filmChannel ? () => {
-        watchProgrammeMoreReturn = () => openWatchProgrammeSheet(channel, programme, context, selectedWatchProgramme.returnTo)
-        closeWatchProgrammeSheet()
-        $('#watchProgrammeMoreEyebrow').textContent = `CH ${channel.number} · ${channel.name}`
-        $('#watchProgrammeMoreTitle').textContent = title
-        $('#watchProgrammeMoreMeta').textContent = [metadata.year, 'More film options'].filter(Boolean).join(' · ')
-        const moreDialog = $('#watchProgrammeMoreSheet')
-        if (!moreDialog.open) moreDialog.showModal()
-        document.documentElement.style.overflow = 'hidden'
+        const parentReturn = selectedWatchProgramme?.returnTo || returnTo
+        closeWatchProgrammeSheet(false)
+        openWatchProgrammeMoreSheet(channel, programme, context, parentReturn)
       } : null
 
       const metadataButton = $('#watchProgrammeMetadata')
       metadataButton.disabled = !tmdbConfigured
       metadataButton.onclick = filmChannel && tmdbConfigured ? () => {
         closeWatchProgrammeMoreSheet(false)
-        scanProgrammeTmdb(channel, programme)
+        scanProgrammeTmdb(channel, programme, () =>
+          openWatchProgrammeMoreSheet(channel, programme, context, returnTo))
       } : null
 
       const favouriteButton = $('#watchProgrammeFavourite')
@@ -1997,7 +1940,7 @@ function remoteTime(value) {
             copy.append(heading, hint)
             button.append(icon, copy)
             button.onclick = () => {
-              closeLibrarySheet($('#watchProgrammeMoveSheet'))
+              closeLibrarySheet($('#watchProgrammeMoveSheet'), false)
               manage('move-programme', {
                 channel: channel.number,
                 file: programme.name,
@@ -2006,7 +1949,8 @@ function remoteTime(value) {
             }
             options.append(button)
           })
-          openLibrarySheet($('#watchProgrammeMoveSheet'))
+          openLibrarySheet($('#watchProgrammeMoveSheet'), null, () =>
+            openWatchProgrammeMoreSheet(channel, programme, context, returnTo))
         }
       } else {
         moveButton.disabled = true
@@ -2014,8 +1958,7 @@ function remoteTime(value) {
         moveButton.onclick = null
       }
       const dialog = $('#watchProgrammeSheet')
-      if (!dialog.open) dialog.showModal()
-      document.documentElement.style.overflow = 'hidden'
+      portalSheets.open(dialog, { returnTo })
     }
 
     async function renderDownloads() {
@@ -2336,7 +2279,6 @@ function remoteTime(value) {
     })
     $('#watchSearch').oninput = event => { watchSearchText = event.target.value; renderAdultWatch() }
     $('#watchSearchClear').onclick = event => { event.preventDefault(); watchSearchText = ''; renderAdultWatch(); $('#watchSearch').focus() }
-    $('#watchCollectionSelect').onchange = event => { watchFolder = event.target.value; renderAdultWatch() }
     $('#watchMabelSearch').oninput = event => { mabelSearchText = event.target.value; renderMabelDiscovery(mabelFilmEntries()) }
     $('#watchMabelSearchClear').onclick = event => { event.preventDefault(); mabelSearchText = ''; renderMabelDiscovery(mabelFilmEntries()); $('#watchMabelSearch').focus() }
     const adultSeriesCreate = $('#adultSeriesCreate')
@@ -2361,6 +2303,10 @@ function remoteTime(value) {
     const adultSeriesSheet = $('#adultSeriesSheet')
     if (adultSeriesSheet) adultSeriesSheet.onclick = event => {
       if (event.target === $('#adultSeriesSheet')) closeAdultSeriesSheet()
+    }
+    if (adultSeriesSheet) adultSeriesSheet.oncancel = event => {
+      event.preventDefault()
+      closeAdultSeriesSheet()
     }
     if (adultSeriesSheet) adultSeriesSheet.onclose = () => {
       selectedAdultSeries = null
@@ -2399,33 +2345,23 @@ function remoteTime(value) {
     }
     const adultSeriesUploadClose = $('#adultSeriesUploadClose')
     if (adultSeriesUploadClose) adultSeriesUploadClose.onclick = () => {
-      const target = adultSeriesUploadTarget
       closeLibrarySheet($('#adultSeriesUploadSheet'))
       adultSeriesUploadTarget = null
-      if (target) {
-        const series = library?.adult_series?.find(value => value.id === target.id)
-        if (series) setTimeout(() => target.isNew
-          ? openAdultSeriesSheet(series)
-          : openAdultSeasonSheet(series, target.season), 0)
-      }
     }
     const adultSeriesUploadSheet = $('#adultSeriesUploadSheet')
     if (adultSeriesUploadSheet) adultSeriesUploadSheet.onclick = event => {
       if (event.target === adultSeriesUploadSheet) {
-        const target = adultSeriesUploadTarget
         closeLibrarySheet(adultSeriesUploadSheet)
         adultSeriesUploadTarget = null
-        if (target) {
-          const series = library?.adult_series?.find(value => value.id === target.id)
-          if (series) setTimeout(() => target.isNew
-            ? openAdultSeriesSheet(series)
-            : openAdultSeasonSheet(series, target.season), 0)
-        }
       }
+    }
+    if (adultSeriesUploadSheet) adultSeriesUploadSheet.oncancel = event => {
+      event.preventDefault()
+      closeLibrarySheet(adultSeriesUploadSheet)
     }
     if (adultSeriesUploadSheet) adultSeriesUploadSheet.onclose = () => {
       if (!adultSeriesSourcePickerOpen) adultSeriesUploadTarget = null
-      document.documentElement.style.overflow = ''
+      if (!document.querySelector('dialog[open]')) document.documentElement.style.overflow = ''
     }
     const adultSeriesChooseSource = $('#adultSeriesChooseSource')
     if (adultSeriesChooseSource) adultSeriesChooseSource.onclick = openAdultSeriesSourceSheet
@@ -2439,14 +2375,22 @@ function remoteTime(value) {
     if (adultSeriesSourceSheet) adultSeriesSourceSheet.onclick = event => {
       if (event.target === adultSeriesSourceSheet) returnToAdultSeriesUploadSheet()
     }
+    if (adultSeriesSourceSheet) adultSeriesSourceSheet.oncancel = event => {
+      event.preventDefault()
+      returnToAdultSeriesUploadSheet()
+    }
     if (adultSeriesSourceSheet) adultSeriesSourceSheet.onclose = () => {
-      document.documentElement.style.overflow = ''
+      if (!document.querySelector('dialog[open]')) document.documentElement.style.overflow = ''
     }
     const adultEpisodeClose = $('#adultEpisodeClose')
     if (adultEpisodeClose) adultEpisodeClose.onclick = returnToAdultSeasonSheet
     const adultEpisodeSheet = $('#adultEpisodeSheet')
     if (adultEpisodeSheet) adultEpisodeSheet.onclick = event => {
       if (event.target === $('#adultEpisodeSheet')) returnToAdultSeasonSheet()
+    }
+    if (adultEpisodeSheet) adultEpisodeSheet.oncancel = event => {
+      event.preventDefault()
+      returnToAdultSeasonSheet()
     }
     if (adultEpisodeSheet) adultEpisodeSheet.onclose = () => {
       selectedAdultEpisode = null
@@ -2457,6 +2401,10 @@ function remoteTime(value) {
     const adultEpisodeMoreSheet = $('#adultEpisodeMoreSheet')
     if (adultEpisodeMoreSheet) adultEpisodeMoreSheet.onclick = event => {
       if (event.target === adultEpisodeMoreSheet) closeAdultEpisodeMoreSheet()
+    }
+    if (adultEpisodeMoreSheet) adultEpisodeMoreSheet.oncancel = event => {
+      event.preventDefault()
+      closeAdultEpisodeMoreSheet()
     }
     if (adultEpisodeMoreSheet) adultEpisodeMoreSheet.onclose = () => {
       document.documentElement.style.overflow = ''
@@ -2469,26 +2417,41 @@ function remoteTime(value) {
     $('#watchChannelSheet').onclick = event => {
       if (event.target === $('#watchChannelSheet')) closeWatchChannelSheet()
     }
+    $('#watchChannelSheet').oncancel = event => {
+      event.preventDefault()
+      closeWatchChannelSheet()
+    }
     $('#watchChannelSheet').onclose = () => { document.documentElement.style.overflow = '' }
     $('#filmResumeChoiceClose').onclick = closeFilmResumeChoiceSheet
     $('#filmResumeChoiceSheet').onclick = event => {
       if (event.target === $('#filmResumeChoiceSheet')) closeFilmResumeChoiceSheet()
+    }
+    $('#filmResumeChoiceSheet').oncancel = event => {
+      event.preventDefault()
+      closeFilmResumeChoiceSheet()
     }
     $('#filmResumeChoiceSheet').onclose = () => {
       document.documentElement.style.overflow = ''
     }
     $('#watchFilmClose').onclick = closeWatchFilmSheet
     $('#watchFilmSheet').onclick = event => { if (event.target === $('#watchFilmSheet')) closeWatchFilmSheet() }
+    $('#watchFilmSheet').oncancel = event => { event.preventDefault(); closeWatchFilmSheet() }
     $('#watchFilmSheet').onclose = () => { selectedWatchFilm = null; document.documentElement.style.overflow = '' }
     $('#watchProgrammeClose').onclick = closeWatchProgrammeSheet
     $('#watchProgrammeSheet').onclick = event => { if (event.target === $('#watchProgrammeSheet')) closeWatchProgrammeSheet() }
+    $('#watchProgrammeSheet').oncancel = event => { event.preventDefault(); closeWatchProgrammeSheet() }
     $('#watchProgrammeSheet').onclose = () => { selectedWatchProgramme = null; document.documentElement.style.overflow = '' }
     $('#watchProgrammeMoreClose').onclick = closeWatchProgrammeMoreSheet
     $('#watchProgrammeMoreSheet').onclick = event => { if (event.target === $('#watchProgrammeMoreSheet')) closeWatchProgrammeMoreSheet() }
+    $('#watchProgrammeMoreSheet').oncancel = event => { event.preventDefault(); closeWatchProgrammeMoreSheet() }
     $('#watchProgrammeMoreSheet').onclose = () => { document.documentElement.style.overflow = '' }
     $('#watchProgrammeEpisodeMoreClose').onclick = closeWatchProgrammeEpisodeMoreSheet
     $('#watchProgrammeEpisodeMoreSheet').onclick = event => {
       if (event.target === $('#watchProgrammeEpisodeMoreSheet')) closeWatchProgrammeEpisodeMoreSheet()
+    }
+    $('#watchProgrammeEpisodeMoreSheet').oncancel = event => {
+      event.preventDefault()
+      closeWatchProgrammeEpisodeMoreSheet()
     }
     $('#watchProgrammeEpisodeMoreSheet').onclose = () => { document.documentElement.style.overflow = '' }
     $('#watchAddAdult').onclick = () => $('#adultAddFilms').click()

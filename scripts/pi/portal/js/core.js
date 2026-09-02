@@ -15,6 +15,7 @@ const $ = selector => document.querySelector(selector)
     let adultFolderFilter = '*'
     let adultSearchText = ''
     let selectedAdultFilm = null
+    let selectedAdultFilmReturnTo = null
     let selectedAdultSeries = null
     let selectedAdultSeason = null
     let selectedAdultEpisode = null
@@ -52,9 +53,6 @@ const $ = selector => document.querySelector(selector)
     let homeSearchText = ''
     let selectedWatchFilm = null
     let selectedWatchProgramme = null
-    let selectedWatchProgrammeMoreReturn = null
-    let selectedWatchProgrammeEpisodeMoreReturn = null
-    let adultEpisodeMoreReturn = null
     let iosRemoteSession = null
     let iosRemotePositionTimer = null
     let iosRemoteHeartbeatTimer = null
@@ -72,6 +70,34 @@ const $ = selector => document.querySelector(selector)
     const pendingDownloads = new Map()
     let portalPlayerScrollY = 0
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
+
+    const portalSheets = (() => {
+      const parents = new WeakMap()
+
+      function open(dialog, { returnTo = null, focus = null } = {}) {
+        if (!dialog) return
+        if (typeof returnTo === 'function') parents.set(dialog, returnTo)
+        else parents.delete(dialog)
+        if (!dialog.open) dialog.showModal()
+        document.documentElement.style.overflow = 'hidden'
+        if (focus) requestAnimationFrame(() => focus.focus({ preventScroll: true }))
+      }
+
+      function close(dialog, { restore = true } = {}) {
+        if (!dialog) return
+        const returnTo = parents.get(dialog)
+        parents.delete(dialog)
+        if (dialog.open) dialog.close()
+        if (!document.querySelector('dialog[open]')) document.documentElement.style.overflow = ''
+        if (restore && typeof returnTo === 'function') queueMicrotask(returnTo)
+      }
+
+      function dismiss(dialog) {
+        close(dialog, { restore: false })
+      }
+
+      return { open, close, dismiss }
+    })()
 
     function lockPortalPlayerScroll(fixBody = true) {
       if (document.documentElement.classList.contains('portal-player-open')) return

@@ -184,8 +184,9 @@ function renderAdultLibrary() {
       }
     }
 
-    function openAdultFilmSheet(film) {
+    function openAdultFilmSheet(film, returnTo = null) {
       selectedAdultFilm = film
+      selectedAdultFilmReturnTo = returnTo
       const metadata = film.metadata || {}; const folders = library?.adult_folders || []
       const title = metadata.title || film.display_name
       $('#adultFilmSheetTitle').textContent = title
@@ -217,12 +218,13 @@ function renderAdultLibrary() {
       const removeProgress = $('#adultFilmRemoveProgress')
       removeProgress.classList.toggle('hidden', !watchFilmResumable(film))
       const sheet = $('#adultFilmSheet')
-      sheet.showModal()
-      sheet.querySelector('.watch-film-panel').focus({ preventScroll: true })
-      document.documentElement.style.overflow = 'hidden'
+      portalSheets.open(sheet, {
+        returnTo,
+        focus: sheet.querySelector('.watch-film-panel'),
+      })
     }
 
-    async function scanTmdb(film) {
+    async function scanTmdb(film, returnTo = null) {
       try {
         notice(`Searching TMDB for ${film.display_name}…`)
         const result = await api('/api/tmdb/search', {
@@ -249,16 +251,16 @@ function renderAdultLibrary() {
             choose.disabled = true
             try {
               await api('/api/tmdb/apply', { method: 'POST', body: JSON.stringify({ file: film.path, tmdb_id: match.id }) })
-              $('#tmdbDialog').close(); await load(); notice('Film metadata, artwork, and available subtitles were saved locally.')
+              portalSheets.dismiss($('#tmdbDialog')); await load(); notice('Film metadata, artwork, and available subtitles were saved locally.')
             } catch (error) { notice(error.message, true); choose.disabled = false }
           }
           row.append(poster, copy, choose); root.append(row)
         })
-        $('#tmdbDialog').showModal(); notice('')
+        portalSheets.open($('#tmdbDialog'), { returnTo }); notice('')
       } catch (error) { notice(error.message, true) }
     }
 
-    async function scanProgrammeTmdb(channel, programme) {
+    async function scanProgrammeTmdb(channel, programme, returnTo = null) {
       const title = programme.metadata?.title || programme.display_name
       try {
         notice(`Searching TMDB for ${programme.display_name}…`)
@@ -296,7 +298,7 @@ function renderAdultLibrary() {
                   tmdb_id: match.id
                 })
               })
-              $('#tmdbDialog').close()
+              portalSheets.dismiss($('#tmdbDialog'))
               await load(channel.number)
               notice('The selected film metadata and artwork were saved locally.')
             } catch (error) {
@@ -307,12 +309,12 @@ function renderAdultLibrary() {
           row.append(poster, copy, choose)
           root.append(row)
         })
-        $('#tmdbDialog').showModal()
+        portalSheets.open($('#tmdbDialog'), { returnTo })
         notice('')
       } catch (error) { notice(error.message, true) }
     }
 
-    async function scanChannelTmdb(channel) {
+    async function scanChannelTmdb(channel, returnTo = null) {
       const title = channel.metadata?.title || channel.name
       try {
         notice(`Searching TMDB for ${channel.name}…`)
@@ -346,7 +348,7 @@ function renderAdultLibrary() {
                 method: 'POST',
                 body: JSON.stringify({ channel: channel.number, tmdb_id: match.id })
               })
-              $('#tmdbDialog').close()
+              portalSheets.dismiss($('#tmdbDialog'))
               await load(channel.number)
               notice('The selected show metadata and channel artwork were saved locally.')
             } catch (error) {
@@ -357,12 +359,20 @@ function renderAdultLibrary() {
           row.append(poster, copy, choose)
           root.append(row)
         })
-        $('#tmdbDialog').showModal()
+        portalSheets.open($('#tmdbDialog'), { returnTo })
         notice('')
       } catch (error) { notice(error.message, true) }
     }
 
-    $('#tmdbClose').onclick = () => $('#tmdbDialog').close()
+    const tmdbDialog = $('#tmdbDialog')
+    $('#tmdbClose').onclick = () => portalSheets.close(tmdbDialog)
+    tmdbDialog.oncancel = event => {
+      event.preventDefault()
+      portalSheets.close(tmdbDialog)
+    }
+    tmdbDialog.onclick = event => {
+      if (event.target === tmdbDialog) portalSheets.close(tmdbDialog)
+    }
     $('#adultSearch').oninput = event => { adultSearchText = event.target.value; renderAdultLibrary() }
     $('#adultSearchClear').onclick = () => { adultSearchText = ''; $('#adultSearch').value = ''; renderAdultLibrary(); $('#adultSearch').focus() }
     $('#adultAddFilms').onclick = () => openLibrarySheet($('#adultUploadSheet'), $('#adultFile'))
@@ -372,26 +382,43 @@ function renderAdultLibrary() {
     $('#adultFilmClose').onclick = () => closeLibrarySheet($('#adultFilmSheet'))
     ;[$('#adultUploadSheet'), $('#adultCollectionSheet'), $('#adultFilmSheet')].forEach(dialog => {
       dialog.onclick = event => { if (event.target === dialog) closeLibrarySheet(dialog) }
-      dialog.onclose = () => { document.documentElement.style.overflow = ''; if (dialog === $('#adultFilmSheet')) selectedAdultFilm = null }
+      dialog.oncancel = event => {
+        event.preventDefault()
+        closeLibrarySheet(dialog)
+      }
+      dialog.onclose = () => {
+        if (!document.querySelector('dialog[open]')) document.documentElement.style.overflow = ''
+        if (dialog === $('#adultFilmSheet')) {
+          selectedAdultFilm = null
+          selectedAdultFilmReturnTo = null
+        }
+      }
     })
     $('#adultFilmDownload').onclick = () => {
       const film = selectedAdultFilm
       if (!film) return
-      closeLibrarySheet($('#adultFilmSheet'))
+      closeLibrarySheet($('#adultFilmSheet'), false)
       downloadToDevice({ kind: 'adult', file: film.path }, film.metadata?.title || film.display_name)
     }
-    $('#adultFilmMove').onclick = async () => { if (selectedAdultFilm) { const film = selectedAdultFilm; closeLibrarySheet($('#adultFilmSheet')); await manage('move-adult', { file: film.path, folder: $('#adultFilmFolder').value }) } }
-    $('#adultFilmScan').onclick = () => { const film = selectedAdultFilm; if (film) { closeLibrarySheet($('#adultFilmSheet')); scanTmdb(film) } }
-    $('#adultFilmRename').onclick = () => { const film = selectedAdultFilm; if (!film) return; const name = prompt('Film name:', film.display_name); if (name?.trim()) { closeLibrarySheet($('#adultFilmSheet')); manage('rename-adult', { file: film.path, name: name.trim() }) } }
-    $('#adultFilmOptimise').onclick = () => { const film = selectedAdultFilm; if (film && confirm(`Optimise “${film.display_name}” for the Pi? The original is replaced only after the new copy passes its checks.`)) { closeLibrarySheet($('#adultFilmSheet')); manage('optimise-adult', { file: film.path }) } }
+    $('#adultFilmMove').onclick = async () => { if (selectedAdultFilm) { const film = selectedAdultFilm; closeLibrarySheet($('#adultFilmSheet'), false); await manage('move-adult', { file: film.path, folder: $('#adultFilmFolder').value }) } }
+    $('#adultFilmScan').onclick = () => {
+      const film = selectedAdultFilm
+      const parentReturn = selectedAdultFilmReturnTo
+      if (film) {
+        closeLibrarySheet($('#adultFilmSheet'), false)
+        scanTmdb(film, () => openAdultFilmSheet(film, parentReturn))
+      }
+    }
+    $('#adultFilmRename').onclick = () => { const film = selectedAdultFilm; if (!film) return; const name = prompt('Film name:', film.display_name); if (name?.trim()) { closeLibrarySheet($('#adultFilmSheet'), false); manage('rename-adult', { file: film.path, name: name.trim() }) } }
+    $('#adultFilmOptimise').onclick = () => { const film = selectedAdultFilm; if (film && confirm(`Optimise “${film.display_name}” for the Pi? The original is replaced only after the new copy passes its checks.`)) { closeLibrarySheet($('#adultFilmSheet'), false); manage('optimise-adult', { file: film.path }) } }
     $('#adultFilmRemoveProgress').onclick = () => {
       const film = selectedAdultFilm
       if (!film) return
       const action = $('#adultFilmRemoveProgress')
-      closeLibrarySheet($('#adultFilmSheet'))
+      closeLibrarySheet($('#adultFilmSheet'), false)
       clearWatchFilmProgress(film, false, action).catch(showError)
     }
-    $('#adultFilmRemove').onclick = () => { const film = selectedAdultFilm; if (film && confirm(`Move “${film.display_name}” to the recycle bin?`)) { closeLibrarySheet($('#adultFilmSheet')); manage('trash-adult', { file: film.path }) } }
+    $('#adultFilmRemove').onclick = () => { const film = selectedAdultFilm; if (film && confirm(`Move “${film.display_name}” to the recycle bin?`)) { closeLibrarySheet($('#adultFilmSheet'), false); manage('trash-adult', { file: film.path }) } }
 
     $('#adultCreateFolder').onclick = async () => {
       const name = $('#adultFolderName').value.trim()
@@ -1630,14 +1657,12 @@ function renderAdultLibrary() {
       })
     }
 
-    function openLibrarySheet(dialog, focus = null) {
-      if (!dialog.open) dialog.showModal()
-      document.documentElement.style.overflow = 'hidden'
-      if (focus) setTimeout(() => focus.focus({ preventScroll: true }), 80)
+    function openLibrarySheet(dialog, focus = null, returnTo = null) {
+      portalSheets.open(dialog, { focus, returnTo })
     }
 
-    function closeLibrarySheet(dialog) {
-      if (dialog.open) dialog.close()
+    function closeLibrarySheet(dialog, restoreParent = true) {
+      portalSheets.close(dialog, { restore: restoreParent })
     }
 
     function renderProgrammeList(channel) {
@@ -1732,8 +1757,9 @@ function renderAdultLibrary() {
       contentType.onchange = syncChannelMetadataAction
       metadataAction.onclick = () => {
         if (channel.content_type !== 'shows') return
-        closeLibrarySheet($('#channelSettingsSheet'))
-        scanChannelTmdb(channel)
+        closeLibrarySheet($('#channelSettingsSheet'), false)
+        scanChannelTmdb(channel, () =>
+          openLibrarySheet($('#channelSettingsSheet'), $('#editChannelName')))
       }
       syncChannelMetadataAction()
       const watchButton = $('#channelWatchTv')

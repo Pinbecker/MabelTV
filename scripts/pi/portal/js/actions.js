@@ -48,6 +48,10 @@ let managementBusy = false
     $('#watchProgrammeMoveClose').onclick = () => closeLibrarySheet($('#watchProgrammeMoveSheet'))
     ;[$('#addChannelPanel'), $('#recycleSheet'), $('#channelUploadPanel'), $('#channelSettingsSheet'), $('#watchProgrammeMoveSheet')].forEach(dialog => {
       dialog.onclick = event => { if (event.target === dialog) closeLibrarySheet(dialog) }
+      dialog.oncancel = event => {
+        event.preventDefault()
+        closeLibrarySheet(dialog)
+      }
       dialog.onclose = () => {
         document.documentElement.style.overflow = ''
       }
@@ -455,11 +459,10 @@ let managementBusy = false
         $('#adultSeriesUploadText').textContent = 'Interrupted episodes remain selected so you can resume them.'
         notice(`${files.length - failures.length} of ${files.length} episodes were added.\n${failures.map(failure => `${failure.file.name}: ${failure.message}`).join('\n')}`, true)
       } else {
-        closeLibrarySheet($('#adultSeriesUploadSheet'))
+        closeLibrarySheet($('#adultSeriesUploadSheet'), false)
         adultSeriesUploadTarget = null
         notice(`${files.length} episode${files.length === 1 ? '' : 's'} added to Series ${season}.`)
-        const updated = library?.adult_series?.find(series => series.id === target.id)
-        if (updated) openAdultSeasonSheet(updated, season)
+        target.successReturn?.()
       }
       $('#adultSeriesFile').disabled = false
       $('#adultSeriesUploadButton').disabled = selectedAdultSeriesFiles.length === 0

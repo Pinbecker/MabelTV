@@ -158,6 +158,12 @@ class LibraryUnitTests(unittest.TestCase):
         theme_script = (PORTAL_ROOT / "js" / "experience-theme.js").read_text(
             encoding="utf-8")
         core = (PORTAL_ROOT / "js" / "core.js").read_text(encoding="utf-8")
+        playback = (PORTAL_ROOT / "js" / "playback.js").read_text(
+            encoding="utf-8")
+        markup = (PORTAL_ROOT / "html" / "overlays.html").read_text(
+            encoding="utf-8")
+        channel_page = (PORTAL_ROOT / "js" / "channel-page.js").read_text(
+            encoding="utf-8")
 
         self.assertIn('/portal/css/experience-foundation.css', html)
         self.assertIn('/portal/css/experience-shell.css', html)
@@ -217,7 +223,13 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("--experience-sheet-gutter", styles)
         self.assertIn("dialog:is(.library-sheet, .watch-sheet, .watch-film-sheet", styles)
         self.assertIn(".watch-native-select", styles)
-        self.assertIn('id="watchCollectionSelect"', html)
+        self.assertNotIn('id="watchCollectionSelect"', html)
+        self.assertNotIn("renderWatchCollections", playback)
+        self.assertIn('class="adult-series-title-row"', html)
+        self.assertIn('aria-label="New series"', html)
+        self.assertIn('channel-upload-sheet', markup)
+        self.assertIn('channel-upload-form', markup)
+        self.assertIn('channel-page-title-row', channel_page)
         self.assertNotIn('id="watchCollectionSheet"', html)
         self.assertIn('id="watchMabelSearch"', html)
         self.assertIn('id="watchMabelContinueSection"', html)
@@ -310,7 +322,7 @@ class LibraryUnitTests(unittest.TestCase):
 
         self.assertIn(".remote-sheet-panel", styles)
         self.assertIn(".remote-sheet-panel > header", styles)
-        self.assertIn(".remote-sheet-close", styles)
+        self.assertIn(".portal-sheet-close", styles)
         self.assertIn(".remote-sheet-handle", styles)
         self.assertIn(".remote-channel-options, .remote-power-actions", styles)
         self.assertIn("grid-template-columns: 44px minmax(0, 1fr)", styles)
@@ -318,6 +330,52 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn(".remote-sheet-panel", light_styles)
         self.assertIn(".remote-sheet-panel > header", light_styles)
         self.assertIn(".remote-sheet-close", light_styles)
+
+    def test_media_sheets_share_header_geometry_and_parent_navigation(self) -> None:
+        markup = (PORTAL_ROOT / "html" / "overlays.html").read_text(
+            encoding="utf-8")
+        core = (PORTAL_ROOT / "js" / "core.js").read_text(encoding="utf-8")
+        playback = (PORTAL_ROOT / "js" / "playback.js").read_text(
+            encoding="utf-8")
+        styles = (PORTAL_ROOT / "css" / "experience-overlays.css").read_text(
+            encoding="utf-8")
+
+        for dialog in re.findall(r"<dialog\b.*?</dialog>", markup, re.DOTALL):
+            with self.subTest(dialog=re.search(r'id="([^"]+)"', dialog).group(1)):
+                self.assertIn("portal-sheet-close", dialog)
+
+        self.assertIn("const portalSheets = (() =>", core)
+        self.assertIn("const parents = new WeakMap()", core)
+        self.assertIn("return { open, close, dismiss }", core)
+        self.assertIn("body.portal-experience .portal-sheet-close {", styles)
+        self.assertIn("body.portal-experience .portal-sheet-title-row {", styles)
+        self.assertIn("border: 1px solid rgba(255, 122, 26, 0.72);", styles)
+        self.assertIn("-webkit-line-clamp: 2;", styles)
+        self.assertIn("word-break: normal;", styles)
+        self.assertIn(".watch-film-heading .portal-sheet-title-row", styles)
+        self.assertIn("height: 104px;", styles)
+        self.assertNotIn("series-header-favourite", markup)
+        self.assertNotIn("dialog-close-bar .sheet-favourite", styles)
+
+        for favourite_id, title_id in (
+                ("watchFilmFavourite", "watchFilmTitle"),
+                ("watchProgrammeFavourite", "watchProgrammeTitle"),
+                ("adultSeriesFavourite", "adultSeriesSheetTitle"),
+                ("watchChannelFavourite", "watchChannelTitle")):
+            title_row = re.search(
+                rf'<div class="portal-sheet-title-row">.*?id="{title_id}".*?'
+                rf'id="{favourite_id}".*?</div>', markup, re.DOTALL)
+            self.assertIsNotNone(title_row)
+
+        episode_sheet = markup[
+            markup.index('id="adultEpisodeSheet"'):
+            markup.index('id="adultEpisodeMoreSheet"')]
+        self.assertNotIn("sheet-favourite", episode_sheet)
+        self.assertNotIn("watchProgrammeMoreReturn", playback)
+        self.assertNotIn("adultEpisodeMoreReturn", playback)
+        self.assertIn("openWatchProgrammeMoreSheet(channel, programme, context, parentReturn)", playback)
+        self.assertIn("returnTo: () => openAdultEpisodeSheet(current, episode, returnTo)", playback)
+        self.assertIn("card.onclick = () => openAdultEpisodeSheet(series, episode)", playback)
 
     def test_classic_portal_is_preserved_from_the_previous_core_design(self) -> None:
         classic_root = MODULE_PATH.with_name("mabeltv-library-classic.html")
@@ -401,7 +459,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("closeWatchProgrammeMoreSheet()", PORTAL_SCRIPT)
         self.assertNotIn('id="programmeActionMetadata"', html)
         self.assertIn("/api/tmdb/programme", PORTAL_SCRIPT)
-        self.assertIn("scanProgrammeTmdb(channel, programme)", PORTAL_SCRIPT)
+        self.assertIn("scanProgrammeTmdb(channel, programme, () =>", PORTAL_SCRIPT)
         self.assertIn("manage('move-programme'", PORTAL_SCRIPT)
         self.assertIn("card.append(visual, copy)", channel_script)
         self.assertIn("card.append(main)", channel_script)
@@ -522,7 +580,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn(".dialog-close-bar", index)
         self.assertIn(".dialog-close-bar .dialog-close", index)
         self.assertIn(".dialog-close, .library-sheet-close", index)
-        self.assertIn(".remote-sheet-close)::after", index)
+        self.assertIn(".portal-sheet-close::after", index)
         self.assertIn("position: sticky", index)
         self.assertIn('id="watchFilmTv"', index)
         self.assertIn('id="watchFilmHere"', index)
@@ -552,7 +610,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertNotIn('id="watchRefreshArtwork"', index)
         self.assertNotIn('id="refreshChannelArtwork"', index)
         self.assertIn('id="channelMetadataAction"', index)
-        self.assertIn("scanChannelTmdb(channel)", index)
+        self.assertIn("scanChannelTmdb(channel, () =>", index)
         self.assertIn("/api/tmdb/channel", index)
         self.assertIn('id="watchMabelUtilities"', index)
         self.assertNotIn('id="remotePolicy"', index)
@@ -642,7 +700,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn('class="watch-film-sheet adult-film-sheet"', portal)
         self.assertIn('class="watch-film-play adult-film-collection-action"', portal)
         self.assertIn('aria-labelledby="adultFilmSheetTitle"', portal)
-        self.assertIn("sheet.querySelector('.watch-film-panel').focus", portal)
+        self.assertIn("focus: sheet.querySelector('.watch-film-panel')", portal)
         self.assertIn('Refresh metadata &amp; subtitles', portal)
         self.assertIn('id="adultFilmOptimise"', portal)
         self.assertIn('id="adultFilmRemoveProgress"', portal)
@@ -1364,7 +1422,7 @@ class LibraryUnitTests(unittest.TestCase):
     def test_adult_series_portal_uses_scoped_series_and_episode_workflow(self) -> None:
         self.assertIn('id="adultSeasonSheet"', PORTAL_SOURCE)
         self.assertIn('class="adult-series-seasons"', PORTAL_SOURCE)
-        self.assertIn("function openAdultSeasonSheet(series, season)", PORTAL_SOURCE)
+        self.assertIn("function openAdultSeasonSheet(series, season, returnTo = null)", PORTAL_SOURCE)
         self.assertIn("openAdultSeriesUpload(current, number)", PORTAL_SOURCE)
         self.assertIn("const season = Number(target?.season)", PORTAL_SOURCE)
         self.assertIn("Start Series ${nextSeries}", PORTAL_SOURCE)
