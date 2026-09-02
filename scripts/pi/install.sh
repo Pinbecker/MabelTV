@@ -216,6 +216,12 @@ install -o root -g root -m 0644 "$source_root/scripts/pi/apple-touch-icon.png" "
 install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-manifest.json" "$incoming_dir/mabeltv-manifest.json"
 install -d -o root -g root -m 0755 "$incoming_dir/portal"
 cp -a "$source_root/scripts/pi/portal/." "$incoming_dir/portal/"
+# Developer copies can carry restrictive source-directory modes (for example
+# scp from Windows creates 0700 folders).  The library service must be able to
+# traverse every portal directory after the atomic release switch.
+chown -R root:root "$incoming_dir/portal"
+find "$incoming_dir/portal" -type d -exec chmod 0755 '{}' +
+find "$incoming_dir/portal" -type f -exec chmod 0644 '{}' +
 install -d -o root -g root -m 0755 "$incoming_dir/icons"
 install -o root -g root -m 0644 "$source_root/scripts/pi/icons/icon-192.png" "$incoming_dir/icons/icon-192.png"
 install -o root -g root -m 0644 "$source_root/scripts/pi/icons/icon-512.png" "$incoming_dir/icons/icon-512.png"

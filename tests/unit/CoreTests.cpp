@@ -1091,6 +1091,12 @@ void CoreTests::currentChannelSummaryIncludesArtworkMetadataAndFilmProgress()
     QCOMPARE(show.value(QStringLiteral("programmes")).toList().constFirst().toMap()
                  .value(QStringLiteral("name")).toString(),
              QStringLiteral("S01  E01  ·  Hello"));
+    const QVariantMap showProgramme =
+        show.value(QStringLiteral("programmes")).toList().constFirst().toMap();
+    QCOMPARE(showProgramme.value(QStringLiteral("episodeTitle")).toString(),
+             QStringLiteral("Hello"));
+    QCOMPARE(showProgramme.value(QStringLiteral("seriesNumber")).toInt(), 1);
+    QCOMPARE(showProgramme.value(QStringLiteral("episodeNumber")).toInt(), 1);
 
     controller.playPortalProgramme(5, QStringLiteral("Film One.mp4"), 0.0);
     controller.setChannelFilmPlaybackState(5, QStringLiteral("Film One.mp4"), 150.0, 600.0);

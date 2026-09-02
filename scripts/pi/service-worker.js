@@ -1,10 +1,11 @@
 'use strict'
 
-const SHELL_CACHE = 'mabeltv-shell-v72'
+const SHELL_CACHE = 'mabeltv-shell-v92'
 const SHELL_URLS = [
   '/',
   '/manifest.webmanifest',
   '/hls.min.js',
+  '/portal/vendor/chart.umd.min.js',
   '/mabeltv-offline.js',
   '/portal/css/tokens.css',
   '/portal/css/base.css',

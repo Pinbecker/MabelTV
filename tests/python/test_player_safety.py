@@ -39,6 +39,38 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("tvController.tunePortalChannel(", main_qml)
         self.assertIn("tvController.requestPortalParentAccess()", main_qml)
         self.assertIn("tvController.restartPortalProgramme()", main_qml)
+        self.assertIn(
+            "event.key === Qt.Key_P && !event.isAutoRepeat) {\n"
+            "                if (!tvController.remoteLocked)",
+            main_qml,
+        )
+
+    def test_portal_remote_navigates_the_visible_channel_summary(self) -> None:
+        main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+        overlay_qml = (PROJECT_ROOT / "qml" / "ChannelSummaryOverlay.qml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn(
+            "else if (channelSummaryOverlay.visible) {\n"
+            "            channelSummaryOverlay.handleKey(key, false)",
+            main_qml,
+        )
+        self.assertIn(
+            "channelSummaryOverlay.handleKey(event.key, event.isAutoRepeat)",
+            main_qml,
+        )
+        self.assertIn("readonly property int filmColumns: 5", overlay_qml)
+        self.assertIn("function handleKey(key, isAutoRepeat)", overlay_qml)
+        self.assertIn("if (!isAutoRepeat)\n                    playSelected", overlay_qml)
+        self.assertIn("if (filmChannel && position >= 30)", overlay_qml)
+        self.assertIn('model: ["Resume", "Play from\\nbeginning"]', overlay_qml)
+        self.assertIn('text: filmCell.modelData.year || "Ready to play"', overlay_qml)
+        self.assertIn("Number(filmCell.modelData.duration) >= 60", overlay_qml)
+        self.assertIn("overlay.formatPosition(filmCell.modelData.duration)", overlay_qml)
+        self.assertIn('text: "BACK  ·  Close"', overlay_qml)
+        self.assertNotIn('text: overlay.filmChannel ? "↑ ↓ ← →  Browse"', overlay_qml)
+        self.assertNotIn('text: "OK  Select     HOME / BACK  Close"', overlay_qml)
 
     def test_playback_telemetry_never_queries_libmpv_synchronously(self) -> None:
         source = (PROJECT_ROOT / "src" / "media" / "MpvVideo.cpp").read_text(
@@ -173,6 +205,22 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn('QStringLiteral("toggle-subtitles")', application)
         self.assertIn('command === "toggle-subtitles"', main_qml)
 
+    def test_widescreen_border_override_uses_the_playing_video_aspect(self) -> None:
+        player_header = (PROJECT_ROOT / "src" / "media" / "MpvVideo.h").read_text(
+            encoding="utf-8")
+        player_source = (PROJECT_ROOT / "src" / "media" / "MpvVideo.cpp").read_text(
+            encoding="utf-8")
+        main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+        application = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
+            encoding="utf-8")
+
+        self.assertIn("Q_PROPERTY(double videoAspectRatio", player_header)
+        self.assertIn('"video-params/aspect"', player_source)
+        self.assertIn("player.videoAspectRatio >= 1.70", main_qml)
+        self.assertIn("tubeWidth * (widescreen ? 9 / 16 : 3 / 4)", main_qml)
+        self.assertIn('command === "toggle-widescreen-mode"', main_qml)
+        self.assertIn('QStringLiteral("toggle-widescreen-mode")', application)
+
     def test_adult_back_returns_to_library_before_leaving_adult_mode(self) -> None:
         adult_qml = (PROJECT_ROOT / "qml" / "AdultModeOverlay.qml").read_text(
             encoding="utf-8"
@@ -284,10 +332,26 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("id=\"homeNowPlayingMeta\"", portal)
         self.assertNotIn("id=\"homeTurnOn\"", portal)
         self.assertNotIn("id=\"homeTurnOff\"", portal)
-        self.assertIn("const command = turningOn ? 'turn-on' : 'turn-off'", portal)
+        self.assertIn("async function openPortalPowerSheet(event)", portal)
+        self.assertIn("turn-on-mabel-only", portal)
+        self.assertIn("turn-off-mabel-only", portal)
+        self.assertIn("connected_tv_power", portal)
         self.assertIn("state.programme || 'Current programme'", portal)
-        self.assertIn("MabelTV is in standby", portal)
+        self.assertNotIn("MabelTV is in standby", portal)
         self.assertIn("body: JSON.stringify({ command, ...extra })", portal)
+        self.assertIn("void TvController::turnOnMabelOnly()", controller)
+        self.assertIn("void TvController::turnOffMabelOnly()", controller)
+
+        application = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('QStringLiteral("connected_tv_power")', application)
+        self.assertIn("cecTvControl.lastPowerStatus()", application)
+        self.assertIn("cecTvControl.getStatus();", application)
+        self.assertIn("connectedTvStatusTimer.setInterval(10'000)", application)
+        self.assertIn('QStringLiteral("playback_position")', application)
+        self.assertIn('QStringLiteral("playback_duration")', application)
+        self.assertIn("m_currentCommand.input == powerQuery", cec)
 
     def test_portal_uses_shared_intro_and_sheet_design_tokens(self) -> None:
         portal = PORTAL_SOURCE

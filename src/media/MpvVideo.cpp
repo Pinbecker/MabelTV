@@ -313,6 +313,8 @@ MpvVideo::MpvVideo(QQuickItem *parent)
              "Observing subtitle visibility");
     checkMpv(mpv_observe_property(m_state->handle, 6, "sid", MPV_FORMAT_INT64),
              "Observing subtitle track");
+    checkMpv(mpv_observe_property(m_state->handle, 7, "video-params/aspect", MPV_FORMAT_DOUBLE),
+             "Observing video display aspect ratio");
     mpv_set_wakeup_callback(m_state->handle, wakeup, this);
 }
 
@@ -443,6 +445,11 @@ void MpvVideo::setAspectMode(const QString &aspectMode)
     if (changed) {
         emit aspectModeChanged();
     }
+}
+
+double MpvVideo::videoAspectRatio() const
+{
+    return m_videoAspectRatio;
 }
 
 qulonglong MpvVideo::playbackGeneration() const
@@ -701,6 +708,7 @@ void MpvVideo::resetPlaybackTelemetry(double positionSeconds)
 {
     setPlaybackPosition(positionSeconds);
     setPlaybackDuration(0.0);
+    setVideoAspectRatio(0.0);
 }
 
 void MpvVideo::resetSubtitleState()
@@ -731,6 +739,18 @@ void MpvVideo::setPlaybackDuration(double durationSeconds)
     }
     m_playbackDuration = safeDuration;
     emit playbackDurationChanged();
+}
+
+void MpvVideo::setVideoAspectRatio(double aspectRatio)
+{
+    const double safeAspectRatio = std::isfinite(aspectRatio) && aspectRatio > 0.0
+        ? aspectRatio
+        : 0.0;
+    if (qFuzzyCompare(m_videoAspectRatio + 1.0, safeAspectRatio + 1.0)) {
+        return;
+    }
+    m_videoAspectRatio = safeAspectRatio;
+    emit videoAspectRatioChanged();
 }
 
 void MpvVideo::setSubtitlesVisible(bool visible)
@@ -873,6 +893,12 @@ void MpvVideo::processMpvEvents()
                 const auto subtitleTrack = change->format == MPV_FORMAT_INT64 && change->data != nullptr
                     ? *static_cast<std::int64_t *>(change->data) : -1;
                 setSubtitlesAvailable(subtitleTrack >= 0);
+            } else if (QByteArray(change->name) == QByteArrayLiteral("video-params/aspect")) {
+                if (change->format == MPV_FORMAT_DOUBLE && change->data != nullptr) {
+                    setVideoAspectRatio(*static_cast<double *>(change->data));
+                } else {
+                    setVideoAspectRatio(0.0);
+                }
             }
             break;
         }

@@ -9,7 +9,7 @@
         <section class="remote-app" aria-label="MabelTV remote control">
           <div class="remote-destinations" aria-label="TV destinations">
             <button type="button" class="remote-mode remote-mode-mabel" data-live-command="return-to-mabeltv" id="remoteMabelAction"><span class="remote-mode-icon"><svg><use href="/portal/icons.svg#signal-tv"/></svg></span><span>MabelTV</span></button>
-            <button type="button" class="remote-mode remote-mode-guide" data-live-command="open-tv-guide"><span class="remote-mode-icon"><svg><use href="/portal/icons.svg#signal-guide"/></svg></span><span>Guide</span></button>
+            <button type="button" class="remote-mode remote-mode-guide" data-live-command="open-channel-menu"><span class="remote-mode-icon"><svg><use href="/portal/icons.svg#signal-list-filter"/></svg></span><span>Channel menu</span></button>
             <button type="button" class="remote-mode remote-mode-menu" data-live-command="open-parent-menu"><span class="remote-mode-icon"><svg><use href="/portal/icons.svg#signal-settings"/></svg></span><span>Menu</span></button>
             <button type="button" class="remote-mode remote-mode-adult" data-live-command="enter-adult-mode" id="remoteAdultAction"><span class="remote-mode-icon"><svg><use href="/portal/icons.svg#signal-monitor-play"/></svg></span><span>Adult TV</span></button>
           </div>
@@ -34,6 +34,7 @@
             <button type="button" data-live-command="restart-programme"><svg><use href="/portal/icons.svg#signal-restart"/></svg><span>Restart</span></button>
             <button type="button" id="remotePlayPause" class="remote-play" data-live-command="toggle-pause"><svg class="remote-pause-icon"><use href="/portal/icons.svg#signal-pause"/></svg><svg class="remote-play-icon"><use href="/portal/icons.svg#signal-play"/></svg><span id="remotePlayPauseLabel">Pause</span></button>
             <button type="button" id="remoteSubtitles" data-live-command="toggle-subtitles"><svg><use href="/portal/icons.svg#signal-captions"/></svg><span>Subtitles</span></button>
+            <button type="button" id="remoteWidescreen" data-live-command="toggle-widescreen-mode" aria-pressed="false"><svg><use href="/portal/icons.svg#signal-maximize"/></svg><span>Widescreen</span></button>
             <button type="button" data-live-command="next-programme"><svg><use href="/portal/icons.svg#signal-skip-forward"/></svg><span>Next</span></button>
           </div></section>
 

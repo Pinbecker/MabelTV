@@ -133,6 +133,15 @@ class ImagerManifestTests(unittest.TestCase):
         self.assertIn("cec-utils", packages.splitlines())
         self.assertIn("cec-utils", installer)
 
+    def test_update_normalises_portal_asset_permissions(self):
+        installer = (ROOT / "scripts/pi/install.sh").read_text(encoding="utf-8")
+
+        self.assertIn('chown -R root:root "$incoming_dir/portal"', installer)
+        self.assertIn(
+            'find "$incoming_dir/portal" -type d -exec chmod 0755', installer)
+        self.assertIn(
+            'find "$incoming_dir/portal" -type f -exec chmod 0644', installer)
+
     def test_pi_images_and_updates_install_local_matter_runtime(self):
         packages = (ROOT / "packaging/image/pi-gen/stage-mabeltv/00-install/00-packages").read_text(
             encoding="utf-8")

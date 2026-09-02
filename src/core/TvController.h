@@ -128,6 +128,8 @@ public:
     Q_INVOKABLE void dispatchPortal(Action action);
     Q_INVOKABLE void turnOn();
     Q_INVOKABLE void turnOff();
+    Q_INVOKABLE void turnOnMabelOnly();
+    Q_INVOKABLE void turnOffMabelOnly();
     Q_INVOKABLE void toggleRemoteLock();
     Q_INVOKABLE void resumeFromStandby();
     Q_INVOKABLE void enterDigit(int digit);

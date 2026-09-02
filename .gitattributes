@@ -16,5 +16,9 @@ scripts/imaging/*.sh text eol=lf
 scripts/imaging/*.py text eol=lf
 packaging/image/** text eol=lf
 
+# Media assets below scripts/pi are release inputs too.  They must bypass the
+# text normaliser or a checkout/archive can silently remove CR bytes from PNGs.
+*.png binary
+
 # Keep the native Windows entry points comfortable to edit and execute there.
 *.ps1 text eol=crlf

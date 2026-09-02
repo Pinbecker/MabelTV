@@ -366,6 +366,12 @@ int main(int argc, char *argv[])
     qInfo() << (cecTvControl.available()
                     ? "HDMI-CEC TV control is available"
                     : "HDMI-CEC TV control is unavailable; MabelTV standby remains usable");
+    QTimer connectedTvStatusTimer;
+    connectedTvStatusTimer.setInterval(10'000);
+    QObject::connect(&connectedTvStatusTimer, &QTimer::timeout,
+                     &cecTvControl, &CecTvControl::getStatus);
+    connectedTvStatusTimer.start();
+    QTimer::singleShot(0, &cecTvControl, &CecTvControl::getStatus);
 
 #ifdef Q_OS_LINUX
     std::unique_ptr<QSocketNotifier> reloadNotifier;
@@ -483,13 +489,13 @@ int main(int argc, char *argv[])
         QObject::connect(&portalControlServer,
                          &QLocalServer::newConnection,
                          &application,
-                         [&portalControlServer, rootObject]() {
+                         [&portalControlServer, rootObject, &cecTvControl]() {
                              while (portalControlServer.hasPendingConnections()) {
                                  QLocalSocket *socket = portalControlServer.nextPendingConnection();
                                  QObject::connect(socket,
                                                   &QLocalSocket::readyRead,
                                                   socket,
-                                                  [socket, rootObject]() {
+                                                  [socket, rootObject, &cecTvControl]() {
                                                       const QString command = QString::fromUtf8(
                                                           socket->readAll()).trimmed();
                                                       if (command.startsWith(QLatin1Char('{'))) {
@@ -600,6 +606,9 @@ int main(int argc, char *argv[])
                                                            }
                                                        }
                                                        if (command == QStringLiteral("status")) {
+                                                           // Return the most recently observed power state immediately,
+                                                           // while ensuring the next portal poll sees a fresh CEC reading.
+                                                           cecTvControl.getStatus();
                                                            QJsonObject status{
                                                                {QStringLiteral("mode"), QStringLiteral("kids")},
                                                                {QStringLiteral("volume"), rootObject->property(
@@ -610,10 +619,18 @@ int main(int argc, char *argv[])
                                                                     "portalRemoteLocked").toBool()},
                                                                {QStringLiteral("standby"), rootObject->property(
                                                                     "portalStandby").toBool()},
+                                                               {QStringLiteral("connected_tv_available"),
+                                                                cecTvControl.available()},
+                                                               {QStringLiteral("connected_tv_power"),
+                                                                cecTvControl.lastPowerStatus()},
                                                                {QStringLiteral("subtitles_available"), rootObject->property(
                                                                     "portalSubtitlesAvailable").toBool()},
-                                                               {QStringLiteral("subtitles_visible"), rootObject->property(
-                                                                    "portalSubtitlesVisible").toBool()},
+                                                                {QStringLiteral("subtitles_visible"), rootObject->property(
+                                                                     "portalSubtitlesVisible").toBool()},
+                                                                {QStringLiteral("widescreen_available"), rootObject->property(
+                                                                     "portalWidescreenAvailable").toBool()},
+                                                                {QStringLiteral("widescreen_enabled"), rootObject->property(
+                                                                     "portalWidescreenEnabled").toBool()},
                                                            };
                                                           QObject *adultMode = rootObject->findChild<QObject *>(
                                                               QStringLiteral("mabeltvAdultMode"));
@@ -630,6 +647,14 @@ int main(int argc, char *argv[])
                                                               status.insert(QStringLiteral("paused"),
                                                                             adultPlayer != nullptr
                                                                                 && adultPlayer->property("paused").toBool());
+                                                              if (adultPlayer != nullptr) {
+                                                                  status.insert(
+                                                                      QStringLiteral("playback_position"),
+                                                                      adultPlayer->property("playbackPosition").toDouble());
+                                                                  status.insert(
+                                                                      QStringLiteral("playback_duration"),
+                                                                      adultPlayer->property("playbackDuration").toDouble());
+                                                              }
                                                           }
                                                           socket->write(QJsonDocument(status).toJson(
                                                               QJsonDocument::Compact));
@@ -643,15 +668,19 @@ int main(int argc, char *argv[])
                                                           QStringLiteral("previous-programme"),
                                                           QStringLiteral("next-programme"),
                                                           QStringLiteral("toggle-pause"),
-                                                          QStringLiteral("toggle-subtitles"),
+                                                           QStringLiteral("toggle-subtitles"),
+                                                           QStringLiteral("toggle-widescreen-mode"),
                                                           QStringLiteral("volume-up"),
                                                           QStringLiteral("volume-down"),
                                                           QStringLiteral("toggle-mute"),
-                                                          QStringLiteral("turn-on"),
-                                                          QStringLiteral("turn-off"),
+                                                           QStringLiteral("turn-on"),
+                                                           QStringLiteral("turn-off"),
+                                                           QStringLiteral("turn-on-mabel-only"),
+                                                           QStringLiteral("turn-off-mabel-only"),
                                                           QStringLiteral("toggle-power"),
                                                           QStringLiteral("open-parent-menu"),
                                                           QStringLiteral("open-tv-guide"),
+                                                          QStringLiteral("open-channel-menu"),
                                                           QStringLiteral("close-overlay"),
                                                            QStringLiteral("restart-programme"),
                                                            QStringLiteral("enter-adult-mode"),

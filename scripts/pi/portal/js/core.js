@@ -4,14 +4,24 @@ const $ = selector => document.querySelector(selector)
     const $$ = selector => [...document.querySelectorAll(selector)]
     let library = null
     let selectedManageChannel = null
+    let selectedManageChannelFolder = ''
+    let channelNavigationRevision = 0
     let channelWorkspaceReturnToWatch = false
+    let channelReturnPosition = null
     let programmeSearch = ''
-    let programmeVisibility = 'all'
     let programmePage = 1
     let adultOptimisationRefresh = null
+    let adultOptimisationWasActive = false
     let adultFolderFilter = '*'
     let adultSearchText = ''
     let selectedAdultFilm = null
+    let selectedAdultSeries = null
+    let selectedAdultSeason = null
+    let selectedAdultEpisode = null
+    let adultSeriesUploadTarget = null
+    let adultSeriesSourcePickerOpen = false
+    let adultSeriesRestartTarget = null
+    let selectedAdultSeriesFiles = []
     const PROGRAMMES_PER_PAGE = 12
     let setupStep = 1
     let setupChannels = []
@@ -19,6 +29,7 @@ const $ = selector => document.querySelector(selector)
     let configuredTvName = 'Your TV'
     let noticeTimer = null
     let homeStatusRefreshTimer = null
+    let homeProgressAnchor = null
     let liveRefreshTimer = null
     let liveFallbackTimer = null
     let liveFrameTimer = null
@@ -41,7 +52,9 @@ const $ = selector => document.querySelector(selector)
     let homeSearchText = ''
     let selectedWatchFilm = null
     let selectedWatchProgramme = null
-    let selectedHomeFilmEntry = null
+    let selectedWatchProgrammeMoreReturn = null
+    let selectedWatchProgrammeEpisodeMoreReturn = null
+    let adultEpisodeMoreReturn = null
     let iosRemoteSession = null
     let iosRemotePositionTimer = null
     let iosRemoteHeartbeatTimer = null
@@ -58,6 +71,7 @@ const $ = selector => document.querySelector(selector)
     let offlineMode = false
     const pendingDownloads = new Map()
     let portalPlayerScrollY = 0
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
 
     function lockPortalPlayerScroll(fixBody = true) {
       if (document.documentElement.classList.contains('portal-player-open')) return
@@ -202,15 +216,23 @@ const $ = selector => document.querySelector(selector)
       return span.innerHTML
     }
 
-    function openRequestedView() {
+    function openRequestedView(event = null) {
       const requested = location.hash.replace(/^#/, '')
+      if ((requested === 'insights' || requested.startsWith('insights/'))
+          && window.openInsightsRoute) {
+        window.openInsightsRoute(requested, event)
+        return
+      }
       const channelRoute = requested.match(/^channel\/(\d+)\/(watch|library)$/)
       if (channelRoute) {
-        openChannel(Number(channelRoute[1]), channelRoute[2] === 'watch', { updateHistory: false })
+        openChannel(Number(channelRoute[1]), channelRoute[2] === 'watch', {
+          updateHistory: false,
+          returnPosition: history.state?.mabelWatchReturn || null,
+        })
         return
       }
       const view = requested === 'home' ? 'overview' : requested
-      const allowed = new Set(['overview', 'live', 'channels', 'adult', 'watch', 'usb', 'system'])
+      const allowed = new Set(['overview', 'live', 'channels', 'adult', 'watch', 'usb', 'system', 'insights'])
       if (allowed.has(view)) {
         if (currentPortalDesign === 'experience' && (view === 'channels' || view === 'adult')) {
           remoteKind = view === 'channels' ? 'channel' : 'adult'
@@ -225,18 +247,22 @@ const $ = selector => document.querySelector(selector)
         }
         if (view === 'channels') showChannelHub()
         if (view === 'watch' && selectedManageChannel !== null) {
+          channelNavigationRevision += 1
           selectedManageChannel = null
+          selectedManageChannelFolder = ''
           channelWorkspaceReturnToWatch = false
           remoteKind = 'channel'
           renderRemoteViewing()
         }
-        openView(view)
+        const historyReturn = event?.type === 'popstate' && view === 'watch'
+          ? history.state?.mabelWatchReturn : null
+        openView(view, historyReturn ? { restoreScroll: historyReturn } : {})
       }
       else if (new URLSearchParams(location.search).has('watch')) openView('watch')
       else openView('overview')
     }
 
-    window.addEventListener('popstate', openRequestedView)
+    window.addEventListener('popstate', event => openRequestedView(event))
 
     async function initialise() {
       try {
@@ -395,14 +421,61 @@ const $ = selector => document.querySelector(selector)
       }
     })
 
-    function openView(name) {
+    function resetViewScroll() {
+      const scroller = document.scrollingElement || document.documentElement
+      scroller.scrollTop = 0
+      document.body.scrollTop = 0
+      window.scrollTo(0, 0)
+    }
+
+    function portalScrollTop() {
+      const scroller = document.scrollingElement || document.documentElement
+      return Math.max(0, Number(scroller.scrollTop || window.scrollY || 0))
+    }
+
+    function setPortalScrollTop(value) {
+      const top = Math.max(0, Number(value) || 0)
+      const scroller = document.scrollingElement || document.documentElement
+      scroller.scrollTop = top
+      document.body.scrollTop = top
+      window.scrollTo(0, top)
+    }
+
+    function channelReturnSnapshot(channel) {
+      const folder = String(channel?.folder || '')
+      const anchor = [...document.querySelectorAll('[data-watch-channel-folder]')]
+        .find(element => element.dataset.watchChannelFolder === folder)
+      return {
+        scrollY: portalScrollTop(),
+        folder,
+        anchorTop: anchor ? anchor.getBoundingClientRect().top : null,
+      }
+    }
+
+    function restoreViewScroll(snapshot) {
+      if (!snapshot || !Number.isFinite(Number(snapshot.scrollY))) return false
+      setPortalScrollTop(snapshot.scrollY)
+      const alignAnchor = () => {
+        if (!snapshot.folder || !Number.isFinite(Number(snapshot.anchorTop))) return
+        const anchor = [...document.querySelectorAll('[data-watch-channel-folder]')]
+          .find(element => element.dataset.watchChannelFolder === snapshot.folder)
+        if (!anchor) return
+        const delta = anchor.getBoundingClientRect().top - Number(snapshot.anchorTop)
+        if (Math.abs(delta) >= 1) setPortalScrollTop(portalScrollTop() + delta)
+      }
+      requestAnimationFrame(() => requestAnimationFrame(alignAnchor))
+      return true
+    }
+
+    function openView(name, options = {}) {
       if (offlineMode && name !== 'watch') name = 'watch'
       // A status belongs to the action that created it, not every page the
       // parent subsequently visits. Clear it whenever navigation begins.
       notice('')
       const channelFromWatch = name === 'channels' && selectedManageChannel !== null && channelWorkspaceReturnToWatch
       const consolidatedWatchView = currentPortalDesign === 'experience' && (name === 'channels' || name === 'adult')
-      const activeNavigation = channelFromWatch || consolidatedWatchView ? 'watch' : name
+      const activeNavigation = channelFromWatch || consolidatedWatchView ? 'watch'
+        : name === 'insights' ? 'system' : name
       $$('.view').forEach(view => view.classList.toggle('active', view.id === `view-${name}`))
       document.body.classList.toggle('watch-mode', name === 'watch' || channelFromWatch || consolidatedWatchView)
       $$('[data-view-button]').forEach(button => {
@@ -411,13 +484,19 @@ const $ = selector => document.querySelector(selector)
         if (active) button.setAttribute('aria-current', 'page')
         else button.removeAttribute('aria-current')
       })
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      const restoredScroll = options.restoreScroll
+        ? restoreViewScroll(options.restoreScroll) : false
+      if (!restoredScroll) {
+        if (options.instantScroll) resetViewScroll()
+        else window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
       if (name === 'live') startLiveTv()
       else stopLiveTv()
       if (name === 'overview') startHomeStatusRefresh()
       else stopHomeStatusRefresh()
       if (name === 'usb') refreshUsb().catch(error => notice(error.message, true))
       if (name === 'watch' && remoteKind === 'downloads') renderDownloads().catch(showError)
+      if (name === 'insights') loadViewingInsights().catch(() => {})
     }
 
     function showLivePicture() {
@@ -512,6 +591,32 @@ const $ = selector => document.querySelector(selector)
       })
     }
 
+    function connectedTvDisplayState(state) {
+      if (state?.connected_tv_available === false) {
+        return { label: 'Unavailable', sentence: 'status unavailable', className: 'is-unknown' }
+      }
+      const power = String(state?.connected_tv_power || '').trim().toLocaleLowerCase()
+      if (power === 'on') return { label: 'On', sentence: 'on', className: 'is-on' }
+      if (power === 'standby') return { label: 'Standby', sentence: 'in standby', className: 'is-standby' }
+      if (power.includes('standby to on')) {
+        return { label: 'Turning on', sentence: 'turning on', className: 'is-changing' }
+      }
+      if (power.includes('on to standby')) {
+        return { label: 'Going to standby', sentence: 'going to standby', className: 'is-changing' }
+      }
+      return { label: 'Checking…', sentence: 'being checked', className: 'is-unknown' }
+    }
+
+    function mabelTvDisplayState(state) {
+      if (state?.standby === true) {
+        return { label: 'Standby', sentence: 'in standby', className: 'is-standby' }
+      }
+      if (state?.standby === false || state?.available === true) {
+        return { label: 'On', sentence: 'on', className: 'is-on' }
+      }
+      return { label: 'Unavailable', sentence: 'unavailable', className: 'is-unknown' }
+    }
+
     function renderRemoteState(state) {
       const available = state.available === true
       const locked = state.remote_locked === true
@@ -539,6 +644,13 @@ const $ = selector => document.querySelector(selector)
       $('#remoteSubtitles').setAttribute('aria-pressed', String(state.subtitles_visible === true))
       $('#remoteSubtitles').querySelector('span').textContent = adult
         ? (state.subtitles_available === false ? 'No subtitles' : 'Subtitles') : 'Adult only'
+      const widescreenAvailable = !adult && state.widescreen_available === true
+      const widescreenEnabled = widescreenAvailable && state.widescreen_enabled === true
+      $('#remoteWidescreen').classList.toggle('hidden', !widescreenAvailable)
+      $('#remoteWidescreen').classList.toggle('active', widescreenEnabled)
+      $('#remoteWidescreen').setAttribute('aria-pressed', String(widescreenEnabled))
+      $('#remoteWidescreen').setAttribute('aria-label', widescreenEnabled
+        ? 'Turn widescreen mode off' : 'Turn widescreen mode on')
       $('#remoteChannelPickerLabel').textContent = adult
         ? 'Adult TV is open' : (available ? `CH ${state.channel_number} · ${state.channel_name}` : 'Choose a channel')
       $('#remoteLock').classList.toggle('active', locked)
@@ -547,20 +659,30 @@ const $ = selector => document.querySelector(selector)
       $$('[data-live-command]').forEach(button => {
         const adultSubtitles = button.dataset.liveCommand !== 'toggle-subtitles'
           || (adult && state.subtitles_available !== false)
-        button.disabled = !adultSubtitles
+        const widescreenControl = button.dataset.liveCommand !== 'toggle-widescreen-mode'
+          || widescreenAvailable
+        button.disabled = !adultSubtitles || !widescreenControl
       })
       $('#openLiveChannels').disabled = false
       $('#openRemotePower').disabled = false
       updateLiveChannelSelection(state)
       const waking = state.standby === true
-      $('#remotePowerTitle').textContent = waking ? 'Wake MabelTV?' : 'Put MabelTV in standby?'
+      const connectedTv = connectedTvDisplayState(state)
+      $('#remotePowerTitle').textContent = waking ? 'Turn on MabelTV?' : 'Put MabelTV in standby?'
       $('#remotePowerDescription').textContent = waking
-        ? 'The television will start and return to the last channel.'
-        : 'The portal stays available. Use the physical remote or this page to wake the television again.'
-      $('#remotePowerActionTitle').textContent = waking ? 'Wake the television' : 'Put TV in standby'
-      $('#remotePowerActionHint').textContent = waking ? 'Return to the last channel' : 'The screen will switch off safely'
-      $('#cancelRemotePower').textContent = waking ? 'Not now' : 'Keep watching'
+        ? `The connected television is ${connectedTv.sentence}. Would you like to turn it on too?`
+        : `The connected television is ${connectedTv.sentence}. Would you like to put it in standby too?`
+      $('#remotePowerActionTitle').textContent = waking ? 'Yes, turn both on' : 'Yes, put both in standby'
+      $('#remotePowerActionHint').textContent = waking
+        ? 'Wake MabelTV and select its HDMI input'
+        : 'Put MabelTV and the connected television in standby'
+      $('#mabelOnlyPowerActionTitle').textContent = waking ? 'No, MabelTV only' : 'No, MabelTV only'
+      $('#mabelOnlyPowerActionHint').textContent = waking
+        ? 'Leave the connected television as it is'
+        : 'Keep the connected television on'
+      $('#cancelRemotePower').textContent = 'Cancel'
       $('#confirmRemotePower').classList.toggle('is-wake', waking)
+      $('#mabelOnlyRemotePower').classList.toggle('is-wake', waking)
     }
 
     function renderLiveTv(state) {
@@ -594,25 +716,38 @@ const $ = selector => document.querySelector(selector)
       const state = await api('/api/live')
       liveTvState = state || {}
       setHomeSpotlightArtwork(state)
-      const standby = state.standby === true
-      $('#homePowerState').textContent = standby ? 'Standby' : 'On'
+      setHomeSpotlightProgress(state)
+      const mabelTv = mabelTvDisplayState(state)
+      const standby = mabelTv.className === 'is-standby'
+      const connectedTv = connectedTvDisplayState(state)
+      $('#homePowerState').textContent = mabelTv.label
+      const mabelState = $('#homeMabelTvState')
+      if (mabelState) mabelState.textContent = mabelTv.label
+      const mabelDot = $('#homeMabelTvDot')
+      if (mabelDot) mabelDot.className = `home-power-dot ${mabelTv.className}`
+      const connectedState = $('#homeConnectedTvState')
+      if (connectedState) connectedState.textContent = connectedTv.label
+      const connectedDot = $('#homeConnectedTvDot')
+      if (connectedDot) connectedDot.className = `home-power-dot ${connectedTv.className}`
       $('#homePowerToggle').textContent = standby ? 'Turn On' : 'Turn Off'
+      const nowPlayingMeta = $('#homeNowPlayingMeta')
       if (standby) {
         $('#homeNowPlayingTitle').textContent = 'Nothing playing'
-        $('#homeNowPlayingMeta').textContent = 'MabelTV is in standby'
+        nowPlayingMeta.textContent = ''
       } else if (state.adult_mode === true) {
         const playing = state.adult_playing === true
         $('#homeNowPlayingTitle').textContent = playing ? (state.programme || 'Adult film') : 'Adult library'
-        $('#homeNowPlayingMeta').textContent = playing
+        nowPlayingMeta.textContent = playing
           ? `Adult Mode · ${state.paused === true ? 'Paused' : 'Playing'}`
           : 'Adult Mode · Ready'
       } else if (state.available === true) {
         $('#homeNowPlayingTitle').textContent = state.programme || 'Current programme'
-        $('#homeNowPlayingMeta').textContent = `CH ${state.channel_number} · ${state.channel_name} · ${state.paused === true ? 'Paused' : 'Playing'}`
+        nowPlayingMeta.textContent = `CH ${state.channel_number} · ${state.channel_name} · ${state.paused === true ? 'Paused' : 'Playing'}`
       } else {
         $('#homeNowPlayingTitle').textContent = 'Getting ready…'
-        $('#homeNowPlayingMeta').textContent = state.reason || 'Waiting for the current programme'
+        nowPlayingMeta.textContent = state.reason || 'Waiting for the current programme'
       }
+      nowPlayingMeta.classList.toggle('hidden', !nowPlayingMeta.textContent)
       return state
     }
 
@@ -626,24 +761,30 @@ const $ = selector => document.querySelector(selector)
       return `${endpoint}${encodeURIComponent(name)}`
     }
 
-    function homeArtworkForState(state) {
+    function homeMediaForState(state) {
       const currentTitle = homeMediaKey(state?.programme)
-      if (!currentTitle) return ''
+      if (!currentTitle) return null
       if (state?.adult_mode === true) {
-        const film = (library?.adult_library || []).find(item => [
+        return (library?.adult_library || []).find(item => [
           item.metadata?.title,
           item.display_name,
           item.name,
         ].some(value => homeMediaKey(value) === currentTitle))
-        if (film?.metadata?.poster) return homeArtworkUrl('adult', film.metadata.poster)
-      } else {
+      }
+      const channel = (library?.channels || []).find(item => Number(item.number) === Number(state?.channel_number))
+      return channel?.programmes?.find(item => [
+        item.metadata?.title,
+        item.display_name,
+        item.name,
+      ].some(value => homeMediaKey(value) === currentTitle)) || null
+    }
+
+    function homeArtworkForState(state) {
+      const media = homeMediaForState(state)
+      if (media?.metadata?.poster)
+        return homeArtworkUrl(state?.adult_mode === true ? 'adult' : 'channel', media.metadata.poster)
+      if (state?.adult_mode !== true) {
         const channel = (library?.channels || []).find(item => Number(item.number) === Number(state?.channel_number))
-        const programme = channel?.programmes?.find(item => [
-          item.metadata?.title,
-          item.display_name,
-          item.name,
-        ].some(value => homeMediaKey(value) === currentTitle))
-        if (programme?.metadata?.poster) return homeArtworkUrl('channel', programme.metadata.poster)
         if (channel?.metadata?.artwork) return homeArtworkUrl('channel', channel.metadata.artwork)
         const channelPoster = channel?.programmes?.find(item => item.metadata?.poster)?.metadata?.poster
         if (channelPoster) return homeArtworkUrl('channel', channelPoster)
@@ -658,6 +799,54 @@ const $ = selector => document.querySelector(selector)
       artwork.style.backgroundImage = source ? `url("${source}")` : ''
       artwork.classList.toggle('has-artwork', Boolean(source))
       artwork.classList.toggle('is-empty', !source)
+    }
+
+    function homeTimeLeftLabel(seconds) {
+      const value = Math.max(0, Math.round(Number(seconds) || 0))
+      if (value < 60) return '<1m left'
+      const minutes = Math.ceil(value / 60)
+      if (minutes < 60) return `${minutes}m left`
+      const hours = Math.floor(minutes / 60)
+      const remainingMinutes = minutes % 60
+      return remainingMinutes ? `${hours}h ${remainingMinutes}m left` : `${hours}h left`
+    }
+
+    function setHomeSpotlightProgress(state) {
+      const progress = $('#homeSpotlightProgress')
+      if (!progress) return
+      const media = homeMediaForState(state)
+      const key = [state?.adult_mode === true ? 'adult' : state?.channel_number,
+        homeMediaKey(state?.programme)].join(':')
+      const livePosition = Number(state?.playback_position)
+      const liveDuration = Number(state?.playback_duration)
+      const hasLiveTiming = Number.isFinite(liveDuration) && liveDuration > 0
+      const fallbackPosition = Math.max(0, Number(media?.remote_position || 0))
+      const fallbackDuration = Math.max(0, Number(media?.remote_duration || 0))
+      const now = Date.now()
+      if (state?.standby === true) homeProgressAnchor = null
+      else if (hasLiveTiming || !homeProgressAnchor || homeProgressAnchor.key !== key) {
+        homeProgressAnchor = {
+          key,
+          position: Math.max(0, hasLiveTiming && Number.isFinite(livePosition)
+            ? livePosition : fallbackPosition),
+          duration: hasLiveTiming ? liveDuration : fallbackDuration,
+          updated: now,
+        }
+      }
+      const anchor = homeProgressAnchor?.key === key ? homeProgressAnchor : null
+      const elapsed = anchor && state?.paused !== true ? Math.max(0, (now - anchor.updated) / 1000) : 0
+      const position = Math.min(Number(anchor?.duration || 0), Number(anchor?.position || 0) + elapsed)
+      const duration = Math.max(0, Number(anchor?.duration || fallbackDuration))
+      const visible = state?.standby !== true && duration > 0
+      progress.classList.toggle('hidden', !visible)
+      if (!visible) {
+        progress.style.removeProperty('--home-progress')
+        $('#homeSpotlightLeft').textContent = ''
+        return
+      }
+      const percent = Math.max(0, Math.min(100, position / duration * 100))
+      progress.style.setProperty('--home-progress', `${percent}%`)
+      $('#homeSpotlightLeft').textContent = homeTimeLeftLabel(duration - position)
     }
 
     function startHomeStatusRefresh() {
@@ -708,6 +897,16 @@ const $ = selector => document.querySelector(selector)
       if (button.dataset.viewButton === 'adult') refreshTmdbStatus().catch(() => {})
     })
     $$('[data-go]').forEach(button => button.onclick = () => {
+      if (button.dataset.go === 'insights') {
+        history.replaceState({ settings: true }, '', '#system')
+        history.pushState({ viewingInsights: true }, '', '#insights')
+        openView('insights', { instantScroll: true })
+        return
+      }
+      if (button.id === 'insightsBack' && location.hash === '#insights') {
+        history.back()
+        return
+      }
       if (button.dataset.go === 'watch' && !offlineMode) {
         remoteKind = 'channel'
         renderRemoteViewing()
@@ -758,7 +957,12 @@ const $ = selector => document.querySelector(selector)
       if (channels.some(channel => String(channel.number) === usbChannelChoice)) usbChannel.value = usbChannelChoice
       if (!channels.some(channel => String(channel.number) === uploadChoice)) uploadChoice = String(channels[0]?.number ?? '')
       upload.value = uploadChoice
-      if (selectedManageChannel !== null && !channels.some(channel => channel.number === selectedManageChannel)) selectedManageChannel = null
+      if (selectedManageChannel !== null && !channels.some(channel =>
+          (selectedManageChannelFolder && channel.folder === selectedManageChannelFolder)
+          || channel.number === selectedManageChannel)) {
+        selectedManageChannel = null
+        selectedManageChannelFolder = ''
+      }
       renderStatus()
       renderUploads()
       renderAdultLibrary()

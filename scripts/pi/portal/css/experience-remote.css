@@ -373,7 +373,7 @@ body.portal-v2 .remote-state-pill.paused { color: var(--experience-orange); }
 
 body.portal-v2 .remote-transport {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
   gap: 5px;
 }
 

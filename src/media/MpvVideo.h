@@ -24,6 +24,7 @@ class MpvVideo : public QQuickFramebufferObject
     Q_PROPERTY(int volume READ volume WRITE setVolume NOTIFY volumeChanged)
     Q_PROPERTY(bool muted READ muted WRITE setMuted NOTIFY mutedChanged)
     Q_PROPERTY(QString aspectMode READ aspectMode WRITE setAspectMode NOTIFY aspectModeChanged)
+    Q_PROPERTY(double videoAspectRatio READ videoAspectRatio NOTIFY videoAspectRatioChanged)
     Q_PROPERTY(qulonglong playbackGeneration READ playbackGeneration NOTIFY playbackGenerationChanged)
 
 public:
@@ -47,6 +48,7 @@ public:
     void setMuted(bool muted);
     [[nodiscard]] QString aspectMode() const;
     void setAspectMode(const QString &aspectMode);
+    [[nodiscard]] double videoAspectRatio() const;
     [[nodiscard]] qulonglong playbackGeneration() const;
 
     Q_INVOKABLE void play(const QUrl &source, double startPositionSeconds = 0.0);
@@ -71,6 +73,7 @@ signals:
     void volumeChanged();
     void mutedChanged();
     void aspectModeChanged();
+    void videoAspectRatioChanged();
     void playbackGenerationChanged();
     void playbackFinished();
     void playbackStopped();
@@ -95,6 +98,7 @@ private:
     void resetSubtitleState();
     void setPlaybackPosition(double positionSeconds);
     void setPlaybackDuration(double durationSeconds);
+    void setVideoAspectRatio(double aspectRatio);
     void setSubtitlesVisible(bool visible);
     void setSubtitlesAvailable(bool available);
     void setStatus(QString status);
@@ -110,6 +114,7 @@ private:
     int m_volume = 20;
     bool m_muted = false;
     QString m_aspectMode = QStringLiteral("crop");
+    double m_videoAspectRatio = 0.0;
     double m_pendingStartPosition = 0.0;
     double m_playbackPosition = 0.0;
     double m_playbackDuration = 0.0;

@@ -4,10 +4,13 @@ let managementBusy = false
     async function manage(action, extra = {}, preferredChannel = null) {
       if (managementBusy) return
       managementBusy = true
+      const navigationRevision = channelNavigationRevision
       try {
         notice('Working…')
         const result = await api('/api/manage', { method: 'POST', body: JSON.stringify({ action, ...extra }) })
-        if (preferredChannel !== null) selectedManageChannel = Number(preferredChannel)
+        if (preferredChannel !== null && channelNavigationRevision === navigationRevision) {
+          selectedManageChannel = Number(preferredChannel)
+        }
         await load(preferredChannel)
         notice(result.message || 'Done.', result.refreshed === false)
       } catch (error) { notice(error.message, true) }
@@ -55,19 +58,6 @@ let managementBusy = false
       const channel = library.channels.find(value => value.number === selectedManageChannel)
       if (channel) renderProgrammeList(channel)
     }
-    $('#programmeVisibility').onchange = event => {
-      programmeVisibility = event.target.value
-      programmePage = 1
-      const channel = library.channels.find(value => value.number === selectedManageChannel)
-      if (channel) renderProgrammeList(channel)
-    }
-    $$('[data-programme-visibility]').forEach(button => button.onclick = () => {
-      programmeVisibility = button.dataset.programmeVisibility
-      $('#programmeVisibility').value = programmeVisibility
-      programmePage = 1
-      const channel = library.channels.find(value => value.number === selectedManageChannel)
-      if (channel) renderProgrammeList(channel)
-    })
     $('#refreshLibrary').onclick = () => manage('refresh')
     $('#editChannelForm').onsubmit = async event => {
       event.preventDefault()
@@ -224,8 +214,9 @@ let managementBusy = false
           failures.push({ file: files[index], message: error.message })
         }
       }
-      selectedManageChannel = channel
-      await load(channel).catch(() => {})
+      const stillOnUploadChannel = sameChannelSelection(
+        (library.channels || []).find(value => value.number === channel))
+      await load(stillOnUploadChannel ? channel : null).catch(() => {})
       selectedUploadFiles = failures.map(failure => failure.file)
       renderSelectedUploadFiles()
       $('#progress').value = 0
@@ -263,9 +254,9 @@ let managementBusy = false
       root.append(heading)
       selectedAdultFiles.forEach((file, index) => {
         const row = document.createElement('div')
-        row.className = 'row'; row.style.marginTop = '8px'
+        row.className = 'selected-upload-file'
         const name = document.createElement('span')
-        name.className = 'grow'; name.textContent = file.name
+        name.textContent = file.name
         const remove = document.createElement('button')
         remove.type = 'button'; remove.className = 'link'; remove.textContent = 'Remove'
         remove.onclick = () => { selectedAdultFiles.splice(index, 1); renderSelectedAdultFiles() }
@@ -353,6 +344,127 @@ let managementBusy = false
       $('#adultUploadButton').disabled = selectedAdultFiles.length === 0
     }
 
+    function renderSelectedAdultSeriesFiles() {
+      const root = $('#adultSeriesSelectedFiles')
+      const button = $('#adultSeriesUploadButton')
+      root.replaceChildren()
+      if (!selectedAdultSeriesFiles.length) {
+        root.textContent = 'No episodes selected yet.'
+        button.disabled = true
+        return
+      }
+      const heading = document.createElement('strong')
+      heading.textContent = `${selectedAdultSeriesFiles.length} episode${selectedAdultSeriesFiles.length === 1 ? '' : 's'} ready`
+      root.append(heading)
+      selectedAdultSeriesFiles.forEach((file, index) => {
+        const row = document.createElement('div')
+        row.className = 'selected-upload-file'
+        const name = document.createElement('span')
+        name.textContent = file.name
+        const remove = document.createElement('button')
+        remove.type = 'button'
+        remove.className = 'link'
+        remove.textContent = 'Remove'
+        remove.onclick = () => {
+          selectedAdultSeriesFiles.splice(index, 1)
+          renderSelectedAdultSeriesFiles()
+        }
+        row.append(name, remove)
+        root.append(row)
+      })
+      button.disabled = false
+    }
+
+    $('#adultSeriesFile').onchange = event => {
+      const existing = new Set(selectedAdultSeriesFiles.map(selectedFileKey))
+      Array.from(event.target.files || []).forEach(file => {
+        const key = selectedFileKey(file)
+        if (!existing.has(key)) {
+          selectedAdultSeriesFiles.push(file)
+          existing.add(key)
+        }
+      })
+      event.target.value = ''
+      renderSelectedAdultSeriesFiles()
+    }
+
+    async function waitForAdultSeriesPreparation(id) {
+      while (true) {
+        const state = await api('/api/uploads/' + id)
+        if (state.complete) return state
+        if (state.status === 'error') throw new Error(state.error || 'MabelTV could not add this episode')
+        const messages = {
+          validating: 'Checking the episode…', queued: 'Waiting in the upload queue…',
+          publishing: 'Adding the episode to its series…', finalising: 'Updating the series library…',
+        }
+        $('#adultSeriesUploadText').textContent = messages[state.status] || 'Preparing the episode…'
+        await new Promise(resolve => setTimeout(resolve, 1500))
+      }
+    }
+
+    async function sendAdultSeriesFile(file, position, total, season) {
+      const prefix = total > 1 ? `Episode ${position} of ${total}: ` : ''
+      $('#adultSeriesProgress').max = file.size
+      $('#adultSeriesProgress').value = 0
+      const created = await api('/api/adult/series/uploads', {
+        method: 'POST', body: JSON.stringify({
+          series: adultSeriesUploadTarget.id, season,
+          file_name: file.name, size: file.size,
+        }),
+      })
+      let offset = Number(created.offset) || 0
+      let result = created
+      while (offset < file.size) {
+        const part = file.slice(offset, Math.min(offset + 8388608, file.size))
+        const finalChunk = offset + part.size >= file.size
+        $('#adultSeriesUploadText').textContent = finalChunk
+          ? `${prefix}finishing ${file.name}…`
+          : `${prefix}${file.name} · ${(offset / 1048576).toFixed(0)} MB of ${(file.size / 1048576).toFixed(0)} MB`
+        result = await resilientUploadChunk(created.id, offset, part, finalChunk)
+        offset = Number(result.offset) || offset
+        $('#adultSeriesProgress').value = offset
+      }
+      if (!result.complete) result = await waitForAdultSeriesPreparation(created.id)
+      return result
+    }
+
+    $('#adultSeriesUploadForm').onsubmit = async event => {
+      event.preventDefault()
+      const files = selectedAdultSeriesFiles.slice()
+      const target = adultSeriesUploadTarget
+      const season = Number(target?.season)
+      if (!files.length || !target || !Number.isInteger(season) || season < 1 || season > 99) return
+      const failures = []
+      $('#adultSeriesUploadButton').disabled = true
+      $('#adultSeriesFile').disabled = true
+      $('#adultSeriesUploadState').classList.remove('hidden')
+      notice(files.length === 1 ? 'Uploading episode…' : `Uploading ${files.length} episodes one at a time…`)
+      for (let index = 0; index < files.length; index += 1) {
+        try {
+          await sendAdultSeriesFile(files[index], index + 1, files.length, season)
+        } catch (error) {
+          failures.push({ file: files[index], message: error.message })
+        }
+      }
+      selectedAdultSeriesFiles = failures.map(failure => failure.file)
+      renderSelectedAdultSeriesFiles()
+      $('#adultSeriesProgress').value = 0
+      $('#adultSeriesUploadState').classList.toggle('hidden', failures.length === 0)
+      await load().catch(() => {})
+      if (failures.length) {
+        $('#adultSeriesUploadText').textContent = 'Interrupted episodes remain selected so you can resume them.'
+        notice(`${files.length - failures.length} of ${files.length} episodes were added.\n${failures.map(failure => `${failure.file.name}: ${failure.message}`).join('\n')}`, true)
+      } else {
+        closeLibrarySheet($('#adultSeriesUploadSheet'))
+        adultSeriesUploadTarget = null
+        notice(`${files.length} episode${files.length === 1 ? '' : 's'} added to Series ${season}.`)
+        const updated = library?.adult_series?.find(series => series.id === target.id)
+        if (updated) openAdultSeasonSheet(updated, season)
+      }
+      $('#adultSeriesFile').disabled = false
+      $('#adultSeriesUploadButton').disabled = selectedAdultSeriesFiles.length === 0
+    }
+
     async function systemAction(action, waitingText) {
       notice(waitingText)
       try {
@@ -366,7 +478,7 @@ let managementBusy = false
     $('#rebootPi').onclick = () => { if (confirm(`Restart the Raspberry Pi now? ${tvName()} will be unavailable for about a minute.`)) systemAction('reboot', 'Restarting the Raspberry Pi…') }
     $('#poweroffPi').onclick = () => { if (confirm('Shut down the Raspberry Pi now? You will need to switch its power back on afterwards.')) systemAction('poweroff', 'Shutting down safely…') }
     const liveCommandFeedback = {
-      'return-to-mabeltv': 'Returning to MabelTV', 'open-tv-guide': 'Opening guide',
+      'return-to-mabeltv': 'Returning to MabelTV', 'open-channel-menu': 'Opening channel menu',
       'open-parent-menu': 'Opening menu', 'enter-adult-mode': 'Opening Adult TV',
       'close-overlay': 'Back', 'channel-up': 'Channel up', 'channel-down': 'Channel down',
       'volume-up': 'Volume up', 'volume-down': 'Volume down', 'toggle-mute': 'Sound changed',
@@ -374,8 +486,10 @@ let managementBusy = false
       'navigate-right': 'Right', select: 'Selected', 'previous-programme': 'Previous programme',
       'next-programme': 'Next programme', 'restart-programme': 'Restarting programme',
       'toggle-pause': 'Playback changed', 'toggle-subtitles': 'Subtitles changed',
+      'toggle-widescreen-mode': 'Widescreen mode changed',
       'toggle-remote-lock': 'Remote lock changed', 'turn-on': 'Turning TV on',
-      'turn-off': 'Turning TV off', 'toggle-power': 'Power command sent'
+      'turn-off': 'Turning TV off', 'turn-on-mabel-only': 'Turning MabelTV on',
+      'turn-off-mabel-only': 'Putting MabelTV in standby', 'toggle-power': 'Power command sent'
     }
 
     async function sendLiveCommand(command, button = null, extra = {}) {
@@ -394,7 +508,8 @@ let managementBusy = false
           setTimeout(() => button.classList.remove('command-ok'), 380)
         }
         setRemoteFeedback(liveCommandFeedback[command] || 'Done', 'success')
-        if (command === 'turn-on' || command === 'turn-off' || command === 'toggle-power') {
+        if (['turn-on', 'turn-off', 'turn-on-mabel-only', 'turn-off-mabel-only',
+          'toggle-power'].includes(command)) {
           setTimeout(() => {
             refreshLiveTv(true)
             refreshHomePowerState().catch(() => {})
@@ -423,12 +538,52 @@ let managementBusy = false
     $$('[data-live-command]').forEach(button => button.onclick = () => sendLiveCommand(button.dataset.liveCommand, button))
     $('#openLiveChannels').onclick = () => { renderLiveChannelOptions(); $('#liveChannelSheet').showModal() }
     $('#closeLiveChannels').onclick = () => $('#liveChannelSheet').close()
-    $('#openRemotePower').onclick = () => { renderRemoteState(liveTvState); $('#remotePowerSheet').showModal() }
-    $('#closeRemotePower').onclick = $('#cancelRemotePower').onclick = () => $('#remotePowerSheet').close()
-    $('#confirmRemotePower').onclick = async () => {
-      $('#remotePowerSheet').close()
-      await sendLiveCommand(liveTvState.standby === true ? 'turn-on' : 'turn-off', $('#openRemotePower'))
+    function connectedTvAlreadyAtTarget(state, turningOn) {
+      const power = String(state?.connected_tv_power || '').trim().toLocaleLowerCase()
+      return turningOn
+        ? power === 'on' || power.includes('standby to on')
+        : power === 'standby' || power.includes('on to standby')
     }
+
+    async function openPortalPowerSheet(event) {
+      const trigger = event?.currentTarget || null
+      try {
+        liveTvState = await api('/api/live')
+      } catch (_) {
+        // The last poll is still safer than inventing a second power state.
+      }
+      renderRemoteState(liveTvState)
+      const turningOn = liveTvState.standby === true
+      if (connectedTvAlreadyAtTarget(liveTvState, turningOn)) {
+        await applyPortalPower(false, trigger)
+        return
+      }
+      const dialog = $('#remotePowerSheet')
+      if (!dialog.open) dialog.showModal()
+    }
+
+    async function applyPortalPower(includeConnectedTv, button) {
+      const turningOn = liveTvState.standby === true
+      const command = turningOn
+        ? (includeConnectedTv ? 'turn-on' : 'turn-on-mabel-only')
+        : (includeConnectedTv ? 'turn-off' : 'turn-off-mabel-only')
+      const dialog = $('#remotePowerSheet')
+      if (dialog.open) dialog.close()
+      if (await sendLiveCommand(command, button)) {
+        notice(turningOn
+          ? (includeConnectedTv
+              ? 'MabelTV is turning on and selecting its HDMI input.'
+              : 'MabelTV is turning on. The connected television is unchanged.')
+          : (includeConnectedTv
+              ? 'MabelTV and the connected television are entering standby.'
+              : 'MabelTV is entering standby. The connected television is unchanged.'))
+      }
+    }
+
+    $('#openRemotePower').onclick = openPortalPowerSheet
+    $('#closeRemotePower').onclick = $('#cancelRemotePower').onclick = () => $('#remotePowerSheet').close()
+    $('#confirmRemotePower').onclick = () => applyPortalPower(true, $('#confirmRemotePower'))
+    $('#mabelOnlyRemotePower').onclick = () => applyPortalPower(false, $('#mabelOnlyRemotePower'))
     ;[$('#liveChannelSheet'), $('#remotePowerSheet')].forEach(dialog => dialog.onclick = event => {
       if (event.target === dialog) dialog.close()
     })
@@ -442,20 +597,7 @@ let managementBusy = false
       } catch (error) { notice(error.message, true) }
       finally { setTimeout(() => { button.disabled = false }, 450) }
     }
-    $('#homePowerToggle').onclick = async () => {
-      const button = $('#homePowerToggle')
-      const turningOn = liveTvState.standby === true
-      const command = turningOn ? 'turn-on' : 'turn-off'
-      button.textContent = turningOn ? 'Turning On…' : 'Turning Off…'
-      $('#homePowerState').textContent = turningOn ? 'Turning on…' : 'Turning off…'
-      if (await sendLiveCommand(command, button)) {
-        notice(turningOn
-          ? 'MabelTV is turning on and selecting its HDMI input.'
-          : 'MabelTV is entering standby. The Raspberry Pi stays on.')
-      } else {
-        refreshHomePowerState().catch(() => {})
-      }
-    }
+    $('#homePowerToggle').onclick = openPortalPowerSheet
     $('#portalPinForm').onsubmit = async event => {
       event.preventDefault()
       const required = library?.owner?.portal_pin_required !== false

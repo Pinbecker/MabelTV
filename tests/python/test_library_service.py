@@ -6,6 +6,7 @@ import importlib.util
 import inspect
 import json
 import os
+import re
 import tempfile
 import threading
 import time
@@ -128,6 +129,11 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("--control-min: 44px", PORTAL_STYLES)
         self.assertIn('/portal/icons.svg#signal-house', html)
         self.assertIn('class="logo-mark" src="/mabeltv-icon.png"', html)
+        logo = (PROJECT_ROOT / "scripts" / "pi" / "mabeltv-icon.png").read_bytes()
+        self.assertTrue(logo.startswith(b"\x89PNG\r\n\x1a\n"))
+        self.assertTrue(logo.endswith(b"IEND\xaeB`\x82"))
+        self.assertIn("*.png binary", (PROJECT_ROOT / ".gitattributes").read_text(
+            encoding="utf-8"))
         self.assertTrue((PORTAL_ROOT / "icons.svg").is_file())
         self.assertIn('portal-include:html/app-shell.html', source)
         self.assertLess(len(source), 5_000)
@@ -218,8 +224,18 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn('id="homeFilmSearch"', html)
         self.assertIn('id="homeFavouritesSection"', html)
         self.assertIn('id="homeContinueSection"', html)
-        self.assertIn('id="homeResumeSheet"', html)
+        self.assertNotIn('id="homeResumeSheet"', html)
+        self.assertIn('id="watchChannelSheet"', html)
+        self.assertNotIn('id="watchFilmStartOverTv"', html)
+        self.assertNotIn('id="watchFilmStartOverHere"', html)
+        self.assertIn('id="filmResumeChoiceSheet"', html)
+        self.assertIn('id="filmResumeContinue"', html)
+        self.assertIn('id="filmResumeRestart"', html)
         self.assertIn("api('/api/favourite'", PORTAL_SCRIPT)
+        self.assertIn("setChannelFavourite", PORTAL_SCRIPT)
+        self.assertIn("openFilmEntry(entry, 'continue')", PORTAL_SCRIPT)
+        self.assertIn("homePosterTile(value.entry, 'favourite')", PORTAL_SCRIPT)
+        self.assertIn("context === 'favourite' && resumable", PORTAL_SCRIPT)
         self.assertIn(".portal-nav button.active::before", styles)
         self.assertIn('class="settings-stack"', html)
         self.assertIn(".home-spotlight", styles)
@@ -243,7 +259,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("grid-template-columns: 104px minmax(0, 1fr)", styles)
         self.assertIn("aspect-ratio: 2 / 3", styles)
         self.assertIn("function homeArtworkForState(state)", core)
-        self.assertIn("if (!currentTitle) return ''", core)
+        self.assertIn("if (!currentTitle) return null", core)
         self.assertIn("setHomeSpotlightArtwork(state)", core)
         self.assertIn("/api/channel/artwork/", core)
         self.assertIn("/api/adult/artwork/", core)
@@ -251,6 +267,8 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn('class="remote-app"', html)
         self.assertIn('href="/portal/icons.svg#signal-tv"', html)
         self.assertIn('href="/portal/icons.svg#signal-volume"', html)
+        self.assertIn('id="remoteWidescreen"', html)
+        self.assertIn('href="/portal/icons.svg#signal-maximize"', html)
         self.assertIn('class="remote-dock-action-label"', html)
         self.assertIn("querySelector('.remote-dock-action-label')", core)
         self.assertIn(".remote-mode-icon", styles)
@@ -267,6 +285,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn('id="signal-play"', icons)
         self.assertIn('id="signal-volume"', icons)
         self.assertIn('id="signal-power"', icons)
+        self.assertIn('id="signal-maximize"', icons)
         self.assertTrue((PORTAL_ROOT / "LICENSE-LUCIDE.txt").is_file())
 
     def test_experience_overlay_system_covers_every_portal_dialog_family(self) -> None:
@@ -359,27 +378,26 @@ class LibraryUnitTests(unittest.TestCase):
                 "watchProgrammeMore", "watchProgrammeMetadata", "watchProgrammeToggle",
                 "watchProgrammeRename", "watchProgrammeMove",
                 "watchProgrammeBin"):
-            self.assertIn(
-                f'id="{action_id}" type="button" class="watch-film-play', html)
+            self.assertRegex(
+                html, rf'id="{action_id}"\s+type="button"\s+class="watch-film-play')
         primary_start = html.index('id="watchProgrammeSheet"')
         more_start = html.index('id="watchProgrammeMoreSheet"')
         move_start = html.index('id="watchProgrammeMoveSheet"')
         primary_sheet = html[primary_start:more_start]
         more_sheet = html[more_start:move_start]
         for action_id in (
-                "watchProgrammeTv", "watchProgrammeHere", "watchProgrammeDownload",
-                "watchProgrammeMore", "watchProgrammeBin"):
+                "watchProgrammeTv", "watchProgrammeHere", "watchProgrammeFavourite",
+                "watchProgrammeMore"):
             self.assertIn(f'id="{action_id}"', primary_sheet)
         primary_positions = [primary_sheet.index(f'id="{action_id}"') for action_id in (
-            "watchProgrammeTv", "watchProgrammeHere", "watchProgrammeDownload",
-            "watchProgrammeMore", "watchProgrammeBin")]
+            "watchProgrammeFavourite", "watchProgrammeTv", "watchProgrammeHere",
+            "watchProgrammeMore")]
         self.assertEqual(primary_positions, sorted(primary_positions))
         for action_id in (
-                "watchProgrammeMetadata", "watchProgrammeToggle",
-                "watchProgrammeRename", "watchProgrammeMove"):
+                "watchProgrammeDownload", "watchProgrammeMetadata", "watchProgrammeToggle",
+                "watchProgrammeRename", "watchProgrammeMove", "watchProgrammeBin"):
             self.assertNotIn(f'id="{action_id}"', primary_sheet)
             self.assertIn(f'id="{action_id}"', more_sheet)
-        self.assertNotIn('id="watchProgrammeBin"', more_sheet)
         self.assertIn("closeWatchProgrammeMoreSheet()", PORTAL_SCRIPT)
         self.assertNotIn('id="programmeActionMetadata"', html)
         self.assertIn("/api/tmdb/programme", PORTAL_SCRIPT)
@@ -392,7 +410,8 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("renameProgramme(channel, programme)", PORTAL_SCRIPT)
         self.assertIn("const deepLink = `vlc://${mediaUrl}`", PORTAL_SCRIPT)
         self.assertNotIn("vlc-x-callback://", PORTAL_SCRIPT)
-        self.assertIn("history.pushState({ channelPage: true }", PORTAL_SCRIPT)
+        self.assertIn("history.pushState({ channelPage: true, mabelWatchReturn:",
+                      PORTAL_SCRIPT)
         self.assertIn("/^channel\\/(\\d+)\\/(watch|library)$/", PORTAL_SCRIPT)
         self.assertIn(".channel-page-programmes.is-film-grid", channel_styles)
         self.assertIn("body.portal-v2 .channel-page-programmes.is-film-grid", experience_library)
@@ -459,6 +478,11 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("saveMabelRemotePosition", PORTAL_SCRIPT)
         self.assertIn("result.resume_enabled === true", PORTAL_SCRIPT)
         self.assertIn("classList.toggle('is-wake', waking)", PORTAL_SCRIPT)
+        self.assertIn('id="mabelOnlyRemotePower"', PORTAL_SOURCE)
+        self.assertIn("async function openPortalPowerSheet(event)", PORTAL_SCRIPT)
+        self.assertIn("includeConnectedTv ? 'turn-on' : 'turn-on-mabel-only'", PORTAL_SCRIPT)
+        self.assertIn("includeConnectedTv ? 'turn-off' : 'turn-off-mabel-only'", PORTAL_SCRIPT)
+        self.assertIn('id="homeConnectedTvState"', PORTAL_SOURCE)
         self.assertIn(".remote-power-confirm.is-wake", experience_overlays)
         self.assertIn("border-color: rgba(255, 122, 26, .52)", experience_overlays)
         self.assertIn("body.portal-experience .remote-power-actions {\n  display: grid;\n  gap: 8px;", experience_overlays)
@@ -472,7 +496,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn('id="view-watch"', index)
         self.assertIn('watch-poster-grid', index)
         self.assertNotIn('id="remoteVideo"', index)
-        self.assertIn('id="video" controls', player)
+        self.assertRegex(player, r'id="video"\s+controls')
         self.assertIn("track.kind = 'subtitles'", player)
         self.assertIn("video.oncanplay = attachNativeCaptions", index)
         self.assertIn("track.default = false", index)
@@ -504,16 +528,18 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn('id="watchFilmHere"', index)
         self.assertNotIn("className = 'watch-play'", index)
         self.assertNotIn('.watch-play {', index)
-        self.assertIn("position: Number(film.remote_position || 0)", index)
+        self.assertIn("function playWatchFilmOnTv(film, position = null)", index)
+        self.assertIn("? Number(film.remote_position || 0)", index)
+        self.assertIn("playWatchFilmOnTv(film, 0)", index)
         self.assertIn('id="watchProgrammeSheet"', index)
         self.assertIn('id="watchManageAdult"', index)
-        self.assertIn('id="watchFilmManage" type="button" class="watch-film-secondary hidden"', index)
+        self.assertRegex(index, r'id="watchFilmManage"\s+type="button"\s+class="watch-film-secondary primary-sheet-more hidden"')
         self.assertIn("openAdultFilmSheet(film)", index)
         self.assertIn("openLibrarySheet($('#adultCollectionSheet'))", index)
         self.assertNotIn('id="watchManageMabel"', index)
         self.assertNotIn('id="overviewChannels"', index)
         self.assertIn("identity.className = 'mabel-show-identity'", index)
-        self.assertIn("identity.onclick = () => openChannel(channel.number, true)", index)
+        self.assertIn("identity.onclick = () => openChannel(channel, true)", index)
         self.assertNotIn("const manageCue", index)
         self.assertIn("channelWorkspaceReturnToWatch", index)
         self.assertIn('id="watchMabelLayout"', index)
@@ -549,8 +575,41 @@ class LibraryUnitTests(unittest.TestCase):
 
         self.assertIn("}, bad ? 7000 : 3500)", core)
         self.assertNotIn("message.endsWith('…')", core)
-        open_view = core[core.index("function openView(name)"):]
+        open_view = core[core.index("function openView(name, options = {})"):]
         self.assertIn("notice('')", open_view[:500])
+
+    def test_channel_entry_is_instant_and_favourite_is_primary(self) -> None:
+        core = (PORTAL_ROOT / "js" / "core.js").read_text(encoding="utf-8")
+        library = (PORTAL_ROOT / "js" / "library.js").read_text(encoding="utf-8")
+        actions = (PORTAL_ROOT / "js" / "actions.js").read_text(encoding="utf-8")
+        overlays = (PORTAL_ROOT / "html" / "overlays.html").read_text(encoding="utf-8")
+
+        self.assertIn("history.scrollRestoration = 'manual'", core)
+        self.assertIn("function resetViewScroll()", core)
+        self.assertIn("openView('channels', { instantScroll: true })", library)
+        self.assertIn("requestAnimationFrame(() =>", library)
+        self.assertIn("let selectedManageChannelFolder = ''", core)
+        self.assertIn("let channelNavigationRevision = 0", core)
+        self.assertIn("function channelReturnSnapshot(channel)", core)
+        self.assertIn("function restoreViewScroll(snapshot)", core)
+        self.assertIn("history.state?.mabelWatchReturn", core)
+        self.assertIn("section.dataset.watchChannelFolder", PORTAL_SCRIPT)
+        self.assertIn("data-open-channel-folder=", library)
+        self.assertIn("function selectedChannelFromLibrary", library)
+        self.assertIn("channel = selected", library)
+        render_channels = library.index("function renderChannels")
+        self.assertLess(library.index("renderProgrammeList(channel)", render_channels),
+                        library.index("$('#channelVisibilityTitle')", render_channels))
+        self.assertIn("channelNavigationRevision === navigationRevision", actions)
+        self.assertNotIn("selectedManageChannel = channel\n", actions)
+        self.assertNotIn("data-programme-visibility", PORTAL_SOURCE)
+        self.assertNotIn("programmeVisibility", PORTAL_SOURCE)
+        primary_sheet = overlays[overlays.index('id="watchProgrammeSheet"'):
+                                 overlays.index('id="watchProgrammeMoreSheet"')]
+        more_sheet = overlays[overlays.index('id="watchProgrammeMoreSheet"'):
+                              overlays.index('id="watchProgrammeMoveSheet"')]
+        self.assertIn('id="watchProgrammeFavourite"', primary_sheet)
+        self.assertNotIn('id="watchProgrammeFavourite"', more_sheet)
 
     def test_iphone_watch_saves_backward_seeks_and_uses_native_player(self) -> None:
         portal = PORTAL_SOURCE
@@ -596,10 +655,10 @@ class LibraryUnitTests(unittest.TestCase):
 
     def test_mabel_remote_player_restores_original_tv_and_locks_page_scroll(self) -> None:
         index = PORTAL_SOURCE
-        self.assertIn('class="mabel-watch-icon-button" aria-label="Back to Mabel TV programmes"', index)
+        self.assertRegex(index, r'class="mabel-watch-icon-button"\s+aria-label="Back to Mabel TV programmes"')
         self.assertNotIn('class="mabel-watch-icon-button mabel-watch-back"', index)
-        self.assertIn('</video><button id="mabelWatchBack"', index)
-        self.assertIn('</button><div id="mabelWatchControls"', index)
+        self.assertRegex(index, r'</video>\s*<button\s+id="mabelWatchBack"')
+        self.assertRegex(index, r'</button>\s*<div\s+id="mabelWatchControls"')
         self.assertIn('.mabel-watch-screen > .mabel-watch-icon-button', index)
         self.assertIn('touch-action: manipulation', index)
         self.assertIn("$('#mabelWatchBack').onclick = closeMabelWatchPlayer", index)
@@ -699,6 +758,49 @@ class LibraryUnitTests(unittest.TestCase):
         })
         self.assertFalse(self.fixture.library.library()["channels"][0]
                          ["programmes"][1]["favourite"])
+
+    def test_series_channel_favourite_uses_saved_channel_episode_and_position(self) -> None:
+        channels = [{
+            "number": 2, "name": "Puffin Rock", "folder": "puffin-rock",
+            "aspect": "crop", "content_type": "shows",
+        }]
+        self.fixture.channels.write_text(json.dumps({
+            "schema_version": 1, "channels": channels,
+        }), encoding="utf-8")
+        folder = self.fixture.media / "puffin-rock"
+        folder.mkdir(parents=True)
+        (folder / "S01 E01 - First.mp4").write_bytes(b"first")
+        (folder / "S01 E02 - Second.mp4").write_bytes(b"second")
+        self.fixture.library.player_state_path = self.fixture.root / "player-state.json"
+        self.fixture.library.player_state_path.write_text(json.dumps({
+            "standby": True,
+            "channel_timelines": {"2": {
+                "episode_name": "S01 E02 - Second.mp4",
+                "position_seconds": 193,
+                "programme_positions": {"S01 E02 - Second.mp4": 193},
+            }},
+        }), encoding="utf-8")
+
+        self.fixture.library.set_favourite({
+            "kind": "series-channel", "channel": 2, "enabled": True,
+        })
+        channel = self.fixture.library.library()["channels"][0]
+
+        self.assertTrue(channel["favourite"])
+        self.assertEqual(channel["resume_file"], "S01 E02 - Second.mp4")
+        self.assertEqual(channel["resume_position"], 193)
+        self.assertEqual(channel["resume_title"], "S01 E02 - Second")
+        stream = self.fixture.library.start_remote_stream({
+            "kind": "channel", "channel": 2,
+            "file": channel["resume_file"], "position": channel["resume_position"],
+        })
+        self.assertTrue(stream["resume_enabled"])
+        self.assertEqual(stream["resume_position"], 193)
+
+        self.fixture.library.set_favourite({
+            "kind": "series-channel", "channel": 2, "enabled": False,
+        })
+        self.assertFalse(self.fixture.library.library()["channels"][0]["favourite"])
 
     def test_film_channel_resume_is_shared_from_tv_to_portal_and_back(self) -> None:
         self.fixture.library.complete_setup({
@@ -1147,6 +1249,247 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertEqual(self.fixture.library.adult_library()[0]["playback_state"], "optimised")
         self.fixture.library.optimise_adult_for_playback.assert_called_once()
 
+    def test_adult_optimisation_progress_is_exposed_without_reloading_library(self) -> None:
+        film = self.fixture.library.adult_root / "Long Film.mkv"
+        film.write_bytes(b"video")
+        self.fixture.library.set_adult_media_state(
+            "Long Film.mkv", "processing", "", progress=37)
+
+        progress = self.fixture.library.adult_optimisations()
+        self.assertTrue(progress["active"])
+        self.assertEqual(progress["items"], [{
+            "path": "Long Film.mkv",
+            "state": "processing",
+            "progress": 37,
+            "message": "",
+            "updated": mock.ANY,
+        }])
+        self.assertEqual(self.fixture.library.adult_library()[0]["playback_progress"], 37)
+        self.assertIn("/api/adult/optimisations", PORTAL_SOURCE)
+        self.assertIn("Optimising ${Math.round(progress)}%", PORTAL_SOURCE)
+        self.assertNotIn("setInterval(() => load()", PORTAL_SOURCE)
+
+    def test_adult_series_groups_episodes_and_tracks_manual_watched_state(self) -> None:
+        series_id = self.fixture.library.create_adult_series("Silicon Valley")
+        season = self.fixture.library.adult_series_root / series_id / "Season 1"
+        season.mkdir()
+        episode = season / "Silicon.Valley.S01E06.720p.HDTV.x264.mkv"
+        episode.write_bytes(b"episode")
+
+        series = self.fixture.library.adult_series_library()[0]
+        self.assertEqual(series["title"], "Silicon Valley")
+        self.assertEqual(series["season_count"], 1)
+        self.assertEqual(series["episode_count"], 1)
+        self.assertEqual(series["episodes"][0]["season"], 1)
+        self.assertEqual(series["episodes"][0]["episode"], 6)
+        self.assertEqual(series["episodes"][0]["display_name"], "Silicon Valley")
+
+        self.fixture.library.set_favourite({
+            "kind": "adult-series", "series": series_id, "enabled": True,
+        })
+        self.assertTrue(self.fixture.library.adult_series_library()[0]["favourite"])
+
+        result = self.fixture.library.set_adult_episode_watched(
+            series_id, "Season 1/Silicon.Valley.S01E06.720p.HDTV.x264.mkv", True)
+        self.assertTrue(result["watched"])
+        refreshed = self.fixture.library.adult_series_library()[0]
+        self.assertEqual(refreshed["watched_count"], 1)
+        self.assertTrue(refreshed["episodes"][0]["watched"])
+
+    def test_adult_series_restart_clears_one_season_or_complete_show(self) -> None:
+        series_id = self.fixture.library.create_adult_series("Silicon Valley")
+        root = self.fixture.library.adult_series_root / series_id
+        for season, episode in ((1, 1), (1, 2), (2, 1)):
+            folder = root / f"Season {season}"
+            folder.mkdir(exist_ok=True)
+            (folder / f"Silicon.Valley.S{season:02d}E{episode:02d}.mp4").write_bytes(
+                b"episode")
+        self.fixture.library.adult_series_library()
+        states = self.fixture.library.adult_series_states()
+        for value in states["episodes"].values():
+            value.update({
+                "watched": True,
+                "remote_position": 420.0,
+                "remote_duration": 1800.0,
+                "remote_last_watched": 1234.0,
+            })
+        self.fixture.library.write_adult_series_states(states)
+
+        result = self.fixture.library.restart_adult_series_progress(
+            series_id, "season", 1)
+        self.assertEqual(result["episodes_reset"], 2)
+        refreshed = self.fixture.library.adult_series_library()[0]
+        first = [item for item in refreshed["episodes"] if item["season"] == 1]
+        second = [item for item in refreshed["episodes"] if item["season"] == 2]
+        self.assertTrue(all(not item["watched"] for item in first))
+        self.assertTrue(all(item["remote_position"] == 0 for item in first))
+        self.assertTrue(all(item["watched"] for item in second))
+        self.assertEqual(first[0]["remote_duration"], 1800.0)
+
+        result = self.fixture.library.restart_adult_series_progress(
+            series_id, "series")
+        self.assertEqual(result["episodes_reset"], 3)
+        refreshed = self.fixture.library.adult_series_library()[0]
+        self.assertTrue(all(not item["watched"] for item in refreshed["episodes"]))
+        self.assertTrue(all(item["remote_position"] == 0
+                            for item in refreshed["episodes"]))
+
+    def test_adult_series_direct_upload_publishes_into_selected_series_number(self) -> None:
+        series_id = self.fixture.library.create_adult_series("Silicon Valley")
+        self.fixture.library.video_info = lambda path: {
+            "codec_type": "video", "codec_name": "h264", "pix_fmt": "yuv420p",
+            "width": 1280, "height": 720, "avg_frame_rate": "24000/1001",
+        }
+        self.fixture.library.refresh_tv = mock.Mock(return_value=True)
+
+        created = self.fixture.library.adult_series_upload_create({
+            "series": series_id, "season": 2,
+            "file_name": "Silicon.Valley.S02E01.mp4", "size": 7,
+        })
+        self.fixture.library.append_upload(created["id"], 0, b"episode")
+        self.fixture.library.conversion_queue.join()
+        state = self.fixture.library.upload_status(created["id"])
+
+        self.assertTrue(state["complete"])
+        self.assertEqual(state["kind"], "adult-series")
+        self.assertEqual(state["series_id"], series_id)
+        self.assertEqual(state["season"], 2)
+        self.assertEqual(
+            (self.fixture.library.adult_series_root / series_id / "Season 2" /
+             "Silicon.Valley.S02E01.mp4").read_bytes(), b"episode")
+        episode = self.fixture.library.adult_series_library()[0]["episodes"][0]
+        self.assertEqual((episode["season"], episode["episode"]), (2, 1))
+        self.fixture.library.refresh_tv.assert_not_called()
+
+    def test_adult_series_portal_uses_scoped_series_and_episode_workflow(self) -> None:
+        self.assertIn('id="adultSeasonSheet"', PORTAL_SOURCE)
+        self.assertIn('class="adult-series-seasons"', PORTAL_SOURCE)
+        self.assertIn("function openAdultSeasonSheet(series, season)", PORTAL_SOURCE)
+        self.assertIn("openAdultSeriesUpload(current, number)", PORTAL_SOURCE)
+        self.assertIn("const season = Number(target?.season)", PORTAL_SOURCE)
+        self.assertIn("Start Series ${nextSeries}", PORTAL_SOURCE)
+        self.assertIn("scope: 'season', season: number", PORTAL_SOURCE)
+        self.assertIn('id="adultSeriesSourceSheet"', PORTAL_SOURCE)
+        self.assertIn('id="adultSeriesSourceFiles"', PORTAL_SOURCE)
+        self.assertIn('id="adultSeriesSourceUsb"', PORTAL_SOURCE)
+        self.assertIn("function openAdultSeriesSourceSheet()", PORTAL_SOURCE)
+        self.assertIn("function returnToAdultSeriesUploadSheet()", PORTAL_SOURCE)
+        self.assertNotIn('id="adultSeriesUpload"', PORTAL_SOURCE)
+        self.assertNotIn('id="adultSeriesAddUsb"', PORTAL_SOURCE)
+        self.assertNotIn('id="adultSeriesUploadSeason"', PORTAL_SOURCE)
+        self.assertNotIn('Use an existing number', PORTAL_SOURCE)
+        self.assertNotIn('id="adultSeasonBack"', PORTAL_SOURCE)
+        self.assertIn('id="adultSeriesRestartSheet"', PORTAL_SOURCE)
+        self.assertIn('id="adultSeasonRestart"', PORTAL_SOURCE)
+        self.assertIn('id="adultSeriesRestart"', PORTAL_SOURCE)
+        self.assertIn("function adultSeriesContinueEntries()", PORTAL_SOURCE)
+        self.assertIn("[...resumableFilms, ...adultSeriesContinueEntries()]",
+                      PORTAL_SOURCE)
+        home_renderer = re.search(
+            r"function renderHomeLibrary\(\) \{(.*?)\n    \}\n\n    async function setFilmFavourite",
+            PORTAL_SOURCE, re.DOTALL)
+        self.assertIsNotNone(home_renderer)
+        self.assertNotIn("adultSeriesContinueEntries", home_renderer.group(1))
+
+    def test_adult_series_episode_season_and_show_cleanup_use_recycle_bin(self) -> None:
+        series_id = self.fixture.library.create_adult_series("Silicon Valley")
+        root = self.fixture.library.adult_series_root / series_id
+        for season, episode in ((1, 1), (1, 2), (2, 1)):
+            folder = root / f"Season {season}"
+            folder.mkdir(exist_ok=True)
+            (folder / f"Silicon.Valley.S{season:02d}E{episode:02d}.mp4").write_bytes(b"episode")
+
+        removed = self.fixture.library.trash_adult_series_items({
+            "series": series_id, "scope": "season", "season": 1,
+        })
+        self.assertEqual(removed, 2)
+        remaining = self.fixture.library.adult_series_library()[0]
+        self.assertEqual([(item["season"], item["episode"])
+                          for item in remaining["episodes"]], [(2, 1)])
+        recycle = self.fixture.library.recycle_items()
+        self.assertEqual(len(recycle), 2)
+
+        self.fixture.library.manage({"action": "restore", "id": recycle[0]["id"]})
+        restored = self.fixture.library.adult_series_library()[0]
+        self.assertEqual(restored["episode_count"], 2)
+
+        removed = self.fixture.library.trash_adult_series_items({
+            "series": series_id, "scope": "series",
+        })
+        self.assertEqual(removed, 2)
+        self.assertEqual(self.fixture.library.adult_series_library(), [])
+
+    def test_viewing_insights_use_current_film_metadata_title(self) -> None:
+        self.fixture.channels.write_text(json.dumps({
+            "schema_version": 1, "channels": mabeltv_library.DEFAULT_CHANNELS,
+        }), encoding="utf-8")
+        film = self.fixture.media / "films" / "Room on the Broom - original.mp4"
+        film.parent.mkdir(parents=True, exist_ok=True)
+        film.write_bytes(b"film")
+        self.fixture.library.write_channel_media_states({
+            "programmes": {
+                self.fixture.library.channel_programme_key(3, film.name): {
+                    "title": "Room on the Broom",
+                },
+            },
+        })
+        now = time.time()
+        self.fixture.library.viewing_store["sessions"] = [{
+            "id": "film-session",
+            "item_key": f"channel:3:{film.name.casefold()}",
+            "title": "Room on the Broom - original",
+            "channel_number": 3,
+            "channel_name": "Old name",
+            "kind": "film",
+            "surface": "tv",
+            "started": now - 180,
+            "ended": now,
+            "seconds": 180,
+        }]
+
+        summary = self.fixture.library.viewing_insights(1, 0)
+        self.assertEqual(summary["top_films"][0]["title"], "Room on the Broom")
+        self.assertEqual(summary["sessions"][0]["source"], "Films")
+
+    def test_viewing_insights_include_item_drilldowns_and_completion_patterns(self) -> None:
+        self.fixture.channels.write_text(json.dumps({
+            "schema_version": 1, "channels": mabeltv_library.DEFAULT_CHANNELS,
+        }), encoding="utf-8")
+        now = time.time()
+        item_key = "channel:3:the film.mp4"
+        self.fixture.library.viewing_store["sessions"] = [
+            {
+                "id": "film-one", "item_key": item_key, "title": "The Film",
+                "channel_number": 3, "channel_name": "Films", "kind": "film",
+                "surface": "tv", "started": now - 7200, "ended": now - 6900,
+                "seconds": 300, "position": 1800, "media_duration": 3600,
+            },
+            {
+                "id": "film-two", "item_key": item_key, "title": "The Film",
+                "channel_number": 3, "channel_name": "Films", "kind": "film",
+                "surface": "device", "started": now - 3600, "ended": now - 3420,
+                "seconds": 180, "position": 3420, "media_duration": 3600,
+            },
+        ]
+
+        insights = self.fixture.library.viewing_insights(365, 0)
+        item = insights["items"][0]
+        self.assertEqual(item["item_key"], item_key)
+        self.assertEqual(item["sessions"], 2)
+        self.assertEqual(item["active_days"], 1)
+        self.assertEqual(item["average_session_seconds"], 240)
+        self.assertAlmostEqual(item["average_progress"], .725, places=3)
+        self.assertAlmostEqual(item["furthest_progress"], .95, places=3)
+        self.assertEqual(item["completion_sessions"], 1)
+        self.assertEqual({value["name"] for value in item["by_surface"]},
+                         {"tv", "device"})
+        self.assertEqual(len(item["hourly"]), 24)
+        self.assertEqual(len(item["weekdays"]), 7)
+        self.assertEqual(len(item["timeline"]), 12)
+        self.assertEqual(insights["top_films"][0]["item_key"], item_key)
+        self.assertEqual(len(insights["hourly"]), 24)
+        self.assertEqual(len(insights["weekdays"]), 7)
+
     def test_pi_ready_adult_upload_is_kept_without_conversion(self) -> None:
         self.fixture.library.complete_setup({
             "setup_code": "135790", "pin": "2468",
@@ -1498,11 +1841,13 @@ class LibraryUnitTests(unittest.TestCase):
             self.fixture.library.live_tv_control({"command": "leave-adult-mode"})
 
     def test_live_tv_navigation_shortcuts_are_forwarded_to_the_player(self) -> None:
-        commands = ("open-parent-menu", "open-tv-guide", "close-overlay",
+        commands = ("open-parent-menu", "open-tv-guide", "open-channel-menu", "close-overlay",
                     "restart-programme", "navigate-up", "navigate-down",
                     "navigate-left", "navigate-right", "select",
-                    "toggle-subtitles", "return-to-mabeltv", "toggle-remote-lock",
-                    "turn-on", "turn-off")
+                    "toggle-subtitles", "toggle-widescreen-mode",
+                    "return-to-mabeltv", "toggle-remote-lock",
+                    "turn-on", "turn-off", "turn-on-mabel-only",
+                    "turn-off-mabel-only")
         with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True):
             with mock.patch.object(mabeltv_library.socket, "socket") as socket_factory:
                 client = socket_factory.return_value.__enter__.return_value
@@ -1548,6 +1893,7 @@ class LibraryUnitTests(unittest.TestCase):
             "programme": "The Fellowship of the Ring", "paused": True,
             "volume": 48, "muted": False, "remote_locked": True,
             "subtitles_available": True, "subtitles_visible": True,
+            "playback_position": 1234.4, "playback_duration": 13680.7,
         })
 
         status = self.fixture.library.live_tv_status()
@@ -1566,6 +1912,52 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertTrue(status["remote_locked"])
         self.assertTrue(status["subtitles_available"])
         self.assertTrue(status["subtitles_visible"])
+        self.assertEqual(status["playback_position"], 1234)
+        self.assertEqual(status["playback_duration"], 13681)
+
+    def test_live_tv_status_exposes_connected_tv_power(self) -> None:
+        self.fixture.library.live_stream.status = mock.Mock(return_value={
+            "available": True, "programme": "Postman Pat",
+        })
+        self.fixture.library.player_mode_status = mock.Mock(return_value={
+            "mode": "kids", "standby": False,
+            "connected_tv_available": True, "connected_tv_power": "on",
+        })
+
+        status = self.fixture.library.live_tv_status()
+
+        self.assertTrue(status["connected_tv_available"])
+        self.assertEqual(status["connected_tv_power"], "on")
+
+    def test_live_tv_status_exposes_current_film_progress_for_home_card(self) -> None:
+        self.fixture.library.live_stream.status = mock.Mock(return_value={
+            "available": True, "programme": "Stick Man",
+        })
+        mode = {
+            "mode": "kids", "standby": False,
+            "connected_tv_available": True, "connected_tv_power": "on",
+        }
+        self.fixture.library.player_mode_status = mock.Mock(return_value=mode)
+        self.fixture.library.current_tv_viewing = mock.Mock(return_value={
+            "kind": "film", "position": 540.2, "media_duration": 1620.7,
+        })
+
+        status = self.fixture.library.live_tv_status()
+
+        self.assertEqual(status["playback_position"], 540)
+        self.assertEqual(status["playback_duration"], 1621)
+        self.fixture.library.current_tv_viewing.assert_called_once_with(mode)
+
+    def test_portal_power_prompt_is_skipped_when_connected_tv_already_matches(self) -> None:
+        self.assertIn("function connectedTvAlreadyAtTarget(state, turningOn)",
+                      PORTAL_SOURCE)
+        self.assertIn("await applyPortalPower(false, trigger)", PORTAL_SOURCE)
+        self.assertIn('id="homeMabelTvDot"', PORTAL_SOURCE)
+        self.assertIn('id="homeSpotlightProgress"', PORTAL_SOURCE)
+        self.assertIn("setHomeSpotlightProgress(state)", PORTAL_SOURCE)
+        self.assertIn("media?.remote_duration", PORTAL_SOURCE)
+        self.assertIn("nowPlayingMeta.classList.toggle('hidden'", PORTAL_SOURCE)
+        self.assertIn("background: #ff5a6e", PORTAL_STYLES)
 
     def test_player_mode_status_tolerates_an_unavailable_player_socket(self) -> None:
         with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True):
@@ -1935,6 +2327,33 @@ class UsbAndMetadataTests(unittest.TestCase):
                          b"one" * 1000)
         self.assertFalse(any(self.fixture.library.adult_root.glob("*.part")))
         self.fixture.library.refresh_tv.assert_called_once()
+
+    def test_usb_series_import_preserves_season_folders_without_refreshing_tv(self) -> None:
+        season = self.volume / "Silicon Valley" / "Season 1"
+        season.mkdir(parents=True)
+        episode = season / "Silicon.Valley.S01E06.720p.HDTV.x264.mkv"
+        episode.write_bytes(b"episode" * 1000)
+
+        job = self.fixture.library.start_usb_import({
+            "volume": "TEST-USB",
+            "paths": ["Silicon Valley/Season 1"],
+            "target": "series",
+            "series_name": "Silicon Valley",
+        })
+        deadline = time.time() + 5
+        result = job
+        while result["status"] not in {"complete", "error"} and time.time() < deadline:
+            time.sleep(0.02)
+            result = self.fixture.library.usb_import_status(job["id"])
+
+        self.assertEqual(result["status"], "complete")
+        imported = (self.fixture.library.adult_series_root / result["series"] /
+                    "Season 1" / episode.name)
+        self.assertEqual(imported.read_bytes(), b"episode" * 1000)
+        self.fixture.library.refresh_tv.assert_not_called()
+        series = self.fixture.library.adult_series_library()[0]
+        self.assertEqual(series["episodes"][0]["season"], 1)
+        self.assertEqual(series["episodes"][0]["episode"], 6)
 
     def test_usb_direct_play_sends_only_resolved_mounted_media(self) -> None:
         movie = self.volume / "Movie.mp4"
@@ -2316,6 +2735,21 @@ class UsbAndMetadataTests(unittest.TestCase):
         rendered = self.fixture.library.library()["channels"]
         film_channel = next(channel for channel in rendered if channel["number"] == 5)
         self.assertEqual(film_channel["programmes"][0]["metadata"]["tmdb_id"], 202)
+        self.assertEqual(
+            self.fixture.library.channel_programme_title(5, file_name),
+            "Room on the Broom")
+        self.fixture.library.player_state_path = self.fixture.root / "state.json"
+        self.fixture.library.write_json(self.fixture.library.player_state_path, {
+            "standby": False,
+            "current_channel": 5,
+            "playback_paused": True,
+            "channel_timelines": {"5": {
+                "episode_name": file_name,
+                "position_seconds": 90,
+            }},
+        })
+        live = self.fixture.library.live_stream.source()
+        self.assertEqual(live["programme"], "Room on the Broom")
         with self.assertRaisesRegex(ValueError, "only available for film channels"):
             self.fixture.library.refresh_channel_programme_metadata({
                 "channel": 1, "file": "Episode.mp4",
@@ -2438,13 +2872,21 @@ class UsbAndMetadataTests(unittest.TestCase):
         self.fixture.library.record_viewing(activity, 45, now - 60)
         self.fixture.library.record_viewing(activity, 30, now - 20)
 
+        self.assertEqual(self.fixture.library.viewing_store["sessions"], [])
+        self.fixture.library.record_viewing(activity, 45, now)
         self.assertEqual(len(self.fixture.library.viewing_store["sessions"]), 1)
-        self.assertEqual(self.fixture.library.viewing_store["sessions"][0]["seconds"], 75)
+        self.assertEqual(self.fixture.library.viewing_store["sessions"][0]["seconds"], 120)
         summary = self.fixture.library.viewing_insights(30, 0)
         self.assertEqual(summary["summary"]["sessions"], 1)
-        self.assertEqual(summary["summary"]["range_seconds"], 75)
+        self.assertEqual(summary["summary"]["range_seconds"], 120)
         self.assertEqual(summary["summary"]["active_days"], 1)
+        self.assertEqual(summary["summary"]["unique_items"], 1)
+        self.assertEqual(summary["summary"]["average_active_day_seconds"], 120)
+        self.assertEqual(summary["summary"]["longest_session_seconds"], 120)
         self.assertEqual(summary["top_titles"][0]["title"], "Film")
+        self.assertEqual(summary["top_films"][0]["title"], "Film")
+        self.assertEqual(len(summary["time_of_day"]), 4)
+        self.assertTrue(summary["timeline"])
         self.assertEqual(summary["by_surface"][0]["name"], "tv")
 
     def test_viewing_history_counts_remote_playback_but_rejects_seeks(self) -> None:
@@ -2456,16 +2898,18 @@ class UsbAndMetadataTests(unittest.TestCase):
             "channels": [{"number": 1, "name": "Series", "folder": "series",
                           "content_type": "shows"}],
         })
+        samples = list(range(0, 121, 10)) + [500]
         with mock.patch.object(mabeltv_library.time, "monotonic",
-                               side_effect=[100.0, 110.0, 120.0]):
-            self.fixture.library.record_remote_viewing(session, "token", 0)
-            self.fixture.library.record_remote_viewing(session, "token", 10)
-            self.fixture.library.record_remote_viewing(session, "token", 500)
+                               side_effect=[100.0 + value for value in samples]):
+            for position in samples:
+                self.fixture.library.record_remote_viewing(
+                    session, "token", position, 1800)
 
         sessions = self.fixture.library.viewing_store["sessions"]
         self.assertEqual(len(sessions), 1)
-        self.assertEqual(sessions[0]["seconds"], 10)
-        self.assertEqual(sessions[0]["kind"], "episode")
+        self.assertEqual(sessions[0]["seconds"], 120)
+        self.assertEqual(sessions[0]["kind"], "channel")
+        self.assertEqual(sessions[0]["title"], "Series")
 
     def test_viewing_history_joins_each_concurrent_surface_session(self) -> None:
         now = time.time()
@@ -2473,14 +2917,14 @@ class UsbAndMetadataTests(unittest.TestCase):
               "surface": "tv", "channel_number": 5, "channel_name": "Films"}
         device = {**tv, "item_key": "browser:channel:5/film.mp4",
                   "surface": "device"}
-        self.fixture.library.record_viewing(tv, 15, now - 45)
-        self.fixture.library.record_viewing(device, 15, now - 30)
-        self.fixture.library.record_viewing(tv, 15, now - 15)
-        self.fixture.library.record_viewing(device, 15, now)
+        self.fixture.library.record_viewing(tv, 60, now - 45)
+        self.fixture.library.record_viewing(device, 60, now - 30)
+        self.fixture.library.record_viewing(tv, 60, now - 15)
+        self.fixture.library.record_viewing(device, 60, now)
 
         sessions = self.fixture.library.viewing_store["sessions"]
         self.assertEqual(len(sessions), 2)
-        self.assertEqual(sorted(item["seconds"] for item in sessions), [30, 30])
+        self.assertEqual(sorted(item["seconds"] for item in sessions), [120, 120])
 
     def test_tv_viewing_identity_handles_channels_and_adult_mode(self) -> None:
         self.fixture.library.write_json(self.fixture.channels, {
@@ -2502,16 +2946,62 @@ class UsbAndMetadataTests(unittest.TestCase):
             "mode": "adult", "standby": False, "playing": True,
             "paused": False, "programme": "Adult Film",
         }
-        adult = self.fixture.library.current_tv_viewing()
-        self.assertEqual(adult["title"], "Adult Film")
-        self.assertEqual(adult["kind"], "adult")
+        self.assertIsNone(self.fixture.library.current_tv_viewing())
+
+    def test_viewing_history_rolls_episodes_up_to_channel_and_deletes_selected(self) -> None:
+        now = time.time()
+        activity = {"item_key": "channel:2", "title": "Puffin Rock",
+                    "kind": "channel", "surface": "tv", "channel_number": 2,
+                    "channel_name": "Puffin Rock"}
+        self.fixture.library.record_viewing(activity, 60, now - 60)
+        self.fixture.library.record_viewing(activity, 60, now)
+        summary = self.fixture.library.viewing_insights(1, 0)
+        self.assertEqual(summary["sessions"][0]["title"], "Puffin Rock")
+        self.assertEqual(summary["sessions"][0]["kind"], "channel")
+        session_id = summary["sessions"][0]["id"]
+        result = self.fixture.library.delete_viewing_sessions({"ids": [session_id]})
+        self.assertEqual(result["deleted"], 1)
+        self.assertEqual(self.fixture.library.viewing_store["sessions"], [])
+
+    def test_viewing_history_migration_removes_non_mabel_and_short_sessions(self) -> None:
+        now = time.time()
+        self.fixture.library.write_json(self.fixture.library.viewing_history_path, {
+            "schema_version": 1,
+            "tracking_started": now - 1000,
+            "sessions": [
+                {"kind": "adult", "seconds": 300, "ended": now,
+                 "channel_number": None},
+                {"kind": "usb", "seconds": 300, "ended": now,
+                 "channel_number": None},
+                {"kind": "episode", "seconds": 90, "ended": now,
+                 "channel_number": 2, "channel_name": "Puffin Rock"},
+                {"kind": "episode", "seconds": 180, "ended": now,
+                 "channel_number": 2, "channel_name": "Puffin Rock",
+                 "item_key": "channel:2:episode.mp4", "surface": "tv"},
+            ],
+        })
+        store = self.fixture.library.load_viewing_store()
+        self.assertEqual(len(store["sessions"]), 1)
+        self.assertEqual(store["sessions"][0]["kind"], "channel")
+        self.assertEqual(store["sessions"][0]["item_key"], "channel:2")
+        self.assertTrue(store["sessions"][0]["id"])
+        persisted = self.fixture.library.read_json(
+            self.fixture.library.viewing_history_path, {})
+        self.assertEqual(persisted["schema_version"], 2)
+        self.assertEqual(len(persisted["sessions"]), 1)
 
     def test_experience_uses_shared_icons_and_clear_channel_pager(self) -> None:
         channel_script = (PORTAL_ROOT / "js" / "channel-page.js").read_text(
             encoding="utf-8")
+        library_script = (PORTAL_ROOT / "js" / "library.js").read_text(
+            encoding="utf-8")
         system_view = (PORTAL_ROOT / "html" / "views" / "system.html").read_text(
             encoding="utf-8")
+        insights_view = (PORTAL_ROOT / "html" / "views" / "insights.html").read_text(
+            encoding="utf-8")
         experience_css = (PORTAL_ROOT / "css" / "experience-library.css").read_text(
+            encoding="utf-8")
+        settings_css = (PORTAL_ROOT / "css" / "experience-settings.css").read_text(
             encoding="utf-8")
         playback_script = (PORTAL_ROOT / "js" / "playback.js").read_text(
             encoding="utf-8")
@@ -2526,9 +3016,33 @@ class UsbAndMetadataTests(unittest.TestCase):
                       playback_script)
         self.assertNotIn("viewBox=", design_switch)
         self.assertEqual(design_switch.count("/portal/icons.svg#signal-check"), 2)
-        self.assertIn('id="viewingInsights"', system_view)
-        self.assertIn('/portal/icons.svg#signal-chart-column', system_view)
+        self.assertNotIn('id="viewingInsights"', system_view)
+        self.assertIn('data-go="insights"', system_view)
+        self.assertIn('id="viewingInsights"', insights_view)
+        self.assertIn('/portal/icons.svg#signal-chart-column', insights_view)
         self.assertNotIn('<svg viewBox="0 0 24 24"', system_view)
+        self.assertNotIn('<svg viewBox="0 0 24 24"', insights_view)
+        self.assertNotIn('id="viewingDeleteSelected"', insights_view)
+        self.assertNotIn("selectedViewingSessions", library_script)
+        self.assertIn("bindViewingSessionSwipe", library_script)
+        self.assertIn("viewing-session-delete", settings_css)
+        self.assertIn("renderViewingItem", library_script)
+        self.assertIn("new Chart(canvas, config)", library_script)
+        self.assertNotIn("createElementNS(namespace, 'polyline')", library_script)
+        self.assertIn("viewing-destinations", settings_css)
+        self.assertIn("viewing-catalog-grid", settings_css)
+        self.assertIn('id="viewingItemDetail"', insights_view)
+        self.assertIn('id="viewingItemWeekdays"', insights_view)
+        self.assertIn('id="viewingDiary"', insights_view)
+        self.assertIn('data-insights-tab="history"', insights_view)
+        self.assertIn('id="viewingRangeControls"', insights_view)
+        self.assertIn('id="viewingItemRangeSelect"', insights_view)
+        self.assertIn('viewing-insights-loading hidden', insights_view)
+        self.assertIn('replaceInsightsRoute(`insights/item/', library_script)
+        self.assertIn("$('#viewingRangeControls')?.classList.toggle('hidden'", library_script)
+        self.assertIn('viewingInsightsLoadedRange === viewingInsightsRange', library_script)
+        self.assertIn('background-size: contain', settings_css)
+        self.assertIn('.viewing-range.hidden { display: none; }', settings_css)
 
 
 class LibraryHttpTests(unittest.TestCase):

@@ -18,6 +18,7 @@ Window {
     property real distortionPhase: 0
     property bool poweringOff: false
     property real powerOffProgress: 0
+    property bool powerOffControlsConnectedTv: true
     property bool previousHeldForParent: false
     property bool previousHeldForRestart: false
     property bool muteHeldForLock: false
@@ -45,6 +46,7 @@ Window {
     property string pendingPowerAction: ""
     property bool pendingPowerOnWake: false
     property bool filmCountdownActive: false
+    property bool widescreenMode: false
     property int filmCountdownValue: 10
     property real filmCountdownSpin: 0
     property real filmCountdownFlicker: 1
@@ -60,6 +62,11 @@ Window {
         && adultMode.subtitlesAvailable
     readonly property bool portalSubtitlesVisible: adultMode.active
         && adultMode.subtitlesVisible
+    readonly property bool widescreenContentAvailable: !directMediaMode
+        && !introPlaying && player.videoAspectRatio >= 1.70
+    readonly property bool portalWidescreenAvailable: widescreenContentAvailable
+    readonly property bool portalWidescreenEnabled: widescreenMode
+        && widescreenContentAvailable
 
     function acceptRepeat(kind, isAutoRepeat) {
         const now = Date.now()
@@ -149,12 +156,14 @@ Window {
         scrubOsdTimer.restart()
     }
 
-    function beginPowerOff() {
+    function beginPowerOff(controlConnectedTv) {
         if (poweringOff || pendingPowerAction.length > 0)
             return
+        powerOffControlsConnectedTv = controlConnectedTv !== false
         if (tvController.standby) {
             // Explicit OFF is intentionally harmless when already in standby.
-            tvController.turnOff()
+            if (powerOffControlsConnectedTv)
+                tvController.turnOff()
             return
         }
         cancelFilmCountdown()
@@ -246,6 +255,8 @@ Window {
     function portalNavigate(key) {
         if (adultMode.active) {
             adultMode.handleKey(key, false)
+        } else if (channelSummaryOverlay.visible) {
+            channelSummaryOverlay.handleKey(key, false)
         } else if (guideOverlay.visible) {
             guideOverlay.handleKey(key, true)
         } else if (parentOverlay.visible) {
@@ -304,9 +315,18 @@ Window {
                 adultMode.close()
             tvController.closeParent()
             guideOverlay.open()
+        } else if (command === "open-channel-menu") {
+            if (adultMode.active)
+                adultMode.close()
+            guideOverlay.close()
+            tvController.closeParent()
+            syncPlaybackPosition()
+            channelSummaryOverlay.open()
         } else if (command === "close-overlay") {
             if (adultMode.active)
                 adultMode.back(false)
+            else if (channelSummaryOverlay.visible)
+                channelSummaryOverlay.close()
             else if (guideOverlay.visible)
                 guideOverlay.close()
             else
@@ -359,6 +379,12 @@ Window {
         } else if (command === "toggle-subtitles") {
             if (adultMode.active)
                 adultMode.toggleSubtitles()
+        } else if (command === "toggle-widescreen-mode") {
+            if (!adultMode.active && widescreenContentAvailable) {
+                widescreenMode = !widescreenMode
+                showProgramme(widescreenMode ? "WIDESCREEN MODE ON"
+                                             : "WIDESCREEN MODE OFF")
+            }
         } else if (command === "volume-up") {
             tvController.dispatchPortal(TvController.VolumeUp)
         } else if (command === "volume-down") {
@@ -367,8 +393,12 @@ Window {
             tvController.dispatchPortal(TvController.ToggleMute)
         } else if (command === "turn-on") {
             tvController.turnOn()
+        } else if (command === "turn-on-mabel-only") {
+            tvController.turnOnMabelOnly()
         } else if (command === "turn-off") {
             beginPowerOff()
+        } else if (command === "turn-off-mabel-only") {
+            beginPowerOff(false)
         } else if (command === "toggle-power") {
             // Compatibility for an older portal page. Use MabelTV state, not a
             // CEC power-toggle opcode, to choose the explicit operation.
@@ -532,16 +562,19 @@ Window {
         readonly property bool isSilver: styleName === "silver-90s"
         readonly property bool isCharcoal: styleName === "charcoal-90s"
         readonly property bool isVintage: styleName === "vintage-black"
+        readonly property bool widescreen: root.portalWidescreenEnabled
         // Keep Slim Black's original proportions exactly. The three physical
         // sets have a smaller tube so there is room for their real cabinet
         // furniture beneath it.
         readonly property real sideInset: Math.max(54, width * 0.070)
-        readonly property real tubeWidth: isSlim ? width - sideInset * 2
-            : (isSilver ? width * 0.790
-               : (isCharcoal ? width * 0.770 : width * 0.740))
-        readonly property real tubeHeight: tubeWidth * 3 / 4
-        readonly property real tubeTop: isSlim ? (height - tubeHeight) / 2
-            : (isVintage ? width * 0.052 : width * 0.044)
+        readonly property real tubeWidth: widescreen ? width * 0.89
+            : (isSlim ? width - sideInset * 2
+               : (isSilver ? width * 0.790
+                  : (isCharcoal ? width * 0.770 : width * 0.740)))
+        readonly property real tubeHeight: tubeWidth * (widescreen ? 9 / 16 : 3 / 4)
+        readonly property real tubeTop: widescreen ? width * 0.030
+            : (isSlim ? (height - tubeHeight) / 2
+               : (isVintage ? width * 0.052 : width * 0.044))
         readonly property real lipWidth: Math.max(12, width * (
             isSlim ? 0.015 : (isVintage ? 0.020 : 0.017)))
         readonly property color lipColor: isSlim ? "#060807"
@@ -550,8 +583,10 @@ Window {
         readonly property real fasciaTop: tubeTop + tubeHeight + lipWidth
 
         anchors.centerIn: parent
-        width: Math.min(root.width - 48, (root.height - 48) * 4 / 3)
-        height: width * 3 / 4
+        width: widescreen
+            ? Math.min(root.width - 48, (root.height - 48) / 0.64)
+            : Math.min(root.width - 48, (root.height - 48) * 4 / 3)
+        height: width * (widescreen ? 0.64 : 3 / 4)
         radius: isSlim ? Math.max(38, width * 0.055)
             : Math.max(44, width * 0.067)
         color: "#151a16"
@@ -858,7 +893,7 @@ Window {
             x: (cabinet.width - width) / 2
             y: cabinet.tubeTop
             width: cabinet.tubeWidth
-            height: width * 3 / 4
+            height: cabinet.tubeHeight
             radius: cabinet.isSlim ? Math.max(38, width * 0.065)
                 : Math.max(42, width * 0.075)
             color: "#010201"
@@ -899,6 +934,13 @@ Window {
                 volume: tvController.volume
                 muted: tvController.muted
                 aspectMode: tvController.currentAspectMode
+
+                onSourceChanged: root.widescreenMode = false
+
+                onVideoAspectRatioChanged: {
+                    if (!root.widescreenContentAvailable)
+                        root.widescreenMode = false
+                }
 
                 onPausedChanged: {
                     if (!root.introPlaying && !directMediaMode
@@ -1656,7 +1698,10 @@ Window {
         PauseAnimation { duration: 70 }
         ScriptAction {
             script: {
-                tvController.turnOff()
+                if (root.powerOffControlsConnectedTv)
+                    tvController.turnOff()
+                else
+                    tvController.turnOffMabelOnly()
                 root.poweringOff = false
             }
         }
@@ -1800,7 +1845,7 @@ Window {
                 // overlay. A fresh Home press still closes it normally.
                 event.accepted = true
             } else if (channelSummaryOverlay.visible) {
-                event.accepted = channelSummaryOverlay.handleKey(event.key)
+                event.accepted = channelSummaryOverlay.handleKey(event.key, event.isAutoRepeat)
             } else if (guideOverlay.visible && root.okHeldForGuide
                        && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
                 // Ignore the repeat tail of the same OK hold that opened the
@@ -1967,10 +2012,12 @@ Window {
                 root.homeHeldForChannelSummary = false
                 event.accepted = true
             } else if (event.key === Qt.Key_P && !event.isAutoRepeat) {
-                if (tvController.standby)
-                    tvController.turnOn()
-                else
-                    root.beginPowerOff()
+                if (!tvController.remoteLocked) {
+                    if (tvController.standby)
+                        tvController.turnOn()
+                    else
+                        root.beginPowerOff()
+                }
                 event.accepted = true
             }
         }

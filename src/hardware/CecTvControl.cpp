@@ -67,6 +67,7 @@ void CecTvControl::turnOn()
     replacePendingCommands({
         {QStringLiteral("on 0"), QStringLiteral("wake TV")},
         {QStringLiteral("as"), QStringLiteral("select MabelTV HDMI source")},
+        {QStringLiteral("pow 0"), QStringLiteral("query TV power status")},
     });
 }
 
@@ -74,13 +75,24 @@ void CecTvControl::turnOff()
 {
     replacePendingCommands({
         {QStringLiteral("standby 0"), QStringLiteral("put TV in standby")},
+        {QStringLiteral("pow 0"), QStringLiteral("query TV power status")},
     });
 }
 
 void CecTvControl::getStatus()
 {
+    const QString powerQuery = QStringLiteral("pow 0");
+    if (m_process.state() != QProcess::NotRunning
+        && m_currentCommand.input == powerQuery) {
+        return;
+    }
+    for (const Command &command : std::as_const(m_pendingCommands)) {
+        if (command.input == powerQuery) {
+            return;
+        }
+    }
     m_pendingCommands.enqueue(
-        {QStringLiteral("pow 0"), QStringLiteral("query TV power status")});
+        {powerQuery, QStringLiteral("query TV power status")});
     startNextCommand();
 }
 

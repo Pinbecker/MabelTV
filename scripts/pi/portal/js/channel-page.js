@@ -51,6 +51,9 @@ const ChannelPageComponents = (() => {
               <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-plus"/></svg>
               <span>Add videos</span>
             </button>
+            <button id="workspaceFavourite" type="button" class="channel-page-icon channel-page-favourite hidden" aria-label="Add channel to favourites">
+              <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-heart"/></svg>
+            </button>
             <button id="workspaceSettings" type="button" class="channel-page-icon" aria-label="Manage channel">
               <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-settings"/></svg>
             </button>
@@ -72,16 +75,6 @@ const ChannelPageComponents = (() => {
             <span>Find a programme</span>
             <input id="programmeSearch" type="search" placeholder="Search titles" autocomplete="off">
           </label>
-          <div class="channel-page-filters" aria-label="Programme visibility">
-            <button type="button" class="channel-page-filter active" data-programme-visibility="all">All</button>
-            <button type="button" class="channel-page-filter" data-programme-visibility="enabled">On TV</button>
-            <button type="button" class="channel-page-filter" data-programme-visibility="disabled">Hidden</button>
-          </div>
-          <select id="programmeVisibility" class="hidden" aria-hidden="true" tabindex="-1">
-            <option value="all">All programmes</option>
-            <option value="enabled">Shown on TV</option>
-            <option value="disabled">Hidden from TV</option>
-          </select>
         </div>
         <div id="channels" class="channel-page-programmes"></div>
         <div id="programmePager" class="channel-page-more hidden"></div>
@@ -249,7 +242,7 @@ const ChannelPageComponents = (() => {
     document.querySelector('#workspacePictureMode').textContent = handlers.aspectLabel(channel.aspect)
   }
 
-  function renderLibrary({ channel, filtered, page, pageSize, visibility, search, onOpen, onLoadMore }) {
+  function renderLibrary({ channel, filtered, page, pageSize, search, onOpen, onLoadMore }) {
     const isFilms = channel.content_type === 'films'
     const visibleCount = isFilms
       ? filtered.length
@@ -260,27 +253,20 @@ const ChannelPageComponents = (() => {
     root.className = `channel-page-programmes ${isFilms ? 'is-film-grid watch-poster-grid' : 'is-show-list'}`
 
     document.querySelector('#channelLibraryTitle').textContent = isFilms ? 'Films in this channel' : 'Episodes in this channel'
-    document.querySelector('#channelSummary').textContent = search || visibility !== 'all'
+    document.querySelector('#channelSummary').textContent = search
       ? `${filtered.length} matching ${isFilms ? 'film' : 'episode'}${filtered.length === 1 ? '' : 's'}`
       : isFilms ? `${filtered.length} films in this channel.` : 'Choose an episode, then decide where to watch it.'
     document.querySelector('#channelResultCount').textContent = `${filtered.length} ${isFilms ? 'film' : 'episode'}${filtered.length === 1 ? '' : 's'}`
     document.querySelector('#programmeSearch').placeholder = isFilms ? 'Search films' : 'Search episodes'
     document.querySelector('#programmeSearch').value = search
-    document.querySelector('#programmeVisibility').value = visibility
-    document.querySelector('.channel-page-filters').classList.toggle('hidden', isFilms)
-    document.querySelectorAll('[data-programme-visibility]').forEach(button => {
-      const active = button.dataset.programmeVisibility === visibility
-      button.classList.toggle('active', active)
-      button.setAttribute('aria-pressed', String(active))
-    })
 
     if (!visible.length) {
       const empty = document.createElement('div')
       empty.className = 'channel-page-empty'
       const heading = document.createElement('strong')
       const message = document.createElement('span')
-      heading.textContent = channel.programmes.length ? 'Nothing matches those filters' : `No ${isFilms ? 'films' : 'episodes'} yet`
-      message.textContent = channel.programmes.length ? 'Try another title or visibility filter.' : 'Use Add videos to put the first one here.'
+      heading.textContent = channel.programmes.length ? 'Nothing matches that search' : `No ${isFilms ? 'films' : 'episodes'} yet`
+      message.textContent = channel.programmes.length ? 'Try another title.' : 'Use Add videos to put the first one here.'
       empty.append(heading, message)
       root.append(empty)
     } else {

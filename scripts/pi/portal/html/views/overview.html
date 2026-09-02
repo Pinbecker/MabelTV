@@ -1,11 +1,17 @@
       <section id="view-overview" class="view active"><div class="page home-page">
         <section class="home-spotlight" aria-labelledby="homeNowPlayingTitle">
-          <div id="homeSpotlightArt" class="home-spotlight-art" aria-hidden="true"></div>
+          <div id="homeSpotlightArt" class="home-spotlight-art" aria-hidden="true">
+            <span id="homeSpotlightProgress" class="home-spotlight-progress hidden"><i></i><small id="homeSpotlightLeft"></small></span>
+          </div>
           <div class="home-spotlight-content">
             <p class="eyebrow">On <span data-tv-name>Your TV</span> now</p>
             <div class="home-now-playing" aria-live="polite">
               <h1 id="homeNowPlayingTitle">Checking MabelTV…</h1>
               <p id="homeNowPlayingMeta">Getting the current programme</p>
+              <div class="home-power-statuses" aria-label="Power status">
+                <span><i id="homeMabelTvDot" class="home-power-dot is-unknown" aria-hidden="true"></i>MabelTV <strong id="homeMabelTvState">Checking…</strong></span>
+                <span><i id="homeConnectedTvDot" class="home-power-dot" aria-hidden="true"></i>Connected TV <strong id="homeConnectedTvState">Checking…</strong></span>
+              </div>
             </div>
             <div class="home-spotlight-actions">
               <button type="button" class="primary" data-go="live"><svg class="icon"><use href="/portal/icons.svg#signal-radio"/></svg><span>Open remote</span></button>
@@ -19,7 +25,7 @@
             <label class="home-global-search"><svg class="icon"><use href="/portal/icons.svg#signal-search"/></svg><input id="homeFilmSearch" type="search" autocomplete="off" placeholder="Search all films" aria-label="Search Adult TV and MabelTV films"><button id="homeFilmSearchClear" type="button" class="hidden" aria-label="Clear global film search">×</button></label>
             <section id="homeSearchSection" class="home-media-section hidden" aria-labelledby="homeSearchTitle"><header><h2 id="homeSearchTitle">Search results</h2><span id="homeSearchCount"></span></header><div id="homeSearchRail" class="home-poster-rail"></div></section>
             <section id="homeContinueSection" class="home-media-section hidden" aria-labelledby="homeContinueTitle"><header><h2 id="homeContinueTitle">Continue playing</h2><span id="homeContinueCount"></span></header><div id="homeContinueRail" class="watch-continue-rail home-continue-rail"></div></section>
-            <section id="homeFavouritesSection" class="home-media-section" aria-labelledby="homeFavouritesTitle"><header><h2 id="homeFavouritesTitle">Favourites</h2><span id="homeFavouritesCount"></span></header><div id="homeFavouritesRail" class="home-poster-rail"></div><p id="homeFavouritesEmpty" class="home-media-empty hidden">Mark a film as a favourite and it will appear here.</p></section>
+            <section id="homeFavouritesSection" class="home-media-section" aria-labelledby="homeFavouritesTitle"><header><h2 id="homeFavouritesTitle">Favourites</h2><span id="homeFavouritesCount"></span></header><div id="homeFavouritesRail" class="home-poster-rail"></div><p id="homeFavouritesEmpty" class="home-media-empty hidden">Mark a film or episode channel as a favourite and it will appear here.</p></section>
           </section>
           <section class="home-device" aria-labelledby="healthTitle">
             <button type="button" class="home-device-summary" data-go="system">

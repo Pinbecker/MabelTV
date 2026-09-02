@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Effects
 
 Item {
     id: overlay
@@ -13,7 +14,7 @@ Item {
     readonly property bool filmChannel: summary.contentType === "films"
     readonly property var programmes: summary.programmes || []
     readonly property real uiScale: Math.max(0.66, Math.min(width / 1920, height / 1080))
-    readonly property int filmColumns: width >= 1500 ? 6 : 5
+    readonly property int filmColumns: 5
 
     visible: false
 
@@ -27,6 +28,11 @@ Item {
         const hours = Math.floor(total / 3600)
         const minutes = Math.floor((total % 3600) / 60)
         return hours > 0 ? hours + "h " + minutes + "m" : minutes + "m"
+    }
+
+    function episodeCode(number) {
+        const episode = Math.max(0, Math.floor(Number(number) || 0))
+        return episode > 0 ? "E" + (episode < 10 ? "0" : "") + episode : "PLAY"
     }
 
     function refresh() {
@@ -73,9 +79,7 @@ Item {
         if (!programme)
             return
         const position = Number(programme.position) || 0
-        const duration = Number(programme.duration) || 0
-        if (filmChannel && position >= 30
-                && (duration < 60 || position < duration - 60)) {
+        if (filmChannel && position >= 30) {
             playChoiceIndex = 0
             playChoiceVisible = true
         } else {
@@ -83,7 +87,7 @@ Item {
         }
     }
 
-    function handleKey(key) {
+    function handleKey(key, isAutoRepeat) {
         if (!visible)
             return false
 
@@ -93,7 +97,8 @@ Item {
             } else if (key === Qt.Key_Right || key === Qt.Key_Down) {
                 playChoiceIndex = 1
             } else if (key === Qt.Key_Return || key === Qt.Key_Enter) {
-                playSelected(playChoiceIndex === 1)
+                if (!isAutoRepeat)
+                    playSelected(playChoiceIndex === 1)
             } else if (key === Qt.Key_B || key === Qt.Key_Backspace
                        || key === Qt.Key_Escape || key === Qt.Key_Home) {
                 playChoiceVisible = false
@@ -134,11 +139,11 @@ Item {
     Rectangle {
         id: panel
         anchors.centerIn: parent
-        width: Math.min(parent.width - 120 * overlay.uiScale, 1600 * overlay.uiScale)
-        height: Math.min(parent.height - 90 * overlay.uiScale, 930 * overlay.uiScale)
-        radius: 28 * overlay.uiScale
-        color: "#fa0b0b10"
-        border.color: "#5d47444b"
+        width: Math.min(parent.width - 140 * overlay.uiScale, 1120 * overlay.uiScale)
+        height: Math.min(parent.height - 88 * overlay.uiScale, 932 * overlay.uiScale)
+        radius: 30 * overlay.uiScale
+        color: "#fc0c0c11"
+        border.color: "#534b55"
         border.width: 2 * overlay.uiScale
         clip: true
 
@@ -147,20 +152,34 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
-            height: 220 * overlay.uiScale
-            color: "#14141a"
+            height: 190 * overlay.uiScale
+            radius: panel.radius - panel.border.width
+            color: "#151419"
             clip: true
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: parent.radius
+                color: parent.color
+            }
 
             Image {
                 id: channelArtwork
                 anchors.left: parent.left
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
-                width: Math.min(parent.width * 0.43, 640 * overlay.uiScale)
+                width: Math.min(parent.width * 0.41, 430 * overlay.uiScale)
                 source: overlay.summary.artwork || ""
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true
                 cache: true
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    maskEnabled: true
+                    maskSource: channelArtworkMask
+                }
 
                 Rectangle {
                     anchors.fill: parent
@@ -169,7 +188,7 @@ Item {
 
                     Rectangle {
                         anchors.centerIn: parent
-                        width: 88 * overlay.uiScale
+                        width: 76 * overlay.uiScale
                         height: width
                         radius: 22 * overlay.uiScale
                         color: "#292531"
@@ -179,7 +198,7 @@ Item {
                             color: "#ff7424"
                             font.family: "DejaVu Sans"
                             font.bold: true
-                            font.pixelSize: 42 * overlay.uiScale
+                            font.pixelSize: 36 * overlay.uiScale
                             text: "M"
                         }
                     }
@@ -190,15 +209,44 @@ Item {
                     gradient: Gradient {
                         orientation: Gradient.Horizontal
                         GradientStop { position: 0; color: "#17000000" }
-                        GradientStop { position: 0.72; color: "#25000000" }
+                        GradientStop { position: 0.62; color: "#25000000" }
                         GradientStop { position: 1; color: "#ff14141a" }
                     }
                 }
             }
 
+            Item {
+                id: channelArtworkMask
+                anchors.fill: channelArtwork
+                visible: false
+                layer.enabled: true
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: panel.radius - panel.border.width
+                    color: "white"
+                }
+
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    height: panel.radius
+                    color: "white"
+                }
+
+                Rectangle {
+                    anchors.top: parent.top
+                    anchors.right: parent.right
+                    width: panel.radius
+                    height: panel.radius
+                    color: "white"
+                }
+            }
+
             Column {
                 anchors.left: channelArtwork.right
-                anchors.leftMargin: 28 * overlay.uiScale
+                anchors.leftMargin: 26 * overlay.uiScale
                 anchors.right: parent.right
                 anchors.rightMargin: 36 * overlay.uiScale
                 anchors.verticalCenter: parent.verticalCenter
@@ -209,7 +257,7 @@ Item {
                     font.family: "DejaVu Sans"
                     font.bold: true
                     font.letterSpacing: 2 * overlay.uiScale
-                    font.pixelSize: 17 * overlay.uiScale
+                    font.pixelSize: 15 * overlay.uiScale
                     text: "CH " + overlay.summary.number + "  ·  "
                           + (overlay.filmChannel ? "FILM CHANNEL" : "SERIES CHANNEL")
                 }
@@ -220,14 +268,14 @@ Item {
                     elide: Text.ElideRight
                     font.family: "DejaVu Sans"
                     font.bold: true
-                    font.pixelSize: 48 * overlay.uiScale
+                    font.pixelSize: 42 * overlay.uiScale
                     text: overlay.summary.name || "Channel"
                 }
 
                 Text {
                     color: "#aaa6ae"
                     font.family: "DejaVu Sans"
-                    font.pixelSize: 20 * overlay.uiScale
+                    font.pixelSize: 18 * overlay.uiScale
                     text: overlay.summary.programmeCount + (overlay.filmChannel ? " films" : " episodes")
                 }
             }
@@ -239,74 +287,110 @@ Item {
             anchors.right: parent.right
             anchors.top: channelHeader.bottom
             anchors.bottom: footer.top
-            anchors.margins: 24 * overlay.uiScale
+            anchors.leftMargin: 22 * overlay.uiScale
+            anchors.rightMargin: 22 * overlay.uiScale
+            anchors.topMargin: 20 * overlay.uiScale
+            anchors.bottomMargin: 18 * overlay.uiScale
 
             ListView {
                 id: episodeList
                 anchors.fill: parent
                 visible: !overlay.filmChannel
                 clip: true
-                spacing: 8 * overlay.uiScale
+                spacing: 4 * overlay.uiScale
                 model: overlay.programmes
                 currentIndex: overlay.selectedIndex
                 interactive: false
                 boundsBehavior: Flickable.StopAtBounds
                 onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
 
-                delegate: Rectangle {
-                    id: episodeRow
+                delegate: Item {
+                    id: episodeItem
                     required property var modelData
                     required property int index
+                    readonly property int seriesNumber: Number(modelData.seriesNumber) || 0
+                    readonly property bool showSeriesHeader: {
+                        if (seriesNumber <= 0)
+                            return index === 0
+                        if (index === 0)
+                            return true
+                        const previous = overlay.programmes[index - 1]
+                        return !previous || Number(previous.seriesNumber) !== seriesNumber
+                    }
                     width: episodeList.width
-                    height: 82 * overlay.uiScale
-                    radius: 13 * overlay.uiScale
-                    color: index === overlay.selectedIndex ? "#242129" : "#141319"
-                    border.color: index === overlay.selectedIndex ? "#ff7424" : "#302d35"
-                    border.width: index === overlay.selectedIndex ? 2 * overlay.uiScale : 1
-
-                    Rectangle {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 18 * overlay.uiScale
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 44 * overlay.uiScale
-                        height: width
-                        radius: width / 2
-                        color: episodeRow.index === overlay.selectedIndex ? "#ff7424" : "#25232a"
-
-                        Text {
-                            anchors.centerIn: parent
-                            color: episodeRow.index === overlay.selectedIndex ? "#160d08" : "#908b95"
-                            font.family: "DejaVu Sans"
-                            font.bold: true
-                            font.pixelSize: 17 * overlay.uiScale
-                            text: episodeRow.index + 1
-                        }
-                    }
+                    height: (showSeriesHeader ? 48 : 0) * overlay.uiScale
+                            + 78 * overlay.uiScale
 
                     Text {
+                        visible: episodeItem.showSeriesHeader
                         anchors.left: parent.left
-                        anchors.leftMargin: 82 * overlay.uiScale
-                        anchors.right: statusText.left
-                        anchors.rightMargin: 20 * overlay.uiScale
-                        anchors.verticalCenter: parent.verticalCenter
-                        color: "#f8f4ef"
-                        elide: Text.ElideRight
-                        font.family: "DejaVu Sans"
-                        font.bold: episodeRow.index === overlay.selectedIndex
-                        font.pixelSize: 23 * overlay.uiScale
-                        text: episodeRow.modelData.name
-                    }
-
-                    Text {
-                        id: statusText
-                        anchors.right: parent.right
-                        anchors.rightMargin: 24 * overlay.uiScale
-                        anchors.verticalCenter: parent.verticalCenter
-                        color: episodeRow.modelData.current ? "#ff8c50" : "#706d75"
+                        anchors.top: parent.top
+                        anchors.topMargin: 5 * overlay.uiScale
+                        color: "#ff8441"
                         font.family: "DejaVu Sans"
                         font.bold: true
-                        font.pixelSize: 14 * overlay.uiScale
-                        text: episodeRow.modelData.current ? "PLAYING NOW" : ""
+                        font.letterSpacing: 1.6 * overlay.uiScale
+                        font.pixelSize: 16 * overlay.uiScale
+                        text: episodeItem.seriesNumber > 0
+                              ? "SERIES " + episodeItem.seriesNumber : "EPISODES"
+                    }
+
+                    Rectangle {
+                        id: episodeRow
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        height: 70 * overlay.uiScale
+                        radius: 14 * overlay.uiScale
+                        color: episodeItem.index === overlay.selectedIndex ? "#282129" : "#17161c"
+                        border.color: episodeItem.index === overlay.selectedIndex ? "#ff7424" : "#343039"
+                        border.width: episodeItem.index === overlay.selectedIndex ? 2 * overlay.uiScale : 1
+
+                        Rectangle {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 14 * overlay.uiScale
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 68 * overlay.uiScale
+                            height: 42 * overlay.uiScale
+                            radius: 11 * overlay.uiScale
+                            color: episodeItem.index === overlay.selectedIndex ? "#ff7424" : "#242129"
+
+                            Text {
+                                anchors.centerIn: parent
+                                color: episodeItem.index === overlay.selectedIndex ? "#190e09" : "#ff8a4c"
+                                font.family: "DejaVu Sans"
+                                font.bold: true
+                                font.pixelSize: 17 * overlay.uiScale
+                                text: overlay.episodeCode(episodeItem.modelData.episodeNumber)
+                            }
+                        }
+
+                        Text {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 100 * overlay.uiScale
+                            anchors.right: statusText.left
+                            anchors.rightMargin: 18 * overlay.uiScale
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: "#f8f4ef"
+                            elide: Text.ElideRight
+                            font.family: "DejaVu Sans"
+                            font.bold: episodeItem.index === overlay.selectedIndex
+                            font.pixelSize: 21 * overlay.uiScale
+                            text: episodeItem.modelData.episodeTitle || episodeItem.modelData.name
+                        }
+
+                        Text {
+                            id: statusText
+                            anchors.right: parent.right
+                            anchors.rightMargin: 20 * overlay.uiScale
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: episodeItem.modelData.current ? "#ff9359" : "#706d75"
+                            font.family: "DejaVu Sans"
+                            font.bold: true
+                            font.letterSpacing: 0.8 * overlay.uiScale
+                            font.pixelSize: 12 * overlay.uiScale
+                            text: episodeItem.modelData.current ? "PLAYING NOW" : ""
+                        }
                     }
                 }
             }
@@ -321,7 +405,8 @@ Item {
                 interactive: false
                 boundsBehavior: Flickable.StopAtBounds
                 cellWidth: width / overlay.filmColumns
-                cellHeight: 332 * overlay.uiScale
+                cellHeight: (filmGrid.cellWidth - 18 * overlay.uiScale) * 1.5
+                            + 84 * overlay.uiScale
                 onCurrentIndexChanged: positionViewAtIndex(currentIndex, GridView.Contain)
 
                 delegate: Item {
@@ -332,12 +417,16 @@ Item {
                     height: filmGrid.cellHeight
 
                     Rectangle {
+                        id: filmCard
                         anchors.fill: parent
-                        anchors.margins: 7 * overlay.uiScale
-                        radius: 14 * overlay.uiScale
-                        color: "#15141a"
-                        border.color: filmCell.index === overlay.selectedIndex ? "#ff7424" : "#302e35"
-                        border.width: filmCell.index === overlay.selectedIndex ? 3 * overlay.uiScale : 1
+                        anchors.leftMargin: 7 * overlay.uiScale
+                        anchors.rightMargin: 7 * overlay.uiScale
+                        anchors.topMargin: 5 * overlay.uiScale
+                        anchors.bottomMargin: 10 * overlay.uiScale
+                        radius: 16 * overlay.uiScale
+                        color: filmCell.index === overlay.selectedIndex ? "#211a20" : "#17161c"
+                        border.color: "#302e35"
+                        border.width: 1
                         clip: true
 
                         Image {
@@ -345,11 +434,16 @@ Item {
                             anchors.left: parent.left
                             anchors.right: parent.right
                             anchors.top: parent.top
-                            height: parent.height - 76 * overlay.uiScale
+                            height: width * 1.5
                             source: filmCell.modelData.poster || ""
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: true
                             cache: true
+                            layer.enabled: true
+                            layer.effect: MultiEffect {
+                                maskEnabled: true
+                                maskSource: posterMask
+                            }
 
                             Rectangle {
                                 anchors.fill: parent
@@ -370,7 +464,7 @@ Item {
                                 anchors.left: parent.left
                                 anchors.right: parent.right
                                 anchors.bottom: parent.bottom
-                                height: parent.height * 0.38
+                                height: parent.height * 0.30
                                 gradient: Gradient {
                                     GradientStop { position: 0; color: "#00000000" }
                                     GradientStop { position: 1; color: "#d9000000" }
@@ -378,15 +472,19 @@ Item {
                             }
 
                             Text {
+                                id: resumeLabel
                                 visible: Number(filmCell.modelData.position) >= 30
                                 anchors.left: parent.left
                                 anchors.leftMargin: 12 * overlay.uiScale
                                 anchors.bottom: parent.bottom
-                                anchors.bottomMargin: 12 * overlay.uiScale
+                                anchors.bottomMargin: 14 * overlay.uiScale
                                 color: "#ff9a64"
                                 font.family: "DejaVu Sans"
-                                font.bold: true
+                                font.bold: false
+                                font.letterSpacing: 0.4 * overlay.uiScale
                                 font.pixelSize: 13 * overlay.uiScale
+                                style: Text.Outline
+                                styleColor: "#b0000000"
                                 text: "RESUME · " + overlay.formatPosition(filmCell.modelData.position)
                             }
 
@@ -395,8 +493,8 @@ Item {
                                 anchors.left: parent.left
                                 anchors.right: parent.right
                                 anchors.bottom: parent.bottom
-                                height: 5 * overlay.uiScale
-                                color: "#5a555d"
+                                height: 6 * overlay.uiScale
+                                color: "#59545c"
 
                                 Rectangle {
                                     width: parent.width * Number(filmCell.modelData.progress)
@@ -406,19 +504,80 @@ Item {
                             }
                         }
 
-                        Text {
+                        Item {
+                            id: posterMask
+                            anchors.fill: posterImage
+                            visible: false
+                            layer.enabled: true
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: filmCard.radius
+                                color: "white"
+                            }
+
+                            Rectangle {
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.bottom: parent.bottom
+                                height: filmCard.radius
+                                color: "white"
+                            }
+                        }
+
+                        Column {
                             anchors.left: parent.left
                             anchors.right: parent.right
                             anchors.top: posterImage.bottom
-                            anchors.leftMargin: 13 * overlay.uiScale
-                            anchors.rightMargin: 13 * overlay.uiScale
-                            anchors.topMargin: 9 * overlay.uiScale
-                            color: "#fbf7f2"
-                            elide: Text.ElideRight
-                            font.family: "DejaVu Sans"
-                            font.bold: true
-                            font.pixelSize: 18 * overlay.uiScale
-                            text: filmCell.modelData.name
+                            anchors.leftMargin: 15 * overlay.uiScale
+                            anchors.rightMargin: 15 * overlay.uiScale
+                            anchors.topMargin: 8 * overlay.uiScale
+                            spacing: 4 * overlay.uiScale
+
+                            Text {
+                                width: parent.width
+                                color: "#fbf7f2"
+                                elide: Text.ElideRight
+                                font.family: "DejaVu Sans"
+                                font.bold: true
+                                font.pixelSize: 16 * overlay.uiScale
+                                text: filmCell.modelData.name
+                            }
+
+                            Item {
+                                width: parent.width
+                                height: 18 * overlay.uiScale
+
+                                Text {
+                                    anchors.left: parent.left
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    color: "#85818a"
+                                    elide: Text.ElideRight
+                                    font.family: "DejaVu Sans"
+                                    font.pixelSize: 12 * overlay.uiScale
+                                    text: filmCell.modelData.year || "Ready to play"
+                                }
+
+                                Text {
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    color: "#85818a"
+                                    font.family: "DejaVu Sans"
+                                    font.pixelSize: 12 * overlay.uiScale
+                                    text: Number(filmCell.modelData.duration) >= 60
+                                          ? overlay.formatPosition(filmCell.modelData.duration) : ""
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: parent.radius
+                            color: "transparent"
+                            border.color: "#ff7424"
+                            border.width: 4 * overlay.uiScale
+                            visible: filmCell.index === overlay.selectedIndex
+                            z: 10
                         }
                     }
                 }
@@ -430,37 +589,48 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: parent.bottom
-            height: 70 * overlay.uiScale
+            height: 64 * overlay.uiScale
 
             Rectangle {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: parent.top
-                anchors.leftMargin: 24 * overlay.uiScale
-                anchors.rightMargin: 24 * overlay.uiScale
+                anchors.leftMargin: 22 * overlay.uiScale
+                anchors.rightMargin: 22 * overlay.uiScale
                 height: 1
                 color: "#302e35"
             }
 
-            Text {
-                anchors.left: parent.left
-                anchors.leftMargin: 30 * overlay.uiScale
-                anchors.verticalCenter: parent.verticalCenter
-                color: "#8d8992"
-                font.family: "DejaVu Sans"
-                font.pixelSize: 16 * overlay.uiScale
-                text: overlay.filmChannel ? "↑ ↓ ← →  Browse" : "↑ ↓  Browse"
-            }
-
-            Text {
+            Rectangle {
                 anchors.right: parent.right
-                anchors.rightMargin: 30 * overlay.uiScale
+                anchors.rightMargin: 24 * overlay.uiScale
                 anchors.verticalCenter: parent.verticalCenter
-                color: "#aaa6ae"
-                font.family: "DejaVu Sans"
-                font.pixelSize: 16 * overlay.uiScale
-                text: "OK  Select     HOME / BACK  Close"
+                width: closeHint.implicitWidth + 32 * overlay.uiScale
+                height: 38 * overlay.uiScale
+                radius: height / 2
+                color: "#211f26"
+                border.color: "#49454f"
+                border.width: 1
+
+                Text {
+                    id: closeHint
+                    anchors.centerIn: parent
+                    color: "#d8d3dc"
+                    font.family: "DejaVu Sans"
+                    font.bold: true
+                    font.pixelSize: 14 * overlay.uiScale
+                    text: "BACK  ·  Close"
+                }
             }
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            radius: panel.radius
+            color: "transparent"
+            border.color: "#5d5862"
+            border.width: 2 * overlay.uiScale
+            z: 40
         }
 
         Rectangle {
@@ -471,9 +641,9 @@ Item {
 
             Rectangle {
                 anchors.centerIn: parent
-                width: Math.min(parent.width - 120 * overlay.uiScale, 760 * overlay.uiScale)
-                height: 330 * overlay.uiScale
-                radius: 24 * overlay.uiScale
+                width: Math.min(parent.width - 90 * overlay.uiScale, 650 * overlay.uiScale)
+                height: 400 * overlay.uiScale
+                radius: 28 * overlay.uiScale
                 color: "#fc121117"
                 border.color: "#5b555f"
                 border.width: 2 * overlay.uiScale
@@ -481,7 +651,7 @@ Item {
                 Column {
                     anchors.fill: parent
                     anchors.margins: 34 * overlay.uiScale
-                    spacing: 22 * overlay.uiScale
+                    spacing: 18 * overlay.uiScale
 
                     Text {
                         width: parent.width
@@ -490,7 +660,7 @@ Item {
                         font.family: "DejaVu Sans"
                         font.bold: true
                         font.pixelSize: 16 * overlay.uiScale
-                        text: "CONTINUE WATCHING"
+                        text: "CHOOSE HOW TO PLAY"
                     }
 
                     Text {
@@ -499,37 +669,37 @@ Item {
                         elide: Text.ElideRight
                         font.family: "DejaVu Sans"
                         font.bold: true
-                        font.pixelSize: 34 * overlay.uiScale
+                        font.pixelSize: 30 * overlay.uiScale
                         text: overlay.currentProgramme() ? overlay.currentProgramme().name : "Film"
                     }
 
                     Row {
                         id: choiceRow
                         width: parent.width
-                        height: 92 * overlay.uiScale
-                        spacing: 14 * overlay.uiScale
+                        height: 178 * overlay.uiScale
+                        spacing: 18 * overlay.uiScale
 
                         Repeater {
-                            model: ["Resume from " + (overlay.currentProgramme()
-                                                      ? overlay.formatPosition(overlay.currentProgramme().position) : "0m"),
-                                    "Play from beginning"]
+                            model: ["Resume", "Play from\nbeginning"]
 
                             Rectangle {
                                 required property string modelData
                                 required property int index
                                 width: (choiceRow.width - choiceRow.spacing) / 2
                                 height: parent.height
-                                radius: 14 * overlay.uiScale
+                                radius: 22 * overlay.uiScale
                                 color: index === overlay.playChoiceIndex ? "#ff7424" : "#242129"
                                 border.color: index === overlay.playChoiceIndex ? "#ff9b63" : "#46414a"
-                                border.width: 2 * overlay.uiScale
+                                border.width: index === overlay.playChoiceIndex
+                                              ? 4 * overlay.uiScale : 2 * overlay.uiScale
 
                                 Text {
                                     anchors.centerIn: parent
                                     color: parent.index === overlay.playChoiceIndex ? "#160d08" : "#eee9e4"
                                     font.family: "DejaVu Sans"
                                     font.bold: true
-                                    font.pixelSize: 19 * overlay.uiScale
+                                    font.pixelSize: 24 * overlay.uiScale
+                                    horizontalAlignment: Text.AlignHCenter
                                     text: parent.modelData
                                 }
                             }
@@ -542,7 +712,7 @@ Item {
                         color: "#77727c"
                         font.family: "DejaVu Sans"
                         font.pixelSize: 14 * overlay.uiScale
-                        text: "← →  Choose     OK  Play     BACK  Cancel"
+                        text: "BACK  ·  Return to films"
                     }
                 }
             }

@@ -32,7 +32,15 @@ QString cycleValue(const QStringList &values, const QString &current, int direct
     return values[index];
 }
 
-QString displayNameForEpisodePath(const QString &path)
+struct EpisodeDisplay
+{
+    QString name;
+    QString title;
+    int seriesNumber = 0;
+    int episodeNumber = 0;
+};
+
+EpisodeDisplay episodeDisplayForPath(const QString &path)
 {
     QString name = QFileInfo(path).completeBaseName();
     name.replace(QLatin1Char('_'), QLatin1Char(' '));
@@ -43,13 +51,26 @@ QString displayNameForEpisodePath(const QString &path)
         QRegularExpression::CaseInsensitiveOption);
     const QRegularExpressionMatch match = episodePattern.match(name);
     if (!match.hasMatch()) {
-        return name;
+        return EpisodeDisplay{name, name, 0, 0};
     }
 
-    return QStringLiteral("S%1  E%2  ·  %3")
-        .arg(match.captured(1).rightJustified(2, QLatin1Char('0')),
-             match.captured(2).rightJustified(2, QLatin1Char('0')),
-             match.captured(3));
+    const int seriesNumber = match.captured(1).toInt();
+    const int episodeNumber = match.captured(2).toInt();
+    const QString title = match.captured(3).simplified();
+    return EpisodeDisplay{
+        QStringLiteral("S%1  E%2  ·  %3")
+            .arg(QString::number(seriesNumber).rightJustified(2, QLatin1Char('0')),
+                 QString::number(episodeNumber).rightJustified(2, QLatin1Char('0')),
+                 title),
+        title,
+        seriesNumber,
+        episodeNumber,
+    };
+}
+
+QString displayNameForEpisodePath(const QString &path)
+{
+    return episodeDisplayForPath(path).name;
 }
 } // namespace
 
@@ -474,6 +495,7 @@ QVariantMap TvController::currentChannelSummary() const
                                         .arg(fileName);
         const QJsonObject metadata = programmeMetadata.value(metadataKey).toObject();
         const QString metadataTitle = metadata.value(QStringLiteral("title")).toString();
+        const EpisodeDisplay episodeDisplay = episodeDisplayForPath(fileName);
         const QUrl poster = artworkUrl(metadata.value(QStringLiteral("poster")).toString());
         const QString playbackKey = metadataKey;
         const double position = m_channelFilmPlaybackPositions.contains(playbackKey)
@@ -497,7 +519,11 @@ QVariantMap TvController::currentChannelSummary() const
         programmes.append(QVariantMap{
             {QStringLiteral("fileName"), fileName},
             {QStringLiteral("name"), metadataTitle.isEmpty()
-                 ? displayNameForEpisodePath(fileName) : metadataTitle},
+                 ? episodeDisplay.name : metadataTitle},
+            {QStringLiteral("episodeTitle"), metadataTitle.isEmpty()
+                 ? episodeDisplay.title : metadataTitle},
+            {QStringLiteral("seriesNumber"), episodeDisplay.seriesNumber},
+            {QStringLiteral("episodeNumber"), episodeDisplay.episodeNumber},
             {QStringLiteral("year"), metadata.value(QStringLiteral("year")).toString()},
             {QStringLiteral("poster"), poster},
             {QStringLiteral("position"), std::max(0.0, position)},
@@ -1252,16 +1278,29 @@ void TvController::reloadAdultLibrary()
 
 void TvController::turnOn()
 {
-    if (m_standby) {
-        setStandby(false);
-        saveState();
-    }
+    turnOnMabelOnly();
     if (m_tvControl != nullptr) {
         m_tvControl->turnOn();
     }
 }
 
+void TvController::turnOnMabelOnly()
+{
+    if (m_standby) {
+        setStandby(false);
+        saveState();
+    }
+}
+
 void TvController::turnOff()
+{
+    turnOffMabelOnly();
+    if (m_tvControl != nullptr) {
+        m_tvControl->turnOff();
+    }
+}
+
+void TvController::turnOffMabelOnly()
 {
     if (!m_standby) {
         if (m_currentChannelIndex >= 0) {
@@ -1274,9 +1313,6 @@ void TvController::turnOff()
         setTuning(false);
         emit stopPlaybackRequested();
         saveState();
-    }
-    if (m_tvControl != nullptr) {
-        m_tvControl->turnOff();
     }
 }
 

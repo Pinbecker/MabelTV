@@ -65,8 +65,9 @@ REMOTE_COMPLETION_MIN_SECONDS = 180.0
 REMOTE_COMPLETION_FRACTION = 0.05
 VIEWING_SAMPLE_SECONDS = 15.0
 VIEWING_SESSION_GAP_SECONDS = 120.0
-VIEWING_MAX_SESSIONS = 5000
-VIEWING_RETENTION_DAYS = 370
+VIEWING_MIN_SESSION_SECONDS = 120.0
+VIEWING_MAX_SESSIONS = 50000
+VIEWING_RETENTION_DAYS = 3650
 SAFE_NAME = re.compile(r"[^A-Za-z0-9 ._()&'\-]+")
 EPISODE_NAME = re.compile(r"^s(\d{1,2})e(\d{1,3})\s*-\s*(.+)$", re.IGNORECASE)
 PIN_PATTERN = re.compile(r"\d{4,8}")
@@ -273,7 +274,8 @@ class LiveStream:
             return {"available": False, "reason": "Waiting for the TV programme"}
         return {"available": True, "channel_number": number,
                 "channel_name": str(channel.get("name", "Channel")),
-                "file_name": file_name, "programme": self.library.display_name(file_name),
+                "file_name": file_name,
+                "programme": self.library.channel_programme_title(number, file_name),
                 "source": source, "position": position,
                 "paused": paused,
                 "volume": int(state.get("volume", 0)),
@@ -489,6 +491,9 @@ class Library:
         self.adult_root = self.media_root / ".adult"
         self.adult_metadata_path = self.adult_root / ".mabeltv-adult.json"
         self.adult_artwork_root = self.adult_root / ".metadata"
+        self.adult_series_root = self.adult_root / ".series"
+        self.adult_series_state_path = self.adult_root / ".mabeltv-series.json"
+        self.adult_series_artwork_root = self.adult_root / ".series-metadata"
         self.channel_metadata_path = self.media_root / ".mabeltv-channels.json"
         self.channel_artwork_root = self.media_root / ".channel-metadata"
         configured_usb_root = os.environ.get("MABELTV_USB_ROOT")
@@ -513,6 +518,7 @@ class Library:
         self.adult_optimisation_active: set[str] = set()
         self.adult_optimisation_lock = threading.Lock()
         self.adult_optimisation_serial = threading.Lock()
+        self.adult_optimisation_progress_callback: Any = None
         self.remote_stream_lock = threading.RLock()
         self.remote_stream: dict[str, Any] | None = None
         self.viewing_lock = threading.RLock()
@@ -520,6 +526,7 @@ class Library:
         self.viewing_worker: threading.Thread | None = None
         self.viewing_last_tv_sample: tuple[dict[str, Any], float] | None = None
         self.viewing_remote_samples: dict[str, tuple[float, float]] = {}
+        self.viewing_pending: dict[tuple[str, str], dict[str, Any]] = {}
         self.viewing_dirty = False
         self.viewing_last_flush = 0.0
         self.viewing_store = self.load_viewing_store()
@@ -543,6 +550,8 @@ class Library:
         self.incoming.mkdir(mode=0o750, exist_ok=True)
         self.adult_root.mkdir(mode=0o750, exist_ok=True)
         self.adult_artwork_root.mkdir(mode=0o750, exist_ok=True)
+        self.adult_series_root.mkdir(mode=0o750, exist_ok=True)
+        self.adult_series_artwork_root.mkdir(mode=0o750, exist_ok=True)
         self.channel_artwork_root.mkdir(mode=0o750, exist_ok=True)
         self.offline_cache.mkdir(mode=0o750, exist_ok=True)
         self.bin.mkdir(mode=0o750, exist_ok=True)
@@ -592,16 +601,48 @@ class Library:
         sessions = value.get("sessions", []) if isinstance(value, dict) else []
         if not isinstance(sessions, list):
             sessions = []
-        clean = [item for item in sessions if isinstance(item, dict)]
+        clean: list[dict[str, Any]] = []
+        for stored in sessions:
+            if not isinstance(stored, dict):
+                continue
+            item = dict(stored)
+            try:
+                watched = float(item.get("seconds", 0) or 0)
+                channel_number = int(item.get("channel_number"))
+            except (TypeError, ValueError):
+                continue
+            kind = str(item.get("kind") or "")
+            if watched < VIEWING_MIN_SESSION_SECONDS or kind not in {"film", "episode", "channel"}:
+                continue
+            channel_name = str(item.get("channel_name") or f"Channel {channel_number}")
+            if kind in {"episode", "channel"}:
+                item.update({
+                    "item_key": f"channel:{channel_number}",
+                    "title": channel_name,
+                    "kind": "channel",
+                })
+            item["id"] = str(item.get("id") or uuid.uuid4().hex)
+            item["seconds"] = round(watched, 2)
+            clean.append(item)
         try:
             started = float(value.get("tracking_started", time.time()))
         except (AttributeError, TypeError, ValueError):
             started = time.time()
-        return {
-            "schema_version": 1,
+        store = {
+            "schema_version": 2,
             "tracking_started": max(0.0, started),
             "sessions": clean[-VIEWING_MAX_SESSIONS:],
         }
+        if (not isinstance(value, dict) or value.get("schema_version") != 2
+                or len(clean) != len(sessions)
+                or any(not str(item.get("id") or "") for item in sessions
+                       if isinstance(item, dict))):
+            try:
+                self.write_json(self.viewing_history_path, store)
+            except OSError as error:
+                print(f"Could not migrate viewing history: {error}",
+                      file=sys.stderr, flush=True)
+        return store
 
     def start_viewing_tracker(self) -> None:
         """Start low-frequency on-TV sampling once the HTTP service is ready."""
@@ -627,23 +668,13 @@ class Library:
             if self.viewing_closed.wait(VIEWING_SAMPLE_SECONDS):
                 break
 
-    def current_tv_viewing(self) -> dict[str, Any] | None:
+    def current_tv_viewing(self, mode: dict[str, Any] | None = None) -> dict[str, Any] | None:
         """Return one coarse active programme identity, never a frame timeline."""
-        mode = self.player_mode_status()
+        mode = self.player_mode_status() if mode is None else mode
         if mode.get("standby") is True:
             return None
         if mode.get("mode") == "adult":
-            title = str(mode.get("programme") or "").strip()
-            if mode.get("playing") is not True or mode.get("paused") is True or not title:
-                return None
-            return {
-                "item_key": f"adult:{title.casefold()}",
-                "title": title,
-                "kind": "adult",
-                "surface": "tv",
-                "channel_number": None,
-                "channel_name": "Adult TV",
-            }
+            return None
 
         state = self.read_json(self.player_state_path, {})
         if (not isinstance(state, dict) or state.get("standby") is True
@@ -660,14 +691,32 @@ class Library:
         if not file_name:
             return None
         is_film = self.channel_content_type(channel) == "films"
-        return {
-            "item_key": f"channel:{number}:{file_name.casefold()}",
-            "title": self.display_name(file_name),
-            "kind": "film" if is_film else "episode",
+        channel_name = str(channel.get("name") or f"Channel {number}")
+        activity = {
+            "item_key": f"channel:{number}:{file_name.casefold()}" if is_film
+            else f"channel:{number}",
+            "title": self.channel_programme_title(number, file_name)
+            if is_film else channel_name,
+            "kind": "film" if is_film else "channel",
             "surface": "tv",
             "channel_number": number,
-            "channel_name": str(channel.get("name") or f"Channel {number}"),
+            "channel_name": channel_name,
         }
+        if is_film:
+            try:
+                position = max(0.0, float(timeline.get("position_seconds", 0) or 0))
+                if state.get("playback_paused") is not True:
+                    saved_at = float(state.get("saved_at_utc_ms", 0) or 0)
+                    if saved_at > 0:
+                        position += max(0.0, (time.time() * 1000 - saved_at) / 1000)
+                key = self.channel_programme_key(number, file_name)
+                durations = state.get("channel_film_durations", {})
+                duration = max(0.0, float(durations.get(key, 0) or 0)) \
+                    if isinstance(durations, dict) else 0.0
+            except (AttributeError, TypeError, ValueError):
+                position, duration = 0.0, 0.0
+            activity.update({"position": position, "media_duration": duration})
+        return activity
 
     def sample_tv_viewing(self) -> None:
         now_monotonic = time.monotonic()
@@ -684,7 +733,7 @@ class Library:
             self.record_viewing(activity, watched, time.time())
 
     def record_remote_viewing(self, session: dict[str, Any], token: str,
-                              position: float) -> None:
+                              position: float, duration: float = 0.0) -> None:
         """Count browser playback deltas while rejecting seeks and stale posts."""
         now_monotonic = time.monotonic()
         with self.viewing_lock:
@@ -698,23 +747,28 @@ class Library:
         if elapsed <= 0 or elapsed > 75 or advanced < 1 or advanced > elapsed + 6:
             return
         kind = str(session.get("kind", ""))
-        channel_number = session.get("channel") if kind == "channel" else None
-        channel_name = "Adult TV" if kind == "adult" else "MabelTV"
-        if kind == "channel":
-            try:
-                channel_name = str(self.channel(int(channel_number)).get("name") or "MabelTV")
-            except (TypeError, ValueError):
-                channel_name = "MabelTV"
+        if kind != "channel":
+            return
+        channel_number = session.get("channel")
+        try:
+            channel_number = int(channel_number)
+            channel_name = str(self.channel(channel_number).get("name") or "MabelTV")
+        except (TypeError, ValueError):
+            return
+        is_film = str(session.get("content_kind") or "") == "film"
         activity = {
-            "item_key": f"browser:{kind}:{session.get('library_id') or session.get('file') or session.get('source')}",
+            "item_key": f"channel:{channel_number}:{str(session.get('file') or '').casefold()}"
+            if is_film else f"channel:{channel_number}",
             "title": str(session.get("title") or self.display_name(
-                Path(str(session.get("source", "Video"))).name)),
-            "kind": "adult" if kind == "adult" else str(
-                session.get("content_kind") or "film") if kind == "channel" else "usb",
+                Path(str(session.get("source", "Video"))).name)) if is_film else channel_name,
+            "kind": "film" if is_film else "channel",
             "surface": "device",
             "channel_number": channel_number,
             "channel_name": channel_name,
         }
+        if is_film:
+            activity.update({"position": max(0.0, position),
+                             "media_duration": max(0.0, duration)})
         self.record_viewing(activity, min(advanced, elapsed), time.time())
 
     def record_viewing(self, activity: dict[str, Any], watched: float,
@@ -737,13 +791,37 @@ class Library:
                 previous["ended"] = ended
                 previous["seconds"] = round(
                     float(previous.get("seconds", 0) or 0) + watched, 2)
+                for field in ("position", "media_duration"):
+                    if field in activity:
+                        previous[field] = activity[field]
             else:
-                sessions.append({
-                    "started": ended - watched,
-                    "ended": ended,
-                    "seconds": round(watched, 2),
-                    **activity,
-                })
+                pending_key = (str(activity.get("item_key") or ""),
+                               str(activity.get("surface") or ""))
+                pending = self.viewing_pending.get(pending_key)
+                pending_gap = ended - float(pending.get("ended", 0) or 0) \
+                    if pending else None
+                if pending is None or pending_gap is None or not (
+                        0 <= pending_gap <= VIEWING_SESSION_GAP_SECONDS):
+                    pending = {
+                        "id": uuid.uuid4().hex,
+                        "started": ended - watched,
+                        "ended": ended,
+                        "seconds": round(watched, 2),
+                        **activity,
+                    }
+                    self.viewing_pending[pending_key] = pending
+                else:
+                    pending["ended"] = ended
+                    pending["seconds"] = round(
+                        float(pending.get("seconds", 0) or 0) + watched, 2)
+                    for field in ("position", "media_duration"):
+                        if field in activity:
+                            pending[field] = activity[field]
+                if float(pending.get("seconds", 0) or 0) >= VIEWING_MIN_SESSION_SECONDS:
+                    sessions.append(pending)
+                    self.viewing_pending.pop(pending_key, None)
+                else:
+                    return
             cutoff = ended - VIEWING_RETENTION_DAYS * 86400
             self.viewing_store["sessions"] = [
                 item for item in sessions
@@ -768,27 +846,69 @@ class Library:
 
     def viewing_insights(self, days: int = 30,
                          timezone_offset_minutes: int = 0) -> dict[str, Any]:
-        days = days if days in {7, 30, 365} else 30
+        days = days if days in {1, 7, 30, 365} else 1
         offset = max(-840, min(840, int(timezone_offset_minutes)))
         local_zone = timezone(-timedelta(minutes=offset))
         now = time.time()
         now_local = datetime.fromtimestamp(now, local_zone)
         today = now_local.date()
         with self.viewing_lock:
-            sessions = [dict(item) for item in self.viewing_store["sessions"]]
+            sessions = [dict(item) for item in self.viewing_store["sessions"]
+                        if str(item.get("kind") or "") in {"film", "channel"}
+                        and float(item.get("seconds", 0) or 0)
+                        >= VIEWING_MIN_SESSION_SECONDS]
             tracking_started = float(self.viewing_store["tracking_started"])
+
+        # Insights should follow the library's current metadata and channel
+        # names rather than preserving an old upload filename forever.
+        film_names: dict[int, dict[str, str]] = {}
+        for item in sessions:
+            try:
+                channel_number = int(item.get("channel_number"))
+                channel = self.channel(channel_number)
+            except (TypeError, ValueError):
+                continue
+            channel_name = str(channel.get("name") or f"Channel {channel_number}")
+            item["channel_name"] = channel_name
+            if str(item.get("kind") or "") == "channel":
+                item["title"] = channel_name
+                continue
+            key_prefix = f"channel:{channel_number}:"
+            item_key = str(item.get("item_key") or "")
+            stored_name = item_key[len(key_prefix):] if item_key.startswith(key_prefix) else ""
+            if channel_number not in film_names:
+                folder = self.media_root / str(channel.get("folder") or "")
+                film_names[channel_number] = {
+                    path.name.casefold(): path.name for path in folder.iterdir()
+                    if path.is_file() and path.suffix.lower() in SUPPORTED_EXTENSIONS
+                } if folder.is_dir() else {}
+            file_name = film_names[channel_number].get(stored_name.casefold())
+            if file_name:
+                item["title"] = self.channel_programme_title(channel_number, file_name)
 
         def total_since(seconds: float) -> float:
             cutoff = now - seconds
             return sum(float(item.get("seconds", 0) or 0) for item in sessions
                        if float(item.get("ended", 0) or 0) >= cutoff)
 
-        selected_cutoff = now - days * 86400
-        selected = [item for item in sessions
-                    if float(item.get("ended", 0) or 0) >= selected_cutoff]
+        today_start = datetime.combine(today, datetime.min.time(), local_zone).timestamp()
+        if days == 1:
+            selected = [item for item in sessions if datetime.fromtimestamp(
+                float(item.get("ended", 0) or 0), local_zone).date() == today]
+            previous = [item for item in sessions if datetime.fromtimestamp(
+                float(item.get("ended", 0) or 0), local_zone).date()
+                == today - timedelta(days=1)]
+        else:
+            selected_cutoff = now - days * 86400
+            selected = [item for item in sessions
+                        if float(item.get("ended", 0) or 0) >= selected_cutoff]
+            previous_cutoff = now - days * 2 * 86400
+            previous = [item for item in sessions
+                        if previous_cutoff <= float(item.get("ended", 0) or 0)
+                        < selected_cutoff]
 
         daily: list[dict[str, Any]] = []
-        daily_span = 14 if days < 365 else 30
+        daily_span = 7 if days <= 7 else 30
         for ago in range(daily_span - 1, -1, -1):
             date = today - timedelta(days=ago)
             total = sum(float(item.get("seconds", 0) or 0) for item in sessions
@@ -823,6 +943,84 @@ class Library:
                             "label": datetime(year, month, 1).strftime("%b"),
                             "seconds": round(total)})
 
+        time_periods = (("Overnight", 0, 6), ("Morning", 6, 12),
+                        ("Afternoon", 12, 18), ("Evening", 18, 24))
+
+        def time_breakdown(values: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            result = []
+            for label, first_hour, last_hour in time_periods:
+                matching = [item for item in values
+                            if first_hour <= datetime.fromtimestamp(float(
+                                item.get("started", item.get("ended", 0)) or 0),
+                                local_zone).hour < last_hour]
+                result.append({
+                    "name": label,
+                    "label": label,
+                    "seconds": round(sum(float(item.get("seconds", 0) or 0)
+                                         for item in matching)),
+                    "sessions": len(matching),
+                })
+            return result
+
+        def hourly_breakdown(values: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            result = []
+            for hour in range(24):
+                matching = [item for item in values if datetime.fromtimestamp(
+                    float(item.get("started", item.get("ended", 0)) or 0),
+                    local_zone).hour == hour]
+                label = datetime(2000, 1, 1, hour).strftime("%I%p").lstrip("0").lower()
+                result.append({"name": str(hour), "label": label,
+                               "seconds": round(sum(float(item.get("seconds", 0) or 0)
+                                                    for item in matching)),
+                               "sessions": len(matching)})
+            return result
+
+        def weekday_breakdown(values: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            result = []
+            for weekday in range(7):
+                matching = [item for item in values if datetime.fromtimestamp(
+                    float(item.get("ended", 0) or 0), local_zone).weekday() == weekday]
+                label = (today - timedelta(
+                    days=today.weekday() - weekday)).strftime("%a")
+                result.append({"name": label, "label": label,
+                               "seconds": round(sum(float(item.get("seconds", 0) or 0)
+                                                    for item in matching)),
+                               "sessions": len(matching)})
+            return result
+
+        def item_timeline(values: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            if days == 1:
+                return hourly_breakdown(values)
+            if days in {7, 30}:
+                span = days
+                result = []
+                for ago in range(span - 1, -1, -1):
+                    date = today - timedelta(days=ago)
+                    total = sum(float(item.get("seconds", 0) or 0) for item in values
+                                if datetime.fromtimestamp(float(
+                                    item.get("ended", 0) or 0), local_zone).date() == date)
+                    result.append({"key": date.isoformat(),
+                                   "label": date.strftime("%a") if days == 7
+                                   else str(date.day), "seconds": round(total)})
+                return result
+            result = []
+            for ago in range(11, -1, -1):
+                month_index = now_local.year * 12 + now_local.month - 1 - ago
+                year, month_zero = divmod(month_index, 12)
+                month = month_zero + 1
+                total = sum(float(item.get("seconds", 0) or 0) for item in values
+                            if (lambda value: value.year == year and value.month == month)(
+                                datetime.fromtimestamp(float(item.get("ended", 0) or 0),
+                                                       local_zone)))
+                result.append({"key": f"{year:04d}-{month:02d}",
+                               "label": datetime(year, month, 1).strftime("%b"),
+                               "seconds": round(total)})
+            return result
+
+        time_of_day = time_breakdown(selected)
+        hourly = hourly_breakdown(selected)
+        weekdays = weekday_breakdown(selected)
+
         def grouped(field: str) -> list[dict[str, Any]]:
             totals: dict[str, float] = {}
             for item in selected:
@@ -841,42 +1039,184 @@ class Library:
                        "duration": self.viewing_duration_label(value)}
                       for key, value in sorted(title_totals.items(), key=lambda pair: -pair[1])[:8]]
 
-        recent = []
-        for item in sorted(selected, key=lambda value: float(value.get("ended", 0) or 0),
-                           reverse=True)[:8]:
+        def session_detail(item: dict[str, Any]) -> dict[str, Any]:
             ended = datetime.fromtimestamp(float(item.get("ended", 0) or 0), local_zone)
-            recent.append({
+            started = datetime.fromtimestamp(float(item.get("started", 0) or 0), local_zone)
+            result = {
+                "id": str(item.get("id") or ""),
+                "item_key": str(item.get("item_key") or
+                                f"{item.get('kind')}:{item.get('title')}"),
                 "title": str(item.get("title") or "Untitled"),
                 "source": str(item.get("channel_name") or "MabelTV"),
                 "surface": str(item.get("surface") or "tv"),
+                "kind": str(item.get("kind") or "channel"),
+                "channel_number": item.get("channel_number"),
                 "seconds": round(float(item.get("seconds", 0) or 0)),
                 "duration": self.viewing_duration_label(float(item.get("seconds", 0) or 0)),
+                "started": started.isoformat(),
                 "when": ended.isoformat(),
-            })
+            }
+            if result["kind"] == "film":
+                position = max(0.0, float(item.get("position", 0) or 0))
+                media_duration = max(0.0, float(item.get("media_duration", 0) or 0))
+                result.update({
+                    "position": round(position),
+                    "media_duration": round(media_duration),
+                    "progress": round(min(1.0, position / media_duration), 4)
+                    if media_duration > 0 else 0,
+                })
+            return result
+
+        ordered_sessions = sorted(selected, key=lambda value: float(
+            value.get("ended", 0) or 0), reverse=True)
+        # The viewing diary needs the complete selected-period sequence rather
+        # than an arbitrary recent slice. The API's longest range is one year,
+        # and the store itself remains bounded separately.
+        session_details = [session_detail(item) for item in ordered_sessions[:5000]]
+        recent = session_details[:8]
 
         active_days = len({datetime.fromtimestamp(
             float(item.get("ended", 0) or 0), local_zone).date() for item in selected})
+        range_seconds = sum(float(item.get("seconds", 0) or 0) for item in selected)
+        previous_seconds = sum(float(item.get("seconds", 0) or 0) for item in previous)
+        unique_items = len({str(item.get("item_key") or
+                                f"{item.get('kind')}:{item.get('title')}")
+                            for item in selected})
+        timeline = item_timeline(selected)
+
+        grouped_items: dict[str, list[dict[str, Any]]] = {}
+        for item in selected:
+            key = str(item.get("item_key") or
+                      f"{item.get('kind')}:{item.get('title')}")
+            grouped_items.setdefault(key, []).append(item)
+
+        def detailed_item(key: str, values: list[dict[str, Any]]) -> dict[str, Any]:
+            ordered = sorted(values, key=lambda value: float(
+                value.get("ended", 0) or 0))
+            total = sum(float(item.get("seconds", 0) or 0) for item in values)
+            active_dates = {datetime.fromtimestamp(float(
+                item.get("ended", 0) or 0), local_zone).date() for item in values}
+            periods = time_breakdown(values)
+            item_weekdays = weekday_breakdown(values)
+            film_progress = [min(1.0, max(0.0, float(
+                item.get("position", 0) or 0) / float(
+                    item.get("media_duration", 0) or 0))) for item in values
+                if float(item.get("media_duration", 0) or 0) > 0]
+            first = datetime.fromtimestamp(float(
+                ordered[0].get("started", ordered[0].get("ended", 0)) or 0),
+                local_zone)
+            last = datetime.fromtimestamp(float(
+                ordered[-1].get("ended", 0) or 0), local_zone)
+            busiest_period = max(periods, key=lambda value: value["seconds"],
+                                 default={"name": "Not enough data"})
+            busiest_weekday = max(item_weekdays, key=lambda value: value["seconds"],
+                                  default={"name": "Not enough data"})
+            result = {
+                "item_key": key,
+                "kind": str(ordered[-1].get("kind") or "channel"),
+                "title": str(ordered[-1].get("title") or "Untitled"),
+                "source": str(ordered[-1].get("channel_name") or "MabelTV"),
+                "channel_number": ordered[-1].get("channel_number"),
+                "seconds": round(total),
+                "duration": self.viewing_duration_label(total),
+                "sessions": len(values),
+                "active_days": len(active_dates),
+                "average_session_seconds": round(total / len(values)) if values else 0,
+                "average_active_day_seconds": round(total / len(active_dates))
+                if active_dates else 0,
+                "longest_session_seconds": round(max((float(
+                    item.get("seconds", 0) or 0) for item in values), default=0)),
+                "share": round(total / range_seconds, 4) if range_seconds > 0 else 0,
+                "first_watched": first.isoformat(),
+                "last_watched": last.isoformat(),
+                "busiest_period": busiest_period["name"],
+                "busiest_weekday": busiest_weekday["name"],
+                "time_of_day": periods,
+                "hourly": hourly_breakdown(values),
+                "weekdays": item_weekdays,
+                "by_surface": (lambda totals: [{"name": name, "seconds": round(value)}
+                    for name, value in sorted(totals.items(), key=lambda pair: -pair[1])])(
+                        {surface: sum(float(item.get("seconds", 0) or 0)
+                                      for item in values
+                                      if str(item.get("surface") or "tv") == surface)
+                         for surface in {str(item.get("surface") or "tv")
+                                         for item in values}}),
+                "timeline": item_timeline(values),
+            }
+            if result["kind"] == "film":
+                result.update({
+                    "average_progress": round(sum(film_progress) / len(film_progress), 4)
+                    if film_progress else 0,
+                    "furthest_progress": round(max(film_progress), 4)
+                    if film_progress else 0,
+                    "completion_sessions": sum(1 for value in film_progress if value >= .9),
+                    "progress_samples": len(film_progress),
+                })
+            return result
+
+        items = sorted((detailed_item(key, values)
+                        for key, values in grouped_items.items()),
+                       key=lambda value: -value["seconds"])
+        top_channels = [item for item in items if item["kind"] == "channel"][:8]
+        top_films = [item for item in items if item["kind"] == "film"][:8]
+        busiest_period = max(time_of_day, key=lambda value: value["seconds"],
+                             default={"name": "—"})["name"]
+        busiest_weekday = max(weekdays, key=lambda value: value["seconds"],
+                              default={"name": "—"})["name"]
         return {
             "tracking_started": tracking_started,
             "range_days": days,
             "summary": {
-                "today_seconds": total_since(max(1.0, now - datetime.combine(
-                    today, datetime.min.time(), local_zone).timestamp())),
+                "today_seconds": total_since(max(1.0, now - today_start)),
                 "week_seconds": total_since(7 * 86400),
                 "month_seconds": total_since(30 * 86400),
-                "range_seconds": sum(float(item.get("seconds", 0) or 0)
-                                     for item in selected),
+                "range_seconds": range_seconds,
+                "previous_range_seconds": previous_seconds,
+                "average_active_day_seconds": range_seconds / active_days
+                if active_days else 0,
+                "longest_session_seconds": max((float(item.get("seconds", 0) or 0)
+                                                for item in selected), default=0),
                 "active_days": active_days,
                 "sessions": len(selected),
+                "unique_items": unique_items,
+                "busiest_period": busiest_period,
+                "busiest_weekday": busiest_weekday,
             },
             "daily": daily,
             "weekly": weekly,
             "monthly": monthly,
+            "timeline": timeline,
+            "time_of_day": time_of_day,
+            "hourly": hourly,
+            "weekdays": weekdays,
             "by_surface": grouped("surface"),
             "by_kind": grouped("kind"),
             "top_titles": top_titles,
+            "top_channels": top_channels,
+            "top_films": top_films,
+            "items": items,
             "recent": recent,
+            "sessions": session_details,
         }
+
+    def delete_viewing_sessions(self, payload: dict[str, Any]) -> dict[str, Any]:
+        raw_ids = payload.get("ids", [])
+        if not isinstance(raw_ids, list):
+            raise ValueError("Choose the viewing sessions to delete")
+        selected = {str(value).strip() for value in raw_ids if str(value).strip()}
+        if not selected:
+            raise ValueError("Choose at least one viewing session")
+        if len(selected) > VIEWING_MAX_SESSIONS:
+            raise ValueError("Too many viewing sessions were selected")
+        with self.viewing_lock:
+            sessions = self.viewing_store["sessions"]
+            kept = [item for item in sessions if str(item.get("id") or "") not in selected]
+            deleted = len(sessions) - len(kept)
+            if deleted:
+                self.viewing_store["sessions"] = kept
+                self.viewing_dirty = True
+        self.flush_viewing_store(force=True)
+        return {"ok": True, "deleted": deleted}
 
     def cleanup_stale_temporary_files(self) -> None:
         """Remove abandoned encoder outputs, never active or recent work."""
@@ -1059,6 +1399,8 @@ class Library:
                     "file_name": str(metadata.get("file_name", "Video")),
                     "channel": metadata.get("channel"),
                     "kind": metadata.get("kind", "channel"),
+                    "series_id": metadata.get("series_id"),
+                    "season": metadata.get("season"),
                     "offset": int(metadata.get("size", 0)),
                     "complete": False,
                     "processing": False,
@@ -1082,7 +1424,9 @@ class Library:
         with lock:
             metadata = self.upload_meta(upload_id)
             part = self.incoming / f"{upload_id}.part"
-            adult_upload = metadata.get("kind") == "adult"
+            adult_film_upload = metadata.get("kind") == "adult"
+            adult_series_upload = metadata.get("kind") == "adult-series"
+            adult_upload = adult_film_upload or adult_series_upload
             source_name = str(metadata["file_name"])
             original_destination = self.upload_destination(metadata)
             previous_status = str(metadata.pop(
@@ -1137,7 +1481,7 @@ class Library:
                 metadata["status"] = "processing"
                 metadata["updated"] = time.time()
                 self.write_json(self.incoming / f"{upload_id}.json", metadata)
-                if adult_upload:
+                if adult_film_upload:
                     self.optimise_adult_for_playback(part, destination)
                 else:
                     self.optimise_for_playback(part, destination)
@@ -1150,7 +1494,7 @@ class Library:
             metadata["status"] = "finalising"
             metadata["updated"] = time.time()
             self.write_json(self.incoming / f"{upload_id}.json", metadata)
-            if adult_upload:
+            if adult_film_upload:
                 with self.config_lock:
                     states = self.adult_media_states()
                     relative = self.adult_relative_path(destination)
@@ -1162,7 +1506,20 @@ class Library:
                     current.setdefault("message", "")
                     states[relative] = current
                     self.write_adult_media_states(states)
-            refreshed = self.refresh_tv()
+            elif adult_series_upload:
+                with self.config_lock:
+                    states = self.adult_series_states()
+                    series_id = str(metadata.get("series_id", ""))
+                    relative = destination.relative_to(
+                        self.adult_series_root / series_id).as_posix()
+                    key = f"{series_id}/{relative}"
+                    current = states["episodes"].get(key, {})
+                    if not isinstance(current, dict):
+                        current = {}
+                    current.setdefault("library_id", uuid.uuid4().hex)
+                    states["episodes"][key] = current
+                    self.write_adult_series_states(states)
+            refreshed = True if adult_series_upload else self.refresh_tv()
             result = {
                 "id": upload_id,
                 "offset": int(metadata["size"]),
@@ -1172,7 +1529,10 @@ class Library:
                 "status": "finalising",
                 "file_name": source_name,
                 "channel": metadata.get("channel"),
-                "kind": "adult" if adult_upload else "channel",
+                "kind": "adult-series" if adult_series_upload
+                else "adult" if adult_film_upload else "channel",
+                "series_id": metadata.get("series_id"),
+                "season": metadata.get("season"),
                 "finished": time.time(),
             }
             result_path = self.incoming / f"{upload_id}.result.json"
@@ -1582,6 +1942,17 @@ class Library:
     def write_channel_media_states(self, values: dict[str, Any]) -> None:
         self.write_json(self.channel_metadata_path, values)
 
+    def channel_programme_title(self, channel_number: int, file_name: str) -> str:
+        """Return the saved metadata title, falling back to the uploaded name."""
+        states = self.channel_media_states()
+        programmes = states.get("programmes", {}) if isinstance(states, dict) else {}
+        metadata = programmes.get(
+            self.channel_programme_key(channel_number, file_name), {}) \
+            if isinstance(programmes, dict) else {}
+        title = str(metadata.get("title") or "").strip() \
+            if isinstance(metadata, dict) else ""
+        return title or self.display_name(file_name)
+
     @staticmethod
     def channel_programme_key(channel_number: int, file_name: str) -> str:
         return f"{int(channel_number)}/{file_name}"
@@ -1618,16 +1989,63 @@ class Library:
             "updated": max(0.0, updated),
         }
 
+    def channel_series_resume_state(
+            self, channel_number: int,
+            programmes: list[dict[str, Any]]) -> dict[str, Any]:
+        """Return the episode and position currently held by a series channel."""
+        available = {
+            str(programme.get("name", "")): programme
+            for programme in programmes
+            if programme.get("name") and programme.get("enabled") is not False
+        }
+        fallback = next(iter(available), "")
+        state = self.read_json(self.player_state_path, {})
+        timelines = state.get("channel_timelines", {}) \
+            if isinstance(state, dict) else {}
+        timeline = timelines.get(str(channel_number), {}) \
+            if isinstance(timelines, dict) else {}
+        if not isinstance(timeline, dict):
+            timeline = {}
+        file_name = str(timeline.get("episode_name", ""))
+        if file_name not in available:
+            file_name = fallback
+        try:
+            position = max(0.0, float(timeline.get("position_seconds", 0) or 0))
+        except (TypeError, ValueError):
+            position = 0.0
+        if file_name and position <= 0:
+            positions = timeline.get("programme_positions", {})
+            try:
+                position = max(0.0, float(positions.get(file_name, 0) or 0)) \
+                    if isinstance(positions, dict) else 0.0
+            except (TypeError, ValueError):
+                position = 0.0
+        programme = available.get(file_name, {})
+        metadata = programme.get("metadata", {}) \
+            if isinstance(programme, dict) else {}
+        title = str(metadata.get("title") or "").strip() \
+            if isinstance(metadata, dict) else ""
+        return {
+            "file": file_name,
+            "position": position,
+            "browser_ready": programme.get("browser_ready") is not False,
+            "title": title or str(programme.get("display_name", "")),
+        }
+
     def write_adult_media_states(self, values: dict[str, dict[str, Any]]) -> None:
         self.write_json(self.adult_metadata_path, values)
 
     def set_adult_media_state(self, file_name: str, state: str,
-                              message: str = "") -> None:
+                              message: str = "", progress: int | None = None) -> None:
         values = self.adult_media_states()
         current = values.get(file_name, {})
         if not isinstance(current, dict):
             current = {}
         current.update({"state": state, "message": message, "updated": time.time()})
+        if progress is None:
+            current.pop("progress", None)
+        else:
+            current["progress"] = max(0, min(100, int(progress)))
         values[file_name] = current
         self.write_adult_media_states(values)
 
@@ -1680,6 +2098,8 @@ class Library:
                     "size": item.stat().st_size,
                     "playback_state": state.get("state", "original"),
                     "playback_message": state.get("message", ""),
+                    "playback_progress": max(0, min(100, int(
+                        state.get("progress", 0) or 0))),
                     "metadata": state.get("metadata", {})
                     if isinstance(state.get("metadata"), dict) else {},
                     "favourite": state.get("favourite") is True,
@@ -1693,6 +2113,324 @@ class Library:
         if changed:
             self.write_adult_media_states(states)
         return values
+
+    def adult_optimisations(self) -> dict[str, Any]:
+        """Return the tiny, frequently polled subset of Adult TV state.
+
+        Keeping this separate from /api/library prevents an optimisation from
+        rebuilding every portal view and throwing an iPhone back to the top.
+        """
+        states = self.adult_media_states()
+        items = []
+        for path, value in states.items():
+            if not isinstance(value, dict):
+                continue
+            state = str(value.get("state", "original"))
+            if state not in {"queued", "processing", "optimised", "error"}:
+                continue
+            items.append({
+                "path": path,
+                "state": state,
+                "progress": max(0, min(100, int(value.get("progress", 0) or 0))),
+                "message": str(value.get("message", "")),
+                "updated": float(value.get("updated", 0) or 0),
+            })
+        return {"items": items, "active": any(
+            item["state"] in {"queued", "processing"} for item in items)}
+
+    def adult_series_states(self) -> dict[str, Any]:
+        value = self.read_json(self.adult_series_state_path, {})
+        if not isinstance(value, dict):
+            value = {}
+        if not isinstance(value.get("series"), dict):
+            value["series"] = {}
+        if not isinstance(value.get("episodes"), dict):
+            value["episodes"] = {}
+        return value
+
+    def write_adult_series_states(self, values: dict[str, Any]) -> None:
+        values["updated"] = time.time()
+        self.write_json(self.adult_series_state_path, values)
+
+    @staticmethod
+    def normalise_series_title(value: str) -> str:
+        title = SAFE_NAME.sub("", str(value or "").strip()).strip(". ")
+        if not title or len(title) > 80:
+            raise ValueError("Enter a series name")
+        return title
+
+    def create_adult_series(self, title: str) -> str:
+        title = self.normalise_series_title(title)
+        with self.config_lock:
+            states = self.adult_series_states()
+            for series_id, value in states["series"].items():
+                if isinstance(value, dict) and str(value.get("title", "")).casefold() == title.casefold():
+                    (self.adult_series_root / series_id).mkdir(mode=0o750, exist_ok=True)
+                    return series_id
+            series_id = uuid.uuid4().hex
+            states["series"][series_id] = {
+                "title": title, "created": time.time(), "metadata": {},
+            }
+            (self.adult_series_root / series_id).mkdir(mode=0o750, exist_ok=True)
+            self.write_adult_series_states(states)
+            return series_id
+
+    def adult_series_path(self, series_id: str, relative: str = "") -> Path:
+        if not re.fullmatch(r"[a-f0-9]{32}", str(series_id)):
+            raise ValueError("That Adult TV series is not valid")
+        root = (self.adult_series_root / series_id).resolve()
+        if not root.is_dir():
+            raise ValueError("That Adult TV series no longer exists")
+        relative_path = Path(str(relative or "").replace("\\", "/"))
+        if relative_path.is_absolute() or ".." in relative_path.parts:
+            raise ValueError("That episode path is not valid")
+        candidate = root.joinpath(relative_path).resolve()
+        if candidate != root and root not in candidate.parents:
+            raise ValueError("That episode path is not valid")
+        return candidate
+
+    @staticmethod
+    def adult_episode_identity(path: Path, ordinal: int = 0) -> dict[str, Any]:
+        stem = re.sub(r"[._]+", " ", path.stem).strip()
+        match = re.search(r"(?i)\bS(?:eries|eason)?\s*0*(\d{1,2})\s*E(?:pisode)?\s*0*(\d{1,3})\b", stem)
+        if not match:
+            match = re.search(r"(?i)\b0*(\d{1,2})x0*(\d{1,3})\b", stem)
+        season = int(match.group(1)) if match else 0
+        episode = int(match.group(2)) if match else max(1, ordinal)
+        if not season:
+            parent = re.search(r"(?i)\b(?:series|season)\s*0*(\d{1,2})\b", path.parent.name)
+            season = int(parent.group(1)) if parent else 1
+        title = stem
+        if match:
+            title = (stem[:match.start()] + " " + stem[match.end():]).strip(" .-_[]()")
+        title = re.sub(
+            r"(?i)\b(?:480p|720p|1080p|2160p|hdtv|web[- ]?dl|bluray|xvid|x26[45]|hevc)\b.*$",
+            "", title).strip(" .-_")
+        return {"season": season, "episode": episode,
+                "title": title or f"Episode {episode}"}
+
+    def adult_series_library(self) -> list[dict[str, Any]]:
+        with self.config_lock:
+            states = self.adult_series_states()
+            changed = False
+            values: list[dict[str, Any]] = []
+            for series_id, series_state in sorted(
+                    states["series"].items(),
+                    key=lambda item: str(item[1].get("title", "")).casefold()
+                    if isinstance(item[1], dict) else str(item[0])):
+                if not re.fullmatch(r"[a-f0-9]{32}", str(series_id)) \
+                        or not isinstance(series_state, dict):
+                    continue
+                root = self.adult_series_root / series_id
+                if not root.is_dir():
+                    continue
+                files = sorted(
+                    (item for item in root.rglob("*") if item.is_file()
+                     and item.suffix.lower() in SUPPORTED_EXTENSIONS),
+                    key=lambda item: item.relative_to(root).as_posix().casefold())
+                episodes = []
+                for ordinal, item in enumerate(files, 1):
+                    relative = item.relative_to(root).as_posix()
+                    key = f"{series_id}/{relative}"
+                    episode_state = states["episodes"].get(key, {})
+                    if not isinstance(episode_state, dict):
+                        episode_state = {}
+                    if not episode_state.get("library_id"):
+                        episode_state["library_id"] = uuid.uuid4().hex
+                        states["episodes"][key] = episode_state
+                        changed = True
+                    parsed = self.adult_episode_identity(item, ordinal)
+                    metadata = episode_state.get("metadata", {})
+                    if not isinstance(metadata, dict):
+                        metadata = {}
+                    position = self.normalise_resume_position(
+                        float(episode_state.get("remote_position", 0) or 0),
+                        float(episode_state.get("remote_duration", 0) or 0))
+                    episodes.append({
+                        "path": relative, "name": item.name,
+                        "display_name": metadata.get("title") or parsed["title"],
+                        "season": int(metadata.get("season_number") or parsed["season"]),
+                        "episode": int(metadata.get("episode_number") or parsed["episode"]),
+                        "overview": str(metadata.get("overview", "")),
+                        "still": str(metadata.get("still", "")),
+                        "library_id": episode_state["library_id"],
+                        "size": item.stat().st_size,
+                        "browser_ready": self.remote_browser_ready(item),
+                        "watched": episode_state.get("watched") is True,
+                        "remote_position": position,
+                        "remote_duration": float(episode_state.get("remote_duration", 0) or 0),
+                        "remote_last_watched": float(episode_state.get("remote_last_watched", 0) or 0),
+                    })
+                episodes.sort(key=lambda value: (
+                    value["season"], value["episode"], value["display_name"].casefold()))
+                metadata = series_state.get("metadata", {})
+                values.append({
+                    "id": series_id,
+                    "title": str(metadata.get("title") or series_state.get("title") or "Series"),
+                    "stored_title": str(series_state.get("title") or "Series"),
+                    "favourite": series_state.get("favourite") is True,
+                    "metadata": metadata if isinstance(metadata, dict) else {},
+                    "episodes": episodes,
+                    "episode_count": len(episodes),
+                    "season_count": len({value["season"] for value in episodes}),
+                    "watched_count": sum(value["watched"] for value in episodes),
+                })
+            if changed:
+                self.write_adult_series_states(states)
+            return values
+
+    def set_adult_episode_watched(self, series_id: str, relative: str,
+                                  watched: bool) -> dict[str, Any]:
+        source = self.adult_series_path(series_id, relative)
+        if not source.is_file() or source.suffix.lower() not in SUPPORTED_EXTENSIONS:
+            raise ValueError("That episode no longer exists")
+        key = f"{series_id}/{source.relative_to(self.adult_series_root / series_id).as_posix()}"
+        with self.config_lock:
+            states = self.adult_series_states()
+            value = states["episodes"].get(key, {})
+            if not isinstance(value, dict):
+                value = {}
+            value["watched"] = bool(watched)
+            value["watched_updated"] = time.time()
+            if watched:
+                value["remote_position"] = 0.0
+                value["remote_last_watched"] = 0.0
+            states["episodes"][key] = value
+            self.write_adult_series_states(states)
+        return {"ok": True, "series": series_id, "path": relative,
+                "watched": bool(watched)}
+
+    def restart_adult_series_progress(self, series_id: str, scope: str,
+                                      season: int | None = None) -> dict[str, Any]:
+        """Clear watched and resume history for one season or complete show."""
+        root = self.adult_series_path(series_id)
+        if not root.is_dir():
+            raise ValueError("That TV series no longer exists")
+        if scope not in {"season", "series"}:
+            raise ValueError("Choose a series or complete show to restart")
+        if scope == "season":
+            try:
+                season_number = int(season)
+            except (TypeError, ValueError) as error:
+                raise ValueError("Choose a series to restart") from error
+            if season_number < 0:
+                raise ValueError("Choose a series to restart")
+        else:
+            season_number = None
+
+        prefix = f"{series_id}/"
+        changed = 0
+        with self.config_lock:
+            states = self.adult_series_states()
+            for key, raw_value in list(states["episodes"].items()):
+                if not str(key).startswith(prefix):
+                    continue
+                relative = str(key)[len(prefix):]
+                source = root / relative
+                if not source.is_file() or source.suffix.lower() not in SUPPORTED_EXTENSIONS:
+                    continue
+                value = raw_value if isinstance(raw_value, dict) else {}
+                if season_number is not None:
+                    metadata = value.get("metadata", {})
+                    if not isinstance(metadata, dict):
+                        metadata = {}
+                    parsed = self.adult_episode_identity(source)
+                    episode_season = int(
+                        metadata.get("season_number") or parsed["season"])
+                    if episode_season != season_number:
+                        continue
+                value["watched"] = False
+                value["watched_updated"] = time.time()
+                value["remote_position"] = 0.0
+                value["remote_last_watched"] = 0.0
+                states["episodes"][key] = value
+                changed += 1
+            self.write_adult_series_states(states)
+        return {
+            "ok": True,
+            "series": series_id,
+            "scope": scope,
+            "season": season_number,
+            "episodes_reset": changed,
+        }
+
+    def trash_adult_series_items(self, payload: dict[str, Any]) -> int:
+        """Move an episode, a season, or a complete Adult TV series to the bin."""
+        series_id = str(payload.get("series", ""))
+        root = self.adult_series_path(series_id)
+        scope = str(payload.get("scope", "episode"))
+        if scope not in {"episode", "season", "series"}:
+            raise ValueError("Choose an episode, series, or complete show to remove")
+        with self.config_lock:
+            states = self.adult_series_states()
+            series_state = states["series"].get(series_id)
+            if not isinstance(series_state, dict):
+                raise ValueError("That Adult TV series no longer exists")
+            title = str(series_state.get("metadata", {}).get("title")
+                        if isinstance(series_state.get("metadata"), dict) else "") \
+                or str(series_state.get("title") or "Series")
+            all_files = [item for item in root.rglob("*") if item.is_file()
+                         and item.suffix.lower() in SUPPORTED_EXTENSIONS]
+            if scope == "episode":
+                source = self.adult_series_path(series_id, str(payload.get("file", "")))
+                if not source.is_file() or source.suffix.lower() not in SUPPORTED_EXTENSIONS:
+                    raise ValueError("That episode no longer exists")
+                files = [source]
+            elif scope == "season":
+                try:
+                    season = int(payload.get("season"))
+                except (TypeError, ValueError) as error:
+                    raise ValueError("Choose a series to remove") from error
+                episode_seasons = {
+                    item["path"]: int(item["season"])
+                    for value in self.adult_series_library() if value["id"] == series_id
+                    for item in value["episodes"]
+                }
+                files = [item for item in all_files
+                         if episode_seasons.get(item.relative_to(root).as_posix()) == season]
+                if not files:
+                    raise ValueError(f"Series {season} has no episodes to remove")
+            else:
+                files = all_files
+
+            moved = 0
+            moved_keys: list[str] = []
+            for source in files:
+                relative = source.relative_to(root).as_posix()
+                key = f"{series_id}/{relative}"
+                item_id = f"{int(time.time())}-{uuid.uuid4().hex[:8]}"
+                destination_dir = self.bin / item_id
+                destination_dir.mkdir(mode=0o750)
+                self.write_json(destination_dir / "manifest.json", {
+                    "id": item_id,
+                    "file_name": source.name,
+                    "folder": source.parent.relative_to(self.media_root).as_posix(),
+                    "channel_name": f"Adult TV · {title}",
+                    "adult_series_id": series_id,
+                    "adult_series_state": series_state,
+                    "adult_series_episode_state": states["episodes"].get(key, {}),
+                })
+                try:
+                    shutil.move(str(source), str(destination_dir / source.name))
+                except Exception:
+                    shutil.rmtree(destination_dir, ignore_errors=True)
+                    raise
+                moved += 1
+                moved_keys.append(key)
+
+            for key in moved_keys:
+                states["episodes"].pop(key, None)
+            if scope == "series":
+                states["series"].pop(series_id, None)
+            self.write_adult_series_states(states)
+            for directory in sorted(
+                    (item for item in root.rglob("*") if item.is_dir()),
+                    key=lambda item: len(item.parts), reverse=True):
+                if not any(directory.iterdir()):
+                    directory.rmdir()
+            if scope == "series" and root.is_dir() and not any(root.iterdir()):
+                root.rmdir()
+            return moved
 
     def remote_resume_position(self, library_id: str, media_state: dict[str, Any]) -> float:
         """Use the position from the most recently active film session.
@@ -1834,6 +2572,25 @@ class Library:
                 library_id = state.get("library_id") if isinstance(state, dict) else None
             resume = self.remote_resume_position(str(library_id or ""), state if isinstance(state, dict) else {})
             return kind, source, self.display_name(source.name), str(library_id or ""), resume
+        if kind == "adult-series":
+            series_id = str(payload.get("series", ""))
+            source = self.adult_series_path(series_id, str(payload.get("file", "")))
+            if not source.is_file() or source.suffix.lower() not in SUPPORTED_EXTENSIONS:
+                raise ValueError("That Adult TV episode is no longer in the library")
+            relative = source.relative_to(self.adult_series_root / series_id).as_posix()
+            key = f"{series_id}/{relative}"
+            state = self.adult_series_states()["episodes"].get(key, {})
+            if not isinstance(state, dict):
+                state = {}
+            library_id = str(state.get("library_id") or "")
+            resume = self.normalise_resume_position(
+                float(state.get("remote_position", 0) or 0),
+                float(state.get("remote_duration", 0) or 0))
+            parsed = self.adult_episode_identity(source)
+            metadata = state.get("metadata", {})
+            title = str(metadata.get("title") or parsed["title"]) \
+                if isinstance(metadata, dict) else parsed["title"]
+            return kind, source, title, library_id, resume
         if kind == "channel":
             try:
                 channel = self.channel(int(payload.get("channel", 0)))
@@ -1845,10 +2602,12 @@ class Library:
             if self.channel_content_type(channel) == "films":
                 channel_number = int(channel["number"])
                 resume = self.channel_film_resume_state(channel_number, source.name)
-                return (kind, source, self.display_name(source.name),
+                return (kind, source,
+                        self.channel_programme_title(channel_number, source.name),
                         self.channel_programme_key(channel_number, source.name),
                         resume["position"])
-            return kind, source, self.display_name(source.name), None, 0
+            return (kind, source, self.channel_programme_title(
+                int(channel["number"]), source.name), None, 0)
         if kind == "usb":
             source = self.usb_resolve(
                 str(payload.get("volume", "")), str(payload.get("file", "")))
@@ -1891,7 +2650,7 @@ class Library:
         display_file_name = f"{display_stem}{source.suffix.lower()}"
         subtitle_url = None
         subtitles = None
-        if kind == "adult":
+        if kind in {"adult", "adult-series"}:
             try:
                 caption_source = subtitle_source or source
                 if purpose == "vlc":
@@ -1955,7 +2714,7 @@ class Library:
 
     def external_subtitles(self, token: str) -> bytes:
         stream = self.external_stream_session(token)
-        if stream.get("kind") != "adult":
+        if stream.get("kind") not in {"adult", "adult-series"}:
             raise ValueError("That video has no external subtitle track")
         return self.browser_subtitles_for_source(Path(stream["source"]))
 
@@ -2190,13 +2949,14 @@ class Library:
                 })
         base = urlencode({"stream": token})
         subtitle_url = None
-        if kind == "adult":
+        if kind in {"adult", "adult-series"}:
             browser_sidecars = [path for path in self.subtitle_sidecars(source)
                                 if path.suffix.lower() in {".vtt", ".srt"}]
             if browser_sidecars:
                 subtitle_url = f"/api/remote/subtitles?{base}"
         return {"ok": True, "title": title, "kind": kind,
-                "resume_enabled": bool(library_id), "resume_position": resume,
+                "resume_enabled": bool(library_id) or "position" in payload,
+                "resume_position": resume,
                 "stream_url": f"/api/remote/media?{base}",
                 # The browser attaches this only after the video itself has
                 # reached canplay. That keeps iOS source negotiation isolated
@@ -2245,7 +3005,7 @@ class Library:
             duration = max(0.0, float(payload.get("duration", 0)))
         except (TypeError, ValueError) as error:
             raise ValueError("That playback position is not valid") from error
-        self.record_remote_viewing(session, token, position)
+        self.record_remote_viewing(session, token, position, duration)
         if not session.get("library_id"):
             return {"ok": True}
         if session["kind"] == "channel":
@@ -2267,6 +3027,25 @@ class Library:
                 raise ValueError("Mabel TV could not save that film position") from error
             if reply != "ok":
                 raise ValueError("Mabel TV could not save that film position")
+            return {"ok": True}
+        if session["kind"] == "adult-series":
+            with self.config_lock:
+                states = self.adult_series_states()
+                source = Path(session["source"])
+                relative = source.relative_to(self.adult_series_root).as_posix()
+                state = states["episodes"].get(relative, {})
+                if not isinstance(state, dict):
+                    state = {}
+                saved_position = self.normalise_resume_position(position, duration)
+                state.update({
+                    "remote_position": saved_position,
+                    "remote_duration": duration,
+                    "remote_last_watched": time.time(),
+                })
+                if duration > 0 and position >= duration * .92:
+                    state["watched"] = True
+                states["episodes"][relative] = state
+                self.write_adult_series_states(states)
             return {"ok": True}
         if session["kind"] != "adult":
             return {"ok": True}
@@ -2326,7 +3105,7 @@ class Library:
         return {"ok": True}
 
     def set_favourite(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """Persist a portal-only film favourite without refreshing the TV player."""
+        """Persist a portal-only film or series-channel favourite."""
         enabled = payload.get("enabled")
         if not isinstance(enabled, bool):
             raise ValueError("Choose whether this film is a favourite")
@@ -2374,11 +3153,50 @@ class Library:
             return {"ok": True, "kind": kind,
                     "channel": int(channel["number"]), "file": source.name,
                     "favourite": enabled}
-        raise ValueError("Choose an Adult TV or Mabel TV film")
+        if kind == "series-channel":
+            try:
+                channel = self.channel(int(payload.get("channel", 0)))
+            except (TypeError, ValueError):
+                raise ValueError("Choose a valid Mabel TV channel") from None
+            if self.channel_content_type(channel) != "shows":
+                raise ValueError("Only Mabel TV episode channels can be favourites")
+            number = int(channel["number"])
+            with self.config_lock:
+                states = self.channel_media_states()
+                stored = states.get("favourite_channels", [])
+                favourites = {
+                    int(value) for value in stored
+                    if isinstance(value, int)
+                    or (isinstance(value, str) and value.isdigit())
+                } if isinstance(stored, list) else set()
+                if enabled:
+                    favourites.add(number)
+                else:
+                    favourites.discard(number)
+                states.update({"favourite_channels": sorted(favourites),
+                               "updated": time.time()})
+                self.write_channel_media_states(states)
+            return {"ok": True, "kind": kind, "channel": number,
+                    "favourite": enabled}
+        if kind == "adult-series":
+            series_id = str(payload.get("series", ""))
+            self.adult_series_path(series_id)
+            with self.config_lock:
+                states = self.adult_series_states()
+                series = states["series"].get(series_id)
+                if not isinstance(series, dict):
+                    raise ValueError("That Adult TV series is no longer available")
+                series["favourite"] = enabled
+                states["series"][series_id] = series
+                self.write_adult_series_states(states)
+            return {"ok": True, "kind": kind, "series": series_id,
+                    "favourite": enabled}
+        raise ValueError(
+            "Choose an Adult TV film, Adult TV series, Mabel TV film, or episode channel")
 
     def remote_subtitles(self, token: str) -> bytes:
         session = self.remote_session(token)
-        if session["kind"] != "adult":
+        if session["kind"] not in {"adult", "adult-series"}:
             raise ValueError("This Mabel TV programme has no browser subtitle track")
         return self.browser_subtitles_for_source(session["source"])
 
@@ -2734,6 +3552,38 @@ class Library:
             raise ValueError("Choose at least one video or folder to import")
         return unique
 
+    def _usb_series_selected_files(
+            self, identity: str, selected: list[Any]) -> list[tuple[Path, Path]]:
+        values: list[tuple[Path, Path]] = []
+        for raw in selected:
+            item = self.usb_resolve(identity, str(raw))
+            if item.is_file():
+                candidates = [(item, Path(item.name))]
+            else:
+                prefix = Path(item.name) if re.search(
+                    r"(?i)\b(?:series|season)\s*\d+\b", item.name) else Path()
+                candidates = [
+                    (candidate, prefix / candidate.relative_to(item))
+                    for candidate in sorted(item.rglob("*"))
+                    if candidate.is_file()
+                ]
+            for candidate, relative in candidates:
+                if candidate.is_symlink() or candidate.suffix.lower() not in SUPPORTED_EXTENSIONS:
+                    continue
+                clean_parts = [
+                    SAFE_NAME.sub("", part).strip(". ") or "Episode"
+                    for part in relative.parts
+                ]
+                values.append((candidate, Path(*clean_parts)))
+                if len(values) > USB_MAX_SELECTION_FILES:
+                    raise ValueError("Choose fewer than 2,000 episodes at a time")
+        unique: dict[Path, Path] = {}
+        for source, relative in values:
+            unique.setdefault(source, relative)
+        if not unique:
+            raise ValueError("Choose at least one episode or series folder")
+        return list(unique.items())
+
     @staticmethod
     def unique_destination(folder: Path, name: str) -> Path:
         clean = SAFE_NAME.sub("", Path(name).stem).strip(". ") or "USB video"
@@ -2750,12 +3600,23 @@ class Library:
         selected = payload.get("paths")
         if not isinstance(selected, list):
             raise ValueError("Choose the USB videos to import")
-        files = self._usb_selected_files(identity, selected)
         target = str(payload.get("target", ""))
         channel_number: int | None = None
+        relative_destinations: dict[Path, Path] | None = None
         if target == "adult":
+            files = self._usb_selected_files(identity, selected)
             destination_root = self.adult_root
+        elif target == "series":
+            pairs = self._usb_series_selected_files(identity, selected)
+            requested_title = str(payload.get("series_name", "")).strip()
+            if not requested_title and len(selected) == 1:
+                requested_title = self.usb_resolve(identity, str(selected[0])).stem
+            series_id = self.create_adult_series(requested_title)
+            destination_root = self.adult_series_root / series_id
+            files = [source for source, _relative in pairs]
+            relative_destinations = dict(pairs)
         elif target == "channel":
+            files = self._usb_selected_files(identity, selected)
             channel_number = int(payload.get("channel"))
             channel = self.channel(channel_number)
             destination_root = self.media_root / str(channel["folder"])
@@ -2776,18 +3637,27 @@ class Library:
             for key in completed[:-20]:
                 self.usb_imports.pop(key, None)
             self.usb_imports[job_id] = job
+        if target == "series":
+            job["series"] = series_id
         threading.Thread(target=self._run_usb_import,
-                         args=(job_id, files, destination_root),
+                         args=(job_id, files, destination_root, relative_destinations),
                          name=f"mabeltv-usb-{job_id[:8]}", daemon=True).start()
         return dict(job)
 
-    def _run_usb_import(self, job_id: str, files: list[Path], destination_root: Path) -> None:
+    def _run_usb_import(self, job_id: str, files: list[Path], destination_root: Path,
+                        relative_destinations: dict[Path, Path] | None = None) -> None:
         try:
             with self.usb_import_lock:
                 job = self.usb_imports[job_id]
                 job.update(status="copying", message="Copying from USB")
             for index, source in enumerate(files):
-                destination = self.unique_destination(destination_root, source.name)
+                if relative_destinations is None:
+                    destination = self.unique_destination(destination_root, source.name)
+                else:
+                    relative = relative_destinations[source]
+                    parent = destination_root.joinpath(*relative.parts[:-1])
+                    parent.mkdir(parents=True, mode=0o750, exist_ok=True)
+                    destination = self.unique_destination(parent, relative.name)
                 partial = self.incoming / f"usb-{job_id}-{index}.part"
                 with self.usb_import_lock:
                     job["current"] = source.name
@@ -2807,7 +3677,7 @@ class Library:
                     partial.unlink(missing_ok=True)
                 with self.usb_import_lock:
                     job["files_done"] += 1
-            refreshed = self.refresh_tv()
+            refreshed = True if job.get("target") == "series" else self.refresh_tv()
             with self.usb_import_lock:
                 job.update(status="complete", current="",
                            message="Import complete" if refreshed else
@@ -3133,6 +4003,131 @@ class Library:
             "updated": time.time(), "provider": "TMDB",
         }
 
+    def cache_adult_series_artwork(self, remote_path: str, file_name: str,
+                                   *, backdrop: bool = False) -> str:
+        if not remote_path or not re.fullmatch(
+                r"adult-(?:series-[a-f0-9]{32}-[0-9]+|episode-[a-f0-9]{32}-[0-9]+-[0-9]+)\.jpg",
+                file_name):
+            return ""
+        try:
+            base = TMDB_BACKDROP_IMAGE_BASE_URL if backdrop else TMDB_IMAGE_BASE_URL
+            request = Request(base + remote_path,
+                              headers={"User-Agent": "MabelTV/0.2.5"})
+            with urlopen(request, timeout=15) as response:
+                data = response.read(10 * 1024 * 1024)
+            destination = self.adult_series_artwork_root / file_name
+            temporary = destination.with_suffix(".jpg.new")
+            temporary.write_bytes(data)
+            os.replace(temporary, destination)
+            return file_name
+        except (HTTPError, URLError, TimeoutError, OSError):
+            return ""
+
+    def adult_series_search(self, payload: dict[str, Any]) -> dict[str, Any]:
+        series_id = str(payload.get("series", ""))
+        states = self.adult_series_states()
+        series = states["series"].get(series_id)
+        if not isinstance(series, dict):
+            raise ValueError("That Adult TV series no longer exists")
+        query = str(payload.get("title") or series.get("title") or "").strip()
+        response = self.tmdb_request("search/tv", {
+            "query": query, "include_adult": "false", "language": "en-GB",
+        })
+        results = []
+        for value in response.get("results", [])[:12]:
+            if not isinstance(value, dict) or not value.get("id"):
+                continue
+            results.append({
+                "id": int(value["id"]), "title": str(value.get("name", "")),
+                "original_title": str(value.get("original_name", "")),
+                "year": str(value.get("first_air_date", ""))[:4],
+                "overview": str(value.get("overview", "")),
+                "poster_path": str(value.get("poster_path") or ""),
+            })
+        return {"ok": True, "series": series_id, "query": query,
+                "results": results}
+
+    def adult_series_apply(self, payload: dict[str, Any]) -> dict[str, Any]:
+        series_id = str(payload.get("series", ""))
+        try:
+            tmdb_id = int(payload.get("tmdb_id", 0))
+        except (TypeError, ValueError):
+            tmdb_id = 0
+        if tmdb_id <= 0:
+            raise ValueError("Choose a TMDB series match")
+        states = self.adult_series_states()
+        series = states["series"].get(series_id)
+        if not isinstance(series, dict):
+            raise ValueError("That Adult TV series no longer exists")
+        details = self.tmdb_request(f"tv/{tmdb_id}", {"language": "en-GB"})
+        poster = self.cache_adult_series_artwork(
+            str(details.get("poster_path") or ""),
+            f"adult-series-{series_id}-{tmdb_id}.jpg")
+        backdrop = self.cache_adult_series_artwork(
+            str(details.get("backdrop_path") or ""),
+            f"adult-series-{series_id}-{tmdb_id}.jpg", backdrop=True) \
+            if not poster else ""
+        series["metadata"] = {
+            "tmdb_id": tmdb_id,
+            "title": str(details.get("name") or series.get("title") or "Series"),
+            "overview": str(details.get("overview") or ""),
+            "year": str(details.get("first_air_date") or "")[:4],
+            "poster": poster or backdrop,
+            "updated": time.time(), "provider": "TMDB",
+        }
+        root = self.adult_series_root / series_id
+        files = [item for item in root.rglob("*") if item.is_file()
+                 and item.suffix.lower() in SUPPORTED_EXTENSIONS]
+        seasons = sorted({self.adult_episode_identity(item)["season"] for item in files})
+        episode_details: dict[tuple[int, int], dict[str, Any]] = {}
+        for season_number in seasons:
+            response = self.tmdb_request(
+                f"tv/{tmdb_id}/season/{season_number}", {"language": "en-GB"})
+            for episode in response.get("episodes", []):
+                if not isinstance(episode, dict):
+                    continue
+                number = int(episode.get("episode_number") or 0)
+                if number <= 0:
+                    continue
+                still = self.cache_adult_series_artwork(
+                    str(episode.get("still_path") or ""),
+                    f"adult-episode-{series_id}-{season_number}-{number}.jpg",
+                    backdrop=True)
+                episode_details[(season_number, number)] = {
+                    "title": str(episode.get("name") or f"Episode {number}"),
+                    "overview": str(episode.get("overview") or ""),
+                    "air_date": str(episode.get("air_date") or ""),
+                    "season_number": season_number,
+                    "episode_number": number,
+                    "still": still,
+                }
+        for ordinal, source in enumerate(sorted(files), 1):
+            parsed = self.adult_episode_identity(source, ordinal)
+            metadata = episode_details.get((parsed["season"], parsed["episode"]))
+            if metadata:
+                relative = source.relative_to(root).as_posix()
+                key = f"{series_id}/{relative}"
+                episode_state = states["episodes"].get(key, {})
+                if not isinstance(episode_state, dict):
+                    episode_state = {}
+                episode_state["metadata"] = metadata
+                states["episodes"][key] = episode_state
+        states["series"][series_id] = series
+        self.write_adult_series_states(states)
+        return {"ok": True, "series": series_id,
+                "metadata": series["metadata"],
+                "episodes_matched": len(episode_details)}
+
+    def adult_series_artwork(self, name: str) -> Path:
+        if not re.fullmatch(
+                r"adult-(?:series-[a-f0-9]{32}-[0-9]+|episode-[a-f0-9]{32}-[0-9]+-[0-9]+)\.jpg",
+                name):
+            raise ValueError("Series artwork not found")
+        path = self.adult_series_artwork_root / name
+        if not path.is_file():
+            raise ValueError("Series artwork not found")
+        return path
+
     def refresh_channel_show_metadata(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Search or apply a parent-selected match for one series channel."""
         try:
@@ -3333,6 +4328,13 @@ class Library:
             relative = f"{folder}/{metadata.get('file_name', '')}" if folder \
                 else str(metadata.get("file_name", ""))
             return self.safe_adult_path(relative, create_folder=bool(folder))
+        if metadata.get("kind") == "adult-series":
+            series_id = str(metadata.get("series_id", ""))
+            season = int(metadata.get("season", 0) or 0)
+            if season < 1 or season > 99:
+                raise ValueError("That series upload has no valid series number")
+            return self.adult_series_path(
+                series_id, f"Season {season}/{metadata.get('file_name', '')}")
         channel = self.channel(int(metadata.get("channel")))
         return self.safe_media_path(channel, str(metadata.get("file_name", "")))
 
@@ -3396,6 +4398,12 @@ class Library:
         stored_channel_favourites = channel_media.get("favourites", [])
         channel_favourites = set(stored_channel_favourites) \
             if isinstance(stored_channel_favourites, list) else set()
+        stored_favourite_channels = channel_media.get("favourite_channels", [])
+        favourite_channels = {
+            int(value) for value in stored_favourite_channels
+            if isinstance(value, int)
+            or (isinstance(value, str) and value.isdigit())
+        } if isinstance(stored_favourite_channels, list) else set()
         if not isinstance(channel_metadata, dict):
             channel_metadata = {}
         if not isinstance(programme_metadata, dict):
@@ -3432,10 +4440,21 @@ class Library:
                             "remote_last_watched": resume["updated"],
                         })
                     programmes.append(programme)
+            series_resume = self.channel_series_resume_state(
+                int(channel["number"]), programmes) if not is_film_channel else {}
             response.append({"number": channel["number"], "name": channel["name"],
+                             "folder": channel["folder"],
                              "aspect": channel.get("aspect", "crop"),
                              "content_type": self.channel_content_type(channel),
                              "enabled": channel["number"] not in disabled_channels,
+                             "favourite": (not is_film_channel
+                                           and int(channel["number"])
+                                           in favourite_channels),
+                             "resume_file": series_resume.get("file", ""),
+                             "resume_position": series_resume.get("position", 0),
+                             "resume_browser_ready": series_resume.get(
+                                 "browser_ready", True),
+                             "resume_title": series_resume.get("title", ""),
                              "programmes": programmes,
                              "enabled_programmes": sum(p["enabled"] for p in programmes),
                              "metadata": channel_metadata.get(
@@ -3460,6 +4479,7 @@ class Library:
             "remote_viewing": self.remote_settings(),
             "adult_library": self.adult_library(),
             "adult_folders": self.adult_folders(),
+            "adult_series": self.adult_series_library(),
             "recycle": self.recycle_items(),
             "uploads": self.upload_jobs(),
             "storage": {"free_gb": disk.free / 1024**3,
@@ -3495,16 +4515,19 @@ class Library:
                 # the upload bytes as fully received.
                 offset = part.stat().st_size if part.exists() \
                     else (0 if status == "uploading" else size)
-                adult = value.get("kind") == "adult"
-                number = -1 if adult else int(value.get("channel", -1))
+                upload_kind = str(value.get("kind") or "channel")
+                adult = upload_kind == "adult"
+                adult_series = upload_kind == "adult-series"
+                number = -1 if adult or adult_series else int(value.get("channel", -1))
             except (OSError, TypeError, ValueError):
                 continue
             jobs.append({
                 "id": value["id"],
                 "file_name": str(value.get("file_name", "Video")),
                 "channel": number,
-                "channel_name": "Adult mode" if adult else channel_names.get(number, f"CH {number}"),
-                "kind": "adult" if adult else "channel",
+                "channel_name": "Adult TV series" if adult_series else
+                "Adult mode" if adult else channel_names.get(number, f"CH {number}"),
+                "kind": "adult-series" if adult_series else "adult" if adult else "channel",
                 "size": size,
                 "offset": offset,
                 "status": status,
@@ -3521,14 +4544,17 @@ class Library:
             if not isinstance(value, dict) or value.get("status") not in {
                     "error", "refresh-error"}:
                 continue
-            adult = value.get("kind") == "adult"
-            number = -1 if adult else int(value.get("channel", -1))
+            upload_kind = str(value.get("kind") or "channel")
+            adult = upload_kind == "adult"
+            adult_series = upload_kind == "adult-series"
+            number = -1 if adult or adult_series else int(value.get("channel", -1))
             jobs.append({
                 "id": value.get("id", result_path.name.removesuffix(".result.json")),
                 "file_name": str(value.get("file_name", "Video")),
                 "channel": number,
-                "channel_name": "Adult mode" if adult else channel_names.get(number, f"CH {number}"),
-                "kind": "adult" if adult else "channel",
+                "channel_name": "Adult TV series" if adult_series else
+                "Adult mode" if adult else channel_names.get(number, f"CH {number}"),
+                "kind": "adult-series" if adult_series else "adult" if adult else "channel",
                 "size": int(value.get("offset", 0)),
                 "offset": int(value.get("offset", 0)),
                 "status": str(value.get("status")),
@@ -3631,7 +4657,8 @@ class Library:
         adult_mode = mode.get("mode") == "adult"
         status = self.live_stream.status(allow_screen_without_programme=adult_mode)
         for field in ("volume", "muted", "remote_locked", "standby", "subtitles_available",
-                      "subtitles_visible"):
+                      "subtitles_visible", "widescreen_available", "widescreen_enabled",
+                      "connected_tv_available", "connected_tv_power"):
             if field in mode:
                 status[field] = mode[field]
         if adult_mode:
@@ -3644,7 +4671,22 @@ class Library:
                              if playing else "Film library",
                 "paused": mode.get("paused") is True,
             })
+            try:
+                status["playback_position"] = round(max(
+                    0.0, float(mode.get("playback_position", 0) or 0)))
+                status["playback_duration"] = round(max(
+                    0.0, float(mode.get("playback_duration", 0) or 0)))
+            except (TypeError, ValueError):
+                status["playback_position"] = 0
+                status["playback_duration"] = 0
             status.pop("reason", None)
+        else:
+            activity = self.current_tv_viewing(mode)
+            if activity and activity.get("kind") == "film":
+                status["playback_position"] = round(max(
+                    0.0, float(activity.get("position", 0) or 0)))
+                status["playback_duration"] = round(max(
+                    0.0, float(activity.get("media_duration", 0) or 0)))
         return status
 
     def player_mode_status(self) -> dict[str, Any]:
@@ -3677,9 +4719,11 @@ class Library:
     def live_tv_control(self, payload: dict[str, Any]) -> dict[str, Any]:
         command = str(payload.get("command", ""))
         allowed = {"channel-up", "channel-down", "previous-programme", "next-programme",
-                   "toggle-pause", "toggle-subtitles", "volume-up", "volume-down", "toggle-mute",
-                   "turn-on", "turn-off", "toggle-power",
-                   "open-parent-menu", "open-tv-guide", "close-overlay", "restart-programme",
+                   "toggle-pause", "toggle-subtitles", "toggle-widescreen-mode",
+                   "volume-up", "volume-down", "toggle-mute",
+                   "turn-on", "turn-off", "turn-on-mabel-only", "turn-off-mabel-only",
+                   "toggle-power",
+                   "open-parent-menu", "open-tv-guide", "open-channel-menu", "close-overlay", "restart-programme",
                    "enter-adult-mode", "navigate-up", "navigate-down", "navigate-left",
                    "navigate-right", "select", "return-to-mabeltv", "toggle-remote-lock",
                    "tune-channel"}
@@ -3712,7 +4756,7 @@ class Library:
         """Start a known library item through the private player socket."""
         kind = str(payload.get("kind", ""))
         if kind == "channel":
-            _kind, source, _title, library_id, resume = self.remote_source(payload)
+            _kind, source, title, library_id, resume = self.remote_source(payload)
             if "position" in payload:
                 try:
                     resume = max(0.0, float(payload.get("position", 0)))
@@ -3721,11 +4765,11 @@ class Library:
             channel = self.channel(int(payload.get("channel", 0)))
             command = {"command": "play-programme", "channel": int(channel["number"]),
                        "file": source.name}
-            if library_id:
+            if library_id or "position" in payload:
                 command["position"] = resume
             skip_film_countdown = self.channel_content_type(channel) == "films"
         elif kind == "adult":
-            _kind, source, _title, _library_id, resume = self.remote_source(payload)
+            _kind, source, title, _library_id, resume = self.remote_source(payload)
             if "position" in payload:
                 try:
                     resume = max(0.0, float(payload.get("position", 0)))
@@ -3735,8 +4779,13 @@ class Library:
                        "file": self.adult_relative_path(source),
                        "position": resume}
             skip_film_countdown = False
+        elif kind == "adult-series":
+            _kind, source, title, _library_id, _resume = self.remote_source(payload)
+            command = {"command": "play-external", "path": str(source),
+                       "title": title}
+            skip_film_countdown = False
         else:
-            raise ValueError("Choose a programme or Adult film to play")
+            raise ValueError("Choose a programme, Adult film, or episode to play")
         if not source.is_file():
             raise ValueError("That video is no longer in the Mabel TV library")
         state = self.read_json(self.player_state_path, {})
@@ -3786,9 +4835,9 @@ class Library:
         verb = "Starting" if accepted_without_reply else "Playing"
         return {"ok": True,
                 "message": (f"Turned on Mabel TV and {verb.lower()} "
-                            f"{self.display_name(source.name)}"
+                            f"{title}"
                             if woke_tv else
-                            f"{verb} {self.display_name(source.name)} on Mabel TV")}
+                            f"{verb} {title} on Mabel TV")}
 
     def support_bundle(self) -> Path:
         self.admin_action("diagnostics")
@@ -3950,14 +4999,16 @@ class Library:
             "scale=1280:720:force_original_aspect_ratio=decrease:force_divisible_by=2,fps=30",
             "2500k", "3000k", "5000k")
 
-    def optimise_adult_for_playback(self, source: Path, destination: Path) -> None:
+    def optimise_adult_for_playback(self, source: Path, destination: Path,
+                                    progress_callback: Any = None) -> None:
         # Films are normally 23.976/24/25 fps. Preserve that cadence instead
         # of manufacturing duplicate 30 fps frames, while capping the stream
         # at a level the Pi can decode smoothly in hardware.
         self._optimise_for_playback(
             source, destination,
             "scale=1280:720:force_original_aspect_ratio=decrease:force_divisible_by=2",
-            "1800k", "2000k", "4000k")
+            "1800k", "2000k", "4000k", progress_callback
+            or self.adult_optimisation_progress_callback)
 
     def request_adult_optimisation(self, file_name: str) -> None:
         source = self.safe_adult_path(file_name)
@@ -3977,7 +5028,7 @@ class Library:
                 raise ValueError("This film is already being optimised")
             self.adult_optimisation_active.add(relative)
         with self.config_lock:
-            self.set_adult_media_state(relative, "queued")
+            self.set_adult_media_state(relative, "queued", progress=0)
         threading.Thread(target=self.optimise_adult_file, args=(relative,),
                          name="mabeltv-adult-optimise", daemon=True).start()
 
@@ -3993,7 +5044,14 @@ class Library:
                 if destination != source and destination.exists():
                     raise ValueError("An MP4 with this film name already exists")
                 with self.config_lock:
-                    self.set_adult_media_state(source.name, "processing")
+                    self.set_adult_media_state(file_name, "processing", progress=0)
+
+                def save_progress(percent: int, message: str = "") -> None:
+                    with self.config_lock:
+                        self.set_adult_media_state(
+                            file_name, "processing", message, progress=percent)
+
+                self.adult_optimisation_progress_callback = save_progress
                 self.optimise_adult_for_playback(source, destination)
                 if destination != source:
                     source.unlink()
@@ -4004,7 +5062,7 @@ class Library:
                     if not isinstance(current, dict):
                         current = {}
                     current.update({"state": "optimised", "message": "",
-                                    "updated": time.time()})
+                                    "progress": 100, "updated": time.time()})
                     states[destination_relative] = current
                     self.write_adult_media_states(states)
                 self.refresh_tv()
@@ -4015,16 +5073,26 @@ class Library:
                     str(error) if isinstance(error, ValueError)
                     else "MabelTV could not optimise this film")
         finally:
+            self.adult_optimisation_progress_callback = None
             with self.adult_optimisation_lock:
                 self.adult_optimisation_active.discard(file_name)
 
     def _optimise_for_playback(self, source: Path, destination: Path,
                                video_filter: str, bitrate: str,
-                               maximum_bitrate: str, buffer_size: str) -> None:
+                               maximum_bitrate: str, buffer_size: str,
+                               progress_callback: Any = None) -> None:
         token = uuid.uuid4().hex
         temporary = self.incoming / f"{token}.optimising.mp4"
         error_log = self.incoming / f"{token}.ffmpeg.log"
-        command = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+        try:
+            duration_result = subprocess.run(
+                ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                 "-of", "default=noprint_wrappers=1:nokey=1", str(source)],
+                check=False, capture_output=True, text=True, timeout=30)
+            duration = max(0.0, float(duration_result.stdout.strip()))
+        except (OSError, subprocess.TimeoutExpired, TypeError, ValueError):
+            duration = 0.0
+        command = ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
                    "-threads", "2", "-filter_threads", "2", "-i", str(source),
                    "-map", "0:v:0", "-map", "0:a:0?", "-vf", video_filter,
                    # Debian 13 exposes Pi hardware decode but no usable V4L2
@@ -4034,14 +5102,16 @@ class Library:
                    "-c:v", "libx264", "-preset", "veryfast", "-threads:v", "2",
                    "-profile:v", "main", "-level:v", "3.1", "-b:v", bitrate,
                    "-maxrate", maximum_bitrate, "-bufsize", buffer_size,
-                   "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", str(temporary)]
-        process: subprocess.Popen[bytes] | None = None
+                   "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart",
+                   "-progress", "pipe:1", "-nostats", str(temporary)]
+        process: subprocess.Popen[str] | None = None
         paused = False
         deadline = time.monotonic() + 45 * 60
+        last_percent = -1
         try:
             with error_log.open("wb") as errors:
-                process = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=errors,
-                                           start_new_session=True)
+                process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=errors,
+                                           text=True, start_new_session=True)
                 while process.poll() is None:
                     if time.monotonic() >= deadline:
                         os.killpg(process.pid, signal.SIGTERM)
@@ -4050,14 +5120,35 @@ class Library:
                     if not paused and temperature >= MAX_CONVERSION_TEMP_C:
                         os.killpg(process.pid, signal.SIGSTOP)
                         paused = True
+                        if progress_callback:
+                            progress_callback(max(0, last_percent),
+                                              f"Paused to cool at {temperature:.0f}°C")
                         print(f"Paused video optimisation at {temperature:.1f}C", file=sys.stderr,
                               flush=True)
                     elif paused and temperature <= RESUME_CONVERSION_TEMP_C:
                         os.killpg(process.pid, signal.SIGCONT)
                         paused = False
+                        if progress_callback:
+                            progress_callback(max(0, last_percent), "")
                         print(f"Resumed video optimisation at {temperature:.1f}C", file=sys.stderr,
                               flush=True)
-                    time.sleep(2)
+                    if paused:
+                        time.sleep(2)
+                        continue
+                    line = process.stdout.readline() if process.stdout else ""
+                    if duration <= 0 or not line.startswith(
+                            ("out_time_us=", "out_time_ms=")):
+                        continue
+                    try:
+                        completed = float(line.split("=", 1)[1].strip()) / 1_000_000
+                    except (TypeError, ValueError):
+                        continue
+                    percent = min(99, max(0, int(completed * 100 / duration)))
+                    if percent <= last_percent:
+                        continue
+                    last_percent = percent
+                    if progress_callback:
+                        progress_callback(percent, "")
                 if process.returncode != 0:
                     details = error_log.read_text(encoding="utf-8", errors="replace").strip()
                     if details:
@@ -4140,6 +5231,74 @@ class Library:
                 "kind": "adult",
                 "file_name": file_name,
                 "folder": folder,
+                "size": size,
+                "created": time.time(),
+            })
+            return {"id": upload_id, "offset": 0}
+
+    def adult_series_upload_create(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Reserve a resumable episode upload into one explicit series season."""
+        with self.config_lock:
+            series_id = str(payload.get("series", ""))
+            series_root = self.adult_series_path(series_id)
+            try:
+                season = int(payload.get("season"))
+            except (TypeError, ValueError) as error:
+                raise ValueError("Choose a series number") from error
+            if season < 1 or season > 99:
+                raise ValueError("Choose a series number from 1 to 99")
+            file_name = str(payload.get("file_name", ""))
+            if Path(file_name).name != file_name or Path(file_name).suffix.lower() \
+                    not in SUPPORTED_EXTENSIONS:
+                raise ValueError("Choose a supported episode video")
+            size = int(payload.get("size", 0))
+            if size <= 0 or size > MAX_UPLOAD_BYTES:
+                raise ValueError("That file size is not supported")
+            season_name = f"Season {season}"
+            destination = self.adult_series_path(series_id, f"{season_name}/{file_name}")
+
+            for manifest in self.incoming.glob("*.json"):
+                if manifest.name.endswith(".result.json"):
+                    continue
+                value = self.read_json(manifest, {})
+                if (value.get("kind") != "adult-series"
+                        or value.get("series_id") != series_id
+                        or int(value.get("season", 0) or 0) != season
+                        or value.get("file_name") != file_name):
+                    continue
+                if value.get("size") != size:
+                    raise ValueError(
+                        "An episode with that name is already uploading. "
+                        "Resume it with the same file")
+                part = self.incoming / f"{value['id']}.part"
+                result = self.read_json(
+                    self.incoming / f"{value['id']}.result.json", None)
+                if isinstance(result, dict) and result.get("complete"):
+                    return result
+                offset = part.stat().st_size if part.is_file() else 0
+                if offset == size and value.get("status", "uploading") == "uploading":
+                    value["status"] = "validating"
+                    value["updated"] = time.time()
+                    self.write_json(manifest, value)
+                    self.queue_conversion(str(value["id"]))
+                return {"id": value["id"], "offset": offset,
+                        "processing": value.get("status") in {
+                            "validating", "queued", "processing", "publishing", "finalising"
+                        }, "status": value.get("status", "uploading")}
+
+            if destination.exists():
+                raise ValueError("That series already contains an episode with this file name")
+            reserve = size + 512 * 1024 * 1024
+            if shutil.disk_usage(self.media_root).free < reserve:
+                raise ValueError("There is not enough free space to upload that episode")
+            (series_root / season_name).mkdir(mode=0o750, exist_ok=True)
+            upload_id = uuid.uuid4().hex
+            self.write_json(self.incoming / f"{upload_id}.json", {
+                "id": upload_id,
+                "kind": "adult-series",
+                "series_id": series_id,
+                "season": season,
+                "file_name": file_name,
                 "size": size,
                 "created": time.time(),
             })
@@ -4382,7 +5541,8 @@ class Library:
             self._manage(payload)
         if payload.get("action") in {
                 "optimise-adult", "set-portal-design", "set-portal-palette",
-                "set-portal-theme", "set-remote-simultaneous"}:
+                "set-portal-theme", "set-remote-simultaneous",
+                "create-adult-series", "trash-adult-series"}:
             # These settings belong to the portal/library service.  In
             # particular, allowing a browser stream alongside the television
             # must never refresh or otherwise disturb the TV player.
@@ -4391,6 +5551,12 @@ class Library:
 
     def _manage(self, payload: dict[str, Any]) -> None:
         action = payload.get("action")
+        if action == "create-adult-series":
+            self.create_adult_series(str(payload.get("name", "")))
+            return
+        if action == "trash-adult-series":
+            self.trash_adult_series_items(payload)
+            return
         if action == "set-parent-overlay-style":
             style = str(payload.get("style", ""))
             if style not in {"classic", "modern"}:
@@ -4538,6 +5704,20 @@ class Library:
                 raise ValueError("Channel not found")
             with self.config_lock:
                 self.update_channels(update)
+                states = self.channel_media_states()
+                stored_favourites = states.get("favourite_channels", [])
+                favourite_channels = {
+                    int(value) for value in stored_favourites
+                    if isinstance(value, int)
+                    or (isinstance(value, str) and value.isdigit())
+                } if isinstance(stored_favourites, list) else set()
+                if original_number in favourite_channels:
+                    favourite_channels.discard(original_number)
+                    if payload.get("content_type", "shows") == "shows":
+                        favourite_channels.add(new_number)
+                    states["favourite_channels"] = sorted(favourite_channels)
+                    states["updated"] = time.time()
+                    self.write_channel_media_states(states)
                 if new_number != original_number:
                     def move_visibility(library: dict[str, Any]) -> None:
                         disabled_channels = set(library.get("disabled_channels", []))
@@ -4580,6 +5760,18 @@ class Library:
                 library["disabled_channels"] = sorted(disabled_channels)
                 library.setdefault("disabled_programmes", {}).pop(str(number), None)
             self.update_settings(remove_visibility)
+            states = self.channel_media_states()
+            stored_favourites = states.get("favourite_channels", [])
+            favourite_channels = {
+                int(value) for value in stored_favourites
+                if isinstance(value, int)
+                or (isinstance(value, str) and value.isdigit())
+            } if isinstance(stored_favourites, list) else set()
+            if number in favourite_channels:
+                favourite_channels.discard(number)
+                states["favourite_channels"] = sorted(favourite_channels)
+                states["updated"] = time.time()
+                self.write_channel_media_states(states)
             if folder.is_dir() and not any(folder.iterdir()):
                 folder.rmdir()
             return
@@ -4805,7 +5997,28 @@ class Library:
             if action == "restore":
                 folder = self.media_root / str(manifest.get("folder", "")); file_name = str(manifest.get("file_name", "")); destination = folder / Path(file_name).name
                 if not manifest.get("folder") or destination.exists(): raise ValueError("Cannot restore this item because a file with that name already exists")
+                adult_series_id = str(manifest.get("adult_series_id", ""))
+                adult_series_state = manifest.get("adult_series_state")
+                adult_series_episode_state = manifest.get("adult_series_episode_state")
+                if adult_series_id:
+                    series_root = self.adult_series_root / adult_series_id
+                    if (not re.fullmatch(r"[a-f0-9]{32}", adult_series_id)
+                            or not isinstance(adult_series_state, dict)
+                            or not isinstance(adult_series_episode_state, dict)
+                            or series_root == destination
+                            or series_root not in destination.parents):
+                        raise ValueError("Cannot restore this episode outside its Adult TV series")
                 folder.mkdir(mode=0o750, exist_ok=True); shutil.move(str(directory / file_name), str(destination)); shutil.rmtree(directory)
+                if (re.fullmatch(r"[a-f0-9]{32}", adult_series_id)
+                        and isinstance(adult_series_state, dict)
+                        and isinstance(adult_series_episode_state, dict)):
+                    series_root = self.adult_series_root / adult_series_id
+                    states = self.adult_series_states()
+                    states["series"].setdefault(adult_series_id, adult_series_state)
+                    relative = destination.relative_to(series_root).as_posix()
+                    states["episodes"][f"{adult_series_id}/{relative}"] = \
+                        adult_series_episode_state
+                    self.write_adult_series_states(states)
                 adult_state = manifest.get("adult_state")
                 if str(manifest.get("folder", "")).startswith(".adult") \
                         and isinstance(adult_state, dict):
@@ -5071,6 +6284,8 @@ class Handler(BaseHTTPRequestHandler):
             if parsed.path == "/api/usb/browse":
                 self.json(200, self.server.library.usb_browse(
                     str(query.get("volume", [""])[0]), str(query.get("path", [""])[0]))); return
+            if parsed.path == "/api/adult/optimisations":
+                self.json(200, self.server.library.adult_optimisations()); return
             if parsed.path.startswith("/api/usb/imports/"):
                 self.json(200, self.server.library.usb_import_status(
                     parsed.path.rsplit("/", 1)[1])); return
@@ -5081,6 +6296,10 @@ class Handler(BaseHTTPRequestHandler):
                 self.json(200, self.server.library.tmdb_status()); return
             if parsed.path.startswith("/api/adult/artwork/"):
                 self.stream_file(self.server.library.adult_artwork(
+                    parsed.path.rsplit("/", 1)[1]), "image/jpeg",
+                    "public, max-age=31536000, immutable"); return
+            if parsed.path.startswith("/api/adult/series/artwork/"):
+                self.stream_file(self.server.library.adult_series_artwork(
                     parsed.path.rsplit("/", 1)[1]), "image/jpeg",
                     "public, max-age=31536000, immutable"); return
             if parsed.path.startswith("/api/channel/artwork/"):
@@ -5163,6 +6382,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.json(200, self.server.library.remote_save_position(payload)); return
             if self.path == "/api/remote/clear-position":
                 self.json(200, self.server.library.remote_clear_position(payload)); return
+            if self.path == "/api/viewing-insights/delete":
+                self.json(200, self.server.library.delete_viewing_sessions(payload)); return
             if self.path == "/api/favourite":
                 self.json(200, self.server.library.set_favourite(payload)); return
             if self.path == "/api/remote/heartbeat":
@@ -5182,6 +6403,22 @@ class Handler(BaseHTTPRequestHandler):
                 self.json(200, self.server.library.tmdb_search(payload)); return
             if self.path == "/api/tmdb/apply":
                 self.json(200, self.server.library.tmdb_apply(payload)); return
+            if self.path == "/api/tmdb/adult-series/search":
+                self.json(200, self.server.library.adult_series_search(payload)); return
+            if self.path == "/api/tmdb/adult-series/apply":
+                self.json(200, self.server.library.adult_series_apply(payload)); return
+            if self.path == "/api/adult/series/watched":
+                watched = payload.get("watched")
+                if not isinstance(watched, bool):
+                    raise ValueError("Choose whether the episode is watched")
+                self.json(200, self.server.library.set_adult_episode_watched(
+                    str(payload.get("series", "")),
+                    str(payload.get("file", "")), watched)); return
+            if self.path == "/api/adult/series/restart":
+                scope = str(payload.get("scope", ""))
+                self.json(200, self.server.library.restart_adult_series_progress(
+                    str(payload.get("series", "")), scope,
+                    payload.get("season") if scope == "season" else None)); return
             if self.path == "/api/tmdb/channel":
                 self.json(200, self.server.library.refresh_channel_show_metadata(payload)); return
             if self.path == "/api/tmdb/channels":
@@ -5190,6 +6427,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.json(200, self.server.library.refresh_channel_programme_metadata(payload)); return
             if self.path == "/api/adult/uploads":
                 self.json(201, self.server.library.adult_upload_create(payload)); return
+            if self.path == "/api/adult/series/uploads":
+                self.json(201, self.server.library.adult_series_upload_create(payload)); return
             if self.path == "/api/uploads": self.json(201, self.server.library.upload_create(payload)); return
             if self.path.startswith("/api/uploads/"):
                 self.json(200, self.server.library.upload_action(

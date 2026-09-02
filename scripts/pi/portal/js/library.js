@@ -10,7 +10,91 @@ function librarySignalIcon(name, className = 'icon') {
       return svg
     }
 
-let viewingInsightsRange = 30
+let viewingInsightsRange = 1
+let openViewingSessionSwipe = null
+let viewingInsightsData = null
+let viewingInsightsLoadedRange = null
+let selectedViewingItemKey = ''
+let viewingInsightsRoute = { screen: 'dashboard' }
+const viewingCharts = new Map()
+
+function adultOptimisationLabel(film) {
+      const state = film?.playback_state || 'original'
+      const progress = Math.max(0, Math.min(100, Number(film?.playback_progress || 0)))
+      if (state === 'processing') return `Optimising ${Math.round(progress)}%`
+      if (state === 'queued') return 'Optimising · waiting'
+      if (state === 'error') return 'Optimisation needs attention'
+      return ''
+    }
+
+function adultOptimisationBadge(film) {
+      const badge = document.createElement('span')
+      badge.className = 'adult-optimisation-badge'
+      badge.textContent = adultOptimisationLabel(film)
+      badge.classList.toggle('hidden', !badge.textContent)
+      return badge
+    }
+
+function updateAdultOptimisationCards(film) {
+      document.querySelectorAll('[data-adult-path]').forEach(card => {
+        if (card.dataset.adultPath !== film.path) return
+        let badge = card.querySelector('.adult-optimisation-badge')
+        if (!badge) {
+          badge = adultOptimisationBadge(film)
+          const art = card.querySelector('.watch-card-art')
+          ;(art || card).append(badge)
+        }
+        badge.textContent = adultOptimisationLabel(film)
+        badge.classList.toggle('hidden', !badge.textContent)
+        card.classList.toggle('is-optimising', ['queued', 'processing'].includes(film.playback_state))
+      })
+    }
+
+async function reloadLibraryWithoutLosingPlace() {
+      const scrollY = window.scrollY
+      const horizontal = [...document.querySelectorAll(
+        '.watch-channel-rail,.watch-continue-rail,.home-poster-rail')]
+        .map(element => ({ element, left: element.scrollLeft }))
+      await load()
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        window.scrollTo({ top: scrollY, left: 0, behavior: 'instant' })
+        horizontal.forEach(value => {
+          if (value.element.isConnected) value.element.scrollLeft = value.left
+        })
+      }))
+    }
+
+async function pollAdultOptimisations() {
+      clearTimeout(adultOptimisationRefresh)
+      try {
+        const result = await api('/api/adult/optimisations')
+        const films = library?.adult_library || []
+        result.items.forEach(item => {
+          const film = films.find(value => value.path === item.path)
+          if (!film) return
+          film.playback_state = item.state
+          film.playback_progress = item.progress
+          film.playback_message = item.message
+          updateAdultOptimisationCards(film)
+        })
+        if (!result.active && adultOptimisationWasActive) {
+          adultOptimisationWasActive = false
+          await reloadLibraryWithoutLosingPlace()
+          return
+        }
+        adultOptimisationWasActive = result.active
+        if (result.active) {
+          adultOptimisationRefresh = setTimeout(
+            () => pollAdultOptimisations().catch(() => {}), 1500)
+        }
+      } catch (_) {
+        if ((library?.adult_library || []).some(film =>
+          ['queued', 'processing'].includes(film.playback_state))) {
+          adultOptimisationRefresh = setTimeout(
+            () => pollAdultOptimisations().catch(() => {}), 3000)
+        }
+      }
+    }
 
 function renderAdultLibrary() {
       const films = library?.adult_library || []
@@ -67,6 +151,7 @@ function renderAdultLibrary() {
       visibleFilms.forEach(film => {
         const row = document.createElement('button')
         row.type = 'button'; row.className = 'adult-film'
+        row.dataset.adultPath = film.path
         const metadata = film.metadata || {}
         const poster = document.createElement(metadata.poster ? 'img' : 'span')
         poster.className = 'adult-film-poster'
@@ -80,20 +165,23 @@ function renderAdultLibrary() {
         title.textContent = metadata.title || film.display_name
         const meta = document.createElement('small')
         const state = film.playback_state || 'original'
-        const stateLabel = state === 'optimised' ? 'Pi ready' : state === 'processing' ? 'Optimising…' : state === 'queued' ? 'Queued' : state === 'error' ? 'Needs attention' : 'Original'
+        const stateLabel = adultOptimisationLabel(film) || (state === 'optimised' ? 'Pi ready' : state === 'error' ? 'Needs attention' : 'Original')
         meta.textContent = [metadata.year, film.folder || 'Unfiled', stateLabel].filter(Boolean).join(' · ')
         const more = document.createElement('span'); more.className = 'adult-film-more'
         more.setAttribute('aria-hidden', 'true')
         more.append(librarySignalIcon('signal-chevron-right'))
         copy.append(title, meta)
-        row.append(poster, copy, more)
+        row.append(poster, copy, more, adultOptimisationBadge(film))
         row.setAttribute('aria-label', `Open details for ${title.textContent}`)
         row.onclick = () => openAdultFilmSheet(film)
         root.append(row)
       })
-      clearTimeout(adultOptimisationRefresh)
-      if (films.some(film => ['queued', 'processing'].includes(film.playback_state)))
-        adultOptimisationRefresh = setTimeout(() => load().catch(() => {}), 2500)
+      if (films.some(film => ['queued', 'processing'].includes(film.playback_state))) {
+        adultOptimisationWasActive = true
+        clearTimeout(adultOptimisationRefresh)
+        adultOptimisationRefresh = setTimeout(
+          () => pollAdultOptimisations().catch(() => {}), 500)
+      }
     }
 
     function openAdultFilmSheet(film) {
@@ -119,7 +207,7 @@ function renderAdultLibrary() {
       const busy = ['processing', 'queued'].includes(film.playback_state)
       const optimise = $('#adultFilmOptimise')
       optimise.disabled = busy || film.playback_state === 'optimised'
-      optimise.querySelector('strong').textContent = film.playback_state === 'optimised' ? 'Already optimised' : busy ? 'Optimising…' : 'Optimise for Pi'
+      optimise.querySelector('strong').textContent = film.playback_state === 'optimised' ? 'Already optimised' : busy ? adultOptimisationLabel(film) : 'Optimise for Pi'
       optimise.querySelector('small').textContent = film.playback_state === 'optimised'
         ? 'This film already uses the TV playback profile'
         : busy ? 'The playback copy is being prepared' : 'Prepare a smoother TV playback copy'
@@ -209,7 +297,6 @@ function renderAdultLibrary() {
                 })
               })
               $('#tmdbDialog').close()
-              selectedManageChannel = Number(channel.number)
               await load(channel.number)
               notice('The selected film metadata and artwork were saved locally.')
             } catch (error) {
@@ -260,7 +347,6 @@ function renderAdultLibrary() {
                 body: JSON.stringify({ channel: channel.number, tmdb_id: match.id })
               })
               $('#tmdbDialog').close()
-              selectedManageChannel = Number(channel.number)
               await load(channel.number)
               notice('The selected show metadata and channel artwork were saved locally.')
             } catch (error) {
@@ -288,6 +374,12 @@ function renderAdultLibrary() {
       dialog.onclick = event => { if (event.target === dialog) closeLibrarySheet(dialog) }
       dialog.onclose = () => { document.documentElement.style.overflow = ''; if (dialog === $('#adultFilmSheet')) selectedAdultFilm = null }
     })
+    $('#adultFilmDownload').onclick = () => {
+      const film = selectedAdultFilm
+      if (!film) return
+      closeLibrarySheet($('#adultFilmSheet'))
+      downloadToDevice({ kind: 'adult', file: film.path }, film.metadata?.title || film.display_name)
+    }
     $('#adultFilmMove').onclick = async () => { if (selectedAdultFilm) { const film = selectedAdultFilm; closeLibrarySheet($('#adultFilmSheet')); await manage('move-adult', { file: film.path, folder: $('#adultFilmFolder').value }) } }
     $('#adultFilmScan').onclick = () => { const film = selectedAdultFilm; if (film) { closeLibrarySheet($('#adultFilmSheet')); scanTmdb(film) } }
     $('#adultFilmRename').onclick = () => { const film = selectedAdultFilm; if (!film) return; const name = prompt('Film name:', film.display_name); if (name?.trim()) { closeLibrarySheet($('#adultFilmSheet')); manage('rename-adult', { file: film.path, name: name.trim() }) } }
@@ -381,6 +473,9 @@ function renderAdultLibrary() {
       usbPath = data.path
       usbEntries = data.entries
       renderUsbFiles()
+      requestAnimationFrame(() => $('#usbBrowser').scrollIntoView({
+        block: 'start', behavior: 'auto'
+      }))
     }
 
     function renderUsbFiles() {
@@ -390,24 +485,21 @@ function renderAdultLibrary() {
       const breadcrumb = $('#usbBreadcrumb')
       breadcrumb.replaceChildren()
       if (volume) {
-        const rootButton = document.createElement('button')
-        rootButton.type = 'button'
-        rootButton.append(librarySignalIcon('signal-hard-drive'), document.createTextNode(volume.label))
-        rootButton.onclick = () => browseUsb('').catch(error => notice(error.message, true))
-        breadcrumb.append(rootButton)
         const parts = usbPath.split('/').filter(Boolean)
-        parts.forEach((part, index) => {
-          const button = document.createElement('button')
-          button.type = 'button'
-          button.textContent = part
-          if (index === parts.length - 1) button.setAttribute('aria-current', 'page')
-          button.onclick = () => browseUsb(parts.slice(0, index + 1).join('/')).catch(error => notice(error.message, true))
-          breadcrumb.append(librarySignalIcon('signal-chevron-right', 'usb-breadcrumb-separator'), button)
-        })
+        $('#usbFolderTitle').textContent = parts.at(-1) || volume.label
+        $('#usbPathContext').textContent = parts.length
+          ? `${volume.label} · ${parts.slice(0, -1).join(' / ') || 'Drive root'}`
+          : 'Drive root'
+        const pathLabel = document.createElement('span')
+        pathLabel.append(librarySignalIcon('signal-hard-drive'), document.createTextNode(
+          [volume.label, ...parts].join(' / ')))
+        breadcrumb.append(pathLabel)
       } else {
         const empty = document.createElement('span')
         empty.textContent = 'Choose a connected drive to begin'
         breadcrumb.append(empty)
+        $('#usbFolderTitle').textContent = 'Choose a drive'
+        $('#usbPathContext').textContent = 'Browse drive'
       }
       $('#usbUp').disabled = !usbVolume || !usbPath
       const visibleVideos = usbEntries.filter(entry => entry.type === 'video')
@@ -447,8 +539,10 @@ function renderAdultLibrary() {
         actions.className = 'usb-file-actions'
         if (entry.type === 'folder') {
           const select = document.createElement('button')
-          select.type = 'button'; select.className = 'usb-folder-select'
-          select.append(librarySignalIcon(usbSelection.has(entry.path) ? 'signal-check' : 'signal-plus'), document.createTextNode(usbSelection.has(entry.path) ? 'Selected' : 'Select folder'))
+          select.type = 'button'; select.className = 'usb-folder-toggle'
+          select.setAttribute('aria-label', `${usbSelection.has(entry.path) ? 'Remove' : 'Select'} ${entry.name} for copying`)
+          select.setAttribute('aria-pressed', String(usbSelection.has(entry.path)))
+          select.append(librarySignalIcon(usbSelection.has(entry.path) ? 'signal-check' : 'signal-plus'))
           select.onclick = () => { usbSelection.has(entry.path) ? usbSelection.delete(entry.path) : usbSelection.add(entry.path); renderUsbFiles() }
           actions.append(select)
         } else {
@@ -490,6 +584,11 @@ function renderAdultLibrary() {
         ? `${usbSelection.size} item${usbSelection.size === 1 ? '' : 's'} ready to copy. Originals stay on the drive.`
         : 'Choose videos or folders above.'
       $('#usbImport').disabled = !usbVolume || usbSelection.size === 0
+      if ($('#usbTarget').value === 'series' && usbSelection.size === 1
+          && !$('#usbSeriesName').value.trim()) {
+        const entry = usbEntries.find(value => value.path === [...usbSelection][0])
+        if (entry?.type === 'folder') $('#usbSeriesName').value = entry.name
+      }
     }
 
     function viewingDuration(seconds) {
@@ -499,131 +598,661 @@ function renderAdultLibrary() {
       return hours ? `${hours}h ${remainder}m` : `${minutes}m`
     }
 
-    function renderViewingChart(root, values) {
+    function viewingDate(value) {
+      if (!value) return 'Not watched yet'
+      return new Intl.DateTimeFormat(undefined, {
+        day: 'numeric', month: 'short', year: 'numeric',
+      }).format(new Date(value))
+    }
+
+    function viewingArtworkUrl(value) {
+      return value ? `/api/channel/artwork/${encodeURIComponent(value)}` : ''
+    }
+
+    function viewingCatalog() {
+      const insightMap = new Map((viewingInsightsData?.items || []).map(item => [item.item_key, item]))
+      const channels = []
+      const films = []
+      ;(library?.channels || []).forEach(channel => {
+        const channelNumber = Number(channel.number)
+        if (channel.content_type === 'films') {
+          ;(channel.programmes || []).forEach(programme => {
+            const itemKey = `channel:${channelNumber}:${String(programme.name || '').toLocaleLowerCase()}`
+            const tracked = insightMap.get(itemKey) || {}
+            films.push({
+              ...viewingEmptyItem('film'), ...tracked, item_key: itemKey, kind: 'film',
+              channel_number: channelNumber,
+              title: programme.metadata?.title || programme.display_name || programme.name,
+              source: channel.name,
+              artwork: viewingArtworkUrl(programme.metadata?.poster),
+            })
+          })
+        } else {
+          const itemKey = `channel:${channelNumber}`
+          channels.push({
+            ...viewingEmptyItem('channel'), ...(insightMap.get(itemKey) || {}),
+            item_key: itemKey, kind: 'channel', channel_number: channelNumber,
+            title: channel.name, source: 'MabelTV series channel',
+            artwork: viewingArtworkUrl(channel.metadata?.artwork),
+          })
+        }
+      })
+      const sort = (a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' })
+      return { channels: channels.sort(sort), films: films.sort(sort) }
+    }
+
+    function viewingEmptyItem(kind) {
+      const named = names => names.map(name => ({ name, label: name, seconds: 0, sessions: 0 }))
+      return {
+        seconds: 0, sessions: 0, active_days: 0, average_session_seconds: 0,
+        longest_session_seconds: 0, share: 0, busiest_period: 'Not watched yet',
+        first_watched: '', last_watched: '', timeline: [],
+        time_of_day: named(['Overnight', 'Morning', 'Afternoon', 'Evening']),
+        hourly: Array.from({ length: 24 }, (_, hour) => ({
+          name: String(hour), label: `${hour}:00`, seconds: 0, sessions: 0,
+        })),
+        weekdays: named(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']),
+        by_surface: [], average_progress: 0, furthest_progress: 0,
+        completion_sessions: 0, kind,
+      }
+    }
+
+    function destroyViewingChart(root) {
+      const chart = viewingCharts.get(root)
+      if (chart) chart.destroy()
+      viewingCharts.delete(root)
       root.replaceChildren()
-      if (!values.length || !values.some(item => Number(item.seconds) > 0)) {
+    }
+
+    function renderViewingChart(root, values, type = 'line', labels = {}) {
+      if (!root) return
+      destroyViewingChart(root)
+      const usable = (values || []).map(item => ({
+        ...item, chartLabel: labels[item.name] || item.label || item.name,
+        minutes: Math.round(Number(item.seconds || 0) / 60),
+      }))
+      if (!usable.length || !usable.some(item => item.minutes > 0) || typeof Chart === 'undefined') {
         const empty = document.createElement('p')
-        empty.className = 'viewing-empty'
-        empty.textContent = 'Viewing will appear here as it is watched.'
+        empty.className = 'viewing-empty viewing-chart-empty'
+        empty.textContent = typeof Chart === 'undefined'
+          ? 'The chart is temporarily unavailable.' : 'Viewing will appear here as it is watched.'
         root.append(empty)
         return
       }
-      const namespace = 'http://www.w3.org/2000/svg'
-      const svg = document.createElementNS(namespace, 'svg')
-      svg.setAttribute('viewBox', '0 0 640 190')
-      svg.setAttribute('preserveAspectRatio', 'none')
-      svg.setAttribute('aria-hidden', 'true')
-      const maximum = Math.max(...values.map(item => Number(item.seconds) || 0), 1)
-      const step = 640 / values.length
-      values.forEach((item, index) => {
-        const value = Number(item.seconds) || 0
-        const height = Math.max(value ? 5 : 2, value / maximum * 132)
-        const width = Math.max(5, step * .55)
-        const group = document.createElementNS(namespace, 'g')
-        const title = document.createElementNS(namespace, 'title')
-        title.textContent = `${item.label}: ${viewingDuration(value)}`
-        const bar = document.createElementNS(namespace, 'rect')
-        bar.setAttribute('x', String(index * step + (step - width) / 2))
-        bar.setAttribute('y', String(145 - height))
-        bar.setAttribute('width', String(width))
-        bar.setAttribute('height', String(height))
-        bar.setAttribute('rx', String(Math.min(5, width / 3)))
-        bar.classList.add(value ? 'has-value' : 'is-empty')
-        group.append(title, bar)
-        if (values.length <= 14 || index % Math.ceil(values.length / 8) === 0 || index === values.length - 1) {
-          const label = document.createElementNS(namespace, 'text')
-          label.setAttribute('x', String(index * step + step / 2))
-          label.setAttribute('y', '174')
-          label.setAttribute('text-anchor', 'middle')
-          label.textContent = item.label
-          group.append(label)
-        }
-        svg.append(group)
-      })
-      root.append(svg)
-      root.setAttribute('aria-label', values.map(item =>
-        `${item.label} ${viewingDuration(item.seconds)}`).join(', '))
+      const canvas = document.createElement('canvas')
+      root.append(canvas)
+      const css = getComputedStyle(document.body)
+      const orange = css.getPropertyValue('--experience-orange').trim() || '#ff7a1a'
+      const muted = css.getPropertyValue('--experience-dim').trim() || '#8f8d98'
+      const grid = css.getPropertyValue('--experience-line').trim() || 'rgba(255,255,255,.1)'
+      const isDoughnut = type === 'doughnut'
+      const config = {
+        type,
+        data: {
+          labels: usable.map(item => item.chartLabel),
+          datasets: [{
+            data: usable.map(item => item.minutes),
+            borderColor: orange,
+            backgroundColor: isDoughnut
+              ? [orange, '#7c4dff', '#45b8ff', '#55d6a5']
+              : type === 'bar' ? orange : 'transparent',
+            borderWidth: type === 'line' ? 2.5 : isDoughnut ? 0 : 1,
+            borderRadius: type === 'bar' ? 7 : 0,
+            borderSkipped: false,
+            fill: false,
+            tension: .32,
+            pointRadius: type === 'line' ? 3 : 0,
+            pointHoverRadius: 5,
+            pointBackgroundColor: orange,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 320 },
+          plugins: {
+            legend: { display: isDoughnut, position: 'bottom', labels: { color: muted, boxWidth: 10, boxHeight: 10, usePointStyle: true, padding: 14, font: { size: 10 } } },
+            tooltip: { callbacks: { label: context => `${context.label}: ${viewingDuration(Number(context.raw || 0) * 60)}` } },
+          },
+          scales: isDoughnut ? {} : {
+            x: { grid: { display: false }, ticks: { color: muted, maxRotation: 0, autoSkip: true, maxTicksLimit: 8, font: { size: 9 } }, border: { display: false } },
+            y: { beginAtZero: true, grid: { color: grid }, ticks: { color: muted, maxTicksLimit: 4, callback: value => viewingDuration(Number(value) * 60), font: { size: 9 } }, border: { display: false } },
+          },
+          cutout: isDoughnut ? '62%' : undefined,
+        },
+      }
+      const chart = new Chart(canvas, config)
+      viewingCharts.set(root, chart)
+      root.setAttribute('aria-label', usable.map(item =>
+        `${item.chartLabel} ${viewingDuration(item.seconds)}`).join(', '))
     }
 
-    function renderViewingBreakdown(root, values, labels) {
+    function setViewingArtwork(root, url) {
+      root.classList.toggle('has-artwork', Boolean(url))
+      root.style.backgroundImage = url ? `url("${url}")` : ''
+    }
+
+    function showViewingScreen(screen) {
+      $$('.viewing-screen').forEach(root => root.classList.add('hidden'))
+      screen?.classList.remove('hidden')
+    }
+
+    function pushInsightsRoute(path) {
+      const parent = location.hash.startsWith('#insights') ? location.hash.slice(1) : 'insights'
+      history.pushState({ insightsChild: true, insightsParent: parent }, '', `#${path}`)
+      openInsightsRoute(path)
+    }
+
+    function replaceInsightsRoute(path) {
+      history.replaceState({ ...history.state, insightsChild: true }, '', `#${path}`)
+      openInsightsRoute(path)
+    }
+
+    function insightsParentRoute() {
+      if (viewingInsightsRoute.screen === 'item') {
+        return viewingItem(viewingInsightsRoute.itemKey)?.kind === 'film' ? 'insights/films' : 'insights/channels'
+      }
+      if (viewingInsightsRoute.screen === 'period') return 'insights/diary'
+      return 'insights'
+    }
+
+    function navigateInsightsBack() {
+      const target = insightsParentRoute()
+      if (history.state?.insightsParent === target) history.back()
+      else replaceInsightsRoute(target)
+    }
+
+    function openViewingItem(itemKey, tab = 'summary') {
+      pushInsightsRoute(`insights/item/${encodeURIComponent(itemKey)}/${tab}`)
+    }
+
+    function viewingItem(itemKey) {
+      const catalog = viewingCatalog()
+      return [...catalog.channels, ...catalog.films].find(item => item.item_key === itemKey)
+    }
+
+    function renderViewingMosaic(root, items) {
       root.replaceChildren()
-      const maximum = Math.max(...values.map(item => Number(item.seconds) || 0), 1)
+      items.filter(item => item.artwork).slice(0, 3).forEach(item => {
+        const image = document.createElement('span')
+        image.style.backgroundImage = `url("${item.artwork}")`
+        root.append(image)
+      })
+      if (!root.children.length) root.append(librarySignalIcon('signal-film'))
+    }
+
+    function renderViewingHighlights() {
+      const root = $('#viewingHighlights')
+      root.replaceChildren()
+      const catalog = viewingCatalog()
+      const values = [...catalog.channels.filter(item => item.seconds > 0).sort((a, b) => b.seconds - a.seconds).slice(0, 1),
+        ...catalog.films.filter(item => item.seconds > 0).sort((a, b) => b.seconds - a.seconds).slice(0, 2)]
       if (!values.length) {
-        root.innerHTML = '<p class="viewing-empty">No viewing in this period yet.</p>'
+        root.innerHTML = '<p class="viewing-empty">Highlights will appear after MabelTV has been watched.</p>'
         return
       }
       values.forEach(item => {
-        const row = document.createElement('div')
-        const heading = document.createElement('span')
-        const name = document.createElement('strong')
-        name.textContent = labels[item.name] || item.name
-        const duration = document.createElement('small')
-        duration.textContent = viewingDuration(item.seconds)
-        heading.append(name, duration)
-        const progress = document.createElement('progress')
-        progress.max = maximum
-        progress.value = Number(item.seconds) || 0
-        progress.setAttribute('aria-label', `${name.textContent}: ${duration.textContent}`)
-        row.append(heading, progress)
+        const button = document.createElement('button')
+        button.type = 'button'
+        button.className = `viewing-highlight ${item.kind}`
+        if (item.artwork) button.style.backgroundImage = `linear-gradient(0deg, rgba(8,8,11,.96), rgba(8,8,11,.06) 76%), url("${item.artwork}")`
+        const copy = document.createElement('span')
+        copy.innerHTML = `<small>${item.kind === 'film' ? item.source : `CH ${item.channel_number}`}</small><strong></strong><span></span>`
+        copy.querySelector('strong').textContent = item.title
+        copy.querySelector('span').textContent = `${viewingDuration(item.seconds)} watched`
+        button.append(copy)
+        button.onclick = () => openViewingItem(item.item_key)
+        root.append(button)
+      })
+    }
+
+    function renderViewingBrowse(kind) {
+      const isFilms = kind === 'films'
+      const values = viewingCatalog()[kind]
+      const query = $('#viewingBrowseSearch').value.trim().toLocaleLowerCase()
+      const filtered = values.filter(item => item.title.toLocaleLowerCase().includes(query))
+      $('#viewingBrowseKicker').textContent = isFilms ? 'MabelTV film library' : 'MabelTV series library'
+      $('#viewingBrowseTitle').textContent = isFilms ? 'Every film' : 'Every channel'
+      $('#viewingBrowseIntro').textContent = isFilms
+        ? 'Choose any film — watched or not — for its progress and viewing patterns.'
+        : 'Choose any series channel — watched or not — for its complete viewing story.'
+      $('#viewingBrowseCount').textContent = String(values.length)
+      $('#viewingBrowseSearch').placeholder = isFilms ? 'Search films' : 'Search channels'
+      const root = $('#viewingBrowseGrid')
+      root.replaceChildren()
+      filtered.forEach(item => {
+        const button = document.createElement('button')
+        button.type = 'button'
+        button.className = `viewing-catalog-card ${item.kind}`
+        const art = document.createElement('span')
+        art.className = 'viewing-catalog-art'
+        if (item.artwork) art.style.backgroundImage = `url("${item.artwork}")`
+        else art.append(librarySignalIcon(item.kind === 'film' ? 'signal-film' : 'signal-tv'))
+        const copy = document.createElement('span')
+        copy.className = 'viewing-catalog-copy'
+        const label = document.createElement('small')
+        label.textContent = item.kind === 'film' ? item.source : `CH ${item.channel_number}`
+        const title = document.createElement('strong')
+        title.textContent = item.title
+        const watched = document.createElement('span')
+        watched.textContent = item.seconds > 0
+          ? `${viewingDuration(item.seconds)} · ${item.sessions} ${item.sessions === 1 ? 'watch' : 'watches'}`
+          : 'Not watched in this period'
+        copy.append(label, title, watched)
+        button.append(art, copy)
+        button.onclick = () => openViewingItem(item.item_key)
+        root.append(button)
+      })
+      if (!filtered.length) root.innerHTML = '<p class="viewing-empty">Nothing matches that search.</p>'
+      showViewingScreen($('#viewingBrowse'))
+    }
+
+    function renderViewingItem(item, tab = 'summary') {
+      if (!item) { pushInsightsRoute('insights'); return }
+      selectedViewingItemKey = item.item_key
+      $('#viewingItemBackLabel').textContent = item.kind === 'film' ? 'All films' : 'All channels'
+      $('#viewingItemKicker').textContent = item.kind === 'film' ? 'Film insight' : 'Channel insight'
+      $('#viewingItemTitle').textContent = item.title
+      $('#viewingItemSource').textContent = item.kind === 'channel'
+        ? `CH ${item.channel_number} · MabelTV series channel` : `CH ${item.channel_number} · ${item.source}`
+      $('#viewingItemRangeSelect').value = String(viewingInsightsRange)
+      setViewingArtwork($('#viewingItemArtwork'), item.artwork)
+      $('#viewingItemTotal').textContent = viewingDuration(item.seconds)
+      $('#viewingItemSessions').textContent = String(item.sessions || 0)
+      $('#viewingItemDays').textContent = String(item.active_days || 0)
+      $('#viewingItemAverage').textContent = viewingDuration(item.average_session_seconds)
+      $('#viewingItemShare').textContent = `${Math.round(Number(item.share || 0) * 100)}%`
+      $('#viewingItemPeriod').textContent = item.seconds ? item.busiest_period : 'Not watched yet'
+      $('#viewingItemFirst').textContent = viewingDate(item.first_watched)
+      $('#viewingItemLast').textContent = viewingDate(item.last_watched)
+      $('#viewingItemLongest').textContent = `Longest ${viewingDuration(item.longest_session_seconds)}`
+      $('#viewingFilmProgress').classList.toggle('hidden', item.kind !== 'film')
+      if (item.kind === 'film') {
+        $('#viewingFilmAverage').textContent = `${Math.round(Number(item.average_progress || 0) * 100)}%`
+        $('#viewingFilmFurthest').textContent = `${Math.round(Number(item.furthest_progress || 0) * 100)}%`
+        $('#viewingFilmCompletions').textContent = String(item.completion_sessions || 0)
+      }
+      $('#viewingItemTimelineTitle').textContent = viewingInsightsRange === 1
+        ? 'Today hour by hour' : viewingInsightsRange === 365 ? 'Month by month' : 'Day by day'
+      $$('[data-insights-tab]').forEach(button => button.classList.toggle('active', button.dataset.insightsTab === tab))
+      $('#viewingItemSummary').classList.toggle('hidden', tab !== 'summary')
+      $('#viewingItemPatterns').classList.toggle('hidden', tab !== 'patterns')
+      $('#viewingItemHistory').classList.toggle('hidden', tab !== 'history')
+      showViewingScreen($('#viewingItemDetail'))
+      renderViewingChart($('#viewingItemTimeline'), item.timeline || [], 'line')
+      renderViewingChart($('#viewingItemHourly'), item.hourly || [], 'line')
+      renderViewingChart($('#viewingItemTime'), item.time_of_day || [], 'bar')
+      renderViewingChart($('#viewingItemWeekdays'), item.weekdays || [], 'bar')
+      renderViewingChart($('#viewingItemSurfaces'), item.by_surface || [], 'doughnut', {
+        tv: 'On the TV', device: 'On this device',
+      })
+      const sessions = (viewingInsightsData?.sessions || []).filter(value => value.item_key === item.item_key)
+      renderViewingSessions(sessions, { root: $('#viewingItemSessionList'), title: $('#viewingItemSessionTitle'), count: $('#viewingItemSessionCount'), scoped: true })
+    }
+
+    function localDateKey(date) {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+
+    const viewingPeriodNames = ['Overnight', 'Morning', 'Afternoon', 'Evening']
+
+    function sessionsForViewingPeriod(dateKey, period) {
+      return (viewingInsightsData?.sessions || []).filter(item => {
+        const started = new Date(item.started || item.when)
+        return localDateKey(started) === dateKey && Math.floor(started.getHours() / 6) === period
+      }).sort((a, b) => new Date(a.started) - new Date(b.started))
+    }
+
+    function viewingDateKeys() {
+      const span = viewingInsightsRange
+      return Array.from({ length: span }, (_, index) => {
+        const date = new Date()
+        date.setHours(12, 0, 0, 0)
+        date.setDate(date.getDate() - (span - index - 1))
+        return localDateKey(date)
+      })
+    }
+
+    function renderViewingDiary() {
+      const root = $('#viewingDiaryDays')
+      root.replaceChildren()
+      const keys = viewingDateKeys().reverse()
+      keys.filter((key, index) => index < 2 || viewingPeriodNames.some((_, period) =>
+        sessionsForViewingPeriod(key, period).length)).forEach(key => {
+        const day = document.createElement('section')
+        day.className = 'viewing-diary-day'
+        const date = new Date(`${key}T12:00:00`)
+        const heading = document.createElement('header')
+        const title = document.createElement('h3')
+        title.textContent = key === localDateKey(new Date()) ? 'Today' : new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' }).format(date)
+        heading.append(title)
+        const periods = document.createElement('div')
+        periods.className = 'viewing-diary-periods'
+        viewingPeriodNames.forEach((name, period) => {
+          const sessions = sessionsForViewingPeriod(key, period)
+          const total = sessions.reduce((sum, item) => sum + Number(item.seconds || 0), 0)
+          const button = document.createElement('button')
+          button.type = 'button'
+          button.innerHTML = `<span><small>${name}</small><strong>${viewingDuration(total)}</strong></span><span class="viewing-period-thumbs"></span><svg><use href="/portal/icons.svg#signal-chevron-right"/></svg>`
+          const thumbs = button.querySelector('.viewing-period-thumbs')
+          ;[...new Set(sessions.map(item => item.item_key))].slice(0, 3).forEach(itemKey => {
+            const item = viewingItem(itemKey)
+            if (!item?.artwork) return
+            const thumb = document.createElement('i')
+            thumb.style.backgroundImage = `url("${item.artwork}")`
+            thumbs.append(thumb)
+          })
+          button.onclick = () => pushInsightsRoute(`insights/period/${key}/${period}`)
+          periods.append(button)
+        })
+        day.append(heading, periods)
+        root.append(day)
+      })
+      showViewingScreen($('#viewingDiary'))
+    }
+
+    function renderViewingPeriod(dateKey, period) {
+      const sessions = sessionsForViewingPeriod(dateKey, period)
+      const total = sessions.reduce((sum, item) => sum + Number(item.seconds || 0), 0)
+      const date = new Date(`${dateKey}T12:00:00`)
+      $('#viewingPeriodDate').textContent = dateKey === localDateKey(new Date()) ? 'Today' : new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' }).format(date)
+      $('#viewingPeriodTitle').textContent = viewingPeriodNames[period]
+      $('#viewingPeriodSummary').textContent = sessions.length
+        ? `${viewingDuration(total)} across ${sessions.length} viewing ${sessions.length === 1 ? 'entry' : 'entries'}`
+        : 'No qualifying viewing in this part of the day'
+      const stats = $('#viewingPeriodStats')
+      const unique = new Set(sessions.map(item => item.item_key)).size
+      const channels = new Set(sessions.map(item => item.channel_number)).size
+      stats.innerHTML = `<article><svg><use href="/portal/icons.svg#signal-clock"/></svg><span>Total watched</span><strong>${viewingDuration(total)}</strong></article><article><svg><use href="/portal/icons.svg#signal-play"/></svg><span>Things watched</span><strong>${unique}</strong></article><article><svg><use href="/portal/icons.svg#signal-tv"/></svg><span>Channels visited</span><strong>${channels}</strong></article><article><svg><use href="/portal/icons.svg#signal-history"/></svg><span>Longest watch</span><strong>${viewingDuration(Math.max(0, ...sessions.map(item => Number(item.seconds || 0))))}</strong></article>`
+      const root = $('#viewingPeriodEntries')
+      root.replaceChildren()
+      if (!sessions.length) root.innerHTML = '<p class="viewing-empty">Nothing lasting two minutes or more was watched here.</p>'
+      sessions.forEach((session, index) => {
+        const item = viewingItem(session.item_key)
+        const row = document.createElement('button')
+        row.type = 'button'
+        row.className = 'viewing-period-entry'
+        const time = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(session.started))
+        row.innerHTML = `<span class="viewing-period-number">${index + 1}</span><span class="viewing-period-entry-art"></span><span><small>${time} · ${session.source}</small><strong></strong><span>${session.duration}</span></span><svg><use href="/portal/icons.svg#signal-chevron-right"/></svg>`
+        row.querySelector('strong').textContent = session.title
+        const art = row.querySelector('.viewing-period-entry-art')
+        if (item?.artwork) art.style.backgroundImage = `url("${item.artwork}")`
+        row.onclick = () => openViewingItem(session.item_key, 'history')
         root.append(row)
       })
+      const allKeys = viewingDateKeys()
+      const flatIndex = allKeys.indexOf(dateKey) * 4 + period
+      const move = delta => {
+        const next = flatIndex + delta
+        if (next < 0 || next >= allKeys.length * 4) return
+        pushInsightsRoute(`insights/period/${allKeys[Math.floor(next / 4)]}/${next % 4}`)
+      }
+      $('#viewingPeriodPrevious').disabled = flatIndex <= 0
+      $('#viewingPeriodNext').disabled = flatIndex >= allKeys.length * 4 - 1
+      $('#viewingPeriodPrevious').onclick = () => move(-1)
+      $('#viewingPeriodNext').onclick = () => move(1)
+      showViewingScreen($('#viewingPeriod'))
     }
 
-    function renderViewingList(root, values, recent = false) {
+    function renderInsightsRoute() {
+      if (!viewingInsightsData) return
+      const route = viewingInsightsRoute
+      if (route.screen === 'channels' || route.screen === 'films') renderViewingBrowse(route.screen)
+      else if (route.screen === 'item') renderViewingItem(viewingItem(route.itemKey), route.tab)
+      else if (route.screen === 'diary') renderViewingDiary()
+      else if (route.screen === 'period') renderViewingPeriod(route.date, route.period)
+      else {
+        selectedViewingItemKey = ''
+        renderViewingHighlights()
+        const catalog = viewingCatalog()
+        renderViewingMosaic($('#viewingChannelMosaic'), catalog.channels)
+        renderViewingMosaic($('#viewingFilmMosaic'), catalog.films)
+        $('#viewingChannelSummary').textContent = `${catalog.channels.length} channels · every viewing pattern`
+        $('#viewingFilmSummary').textContent = `${catalog.films.length} films · progress and repeats`
+        showViewingScreen($('#viewingDashboard'))
+      }
+    }
+
+    function openInsightsRoute(requested) {
+      const previousScreen = viewingInsightsRoute.screen
+      const item = requested.match(/^insights\/item\/(.+)\/(summary|patterns|history)$/)
+      const period = requested.match(/^insights\/period\/(\d{4}-\d{2}-\d{2})\/([0-3])$/)
+      if (item) viewingInsightsRoute = { screen: 'item', itemKey: decodeURIComponent(item[1]), tab: item[2] }
+      else if (period) viewingInsightsRoute = { screen: 'period', date: period[1], period: Number(period[2]) }
+      else if (requested === 'insights/channels') viewingInsightsRoute = { screen: 'channels' }
+      else if (requested === 'insights/films') viewingInsightsRoute = { screen: 'films' }
+      else if (requested === 'insights/diary') viewingInsightsRoute = { screen: 'diary' }
+      else viewingInsightsRoute = { screen: 'dashboard' }
+      if ((viewingInsightsRoute.screen === 'channels' || viewingInsightsRoute.screen === 'films')
+          && viewingInsightsRoute.screen !== previousScreen && $('#viewingBrowseSearch')) {
+        $('#viewingBrowseSearch').value = ''
+      }
+      $('.insights-page')?.classList.toggle('is-child', viewingInsightsRoute.screen !== 'dashboard')
+      $('#viewingRangeControls')?.classList.toggle('hidden', viewingInsightsRoute.screen !== 'dashboard')
+      openView('insights', { instantScroll: true })
+      renderInsightsRoute()
+      requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }))
+    }
+    window.openInsightsRoute = openInsightsRoute
+    if (location.hash === '#insights' || location.hash.startsWith('#insights/')) {
+      queueMicrotask(() => openInsightsRoute(location.hash.slice(1)))
+    }
+
+    function setViewingSessionSwipe(wrapper, open, animate = true) {
+      if (!wrapper) return
+      wrapper.classList.toggle('swiping', !animate)
+      wrapper.classList.toggle('open', open)
+      wrapper.style.removeProperty('--viewing-swipe-offset')
+      if (open) {
+        if (openViewingSessionSwipe && openViewingSessionSwipe !== wrapper) {
+          setViewingSessionSwipe(openViewingSessionSwipe, false)
+        }
+        openViewingSessionSwipe = wrapper
+      } else if (openViewingSessionSwipe === wrapper) {
+        openViewingSessionSwipe = null
+      }
+    }
+
+    function bindViewingSessionSwipe(wrapper, surface) {
+      const revealWidth = 86
+      let pointerId = null
+      let startX = 0
+      let startY = 0
+      let startOffset = 0
+      let offset = 0
+      let horizontal = false
+      let suppressClick = false
+
+      surface.onpointerdown = event => {
+        if (event.button !== undefined && event.button !== 0) return
+        pointerId = event.pointerId
+        startX = event.clientX
+        startY = event.clientY
+        startOffset = wrapper.classList.contains('open') ? -revealWidth : 0
+        offset = startOffset
+        horizontal = false
+      }
+      surface.onpointermove = event => {
+        if (pointerId !== event.pointerId) return
+        const deltaX = event.clientX - startX
+        const deltaY = event.clientY - startY
+        if (!horizontal && Math.abs(deltaX) < 7) return
+        if (!horizontal && Math.abs(deltaY) > Math.abs(deltaX)) {
+          pointerId = null
+          return
+        }
+        horizontal = true
+        surface.setPointerCapture?.(event.pointerId)
+        offset = Math.max(-revealWidth, Math.min(0, startOffset + deltaX))
+        wrapper.classList.add('swiping')
+        wrapper.style.setProperty('--viewing-swipe-offset', `${offset}px`)
+        if (event.cancelable) event.preventDefault()
+      }
+      const finish = event => {
+        if (pointerId !== event.pointerId) return
+        const wasHorizontal = horizontal
+        const shouldOpen = wasHorizontal
+          ? offset < -(revealWidth * .42)
+          : wrapper.classList.contains('open')
+        pointerId = null
+        horizontal = false
+        suppressClick = wasHorizontal
+        if (wasHorizontal) setTimeout(() => { suppressClick = false }, 350)
+        setViewingSessionSwipe(wrapper, shouldOpen)
+      }
+      surface.onpointerup = finish
+      surface.onpointercancel = finish
+      surface.onclick = event => {
+        if (suppressClick) {
+          suppressClick = false
+          event.preventDefault()
+          return
+        }
+        if (!wrapper.classList.contains('open')) return
+        event.preventDefault()
+        setViewingSessionSwipe(wrapper, false)
+      }
+    }
+
+    function renderViewingSessions(values, options = {}) {
+      const root = options.root || $('#viewingSessions')
+      const titleRoot = options.title || $('#viewingSessionTitle')
+      const countRoot = options.count || $('#viewingSessionCount')
       root.replaceChildren()
+      openViewingSessionSwipe = null
+      titleRoot.textContent = options.scoped ? 'Recent viewing'
+        : viewingInsightsRange === 1 ? 'Today' : 'Viewing in this period'
+      countRoot.textContent = values.length
+        ? `${values.length} viewing ${values.length === 1 ? 'entry' : 'entries'}` : 'No activity'
       if (!values.length) {
-        const empty = document.createElement('li')
+        const empty = document.createElement('p')
         empty.className = 'viewing-empty'
-        empty.textContent = 'Nothing to show yet.'
+        empty.textContent = options.scoped ? 'No qualifying viewing for this item in this period.'
+          : viewingInsightsRange === 1
+          ? 'No MabelTV viewing has reached two minutes today.'
+          : 'No qualifying MabelTV viewing in this period.'
         root.append(empty)
         return
       }
+      const timeFormat = new Intl.DateTimeFormat(undefined, {
+        weekday: viewingInsightsRange === 1 ? undefined : 'short',
+        hour: 'numeric', minute: '2-digit',
+      })
+      let previousDay = ''
       values.forEach(item => {
-        const row = document.createElement('li')
+        const dayKey = new Date(item.when).toLocaleDateString()
+        if (viewingInsightsRange !== 1 && dayKey !== previousDay) {
+          const day = document.createElement('p')
+          day.className = 'viewing-session-day'
+          day.textContent = new Intl.DateTimeFormat(undefined, {
+            weekday: 'long', day: 'numeric', month: 'short',
+          }).format(new Date(item.when))
+          root.append(day)
+          previousDay = dayKey
+        }
+        const wrapper = document.createElement('div')
+        wrapper.className = 'viewing-session-swipe'
+        const remove = document.createElement('button')
+        remove.type = 'button'
+        remove.className = 'viewing-session-delete'
+        remove.setAttribute('aria-label', `Delete ${item.title} from viewing insights`)
+        remove.append(librarySignalIcon('signal-trash'), document.createElement('span'))
+        remove.querySelector('span').textContent = 'Delete'
+        const row = document.createElement('div')
+        row.className = 'viewing-session-row'
+        const icon = document.createElement('span')
+        icon.className = `viewing-session-icon ${item.kind === 'film' ? 'film' : 'channel'}`
+        icon.append(librarySignalIcon(item.kind === 'film' ? 'signal-film' : 'signal-tv'))
         const copy = document.createElement('span')
+        copy.className = 'viewing-session-copy'
         const title = document.createElement('strong')
         title.textContent = item.title
         const details = document.createElement('small')
         const surface = item.surface === 'device' ? 'This device' : 'TV'
-        details.textContent = recent
-          ? `${item.source} · ${surface} · ${new Intl.DateTimeFormat(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' }).format(new Date(item.when))}`
-          : item.source
+        let detail = `${item.source} · ${surface} · ${timeFormat.format(new Date(item.when))}`
+        if (item.kind === 'film' && Number(item.media_duration) > 0) {
+          detail += ` · ${Math.round(Number(item.progress) * 100)}% through film`
+        }
+        details.textContent = detail
         copy.append(title, details)
-        const value = document.createElement('b')
-        value.textContent = item.duration || viewingDuration(item.seconds)
-        row.append(copy, value)
-        root.append(row)
+        const duration = document.createElement('b')
+        duration.textContent = item.duration || viewingDuration(item.seconds)
+        row.append(icon, copy, duration)
+        wrapper.append(remove, row)
+        bindViewingSessionSwipe(wrapper, row)
+        remove.onfocus = () => setViewingSessionSwipe(wrapper, true)
+        remove.onclick = async () => {
+          remove.disabled = true
+          wrapper.classList.add('deleting')
+          try {
+            await api('/api/viewing-insights/delete', {
+              method: 'POST', body: JSON.stringify({ ids: [item.id] }),
+            })
+            await loadViewingInsights(true)
+            notice('Viewing session deleted.')
+          } catch (error) {
+            wrapper.classList.remove('deleting')
+            remove.disabled = false
+            setViewingSessionSwipe(wrapper, false)
+            notice(error.message, true)
+          }
+        }
+        root.append(wrapper)
       })
     }
 
-    async function loadViewingInsights() {
+    async function loadViewingInsights(force = false) {
       const loading = $('#viewingInsightsLoading')
       const root = $('#viewingInsights')
       if (!loading || !root || offlineMode) return
-      loading.classList.remove('hidden')
+      loading.classList.add('hidden')
+      if (!force && viewingInsightsData && viewingInsightsLoadedRange === viewingInsightsRange) {
+        renderInsightsRoute()
+        root.classList.remove('hidden')
+        return
+      }
       try {
         const data = await api(`/api/viewing-insights?days=${viewingInsightsRange}&timezone_offset=${new Date().getTimezoneOffset()}`)
-        $('#viewingToday').textContent = viewingDuration(data.summary.today_seconds)
-        $('#viewingWeek').textContent = viewingDuration(data.summary.week_seconds)
-        $('#viewingMonth').textContent = viewingDuration(data.summary.month_seconds)
+        viewingInsightsData = data
+        viewingInsightsLoadedRange = viewingInsightsRange
+        const rangeLabels = { 1: 'Today', 7: 'Last 7 days', 30: 'Last 30 days', 365: 'Last 12 months' }
+        const rangeLabel = rangeLabels[viewingInsightsRange] || 'Viewing activity'
+        $('#viewingOverviewTitle').textContent = rangeLabel
         $('#viewingActiveDays').textContent = String(data.summary.active_days)
         $('#viewingRangeTotal').textContent = viewingDuration(data.summary.range_seconds)
-        renderViewingChart($('#viewingDailyChart'), data.daily || [])
-        const longValues = viewingInsightsRange === 365 ? data.monthly || [] : data.weekly || []
-        $('#viewingTrendTitle').textContent = viewingInsightsRange === 365 ? 'Monthly trend' : 'Weekly trend'
-        renderViewingChart($('#viewingTrendChart'), longValues)
-        renderViewingBreakdown($('#viewingSurfaceBreakdown'), data.by_surface || [], {
-          tv: 'On the TV', device: 'On this device',
-        })
-        renderViewingBreakdown($('#viewingKindBreakdown'), data.by_kind || [], {
-          adult: 'Adult TV films', film: 'MabelTV films', episode: 'MabelTV episodes', usb: 'USB videos',
-        })
-        renderViewingList($('#viewingTopTitles'), data.top_titles || [])
-        renderViewingList($('#viewingRecent'), data.recent || [], true)
+        $('#viewingSessionTotal').textContent = String(data.summary.sessions || 0)
+        $('#viewingLongestSession').textContent = viewingDuration(data.summary.longest_session_seconds)
+        $('#viewingBusiestPeriod').textContent = data.summary.busiest_period || '—'
+        const current = Number(data.summary.range_seconds) || 0
+        const previous = Number(data.summary.previous_range_seconds) || 0
+        const comparison = $('#viewingComparison')
+        comparison.classList.remove('up', 'down')
+        if (!current && !previous) comparison.textContent = 'No activity in this period'
+        else if (!previous) { comparison.textContent = 'First activity in this period'; comparison.classList.add('up') }
+        else {
+          const change = Math.round((current - previous) / previous * 100)
+          comparison.textContent = change === 0 ? 'Same as the previous period'
+            : `${Math.abs(change)}% ${change > 0 ? 'more' : 'less'} than the previous period`
+          comparison.classList.add(change >= 0 ? 'up' : 'down')
+        }
+        $('#viewingTimelineTitle').textContent = viewingInsightsRange === 1
+          ? 'Today by time of day' : viewingInsightsRange === 365
+            ? 'Month by month' : 'Day by day'
+        const sessions = Number(data.summary.sessions) || 0
+        $('#viewingSessionSummary').textContent = sessions
+          ? `${sessions} ${sessions === 1 ? 'entry' : 'entries'} · longest ${viewingDuration(data.summary.longest_session_seconds)}`
+          : 'No activity'
+        renderViewingChart($('#viewingTimelineChart'), data.timeline || [], 'line')
+        renderViewingChart($('#viewingTimeChart'), data.time_of_day || [], 'bar')
+        renderInsightsRoute()
         root.classList.remove('hidden')
         loading.classList.add('hidden')
       } catch (error) {
         loading.textContent = 'Viewing insights are temporarily unavailable.'
+        loading.classList.remove('hidden')
       }
     }
 
@@ -631,8 +1260,26 @@ function renderAdultLibrary() {
       viewingInsightsRange = Number(button.dataset.viewingRange)
       $$('[data-viewing-range]').forEach(option => option.classList.toggle(
         'active', Number(option.dataset.viewingRange) === viewingInsightsRange))
-      loadViewingInsights()
+      loadViewingInsights(true)
     })
+    $$('[data-insights-destination]').forEach(button => button.onclick = () =>
+      pushInsightsRoute(`insights/${button.dataset.insightsDestination}`))
+    $$('[data-insights-back]').forEach(button => button.onclick = navigateInsightsBack)
+    $$('[data-insights-tab]').forEach(button => button.onclick = () => {
+      if (!selectedViewingItemKey) return
+      replaceInsightsRoute(`insights/item/${encodeURIComponent(selectedViewingItemKey)}/${button.dataset.insightsTab}`)
+    })
+    $('#viewingItemRangeSelect').onchange = event => {
+      viewingInsightsRange = Number(event.target.value)
+      $$('[data-viewing-range]').forEach(option => option.classList.toggle(
+        'active', Number(option.dataset.viewingRange) === viewingInsightsRange))
+      loadViewingInsights(true)
+    }
+    $('#viewingBrowseSearch').oninput = () => {
+      if (viewingInsightsRoute.screen === 'channels' || viewingInsightsRoute.screen === 'films') {
+        renderViewingBrowse(viewingInsightsRoute.screen)
+      }
+    }
 
     $('#usbRefresh').onclick = () => refreshUsb().catch(error => notice(error.message, true))
     $('#usbUp').onclick = () => browseUsb(usbPath.split('/').slice(0, -1).join('/')).catch(error => notice(error.message, true))
@@ -642,7 +1289,16 @@ function renderAdultLibrary() {
       videos.forEach(entry => allSelected ? usbSelection.delete(entry.path) : usbSelection.add(entry.path))
       renderUsbFiles()
     }
-    $('#usbTarget').onchange = () => $('#usbChannelLabel').classList.toggle('hidden', $('#usbTarget').value !== 'channel')
+    $('#usbTarget').onchange = () => {
+      const target = $('#usbTarget').value
+      $('#usbChannelLabel').classList.toggle('hidden', target !== 'channel')
+      $('#usbSeriesLabel').classList.toggle('hidden', target !== 'series')
+      if (target === 'series' && !$('#usbSeriesName').value.trim() && usbSelection.size === 1) {
+        const selected = [...usbSelection][0]
+        const entry = usbEntries.find(value => value.path === selected)
+        if (entry?.type === 'folder') $('#usbSeriesName').value = entry.name
+      }
+    }
     $('#usbEject').onclick = () => openLibrarySheet($('#usbEjectSheet'), $('#cancelUsbEject'))
     $('#closeUsbEject').onclick = $('#cancelUsbEject').onclick = () => closeLibrarySheet($('#usbEjectSheet'))
     $('#usbEjectSheet').onclick = event => {
@@ -666,6 +1322,7 @@ function renderAdultLibrary() {
       try {
         const payload = { action: 'import', volume: usbVolume, paths: [...usbSelection], target: $('#usbTarget').value }
         if (payload.target === 'channel') payload.channel = Number($('#usbChannel').value)
+        if (payload.target === 'series') payload.series_name = $('#usbSeriesName').value.trim()
         const job = await api('/api/usb', { method: 'POST', body: JSON.stringify(payload) })
         usbSelection.clear(); renderUsbFiles(); monitorUsbJob(job.id)
       } catch (error) { notice(error.message, true); updateUsbSelection() }
@@ -728,8 +1385,8 @@ function renderAdultLibrary() {
     function renderTvGuideSetting() {
       const enabled = library?.appearance?.tv_guide_enabled === true
       $('#tvGuideToggle').setAttribute('aria-pressed', String(enabled))
-      $('#tvGuideToggle').textContent = enabled ? 'Turn off' : 'Turn on'
-      $('#tvGuideState').textContent = enabled ? 'TV guide is ready' : 'TV guide is off'
+      $('#tvGuideToggle').textContent = enabled ? 'On' : 'Off'
+      $('#tvGuideState').textContent = enabled ? 'On · ready on the television' : 'Off'
     }
 
     function renderPortalPinSetting() {
@@ -834,7 +1491,7 @@ function renderAdultLibrary() {
         const preview = total
           ? `${previews}${remainder ? `<span class="more">＋ ${remainder} more</span>` : ''}`
           : '<span class="muted">Ready for its first programme</span>'
-        return `<button type="button" class="channel-card overview-channel-card ${channel.enabled ? '' : 'hidden-channel'}" data-open-channel="${channel.number}" aria-label="Manage channel ${channel.number}, ${escapeHtml(channel.name)}">
+        return `<button type="button" class="channel-card overview-channel-card ${channel.enabled ? '' : 'hidden-channel'}" data-open-channel="${channel.number}" data-open-channel-folder="${escapeHtml(channel.folder)}" aria-label="Manage channel ${channel.number}, ${escapeHtml(channel.name)}">
           <span class="channel-card-top"><span class="channel-number">CH ${channel.number}</span><span class="channel-status">${channel.enabled ? 'On TV' : 'Hidden'}</span></span>
           <h3>${escapeHtml(channel.name)}</h3>
           <span class="channel-meta">${escapeHtml(contentLabel(channel.content_type))} · ${shown} of ${total} on TV</span>
@@ -844,7 +1501,7 @@ function renderAdultLibrary() {
       }
       const first = channel.programmes[0]?.display_name
       if (document.body.classList.contains('portal-classic')) {
-        return `<button type="button" class="channel-card library-main-card ${channel.enabled ? '' : 'hidden-channel'}" data-open-channel="${channel.number}" aria-label="Open channel ${channel.number}, ${escapeHtml(channel.name)}">
+        return `<button type="button" class="channel-card library-main-card ${channel.enabled ? '' : 'hidden-channel'}" data-open-channel="${channel.number}" data-open-channel-folder="${escapeHtml(channel.folder)}" aria-label="Open channel ${channel.number}, ${escapeHtml(channel.name)}">
           <span class="library-card-top"><span class="library-channel-pill">CH ${channel.number}</span><span class="library-channel-state">${channel.enabled ? 'On TV' : 'Hidden'}</span></span>
           <span class="channel-card-copy"><h3>${escapeHtml(channel.name)}</h3><span class="channel-card-detail">${total} programme${total === 1 ? '' : 's'} · ${escapeHtml(channel.content_type === 'films' ? 'Films' : 'Shows')}</span>${first ? `<span class="library-card-preview">${escapeHtml(first)}${total > 1 ? ` <em>+ ${total - 1} more</em>` : ''}</span>` : '<span class="library-card-preview muted">Ready for its first programme</span>'}</span>
           <span class="library-card-footer"><span>${shown} shown on TV</span><span>Open channel <svg class="icon"><use href="/portal/icons.svg#signal-chevron-right"/></svg></span></span>
@@ -853,7 +1510,7 @@ function renderAdultLibrary() {
       const channelArtwork = channel.metadata?.artwork
         ? ` style="background-image:linear-gradient(180deg,rgba(8,8,11,.04),rgba(8,8,11,.82)),url('/api/channel/artwork/${encodeURIComponent(channel.metadata.artwork)}')"`
         : ''
-      return `<button type="button" class="channel-card library-main-card ${channel.enabled ? '' : 'hidden-channel'}" data-open-channel="${channel.number}" aria-label="Open channel ${channel.number}, ${escapeHtml(channel.name)}">
+      return `<button type="button" class="channel-card library-main-card ${channel.enabled ? '' : 'hidden-channel'}" data-open-channel="${channel.number}" data-open-channel-folder="${escapeHtml(channel.folder)}" aria-label="Open channel ${channel.number}, ${escapeHtml(channel.name)}">
         <span class="library-channel-visual"${channelArtwork}><span class="library-card-top"><span class="library-channel-pill">CH ${channel.number}</span><span class="library-channel-state">${channel.enabled ? 'On TV' : 'Hidden'}</span></span><span class="library-channel-initial">${escapeHtml(channel.name.slice(0, 1).toUpperCase())}</span></span>
         <span class="channel-card-copy"><span class="channel-card-heading"><h3>${escapeHtml(channel.name)}</h3><svg class="icon"><use href="/portal/icons.svg#signal-chevron-right"/></svg></span><span class="channel-card-detail">${total} programme${total === 1 ? '' : 's'} · ${escapeHtml(channel.content_type === 'films' ? 'Films' : 'Shows')}</span>${first ? `<span class="library-card-preview">${escapeHtml(first)}${total > 1 ? ` <em>+ ${total - 1} more</em>` : ''}</span>` : '<span class="library-card-preview muted">Ready for its first programme</span>'}</span>
         <span class="library-card-footer"><span>${shown} shown on TV</span><span>${channel.enabled ? 'Available' : 'Hidden'}</span></span>
@@ -862,33 +1519,84 @@ function renderAdultLibrary() {
 
     function bindChannelCards(root) {
       root.querySelectorAll('[data-open-channel]').forEach(button => {
-        button.onclick = () => openChannel(Number(button.dataset.openChannel), false)
+        button.onclick = () => {
+          const channel = (library.channels || []).find(value =>
+            value.folder === button.dataset.openChannelFolder)
+            || (library.channels || []).find(value =>
+              value.number === Number(button.dataset.openChannel))
+          if (channel) openChannel(channel, false)
+        }
       })
     }
 
+    function selectedChannelFromLibrary(channels = library?.channels || []) {
+      if (selectedManageChannelFolder) {
+        const byFolder = channels.find(channel =>
+          channel.folder === selectedManageChannelFolder)
+        if (byFolder) return byFolder
+      }
+      return channels.find(channel => channel.number === selectedManageChannel) || null
+    }
+
+    function sameChannelSelection(channel) {
+      const selected = selectedChannelFromLibrary()
+      if (!selected || !channel || selected.number !== channel.number) return false
+      return !selected.folder || !channel.folder || selected.folder === channel.folder
+    }
+
     function showChannelHub() {
+      channelNavigationRevision += 1
       selectedManageChannel = null
+      selectedManageChannelFolder = ''
       channelWorkspaceReturnToWatch = false
+      channelReturnPosition = null
       programmePage = 1
       $('#channelHub').classList.remove('hidden')
       $('#channelWorkspace').classList.add('hidden')
       $('#backToChannels span').textContent = 'All channels'
     }
 
-    function openChannel(number, returnToWatch = false, options = {}) {
-      selectedManageChannel = Number(number)
+    function openChannel(channelOrNumber, returnToWatch = false, options = {}) {
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+      const channels = library?.channels || []
+      const requestedNumber = Number(typeof channelOrNumber === 'object'
+        ? channelOrNumber?.number : channelOrNumber)
+      const requestedFolder = String(typeof channelOrNumber === 'object'
+        ? channelOrNumber?.folder || '' : options.folder || '')
+      const channel = (requestedFolder
+        ? channels.find(value => value.folder === requestedFolder) : null)
+        || channels.find(value => value.number === requestedNumber)
+      if (!channel) {
+        showError(new Error('That channel is no longer available.'))
+        showChannelHub()
+        return
+      }
+      channelReturnPosition = returnToWatch
+        ? (options.returnPosition || channelReturnSnapshot(channel)) : null
+      resetViewScroll()
+      channelNavigationRevision += 1
+      const navigationRevision = channelNavigationRevision
+      selectedManageChannel = Number(channel.number)
+      selectedManageChannelFolder = String(channel.folder || '')
       channelWorkspaceReturnToWatch = returnToWatch
       programmeSearch = ''
-      programmeVisibility = 'all'
       programmePage = 1
       $('#backToChannels span').textContent = returnToWatch ? 'Back to MabelTV' : 'All channels'
       if (options.updateHistory !== false) {
         const parentHash = returnToWatch ? '#watch' : '#channels'
-        if (location.hash !== parentHash) history.replaceState({ channelParent: true }, '', parentHash)
-        history.pushState({ channelPage: true }, '', `#channel/${selectedManageChannel}/${returnToWatch ? 'watch' : 'library'}`)
+        const parentState = returnToWatch
+          ? { channelParent: true, mabelWatchReturn: channelReturnPosition }
+          : { channelParent: true }
+        history.replaceState(parentState, '', parentHash)
+        history.pushState({ channelPage: true, mabelWatchReturn: channelReturnPosition }, '', `#channel/${selectedManageChannel}/${returnToWatch ? 'watch' : 'library'}`)
       }
-      openView('channels')
+      openView('channels', { instantScroll: true })
       renderChannels()
+      resetViewScroll()
+      requestAnimationFrame(() => {
+        if (channelNavigationRevision === navigationRevision
+            && sameChannelSelection(channel)) resetViewScroll()
+      })
     }
 
     function closeChannelPage() {
@@ -897,8 +1605,11 @@ function renderAdultLibrary() {
         return
       }
       const target = channelWorkspaceReturnToWatch ? 'watch' : 'channels'
-      history.replaceState({ channelParent: true }, '', `#${target}`)
-      openRequestedView()
+      const parentState = channelWorkspaceReturnToWatch
+        ? { channelParent: true, mabelWatchReturn: channelReturnPosition }
+        : { channelParent: true }
+      history.replaceState(parentState, '', `#${target}`)
+      openRequestedView({ type: 'popstate' })
     }
 
     function renderBin() {
@@ -930,11 +1641,16 @@ function renderAdultLibrary() {
     }
 
     function renderProgrammeList(channel) {
+      const selected = selectedChannelFromLibrary()
+      if (!selected) return
+      // Always render the currently selected channel. A delayed callback may
+      // still hold an older channel object, but it must never leave the old
+      // cards on screen or suppress the first render of the new channel.
+      channel = selected
       const search = programmeSearch.trim().toLowerCase()
       const filtered = channel.programmes.filter(programme => {
         const matchesSearch = !search || programme.display_name.toLowerCase().includes(search) || programme.name.toLowerCase().includes(search)
-        const matchesVisibility = programmeVisibility === 'all' || (programmeVisibility === 'enabled' ? programme.enabled : !programme.enabled)
-        return matchesSearch && matchesVisibility
+        return matchesSearch
       })
       programmePage = Math.min(programmePage, Math.max(1, Math.ceil(filtered.length / PROGRAMMES_PER_PAGE)))
       ChannelPageComponents.renderLibrary({
@@ -942,10 +1658,14 @@ function renderAdultLibrary() {
         filtered,
         page: programmePage,
         pageSize: PROGRAMMES_PER_PAGE,
-        visibility: programmeVisibility,
         search: programmeSearch,
         onOpen: (selectedChannel, programme) => openWatchProgrammeSheet(selectedChannel, programme),
-        onLoadMore: () => { programmePage += 1; renderProgrammeList(channel) },
+        onLoadMore: () => {
+          const current = selectedChannelFromLibrary()
+          if (!current) return
+          programmePage += 1
+          renderProgrammeList(current)
+        },
       })
     }
 
@@ -959,19 +1679,40 @@ function renderAdultLibrary() {
         : '<div class="zero-state"><strong>No channels yet</strong>Create the first channel below.</div>'
       bindChannelCards(cards)
       renderBin()
-      const channel = channels.find(value => value.number === selectedManageChannel)
+      const channel = selectedChannelFromLibrary(channels)
       if (!channel) { showChannelHub(); return }
+      selectedManageChannel = Number(channel.number)
+      selectedManageChannelFolder = String(channel.folder || '')
       $('#channelHub').classList.add('hidden')
       $('#channelWorkspace').classList.remove('hidden')
+      $('#channelWorkspace').dataset.channelNumber = String(channel.number)
+      $('#channelWorkspace').dataset.channelFolder = String(channel.folder || '')
       $('#editChannelNumber').value = channel.number
       $('#editChannelName').value = channel.name
       $('#editChannelAspect').value = channel.aspect || 'crop'
       $('#editChannelContentType').value = channel.content_type || 'shows'
       ChannelPageComponents.renderHero(channel, { aspectLabel })
-      $('#workspaceToggleChannel span').textContent = channel.enabled ? 'Hide channel' : 'Show channel'
+      // Paint the channel identity and its contents as one transaction. The
+      // management controls below may come from an older cached PWA shell; a
+      // missing optional control must not leave this area empty or showing the
+      // previously opened channel.
+      renderProgrammeList(channel)
+      $('#channelVisibilityTitle').textContent = channel.enabled ? 'Hide channel' : 'Show channel'
+      $('#channelVisibilityHint').textContent = channel.enabled
+        ? 'Keep every video, but remove this channel from the television.'
+        : 'Put this channel and its available videos back on the television.'
       $('#workspaceToggleChannel').onclick = () => manage('toggle-channel', { channel: channel.number })
       $('#channelSettingsTitle').textContent = `Edit ${channel.name}`
       $('#workspaceSettings').onclick = () => openLibrarySheet($('#channelSettingsSheet'), $('#editChannelName'))
+      const favouriteButton = $('#workspaceFavourite')
+      const seriesChannel = channel.content_type !== 'films'
+      favouriteButton.classList.toggle('hidden', !seriesChannel)
+      favouriteButton.classList.toggle('active', seriesChannel && channel.favourite === true)
+      favouriteButton.setAttribute('aria-label', channel.favourite
+        ? `Remove ${channel.name} from favourites`
+        : `Add ${channel.name} to favourites`)
+      favouriteButton.onclick = seriesChannel ? () => setChannelFavourite(
+        channel, channel.favourite !== true).then(() => renderChannels()).catch(showError) : null
       const contentType = $('#editChannelContentType')
       const metadataAction = $('#channelMetadataAction')
       const syncChannelMetadataAction = () => {
@@ -1004,6 +1745,4 @@ function renderAdultLibrary() {
       $('#uploadDestination').textContent = channel.name
       $('#workspaceAddMedia').onclick = () => openLibrarySheet($('#channelUploadPanel'), $('#file'))
       $('#programmeSearch').value = programmeSearch
-      $('#programmeVisibility').value = programmeVisibility
-      renderProgrammeList(channel)
     }
