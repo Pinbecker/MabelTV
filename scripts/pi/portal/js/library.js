@@ -1537,11 +1537,12 @@ function renderAdultLibrary() {
       const firstOptimisation = activeOptimisations[0]
       header.classList.remove('hidden')
       header.classList.toggle('is-warning', warning)
-      header.classList.toggle('is-idle', !activity.active && !warning)
       const firstUpload = activeUploads[0]
-      headerText.textContent = warning ? `${Number(activity.temperature_c).toFixed(0)}°C · Pi warming up`
+      const headerLabel = warning ? `${Number(activity.temperature_c).toFixed(0)}°C · Pi warming up`
         : firstOptimisation ? `Optimising · ${Math.round(firstOptimisation.progress || 0)}%`
           : activeUploads.length ? `${firstUpload.status === 'paused' ? 'Paused' : 'Uploading'} · ${Math.round((firstUpload.size ? firstUpload.offset * 100 / firstUpload.size : 0) || 0)}%` : ''
+      headerText.textContent = headerLabel
+      header.classList.toggle('is-idle', !headerLabel)
     }
 
     async function activityAction(button) {

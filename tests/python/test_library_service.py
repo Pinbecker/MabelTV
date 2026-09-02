@@ -132,6 +132,8 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("--control-min: 44px", PORTAL_STYLES)
         self.assertIn('/portal/icons.svg#signal-house', html)
         self.assertIn('class="logo-mark" src="/mabeltv-icon.png"', html)
+        self.assertIn('class="mobile-activity-status is-idle hidden"', html)
+        self.assertIn("header.classList.toggle('is-idle', !headerLabel)", PORTAL_SCRIPT)
         logo = (PROJECT_ROOT / "scripts" / "pi" / "mabeltv-icon.png").read_bytes()
         self.assertTrue(logo.startswith(b"\x89PNG\r\n\x1a\n"))
         self.assertTrue(logo.endswith(b"IEND\xaeB`\x82"))
