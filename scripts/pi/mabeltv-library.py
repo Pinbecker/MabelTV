@@ -9,6 +9,7 @@ serves a partial upload from the media folders watched by the TV application.
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import hmac
 import json
@@ -20,6 +21,8 @@ import secrets
 import signal
 import shutil
 import socket
+import ssl
+import struct
 import subprocess
 import sys
 import threading
@@ -52,6 +55,13 @@ USB_POWER_POLL_SECONDS = 5.0
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
 TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
 TMDB_BACKDROP_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w1280"
+WATCHMODE_API_BASE_URL = "https://api.watchmode.com/v1"
+LG_WEBOS_DEFAULT_PORT = 3001
+LG_WEBOS_CLIENT_KEY_PATH = "/var/lib/mabeltv/secrets/lg-webos-client-key"
+NETFLIX_TV_APP_ID = "netflix"
+ADULT_DISCOVERY_CACHE_SECONDS = 24 * 60 * 60
+ADULT_PROVIDER_CACHE_SECONDS = 7 * 24 * 60 * 60
+ADULT_PROVIDER_MAX_CACHE_SECONDS = 29 * 24 * 60 * 60
 OPENSUBTITLES_API_BASE_URL = "https://api.opensubtitles.com/api/v1"
 OPENSUBTITLES_USER_AGENT = "MabelTV/0.2.5"
 SUBTITLE_EXTENSIONS = {".srt", ".vtt", ".ass", ".ssa"}
@@ -478,6 +488,164 @@ class RemoteTvActiveError(ValueError):
     """Raised when the conservative one-player rule needs an explicit choice."""
 
 
+class LgWebOsError(ValueError):
+    """A bounded, user-safe failure while asking the connected LG TV to launch Netflix."""
+
+
+def lg_webos_log(event: str) -> None:
+    """Keep narrow, redacted SSAP diagnostics in the service journal."""
+    print(f"LG SSAP: {event}", file=sys.stderr, flush=True)
+
+
+LG_WEBOS_PERMISSIONS = ["LAUNCH", "READ_INSTALLED_APPS", "READ_RUNNING_APPS"]
+LG_WEBOS_REGISTRATION = {
+    # This is deliberately the exact minimal registration shape used by the
+    # successful Glass Onion proof on this television. The TV accepts it and
+    # returns a reusable client key after the user approves the prompt.
+    "type": "register",
+    "payload": {
+        "pairingType": "PROMPT",
+        "manifest": {
+            "manifestVersion": 1, "appVersion": "0.1.0",
+            "signed": {"appId": "com.mabeltv.control", "created": "2026-09-03",
+                       "localizedAppNames": {"": "MabelTV"},
+                       "localizedVendorNames": {"": "MabelTV"},
+                       "permissions": LG_WEBOS_PERMISSIONS},
+            "permissions": LG_WEBOS_PERMISSIONS,
+        },
+    },
+}
+
+
+class LgWebOsSocket:
+    """Small standards-only WebSocket client for the one SSAP launch MabelTV needs.
+
+    Keeping this here avoids a new service dependency and keeps the paired key on
+    the Pi. It intentionally implements only masked text frames, which is all the
+    local SSAP registration and launcher protocol requires.
+    """
+    def __init__(self, host: str, client_key: str = "") -> None:
+        self.host = host
+        self.client_key = client_key
+        self.connection: socket.socket | None = None
+
+    def connect(self) -> None:
+        try:
+            lg_webos_log("TCP connect started")
+            raw = socket.create_connection((self.host, LG_WEBOS_DEFAULT_PORT), timeout=5)
+            context = ssl._create_unverified_context()
+            connection = context.wrap_socket(raw, server_hostname=self.host)
+            lg_webos_log("TLS established")
+            websocket_key = base64.b64encode(os.urandom(16)).decode("ascii")
+            handshake = (
+                "GET / HTTP/1.1\r\n"
+                f"Host: {self.host}:{LG_WEBOS_DEFAULT_PORT}\r\n"
+                "Upgrade: websocket\r\nConnection: Upgrade\r\n"
+                f"Sec-WebSocket-Key: {websocket_key}\r\n"
+                "Sec-WebSocket-Version: 13\r\n\r\n"
+            ).encode("ascii")
+            connection.sendall(handshake)
+            response = self._read_headers(connection)
+            if not response.startswith("HTTP/1.1 101"):
+                lg_webos_log(f"WebSocket upgrade rejected: {response.splitlines()[0] if response else 'empty response'}")
+                raise LgWebOsError("The connected TV rejected MabelTV's secure control connection")
+            lg_webos_log("WebSocket upgrade complete")
+            # Allow a person time to read and accept the television prompt.
+            connection.settimeout(90)
+            self.connection = connection
+        except (OSError, ssl.SSLError) as error:
+            lg_webos_log(f"connection exception: {type(error).__name__}: {error}")
+            raise LgWebOsError("MabelTV could not reach the connected LG TV") from error
+
+    @staticmethod
+    def _read_headers(connection: socket.socket) -> str:
+        data = bytearray()
+        while b"\r\n\r\n" not in data and len(data) < 16 * 1024:
+            chunk = connection.recv(1024)
+            if not chunk:
+                break
+            data.extend(chunk)
+        return data.decode("iso-8859-1", "replace")
+
+    def send(self, payload: dict[str, Any]) -> None:
+        self._send_frame(0x1, json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+
+    def _send_frame(self, opcode: int, data: bytes = b"") -> None:
+        if self.connection is None:
+            raise LgWebOsError("The connected LG TV control session is not available")
+        header = bytearray([0x80 | opcode])
+        length = len(data)
+        if length < 126:
+            header.append(0x80 | length)
+        elif length < 65536:
+            header.append(0x80 | 126); header.extend(struct.pack("!H", length))
+        else:
+            header.append(0x80 | 127); header.extend(struct.pack("!Q", length))
+        mask = os.urandom(4)
+        encoded = bytes(value ^ mask[index % 4] for index, value in enumerate(data))
+        self.connection.sendall(bytes(header) + mask + encoded)
+
+    def receive(self) -> dict[str, Any]:
+        if self.connection is None:
+            raise LgWebOsError("The connected LG TV control session is not available")
+        first = self._read_exact(2)
+        opcode, length = first[0] & 0x0F, first[1] & 0x7F
+        if length == 126:
+            length = struct.unpack("!H", self._read_exact(2))[0]
+        elif length == 127:
+            length = struct.unpack("!Q", self._read_exact(8))[0]
+        if length > 1024 * 1024:
+            raise LgWebOsError("The connected LG TV sent an unexpectedly large control response")
+        body = self._read_exact(length)
+        if opcode == 0x8:
+            code = struct.unpack("!H", body[:2])[0] if len(body) >= 2 else None
+            reason = body[2:].decode("utf-8", "replace") if len(body) > 2 else ""
+            lg_webos_log(f"CLOSE received: code={code!r} reason={reason!r}")
+            try:
+                self._send_frame(0x8, body)
+            except OSError:
+                pass
+            raise LgWebOsError("The connected LG TV closed its control session")
+        if opcode == 0x9:
+            # LG sends WebSocket pings while a first-time pairing prompt is
+            # visible. Replying is required before it will send `registered`.
+            self._send_frame(0xA, body)
+            lg_webos_log("PING received; PONG sent")
+            return self.receive()
+        if opcode == 0xA:
+            lg_webos_log("PONG received")
+            return self.receive()
+        if opcode != 0x1:
+            lg_webos_log(f"non-text WebSocket opcode received: {opcode}")
+            return self.receive()
+        try:
+            value = json.loads(body.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise LgWebOsError("The connected LG TV returned an invalid control response") from error
+        if not isinstance(value, dict):
+            raise LgWebOsError("The connected LG TV returned an invalid control response")
+        lg_webos_log(f"LG JSON received: type={value.get('type')!r} id={value.get('id')!r}")
+        return value
+
+    def _read_exact(self, amount: int) -> bytes:
+        assert self.connection is not None
+        data = bytearray()
+        while len(data) < amount:
+            chunk = self.connection.recv(amount - len(data))
+            if not chunk:
+                lg_webos_log("socket EOF")
+                raise LgWebOsError("The connected LG TV closed its control session")
+            data.extend(chunk)
+        return bytes(data)
+
+    def close(self) -> None:
+        if self.connection is not None:
+            try:
+                self.connection.close()
+            finally:
+                self.connection = None
+
+
 class Library:
     def __init__(self, args: argparse.Namespace) -> None:
         self.media_root = Path(args.media_root).resolve()
@@ -495,6 +663,7 @@ class Library:
         self.adult_series_root = self.adult_root / ".series"
         self.adult_series_state_path = self.adult_root / ".mabeltv-series.json"
         self.adult_series_artwork_root = self.adult_root / ".series-metadata"
+        self.adult_viewing_path = self.adult_root / ".mabeltv-viewing.json"
         self.channel_metadata_path = self.media_root / ".mabeltv-channels.json"
         self.channel_artwork_root = self.media_root / ".channel-metadata"
         configured_usb_root = os.environ.get("MABELTV_USB_ROOT")
@@ -504,13 +673,22 @@ class Library:
         self.usb_requires_mount = configured_usb_root is None
         self.tmdb_key_path = Path(os.environ.get(
             "MABELTV_TMDB_API_KEY_FILE", "/var/lib/mabeltv/secrets/tmdb-api-key"))
+        self.watchmode_key_path = Path(os.environ.get(
+            "MABELTV_WATCHMODE_API_KEY_FILE",
+            "/var/lib/mabeltv/secrets/watchmode-api-key"))
         self.opensubtitles_key_path = Path(os.environ.get(
             "MABELTV_OPENSUBTITLES_API_KEY_FILE",
             "/var/lib/mabeltv/secrets/opensubtitles-api-key"))
+        self.lg_tv_host = os.environ.get("MABELTV_LG_TV_HOST", "").strip()
+        self.lg_tv_client_key_path = Path(os.environ.get(
+            "MABELTV_LG_TV_CLIENT_KEY_FILE", LG_WEBOS_CLIENT_KEY_PATH))
+        self.lg_tv_lock = threading.Lock()
         self.bin = self.media_root / ".recycle-bin"
         self.sessions: dict[str, float] = {}
         self.login_failures: dict[str, list[float]] = {}
         self.config_lock = threading.RLock()
+        self.channel_programme_duration_cache: dict[tuple[str, int, int], float] = {}
+        self.channel_programme_duration_lock = threading.RLock()
         self.upload_locks: dict[str, threading.Lock] = {}
         self.conversion_queue: queue.Queue[str | None] = queue.Queue()
         self.queued_conversions: set[str] = set()
@@ -703,7 +881,8 @@ class Library:
             "channel_number": number,
             "channel_name": channel_name,
         }
-        if is_film:
+        # Series channels have the same player timeline as film channels.
+        if file_name:
             try:
                 position = max(0.0, float(timeline.get("position_seconds", 0) or 0))
                 if state.get("playback_paused") is not True:
@@ -716,6 +895,8 @@ class Library:
                     if isinstance(durations, dict) else 0.0
             except (AttributeError, TypeError, ValueError):
                 position, duration = 0.0, 0.0
+            if duration <= 0:
+                duration = self.channel_programme_duration(channel, file_name)
             activity.update({"position": position, "media_duration": duration})
         return activity
 
@@ -1957,6 +2138,33 @@ class Library:
     @staticmethod
     def channel_programme_key(channel_number: int, file_name: str) -> str:
         return f"{int(channel_number)}/{file_name}"
+
+    def channel_programme_duration(self, channel: dict[str, Any],
+                                   file_name: str) -> float:
+        """Read an active channel programme duration once for the home card."""
+        source = self.media_root / str(channel.get("folder", "")) / file_name
+        try:
+            stat = source.stat()
+        except OSError:
+            return 0.0
+        cache_key = (str(source), int(stat.st_mtime_ns), int(stat.st_size))
+        with self.channel_programme_duration_lock:
+            cached = self.channel_programme_duration_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        try:
+            result = subprocess.run(
+                ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                 "-of", "default=nw=1:nk=1", str(source)],
+                check=False, capture_output=True, text=True, timeout=3,
+            )
+            duration = float(result.stdout.strip()) if result.returncode == 0 else 0.0
+        except (OSError, subprocess.TimeoutExpired, ValueError):
+            duration = 0.0
+        duration = max(0.0, duration)
+        with self.channel_programme_duration_lock:
+            self.channel_programme_duration_cache[cache_key] = duration
+        return duration
 
     def channel_film_resume_state(self, channel_number: int,
                                   file_name: str) -> dict[str, float]:
@@ -3887,6 +4095,543 @@ class Library:
         except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as error:
             raise ValueError("TMDB could not be reached. Try the scan again later") from error
 
+    def watchmode_key(self) -> str:
+        """Return the Pi-local Watchmode key without exposing it to clients."""
+        key = os.environ.get("MABELTV_WATCHMODE_API_KEY", "").strip()
+        if not key:
+            try:
+                key = self.watchmode_key_path.read_text(encoding="utf-8").strip()
+            except OSError:
+                pass
+        return key
+
+    def watchmode_request(self, endpoint: str,
+                          parameters: dict[str, Any] | None = None) -> Any:
+        key = self.watchmode_key()
+        if not key:
+            raise ValueError("Streaming links have not been configured yet")
+        query = urlencode(parameters or {})
+        url = f"{WATCHMODE_API_BASE_URL}/{endpoint.strip('/')}"
+        if query:
+            url += f"?{query}"
+        try:
+            request = Request(url, headers={
+                "Accept": "application/json", "X-API-Key": key,
+                "User-Agent": "MabelTV/0.2.5",
+            })
+            with urlopen(request, timeout=12) as response:
+                return json.loads(response.read(2 * 1024 * 1024))
+        except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as error:
+            raise ValueError("Streaming services could not be reached. Try again later") from error
+
+    @staticmethod
+    def netflix_content_id(destination: Any) -> str:
+        """Turn an official Watchmode Netflix URL into LG's proven launch value."""
+        candidate = str(destination or "").strip()
+        parsed = urlsplit(candidate)
+        if parsed.scheme not in {"http", "https", "nflx"}:
+            raise ValueError("Netflix did not provide a usable TV destination for this title")
+        host = parsed.netloc.lower()
+        if parsed.scheme != "nflx" and not (host == "netflix.com" or host.endswith(".netflix.com")):
+            raise ValueError("Netflix did not provide a usable TV destination for this title")
+        match = re.search(r"/(?:watch|title)/(\d+)(?:/|$)", parsed.path)
+        if not match:
+            raise ValueError("Netflix did not provide a title ID that this TV can open")
+        return f"m=https://www.netflix.com/watch/{match.group(1)}&source_type=4"
+
+    def lg_tv_client_key(self) -> str:
+        try:
+            return self.lg_tv_client_key_path.read_text(encoding="utf-8").strip()
+        except OSError:
+            return ""
+
+    def save_lg_tv_client_key(self, key: str) -> None:
+        if not key or len(key) > 512:
+            raise LgWebOsError("The connected LG TV returned an invalid pairing key")
+        self.lg_tv_client_key_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = self.lg_tv_client_key_path.with_name(
+            f".{self.lg_tv_client_key_path.name}.{secrets.token_hex(6)}")
+        try:
+            temporary.write_text(key + "\n", encoding="utf-8")
+            temporary.chmod(0o600)
+            os.replace(temporary, self.lg_tv_client_key_path)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+    def lg_tv_session(self) -> LgWebOsSocket:
+        if not self.lg_tv_host:
+            raise ValueError("Netflix on TV has not been configured for this MabelTV yet")
+        session = LgWebOsSocket(self.lg_tv_host, self.lg_tv_client_key())
+        session.connect()
+        registration = json.loads(json.dumps(LG_WEBOS_REGISTRATION))
+        if session.client_key:
+            registration["payload"]["client-key"] = session.client_key
+        lg_webos_log(f"registration JSON sent; stored_client_key={'YES' if session.client_key else 'NO'}")
+        session.send(registration)
+        first = session.receive()
+        if first.get("type") == "response" and \
+                first.get("payload", {}).get("pairingType") == "PROMPT":
+            lg_webos_log("pairing prompt response received; waiting for user approval")
+            first = session.receive()
+        if first.get("type") != "registered":
+            lg_webos_log("registration did not reach registered state")
+            session.close()
+            raise LgWebOsError("Approve MabelTV's control request on the LG TV, then try Netflix again")
+        key = str(first.get("payload", {}).get("client-key") or "")
+        lg_webos_log(f"registered message received; client_key={'YES' if key else 'NO'}")
+        if key and key != session.client_key:
+            self.save_lg_tv_client_key(key)
+            session.client_key = key
+        if not session.client_key:
+            session.close()
+            raise LgWebOsError("Approve MabelTV's control request on the LG TV, then try Netflix again")
+        return session
+
+    def play_netflix_on_tv(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Wake the connected display when necessary, then launch one Netflix title."""
+        self.adult_title_key(str(payload.get("media_type", "")), payload.get("tmdb_id"))
+        content_id = self.netflix_content_id(payload.get("destination"))
+        title = str(payload.get("title") or "this Netflix title").strip()[:180]
+        mode = self.player_mode_status()
+        waking = str(mode.get("connected_tv_power") or "").lower() not in {"on", "active"}
+        lg_webos_log(f"Netflix Play on TV request received; waking={waking}")
+        if waking:
+            self.wake_connected_tv_only()
+        # Queue the wake and immediately begin the bounded SSAP retry loop.
+        # This preserves the proven wake-and-launch timing while deliberately
+        # avoiding CEC Active Source, which would switch the TV to HDMI 1.
+        deadline = time.monotonic() + (20 if waking else 5)
+        error: Exception | None = None
+        with self.lg_tv_lock:
+            while time.monotonic() < deadline:
+                session: LgWebOsSocket | None = None
+                try:
+                    session = self.lg_tv_session()
+                    lg_webos_log("Netflix launch request sent")
+                    session.send({"id": "netflix-launch", "type": "request",
+                                  "uri": "ssap://system.launcher/launch",
+                                  "payload": {"id": NETFLIX_TV_APP_ID,
+                                              "contentId": content_id}})
+                    response = session.receive()
+                    lg_webos_log(
+                        "Netflix launch response received; "
+                        f"returnValue={response.get('payload', {}).get('returnValue')!r}")
+                    if response.get("type") == "response" and \
+                            response.get("payload", {}).get("returnValue") is True:
+                        return {"ok": True, "message": f"Opening {title} on Netflix",
+                                "waking": waking}
+                    error = LgWebOsError("The LG TV could not open that Netflix title")
+                except (LgWebOsError, OSError, ssl.SSLError) as caught:
+                    error = caught
+                finally:
+                    if session is not None:
+                        session.close()
+                time.sleep(1)
+        raise ValueError(str(error or "The connected LG TV could not open Netflix"))
+
+    @staticmethod
+    def adult_title_key(media_type: str, tmdb_id: Any) -> str:
+        media_type = str(media_type or "").strip().lower()
+        if media_type not in {"movie", "tv"}:
+            raise ValueError("Choose a film or TV series")
+        try:
+            identifier = int(tmdb_id)
+        except (TypeError, ValueError):
+            raise ValueError("Choose a valid title") from None
+        if identifier <= 0:
+            raise ValueError("Choose a valid title")
+        return f"{media_type}:{identifier}"
+
+    def adult_viewing_store(self) -> dict[str, Any]:
+        value = self.read_json(self.adult_viewing_path, {})
+        if not isinstance(value, dict):
+            value = {}
+        for field in ("titles", "availability"):
+            if not isinstance(value.get(field), dict):
+                value[field] = {}
+        value["schema_version"] = 1
+        # Watchmode's free-data terms require old cached provider data to be
+        # removed, rather than retained forever as ordinary application state.
+        cutoff = time.time() - ADULT_PROVIDER_MAX_CACHE_SECONDS
+        value["availability"] = {
+            key: item for key, item in value["availability"].items()
+            if isinstance(item, dict) and float(item.get("checked", 0) or 0) >= cutoff
+        }
+        return value
+
+    def write_adult_viewing_store(self, value: dict[str, Any]) -> None:
+        value["updated"] = time.time()
+        self.write_json(self.adult_viewing_path, value)
+
+    @staticmethod
+    def adult_title_summary(value: dict[str, Any], media_type: str) -> dict[str, Any]:
+        date = str(value.get("release_date" if media_type == "movie" else
+                             "first_air_date", ""))
+        return {
+            "media_type": media_type,
+            "tmdb_id": int(value.get("id", 0) or 0),
+            "title": str(value.get("title" if media_type == "movie" else "name", "")),
+            "original_title": str(value.get("original_title" if media_type == "movie"
+                                             else "original_name", "")),
+            "year": date[:4],
+            "overview": str(value.get("overview", "")),
+            "poster_path": str(value.get("poster_path") or ""),
+            "backdrop_path": str(value.get("backdrop_path") or ""),
+        }
+
+    def adult_local_title_index(self) -> dict[str, dict[str, Any]]:
+        """Map confirmed Adult TV media to one canonical TMDB title."""
+        index: dict[str, dict[str, Any]] = {}
+        for film in self.adult_library():
+            metadata = film.get("metadata", {})
+            try:
+                key = self.adult_title_key("movie", metadata.get("tmdb_id"))
+            except ValueError:
+                continue
+            index[key] = {
+                "kind": "film", "path": film["path"],
+                "title": str(metadata.get("title") or film["display_name"]),
+                "poster": str(metadata.get("poster") or ""),
+                "position": float(film.get("remote_position", 0) or 0),
+                "duration": float(film.get("remote_duration", 0) or 0),
+                "last_watched": float(film.get("remote_last_watched", 0) or 0),
+                "browser_ready": film.get("browser_ready") is not False,
+            }
+        for series in self.adult_series_library():
+            metadata = series.get("metadata", {})
+            try:
+                key = self.adult_title_key("tv", metadata.get("tmdb_id"))
+            except ValueError:
+                continue
+            episodes = series.get("episodes", [])
+            next_episode = next((episode for episode in episodes
+                                 if not episode.get("watched")), None)
+            index[key] = {
+                "kind": "series", "series": series["id"],
+                "title": str(metadata.get("title") or series["title"]),
+                "poster": str(metadata.get("poster") or ""),
+                "episode_count": len(episodes),
+                "watched_count": int(series.get("watched_count", 0) or 0),
+                "next_episode": next_episode,
+            }
+        return index
+
+    def adult_discovery(self, query: str) -> dict[str, Any]:
+        query = str(query or "").strip()
+        if len(query) < 2:
+            return {"query": query, "results": []}
+        response = self.tmdb_request("search/multi", {
+            "query": query[:120], "include_adult": "false", "language": "en-GB",
+            "page": 1,
+        })
+        local = self.adult_local_title_index()
+        results: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for value in response.get("results", []) if isinstance(response, dict) else []:
+            if not isinstance(value, dict) or value.get("media_type") not in {"movie", "tv"}:
+                continue
+            item = self.adult_title_summary(value, str(value["media_type"]))
+            if not item["tmdb_id"] or not item["title"]:
+                continue
+            key = self.adult_title_key(item["media_type"], item["tmdb_id"])
+            item.update({"key": key, "local": local.get(key),
+                         "on_mabeltv": key in local})
+            results.append(item)
+            seen.add(key)
+            if len(results) >= 20:
+                break
+        # Unmatched local files still remain findable; they simply cannot have
+        # provider availability until the parent confirms their metadata.
+        lowered = query.casefold()
+        for film in self.adult_library():
+            if film.get("metadata", {}).get("tmdb_id") or lowered not in str(
+                    film.get("display_name", "")).casefold():
+                continue
+            results.insert(0, {
+                "key": f"local:{film['library_id']}", "media_type": "movie",
+                "tmdb_id": 0, "title": film["display_name"], "year": "",
+                "overview": "This local film needs a metadata match before streaming services can be checked.",
+                "poster_path": "", "backdrop_path": "", "on_mabeltv": True,
+                "local": {"kind": "film", "path": film["path"]},
+            })
+        return {"query": query, "results": results,
+                "attribution": "Streaming availability data from TMDB and JustWatch"}
+
+    def adult_title_detail(self, media_type: str, tmdb_id: Any) -> dict[str, Any]:
+        key = self.adult_title_key(media_type, tmdb_id)
+        media_type, raw_id = key.split(":", 1)
+        value = self.tmdb_request(f"{media_type}/{raw_id}", {"language": "en-GB"})
+        if not isinstance(value, dict):
+            raise ValueError("That title could not be loaded")
+        summary = self.adult_title_summary(value, media_type)
+        providers = self.tmdb_request(f"{media_type}/{raw_id}/watch/providers")
+        region = providers.get("results", {}).get("GB", {}) \
+            if isinstance(providers, dict) else {}
+        groups = []
+        for provider_type, label in (("flatrate", "Stream"), ("free", "Free"),
+                                     ("ads", "With ads"), ("rent", "Rent"),
+                                     ("buy", "Buy")):
+            for provider in region.get(provider_type, []) if isinstance(region, dict) else []:
+                if not isinstance(provider, dict):
+                    continue
+                groups.append({
+                    "provider_id": int(provider.get("provider_id", 0) or 0),
+                    "name": str(provider.get("provider_name", "")),
+                    "type": provider_type, "label": label,
+                    "logo_path": str(provider.get("logo_path") or ""),
+                })
+        runtime = value.get("runtime") if media_type == "movie" else (
+            value.get("episode_run_time", [None]) or [None])[0]
+        detail = summary | {
+            "key": key, "runtime": int(runtime or 0),
+            "genres": [str(item.get("name", "")) for item in value.get("genres", [])
+                       if isinstance(item, dict) and item.get("name")],
+            "seasons": [{"number": int(item.get("season_number", 0) or 0),
+                         "name": str(item.get("name", "")),
+                         "episodes": int(item.get("episode_count", 0) or 0)}
+                        for item in value.get("seasons", []) if isinstance(item, dict)
+                        and int(item.get("season_number", 0) or 0) > 0],
+            "providers": groups, "provider_link": str(region.get("link", ""))
+            if isinstance(region, dict) else "", "region": "GB",
+            "on_mabeltv": key in self.adult_local_title_index(),
+            "local": self.adult_local_title_index().get(key),
+            "attribution": "Streaming availability data from TMDB and JustWatch",
+        }
+        with self.config_lock:
+            store = self.adult_viewing_store()
+            state = store["titles"].get(key, {})
+            detail["viewing"] = state if isinstance(state, dict) else {}
+        return detail
+
+    def adult_title_season(self, tmdb_id: Any, season_number: Any) -> dict[str, Any]:
+        key = self.adult_title_key("tv", tmdb_id)
+        try:
+            number = int(season_number)
+        except (TypeError, ValueError):
+            raise ValueError("Choose a valid season") from None
+        if number < 1:
+            raise ValueError("Choose a valid season")
+        value = self.tmdb_request(f"tv/{key.split(':', 1)[1]}/season/{number}",
+                                  {"language": "en-GB"})
+        if not isinstance(value, dict):
+            raise ValueError("That season could not be loaded")
+        with self.config_lock:
+            store = self.adult_viewing_store()
+            state = store["titles"].get(key, {})
+            episode_states = state.get("episodes", {}) if isinstance(state, dict) else {}
+            if not isinstance(episode_states, dict):
+                episode_states = {}
+        episodes = []
+        for item in value.get("episodes", []):
+            if not isinstance(item, dict):
+                continue
+            episode = int(item.get("episode_number", 0) or 0)
+            if episode < 1:
+                continue
+            episode_key = f"{number}:{episode}"
+            saved = episode_states.get(episode_key, {})
+            episodes.append({
+                "number": episode,
+                "name": str(item.get("name") or f"Episode {episode}"),
+                "air_date": str(item.get("air_date") or ""),
+                "runtime": int(item.get("runtime", 0) or 0),
+                "watched": bool(saved.get("watched")) if isinstance(saved, dict) else False,
+            })
+        return {"key": key, "season": number,
+                "name": str(value.get("name") or f"Season {number}"),
+                "episodes": episodes}
+
+    @staticmethod
+    def normalise_watchmode_sources(values: Any) -> list[dict[str, Any]]:
+        def safe_destination(raw_value: Any) -> str:
+            destination = str(raw_value or "").strip()
+            if not destination or len(destination) > 4096:
+                return ""
+            parsed = urlsplit(destination)
+            scheme = parsed.scheme.lower()
+            if scheme in {"http", "https"}:
+                if not parsed.netloc:
+                    return ""
+                # A few UK providers still arrive from Watchmode as http links.
+                # Upgrade them so the exact title URL is retained safely and can
+                # participate in iOS/Android Universal Link hand-off.
+                if scheme == "http":
+                    destination = parsed._replace(scheme="https").geturl()
+                return destination
+            # Paid Watchmode plans can return provider app schemes. Preserve
+            # those trusted API values, while rejecting browser-executable and
+            # local-file schemes.
+            if scheme and scheme not in {"javascript", "data", "file", "blob"} and \
+                    all(character not in destination for character in "\r\n\t"):
+                return destination
+            return ""
+
+        sources: list[dict[str, Any]] = []
+        seen: set[tuple[str, str]] = set()
+        for value in values if isinstance(values, list) else []:
+            if not isinstance(value, dict):
+                continue
+            web_url = safe_destination(value.get("web_url"))
+            ios_url = safe_destination(value.get("ios_url"))
+            android_url = safe_destination(value.get("android_url"))
+            if not any((web_url, ios_url, android_url)):
+                continue
+            name = str(value.get("name") or "Streaming service")
+            source_type = str(value.get("type") or "sub").lower()
+            marker = (name.casefold(), source_type)
+            if marker in seen:
+                continue
+            seen.add(marker)
+            sources.append({
+                "source_id": int(value.get("source_id", 0) or 0),
+                "name": name, "type": source_type,
+                "region": str(value.get("region") or "GB").upper(),
+                "web_url": web_url, "ios_url": ios_url,
+                "android_url": android_url,
+                "format": str(value.get("format") or ""),
+            })
+        return sources
+
+    def adult_streaming_links(self, media_type: str, tmdb_id: Any,
+                              refresh: bool = False) -> dict[str, Any]:
+        key = self.adult_title_key(media_type, tmdb_id)
+        now = time.time()
+        with self.config_lock:
+            store = self.adult_viewing_store()
+            cached = store["availability"].get(key, {})
+            if not refresh and isinstance(cached, dict) and \
+                    cached.get("link_schema") == 2 and \
+                    now - float(cached.get("checked", 0) or 0) < ADULT_PROVIDER_CACHE_SECONDS:
+                return dict(cached)
+        external_id = f"{key.split(':', 1)[0]}-{key.split(':', 1)[1]}"
+        values = self.watchmode_request(
+            f"title/{external_id}/sources/", {"regions": "GB"})
+        result = {"key": key, "region": "GB", "checked": now, "link_schema": 2,
+                  "sources": self.normalise_watchmode_sources(values),
+                  "provider": "Watchmode"}
+        with self.config_lock:
+            store = self.adult_viewing_store()
+            store["availability"][key] = result
+            self.write_adult_viewing_store(store)
+        return result
+
+    def adult_viewing_update(self, payload: dict[str, Any]) -> dict[str, Any]:
+        key = self.adult_title_key(payload.get("media_type"), payload.get("tmdb_id"))
+        action = str(payload.get("action", ""))
+        allowed = {"watchlist", "up_next", "move_up", "move_down",
+                   "part_watched", "watched", "not_watched", "dropped",
+                   "launched", "remove", "episode_watched"}
+        if action not in allowed:
+            raise ValueError("Choose a valid viewing action")
+        now = time.time()
+        with self.config_lock:
+            store = self.adult_viewing_store()
+            current = store["titles"].get(key, {})
+            if not isinstance(current, dict):
+                current = {}
+            for field in ("title", "year", "poster_path", "overview"):
+                if field in payload:
+                    current[field] = str(payload.get(field) or "")[:1000]
+            try:
+                current["runtime"] = max(0, int(payload.get("runtime", current.get("runtime", 0)) or 0))
+            except (TypeError, ValueError):
+                current["runtime"] = 0
+            current.update({"media_type": key.split(":", 1)[0],
+                            "tmdb_id": int(key.split(":", 1)[1]), "updated": now})
+            if action == "watchlist":
+                current["watchlisted"] = bool(payload.get("enabled", True))
+                current["watchlist_updated"] = now
+            elif action == "up_next":
+                enabled = bool(payload.get("enabled", True))
+                current["up_next"] = enabled
+                if enabled:
+                    ranks = [int(value.get("up_next_rank", 0) or 0)
+                             for value in store["titles"].values()
+                             if isinstance(value, dict) and value.get("up_next")]
+                    current["up_next_rank"] = max(ranks, default=0) + 1
+            elif action in {"part_watched", "watched", "not_watched", "dropped"}:
+                current["manual_state"] = action
+                current["viewing_updated"] = now
+                if action == "watched":
+                    current.setdefault("history", []).append(now)
+                    current["up_next"] = False
+            elif action in {"move_up", "move_down"}:
+                queued = sorted(
+                    ((stored_key, stored) for stored_key, stored in store["titles"].items()
+                     if isinstance(stored, dict) and stored.get("up_next")),
+                    key=lambda pair: int(pair[1].get("up_next_rank", 999999) or 999999))
+                position = next((index for index, pair in enumerate(queued)
+                                 if pair[0] == key), -1)
+                target = position + (-1 if action == "move_up" else 1)
+                if position >= 0 and 0 <= target < len(queued):
+                    other_key, other = queued[target]
+                    current_rank = int(current.get("up_next_rank", position + 1) or position + 1)
+                    other_rank = int(other.get("up_next_rank", target + 1) or target + 1)
+                    current["up_next_rank"], other["up_next_rank"] = other_rank, current_rank
+                    store["titles"][other_key] = other
+            elif action == "launched":
+                current["pending_confirmation"] = {
+                    "provider": str(payload.get("provider") or "Streaming service")[:100],
+                    "launched": now,
+                }
+            elif action == "episode_watched":
+                if key.split(":", 1)[0] != "tv":
+                    raise ValueError("Episodes are only available for TV series")
+                try:
+                    season = int(payload.get("season"))
+                    episode = int(payload.get("episode"))
+                except (TypeError, ValueError):
+                    raise ValueError("Choose a valid episode") from None
+                if season < 1 or episode < 1 or not isinstance(payload.get("watched"), bool):
+                    raise ValueError("Choose a valid episode status")
+                episodes = current.setdefault("episodes", {})
+                if not isinstance(episodes, dict):
+                    episodes = {}
+                    current["episodes"] = episodes
+                episodes[f"{season}:{episode}"] = {"watched": payload["watched"], "updated": now}
+            elif action == "remove":
+                current["watchlisted"] = False
+                current["up_next"] = False
+                current["manual_state"] = "not_watched"
+                current.pop("pending_confirmation", None)
+            if action != "launched":
+                current.pop("pending_confirmation", None)
+            store["titles"][key] = current
+            self.write_adult_viewing_store(store)
+        return {"ok": True, "key": key, "viewing": current}
+
+    def adult_viewing(self) -> dict[str, Any]:
+        local = self.adult_local_title_index()
+        with self.config_lock:
+            store = self.adult_viewing_store()
+            changed = False
+            for key, local_value in local.items():
+                if (float(local_value.get("position", 0) or 0) <= 0 and
+                        not (local_value.get("kind") == "series" and
+                             int(local_value.get("watched_count", 0) or 0) > 0)):
+                    continue
+                item = store["titles"].setdefault(key, {})
+                if not isinstance(item, dict):
+                    item = {}
+                    store["titles"][key] = item
+                item.update({"media_type": key.split(":", 1)[0],
+                             "tmdb_id": int(key.split(":", 1)[1]),
+                             "title": local_value.get("title", ""),
+                             "local_progress": local_value})
+                changed = True
+            if changed:
+                self.write_adult_viewing_store(store)
+            items = []
+            for key, item in store["titles"].items():
+                if not isinstance(item, dict):
+                    continue
+                value = dict(item)
+                value.update({"key": key, "on_mabeltv": key in local,
+                              "local": local.get(key)})
+                items.append(value)
+        return {"items": items, "watchmode_configured": bool(self.watchmode_key()),
+                "region": "GB"}
+
     @staticmethod
     def tmdb_title_query(value: str) -> tuple[str, int | None]:
         title = re.sub(r"[._]+", " ", str(value or "")).strip()
@@ -4325,9 +5070,10 @@ class Library:
                 "refreshed": refreshed}
 
     def adult_artwork(self, name: str) -> Path:
-        if not re.fullmatch(r"tmdb-[1-9][0-9]*\.jpg", name):
+        if not re.fullmatch(r"(?:tmdb-[1-9][0-9]*|adult-series-[a-f0-9]{32}-[1-9][0-9]*)\.jpg", name):
             raise ValueError("Artwork not found")
-        path = self.adult_artwork_root / name
+        root = self.adult_series_artwork_root if name.startswith("adult-series-") else self.adult_artwork_root
+        path = root / name
         if not path.is_file():
             raise ValueError("Artwork not found")
         return path
@@ -4679,6 +5425,32 @@ class Library:
         except (OSError, subprocess.TimeoutExpired):
             return ""
 
+    def wake_connected_tv_only(self) -> None:
+        """Queue CEC Image View On without selecting MabelTV's HDMI input."""
+        configured = os.environ.get("MABELTV_CEC_DEVICE", "").strip()
+        # /dev/cec0 is the verified adapter on this Pi.  Starting cec-client
+        # asynchronously matches the original native turn-on flow: the TV is
+        # allowed to wake while SSAP keeps retrying the Netflix launch.
+        device = configured or "/dev/cec0"
+        if not Path(device).exists():
+            raise ValueError("MabelTV could not find the connected television's CEC adapter")
+        try:
+            process = subprocess.Popen(
+                ["cec-client", "-s", "-d", "1", "-t", "p", "-o", "MabelTV", device],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                start_new_session=True,
+            )
+            if process.stdin is None:
+                raise OSError("CEC wake process did not provide standard input")
+            process.stdin.write("on 0\n")
+            process.stdin.close()
+        except OSError as exc:
+            raise ValueError("MabelTV could not wake the connected television") from exc
+        lg_webos_log("CEC wake queued without Active Source")
+
     def system_status(self) -> dict[str, Any]:
         disk = shutil.disk_usage(self.media_root)
         temperature = self.cpu_temperature_c()
@@ -4775,7 +5547,7 @@ class Library:
             status.pop("reason", None)
         else:
             activity = self.current_tv_viewing(mode)
-            if activity and activity.get("kind") == "film":
+            if activity:
                 status["playback_position"] = round(max(
                     0.0, float(activity.get("position", 0) or 0)))
                 status["playback_duration"] = round(max(
@@ -6274,7 +7046,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("Content-Security-Policy",
                          "default-src 'self'; style-src 'self' 'unsafe-inline'; "
-                         "script-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+                         "script-src 'self' 'unsafe-inline'; img-src 'self' data: https://image.tmdb.org; "
                          "frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
 
     def json(self, status: int, value: dict[str, Any], cookie: str | None = None) -> None:
@@ -6444,6 +7216,8 @@ class Handler(BaseHTTPRequestHandler):
                     ".css": "text/css; charset=utf-8",
                     ".js": "text/javascript; charset=utf-8",
                     ".svg": "image/svg+xml",
+                    ".png": "image/png",
+                    ".jpg": "image/jpeg",
                 }
                 if (portal_root not in asset_path.parents
                         or asset_path.suffix not in content_types
@@ -6496,6 +7270,24 @@ class Handler(BaseHTTPRequestHandler):
                     str(query.get("volume", [""])[0]), str(query.get("path", [""])[0]))); return
             if parsed.path == "/api/adult/optimisations":
                 self.json(200, self.server.library.adult_optimisations()); return
+            if parsed.path == "/api/adult/discovery":
+                self.json(200, self.server.library.adult_discovery(
+                    str(query.get("q", [""])[0]))); return
+            if parsed.path == "/api/adult/title":
+                self.json(200, self.server.library.adult_title_detail(
+                    str(query.get("media_type", [""])[0]),
+                    str(query.get("tmdb_id", [""])[0]))); return
+            if parsed.path == "/api/adult/season":
+                self.json(200, self.server.library.adult_title_season(
+                    str(query.get("tmdb_id", [""])[0]),
+                    str(query.get("season", [""])[0]))); return
+            if parsed.path == "/api/adult/providers":
+                self.json(200, self.server.library.adult_streaming_links(
+                    str(query.get("media_type", [""])[0]),
+                    str(query.get("tmdb_id", [""])[0]),
+                    str(query.get("refresh", ["0"])[0]) == "1")); return
+            if parsed.path == "/api/adult/viewing":
+                self.json(200, self.server.library.adult_viewing()); return
             if parsed.path == "/api/activity":
                 self.json(200, self.server.library.activity_status()); return
             if parsed.path.startswith("/api/usb/imports/"):
@@ -6631,6 +7423,10 @@ class Handler(BaseHTTPRequestHandler):
                 self.json(200, self.server.library.restart_adult_series_progress(
                     str(payload.get("series", "")), scope,
                     payload.get("season") if scope == "season" else None)); return
+            if self.path == "/api/adult/viewing":
+                self.json(200, self.server.library.adult_viewing_update(payload)); return
+            if self.path == "/api/adult/netflix/play-tv":
+                self.json(200, self.server.library.play_netflix_on_tv(payload)); return
             if self.path == "/api/tmdb/channel":
                 self.json(200, self.server.library.refresh_channel_show_metadata(payload)); return
             if self.path == "/api/tmdb/channels":

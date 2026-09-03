@@ -1,0 +1,194 @@
+body.portal-v2 .watch-discovery { grid-template-columns: minmax(0, 1fr) auto; }
+
+body.portal-v2 .adult-my-viewing {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 210px;
+  border: 1px solid var(--experience-line);
+  border-radius: 8px;
+  background: var(--experience-raised);
+  color: var(--experience-ink);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+body.portal-v2 .adult-my-viewing > span { display: grid; }
+body.portal-v2 .adult-my-viewing strong { font-size: 12px; }
+body.portal-v2 .adult-my-viewing small { color: var(--experience-dim); font-size: 9px; }
+body.portal-v2 .adult-my-viewing > .icon:first-child { color: var(--experience-orange); }
+
+body.portal-v2 .adult-discovery-results { margin-bottom: 28px; }
+body.portal-v2 .provider-attribution { margin: 10px 0; color: var(--experience-dim); font-size: 9px; }
+
+body.portal-v2 .adult-viewing-page { max-width: 1280px; }
+body.portal-v2 .adult-viewing-title { margin-bottom: 18px; }
+body.portal-v2 .view-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  margin: 0 0 18px;
+  background: transparent;
+  color: var(--experience-orange);
+  padding: 0;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+body.portal-v2 .adult-viewing-tabs,
+body.portal-v2 .adult-viewing-filters {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 0 8px;
+  scrollbar-width: none;
+}
+
+body.portal-v2 .adult-viewing-tabs::-webkit-scrollbar,
+body.portal-v2 .adult-viewing-filters::-webkit-scrollbar { display: none; }
+
+body.portal-v2 .adult-viewing-tabs button,
+body.portal-v2 .adult-viewing-filters button {
+  flex: 0 0 auto;
+  min-height: 38px;
+  border: 1px solid var(--experience-line);
+  border-radius: 999px;
+  background: var(--experience-raised);
+  color: var(--experience-muted);
+  padding: 0 15px;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+body.portal-v2 .adult-viewing-tabs button.active {
+  border-color: var(--experience-orange);
+  background: rgba(255, 122, 26, 0.14);
+  color: var(--experience-orange);
+}
+
+body.portal-v2 .adult-viewing-filters { margin-top: 6px; }
+body.portal-v2 .adult-viewing-filters button { min-height: 32px; padding: 0 12px; font-size: 10px; }
+body.portal-v2 .adult-viewing-filters button.active { background: var(--experience-ink); color: var(--experience-canvas); }
+body.portal-v2 .adult-viewing-list-wrap { margin-top: 28px; }
+body.portal-v2 .adult-viewing-grid { display: grid; gap: 10px; }
+
+body.portal-v2 .adult-viewing-row {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+  border: 1px solid var(--experience-line);
+  border-radius: 10px;
+  background: var(--experience-raised);
+  color: var(--experience-ink);
+  padding: 9px;
+  text-align: left;
+}
+
+body.portal-v2 .adult-viewing-row img,
+body.portal-v2 .adult-viewing-row .adult-viewing-placeholder {
+  width: 58px;
+  aspect-ratio: 2 / 3;
+  border-radius: 6px;
+  background: var(--experience-soft);
+  object-fit: cover;
+}
+
+body.portal-v2 .adult-viewing-copy { display: grid; min-width: 0; gap: 3px; }
+body.portal-v2 .adult-viewing-copy-button { min-width: 0; background: transparent; color: inherit; padding: 0; text-align: left; }
+body.portal-v2 .adult-viewing-copy strong { display: block; width: 100%; overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+body.portal-v2 .adult-viewing-copy span { color: var(--experience-dim); font-size: 10px; }
+body.portal-v2 .adult-viewing-row-actions { display: flex; flex: 0 0 auto; gap: 4px; }
+body.portal-v2 .adult-viewing-row-actions button { display: grid; flex: 0 0 42px; width: 42px; height: 42px; min-width: 0; min-height: 0; box-sizing: border-box; place-items: center; border: 1px solid var(--experience-line); border-radius: 50%; background: var(--experience-soft); color: var(--experience-orange); padding: 0; }
+body.portal-v2 .adult-viewing-row-actions button .icon { width: 17px; height: 17px; min-width: 17px; min-height: 17px; }
+body.portal-v2 .adult-viewing-copy-button { display: block; width: 100%; }
+body.portal-v2 .adult-viewing-copy { align-content: center; justify-items: start; text-align: left; }
+body.portal-v2 .adult-viewing-row-actions button:disabled { color: var(--experience-dim); opacity: 0.35; }
+
+body.portal-v2 .adult-title-sheet .watch-film-panel { max-width: 680px; }
+body.portal-v2 .adult-title-local {
+  margin: 12px 0;
+  border: 1px solid rgba(255, 122, 26, 0.35);
+  border-radius: 9px;
+  background: rgba(255, 122, 26, 0.1);
+  color: var(--experience-ink);
+  padding: 12px;
+  font-size: 11px;
+}
+
+body.portal-v2 .adult-title-seasons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin: 14px 0; }
+body.portal-v2 .adult-title-seasons.hidden { display: none; }
+body.portal-v2 .adult-title-season { display: grid; min-width: 0; border: 1px solid var(--experience-line); border-radius: 8px; background: var(--experience-soft); color: var(--experience-ink); padding: 9px 10px; text-align: left; }
+body.portal-v2 .adult-title-season[aria-expanded="true"] { border-color: var(--experience-orange); }
+body.portal-v2 .adult-title-seasons strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+body.portal-v2 .adult-title-seasons small { color: var(--experience-dim); font-size: 9px; }
+body.portal-v2 .adult-title-episode-list { grid-column: 1 / -1; display: grid; gap: 6px; margin: 0 0 3px; }
+body.portal-v2 .adult-title-episode-list.hidden { display: none; }
+body.portal-v2 .adult-title-episode { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; border: 1px solid var(--experience-line); border-radius: 8px; background: var(--experience-raised); padding: 8px 9px; }
+body.portal-v2 .adult-title-episode > span { display: grid; min-width: 0; gap: 2px; }
+body.portal-v2 .adult-title-episode button { min-height: 28px; border: 1px solid var(--experience-line); border-radius: 999px; background: var(--experience-soft); color: var(--experience-muted); padding: 0 9px; font-size: 9px; font-weight: 750; white-space: nowrap; }
+body.portal-v2 .adult-title-episode button.active { border-color: var(--experience-orange); background: rgba(255, 122, 26, 0.14); color: var(--experience-orange); }
+
+body.portal-v2 .adult-intent-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+body.portal-v2 .adult-intent-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 42px;
+  border: 1px solid var(--experience-line);
+  border-radius: 8px;
+  background: var(--experience-soft);
+  color: var(--experience-ink);
+  font-size: 10px;
+  font-weight: 750;
+}
+body.portal-v2 .adult-intent-actions button.active { border-color: var(--experience-orange); color: var(--experience-orange); }
+
+body.portal-v2 .adult-provider-section { margin-top: 24px; border-top: 1px solid var(--experience-line); padding-top: 18px; }
+body.portal-v2 .adult-provider-section > header { display: flex; align-items: end; justify-content: space-between; gap: 12px; }
+body.portal-v2 .adult-provider-section h3 { margin: 1px 0 0; font-size: 20px; }
+body.portal-v2 .adult-provider-section > header button { background: transparent; color: var(--experience-orange); font-size: 10px; }
+body.portal-v2 .adult-provider-list { display: grid; gap: 10px; margin-top: 12px; }
+body.portal-v2 .adult-provider {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  border: 1px solid var(--experience-line);
+  border-radius: 8px;
+  background: var(--experience-raised);
+  color: var(--experience-ink);
+  padding: 9px 12px;
+  text-align: left;
+}
+body.portal-v2 .adult-provider span { display: grid; }
+body.portal-v2 .adult-provider small { color: var(--experience-dim); font-size: 9px; text-transform: capitalize; }
+body.portal-v2 .adult-provider-logos { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 9px; }
+body.portal-v2 .adult-provider-logo { display: grid; min-width: 0; aspect-ratio: 1; place-items: center; overflow: hidden; border: 1px solid var(--experience-line); border-radius: 11px; background: #101014; padding: 0; }
+body.portal-v2 .adult-provider-logo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+body.portal-v2 .adult-provider-logo.provider-mabeltv { padding: 4px; }
+body.portal-v2 .adult-provider-logo.provider-mabeltv img { border-radius: 8px; }
+body.portal-v2 .adult-provider-logo:focus-visible { outline: 2px solid var(--experience-orange); outline-offset: 2px; }
+
+body.portal-v2 .adult-confirm-actions { display: grid; gap: 8px; padding: 0 18px 18px; }
+body.portal-v2 .adult-netflix-launch-sheet .library-sheet-panel { width: min(540px, calc(100vw - 32px)); }
+body.portal-v2 .adult-netflix-launch-actions { display: grid; gap: 10px; }
+body.portal-v2 .adult-netflix-launch-actions .remote-power-confirm { width: 100%; }
+body.portal-v2 .adult-netflix-launch-actions button:disabled { cursor: wait; opacity: .62; }
+body.portal-v2 .adult-netflix-launch-status { min-height: 15px; margin: -5px var(--experience-sheet-padding) var(--experience-sheet-padding); color: var(--experience-dim); font-size: 10px; }
+
+@media (max-width: 640px) {
+  body.portal-v2 .watch-discovery { grid-template-columns: minmax(0, 1fr); }
+  body.portal-v2 .adult-my-viewing { width: 100%; min-width: 0; }
+  body.portal-v2 .adult-viewing-tabs { margin-right: calc(var(--experience-gutter) * -1); }
+  body.portal-v2 .adult-intent-actions { grid-template-columns: 1fr; }
+  body.portal-v2 .adult-viewing-row { grid-template-columns: 48px minmax(0, 1fr) auto; }
+  body.portal-v2 .adult-viewing-row img,
+  body.portal-v2 .adult-viewing-row .adult-viewing-placeholder { width: 48px; }
+  body.portal-v2 .adult-viewing-row-actions button { flex-basis: 40px; width: 40px; height: 40px; }
+}

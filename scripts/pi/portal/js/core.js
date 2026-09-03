@@ -258,7 +258,7 @@ const $ = selector => document.querySelector(selector)
         return
       }
       const view = requested === 'home' ? 'overview' : requested
-      const allowed = new Set(['overview', 'live', 'channels', 'adult', 'watch', 'usb', 'system', 'insights'])
+      const allowed = new Set(['overview', 'live', 'channels', 'adult', 'watch', 'adult-viewing', 'usb', 'system', 'insights'])
       if (allowed.has(view)) {
         if (currentPortalDesign === 'experience' && (view === 'channels' || view === 'adult')) {
           remoteKind = view === 'channels' ? 'channel' : 'adult'
@@ -500,10 +500,10 @@ const $ = selector => document.querySelector(selector)
       notice('')
       const channelFromWatch = name === 'channels' && selectedManageChannel !== null && channelWorkspaceReturnToWatch
       const consolidatedWatchView = currentPortalDesign === 'experience' && (name === 'channels' || name === 'adult')
-      const activeNavigation = channelFromWatch || consolidatedWatchView ? 'watch'
+      const activeNavigation = channelFromWatch || consolidatedWatchView || name === 'adult-viewing' ? 'watch'
         : (name === 'insights' || name === 'activity') ? 'system' : name
       $$('.view').forEach(view => view.classList.toggle('active', view.id === `view-${name}`))
-      document.body.classList.toggle('watch-mode', name === 'watch' || channelFromWatch || consolidatedWatchView)
+      document.body.classList.toggle('watch-mode', name === 'watch' || name === 'adult-viewing' || channelFromWatch || consolidatedWatchView)
       $$('[data-view-button]').forEach(button => {
         const active = button.dataset.viewButton === activeNavigation
         button.classList.toggle('active', active)
@@ -524,6 +524,7 @@ const $ = selector => document.querySelector(selector)
       if (name === 'watch' && remoteKind === 'downloads') renderDownloads().catch(showError)
       if (name === 'insights') loadViewingInsights().catch(() => {})
       if (name === 'activity') loadActivity().catch(error => notice(error.message, true))
+      if (name === 'adult-viewing') loadAdultViewing().catch(showError)
     }
 
     function showLivePicture() {

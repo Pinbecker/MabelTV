@@ -1464,3 +1464,30 @@
     <div id="tmdbResults" class="tmdb-results"></div>
   </section>
 </dialog>
+<dialog id="adultTitleSheet" class="watch-film-sheet adult-title-sheet">
+  <article class="watch-film-panel">
+    <div class="dialog-close-bar"><button id="adultTitleClose" type="button" class="portal-sheet-close watch-film-close dialog-close" aria-label="Close title details"></button></div>
+    <div id="adultTitleBackdrop" class="watch-film-backdrop"></div>
+    <div class="watch-film-body">
+      <div class="watch-film-summary"><div id="adultTitlePoster" class="watch-film-poster"></div><div class="watch-film-heading"><p id="adultTitleEyebrow" class="watch-film-eyebrow">Adult TV</p><h2 id="adultTitleName">Title</h2><div id="adultTitleMeta" class="watch-film-meta"></div></div></div>
+      <p id="adultTitleOverview" class="watch-film-overview"></p>
+      <div id="adultTitleSeasons" class="adult-title-seasons hidden"></div>
+      <div id="adultTitleLocal" class="adult-title-local hidden"></div>
+      <div class="adult-intent-actions"><button id="adultTitleWatchlist" type="button"><svg class="icon"><use href="/portal/icons.svg#signal-plus"/></svg><span>Watchlist</span></button><button id="adultTitleUpNext" type="button"><svg class="icon"><use href="/portal/icons.svg#signal-list-filter"/></svg><span>Up Next</span></button><button id="adultTitleWatched" type="button"><svg class="icon"><use href="/portal/icons.svg#signal-check"/></svg><span>Watched</span></button></div>
+      <section class="adult-provider-section"><header><div><p class="watch-section-kicker">Available in Great Britain</p><h3>Where to watch</h3></div><button id="adultProviderRefresh" type="button">Refresh</button></header><div id="adultProviderList" class="adult-provider-list"><p>Checking services…</p></div><p class="provider-attribution">Availability by TMDB and JustWatch. Direct destinations by Watchmode.</p></section>
+    </div>
+  </article>
+</dialog>
+
+<dialog id="adultNetflixLaunchSheet" class="library-sheet adult-netflix-launch-sheet">
+  <section class="library-sheet-panel">
+    <span class="library-sheet-handle" aria-hidden="true"></span>
+    <header class="library-sheet-head"><div><p class="section-kicker">Netflix</p><h2 id="adultNetflixLaunchTitle">Where would you like to play it?</h2><p id="adultNetflixLaunchCopy">Choose this device or the connected TV.</p></div><button id="adultNetflixLaunchClose" type="button" class="portal-sheet-close library-sheet-close" aria-label="Close Netflix choices">×</button></header>
+    <div class="library-sheet-body adult-netflix-launch-actions"><button id="adultNetflixLaunchDevice" type="button" class="remote-power-confirm remote-power-mabel-only"><svg class="icon"><use href="/portal/icons.svg#signal-smartphone" /></svg><span><strong>Play on this device</strong><small>Open Netflix here</small></span></button><button id="adultNetflixLaunchTv" type="button" class="remote-power-confirm remote-power-mabel-only"><svg class="icon"><use href="/portal/icons.svg#signal-tv" /></svg><span><strong>Play on TV</strong><small>Open Netflix on the connected television</small></span></button></div>
+    <p id="adultNetflixLaunchStatus" class="adult-netflix-launch-status" aria-live="polite"></p>
+  </section>
+</dialog>
+
+<dialog id="adultWatchConfirmSheet" class="library-sheet adult-watch-confirm-sheet">
+  <article><div class="library-sheet-head"><div><p class="section-kicker">Welcome back</p><h2 id="adultWatchConfirmTitle">Did you watch it?</h2><p id="adultWatchConfirmProvider"></p></div><button id="adultWatchConfirmClose" type="button" class="portal-sheet-close library-sheet-close" aria-label="Decide later">×</button></div><div class="adult-confirm-actions"><button type="button" data-watch-result="not_watched">Not yet</button><button type="button" data-watch-result="part_watched">Part-watched</button><button type="button" class="primary" data-watch-result="watched">Watched</button></div></article>
+</dialog>

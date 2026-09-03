@@ -11,6 +11,7 @@ User=mabeltv
 Group=mabeltv
 WorkingDirectory=/var/lib/mabeltv
 Environment=HOME=/var/lib/mabeltv
+EnvironmentFile=-/etc/mabeltv/library.env
 CacheDirectory=mabeltv
 CacheDirectoryMode=0750
 ExecStart=/opt/mabeltv/current/mabeltv-library --bind 0.0.0.0 --port 8080

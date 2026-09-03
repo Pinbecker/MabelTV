@@ -1,6 +1,6 @@
 'use strict'
 
-const SHELL_CACHE = 'mabeltv-shell-v92'
+const SHELL_CACHE = 'mabeltv-shell-v102'
 const SHELL_URLS = [
   '/',
   '/manifest.webmanifest',
@@ -25,6 +25,7 @@ const SHELL_URLS = [
   '/portal/css/experience-remote.css',
   '/portal/css/experience-watch.css',
   '/portal/css/experience-library.css',
+  '/portal/css/experience-viewing.css',
   '/portal/css/experience-settings.css',
   '/portal/css/experience-responsive.css',
   '/portal/css/experience-overlays.css',
@@ -40,7 +41,17 @@ const SHELL_URLS = [
   '/portal/js/channel-page.js',
   '/portal/js/library.js',
   '/portal/js/playback.js',
+  '/portal/js/adult-viewing.js',
   '/portal/js/actions.js',
+  '/portal/assets/providers/netflix-app.jpg',
+  '/portal/assets/providers/prime-video-app.jpg',
+  '/portal/assets/providers/disney-plus-app.jpg',
+  '/portal/assets/providers/sky-go-app.jpg',
+  '/portal/assets/providers/bbc-iplayer-app.jpg',
+  '/portal/assets/providers/channel-4-app.jpg',
+  '/portal/assets/providers/itvx-app.jpg',
+  '/portal/assets/providers/paramount-plus-app.jpg',
+  '/portal/assets/providers/apple-tv-app.jpg',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/apple-touch-icon.png',

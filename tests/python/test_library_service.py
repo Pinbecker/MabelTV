@@ -28,7 +28,8 @@ SPEC.loader.exec_module(mabeltv_library)
 PORTAL_ROOT = PROJECT_ROOT / "scripts" / "pi" / "portal"
 PORTAL_SCRIPT = "\n".join(
     (PORTAL_ROOT / "js" / name).read_text(encoding="utf-8")
-    for name in ("core.js", "channel-page.js", "library.js", "playback.js", "actions.js")
+    for name in ("core.js", "channel-page.js", "library.js", "playback.js",
+                 "adult-viewing.js", "actions.js")
 )
 PORTAL_STYLES = "\n".join(
     path.read_text(encoding="utf-8")
@@ -114,10 +115,12 @@ class LibraryUnitTests(unittest.TestCase):
             "watch", "management", "usb", "settings", "responsive", "channel-page",
             "experience-foundation", "experience-shell", "experience-home",
             "experience-remote", "experience-watch", "experience-library",
+            "experience-viewing",
             "experience-settings", "experience-responsive", "experience-overlays",
             "portal-design-switch", "experience-light",
         )
-        js_names = ("core", "channel-page", "library", "playback", "actions")
+        js_names = ("core", "channel-page", "library", "playback",
+                    "adult-viewing", "actions")
 
         css_positions = [html.index(f'/portal/css/{name}.css') for name in css_names]
         js_positions = [html.index(f'/portal/js/{name}.js') for name in js_names]
@@ -145,6 +148,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertNotIn('portal-include:', html)
         for name in ("overview", "live", "channels", "adult", "watch", "usb", "system"):
             self.assertTrue((PORTAL_ROOT / "html" / "views" / f"{name}.html").is_file())
+        self.assertTrue((PORTAL_ROOT / "html" / "views" / "adult-viewing.html").is_file())
         self.assertEqual(html.count('id="iosWatchPlayer"'), 1)
         self.assertEqual(html.count('id="mabelWatchPlayer"'), 1)
         self.assertEqual(mabeltv_library.CLASSIC_INDEX.count('id="iosWatchPlayer"'), 1)
@@ -754,6 +758,127 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("overflow-wrap: anywhere", portal)
         self.assertIn(".tmdb-dialog-panel", portal)
         self.assertIn("body.portal-experience .tmdb-result", portal)
+
+    def test_adult_discovery_merges_local_titles_and_keeps_viewing_facts_separate(self) -> None:
+        film = self.fixture.library.adult_root / "The Matrix.mp4"
+        film.write_bytes(b"film")
+        states = self.fixture.library.adult_media_states()
+        states["The Matrix.mp4"] = {"library_id": "a" * 32, "metadata": {
+            "tmdb_id": 603, "title": "The Matrix", "year": "1999",
+        }}
+        self.fixture.library.write_adult_media_states(states)
+        self.fixture.library.tmdb_request = mock.Mock(return_value={"results": [{
+            "id": 603, "media_type": "movie", "title": "The Matrix",
+            "release_date": "1999-03-31", "overview": "Reality is a system.",
+            "poster_path": "/matrix.jpg",
+        }]})
+
+        found = self.fixture.library.adult_discovery("Matrix")
+        self.assertTrue(found["results"][0]["on_mabeltv"])
+        title = found["results"][0]
+        saved = self.fixture.library.adult_viewing_update(
+            title | {"action": "watchlist", "enabled": True})
+        saved = self.fixture.library.adult_viewing_update(
+            title | {"action": "up_next", "enabled": True})
+        saved = self.fixture.library.adult_viewing_update(
+            title | {"action": "part_watched"})
+        self.assertTrue(saved["viewing"]["watchlisted"])
+        self.assertTrue(saved["viewing"]["up_next"])
+        self.assertEqual(saved["viewing"]["manual_state"], "part_watched")
+
+    def test_watchmode_links_are_validated_cached_and_expire_before_thirty_days(self) -> None:
+        self.fixture.library.watchmode_request = mock.Mock(return_value=[
+            {"source_id": 203, "name": "Netflix", "type": "sub", "region": "GB",
+             "web_url": "https://netflix.com/watch/1",
+             "ios_url": "nflx://www.netflix.com/watch/1",
+             "android_url": "https://netflix.com/watch/1"},
+            {"source_id": 409, "name": "BBC iPlayer", "type": "free", "region": "GB",
+             "web_url": "http://www.bbc.co.uk/iplayer/episode/m0022wzs",
+             "ios_url": "Deeplinks available for paid plans only."},
+            {"name": "Bad", "type": "free", "web_url": "javascript:alert(1)"},
+        ])
+        first = self.fixture.library.adult_streaming_links("movie", 603)
+        second = self.fixture.library.adult_streaming_links("movie", 603)
+        self.assertEqual([item["name"] for item in first["sources"]], ["Netflix", "BBC iPlayer"])
+        self.assertEqual(first["sources"][0]["source_id"], 203)
+        self.assertEqual(first["sources"][0]["ios_url"], "nflx://www.netflix.com/watch/1")
+        self.assertEqual(first["sources"][1]["web_url"],
+                         "https://www.bbc.co.uk/iplayer/episode/m0022wzs")
+        self.assertEqual(first["sources"][1]["ios_url"], "")
+        self.assertEqual(first["link_schema"], 2)
+        self.assertEqual(first, second)
+        self.fixture.library.watchmode_request.assert_called_once()
+        store = self.fixture.library.adult_viewing_store()
+        store["availability"]["movie:999"] = {
+            "checked": time.time() - 30 * 24 * 60 * 60, "sources": [],
+        }
+        self.fixture.library.write_adult_viewing_store(store)
+        self.assertNotIn("movie:999", self.fixture.library.adult_viewing_store()["availability"])
+
+    def test_tv_episode_watches_are_saved_per_season_and_episode(self) -> None:
+        self.fixture.library.tmdb_request = mock.Mock(return_value={
+            "name": "Season 1", "episodes": [
+                {"episode_number": 1, "name": "Pilot", "air_date": "2000-01-01", "runtime": 44},
+                {"episode_number": 2, "name": "Second", "air_date": "2000-01-08", "runtime": 44},
+            ],
+        })
+        saved = self.fixture.library.adult_viewing_update({
+            "media_type": "tv", "tmdb_id": 4586, "title": "Gilmore Girls",
+            "action": "episode_watched", "season": 1, "episode": 2, "watched": True,
+        })
+        self.assertTrue(saved["viewing"]["episodes"]["1:2"]["watched"])
+        season = self.fixture.library.adult_title_season(4586, 1)
+        self.assertFalse(season["episodes"][0]["watched"])
+        self.assertTrue(season["episodes"][1]["watched"])
+
+    def test_adult_viewing_portal_is_modular_private_and_mobile_safe(self) -> None:
+        self.assertIn('id="adultMyViewing"', PORTAL_SOURCE)
+        self.assertIn('id="view-adult-viewing"', PORTAL_SOURCE)
+        self.assertIn('id="adultTitleSheet"', PORTAL_SOURCE)
+        self.assertIn("Search your library and beyond", PORTAL_SOURCE)
+        self.assertIn("Streaming availability data from TMDB and JustWatch", PORTAL_SOURCE)
+        self.assertIn("window.location.assign(destination)", PORTAL_SOURCE)
+        self.assertIn("episode_watched", PORTAL_SOURCE)
+        self.assertIn("provider-mabeltv", PORTAL_SOURCE)
+        self.assertIn("includedByBrand", PORTAL_SOURCE)
+        self.assertIn("['flatrate', 'free', 'ads']", PORTAL_SOURCE)
+        self.assertIn("['sub', 'free', 'tve', 'ads']", PORTAL_SOURCE)
+        self.assertIn("adultProviderPlatform", PORTAL_SOURCE)
+        self.assertIn("watchmodeIds", PORTAL_SOURCE)
+        self.assertIn("adultProviderDestination", PORTAL_SOURCE)
+        self.assertIn("adultNetflixLaunchSheet", PORTAL_SOURCE)
+        self.assertIn("/api/adult/netflix/play-tv", PORTAL_SOURCE)
+        self.assertIn("Play on this device", PORTAL_SOURCE)
+        self.assertIn("Play on TV", PORTAL_SOURCE)
+        self.assertIn("https://www.bbc.co.uk/iplayer/search?q=", PORTAL_SOURCE)
+        self.assertIn("adultProviderBrands.forEach", PORTAL_SOURCE)
+        self.assertNotIn("source?.url || detail.provider_link", PORTAL_SOURCE)
+        provider_assets = PORTAL_ROOT / "assets" / "providers"
+        for asset in (
+            "netflix-app.jpg", "prime-video-app.jpg", "disney-plus-app.jpg",
+            "sky-go-app.jpg", "bbc-iplayer-app.jpg", "channel-4-app.jpg",
+            "itvx-app.jpg", "paramount-plus-app.jpg", "apple-tv-app.jpg",
+        ):
+            self.assertGreater((provider_assets / asset).stat().st_size, 10_000)
+        viewing_css = (PORTAL_ROOT / "css" / "experience-viewing.css").read_text(
+            encoding="utf-8")
+        self.assertIn("grid-template-columns: minmax(0, 1fr)", viewing_css)
+        self.assertIn("@media (max-width: 640px)", viewing_css)
+        self.assertIn("min-height: 0", viewing_css)
+        self.assertNotIn("!important", viewing_css)
+
+    def test_netflix_tv_content_id_accepts_only_direct_netflix_titles(self) -> None:
+        self.assertEqual(
+            mabeltv_library.Library.netflix_content_id(
+                "https://www.netflix.com/watch/81458416"),
+            "m=https://www.netflix.com/watch/81458416&source_type=4")
+        self.assertEqual(
+            mabeltv_library.Library.netflix_content_id(
+                "https://www.netflix.com/title/81458416?trackId=1"),
+            "m=https://www.netflix.com/watch/81458416&source_type=4")
+        with self.assertRaises(ValueError):
+            mabeltv_library.Library.netflix_content_id(
+                "https://www.netflix.com/search?q=Glass+Onion")
 
     def test_remote_stream_requires_browser_format_and_resumes_adult_film(self) -> None:
         adult = self.fixture.media / ".adult"
@@ -2076,6 +2201,22 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertEqual(status["playback_duration"], 1621)
         self.fixture.library.current_tv_viewing.assert_called_once_with(mode)
 
+    def test_live_tv_status_exposes_current_series_progress_for_home_card(self) -> None:
+        self.fixture.library.live_stream.status = mock.Mock(return_value={
+            "available": True, "programme": "S01E14 · Bouncy Ball",
+        })
+        mode = {"mode": "kids", "standby": False}
+        self.fixture.library.player_mode_status = mock.Mock(return_value=mode)
+        self.fixture.library.current_tv_viewing = mock.Mock(return_value={
+            "kind": "channel", "position": 180.2, "media_duration": 840.6,
+        })
+
+        status = self.fixture.library.live_tv_status()
+
+        self.assertEqual(status["playback_position"], 180)
+        self.assertEqual(status["playback_duration"], 841)
+        self.fixture.library.current_tv_viewing.assert_called_once_with(mode)
+
     def test_portal_power_prompt_is_skipped_when_connected_tv_already_matches(self) -> None:
         self.assertIn("function connectedTvAlreadyAtTarget(state, turningOn)",
                       PORTAL_SOURCE)
@@ -3303,6 +3444,7 @@ class LibraryHttpTests(unittest.TestCase):
                              ("/portal/js/experience-theme.js", b"mabeltv-experience-theme"),
                              ("/portal/css/classic-foundation.css", b"--accent: #ff7a1a"),
                              ("/portal/css/portal-design-switch.css", b".portal-design-option"),
+                             ("/portal/assets/providers/bbc-iplayer-app.jpg", b"\xff\xd8\xff"),
                              ("/portal/js/actions.js", b"managementBusy")):
             with urllib.request.urlopen(self.base + path, timeout=5) as response:
                 self.assertEqual(response.status, 200)
