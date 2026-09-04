@@ -1457,6 +1457,24 @@ function remoteTime(value) {
       }, 'watched')
     }
 
+    function nextLocalEpisodeAfterProgress(episodes, isWatched = episode => episode.watched === true) {
+      const ordered = [...(episodes || [])].sort((a, b) =>
+        Number(a.season) - Number(b.season) || Number(a.episode) - Number(b.episode))
+      let lastWatched = -1
+      ordered.forEach((episode, index) => {
+        if (isWatched(episode)) lastWatched = index
+      })
+      return ordered[lastWatched + 1] || null
+    }
+
+    function localEpisodeAirDate(value) {
+      const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
+      if (!match) return ''
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+      return `${Number(match[3])} ${months[Number(match[2]) - 1]} ${match[1]}`
+    }
+
     function wireAdultSeasonBulkButton(button, label, watched, total, onConfirm, compact = false) {
       let watchedCount = Number(watched || 0)
       let episodeCount = Number(total || 0)
@@ -1583,9 +1601,11 @@ function remoteTime(value) {
         const title = document.createElement('strong')
         title.textContent = episode.display_name
         const detail = document.createElement('small')
-        detail.textContent = episode.watched ? 'Watched' : episode.remote_position > 10
+        const playbackState = episode.watched ? 'Watched' : episode.remote_position > 10
           ? `Continue · ${watchTimeLabel(episode.remote_position)}`
           : episode.browser_ready ? 'Watch here or on TV' : 'VLC or TV'
+        detail.textContent = [playbackState, localEpisodeAirDate(episode.air_date)]
+          .filter(Boolean).join(' · ')
         copy.append(title, detail)
         const progress = watchFilmProgress(episode)
         if (progress > 0 && !episode.watched) row.classList.add('has-progress')
@@ -1636,10 +1656,9 @@ function remoteTime(value) {
         const rewatching = localViewingState.series_watching === true
           && localViewingState.series_watching_mode === 'rewatch'
         const states = localViewingState.rewatch_episodes || {}
-        const next = rewatching
-          ? (current.episodes || []).find(episode =>
-            states[`${episode.season}:${episode.episode}`]?.watched !== true)
-          : (current.episodes || []).find(episode => !episode.watched)
+        const next = nextLocalEpisodeAfterProgress(current.episodes, episode => rewatching
+          ? states[`${episode.season}:${episode.episode}`]?.watched === true
+          : episode.watched === true)
         const nextButton = $('#adultSeriesNextEpisode')
         nextButton.classList.toggle('hidden', !next)
         if (next) {

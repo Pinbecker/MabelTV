@@ -450,14 +450,28 @@ function deriveAdultTitleNextEpisode(detail) {
   }
   const states = rewatching
     ? detail.viewing?.rewatch_episodes || {} : detail.viewing?.episodes || {}
-  for (const season of [...(detail.seasons || [])].sort((a, b) => a.number - b.number)) {
+  const available = []
+  ;[...(detail.seasons || [])].sort((a, b) => a.number - b.number).forEach(season => {
     for (let episode = 1; episode <= Number(season.episodes || 0); episode += 1) {
-      if (states[`${season.number}:${episode}`]?.watched !== true) {
-        return { season: season.number, episode, title: '', rewatch: rewatching }
-      }
+      available.push({
+        season: season.number, episode, title: '', rewatch: rewatching,
+        watched: states[`${season.number}:${episode}`]?.watched === true,
+      })
     }
-  }
-  return null
+  })
+  let lastWatched = -1
+  available.forEach((episode, index) => {
+    if (episode.watched) lastWatched = index
+  })
+  return available[lastWatched + 1] || null
+}
+
+function adultEpisodeAirDate(value) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return ''
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  return `${Number(match[3])} ${months[Number(match[2]) - 1]} ${match[1]}`
 }
 
 function findLocalAdultEpisode(detail, seasonNumber, episodeNumber) {
@@ -599,7 +613,7 @@ function adultStreamingEpisodeRow(detail, season, result, episode, card) {
   toggle.className = 'adult-streaming-episode-toggle'
   const sync = () => {
     const complete = isComplete()
-    const facts = [complete ? rewatching ? 'Watched again' : 'Watched' : '', episode.air_date?.slice(0, 4),
+    const facts = [complete ? rewatching ? 'Watched again' : 'Watched' : '', adultEpisodeAirDate(episode.air_date),
       episode.runtime ? `${episode.runtime} min` : ''].filter(Boolean)
     meta.textContent = facts.join(' · ') || (complete
       ? rewatching ? 'Watched again' : 'Watched' : 'Not watched')
@@ -947,8 +961,10 @@ function adultViewingItems() {
     if (adultViewingTab === 'up-next' && !item.up_next) return false
     if (adultViewingTab === 'watchlist' && !item.watchlisted) return false
     if (adultViewingTab === 'rewatch' && !item.rewatch) return false
-    if (adultViewingTab === 'watching' && item.manual_state !== 'part_watched'
-        && !item.local_progress?.position && item.series_watching !== true) return false
+    if (adultViewingTab === 'watching') {
+      if (item.media_type === 'tv' && item.series_watching !== true) return false
+      if (item.media_type === 'movie' && Number(item.local_progress?.position || 0) <= 0) return false
+    }
     if (adultViewingTab === 'history' && item.manual_state !== 'watched'
         && !(item.history || []).length && !watchedEpisodes) return false
     if (adultViewingFilter === 'movie' || adultViewingFilter === 'tv') return item.media_type === adultViewingFilter
@@ -983,10 +999,13 @@ function renderAdultViewing() {
     const watchedEpisodes = Object.values(item.episodes || {})
       .filter(episode => episode?.watched === true).length
     const localNext = item.local?.next_episode
+    const filmProgress = item.media_type === 'movie'
+      ? Number(item.local_progress?.position || 0) : 0
     const seriesStatus = item.media_type === 'tv' && item.series_watching && localNext
       ? `Next · S${String(localNext.season).padStart(2, '0')} E${String(localNext.episode).padStart(2, '0')}`
       : item.media_type === 'tv' ? watchedEpisodes
-        ? `${watchedEpisodes} episode${watchedEpisodes === 1 ? '' : 's'} watched` : 'TV series' : 'Film'
+        ? `${watchedEpisodes} episode${watchedEpisodes === 1 ? '' : 's'} watched` : 'TV series'
+        : filmProgress > 0 ? `Continue · ${watchTimeLabel(filmProgress)}` : 'Film'
     const meta = document.createElement('span'); meta.textContent = [item.year,
       seriesStatus,
       item.on_mabeltv ? 'On MabelTV' : 'Streaming'].filter(Boolean).join(' · ')
@@ -999,6 +1018,33 @@ function renderAdultViewing() {
         actions.append(move)
       })
     } else {
+      if (adultViewingTab === 'watching') {
+        const stop = document.createElement('button')
+        stop.type = 'button'
+        stop.setAttribute('aria-label', `Remove ${item.title} from Watching`)
+        stop.append(librarySignalIcon('signal-x'))
+        stop.onclick = async event => {
+          event.stopPropagation()
+          stop.disabled = true
+          try {
+            if (item.media_type === 'tv') {
+              await updateAdultViewing(item, 'watching', { enabled: false })
+              notice(`${item.title} is no longer being followed in Watching.`)
+            } else if (item.local?.path) {
+              await api('/api/remote/clear-position', {
+                method: 'POST', body: JSON.stringify({ kind: 'adult', file: item.local.path }),
+              })
+              await loadAdultViewing()
+              notice(`${item.title} was removed from Watching and Continue Watching.`)
+            }
+          } catch (error) {
+            showError(error)
+          } finally {
+            stop.disabled = false
+          }
+        }
+        actions.append(stop)
+      }
       const open = document.createElement('button'); open.type = 'button'; open.className = 'adult-viewing-row-open'; open.setAttribute('aria-label', `Open ${item.title}`); open.append(librarySignalIcon('signal-chevron-right')); open.onclick = () => openAdultTitle(item); actions.append(open)
     }
     const opener = document.createElement('button'); opener.type = 'button'; opener.className = 'adult-viewing-copy-button'; opener.append(copy); opener.onclick = () => openAdultTitle(item)

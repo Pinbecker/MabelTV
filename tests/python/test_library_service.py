@@ -856,6 +856,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertTrue(season["episodes"][1]["watched"])
         self.assertEqual(season["poster_path"], "/season.jpg")
         self.assertEqual(season["episodes"][0]["still_path"], "/pilot.jpg")
+        self.assertEqual(season["episodes"][0]["air_date"], "2000-01-01")
         self.assertEqual(season["episodes"][0]["overview"],
                          "Rory starts a new school.")
         with self.assertRaisesRegex(ValueError, "already in progress"):
@@ -906,6 +907,36 @@ class LibraryUnitTests(unittest.TestCase):
         })
         self.assertEqual(saved["viewing"]["rewatch_episodes"], {})
         self.assertNotIn("rewatch_completed", saved["viewing"])
+
+    def test_next_episode_continues_after_furthest_watched_episode(self) -> None:
+        episodes = [
+            {"season": 1, "episode": 1, "watched": False},
+            {"season": 1, "episode": 2, "watched": False},
+            *({"season": 12, "episode": number, "watched": number <= 8}
+              for number in range(1, 11)),
+        ]
+        next_episode = self.fixture.library.adult_next_episode_after_progress(episodes)
+        self.assertIsNotNone(next_episode)
+        self.assertEqual((next_episode["season"], next_episode["episode"]), (12, 9))
+
+    def test_adult_viewing_removes_a_stale_cleared_film_bookmark(self) -> None:
+        store = self.fixture.library.adult_viewing_store()
+        store["titles"]["movie:120"] = {
+            "media_type": "movie", "tmdb_id": 120,
+            "title": "The Fellowship of the Ring",
+            "local_progress": {"kind": "film", "path": "Film.mp4", "position": 1719},
+        }
+        self.fixture.library.write_adult_viewing_store(store)
+        self.fixture.library.adult_local_title_index = mock.Mock(return_value={
+            "movie:120": {
+                "kind": "film", "path": "Film.mp4", "title": "The Fellowship of the Ring",
+                "position": 0, "duration": 7200,
+            },
+        })
+
+        item = self.fixture.library.adult_viewing()["items"][0]
+
+        self.assertNotIn("local_progress", item)
 
     def test_tv_title_detail_includes_season_artwork_and_watched_counts(self) -> None:
         store = self.fixture.library.adult_viewing_store()
@@ -971,6 +1002,11 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("openAdultEpisodeDestination", PORTAL_SOURCE)
         self.assertIn("findLocalAdultEpisode", PORTAL_SOURCE)
         self.assertIn("Series in progress", PORTAL_SOURCE)
+        self.assertIn("nextLocalEpisodeAfterProgress", PORTAL_SOURCE)
+        self.assertIn("adultEpisodeAirDate", PORTAL_SOURCE)
+        self.assertIn("localEpisodeAirDate", PORTAL_SOURCE)
+        self.assertIn("Remove ${item.title} from Watching", PORTAL_SOURCE)
+        self.assertIn("item.media_type === 'tv' && item.series_watching !== true", PORTAL_SOURCE)
         self.assertIn("remoteKind = 'adult'", PORTAL_SOURCE)
         self.assertNotIn('data-viewing-filter="streaming"', PORTAL_SOURCE)
         self.assertNotIn('data-viewing-filter="recent"', PORTAL_SOURCE)

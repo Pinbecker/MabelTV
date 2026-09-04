@@ -2530,6 +2530,7 @@ class Library:
                         "season": int(metadata.get("season_number") or parsed["season"]),
                         "episode": int(metadata.get("episode_number") or parsed["episode"]),
                         "overview": str(metadata.get("overview", "")),
+                        "air_date": str(metadata.get("air_date", "")),
                         "still": str(metadata.get("still", "")),
                         "library_id": episode_state["library_id"],
                         "size": item.stat().st_size,
@@ -4726,6 +4727,21 @@ class Library:
             "backdrop_path": str(value.get("backdrop_path") or ""),
         }
 
+    @staticmethod
+    def adult_next_episode_after_progress(
+            episodes: list[dict[str, Any]]) -> dict[str, Any] | None:
+        """Continue after the furthest watched episode, not from an earlier gap."""
+        ordered = sorted(episodes, key=lambda value: (
+            int(value.get("season", 0) or 0),
+            int(value.get("episode", 0) or 0),
+        ))
+        last_watched = max(
+            (index for index, value in enumerate(ordered) if value.get("watched") is True),
+            default=-1,
+        )
+        next_index = last_watched + 1
+        return ordered[next_index] if next_index < len(ordered) else None
+
     def adult_local_title_index(self) -> dict[str, dict[str, Any]]:
         """Map confirmed Adult TV media to one canonical TMDB title."""
         index: dict[str, dict[str, Any]] = {}
@@ -4751,8 +4767,7 @@ class Library:
             except ValueError:
                 continue
             episodes = series.get("episodes", [])
-            next_episode = next((episode for episode in episodes
-                                 if not episode.get("watched")), None)
+            next_episode = self.adult_next_episode_after_progress(episodes)
             index[key] = {
                 "kind": "series", "series": series["id"],
                 "title": str(metadata.get("title") or series["title"]),
@@ -4878,18 +4893,21 @@ class Library:
                 "source": "local", "rewatch": False,
             }
         if not next_episode:
-            for season in sorted(detail["seasons"], key=lambda item: item["number"]):
+            states = rewatch_episode_states if rewatching else episode_states
+            available = []
+            for season in detail["seasons"]:
                 for episode in range(1, int(season.get("episodes", 0) or 0) + 1):
-                    states = rewatch_episode_states if rewatching else episode_states
                     saved = states.get(f"{season['number']}:{episode}", {})
-                    if not (isinstance(saved, dict) and saved.get("watched")):
-                        next_episode = {
-                            "season": season["number"], "episode": episode,
-                            "title": "", "source": "streaming", "rewatch": rewatching,
-                        }
-                        break
-                if next_episode:
-                    break
+                    available.append({
+                        "season": season["number"], "episode": episode,
+                        "watched": isinstance(saved, dict) and saved.get("watched") is True,
+                    })
+            candidate = self.adult_next_episode_after_progress(available)
+            if candidate:
+                next_episode = {
+                    "season": candidate["season"], "episode": candidate["episode"],
+                    "title": "", "source": "streaming", "rewatch": rewatching,
+                }
         detail["next_episode"] = next_episode
         return detail
 
@@ -5194,9 +5212,14 @@ class Library:
             store = self.adult_viewing_store()
             changed = False
             for key, local_value in local.items():
-                if (float(local_value.get("position", 0) or 0) <= 0 and
-                        not (local_value.get("kind") == "series" and
-                             int(local_value.get("watched_count", 0) or 0) > 0)):
+                has_local_progress = float(local_value.get("position", 0) or 0) > 0 or (
+                    local_value.get("kind") == "series"
+                    and int(local_value.get("watched_count", 0) or 0) > 0)
+                if not has_local_progress:
+                    stored = store["titles"].get(key)
+                    if isinstance(stored, dict) and "local_progress" in stored:
+                        stored.pop("local_progress", None)
+                        changed = True
                     continue
                 item = store["titles"].setdefault(key, {})
                 if not isinstance(item, dict):
