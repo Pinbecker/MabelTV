@@ -250,7 +250,7 @@ body.portal-v2 .adult-netflix-launch-status { min-height: 15px; margin: -5px var
   body.portal-v2 #view-watch.adult-search-mode .watch-discovery {
     position: sticky;
     z-index: 40;
-    top: 0;
+    top: calc(54px + env(safe-area-inset-top));
     margin: 0 0 12px;
     background: var(--experience-canvas);
     padding: 3px 0 8px;
