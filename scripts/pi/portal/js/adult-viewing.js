@@ -268,10 +268,11 @@ function localAdultAction(detail) {
   return series ? () => { portalSheets.dismiss($('#adultTitleSheet')); openAdultSeriesSheet(series) } : null
 }
 
-function renderAdultProviderLinks(detail, result) {
-  const root = $('#adultProviderList')
+function renderAdultProviderLinksInto(root, detail, result, options = {}) {
   root.replaceChildren()
-  const localAction = localAdultAction(detail)
+  const localAction = Object.prototype.hasOwnProperty.call(options, 'localAction')
+    ? options.localAction : localAdultAction(detail)
+  const beforeLaunch = options.beforeLaunch || (() => {})
   const sourcesByBrand = new Map()
   ;(result.sources || []).forEach(source => {
     const brand = adultProviderBrandFor(source, 'source_id', 'watchmodeIds')
@@ -291,7 +292,7 @@ function renderAdultProviderLinks(detail, result) {
     local.setAttribute('aria-label', 'Open on MabelTV'); local.title = 'MabelTV'
     const image = document.createElement('img')
     image.src = '/apple-touch-icon.png'; image.alt = 'MabelTV'
-    local.append(image); local.onclick = localAction
+    local.append(image); local.onclick = () => { beforeLaunch(); localAction() }
     streaming.append(local)
   }
   adultProviderBrands.forEach(brand => {
@@ -308,6 +309,7 @@ function renderAdultProviderLinks(detail, result) {
     button.append(image)
     button.onclick = () => {
       const source = sourcesByBrand.get(brand.id)
+      beforeLaunch()
       if (brand.id === 'netflix') {
         openNetflixLaunchChoice(detail, provider, brand, source)
         return
@@ -324,12 +326,17 @@ function renderAdultProviderLinks(detail, result) {
   if (!root.children.length) root.innerHTML = '<p>No direct streaming destinations were found in Great Britain.</p>'
 }
 
+function renderAdultProviderLinks(detail, result) {
+  renderAdultProviderLinksInto($('#adultProviderList'), detail, result)
+}
+
 async function loadAdultProviders(detail, refresh = false, revision = adultTitleOpenRevision) {
   const root = $('#adultProviderList')
   root.innerHTML = '<p>Checking streaming destinations…</p>'
   try {
     const result = await api(`/api/adult/providers?media_type=${detail.media_type}&tmdb_id=${detail.tmdb_id}${refresh ? '&refresh=1' : ''}`)
     if (revision !== adultTitleOpenRevision || selectedAdultTitle?.key !== detail.key) return
+    detail.provider_result = result
     renderAdultProviderLinks(detail, result)
   } catch (error) {
     if (revision !== adultTitleOpenRevision || selectedAdultTitle?.key !== detail.key) return
@@ -340,10 +347,12 @@ async function loadAdultProviders(detail, refresh = false, revision = adultTitle
   }
 }
 
-function adultTitleHasBeenSeen(state = {}, detail = {}) {
-  return state.manual_state === 'watched' || Boolean((state.history || []).length)
-    || Object.values(state.episodes || {}).some(episode => episode?.watched === true)
-    || Number(detail.local?.watched_count || 0) > 0
+function adultTitleViewingStatus(state = {}, detail = {}) {
+  const completed = state.manual_state === 'watched' || Boolean((state.history || []).length)
+  const watchedEpisodes = Object.values(state.episodes || {})
+    .filter(episode => episode?.watched === true).length
+  const progress = Math.max(watchedEpisodes, Number(detail.local?.watched_count || 0))
+  return { completed, inProgress: !completed && progress > 0, progress }
 }
 
 function syncAdultTitleButtons(detail) {
@@ -359,17 +368,20 @@ function syncAdultTitleButtons(detail) {
     button.querySelector('strong').textContent = title
     button.querySelector('small').textContent = description
   }
-  const hasSeen = adultTitleHasBeenSeen(state, detail)
+  const status = adultTitleViewingStatus(state, detail)
   sync(watchlist, state.watchlisted === true,
-    state.watchlisted ? 'In your Watchlist' : hasSeen ? 'Already watched' : 'Add to Watchlist',
+    state.watchlisted ? 'In your Watchlist' : status.inProgress ? 'Series in progress'
+      : status.completed ? 'Already watched' : 'Add to Watchlist',
     state.watchlisted ? 'Unseen and saved for later'
-      : hasSeen ? 'Use Rewatch for something you have seen' : 'Keep this unseen title saved for later')
-  watchlist.classList.toggle('is-unavailable', hasSeen && !state.watchlisted)
+      : status.inProgress ? 'Continue it from Watching or Up Next'
+        : status.completed ? 'Use Rewatch for something you have seen' : 'Keep this unseen title saved for later')
+  watchlist.classList.toggle('is-unavailable', (status.completed || status.inProgress) && !state.watchlisted)
+  watchlist.classList.toggle('is-progress', status.inProgress && !state.watchlisted)
   sync(rewatch, state.rewatch === true,
     state.rewatch ? 'In your Rewatch list' : 'Add to Rewatch',
-    state.rewatch ? 'Saved to enjoy again' : hasSeen
+    state.rewatch ? 'Saved to enjoy again' : status.completed
       ? 'Remember this for another watch' : 'Available once you mark it watched')
-  rewatch.classList.toggle('is-unavailable', !hasSeen && !state.rewatch)
+  rewatch.classList.toggle('is-unavailable', !status.completed && !state.rewatch)
   sync(upNext, state.up_next === true,
     state.up_next ? 'In Up Next' : 'Add to Up Next',
     state.up_next ? 'Queued as a priority' : 'Place it in your ordered queue')
@@ -448,6 +460,64 @@ function deriveAdultTitleNextEpisode(detail) {
   return null
 }
 
+function findLocalAdultEpisode(detail, seasonNumber, episodeNumber) {
+  if (detail.local?.kind !== 'series') return null
+  const series = (library?.adult_series || []).find(value => value.id === detail.local.series)
+  if (!series) return null
+  const episode = (series.episodes || []).find(value =>
+    Number(value.season) === Number(seasonNumber)
+      && Number(value.episode) === Number(episodeNumber))
+  return episode ? { series, episode } : null
+}
+
+function restoreAdultTitleSheet(detail) {
+  const sheet = $('#adultTitleSheet')
+  portalSheets.open(sheet, { focus: sheet.querySelector('.watch-film-panel') })
+  renderAdultTitleDetail(detail, false)
+}
+
+async function openAdultEpisodeDestination(detail, season, episode, seasonCard = null) {
+  const local = findLocalAdultEpisode(detail, season.number, episode.number)
+  if (local) {
+    portalSheets.dismiss($('#adultEpisodeLaunchSheet'))
+    portalSheets.dismiss($('#adultTitleSeasonSheet'))
+    portalSheets.dismiss($('#adultTitleSheet'))
+    openAdultEpisodeSheet(local.series, local.episode, () => {
+      if (seasonCard) openAdultTitleSeason(detail, season, seasonCard, episode.number)
+      else restoreAdultTitleSheet(detail)
+    })
+    return
+  }
+  const sheet = $('#adultEpisodeLaunchSheet')
+  const root = $('#adultEpisodeProviderList')
+  $('#adultEpisodeLaunchEyebrow').textContent = `${detail.title} · Series ${season.number}, Episode ${episode.number}`
+  $('#adultEpisodeLaunchTitle').textContent = episode.name || `Episode ${episode.number}`
+  $('#adultEpisodeLaunchCopy').textContent = 'Choose a service. It may open the series page rather than this exact episode.'
+  root.innerHTML = '<p>Checking streaming destinations…</p>'
+  portalSheets.open(sheet)
+  const closeBeforeLaunch = () => portalSheets.dismiss(sheet)
+  if (detail.provider_result) {
+    renderAdultProviderLinksInto(root, detail, detail.provider_result, {
+      localAction: null, beforeLaunch: closeBeforeLaunch,
+    })
+    return
+  }
+  try {
+    const result = await api(`/api/adult/providers?media_type=${detail.media_type}&tmdb_id=${detail.tmdb_id}`)
+    detail.provider_result = result
+    if (!sheet.open) return
+    renderAdultProviderLinksInto(root, detail, result, {
+      localAction: null, beforeLaunch: closeBeforeLaunch,
+    })
+  } catch (error) {
+    if (!sheet.open) return
+    renderAdultProviderLinksInto(root, detail, { sources: [] }, { localAction: null })
+    const message = document.createElement('p')
+    message.textContent = error.message || 'Streaming destinations are unavailable right now.'
+    root.append(message)
+  }
+}
+
 function syncAdultTitleNextEpisode(detail) {
   const button = $('#adultTitleNextEpisode')
   const next = deriveAdultTitleNextEpisode(detail)
@@ -458,18 +528,11 @@ function syncAdultTitleNextEpisode(detail) {
     ? 'Next episode in this rewatch' : 'Next episode'
   button.querySelector('strong').textContent = `Series ${next.season}, Episode ${next.episode}${next.title ? ` · ${next.title}` : ''}`
   button.onclick = () => {
-    if (next.source === 'local') {
-      const series = (library?.adult_series || []).find(value => value.id === detail.local?.series)
-      if (series) {
-        portalSheets.dismiss($('#adultTitleSheet'))
-        openAdultSeasonSheet(series, next.season, () => openAdultTitle(detail),
-          detail.local.next_episode?.path || '')
-      }
-      return
-    }
     const season = (detail.seasons || []).find(value => value.number === next.season)
-    const card = $(`#adultTitleSeasons [data-season="${next.season}"]`)
-    if (season && card) openAdultTitleSeason(detail, season, card, next.episode)
+      || { number: next.season, episodes: 0 }
+    void openAdultEpisodeDestination(detail, season, {
+      number: next.episode, name: next.title || `Episode ${next.episode}`,
+    })
   }
 }
 
@@ -502,6 +565,16 @@ function adultStreamingEpisodeRow(detail, season, result, episode, card) {
   const row = document.createElement('article')
   row.className = `adult-series-episode adult-streaming-episode${isComplete() ? ' is-watched' : ''}`
   row.dataset.episode = String(episode.number)
+  row.tabIndex = 0
+  row.setAttribute('role', 'button')
+  row.setAttribute('aria-label', `Open ${episode.name || `episode ${episode.number}`}`)
+  row.onclick = () => { void openAdultEpisodeDestination(detail, season, episode, card) }
+  row.onkeydown = event => {
+    if (event.target !== row) return
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    event.preventDefault()
+    void openAdultEpisodeDestination(detail, season, episode, card)
+  }
   const artwork = document.createElement('span')
   artwork.className = 'adult-series-episode-art'
   if (episode.still_path) {
@@ -539,7 +612,8 @@ function adultStreamingEpisodeRow(detail, season, result, episode, card) {
       : rewatching ? 'Mark watched again' : 'Mark watched'
   }
   sync()
-  toggle.onclick = async () => {
+  toggle.onclick = async event => {
+    event.stopPropagation()
     const next = !isComplete()
     toggle.disabled = true
     try {
@@ -776,7 +850,12 @@ function renderAdultTitleDetail(detail, refreshProviders = true,
   const watching = $('#adultTitleWatching')
   const watched = $('#adultTitleWatched')
   watchlist.onclick = () => {
-    if (adultTitleHasBeenSeen(detail.viewing, detail) && !detail.viewing?.watchlisted) {
+    const status = adultTitleViewingStatus(detail.viewing, detail)
+    if (status.inProgress && !detail.viewing?.watchlisted) {
+      notice('This series is already in progress. Continue it from Watching or Up Next.', true)
+      return
+    }
+    if (status.completed && !detail.viewing?.watchlisted) {
       notice('You have already seen this. Add it to Rewatch instead.', true)
       return
     }
@@ -785,7 +864,7 @@ function renderAdultTitleDetail(detail, refreshProviders = true,
     }))()
   }
   rewatch.onclick = () => {
-    if (!adultTitleHasBeenSeen(detail.viewing, detail) && !detail.viewing?.rewatch) {
+    if (!adultTitleViewingStatus(detail.viewing, detail).completed && !detail.viewing?.rewatch) {
       notice('Mark this watched before adding it to Rewatch.', true)
       return
     }
@@ -840,7 +919,7 @@ function prepareAdultTitleSheet(title) {
   ;['#adultTitleWatchlist', '#adultTitleRewatch', '#adultTitleUpNext',
     '#adultTitleWatching', '#adultTitleWatched'].forEach(selector => {
     const button = $(selector)
-    button.classList.remove('active', 'is-unavailable')
+    button.classList.remove('active', 'is-unavailable', 'is-progress')
     button.setAttribute('aria-pressed', 'false')
   })
   return sheet
@@ -874,9 +953,6 @@ function adultViewingItems() {
         && !(item.history || []).length && !watchedEpisodes) return false
     if (adultViewingFilter === 'movie' || adultViewingFilter === 'tv') return item.media_type === adultViewingFilter
     if (adultViewingFilter === 'local') return item.on_mabeltv
-    if (adultViewingFilter === 'streaming') return !item.on_mabeltv
-    if (adultViewingFilter === 'recent') return Date.now() / 1000 - Number(item.updated || 0) < 30 * 24 * 60 * 60
-    if (adultViewingFilter === 'short') return item.media_type === 'movie' && Number(item.runtime || 0) > 0 && Number(item.runtime) < 120
     return true
   }).sort((a, b) => adultViewingTab === 'up-next'
     ? Number(a.up_next_rank || 999999) - Number(b.up_next_rank || 999999)
@@ -947,7 +1023,12 @@ $('#watchSearch')?.addEventListener('keydown', event => {
 })
 $('#watchSearchClear')?.addEventListener('click', () => setTimeout(() => { searchAdultDiscovery(''); syncAdultSearchMode(true) }, 0))
 $('#adultMyViewing')?.addEventListener('click', () => { history.pushState({ adultViewing: true }, '', '#adult-viewing'); openView('adult-viewing'); loadAdultViewing().catch(showError) })
-$('#adultViewingBack')?.addEventListener('click', () => { history.back(); setTimeout(() => { if (location.hash === '#adult-viewing') openView('watch') }, 80) })
+$('#adultViewingBack')?.addEventListener('click', () => {
+  remoteKind = 'adult'
+  renderRemoteViewing()
+  history.replaceState({ consolidatedWatch: true }, '', '#watch')
+  openView('watch', { instantScroll: true })
+})
 function closeAdultTitleSheet() {
   adultTitleOpenRevision += 1
   selectedAdultTitle = null
@@ -966,6 +1047,13 @@ $('#adultNetflixLaunchClose')?.addEventListener('click', closeNetflixLaunchChoic
 $('#adultNetflixLaunchSheet')?.addEventListener('click', event => { if (event.target === $('#adultNetflixLaunchSheet')) closeNetflixLaunchChoice() })
 $('#adultNetflixLaunchDevice')?.addEventListener('click', launchNetflixOnDevice)
 $('#adultNetflixLaunchTv')?.addEventListener('click', () => { void launchNetflixOnTv() })
+function closeAdultEpisodeLaunchSheet() {
+  portalSheets.dismiss($('#adultEpisodeLaunchSheet'))
+}
+$('#adultEpisodeLaunchClose')?.addEventListener('click', closeAdultEpisodeLaunchSheet)
+$('#adultEpisodeLaunchSheet')?.addEventListener('click', event => {
+  if (event.target === $('#adultEpisodeLaunchSheet')) closeAdultEpisodeLaunchSheet()
+})
 $$('[data-viewing-tab]').forEach(button => button.onclick = () => { adultViewingTab = button.dataset.viewingTab; $$('[data-viewing-tab]').forEach(value => value.classList.toggle('active', value === button)); renderAdultViewing() })
 $$('[data-viewing-filter]').forEach(button => button.onclick = () => { adultViewingFilter = button.dataset.viewingFilter; $$('[data-viewing-filter]').forEach(value => value.classList.toggle('active', value === button)); renderAdultViewing() })
 document.addEventListener('visibilitychange', () => {

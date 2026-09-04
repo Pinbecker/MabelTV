@@ -858,6 +858,16 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertEqual(season["episodes"][0]["still_path"], "/pilot.jpg")
         self.assertEqual(season["episodes"][0]["overview"],
                          "Rory starts a new school.")
+        with self.assertRaisesRegex(ValueError, "already in progress"):
+            self.fixture.library.adult_viewing_update({
+                "media_type": "tv", "tmdb_id": 4586, "title": "Gilmore Girls",
+                "action": "watchlist", "enabled": True,
+            })
+        with self.assertRaisesRegex(ValueError, "Mark this watched"):
+            self.fixture.library.adult_viewing_update({
+                "media_type": "tv", "tmdb_id": 4586, "title": "Gilmore Girls",
+                "action": "rewatch", "enabled": True,
+            })
 
         saved = self.fixture.library.adult_viewing_update({
             "media_type": "tv", "tmdb_id": 4586, "title": "Gilmore Girls",
@@ -957,6 +967,14 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("watchmodeIds", PORTAL_SOURCE)
         self.assertIn("adultProviderDestination", PORTAL_SOURCE)
         self.assertIn("adultNetflixLaunchSheet", PORTAL_SOURCE)
+        self.assertIn('id="adultEpisodeLaunchSheet"', PORTAL_SOURCE)
+        self.assertIn("openAdultEpisodeDestination", PORTAL_SOURCE)
+        self.assertIn("findLocalAdultEpisode", PORTAL_SOURCE)
+        self.assertIn("Series in progress", PORTAL_SOURCE)
+        self.assertIn("remoteKind = 'adult'", PORTAL_SOURCE)
+        self.assertNotIn('data-viewing-filter="streaming"', PORTAL_SOURCE)
+        self.assertNotIn('data-viewing-filter="recent"', PORTAL_SOURCE)
+        self.assertNotIn('data-viewing-filter="short"', PORTAL_SOURCE)
         self.assertIn("/api/adult/netflix/play-tv", PORTAL_SOURCE)
         self.assertIn("Play on this device", PORTAL_SOURCE)
         self.assertIn("Play on TV", PORTAL_SOURCE)

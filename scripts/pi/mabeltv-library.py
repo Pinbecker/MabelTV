@@ -5043,23 +5043,27 @@ class Library:
             episodes = current.get("episodes", {})
             if not isinstance(episodes, dict):
                 episodes = {}
-            has_seen = current.get("manual_state") == "watched" or \
-                bool(current.get("history")) or any(
+            has_completed = current.get("manual_state") == "watched" or \
+                bool(current.get("history"))
+            has_progress = any(
                     isinstance(saved, dict) and saved.get("watched") is True
                     for saved in episodes.values())
             local_title = self.adult_local_title_index().get(key, {})
-            has_seen = has_seen or (
+            has_progress = has_progress or (
                 isinstance(local_title, dict)
                 and int(local_title.get("watched_count", 0) or 0) > 0)
             if action == "watchlist":
                 enabled = bool(payload.get("enabled", True))
-                if enabled and has_seen:
+                if enabled and has_completed:
                     raise ValueError("You've already seen this. Add it to Rewatch instead.")
+                if enabled and has_progress:
+                    raise ValueError(
+                        "This series is already in progress. Continue it from Watching or Up Next.")
                 current["watchlisted"] = enabled
                 current["watchlist_updated"] = now
             elif action == "rewatch":
                 enabled = bool(payload.get("enabled", True))
-                if enabled and not has_seen:
+                if enabled and not has_completed:
                     raise ValueError("Mark this watched before adding it to Rewatch")
                 current["rewatch"] = enabled
                 current["rewatch_updated"] = now
