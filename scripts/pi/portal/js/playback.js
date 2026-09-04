@@ -1354,6 +1354,7 @@ function remoteTime(value) {
         else openInVlc(source, episode.display_name)
       }
       const watched = $('#adultEpisodeWatched')
+      watched.disabled = false
       watched.querySelector('strong').textContent = episode.watched
         ? 'Mark as unwatched' : 'Mark watched'
       watched.querySelector('small').textContent = episode.watched
@@ -1362,20 +1363,23 @@ function remoteTime(value) {
       watched.onclick = async () => {
         watched.disabled = true
         try {
-          await api('/api/adult/series/watched', { method: 'POST', body: JSON.stringify({
+          const result = await api('/api/adult/series/watched', { method: 'POST', body: JSON.stringify({
             series: series.id, file: episode.path, watched: !episode.watched,
           }) })
-          episode.watched = !episode.watched
-          if (episode.watched) {
-            episode.remote_position = 0
-            episode.remote_last_watched = 0
-          }
-          series.watched_count += episode.watched ? 1 : -1
+          episode.watched = result.watched === true
+          episode.remote_position = Number(result.remote_position || 0)
+          episode.remote_duration = Number(result.remote_duration || episode.remote_duration || 0)
+          episode.remote_last_watched = Number(result.remote_last_watched || 0)
+          series.watched_count = Math.max(0, Number(series.watched_count || 0)
+            + (episode.watched ? 1 : -1))
           closeAdultEpisodeSheet(false)
           if (returnTo) returnTo()
           renderAdultWatch()
           renderHomeLibrary()
-        } catch (error) { showError(error); watched.disabled = false }
+          notice(episode.watched ? 'Episode marked watched.' : episode.remote_position > 10
+            ? `Marked unwatched. Resume point restored at ${watchTimeLabel(episode.remote_position)}.`
+            : 'Episode marked unwatched.')
+        } catch (error) { showError(error) } finally { watched.disabled = false }
       }
       $('#adultEpisodeMore').onclick = () => {
         $('#adultEpisodeMoreEyebrow').textContent = `${series.title} · Series ${episode.season}`

@@ -109,6 +109,24 @@ body.portal-v2 .adult-viewing-copy { align-content: center; justify-items: start
 body.portal-v2 .adult-viewing-row-actions button:disabled { color: var(--experience-dim); opacity: 0.35; }
 
 body.portal-v2 .adult-title-sheet .watch-film-panel { max-width: 680px; }
+body.portal-v2 .adult-title-sheet.is-series .watch-film-backdrop { display: none; }
+body.portal-v2 .adult-title-sheet.is-series .watch-film-body { padding-top: 0; }
+body.portal-v2 .adult-title-sheet.is-series .watch-film-summary {
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  margin: 0 calc(var(--experience-sheet-padding) * -1);
+  border-bottom: 1px solid var(--experience-line);
+  padding: 16px 58px 16px var(--experience-sheet-padding);
+}
+body.portal-v2 .adult-title-sheet.is-series .watch-film-poster {
+  width: 76px;
+  border-radius: 8px;
+  box-shadow: none;
+}
+body.portal-v2 .adult-title-sheet.is-series .watch-film-heading { padding: 0; }
+body.portal-v2 .adult-title-sheet.is-series .watch-film-body h2 { font-size: 28px; }
+body.portal-v2 .adult-title-sheet.is-series .watch-film-overview { margin-top: 20px; font-size: 11px; line-height: 1.55; }
 body.portal-v2 .adult-title-local {
   margin: 12px 0;
   border: 1px solid rgba(255, 122, 26, 0.35);
@@ -119,34 +137,56 @@ body.portal-v2 .adult-title-local {
   font-size: 11px;
 }
 
-body.portal-v2 .adult-title-seasons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin: 14px 0; }
-body.portal-v2 .adult-title-seasons.hidden { display: none; }
-body.portal-v2 .adult-title-season { display: grid; min-width: 0; border: 1px solid var(--experience-line); border-radius: 8px; background: var(--experience-soft); color: var(--experience-ink); padding: 9px 10px; text-align: left; }
-body.portal-v2 .adult-title-season[aria-expanded="true"] { border-color: var(--experience-orange); }
-body.portal-v2 .adult-title-seasons strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-body.portal-v2 .adult-title-seasons small { color: var(--experience-dim); font-size: 9px; }
-body.portal-v2 .adult-title-episode-list { grid-column: 1 / -1; display: grid; gap: 6px; margin: 0 0 3px; }
-body.portal-v2 .adult-title-episode-list.hidden { display: none; }
-body.portal-v2 .adult-title-episode { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; border: 1px solid var(--experience-line); border-radius: 8px; background: var(--experience-raised); padding: 8px 9px; }
-body.portal-v2 .adult-title-episode > span { display: grid; min-width: 0; gap: 2px; }
-body.portal-v2 .adult-title-episode button { min-height: 28px; border: 1px solid var(--experience-line); border-radius: 999px; background: var(--experience-soft); color: var(--experience-muted); padding: 0 9px; font-size: 9px; font-weight: 750; white-space: nowrap; }
-body.portal-v2 .adult-title-episode button.active { border-color: var(--experience-orange); background: rgba(255, 122, 26, 0.14); color: var(--experience-orange); }
+body.portal-v2 .adult-title-series-library { margin-top: 18px; }
+body.portal-v2 .adult-title-series-library.hidden { display: none; }
+body.portal-v2 .adult-title-series-library .adult-series-library-head { margin-top: 0; }
+body.portal-v2 #adultTitleSeasonCount,
+body.portal-v2 #adultTitleSeasonEpisodeCount { color: var(--experience-dim); font-size: 9px; font-weight: 720; }
+body.portal-v2 .adult-streaming-season-card .adult-season-card-art img { object-position: center 28%; }
+body.portal-v2 .adult-streaming-season-sheet .adult-series-overview { margin: 0 0 16px; }
+body.portal-v2 .adult-streaming-episode {
+  grid-template-columns: 76px minmax(0, 1fr) auto;
+}
+body.portal-v2 .adult-streaming-episode-toggle {
+  min-width: 78px;
+  min-height: 34px;
+  border: 1px solid var(--experience-line);
+  border-radius: 999px;
+  background: var(--experience-soft);
+  color: var(--experience-muted);
+  padding: 0 10px;
+  font-size: 9px;
+  font-weight: 780;
+  white-space: nowrap;
+}
+body.portal-v2 .adult-streaming-episode-toggle.active {
+  border-color: rgba(98, 220, 168, .38);
+  background: rgba(98, 220, 168, .1);
+  color: #62dca8;
+}
+body.portal-v2 .adult-streaming-episode-toggle:disabled { cursor: wait; opacity: .55; }
 
-body.portal-v2 .adult-intent-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+body.portal-v2 .adult-intent-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 18px; }
 body.portal-v2 .adult-intent-actions button {
-  display: flex;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 42px;
+  gap: 9px;
+  min-height: 64px;
   border: 1px solid var(--experience-line);
   border-radius: 8px;
   background: var(--experience-soft);
   color: var(--experience-ink);
-  font-size: 10px;
-  font-weight: 750;
+  padding: 9px;
+  text-align: left;
 }
+body.portal-v2 .adult-intent-actions .icon { width: 20px; height: 20px; color: var(--experience-muted); }
+body.portal-v2 .adult-intent-actions button > span { display: grid; min-width: 0; gap: 2px; }
+body.portal-v2 .adult-intent-actions strong { font-size: 10px; line-height: 1.2; }
+body.portal-v2 .adult-intent-actions small { color: var(--experience-dim); font-size: 8px; line-height: 1.3; }
 body.portal-v2 .adult-intent-actions button.active { border-color: var(--experience-orange); color: var(--experience-orange); }
+body.portal-v2 .adult-intent-actions button.active .icon { color: var(--experience-orange); }
+body.portal-v2 .adult-intent-actions button:disabled { cursor: wait; opacity: .62; }
 
 body.portal-v2 .adult-provider-section { margin-top: 24px; border-top: 1px solid var(--experience-line); padding-top: 18px; }
 body.portal-v2 .adult-provider-section > header { display: flex; align-items: end; justify-content: space-between; gap: 12px; }
@@ -187,8 +227,55 @@ body.portal-v2 .adult-netflix-launch-status { min-height: 15px; margin: -5px var
   body.portal-v2 .adult-my-viewing { width: 100%; min-width: 0; }
   body.portal-v2 .adult-viewing-tabs { margin-right: calc(var(--experience-gutter) * -1); }
   body.portal-v2 .adult-intent-actions { grid-template-columns: 1fr; }
+  body.portal-v2 .adult-streaming-episode {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+  body.portal-v2 .adult-streaming-episode-toggle {
+    grid-column: 2;
+    justify-self: start;
+    min-height: 28px;
+  }
   body.portal-v2 .adult-viewing-row { grid-template-columns: 48px minmax(0, 1fr) auto; }
   body.portal-v2 .adult-viewing-row img,
   body.portal-v2 .adult-viewing-row .adult-viewing-placeholder { width: 48px; }
   body.portal-v2 .adult-viewing-row-actions button { flex-basis: 40px; width: 40px; height: 40px; }
+
+  body.portal-v2 #view-watch.adult-search-mode .watch-title,
+  body.portal-v2 #view-watch.adult-search-mode .watch-switch-wrap,
+  body.portal-v2 #view-watch.adult-search-mode .adult-my-viewing,
+  body.portal-v2 #view-watch.adult-search-mode #watchContinueSection,
+  body.portal-v2 #view-watch.adult-search-mode #adultSeriesSection,
+  body.portal-v2 #view-watch.adult-search-mode .watch-catalogue,
+  body.portal-v2 #view-watch.adult-search-mode footer { display: none; }
+  body.portal-v2 #view-watch.adult-search-mode .watch-discovery {
+    position: sticky;
+    z-index: 40;
+    top: 0;
+    margin: 0 0 12px;
+    background: var(--experience-canvas);
+    padding: 3px 0 8px;
+  }
+  body.portal-v2 #view-watch.adult-search-mode .adult-discovery-results { margin-bottom: 0; }
+  body.portal-v2 #view-watch.adult-search-mode #adultDiscoveryGrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  body.portal-v2 #view-watch.adult-search-mode #adultDiscoveryGrid .watch-card {
+    grid-template-columns: 58px minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    min-height: 82px;
+    overflow: hidden;
+    border: 1px solid var(--experience-line);
+    border-radius: 11px;
+    background: var(--experience-raised);
+    padding: 8px 12px 8px 8px;
+  }
+  body.portal-v2 #view-watch.adult-search-mode #adultDiscoveryGrid .watch-card-art {
+    width: 58px;
+    border-radius: 7px;
+  }
+  body.portal-v2 #view-watch.adult-search-mode #adultDiscoveryGrid .watch-card-copy { padding: 0; }
+  body.portal-v2 #view-watch.adult-search-mode #adultDiscoveryGrid .watch-card-copy strong { font-size: 13px; }
+  body.portal-v2 #view-watch.adult-search-mode .adult-search-prompt { grid-column: 1; }
 }

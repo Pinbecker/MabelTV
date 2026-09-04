@@ -2568,6 +2568,29 @@ class Library:
             value = states["episodes"].get(key, {})
             if not isinstance(value, dict):
                 value = {}
+            was_watched = value.get("watched") is True
+            if watched and not was_watched:
+                duration = max(0.0, float(value.get("remote_duration", 0) or 0))
+                position = self.normalise_resume_position(
+                    float(value.get("remote_position", 0) or 0), duration)
+                if position > 0:
+                    value["pre_watched_resume"] = {
+                        "position": position,
+                        "duration": duration,
+                        "last_watched": max(
+                            0.0, float(value.get("remote_last_watched", 0) or 0)),
+                    }
+            elif not watched and was_watched:
+                resume = value.pop("pre_watched_resume", {})
+                if isinstance(resume, dict):
+                    duration = max(0.0, float(resume.get("duration", 0) or 0))
+                    position = self.normalise_resume_position(
+                        float(resume.get("position", 0) or 0), duration)
+                    if position > 0:
+                        value["remote_position"] = position
+                        value["remote_duration"] = duration
+                        value["remote_last_watched"] = max(
+                            0.0, float(resume.get("last_watched", 0) or 0))
             value["watched"] = bool(watched)
             value["watched_updated"] = time.time()
             if watched:
@@ -2575,8 +2598,13 @@ class Library:
                 value["remote_last_watched"] = 0.0
             states["episodes"][key] = value
             self.write_adult_series_states(states)
-        return {"ok": True, "series": series_id, "path": relative,
-                "watched": bool(watched)}
+        return {
+            "ok": True, "series": series_id, "path": relative,
+            "watched": bool(watched),
+            "remote_position": float(value.get("remote_position", 0) or 0),
+            "remote_duration": float(value.get("remote_duration", 0) or 0),
+            "remote_last_watched": float(value.get("remote_last_watched", 0) or 0),
+        }
 
     def restart_adult_series_progress(self, series_id: str, scope: str,
                                       season: int | None = None) -> dict[str, Any]:
@@ -2621,6 +2649,7 @@ class Library:
                 value["watched_updated"] = time.time()
                 value["remote_position"] = 0.0
                 value["remote_last_watched"] = 0.0
+                value.pop("pre_watched_resume", None)
                 states["episodes"][key] = value
                 changed += 1
             self.write_adult_series_states(states)
@@ -4767,7 +4796,10 @@ class Library:
                        if isinstance(item, dict) and item.get("name")],
             "seasons": [{"number": int(item.get("season_number", 0) or 0),
                          "name": str(item.get("name", "")),
-                         "episodes": int(item.get("episode_count", 0) or 0)}
+                         "episodes": int(item.get("episode_count", 0) or 0),
+                         "poster_path": str(item.get("poster_path") or ""),
+                         "overview": str(item.get("overview") or ""),
+                         "air_date": str(item.get("air_date") or "")}
                         for item in value.get("seasons", []) if isinstance(item, dict)
                         and int(item.get("season_number", 0) or 0) > 0],
             "providers": groups, "provider_link": str(region.get("link", ""))
@@ -4780,6 +4812,16 @@ class Library:
             store = self.adult_viewing_store()
             state = store["titles"].get(key, {})
             detail["viewing"] = state if isinstance(state, dict) else {}
+        episode_states = detail["viewing"].get("episodes", {}) \
+            if isinstance(detail["viewing"], dict) else {}
+        if not isinstance(episode_states, dict):
+            episode_states = {}
+        for season in detail["seasons"]:
+            prefix = f"{season['number']}:"
+            season["watched_count"] = sum(
+                saved.get("watched") is True
+                for episode_key, saved in episode_states.items()
+                if str(episode_key).startswith(prefix) and isinstance(saved, dict))
         return detail
 
     def adult_title_season(self, tmdb_id: Any, season_number: Any) -> dict[str, Any]:
@@ -4814,10 +4856,14 @@ class Library:
                 "name": str(item.get("name") or f"Episode {episode}"),
                 "air_date": str(item.get("air_date") or ""),
                 "runtime": int(item.get("runtime", 0) or 0),
+                "overview": str(item.get("overview") or ""),
+                "still_path": str(item.get("still_path") or ""),
                 "watched": bool(saved.get("watched")) if isinstance(saved, dict) else False,
             })
         return {"key": key, "season": number,
                 "name": str(value.get("name") or f"Season {number}"),
+                "overview": str(value.get("overview") or ""),
+                "poster_path": str(value.get("poster_path") or ""),
                 "episodes": episodes}
 
     @staticmethod

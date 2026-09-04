@@ -785,6 +785,16 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertTrue(saved["viewing"]["watchlisted"])
         self.assertTrue(saved["viewing"]["up_next"])
         self.assertEqual(saved["viewing"]["manual_state"], "part_watched")
+        saved = self.fixture.library.adult_viewing_update(
+            title | {"action": "watched"})
+        self.assertTrue(saved["viewing"]["watchlisted"])
+        self.assertFalse(saved["viewing"]["up_next"])
+        self.assertEqual(len(saved["viewing"]["history"]), 1)
+        saved = self.fixture.library.adult_viewing_update(
+            title | {"action": "not_watched"})
+        self.assertTrue(saved["viewing"]["watchlisted"])
+        self.assertFalse(saved["viewing"]["up_next"])
+        self.assertEqual(len(saved["viewing"]["history"]), 1)
 
     def test_watchmode_links_are_validated_cached_and_expire_before_thirty_days(self) -> None:
         self.fixture.library.watchmode_request = mock.Mock(return_value=[
@@ -817,9 +827,13 @@ class LibraryUnitTests(unittest.TestCase):
 
     def test_tv_episode_watches_are_saved_per_season_and_episode(self) -> None:
         self.fixture.library.tmdb_request = mock.Mock(return_value={
-            "name": "Season 1", "episodes": [
-                {"episode_number": 1, "name": "Pilot", "air_date": "2000-01-01", "runtime": 44},
-                {"episode_number": 2, "name": "Second", "air_date": "2000-01-08", "runtime": 44},
+            "name": "Season 1", "poster_path": "/season.jpg",
+            "overview": "The first year in Stars Hollow.", "episodes": [
+                {"episode_number": 1, "name": "Pilot", "air_date": "2000-01-01",
+                 "runtime": 44, "overview": "Rory starts a new school.",
+                 "still_path": "/pilot.jpg"},
+                {"episode_number": 2, "name": "Second", "air_date": "2000-01-08",
+                 "runtime": 44, "still_path": "/second.jpg"},
             ],
         })
         saved = self.fixture.library.adult_viewing_update({
@@ -830,15 +844,52 @@ class LibraryUnitTests(unittest.TestCase):
         season = self.fixture.library.adult_title_season(4586, 1)
         self.assertFalse(season["episodes"][0]["watched"])
         self.assertTrue(season["episodes"][1]["watched"])
+        self.assertEqual(season["poster_path"], "/season.jpg")
+        self.assertEqual(season["episodes"][0]["still_path"], "/pilot.jpg")
+        self.assertEqual(season["episodes"][0]["overview"],
+                         "Rory starts a new school.")
+
+    def test_tv_title_detail_includes_season_artwork_and_watched_counts(self) -> None:
+        store = self.fixture.library.adult_viewing_store()
+        store["titles"]["tv:4586"] = {
+            "episodes": {"1:2": {"watched": True}},
+        }
+        self.fixture.library.write_adult_viewing_store(store)
+
+        def tmdb(path: str, _parameters: dict | None = None) -> dict:
+            if path == "tv/4586":
+                return {
+                    "id": 4586, "name": "Gilmore Girls",
+                    "first_air_date": "2000-10-05", "episode_run_time": [44],
+                    "genres": [{"name": "Drama"}], "seasons": [{
+                        "season_number": 1, "name": "Season 1", "episode_count": 21,
+                        "poster_path": "/season-one.jpg", "air_date": "2000-10-05",
+                        "overview": "The first season.",
+                    }],
+                }
+            if path == "tv/4586/watch/providers":
+                return {"results": {"GB": {}}}
+            raise AssertionError(path)
+
+        self.fixture.library.tmdb_request = mock.Mock(side_effect=tmdb)
+        detail = self.fixture.library.adult_title_detail("tv", 4586)
+        self.assertEqual(detail["seasons"][0]["poster_path"], "/season-one.jpg")
+        self.assertEqual(detail["seasons"][0]["watched_count"], 1)
 
     def test_adult_viewing_portal_is_modular_private_and_mobile_safe(self) -> None:
         self.assertIn('id="adultMyViewing"', PORTAL_SOURCE)
         self.assertIn('id="view-adult-viewing"', PORTAL_SOURCE)
         self.assertIn('id="adultTitleSheet"', PORTAL_SOURCE)
+        self.assertIn('id="adultTitleSeasonSheet"', PORTAL_SOURCE)
+        self.assertIn('class="adult-series-seasons"', PORTAL_SOURCE)
         self.assertIn("Search your library and beyond", PORTAL_SOURCE)
+        self.assertIn("adult-search-mode", PORTAL_SOURCE)
+        self.assertIn("Keep it saved, even after watching", PORTAL_SOURCE)
+        self.assertIn("Removes it from Up Next, not Watchlist", PORTAL_SOURCE)
         self.assertIn("Streaming availability data from TMDB and JustWatch", PORTAL_SOURCE)
         self.assertIn("window.location.assign(destination)", PORTAL_SOURCE)
         self.assertIn("episode_watched", PORTAL_SOURCE)
+        self.assertIn("episode.still_path", PORTAL_SOURCE)
         self.assertIn("provider-mabeltv", PORTAL_SOURCE)
         self.assertIn("includedByBrand", PORTAL_SOURCE)
         self.assertIn("['flatrate', 'free', 'ads']", PORTAL_SOURCE)
@@ -1595,6 +1646,15 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertEqual(series["episodes"][0]["episode"], 6)
         self.assertEqual(series["episodes"][0]["display_name"], "Silicon Valley")
 
+        states = self.fixture.library.adult_series_states()
+        episode_state = next(iter(states["episodes"].values()))
+        episode_state.update({
+            "remote_position": 300.0,
+            "remote_duration": 1800.0,
+            "remote_last_watched": 1234.0,
+        })
+        self.fixture.library.write_adult_series_states(states)
+
         self.fixture.library.set_favourite({
             "kind": "adult-series", "series": series_id, "enabled": True,
         })
@@ -1606,6 +1666,16 @@ class LibraryUnitTests(unittest.TestCase):
         refreshed = self.fixture.library.adult_series_library()[0]
         self.assertEqual(refreshed["watched_count"], 1)
         self.assertTrue(refreshed["episodes"][0]["watched"])
+        self.assertEqual(refreshed["episodes"][0]["remote_position"], 0)
+
+        result = self.fixture.library.set_adult_episode_watched(
+            series_id, "Season 1/Silicon.Valley.S01E06.720p.HDTV.x264.mkv", False)
+        self.assertFalse(result["watched"])
+        self.assertEqual(result["remote_position"], 300.0)
+        refreshed = self.fixture.library.adult_series_library()[0]
+        self.assertFalse(refreshed["episodes"][0]["watched"])
+        self.assertEqual(refreshed["episodes"][0]["remote_position"], 300.0)
+        self.assertEqual(refreshed["episodes"][0]["remote_last_watched"], 1234.0)
 
     def test_adult_series_restart_clears_one_season_or_complete_show(self) -> None:
         series_id = self.fixture.library.create_adult_series("Silicon Valley")
