@@ -29,7 +29,7 @@ PORTAL_ROOT = PROJECT_ROOT / "scripts" / "pi" / "portal"
 PORTAL_SCRIPT = "\n".join(
     (PORTAL_ROOT / "js" / name).read_text(encoding="utf-8")
     for name in ("core.js", "channel-page.js", "library.js", "playback.js",
-                 "adult-viewing.js", "actions.js")
+                 "adult-viewing.js", "actions.js", "lg-tv-remote.js")
 )
 PORTAL_STYLES = "\n".join(
     path.read_text(encoding="utf-8")
@@ -117,10 +117,10 @@ class LibraryUnitTests(unittest.TestCase):
             "experience-remote", "experience-watch", "experience-library",
             "experience-viewing",
             "experience-settings", "experience-responsive", "experience-overlays",
-            "portal-design-switch", "experience-light",
+            "lg-tv-remote", "portal-design-switch", "experience-light",
         )
         js_names = ("core", "channel-page", "library", "playback",
-                    "adult-viewing", "actions")
+                    "adult-viewing", "actions", "lg-tv-remote")
 
         css_positions = [html.index(f'/portal/css/{name}.css') for name in css_names]
         js_positions = [html.index(f'/portal/js/{name}.js') for name in js_names]
@@ -146,7 +146,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn('portal-include:html/app-shell.html', source)
         self.assertLess(len(source), 5_000)
         self.assertNotIn('portal-include:', html)
-        for name in ("overview", "live", "channels", "adult", "watch", "usb", "system"):
+        for name in ("overview", "live", "lg-tv", "channels", "adult", "watch", "usb", "system"):
             self.assertTrue((PORTAL_ROOT / "html" / "views" / f"{name}.html").is_file())
         self.assertTrue((PORTAL_ROOT / "html" / "views" / "adult-viewing.html").is_file())
         self.assertEqual(html.count('id="iosWatchPlayer"'), 1)
@@ -866,6 +866,126 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("@media (max-width: 640px)", viewing_css)
         self.assertIn("min-height: 0", viewing_css)
         self.assertNotIn("!important", viewing_css)
+
+    def test_lg_remote_is_additional_mobile_control_surface(self) -> None:
+        html = mabeltv_library.INDEX
+        script = (PORTAL_ROOT / "js" / "lg-tv-remote.js").read_text(encoding="utf-8")
+        styles = (PORTAL_ROOT / "css" / "lg-tv-remote.css").read_text(encoding="utf-8")
+        service_worker = (PROJECT_ROOT / "scripts" / "pi" / "service-worker.js").read_text(
+            encoding="utf-8")
+
+        self.assertIn('id="openLgTvRemote"', html)
+        self.assertIn('data-view-button="live"', html)
+        self.assertIn('id="view-lg-tv"', html)
+        self.assertIn('id="lgTrackpad"', html)
+        self.assertIn('data-lg-launch="netflix"', html)
+        self.assertIn('data-lg-launch="mabeltv"', html)
+        self.assertIn('use two fingers to scroll', html)
+        self.assertIn("pointerContacts.size > 1", script)
+        self.assertIn("POINTER_INTERVAL_MS = 36", script)
+        self.assertIn("available_apps", script)
+        self.assertIn("grid-auto-columns: 68px", styles)
+        self.assertIn("body.portal-v2 .lg-dpad", styles)
+        self.assertIn("@media (max-width: 430px)", styles)
+        self.assertNotIn("!important", styles)
+        self.assertIn("'/portal/css/lg-tv-remote.css'", service_worker)
+        self.assertIn("'/portal/js/lg-tv-remote.js'", service_worker)
+
+    def test_lg_remote_status_handles_nested_volume_and_catalogue_labels(self) -> None:
+        library = self.fixture.library
+        library.lg_tv_host = "192.0.2.10"
+        library.lg_tv_catalog_cache = {
+            "apps": [{"id": "netflix", "title": "Netflix"}],
+            "inputs": [],
+            "shortcuts": {"netflix": "netflix"},
+        }
+        library.lg_tv_catalog_updated = time.monotonic()
+        session = mock.Mock()
+        session.receive.side_effect = [
+            {"type": "response", "payload": {"returnValue": True, "appId": "netflix"}},
+            {"type": "response", "payload": {
+                "returnValue": True,
+                "volumeStatus": {"volume": 18, "muteStatus": True},
+            }},
+        ]
+        with mock.patch.object(library, "lg_tv_session", return_value=session):
+            status = library.lg_tv_status()
+
+        self.assertTrue(status["connected"])
+        self.assertEqual(status["app"], "Netflix")
+        self.assertEqual(status["volume"], 18)
+        self.assertTrue(status["muted"])
+        self.assertEqual(status["available_apps"], ["netflix"])
+        session.close.assert_called_once()
+
+    def test_lg_remote_dpad_uses_reusable_pointer_socket_protocol(self) -> None:
+        library = self.fixture.library
+        pointer = mock.Mock()
+        pointer.connection = object()
+        library.lg_tv_pointer_socket = pointer
+
+        library.lg_tv_action({"action": "up"})
+        library.lg_tv_action({"action": "pointer-move", "dx": 11, "dy": -4})
+
+        self.assertEqual(pointer.send_text.call_args_list, [
+            mock.call("type:button\nname:UP\n\n"),
+            mock.call("type:move\ndx:11\ndy:-4\ndown:0\n\n"),
+        ])
+
+    def test_lg_remote_media_and_volume_use_supported_ssap_actions(self) -> None:
+        library = self.fixture.library
+        with mock.patch.object(library, "lg_tv_request", return_value={}) as request:
+            library.lg_tv_action({"action": "play"})
+            library.lg_tv_action({"action": "volume-up"})
+            library.lg_tv_action({"action": "mute", "mute": True})
+
+        self.assertEqual(request.call_args_list, [
+            mock.call("ssap://media.controls/play", request_id="lg-play"),
+            mock.call("ssap://audio/volumeUp", None, "lg-volume-up"),
+            mock.call("ssap://audio/setMute", {"mute": True}, "lg-mute"),
+        ])
+
+    def test_lg_remote_discovers_app_ids_and_mabeltv_input(self) -> None:
+        library = self.fixture.library
+        library.lg_tv_host = "192.0.2.10"
+        session = mock.Mock()
+        session.receive.side_effect = [
+            {"type": "response", "payload": {
+                "returnValue": True,
+                "launchPoints": [{"id": "uk.bbc.custom", "title": "BBC iPlayer"}],
+            }},
+            {"type": "response", "payload": {
+                "returnValue": True,
+                "devices": [{"inputId": "HDMI_2", "appId": "external.hdmi2",
+                             "label": "MabelTV"}],
+            }},
+            {"type": "response", "payload": {"returnValue": True}},
+        ]
+        with mock.patch.object(library, "lg_tv_session", return_value=session):
+            result = library.lg_tv_switch_to_mabeltv()
+
+        self.assertEqual(result["message"], "Switching to MabelTV…")
+        self.assertEqual(library.lg_tv_catalog_cache["shortcuts"]["iplayer"],
+                         "uk.bbc.custom")
+        self.assertEqual(session.send.call_args_list[-1].args[0]["payload"],
+                         {"inputId": "HDMI_2"})
+
+    def test_lg_remote_keeps_app_catalog_when_input_listing_is_unavailable(self) -> None:
+        library = self.fixture.library
+        session = mock.Mock()
+        session.receive.side_effect = [
+            {"type": "response", "payload": {
+                "returnValue": True,
+                "launchPoints": [{"id": "netflix", "title": "Netflix"}],
+            }},
+            {"type": "error", "error": "403 forbidden"},
+        ]
+
+        catalog = library.lg_tv_catalog(session, force=True)
+
+        self.assertTrue(catalog["apps_known"])
+        self.assertFalse(catalog["inputs_known"])
+        self.assertEqual(catalog["shortcuts"]["netflix"], "netflix")
 
     def test_netflix_tv_content_id_accepts_only_direct_netflix_titles(self) -> None:
         self.assertEqual(
@@ -3440,12 +3560,14 @@ class LibraryHttpTests(unittest.TestCase):
                              ("/portal/css/experience-foundation.css", b"--experience-orange"),
                              ("/portal/css/experience-shell.css", b".portal-nav"),
                              ("/portal/css/experience-overlays.css", b"--experience-sheet-gutter"),
+                             ("/portal/css/lg-tv-remote.css", b".lg-dpad"),
                              ("/portal/css/experience-light.css", b'data-experience-theme="light"'),
                              ("/portal/js/experience-theme.js", b"mabeltv-experience-theme"),
                              ("/portal/css/classic-foundation.css", b"--accent: #ff7a1a"),
                              ("/portal/css/portal-design-switch.css", b".portal-design-option"),
                              ("/portal/assets/providers/bbc-iplayer-app.jpg", b"\xff\xd8\xff"),
-                             ("/portal/js/actions.js", b"managementBusy")):
+                             ("/portal/js/actions.js", b"managementBusy"),
+                             ("/portal/js/lg-tv-remote.js", b"POINTER_INTERVAL_MS")):
             with urllib.request.urlopen(self.base + path, timeout=5) as response:
                 self.assertEqual(response.status, 200)
                 self.assertEqual(response.headers.get("Connection"), "close")

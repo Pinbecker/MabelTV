@@ -1,0 +1,97 @@
+<section id="view-lg-tv" class="view">
+  <div class="page lg-remote-page">
+    <h1 class="sr-only">Connected LG TV remote</h1>
+
+    <section class="lg-status-card" aria-labelledby="lgTvHeading">
+      <div class="lg-tv-illustration" aria-hidden="true">
+        <div class="lg-tv-screen"><span>LG</span></div><span class="lg-tv-stand"></span>
+      </div>
+      <div class="lg-status-copy">
+        <p class="lg-status-kicker">Connected LG TV</p>
+        <h2 id="lgTvHeading">Checking television…</h2>
+        <p id="lgTvDetail" class="lg-status-detail">Looking for its control session</p>
+        <div class="lg-status-facts">
+          <span><i class="lg-status-led is-ready"></i><b>MabelTV</b> connected</span>
+          <span><i id="lgTvConnectionLed" class="lg-status-led"></i><b>Connected TV</b> <em id="lgTvConnectionText">checking</em></span>
+        </div>
+      </div>
+      <button id="lgCardPower" class="lg-card-power" data-lg-action="power" type="button" aria-label="Turn connected TV on">
+        <svg><use href="/portal/icons.svg#signal-power"/></svg>
+      </button>
+    </section>
+
+    <div class="lg-top-actions" aria-label="Connected TV shortcuts">
+      <button id="lgPower" class="lg-top-action lg-power-action" data-lg-action="power" type="button">
+        <svg><use href="/portal/icons.svg#signal-power"/></svg><span>Power</span>
+      </button>
+      <button data-lg-action="input" data-lg-requires-tv type="button">
+        <svg><use href="/portal/icons.svg#signal-input"/></svg><span>Source</span>
+      </button>
+      <button data-lg-action="apps" data-lg-requires-tv type="button">
+        <svg><use href="/portal/icons.svg#signal-layout-grid"/></svg><span>Apps</span>
+      </button>
+    </div>
+
+    <section class="lg-control-card" aria-label="LG TV controls">
+      <div class="lg-dpad" aria-label="Directional navigation">
+        <button class="lg-dpad-up" data-lg-action="up" data-lg-requires-tv type="button" aria-label="Up"><svg><use href="/portal/icons.svg#signal-chevron-up"/></svg></button>
+        <button class="lg-dpad-left" data-lg-action="left" data-lg-requires-tv type="button" aria-label="Left"><svg><use href="/portal/icons.svg#signal-chevron-left"/></svg></button>
+        <button class="lg-dpad-ok" data-lg-action="ok" data-lg-requires-tv type="button">OK</button>
+        <button class="lg-dpad-right" data-lg-action="right" data-lg-requires-tv type="button" aria-label="Right"><svg><use href="/portal/icons.svg#signal-chevron-right"/></svg></button>
+        <button class="lg-dpad-down" data-lg-action="down" data-lg-requires-tv type="button" aria-label="Down"><svg><use href="/portal/icons.svg#signal-chevron-down"/></svg></button>
+      </div>
+
+      <div class="lg-utility-row" aria-label="Navigation shortcuts">
+        <button data-lg-action="back" data-lg-requires-tv type="button"><svg><use href="/portal/icons.svg#signal-arrow-left"/></svg><span>Back</span></button>
+        <button data-lg-action="home" data-lg-requires-tv type="button"><svg><use href="/portal/icons.svg#signal-house"/></svg><span>Home</span></button>
+        <button data-lg-action="settings" data-lg-requires-tv type="button"><svg><use href="/portal/icons.svg#settings"/></svg><span>Settings</span></button>
+        <button data-lg-action="guide" data-lg-requires-tv type="button"><svg><use href="/portal/icons.svg#signal-guide"/></svg><span>Guide</span></button>
+        <button data-lg-action="info" data-lg-requires-tv type="button"><svg><use href="/portal/icons.svg#signal-circle-info"/></svg><span>Info</span></button>
+      </div>
+
+      <div class="lg-transport-row" aria-label="Playback controls">
+        <button data-lg-action="rewind" data-lg-requires-tv type="button" aria-label="Rewind"><svg><use href="/portal/icons.svg#signal-skip-back"/></svg></button>
+        <div class="lg-play-pause">
+          <button data-lg-action="play" data-lg-requires-tv type="button" aria-label="Play"><svg><use href="/portal/icons.svg#signal-play"/></svg></button>
+          <button data-lg-action="pause" data-lg-requires-tv type="button" aria-label="Pause"><svg><use href="/portal/icons.svg#signal-pause"/></svg></button>
+        </div>
+        <button data-lg-action="fast-forward" data-lg-requires-tv type="button" aria-label="Fast forward"><svg><use href="/portal/icons.svg#signal-skip-forward"/></svg></button>
+      </div>
+
+      <div class="lg-rocker-row">
+        <div class="lg-rocker" aria-label="Volume controls">
+          <button data-lg-action="volume-down" data-lg-requires-tv type="button" aria-label="Volume down">−</button><span>VOL</span><button data-lg-action="volume-up" data-lg-requires-tv type="button" aria-label="Volume up">+</button>
+        </div>
+        <button id="lgMute" class="lg-mute" data-lg-action="mute" data-lg-requires-tv type="button" aria-label="Mute connected TV" aria-pressed="false"><svg><use href="/portal/icons.svg#signal-volume-x"/></svg></button>
+        <div class="lg-rocker" aria-label="Channel controls">
+          <button data-lg-action="channel-down" data-lg-requires-tv type="button" aria-label="Channel down">−</button><span>CH</span><button data-lg-action="channel-up" data-lg-requires-tv type="button" aria-label="Channel up">+</button>
+        </div>
+      </div>
+
+      <section class="lg-trackpad-wrap" aria-labelledby="lgTrackpadTitle">
+        <div id="lgTrackpad" class="lg-trackpad" role="button" tabindex="0" data-lg-requires-tv aria-describedby="lgTrackpadHelp">
+          <span class="lg-trackpad-glow" aria-hidden="true"></span>
+          <svg aria-hidden="true"><use href="/portal/icons.svg#signal-pointer"/></svg>
+          <strong id="lgTrackpadTitle">Swipe to move pointer</strong>
+          <span id="lgTrackpadHelp">Tap to click · use two fingers to scroll</span>
+        </div>
+      </section>
+    </section>
+
+    <section class="lg-apps-card" aria-labelledby="lgQuickAppsTitle">
+      <header><div><p>Quick apps</p><h2 id="lgQuickAppsTitle">Open on connected TV</h2></div><button data-lg-action="refresh" type="button" aria-label="Refresh connected TV status"><svg><use href="/portal/icons.svg#signal-restart"/></svg></button></header>
+      <div class="lg-app-strip">
+        <button data-lg-launch="netflix" data-lg-requires-tv type="button"><img src="/portal/assets/providers/netflix-app.jpg" alt=""><span>Netflix</span></button>
+        <button data-lg-launch="iplayer" data-lg-requires-tv type="button"><img src="/portal/assets/providers/bbc-iplayer-app.jpg" alt=""><span>iPlayer</span></button>
+        <button data-lg-launch="disney" data-lg-requires-tv type="button"><img src="/portal/assets/providers/disney-plus-app.jpg" alt=""><span>Disney+</span></button>
+        <button data-lg-launch="prime" data-lg-requires-tv type="button"><img src="/portal/assets/providers/prime-video-app.jpg" alt=""><span>Prime</span></button>
+        <button data-lg-launch="itvx" data-lg-requires-tv type="button"><img src="/portal/assets/providers/itvx-app.jpg" alt=""><span>ITVX</span></button>
+        <button data-lg-launch="channel4" data-lg-requires-tv type="button"><img src="/portal/assets/providers/channel-4-app.jpg" alt=""><span>Channel 4</span></button>
+        <button data-lg-launch="appletv" data-lg-requires-tv type="button"><img src="/portal/assets/providers/apple-tv-app.jpg" alt=""><span>Apple TV</span></button>
+        <button data-lg-launch="paramount" data-lg-requires-tv type="button"><img src="/portal/assets/providers/paramount-plus-app.jpg" alt=""><span>Paramount+</span></button>
+        <button class="lg-app-system" data-lg-launch="live-tv" data-lg-requires-tv type="button"><span class="lg-app-icon"><svg><use href="/portal/icons.svg#signal-tv"/></svg></span><span>Live TV</span></button>
+        <button class="lg-app-system" data-lg-launch="mabeltv" data-lg-requires-tv type="button"><span class="lg-app-icon"><img src="/mabeltv-icon.png" alt=""></span><span>MabelTV</span></button>
+      </div>
+    </section>
+  </div>
+</section>

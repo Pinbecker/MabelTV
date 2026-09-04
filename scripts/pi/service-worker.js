@@ -1,6 +1,6 @@
 'use strict'
 
-const SHELL_CACHE = 'mabeltv-shell-v102'
+const SHELL_CACHE = 'mabeltv-shell-v103'
 const SHELL_URLS = [
   '/',
   '/manifest.webmanifest',
@@ -29,6 +29,7 @@ const SHELL_URLS = [
   '/portal/css/experience-settings.css',
   '/portal/css/experience-responsive.css',
   '/portal/css/experience-overlays.css',
+  '/portal/css/lg-tv-remote.css',
   '/portal/css/experience-light.css',
   '/portal/css/classic-foundation.css',
   '/portal/css/classic-shell.css',
@@ -43,6 +44,7 @@ const SHELL_URLS = [
   '/portal/js/playback.js',
   '/portal/js/adult-viewing.js',
   '/portal/js/actions.js',
+  '/portal/js/lg-tv-remote.js',
   '/portal/assets/providers/netflix-app.jpg',
   '/portal/assets/providers/prime-video-app.jpg',
   '/portal/assets/providers/disney-plus-app.jpg',

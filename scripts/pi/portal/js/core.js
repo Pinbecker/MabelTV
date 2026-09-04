@@ -258,7 +258,7 @@ const $ = selector => document.querySelector(selector)
         return
       }
       const view = requested === 'home' ? 'overview' : requested
-      const allowed = new Set(['overview', 'live', 'channels', 'adult', 'watch', 'adult-viewing', 'usb', 'system', 'insights'])
+      const allowed = new Set(['overview', 'live', 'lg-tv', 'channels', 'adult', 'watch', 'adult-viewing', 'usb', 'system', 'insights'])
       if (allowed.has(view)) {
         if (currentPortalDesign === 'experience' && (view === 'channels' || view === 'adult')) {
           remoteKind = view === 'channels' ? 'channel' : 'adult'
@@ -501,9 +501,11 @@ const $ = selector => document.querySelector(selector)
       const channelFromWatch = name === 'channels' && selectedManageChannel !== null && channelWorkspaceReturnToWatch
       const consolidatedWatchView = currentPortalDesign === 'experience' && (name === 'channels' || name === 'adult')
       const activeNavigation = channelFromWatch || consolidatedWatchView || name === 'adult-viewing' ? 'watch'
-        : (name === 'insights' || name === 'activity') ? 'system' : name
+        : name === 'lg-tv' ? 'live'
+          : (name === 'insights' || name === 'activity') ? 'system' : name
       $$('.view').forEach(view => view.classList.toggle('active', view.id === `view-${name}`))
       document.body.classList.toggle('watch-mode', name === 'watch' || name === 'adult-viewing' || channelFromWatch || consolidatedWatchView)
+      document.body.classList.toggle('lg-tv-mode', name === 'lg-tv')
       $$('[data-view-button]').forEach(button => {
         const active = button.dataset.viewButton === activeNavigation
         button.classList.toggle('active', active)
@@ -518,6 +520,8 @@ const $ = selector => document.querySelector(selector)
       }
       if (name === 'live') startLiveTv()
       else stopLiveTv()
+      if (name === 'lg-tv') window.startLgTvRemote?.()
+      else window.stopLgTvRemote?.()
       if (name === 'overview') startHomeStatusRefresh()
       else stopHomeStatusRefresh()
       if (name === 'usb') refreshUsb().catch(error => notice(error.message, true))

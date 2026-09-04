@@ -1,0 +1,797 @@
+body.portal-v2 .connected-tv-status {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 50%;
+  background: linear-gradient(145deg, #1b1a20, #101014);
+  color: var(--experience-orange);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .05), 0 8px 24px rgba(0, 0, 0, .2);
+}
+
+body.portal-v2 .mobile-head-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+body.portal-v2 .connected-tv-status .icon {
+  width: 18px;
+  height: 18px;
+}
+
+body.portal-v2 .connected-tv-status-dot {
+  position: absolute;
+  top: 8px;
+  right: 7px;
+  width: 6px;
+  height: 6px;
+  border: 1px solid #15151a;
+  border-radius: 50%;
+  background: #777780;
+}
+
+body.portal-v2 .connected-tv-status.is-online .connected-tv-status-dot {
+  background: var(--experience-good);
+  box-shadow: 0 0 8px rgba(79, 221, 160, .72);
+}
+
+body.portal-v2 .connected-tv-status.is-open {
+  border-color: rgba(255, 122, 26, .45);
+  background: rgba(255, 122, 26, .12);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .06), 0 0 0 3px rgba(255, 122, 26, .08);
+}
+
+body.portal-v2 .lg-remote-page {
+  width: min(100%, 620px);
+  padding: 30px 16px 96px;
+}
+
+body.portal-v2 .lg-remote-page > .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+body.portal-v2 .lg-remote-page button {
+  color: #f7f7fa;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+body.portal-v2 .lg-remote-page button:active:not(:disabled) {
+  transform: scale(.97);
+}
+
+body.portal-v2 .lg-remote-page button:disabled,
+body.portal-v2 .lg-trackpad[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: .38;
+}
+
+body.portal-v2 .lg-status-card {
+  display: grid;
+  grid-template-columns: 126px minmax(0, 1fr) 44px;
+  gap: 16px;
+  align-items: center;
+  min-height: 174px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 88% 8%, rgba(255, 122, 26, .07), transparent 32%),
+    linear-gradient(145deg, #19191f, #111116 70%);
+  padding: 18px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, .035), 0 20px 48px rgba(0, 0, 0, .2);
+}
+
+body.portal-v2 .lg-tv-illustration {
+  display: grid;
+  place-items: center;
+  align-self: center;
+  padding-bottom: 12px;
+}
+
+body.portal-v2 .lg-tv-screen {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1.5;
+  border: 1px solid #44444d;
+  border-radius: 3px;
+  background: linear-gradient(145deg, #101014, #08080b);
+  color: #50505a;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -.08em;
+  box-shadow: inset 0 0 28px rgba(255, 255, 255, .025), 0 10px 24px rgba(0, 0, 0, .3);
+}
+
+body.portal-v2 .lg-tv-screen::before {
+  width: 15px;
+  height: 15px;
+  margin-right: 2px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  content: "";
+}
+
+body.portal-v2 .lg-tv-screen span {
+  display: flex;
+  align-items: center;
+}
+
+body.portal-v2 .lg-tv-screen span::before {
+  position: absolute;
+  left: calc(50% - 23px);
+  content: "";
+}
+
+body.portal-v2 .lg-tv-stand {
+  position: relative;
+  display: block;
+  width: 70%;
+  height: 8px;
+  margin-top: 5px;
+  border-bottom: 4px solid #55555d;
+  transform: perspective(20px) rotateX(18deg);
+}
+
+body.portal-v2 .lg-tv-stand::before {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 3px;
+  height: 8px;
+  background: #55555d;
+  content: "";
+}
+
+body.portal-v2 .lg-status-copy {
+  min-width: 0;
+}
+
+body.portal-v2 .lg-status-kicker {
+  margin: 0;
+  color: #f7f7fa;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+body.portal-v2 .lg-status-copy h2 {
+  overflow: hidden;
+  margin: 3px 0 1px;
+  color: #fff;
+  font-size: 21px;
+  font-weight: 820;
+  letter-spacing: -.035em;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.portal-v2 .lg-status-detail {
+  overflow: hidden;
+  margin: 0;
+  color: #a4a4ad;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.portal-v2 .lg-status-facts {
+  display: grid;
+  gap: 5px;
+  margin-top: 13px;
+  color: #8f8f99;
+  font-size: 10px;
+}
+
+body.portal-v2 .lg-status-facts span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+body.portal-v2 .lg-status-facts b {
+  color: #b5b5bd;
+  font-weight: 750;
+}
+
+body.portal-v2 .lg-status-facts em {
+  overflow: hidden;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.portal-v2 .lg-status-led {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #575760;
+  box-shadow: 0 0 0 4px rgba(87, 87, 96, .11);
+}
+
+body.portal-v2 .lg-status-led.is-ready {
+  background: #ff496f;
+  box-shadow: 0 0 0 4px rgba(255, 73, 111, .1), 0 0 9px rgba(255, 73, 111, .38);
+}
+
+body.portal-v2 .lg-card-power {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  min-height: 42px;
+  border: 1px solid rgba(255, 122, 26, .32);
+  border-radius: 50%;
+  background: rgba(255, 122, 26, .1);
+  color: var(--experience-orange);
+}
+
+body.portal-v2 .lg-card-power svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+body.portal-v2 .lg-top-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 11px;
+}
+
+body.portal-v2 .lg-top-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-width: 0;
+  height: 52px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 13px;
+  background: linear-gradient(180deg, #16161c, #111116);
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 750;
+  box-shadow: inset 0 1px rgba(255, 255, 255, .03);
+}
+
+body.portal-v2 .lg-top-actions svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+body.portal-v2 .lg-top-actions .lg-power-action {
+  color: var(--experience-orange);
+}
+
+body.portal-v2 .lg-top-actions .lg-power-action span {
+  color: #f7f7fa;
+}
+
+body.portal-v2 .lg-control-card {
+  margin-top: 12px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(255, 255, 255, .025), transparent 38%),
+    linear-gradient(180deg, #15151b, #0e0e12);
+  padding: 14px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, .035), 0 22px 50px rgba(0, 0, 0, .2);
+}
+
+body.portal-v2 .lg-dpad {
+  position: relative;
+  width: 224px;
+  height: 224px;
+  margin: -2px auto 9px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .11);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #141419 0 30.5%, rgba(255, 255, 255, .14) 31%, #19191f 31.8% 100%);
+  box-shadow: inset 0 2px 4px rgba(255, 255, 255, .035), inset 0 -8px 18px rgba(0, 0, 0, .28), 0 14px 32px rgba(0, 0, 0, .26);
+}
+
+body.portal-v2 .lg-dpad::after {
+  position: absolute;
+  z-index: 0;
+  inset: 12%;
+  background: linear-gradient(45deg, transparent 49.6%, rgba(255, 255, 255, .1) 50%, transparent 50.4%), linear-gradient(-45deg, transparent 49.6%, rgba(255, 255, 255, .1) 50%, transparent 50.4%);
+  content: "";
+  pointer-events: none;
+}
+
+body.portal-v2 .lg-dpad button {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #f2f2f5;
+}
+
+body.portal-v2 .lg-dpad button:active:not(:disabled) {
+  background: rgba(255, 122, 26, .12);
+  transform: none;
+}
+
+body.portal-v2 .lg-dpad svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+body.portal-v2 .lg-dpad-up,
+body.portal-v2 .lg-dpad-down {
+  left: 26%;
+  width: 48%;
+  height: 35%;
+}
+
+body.portal-v2 .lg-dpad-up { top: 0; padding-bottom: 17px; }
+body.portal-v2 .lg-dpad-down { bottom: 0; padding-top: 17px; }
+
+body.portal-v2 .lg-dpad-left,
+body.portal-v2 .lg-dpad-right {
+  top: 26%;
+  width: 35%;
+  height: 48%;
+}
+
+body.portal-v2 .lg-dpad-left { left: 0; padding-right: 17px; }
+body.portal-v2 .lg-dpad-right { right: 0; padding-left: 17px; }
+
+body.portal-v2 .lg-dpad .lg-dpad-ok {
+  z-index: 2;
+  top: 33%;
+  left: 33%;
+  width: 34%;
+  height: 34%;
+  border: 1px solid rgba(255, 255, 255, .11);
+  border-radius: 50%;
+  background: #121217;
+  color: var(--experience-orange);
+  font-size: 15px;
+  font-weight: 850;
+  box-shadow: inset 0 1px rgba(255, 255, 255, .035), 0 5px 14px rgba(0, 0, 0, .28);
+}
+
+body.portal-v2 .lg-utility-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+body.portal-v2 .lg-utility-row button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  height: 46px;
+  border: 1px solid rgba(255, 255, 255, .09);
+  border-radius: 23px;
+  background: linear-gradient(180deg, #1a1a20, #141419);
+  padding: 0 5px;
+  color: #dedee3;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+body.portal-v2 .lg-utility-row svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+body.portal-v2 .lg-transport-row {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr 1fr;
+  height: 56px;
+  margin-top: 9px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 14px;
+  background: #141419;
+}
+
+body.portal-v2 .lg-transport-row > button,
+body.portal-v2 .lg-play-pause {
+  min-width: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+body.portal-v2 .lg-transport-row > button:first-child,
+body.portal-v2 .lg-play-pause {
+  border-right: 1px solid rgba(255, 255, 255, .09);
+}
+
+body.portal-v2 .lg-play-pause {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+body.portal-v2 .lg-play-pause button {
+  min-width: 0;
+  min-height: 44px;
+  border-radius: 0;
+  background: transparent;
+}
+
+body.portal-v2 .lg-transport-row svg {
+  width: 23px;
+  height: 23px;
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+body.portal-v2 .lg-rocker-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 58px minmax(0, 1fr);
+  gap: 9px;
+  margin-top: 9px;
+}
+
+body.portal-v2 .lg-rocker {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  height: 52px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 14px;
+  background: #15151a;
+}
+
+body.portal-v2 .lg-rocker button {
+  min-width: 0;
+  min-height: 50px;
+  border-radius: 0;
+  background: transparent;
+  color: #fff;
+  padding: 0;
+  font-size: 25px;
+  font-weight: 300;
+}
+
+body.portal-v2 .lg-rocker span {
+  color: #e5e5e9;
+  font-size: 11px;
+  font-weight: 750;
+  text-align: center;
+}
+
+body.portal-v2 .lg-mute {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  min-width: 58px;
+  height: 52px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 14px;
+  background: #15151a;
+}
+
+body.portal-v2 .lg-mute[aria-pressed="true"] {
+  border-color: rgba(255, 122, 26, .34);
+  background: rgba(255, 122, 26, .12);
+  color: var(--experience-orange);
+}
+
+body.portal-v2 .lg-mute svg {
+  width: 21px;
+  height: 21px;
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+body.portal-v2 .lg-trackpad-wrap {
+  margin-top: 10px;
+}
+
+body.portal-v2 .lg-trackpad {
+  position: relative;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  height: 116px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .09);
+  border-radius: 15px;
+  background-color: #15151a;
+  background-image: radial-gradient(rgba(255, 255, 255, .12) .75px, transparent .75px);
+  background-size: 12px 12px;
+  color: #8d8d97;
+  touch-action: none;
+}
+
+body.portal-v2 .lg-trackpad-glow {
+  position: absolute;
+  inset: -40%;
+  background: radial-gradient(circle, rgba(255, 122, 26, .1), transparent 46%);
+  pointer-events: none;
+}
+
+body.portal-v2 .lg-trackpad svg {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  margin-bottom: 6px;
+  fill: none;
+  stroke: #a5a5ae;
+  stroke-width: 1.45;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+body.portal-v2 .lg-trackpad strong,
+body.portal-v2 .lg-trackpad > span:last-child {
+  position: relative;
+  color: #c0c0c7;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+body.portal-v2 .lg-trackpad > span:last-child {
+  margin-top: 2px;
+  color: #777781;
+  font-size: 8px;
+  font-weight: 550;
+}
+
+body.portal-v2 .lg-trackpad.is-active {
+  border-color: rgba(255, 122, 26, .32);
+}
+
+body.portal-v2 .lg-trackpad.is-active svg,
+body.portal-v2 .lg-trackpad.is-active strong {
+  color: var(--experience-orange);
+  stroke: var(--experience-orange);
+}
+
+body.portal-v2 .lg-apps-card {
+  margin-top: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 17px;
+  background: linear-gradient(180deg, #141419, #0f0f13);
+  padding: 14px 0 12px;
+}
+
+body.portal-v2 .lg-apps-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 14px 10px;
+}
+
+body.portal-v2 .lg-apps-card header p {
+  margin: 0;
+  color: #90909a;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+body.portal-v2 .lg-apps-card header h2 {
+  margin: 1px 0 0;
+  font-size: 15px;
+  letter-spacing: -.025em;
+}
+
+body.portal-v2 .lg-apps-card header button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 50%;
+  background: #19191f;
+  color: #aaaab2;
+}
+
+body.portal-v2 .lg-apps-card header svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+body.portal-v2 .lg-app-strip {
+  display: grid;
+  grid-auto-columns: 68px;
+  grid-auto-flow: column;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 14px 5px;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.portal-v2 .lg-app-strip::-webkit-scrollbar {
+  display: none;
+}
+
+body.portal-v2 .lg-app-strip button {
+  display: grid;
+  grid-template-rows: 52px auto;
+  gap: 5px;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  scroll-snap-align: start;
+}
+
+body.portal-v2 .lg-app-strip button > img,
+body.portal-v2 .lg-app-icon {
+  display: block;
+  width: 68px;
+  height: 52px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .11);
+  border-radius: 11px;
+  background: #1b1b21;
+  object-fit: cover;
+  box-shadow: 0 7px 16px rgba(0, 0, 0, .18);
+}
+
+body.portal-v2 .lg-app-strip button > span:last-child {
+  overflow: hidden;
+  color: #a5a5ae;
+  font-size: 8px;
+  font-weight: 650;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.portal-v2 .lg-app-strip button.is-unavailable {
+  filter: grayscale(.8);
+  opacity: .35;
+}
+
+body.portal-v2 .lg-app-icon {
+  display: grid;
+  place-items: center;
+}
+
+body.portal-v2 .lg-app-icon svg {
+  width: 25px;
+  height: 25px;
+  fill: none;
+  stroke: #efeff2;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+body.portal-v2 .lg-app-icon img {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+}
+
+body.portal-v2 .lg-remote-page .is-sending {
+  animation: lg-command-pulse 850ms ease-in-out infinite alternate;
+}
+
+@keyframes lg-command-pulse {
+  to { border-color: rgba(255, 122, 26, .5); box-shadow: 0 0 18px rgba(255, 122, 26, .12); }
+}
+
+@media (max-width: 860px) {
+  body.portal-v2 .lg-remote-page {
+    padding: 14px 12px 22px;
+  }
+}
+
+@media (max-width: 430px) {
+  body.portal-v2 .lg-status-card {
+    grid-template-columns: 94px minmax(0, 1fr) 38px;
+    gap: 10px;
+    min-height: 128px;
+    padding: 12px;
+  }
+
+  body.portal-v2 .lg-status-copy h2 { font-size: 17px; }
+  body.portal-v2 .lg-status-kicker { font-size: 11px; }
+  body.portal-v2 .lg-status-facts { gap: 3px; margin-top: 9px; font-size: 9px; }
+  body.portal-v2 .lg-card-power { width: 38px; min-width: 38px; height: 38px; min-height: 38px; }
+  body.portal-v2 .lg-top-actions button { height: 48px; }
+  body.portal-v2 .lg-control-card { padding: 8px; }
+  body.portal-v2 .lg-dpad { width: 164px; height: 164px; margin-bottom: 6px; }
+  body.portal-v2 .lg-utility-row button { height: 40px; min-height: 40px; }
+  body.portal-v2 .lg-utility-row svg { width: 15px; height: 15px; }
+  body.portal-v2 .lg-transport-row { height: 46px; margin-top: 5px; }
+  body.portal-v2 .lg-play-pause button { min-height: 44px; }
+  body.portal-v2 .lg-rocker-row { margin-top: 5px; }
+  body.portal-v2 .lg-rocker,
+  body.portal-v2 .lg-mute { height: 44px; }
+  body.portal-v2 .lg-rocker button { min-height: 42px; }
+  body.portal-v2 .lg-trackpad-wrap { margin-top: 6px; }
+  body.portal-v2 .lg-trackpad { height: 64px; }
+  body.portal-v2 .lg-trackpad svg { width: 20px; height: 20px; margin-bottom: 2px; }
+  body.portal-v2 .lg-apps-card { padding-top: 10px; padding-bottom: 8px; }
+  body.portal-v2 .lg-apps-card header { padding-bottom: 7px; }
+  body.portal-v2 .lg-apps-card header h2 { font-size: 13px; }
+  body.portal-v2 .lg-app-strip { grid-auto-columns: 62px; gap: 7px; }
+  body.portal-v2 .lg-app-strip button { grid-template-rows: 44px auto; }
+  body.portal-v2 .lg-app-strip button > img,
+  body.portal-v2 .lg-app-icon { width: 62px; height: 44px; border-radius: 9px; }
+}
+
+@media (max-width: 370px) {
+  body.portal-v2 .lg-status-card { grid-template-columns: 80px minmax(0, 1fr) 36px; gap: 9px; padding: 12px; }
+  body.portal-v2 .lg-status-copy h2 { font-size: 16px; }
+  body.portal-v2 .lg-status-facts { font-size: 9px; }
+  body.portal-v2 .lg-control-card { padding: 12px 9px; }
+  body.portal-v2 .lg-dpad { width: 156px; height: 156px; }
+  body.portal-v2 .lg-utility-row { gap: 4px; }
+  body.portal-v2 .lg-utility-row button { font-size: 0; }
+  body.portal-v2 .lg-utility-row svg { width: 19px; height: 19px; }
+  body.portal-v2 .lg-rocker-row { grid-template-columns: minmax(0, 1fr) 50px minmax(0, 1fr); gap: 6px; }
+  body.portal-v2 .lg-mute { width: 50px; min-width: 50px; }
+  body.portal-v2 .lg-rocker { grid-template-columns: 38px minmax(0, 1fr) 38px; }
+}
+
+html[data-experience-theme="light"] body.portal-v2 .connected-tv-status {
+  border-color: rgba(39, 32, 27, .14);
+  background: #f3efeb;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.portal-v2 .lg-remote-page button:active:not(:disabled) { transform: none; }
+  body.portal-v2 .lg-remote-page .is-sending { animation: none; }
+}
