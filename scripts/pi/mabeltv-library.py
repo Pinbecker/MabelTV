@@ -551,9 +551,8 @@ LG_TV_MEDIA_ACTIONS = {
 }
 LG_TV_CATALOG_SECONDS = 5 * 60
 LG_WEBOS_REGISTRATION = {
-    # This is deliberately the exact minimal registration shape used by the
-    # successful Glass Onion proof on this television. The TV accepts it and
-    # returns a reusable client key after the user approves the prompt.
+    # Keep the established MabelTV app identity so the TV can reuse its saved
+    # client key, while requesting the permissions needed by the full remote.
     "type": "register",
     "payload": {
         "pairingType": "PROMPT",
@@ -570,11 +569,10 @@ LG_WEBOS_REGISTRATION = {
 
 
 class LgWebOsSocket:
-    """Small standards-only WebSocket client for the one SSAP launch MabelTV needs.
+    """Small standards-only WebSocket client for LG SSAP and pointer control.
 
     Keeping this here avoids a new service dependency and keeps the paired key on
-    the Pi. It intentionally implements only masked text frames, which is all the
-    local SSAP registration and launcher protocol requires.
+    the Pi. It implements the masked text frames used by local webOS control.
     """
     def __init__(self, host: str, client_key: str = "") -> None:
         self.host = host
