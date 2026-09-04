@@ -4855,6 +4855,10 @@ class Library:
             if isinstance(detail["viewing"], dict) else {}
         if not isinstance(episode_states, dict):
             episode_states = {}
+        rewatch_episode_states = detail["viewing"].get("rewatch_episodes", {}) \
+            if isinstance(detail["viewing"], dict) else {}
+        if not isinstance(rewatch_episode_states, dict):
+            rewatch_episode_states = {}
         for season in detail["seasons"]:
             prefix = f"{season['number']}:"
             season["watched_count"] = sum(
@@ -4876,8 +4880,9 @@ class Library:
         if not next_episode:
             for season in sorted(detail["seasons"], key=lambda item: item["number"]):
                 for episode in range(1, int(season.get("episodes", 0) or 0) + 1):
-                    saved = episode_states.get(f"{season['number']}:{episode}", {})
-                    if rewatching or not (isinstance(saved, dict) and saved.get("watched")):
+                    states = rewatch_episode_states if rewatching else episode_states
+                    saved = states.get(f"{season['number']}:{episode}", {})
+                    if not (isinstance(saved, dict) and saved.get("watched")):
                         next_episode = {
                             "season": season["number"], "episode": episode,
                             "title": "", "source": "streaming", "rewatch": rewatching,
@@ -4906,6 +4911,10 @@ class Library:
             episode_states = state.get("episodes", {}) if isinstance(state, dict) else {}
             if not isinstance(episode_states, dict):
                 episode_states = {}
+            rewatch_episode_states = state.get("rewatch_episodes", {}) \
+                if isinstance(state, dict) else {}
+            if not isinstance(rewatch_episode_states, dict):
+                rewatch_episode_states = {}
         episodes = []
         for item in value.get("episodes", []):
             if not isinstance(item, dict):
@@ -4923,6 +4932,9 @@ class Library:
                 "overview": str(item.get("overview") or ""),
                 "still_path": str(item.get("still_path") or ""),
                 "watched": bool(saved.get("watched")) if isinstance(saved, dict) else False,
+                "rewatch_watched": bool(rewatch_episode_states.get(
+                    episode_key, {}).get("watched"))
+                if isinstance(rewatch_episode_states.get(episode_key), dict) else False,
             })
         return {"key": key, "season": number,
                 "name": str(value.get("name") or f"Season {number}"),
@@ -5067,6 +5079,9 @@ class Library:
                     current.setdefault("history", []).append(now)
                     current["watchlisted"] = False
                     current["up_next"] = False
+                    if current.get("series_watching") and \
+                            current.get("series_watching_mode") == "rewatch":
+                        current["rewatch_completed"] = now
                     current["series_watching"] = False
                 elif action == "not_watched" and previous_manual_state == "watched":
                     history = current.get("history", [])
@@ -5098,6 +5113,9 @@ class Library:
                         requested_mode = "rewatch" \
                             if current.get("manual_state") == "watched" else "first_watch"
                     current["series_watching_mode"] = requested_mode
+                    if requested_mode == "rewatch" and current.get("rewatch_completed"):
+                        current["rewatch_episodes"] = {}
+                        current.pop("rewatch_completed", None)
                     if not current.get("up_next"):
                         ranks = [int(value.get("up_next_rank", 0) or 0)
                                  for value in store["titles"].values()
@@ -5118,12 +5136,17 @@ class Library:
                     raise ValueError("Choose a valid episode") from None
                 if season < 1 or episode < 1 or not isinstance(payload.get("watched"), bool):
                     raise ValueError("Choose a valid episode status")
-                episodes = current.setdefault("episodes", {})
+                rewatch = payload.get("rewatch") is True
+                if rewatch and (not current.get("series_watching") or
+                                current.get("series_watching_mode") != "rewatch"):
+                    raise ValueError("Start watching this series again before tracking a rewatch")
+                state_field = "rewatch_episodes" if rewatch else "episodes"
+                episodes = current.setdefault(state_field, {})
                 if not isinstance(episodes, dict):
                     episodes = {}
-                    current["episodes"] = episodes
+                    current[state_field] = episodes
                 episodes[f"{season}:{episode}"] = {"watched": payload["watched"], "updated": now}
-                if payload["watched"]:
+                if payload["watched"] and not rewatch:
                     current["watchlisted"] = False
             elif action == "season_watched":
                 if key.split(":", 1)[0] != "tv":
@@ -5137,13 +5160,18 @@ class Library:
                 if season < 1 or episode_count < 1 or episode_count > 1000 or \
                         not isinstance(watched, bool):
                     raise ValueError("Choose a valid series status")
-                episodes = current.setdefault("episodes", {})
+                rewatch = payload.get("rewatch") is True
+                if rewatch and (not current.get("series_watching") or
+                                current.get("series_watching_mode") != "rewatch"):
+                    raise ValueError("Start watching this series again before tracking a rewatch")
+                state_field = "rewatch_episodes" if rewatch else "episodes"
+                episodes = current.setdefault(state_field, {})
                 if not isinstance(episodes, dict):
                     episodes = {}
-                    current["episodes"] = episodes
+                    current[state_field] = episodes
                 for episode in range(1, episode_count + 1):
                     episodes[f"{season}:{episode}"] = {"watched": watched, "updated": now}
-                if watched:
+                if watched and not rewatch:
                     current["watchlisted"] = False
             elif action == "remove":
                 current["watchlisted"] = False

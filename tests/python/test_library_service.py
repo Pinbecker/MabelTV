@@ -873,11 +873,37 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertTrue(saved["viewing"]["series_watching"])
         self.assertTrue(saved["viewing"]["up_next"])
         self.assertEqual(saved["viewing"]["series_watching_mode"], "rewatch")
+        saved = self.fixture.library.adult_viewing_update({
+            "media_type": "tv", "tmdb_id": 4586, "title": "Gilmore Girls",
+            "action": "episode_watched", "season": 1, "episode": 1,
+            "watched": True, "rewatch": True,
+        })
+        self.assertTrue(saved["viewing"]["rewatch_episodes"]["1:1"]["watched"])
+        self.assertTrue(saved["viewing"]["episodes"]["1:1"]["watched"])
+        season = self.fixture.library.adult_title_season(4586, 1)
+        self.assertTrue(season["episodes"][0]["rewatch_watched"])
+        self.assertFalse(season["episodes"][1]["rewatch_watched"])
+
+        saved = self.fixture.library.adult_viewing_update({
+            "media_type": "tv", "tmdb_id": 4586, "title": "Gilmore Girls",
+            "action": "watched",
+        })
+        self.assertFalse(saved["viewing"]["series_watching"])
+        self.assertIn("rewatch_completed", saved["viewing"])
+        saved = self.fixture.library.adult_viewing_update({
+            "media_type": "tv", "tmdb_id": 4586, "title": "Gilmore Girls",
+            "action": "watching", "enabled": True, "mode": "rewatch",
+        })
+        self.assertEqual(saved["viewing"]["rewatch_episodes"], {})
+        self.assertNotIn("rewatch_completed", saved["viewing"])
 
     def test_tv_title_detail_includes_season_artwork_and_watched_counts(self) -> None:
         store = self.fixture.library.adult_viewing_store()
         store["titles"]["tv:4586"] = {
             "episodes": {"1:2": {"watched": True}},
+            "rewatch_episodes": {"1:1": {"watched": True}},
+            "series_watching": True,
+            "series_watching_mode": "rewatch",
         }
         self.fixture.library.write_adult_viewing_store(store)
 
@@ -900,7 +926,8 @@ class LibraryUnitTests(unittest.TestCase):
         detail = self.fixture.library.adult_title_detail("tv", 4586)
         self.assertEqual(detail["seasons"][0]["poster_path"], "/season-one.jpg")
         self.assertEqual(detail["seasons"][0]["watched_count"], 1)
-        self.assertEqual(detail["next_episode"]["episode"], 1)
+        self.assertEqual(detail["next_episode"]["episode"], 2)
+        self.assertTrue(detail["next_episode"]["rewatch"])
 
     def test_adult_viewing_portal_is_modular_private_and_mobile_safe(self) -> None:
         self.assertIn('id="adultMyViewing"', PORTAL_SOURCE)

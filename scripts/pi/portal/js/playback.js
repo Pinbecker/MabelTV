@@ -1408,6 +1408,39 @@ function remoteTime(value) {
       }
       const dialog = $('#adultEpisodeSheet')
       portalSheets.open(dialog, { returnTo })
+      const tmdbId = Number(current.metadata?.tmdb_id || 0)
+      if (tmdbId) api('/api/adult/viewing').then(result => {
+        if (selectedAdultEpisode?.episode?.path !== episode.path) return
+        const saved = (result.items || []).find(item => item.key === `tv:${tmdbId}`) || {}
+        const rewatching = saved.series_watching === true
+          && saved.series_watching_mode === 'rewatch'
+        if (!rewatching) return
+        const episodeKey = `${episode.season}:${episode.episode}`
+        const rewatched = saved.rewatch_episodes?.[episodeKey]?.watched === true
+        $('#adultEpisodeMeta').textContent = `S${String(episode.season).padStart(2, '0')} E${String(episode.episode).padStart(2, '0')} · ${rewatched ? 'Watched again' : 'Active rewatch'}`
+        watched.querySelector('strong').textContent = rewatched
+          ? 'Remove from this rewatch' : 'Mark watched again'
+        watched.querySelector('small').textContent = rewatched
+          ? 'Moves the rewatch position back to this episode'
+          : 'Advances the separate rewatch position'
+        watched.onclick = async () => {
+          watched.disabled = true
+          try {
+            const trackingTitle = {
+              media_type: 'tv', tmdb_id: tmdbId, title: current.title,
+              year: current.metadata?.year || '', overview: current.metadata?.overview || '',
+              viewing: saved,
+            }
+            await updateAdultViewing(trackingTitle, 'episode_watched', {
+              season: episode.season, episode: episode.episode,
+              watched: !rewatched, rewatch: true,
+            })
+            closeAdultEpisodeSheet(false)
+            if (returnTo) returnTo()
+            notice(rewatched ? 'Removed from this rewatch.' : 'Episode marked watched again.')
+          } catch (error) { showError(error) } finally { watched.disabled = false }
+        }
+      }).catch(() => {})
     }
 
     async function finishLocalSeriesIfComplete(series) {
@@ -1596,16 +1629,22 @@ function remoteTime(value) {
     function openAdultSeriesSheet(series, returnTo = null) {
       const current = library?.adult_series?.find(value => value.id === series.id) || series
       selectedAdultSeries = { series: current, returnTo }
+      let localViewingState = {}
       const syncSeriesHeader = () => {
         current.watched_count = (current.episodes || []).filter(episode => episode.watched).length
         $('#adultSeriesSheetMeta').textContent = `${current.season_count} series · ${current.episode_count} episodes · ${current.watched_count} watched`
-        const next = (current.episodes || []).find(episode => !episode.watched)
-          || (current.episodes || [])[0]
+        const rewatching = localViewingState.series_watching === true
+          && localViewingState.series_watching_mode === 'rewatch'
+        const states = localViewingState.rewatch_episodes || {}
+        const next = rewatching
+          ? (current.episodes || []).find(episode =>
+            states[`${episode.season}:${episode.episode}`]?.watched !== true)
+          : (current.episodes || []).find(episode => !episode.watched)
         const nextButton = $('#adultSeriesNextEpisode')
         nextButton.classList.toggle('hidden', !next)
         if (next) {
-          nextButton.querySelector('small').textContent = current.watched_count >= current.episode_count
-            ? 'Rewatch from the beginning' : 'Next episode'
+          nextButton.querySelector('small').textContent = rewatching
+            ? 'Next episode in this rewatch' : 'Next episode'
           nextButton.querySelector('strong').textContent = `Series ${next.season}, Episode ${next.episode} · ${next.display_name}`
           nextButton.onclick = () => {
             closeAdultSeriesSheet(false)
@@ -1640,12 +1679,17 @@ function remoteTime(value) {
         }
         const syncWatching = state => {
           trackingTitle.viewing = state || {}
+          localViewingState = state || {}
           watching.classList.toggle('active', state?.series_watching === true)
           watching.setAttribute('aria-pressed', String(state?.series_watching === true))
+          const rewatching = state?.series_watching === true
+            && state?.series_watching_mode === 'rewatch'
           watching.querySelector('strong').textContent = state?.series_watching
-            ? 'Watching this series' : 'Start watching series'
+            ? rewatching ? 'Rewatching this series' : 'Watching this series'
+            : state?.rewatch ? 'Start rewatching series' : 'Start watching series'
           watching.querySelector('small').textContent = state?.series_watching
             ? 'Its next episode is kept in Up Next' : 'Keep the show and its next episode in Up Next'
+          syncSeriesHeader()
         }
         syncWatching({})
         watching.disabled = true
@@ -1655,7 +1699,8 @@ function remoteTime(value) {
           try {
             const state = await updateAdultViewing(trackingTitle, 'watching', {
               enabled: !trackingTitle.viewing?.series_watching,
-              mode: current.episode_count > 0 && current.watched_count >= current.episode_count
+              mode: trackingTitle.viewing?.rewatch
+                || (current.episode_count > 0 && current.watched_count >= current.episode_count)
                 ? 'rewatch' : 'first_watch',
             })
             syncWatching(state)
