@@ -1372,6 +1372,7 @@ function remoteTime(value) {
           episode.remote_last_watched = Number(result.remote_last_watched || 0)
           series.watched_count = Math.max(0, Number(series.watched_count || 0)
             + (episode.watched ? 1 : -1))
+          if (episode.watched) await finishLocalSeriesIfComplete(series)
           closeAdultEpisodeSheet(false)
           if (returnTo) returnTo()
           renderAdultWatch()
@@ -1409,7 +1410,86 @@ function remoteTime(value) {
       portalSheets.open(dialog, { returnTo })
     }
 
-    function openAdultSeasonSheet(series, season, returnTo = null) {
+    async function finishLocalSeriesIfComplete(series) {
+      const tmdbId = Number(series.metadata?.tmdb_id || 0)
+      if (!tmdbId || !series.episode_count
+          || Number(series.watched_count || 0) < Number(series.episode_count || 0)) return
+      const result = await api('/api/adult/viewing')
+      const saved = (result.items || []).find(item => item.key === `tv:${tmdbId}`)
+      if (saved?.manual_state === 'watched') return
+      await updateAdultViewing({
+        media_type: 'tv', tmdb_id: tmdbId, title: series.title,
+        year: series.metadata?.year || '', overview: series.metadata?.overview || '',
+        viewing: saved || {},
+      }, 'watched')
+    }
+
+    function wireAdultSeasonBulkButton(button, label, watched, total, onConfirm, compact = false) {
+      let watchedCount = Number(watched || 0)
+      let episodeCount = Number(total || 0)
+      let confirming = false
+      let confirmTimer = null
+      button.classList.toggle('adult-season-status', compact)
+      const render = () => {
+        clearTimeout(confirmTimer)
+        const complete = episodeCount > 0 && watchedCount >= episodeCount
+        const partial = watchedCount > 0 && !complete
+        button.classList.toggle('is-complete', complete)
+        button.classList.toggle('is-partial', partial)
+        button.classList.toggle('is-confirming', confirming)
+        button.replaceChildren(librarySignalIcon(complete ? 'signal-check'
+          : partial ? 'signal-minus' : 'signal-check'))
+        if (!compact || confirming) {
+          const copy = document.createElement('span')
+          copy.textContent = confirming
+            ? complete ? 'Mark all unwatched?' : 'Mark all watched?'
+            : complete ? `${label} complete · Mark unwatched`
+              : partial ? `${watchedCount} of ${episodeCount} watched · Mark all watched`
+                : `Mark all ${episodeCount} episodes watched`
+          button.append(copy)
+        }
+        button.setAttribute('aria-label', complete
+          ? `${label} complete. Mark every episode unwatched`
+          : partial ? `${label} partly watched. Mark every episode watched`
+            : `${label} not started. Mark every episode watched`)
+      }
+      button.syncSeasonStatus = (nextWatched, nextTotal = episodeCount) => {
+        watchedCount = Number(nextWatched || 0)
+        episodeCount = Number(nextTotal || 0)
+        confirming = false
+        render()
+      }
+      button.onclick = async event => {
+        event.preventDefault()
+        event.stopPropagation()
+        if (button.disabled || !episodeCount) return
+        if (!confirming) {
+          confirming = true
+          render()
+          confirmTimer = setTimeout(() => { confirming = false; render() }, 3500)
+          return
+        }
+        const targetWatched = watchedCount < episodeCount
+        button.disabled = true
+        try {
+          const result = await onConfirm(targetWatched)
+          watchedCount = Number.isFinite(Number(result))
+            ? Number(result) : targetWatched ? episodeCount : 0
+          confirming = false
+          render()
+        } catch (error) {
+          confirming = false
+          render()
+          showError(error)
+        } finally {
+          button.disabled = false
+        }
+      }
+      render()
+      return button
+    }
+
+    function openAdultSeasonSheet(series, season, returnTo = null, targetPath = '') {
       const current = library?.adult_series?.find(value => value.id === series.id) || series
       const number = Number(season)
       const episodes = (current.episodes || []).filter(episode => Number(episode.season) === number)
@@ -1423,6 +1503,29 @@ function remoteTime(value) {
       $('#adultSeasonUploadHint').textContent = `Upload directly into Series ${number}`
       $('#adultSeasonEpisodeTitle').textContent = `Series ${number} episodes`
       $('#adultSeasonEpisodeCount').textContent = `${episodes.length} total`
+      const markSeason = async targetWatched => {
+        const result = await api('/api/adult/series/watched', { method: 'POST', body: JSON.stringify({
+          series: current.id, scope: 'season', season: number, watched: targetWatched,
+        }) })
+        episodes.forEach(episode => {
+          const saved = (result.episodes || []).find(value => value.path === episode.path)
+          episode.watched = targetWatched
+          episode.remote_position = Number(saved?.remote_position || 0)
+          episode.remote_duration = Number(saved?.remote_duration || episode.remote_duration || 0)
+          episode.remote_last_watched = Number(saved?.remote_last_watched || 0)
+        })
+        current.watched_count = (current.episodes || []).filter(episode => episode.watched).length
+        if (targetWatched) await finishLocalSeriesIfComplete(current)
+        renderAdultWatch()
+        renderHomeLibrary()
+        notice(targetWatched ? `Series ${number} marked watched.`
+          : `Series ${number} marked unwatched. Saved resume points were restored.`)
+        closeAdultSeasonSheet(false)
+        openAdultSeasonSheet(current, number, returnTo)
+        return targetWatched ? episodes.length : 0
+      }
+      wireAdultSeasonBulkButton($('#adultSeasonWatched'), `Series ${number}`,
+        watched, episodes.length, markSeason)
       const root = $('#adultSeasonEpisodes')
       root.replaceChildren()
       episodes.forEach(episode => {
@@ -1455,10 +1558,12 @@ function remoteTime(value) {
         if (progress > 0 && !episode.watched) row.classList.add('has-progress')
         row.style.setProperty('--episode-progress', `${progress}%`)
         row.append(artwork, copy, librarySignalIcon('signal-chevron-right'))
+        row.dataset.episodePath = episode.path
+        if (episode.path === targetPath) row.classList.add('is-next')
         row.onclick = () => {
           closeAdultSeasonSheet(false)
           openAdultEpisodeSheet(current, episode, () =>
-            openAdultSeasonSheet(current, number, returnTo))
+            openAdultSeasonSheet(current, number, returnTo, episode.path))
         }
         root.append(row)
       })
@@ -1484,13 +1589,33 @@ function remoteTime(value) {
       }
       const dialog = $('#adultSeasonSheet')
       portalSheets.open(dialog, { returnTo })
+      if (targetPath) requestAnimationFrame(() => root.querySelector('.is-next')
+        ?.scrollIntoView({ block: 'center', behavior: 'smooth' }))
     }
 
     function openAdultSeriesSheet(series, returnTo = null) {
       const current = library?.adult_series?.find(value => value.id === series.id) || series
       selectedAdultSeries = { series: current, returnTo }
+      const syncSeriesHeader = () => {
+        current.watched_count = (current.episodes || []).filter(episode => episode.watched).length
+        $('#adultSeriesSheetMeta').textContent = `${current.season_count} series · ${current.episode_count} episodes · ${current.watched_count} watched`
+        const next = (current.episodes || []).find(episode => !episode.watched)
+          || (current.episodes || [])[0]
+        const nextButton = $('#adultSeriesNextEpisode')
+        nextButton.classList.toggle('hidden', !next)
+        if (next) {
+          nextButton.querySelector('small').textContent = current.watched_count >= current.episode_count
+            ? 'Rewatch from the beginning' : 'Next episode'
+          nextButton.querySelector('strong').textContent = `Series ${next.season}, Episode ${next.episode} · ${next.display_name}`
+          nextButton.onclick = () => {
+            closeAdultSeriesSheet(false)
+            openAdultSeasonSheet(current, next.season,
+              () => openAdultSeriesSheet(current, returnTo), next.path)
+          }
+        }
+      }
       $('#adultSeriesSheetTitle').textContent = current.title
-      $('#adultSeriesSheetMeta').textContent = `${current.season_count} series · ${current.episode_count} episodes · ${current.watched_count} watched`
+      syncSeriesHeader()
       $('#adultSeriesOverview').textContent = current.metadata?.overview
         || 'Choose an episode, or match this series with TMDB to add descriptions and artwork.'
       $('#adultSeriesSheetPoster').replaceChildren(adultSeriesArtwork(
@@ -1505,6 +1630,45 @@ function remoteTime(value) {
           favourite.setAttribute('aria-label', current.favourite
             ? 'Remove series from favourites' : 'Add series to favourites')
         }).catch(showError)
+      const watching = $('#adultSeriesWatching')
+      const tmdbId = Number(current.metadata?.tmdb_id || 0)
+      watching.classList.toggle('hidden', !tmdbId)
+      if (tmdbId) {
+        const trackingTitle = {
+          media_type: 'tv', tmdb_id: tmdbId, title: current.title,
+          year: current.metadata?.year || '', overview: current.metadata?.overview || '',
+        }
+        const syncWatching = state => {
+          trackingTitle.viewing = state || {}
+          watching.classList.toggle('active', state?.series_watching === true)
+          watching.setAttribute('aria-pressed', String(state?.series_watching === true))
+          watching.querySelector('strong').textContent = state?.series_watching
+            ? 'Watching this series' : 'Start watching series'
+          watching.querySelector('small').textContent = state?.series_watching
+            ? 'Its next episode is kept in Up Next' : 'Keep the show and its next episode in Up Next'
+        }
+        syncWatching({})
+        watching.disabled = true
+        watching.onclick = async () => {
+          if (watching.disabled) return
+          watching.disabled = true
+          try {
+            const state = await updateAdultViewing(trackingTitle, 'watching', {
+              enabled: !trackingTitle.viewing?.series_watching,
+              mode: current.episode_count > 0 && current.watched_count >= current.episode_count
+                ? 'rewatch' : 'first_watch',
+            })
+            syncWatching(state)
+            notice(state.series_watching
+              ? 'Series added to Watching and Up Next.' : 'Series removed from Watching.')
+          } catch (error) { showError(error) } finally { watching.disabled = false }
+        }
+        api('/api/adult/viewing').then(result => {
+          if (selectedAdultSeries?.series?.id !== current.id) return
+          const item = (result.items || []).find(value => value.key === `tv:${tmdbId}`)
+          syncWatching(item || {})
+        }).catch(() => syncWatching({})).finally(() => { watching.disabled = false })
+      }
       const root = $('#adultSeriesEpisodes')
       root.innerHTML = ''
       const groups = new Map()
@@ -1514,9 +1678,10 @@ function remoteTime(value) {
       })
       $('#adultSeriesSeasonCount').textContent = `${groups.size} series`
       ;[...groups.entries()].sort((left, right) => left[0] - right[0]).forEach(([season, episodes]) => {
-        const card = document.createElement('button')
-        card.type = 'button'
+        const card = document.createElement('article')
         card.className = 'adult-season-card'
+        card.tabIndex = 0
+        card.setAttribute('role', 'button')
         const art = adultSeasonArtwork(current, episodes)
         const shade = document.createElement('span')
         shade.className = 'adult-season-card-shade'
@@ -1533,11 +1698,41 @@ function remoteTime(value) {
         const progress = document.createElement('span')
         progress.className = 'adult-season-card-progress'
         progress.style.setProperty('--season-progress', `${episodes.length ? watched / episodes.length * 100 : 0}%`)
-        card.append(art, shade, copy, progress, librarySignalIcon('signal-chevron-right', 'icon adult-season-card-chevron'))
-        card.onclick = () => {
+        const openSeason = () => {
           closeAdultSeriesSheet(false)
           openAdultSeasonSheet(current, season, () => openAdultSeriesSheet(current, returnTo))
         }
+        card.onclick = openSeason
+        card.onkeydown = event => {
+          if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openSeason() }
+        }
+        const status = document.createElement('button')
+        status.type = 'button'
+        wireAdultSeasonBulkButton(status, `Series ${season}`, watched, episodes.length,
+          async targetWatched => {
+            const result = await api('/api/adult/series/watched', { method: 'POST', body: JSON.stringify({
+              series: current.id, scope: 'season', season, watched: targetWatched,
+            }) })
+            episodes.forEach(episode => {
+              const saved = (result.episodes || []).find(value => value.path === episode.path)
+              episode.watched = targetWatched
+              episode.remote_position = Number(saved?.remote_position || 0)
+              episode.remote_duration = Number(saved?.remote_duration || episode.remote_duration || 0)
+              episode.remote_last_watched = Number(saved?.remote_last_watched || 0)
+            })
+            const count = targetWatched ? episodes.length : 0
+            detail.textContent = count ? `${count} watched · Open series` : 'Open series'
+            progress.style.setProperty('--season-progress', `${targetWatched ? 100 : 0}%`)
+            syncSeriesHeader()
+            if (targetWatched) await finishLocalSeriesIfComplete(current)
+            renderAdultWatch()
+            renderHomeLibrary()
+            notice(targetWatched ? `Series ${season} marked watched.`
+              : `Series ${season} marked unwatched. Saved resume points were restored.`)
+            return count
+          }, true)
+        card.append(art, shade, copy, progress,
+          librarySignalIcon('signal-chevron-right', 'icon adult-season-card-chevron'), status)
         root.append(card)
       })
       const nextSeries = Math.max(0, ...[...groups.keys()].map(Number)) + 1

@@ -787,14 +787,24 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertEqual(saved["viewing"]["manual_state"], "part_watched")
         saved = self.fixture.library.adult_viewing_update(
             title | {"action": "watched"})
-        self.assertTrue(saved["viewing"]["watchlisted"])
+        self.assertFalse(saved["viewing"]["watchlisted"])
         self.assertFalse(saved["viewing"]["up_next"])
         self.assertEqual(len(saved["viewing"]["history"]), 1)
+        with self.assertRaisesRegex(ValueError, "already seen"):
+            self.fixture.library.adult_viewing_update(
+                title | {"action": "watchlist", "enabled": True})
+        saved = self.fixture.library.adult_viewing_update(
+            title | {"action": "rewatch", "enabled": True})
+        self.assertTrue(saved["viewing"]["rewatch"])
+        saved = self.fixture.library.adult_viewing_update(
+            title | {"action": "up_next", "enabled": True})
+        self.assertTrue(saved["viewing"]["up_next"])
         saved = self.fixture.library.adult_viewing_update(
             title | {"action": "not_watched"})
-        self.assertTrue(saved["viewing"]["watchlisted"])
-        self.assertFalse(saved["viewing"]["up_next"])
-        self.assertEqual(len(saved["viewing"]["history"]), 1)
+        self.assertFalse(saved["viewing"]["watchlisted"])
+        self.assertTrue(saved["viewing"]["up_next"])
+        self.assertTrue(saved["viewing"]["rewatch"])
+        self.assertEqual(len(saved["viewing"]["history"]), 0)
 
     def test_watchmode_links_are_validated_cached_and_expire_before_thirty_days(self) -> None:
         self.fixture.library.watchmode_request = mock.Mock(return_value=[
@@ -849,6 +859,21 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertEqual(season["episodes"][0]["overview"],
                          "Rory starts a new school.")
 
+        saved = self.fixture.library.adult_viewing_update({
+            "media_type": "tv", "tmdb_id": 4586, "title": "Gilmore Girls",
+            "action": "season_watched", "season": 1, "episode_count": 2,
+            "watched": True,
+        })
+        self.assertTrue(saved["viewing"]["episodes"]["1:1"]["watched"])
+        self.assertTrue(saved["viewing"]["episodes"]["1:2"]["watched"])
+        saved = self.fixture.library.adult_viewing_update({
+            "media_type": "tv", "tmdb_id": 4586, "title": "Gilmore Girls",
+            "action": "watching", "enabled": True, "mode": "rewatch",
+        })
+        self.assertTrue(saved["viewing"]["series_watching"])
+        self.assertTrue(saved["viewing"]["up_next"])
+        self.assertEqual(saved["viewing"]["series_watching_mode"], "rewatch")
+
     def test_tv_title_detail_includes_season_artwork_and_watched_counts(self) -> None:
         store = self.fixture.library.adult_viewing_store()
         store["titles"]["tv:4586"] = {
@@ -875,6 +900,7 @@ class LibraryUnitTests(unittest.TestCase):
         detail = self.fixture.library.adult_title_detail("tv", 4586)
         self.assertEqual(detail["seasons"][0]["poster_path"], "/season-one.jpg")
         self.assertEqual(detail["seasons"][0]["watched_count"], 1)
+        self.assertEqual(detail["next_episode"]["episode"], 1)
 
     def test_adult_viewing_portal_is_modular_private_and_mobile_safe(self) -> None:
         self.assertIn('id="adultMyViewing"', PORTAL_SOURCE)
@@ -884,8 +910,14 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn('class="adult-series-seasons"', PORTAL_SOURCE)
         self.assertIn("Search your library and beyond", PORTAL_SOURCE)
         self.assertIn("adult-search-mode", PORTAL_SOURCE)
-        self.assertIn("Keep it saved, even after watching", PORTAL_SOURCE)
-        self.assertIn("Removes it from Up Next, not Watchlist", PORTAL_SOURCE)
+        self.assertIn('data-viewing-tab="rewatch"', PORTAL_SOURCE)
+        self.assertIn("Use Rewatch for something you have seen", PORTAL_SOURCE)
+        self.assertIn("Moves it out of Watchlist and Up Next", PORTAL_SOURCE)
+        self.assertIn("adultTitleOpenRevision", PORTAL_SOURCE)
+        self.assertIn("wireAdultSeasonBulkButton", PORTAL_SOURCE)
+        self.assertIn('id="adultTitleNextEpisode"', PORTAL_SOURCE)
+        self.assertNotIn("adultWatchConfirmSheet", PORTAL_SOURCE)
+        self.assertNotIn("Did you watch", PORTAL_SOURCE)
         self.assertIn("Streaming availability data from TMDB and JustWatch", PORTAL_SOURCE)
         self.assertIn("window.location.assign(destination)", PORTAL_SOURCE)
         self.assertIn("episode_watched", PORTAL_SOURCE)
@@ -916,6 +948,8 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("grid-template-columns: minmax(0, 1fr)", viewing_css)
         self.assertIn("@media (max-width: 640px)", viewing_css)
         self.assertIn("min-height: 0", viewing_css)
+        self.assertIn("overflow-x: hidden", viewing_css)
+        self.assertIn("grid-template-columns: 70px minmax(0, 1fr) 76px", viewing_css)
         self.assertNotIn("!important", viewing_css)
 
     def test_lg_remote_is_additional_mobile_control_surface(self) -> None:
@@ -1677,6 +1711,14 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertEqual(refreshed["episodes"][0]["remote_position"], 300.0)
         self.assertEqual(refreshed["episodes"][0]["remote_last_watched"], 1234.0)
 
+        bulk = self.fixture.library.set_adult_season_watched(series_id, 1, True)
+        self.assertEqual(bulk["episodes_updated"], 1)
+        self.assertTrue(bulk["episodes"][0]["watched"])
+        bulk = self.fixture.library.set_adult_season_watched(series_id, 1, False)
+        self.assertFalse(bulk["episodes"][0]["watched"])
+        self.assertEqual(bulk["episodes"][0]["remote_position"], 300.0)
+        self.assertEqual(bulk["episodes"][0]["remote_last_watched"], 1234.0)
+
     def test_adult_series_restart_clears_one_season_or_complete_show(self) -> None:
         series_id = self.fixture.library.create_adult_series("Silicon Valley")
         root = self.fixture.library.adult_series_root / series_id
@@ -1745,7 +1787,7 @@ class LibraryUnitTests(unittest.TestCase):
     def test_adult_series_portal_uses_scoped_series_and_episode_workflow(self) -> None:
         self.assertIn('id="adultSeasonSheet"', PORTAL_SOURCE)
         self.assertIn('class="adult-series-seasons"', PORTAL_SOURCE)
-        self.assertIn("function openAdultSeasonSheet(series, season, returnTo = null)", PORTAL_SOURCE)
+        self.assertIn("function openAdultSeasonSheet(series, season, returnTo = null, targetPath = '')", PORTAL_SOURCE)
         self.assertIn("openAdultSeriesUpload(current, number)", PORTAL_SOURCE)
         self.assertIn("const season = Number(target?.season)", PORTAL_SOURCE)
         self.assertIn("Start Series ${nextSeries}", PORTAL_SOURCE)

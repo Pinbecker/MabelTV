@@ -7,6 +7,8 @@ let adultViewingTab = 'watchlist'
 let adultViewingFilter = 'all'
 let selectedAdultTitle = null
 let pendingNetflixLaunch = null
+let adultTitleOpenRevision = 0
+let adultSeasonOpenRevision = 0
 
 function adultPosterUrl(path, size = 'w342') {
   return path ? `https://image.tmdb.org/t/p/${size}${path}` : ''
@@ -172,7 +174,7 @@ async function updateAdultViewing(title, action, extra = {}) {
     method: 'POST', body: JSON.stringify(adultTitlePayload(title, action, extra)),
   })
   title.viewing = result.viewing
-  await loadAdultViewing(false)
+  await loadAdultViewing()
   return result.viewing
 }
 
@@ -322,13 +324,15 @@ function renderAdultProviderLinks(detail, result) {
   if (!root.children.length) root.innerHTML = '<p>No direct streaming destinations were found in Great Britain.</p>'
 }
 
-async function loadAdultProviders(detail, refresh = false) {
+async function loadAdultProviders(detail, refresh = false, revision = adultTitleOpenRevision) {
   const root = $('#adultProviderList')
   root.innerHTML = '<p>Checking streaming destinations…</p>'
   try {
     const result = await api(`/api/adult/providers?media_type=${detail.media_type}&tmdb_id=${detail.tmdb_id}${refresh ? '&refresh=1' : ''}`)
+    if (revision !== adultTitleOpenRevision || selectedAdultTitle?.key !== detail.key) return
     renderAdultProviderLinks(detail, result)
   } catch (error) {
+    if (revision !== adultTitleOpenRevision || selectedAdultTitle?.key !== detail.key) return
     renderAdultProviderLinks(detail, { sources: [] })
     const message = document.createElement('p')
     message.textContent = error.message
@@ -336,10 +340,18 @@ async function loadAdultProviders(detail, refresh = false) {
   }
 }
 
+function adultTitleHasBeenSeen(state = {}, detail = {}) {
+  return state.manual_state === 'watched' || Boolean((state.history || []).length)
+    || Object.values(state.episodes || {}).some(episode => episode?.watched === true)
+    || Number(detail.local?.watched_count || 0) > 0
+}
+
 function syncAdultTitleButtons(detail) {
   const state = detail.viewing || {}
   const watchlist = $('#adultTitleWatchlist')
+  const rewatch = $('#adultTitleRewatch')
   const upNext = $('#adultTitleUpNext')
+  const watching = $('#adultTitleWatching')
   const watched = $('#adultTitleWatched')
   const sync = (button, active, title, description) => {
     button.classList.toggle('active', active)
@@ -347,19 +359,31 @@ function syncAdultTitleButtons(detail) {
     button.querySelector('strong').textContent = title
     button.querySelector('small').textContent = description
   }
+  const hasSeen = adultTitleHasBeenSeen(state, detail)
   sync(watchlist, state.watchlisted === true,
-    state.watchlisted ? 'In your Watchlist' : 'Add to Watchlist',
-    state.watchlisted ? 'Stays here until you remove it' : 'Keep it saved, even after watching')
+    state.watchlisted ? 'In your Watchlist' : hasSeen ? 'Already watched' : 'Add to Watchlist',
+    state.watchlisted ? 'Unseen and saved for later'
+      : hasSeen ? 'Use Rewatch for something you have seen' : 'Keep this unseen title saved for later')
+  watchlist.classList.toggle('is-unavailable', hasSeen && !state.watchlisted)
+  sync(rewatch, state.rewatch === true,
+    state.rewatch ? 'In your Rewatch list' : 'Add to Rewatch',
+    state.rewatch ? 'Saved to enjoy again' : hasSeen
+      ? 'Remember this for another watch' : 'Available once you mark it watched')
+  rewatch.classList.toggle('is-unavailable', !hasSeen && !state.rewatch)
   sync(upNext, state.up_next === true,
     state.up_next ? 'In Up Next' : 'Add to Up Next',
     state.up_next ? 'Queued as a priority' : 'Place it in your ordered queue')
   const titleWatched = state.manual_state === 'watched'
+  watching.classList.toggle('hidden', detail.media_type !== 'tv')
+  if (detail.media_type === 'tv') {
+    sync(watching, state.series_watching === true,
+      state.series_watching ? 'Watching this series' : 'Start watching series',
+      state.series_watching ? 'Its next episode stays in Up Next' : 'Keep the show and its next episode in Up Next')
+  }
+  watched.classList.toggle('hidden', detail.media_type === 'tv')
   sync(watched, titleWatched,
-    titleWatched ? `Mark ${detail.media_type === 'tv' ? 'show ' : ''}unwatched`
-      : `Mark ${detail.media_type === 'tv' ? 'show ' : ''}watched`,
-    detail.media_type === 'tv'
-      ? 'Show history and episode marks are tracked separately'
-      : titleWatched ? 'Watchlist and history are kept' : 'Removes it from Up Next, not Watchlist')
+    titleWatched ? 'Correct watched status' : 'Mark watched',
+    titleWatched ? 'Keeps this in your watched history' : 'Moves it out of Watchlist and Up Next')
 }
 
 function adultSeasonSummary(season, watched = Number(season.watched_count || 0)) {
@@ -395,11 +419,76 @@ function syncAdultStreamingSeasonCard(card, season) {
     ? `${watched} watched · Open series` : 'Open series'
   card.querySelector('.adult-season-card-progress').style.setProperty(
     '--season-progress', `${total ? watched / total * 100 : 0}%`)
+  card.querySelector('.adult-season-status')?.syncSeasonStatus(watched, total)
+}
+
+function deriveAdultTitleNextEpisode(detail) {
+  if (detail.media_type !== 'tv') return null
+  if (detail.viewing?.series_watching === true
+      && detail.viewing?.series_watching_mode === 'rewatch') {
+    const first = [...(detail.seasons || [])].sort((a, b) => a.number - b.number)[0]
+    return first ? { season: first.number, episode: 1, title: '', rewatch: true } : null
+  }
+  if (detail.local?.next_episode) {
+    const local = detail.local.next_episode
+    return {
+      season: Number(local.season || 0), episode: Number(local.episode || 0),
+      title: local.display_name || '', source: 'local', rewatch: false,
+    }
+  }
+  const states = detail.viewing?.episodes || {}
+  for (const season of [...(detail.seasons || [])].sort((a, b) => a.number - b.number)) {
+    for (let episode = 1; episode <= Number(season.episodes || 0); episode += 1) {
+      if (states[`${season.number}:${episode}`]?.watched !== true) {
+        return { season: season.number, episode, title: '', rewatch: false }
+      }
+    }
+  }
+  return null
+}
+
+function syncAdultTitleNextEpisode(detail) {
+  const button = $('#adultTitleNextEpisode')
+  const next = deriveAdultTitleNextEpisode(detail)
+  detail.next_episode = next
+  button.classList.toggle('hidden', !next)
+  if (!next) return
+  button.querySelector('small').textContent = next.rewatch
+    ? 'Rewatch from the beginning' : 'Next episode'
+  button.querySelector('strong').textContent = `Series ${next.season}, Episode ${next.episode}${next.title ? ` · ${next.title}` : ''}`
+  button.onclick = () => {
+    if (next.source === 'local') {
+      const series = (library?.adult_series || []).find(value => value.id === detail.local?.series)
+      if (series) {
+        portalSheets.dismiss($('#adultTitleSheet'))
+        openAdultSeasonSheet(series, next.season, () => openAdultTitle(detail),
+          detail.local.next_episode?.path || '')
+      }
+      return
+    }
+    const season = (detail.seasons || []).find(value => value.number === next.season)
+    const card = $(`#adultTitleSeasons [data-season="${next.season}"]`)
+    if (season && card) openAdultTitleSeason(detail, season, card, next.episode)
+  }
+}
+
+function adultTitleAllEpisodesWatched(detail) {
+  const seasons = detail.seasons || []
+  return seasons.length > 0 && seasons.every(season => Number(season.episodes || 0) > 0
+    && Number(season.watched_count || 0) >= Number(season.episodes || 0))
+}
+
+async function finishAdultTitleIfComplete(detail) {
+  if (!adultTitleAllEpisodesWatched(detail)
+      || detail.viewing?.manual_state === 'watched') return
+  detail.viewing = await updateAdultViewing(detail, 'watched')
+  syncAdultTitleButtons(detail)
 }
 
 function adultStreamingEpisodeRow(detail, season, result, episode, card) {
   const row = document.createElement('article')
   row.className = `adult-series-episode adult-streaming-episode${episode.watched ? ' is-watched' : ''}`
+  row.dataset.episode = String(episode.number)
   const artwork = document.createElement('span')
   artwork.className = 'adult-series-episode-art'
   if (episode.still_path) {
@@ -444,7 +533,10 @@ function adultStreamingEpisodeRow(detail, season, result, episode, card) {
       season.watched_count = result.episodes.filter(value => value.watched).length
       sync()
       syncAdultStreamingSeasonCard(card, season)
+      $('#adultTitleSeasonWatched').syncSeasonStatus(season.watched_count, result.episodes.length)
       $('#adultTitleSeasonMeta').textContent = `${result.episodes.length} episode${result.episodes.length === 1 ? '' : 's'} · ${season.watched_count} watched`
+      if (next) await finishAdultTitleIfComplete(detail)
+      syncAdultTitleNextEpisode(detail)
       notice(next ? 'Episode marked watched.' : 'Episode marked unwatched.')
     } catch (error) {
       showError(error)
@@ -456,7 +548,8 @@ function adultStreamingEpisodeRow(detail, season, result, episode, card) {
   return row
 }
 
-async function openAdultTitleSeason(detail, season, card) {
+async function openAdultTitleSeason(detail, season, card, targetEpisode = 0) {
+  const revision = ++adultSeasonOpenRevision
   const titleSheet = $('#adultTitleSheet')
   const seasonSheet = $('#adultTitleSeasonSheet')
   portalSheets.dismiss(titleSheet)
@@ -468,6 +561,10 @@ async function openAdultTitleSeason(detail, season, card) {
   $('#adultTitleSeasonOverview').classList.add('hidden')
   $('#adultTitleSeasonArtwork').replaceChildren(adultStreamingArtwork(
     detail, season, null, 'adult-season-sheet-artwork'))
+  const bulk = $('#adultTitleSeasonWatched')
+  bulk.disabled = true
+  bulk.replaceChildren(librarySignalIcon('signal-check'),
+    Object.assign(document.createElement('span'), { textContent: 'Loading series status…' }))
   const root = $('#adultTitleSeasonEpisodes')
   root.innerHTML = '<div class="adult-series-empty"><strong>Loading episodes…</strong><span>Fetching episode details and artwork.</span></div>'
   portalSheets.open(seasonSheet, {
@@ -478,6 +575,7 @@ async function openAdultTitleSeason(detail, season, card) {
   })
   try {
     const result = await api(`/api/adult/season?tmdb_id=${detail.tmdb_id}&season=${season.number}`)
+    if (revision !== adultSeasonOpenRevision) return
     season.watched_count = result.episodes.filter(episode => episode.watched).length
     $('#adultTitleSeasonMeta').textContent = `${result.episodes.length} episode${result.episodes.length === 1 ? '' : 's'} · ${season.watched_count} watched`
     $('#adultTitleSeasonEpisodeCount').textContent = `${result.episodes.length} total`
@@ -489,8 +587,32 @@ async function openAdultTitleSeason(detail, season, card) {
     root.replaceChildren(...result.episodes.map(episode =>
       adultStreamingEpisodeRow(detail, season, result, episode, card)))
     if (!result.episodes.length) root.innerHTML = '<div class="adult-series-empty"><strong>No episodes found</strong><span>TMDB has no episode details for this series yet.</span></div>'
+    wireAdultSeasonBulkButton($('#adultTitleSeasonWatched'), `Series ${season.number}`,
+      season.watched_count, result.episodes.length, async targetWatched => {
+        detail.viewing = await updateAdultViewing(detail, 'season_watched', {
+          season: season.number, episode_count: result.episodes.length,
+          watched: targetWatched,
+        })
+        result.episodes.forEach(episode => { episode.watched = targetWatched })
+        season.watched_count = targetWatched ? result.episodes.length : 0
+        if (targetWatched) await finishAdultTitleIfComplete(detail)
+        syncAdultStreamingSeasonCard(card, season)
+        syncAdultTitleNextEpisode(detail)
+        portalSheets.close(seasonSheet, { restore: false })
+        openAdultTitleSeason(detail, season, card, targetEpisode)
+        notice(targetWatched ? `Series ${season.number} marked watched.`
+          : `Series ${season.number} marked unwatched.`)
+        return season.watched_count
+      })
+    bulk.disabled = false
     syncAdultStreamingSeasonCard(card, season)
+    if (targetEpisode) {
+      const target = root.querySelector(`[data-episode="${targetEpisode}"]`)
+      target?.classList.add('is-next')
+      requestAnimationFrame(() => target?.scrollIntoView({ block: 'center', behavior: 'smooth' }))
+    }
   } catch (error) {
+    if (revision !== adultSeasonOpenRevision) return
     root.innerHTML = `<div class="adult-series-empty"><strong>Episodes unavailable</strong><span>${escapeHtml(error.message)}</span></div>`
   }
 }
@@ -504,9 +626,11 @@ function renderAdultTitleSeasons(detail) {
   if (!visible) return
   $('#adultTitleSeasonCount').textContent = `${detail.seasons.length} series`
   ;(detail.seasons || []).forEach(season => {
-    const card = document.createElement('button')
-    card.type = 'button'
+    const card = document.createElement('article')
     card.className = 'adult-season-card adult-streaming-season-card'
+    card.dataset.season = String(season.number)
+    card.tabIndex = 0
+    card.setAttribute('role', 'button')
     const art = adultStreamingArtwork(detail, season)
     const shade = document.createElement('span')
     shade.className = 'adult-season-card-shade'
@@ -520,12 +644,33 @@ function renderAdultTitleSeasons(detail) {
     copy.append(kicker, heading, summary)
     const progress = document.createElement('span')
     progress.className = 'adult-season-card-progress'
+    const openSeason = () => openAdultTitleSeason(detail, season, card)
+    card.onclick = openSeason
+    card.onkeydown = event => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openSeason() }
+    }
+    const status = document.createElement('button')
+    status.type = 'button'
+    wireAdultSeasonBulkButton(status, `Series ${season.number}`,
+      season.watched_count, season.episodes, async targetWatched => {
+        detail.viewing = await updateAdultViewing(detail, 'season_watched', {
+          season: season.number, episode_count: season.episodes, watched: targetWatched,
+        })
+        season.watched_count = targetWatched ? Number(season.episodes || 0) : 0
+        if (targetWatched) await finishAdultTitleIfComplete(detail)
+        syncAdultStreamingSeasonCard(card, season)
+        syncAdultTitleNextEpisode(detail)
+        renderAdultTitleDetail(detail, false)
+        notice(targetWatched ? `Series ${season.number} marked watched.`
+          : `Series ${season.number} marked unwatched.`)
+        return season.watched_count
+      }, true)
     card.append(art, shade, copy, progress,
-      librarySignalIcon('signal-chevron-right', 'icon adult-season-card-chevron'))
+      librarySignalIcon('signal-chevron-right', 'icon adult-season-card-chevron'), status)
     syncAdultStreamingSeasonCard(card, season)
-    card.onclick = () => openAdultTitleSeason(detail, season, card)
     seasons.append(card)
   })
+  syncAdultTitleNextEpisode(detail)
 }
 
 function adultTitleIntentAction(detail, button, request) {
@@ -536,12 +681,17 @@ function adultTitleIntentAction(detail, button, request) {
       const { action, extra = {} } = request()
       detail.viewing = await updateAdultViewing(detail, action, extra)
       syncAdultTitleButtons(detail)
+      syncAdultTitleNextEpisode(detail)
       if (action === 'watchlist') notice(detail.viewing.watchlisted
-        ? 'Added to Watchlist. It stays there until you remove it.' : 'Removed from Watchlist.')
+        ? 'Added to Watchlist.' : 'Removed from Watchlist.')
+      else if (action === 'rewatch') notice(detail.viewing.rewatch
+        ? 'Added to Rewatch.' : 'Removed from Rewatch.')
       else if (action === 'up_next') notice(detail.viewing.up_next
         ? 'Added to Up Next.' : 'Removed from Up Next.')
-      else if (action === 'watched') notice('Marked watched. It was removed from Up Next but kept in your Watchlist.')
-      else if (action === 'not_watched') notice('Marked unwatched. Watchlist and viewing history were kept.')
+      else if (action === 'watching') notice(detail.viewing.series_watching
+        ? 'Series added to Watching and Up Next.' : 'Series removed from Watching.')
+      else if (action === 'watched') notice('Marked watched and removed from Watchlist and Up Next.')
+      else if (action === 'not_watched') notice('Corrected. Its watched-history record is retained.')
     } catch (error) {
       showError(error)
     } finally {
@@ -550,9 +700,11 @@ function adultTitleIntentAction(detail, button, request) {
   }
 }
 
-function renderAdultTitleDetail(detail, refreshProviders = true) {
+function renderAdultTitleDetail(detail, refreshProviders = true,
+                                revision = adultTitleOpenRevision) {
   selectedAdultTitle = detail
   const sheet = $('#adultTitleSheet')
+  sheet.classList.remove('is-loading-title')
   const isSeries = detail.media_type === 'tv'
   sheet.classList.toggle('is-series', isSeries)
   $('#adultTitleName').textContent = detail.title
@@ -588,37 +740,90 @@ function renderAdultTitleDetail(detail, refreshProviders = true) {
     ? 'Available locally on MabelTV — this option is always shown first.' : ''
   syncAdultTitleButtons(detail)
   const watchlist = $('#adultTitleWatchlist')
+  const rewatch = $('#adultTitleRewatch')
   const upNext = $('#adultTitleUpNext')
+  const watching = $('#adultTitleWatching')
   const watched = $('#adultTitleWatched')
-  watchlist.onclick = adultTitleIntentAction(detail, watchlist, () => ({
-    action: 'watchlist', extra: { enabled: !detail.viewing?.watchlisted },
-  }))
+  watchlist.onclick = () => {
+    if (adultTitleHasBeenSeen(detail.viewing, detail) && !detail.viewing?.watchlisted) {
+      notice('You have already seen this. Add it to Rewatch instead.', true)
+      return
+    }
+    adultTitleIntentAction(detail, watchlist, () => ({
+      action: 'watchlist', extra: { enabled: !detail.viewing?.watchlisted },
+    }))()
+  }
+  rewatch.onclick = () => {
+    if (!adultTitleHasBeenSeen(detail.viewing, detail) && !detail.viewing?.rewatch) {
+      notice('Mark this watched before adding it to Rewatch.', true)
+      return
+    }
+    adultTitleIntentAction(detail, rewatch, () => ({
+      action: 'rewatch', extra: { enabled: !detail.viewing?.rewatch },
+    }))()
+  }
   upNext.onclick = adultTitleIntentAction(detail, upNext, () => ({
     action: 'up_next', extra: { enabled: !detail.viewing?.up_next },
+  }))
+  watching.onclick = adultTitleIntentAction(detail, watching, () => ({
+    action: 'watching', extra: {
+      enabled: !detail.viewing?.series_watching,
+      mode: (detail.seasons || []).length && (detail.seasons || []).every(season =>
+        Number(season.watched_count || 0) >= Number(season.episodes || 0))
+        ? 'rewatch' : 'first_watch',
+    },
   }))
   watched.onclick = adultTitleIntentAction(detail, watched, () => ({
     action: detail.viewing?.manual_state === 'watched' ? 'not_watched' : 'watched',
   }))
-  $('#adultProviderRefresh').onclick = () => loadAdultProviders(detail, true)
+  $('#adultProviderRefresh').onclick = () => loadAdultProviders(detail, true, revision)
   if (refreshProviders) {
     $('#adultProviderList').innerHTML = '<p>Checking streaming destinations…</p>'
-    loadAdultProviders(detail)
+    loadAdultProviders(detail, false, revision)
   }
 }
 
-async function openAdultTitle(title) {
+function prepareAdultTitleSheet(title) {
   const sheet = $('#adultTitleSheet')
+  const panel = sheet.querySelector('.watch-film-panel')
   selectedAdultTitle = title
+  sheet.classList.add('is-loading-title')
+  panel.scrollTop = 0
+  panel.scrollLeft = 0
   sheet.classList.toggle('is-series', title.media_type === 'tv')
-  portalSheets.open(sheet, { focus: sheet.querySelector('.watch-film-panel') })
-  $('#adultTitleName').textContent = title.title
+  $('#adultTitleName').textContent = title.title || 'Loading title…'
+  $('#adultTitleEyebrow').textContent = title.media_type === 'tv'
+    ? 'Streaming TV series' : 'Film'
   $('#adultTitleOverview').textContent = 'Loading title details…'
+  $('#adultTitleMeta').replaceChildren()
+  $('#adultTitlePoster').replaceChildren()
+  $('#adultTitleBackdrop').style.setProperty('--watch-film-art',
+    'linear-gradient(135deg,#27252c,#101014)')
   $('#adultTitleSeriesLibrary').classList.add('hidden')
+  $('#adultTitleSeasons').replaceChildren()
+  $('#adultTitleNextEpisode').classList.add('hidden')
+  $('#adultTitleLocal').classList.add('hidden')
+  $('#adultTitleLocal').textContent = ''
   $('#adultProviderList').innerHTML = '<p>Loading…</p>'
+  ;['#adultTitleWatchlist', '#adultTitleRewatch', '#adultTitleUpNext',
+    '#adultTitleWatching', '#adultTitleWatched'].forEach(selector => {
+    const button = $(selector)
+    button.classList.remove('active', 'is-unavailable')
+    button.setAttribute('aria-pressed', 'false')
+  })
+  return sheet
+}
+
+async function openAdultTitle(title) {
+  const revision = ++adultTitleOpenRevision
+  const sheet = prepareAdultTitleSheet(title)
+  portalSheets.open(sheet, { focus: sheet.querySelector('.watch-film-panel') })
   try {
     const detail = await api(`/api/adult/title?media_type=${title.media_type}&tmdb_id=${title.tmdb_id}`)
-    renderAdultTitleDetail(detail)
+    if (revision !== adultTitleOpenRevision) return
+    renderAdultTitleDetail(detail, true, revision)
   } catch (error) {
+    if (revision !== adultTitleOpenRevision) return
     $('#adultTitleOverview').textContent = error.message
   }
 }
@@ -630,8 +835,9 @@ function adultViewingItems() {
       .filter(episode => episode?.watched === true).length
     if (adultViewingTab === 'up-next' && !item.up_next) return false
     if (adultViewingTab === 'watchlist' && !item.watchlisted) return false
+    if (adultViewingTab === 'rewatch' && !item.rewatch) return false
     if (adultViewingTab === 'watching' && item.manual_state !== 'part_watched'
-        && !item.local_progress && !watchedEpisodes) return false
+        && !item.local_progress?.position && item.series_watching !== true) return false
     if (adultViewingTab === 'history' && item.manual_state !== 'watched'
         && !(item.history || []).length && !watchedEpisodes) return false
     if (adultViewingFilter === 'movie' || adultViewingFilter === 'tv') return item.media_type === adultViewingFilter
@@ -646,7 +852,13 @@ function adultViewingItems() {
 }
 
 function renderAdultViewing() {
-  const labels = { 'up-next': ['Your chosen order', 'Up Next'], watchlist: ['Saved for later', 'Watchlist'], watching: ['In progress', 'Watching'], history: ['Previously watched', 'History'] }
+  const labels = {
+    'up-next': ['Your chosen order', 'Up Next'],
+    watchlist: ['Unseen and saved for later', 'Watchlist'],
+    rewatch: ['Worth enjoying again', 'Rewatch'],
+    watching: ['In progress', 'Watching'],
+    history: ['Everything you have seen', 'Watched'],
+  }
   const [kicker, heading] = labels[adultViewingTab]
   $('#adultViewingKicker').textContent = kicker
   $('#adultViewingHeading').textContent = heading
@@ -662,9 +874,13 @@ function renderAdultViewing() {
     const title = document.createElement('strong'); title.textContent = item.title || 'Untitled'
     const watchedEpisodes = Object.values(item.episodes || {})
       .filter(episode => episode?.watched === true).length
+    const localNext = item.local?.next_episode
+    const seriesStatus = item.media_type === 'tv' && item.series_watching && localNext
+      ? `Next · S${String(localNext.season).padStart(2, '0')} E${String(localNext.episode).padStart(2, '0')}`
+      : item.media_type === 'tv' ? watchedEpisodes
+        ? `${watchedEpisodes} episode${watchedEpisodes === 1 ? '' : 's'} watched` : 'TV series' : 'Film'
     const meta = document.createElement('span'); meta.textContent = [item.year,
-      item.media_type === 'tv' ? watchedEpisodes
-        ? `${watchedEpisodes} episode${watchedEpisodes === 1 ? '' : 's'} watched` : 'TV series' : 'Film',
+      seriesStatus,
       item.on_mabeltv ? 'On MabelTV' : 'Streaming'].filter(Boolean).join(' · ')
     copy.append(title, meta)
     const actions = document.createElement('span'); actions.className = 'adult-viewing-row-actions'
@@ -683,18 +899,9 @@ function renderAdultViewing() {
   if (!values.length) root.innerHTML = `<div class="watch-empty"><strong>Nothing in ${heading} yet</strong><br>Add titles from search and they will appear here.</div>`
 }
 
-async function loadAdultViewing(showConfirmation = true) {
+async function loadAdultViewing() {
   adultViewingData = await api('/api/adult/viewing')
   renderAdultViewing()
-  if (!showConfirmation) return
-  const pending = (adultViewingData.items || []).filter(item => item.pending_confirmation)
-    .sort((a, b) => Number(b.pending_confirmation.launched || 0) - Number(a.pending_confirmation.launched || 0))[0]
-  if (pending) {
-    $('#adultWatchConfirmTitle').textContent = `Did you watch ${pending.title || 'it'}?`
-    $('#adultWatchConfirmProvider').textContent = `You opened ${pending.pending_confirmation.provider}. Update your private MabelTV history?`
-    $('#adultWatchConfirmSheet').dataset.titleKey = pending.key
-    portalSheets.open($('#adultWatchConfirmSheet'))
-  }
 }
 
 $('#watchSearch')?.addEventListener('input', scheduleAdultDiscovery)
@@ -709,24 +916,26 @@ $('#watchSearch')?.addEventListener('keydown', event => {
 $('#watchSearchClear')?.addEventListener('click', () => setTimeout(() => { searchAdultDiscovery(''); syncAdultSearchMode(true) }, 0))
 $('#adultMyViewing')?.addEventListener('click', () => { history.pushState({ adultViewing: true }, '', '#adult-viewing'); openView('adult-viewing'); loadAdultViewing().catch(showError) })
 $('#adultViewingBack')?.addEventListener('click', () => { history.back(); setTimeout(() => { if (location.hash === '#adult-viewing') openView('watch') }, 80) })
-$('#adultTitleClose')?.addEventListener('click', () => portalSheets.dismiss($('#adultTitleSheet')))
-$('#adultTitleSheet')?.addEventListener('click', event => { if (event.target === $('#adultTitleSheet')) portalSheets.dismiss($('#adultTitleSheet')) })
-$('#adultTitleSeasonClose')?.addEventListener('click', () => portalSheets.close($('#adultTitleSeasonSheet')))
-$('#adultTitleSeasonSheet')?.addEventListener('click', event => { if (event.target === $('#adultTitleSeasonSheet')) portalSheets.close($('#adultTitleSeasonSheet')) })
-$('#adultTitleSeasonSheet')?.addEventListener('cancel', event => { event.preventDefault(); portalSheets.close($('#adultTitleSeasonSheet')) })
+function closeAdultTitleSheet() {
+  adultTitleOpenRevision += 1
+  selectedAdultTitle = null
+  portalSheets.dismiss($('#adultTitleSheet'))
+}
+$('#adultTitleClose')?.addEventListener('click', closeAdultTitleSheet)
+$('#adultTitleSheet')?.addEventListener('click', event => { if (event.target === $('#adultTitleSheet')) closeAdultTitleSheet() })
+function closeAdultTitleSeasonSheet() {
+  adultSeasonOpenRevision += 1
+  portalSheets.close($('#adultTitleSeasonSheet'))
+}
+$('#adultTitleSeasonClose')?.addEventListener('click', closeAdultTitleSeasonSheet)
+$('#adultTitleSeasonSheet')?.addEventListener('click', event => { if (event.target === $('#adultTitleSeasonSheet')) closeAdultTitleSeasonSheet() })
+$('#adultTitleSeasonSheet')?.addEventListener('cancel', event => { event.preventDefault(); closeAdultTitleSeasonSheet() })
 $('#adultNetflixLaunchClose')?.addEventListener('click', closeNetflixLaunchChoice)
 $('#adultNetflixLaunchSheet')?.addEventListener('click', event => { if (event.target === $('#adultNetflixLaunchSheet')) closeNetflixLaunchChoice() })
 $('#adultNetflixLaunchDevice')?.addEventListener('click', launchNetflixOnDevice)
 $('#adultNetflixLaunchTv')?.addEventListener('click', () => { void launchNetflixOnTv() })
-$('#adultWatchConfirmClose')?.addEventListener('click', () => portalSheets.dismiss($('#adultWatchConfirmSheet')))
 $$('[data-viewing-tab]').forEach(button => button.onclick = () => { adultViewingTab = button.dataset.viewingTab; $$('[data-viewing-tab]').forEach(value => value.classList.toggle('active', value === button)); renderAdultViewing() })
 $$('[data-viewing-filter]').forEach(button => button.onclick = () => { adultViewingFilter = button.dataset.viewingFilter; $$('[data-viewing-filter]').forEach(value => value.classList.toggle('active', value === button)); renderAdultViewing() })
-$$('[data-watch-result]').forEach(button => button.onclick = async () => {
-  const pending = (adultViewingData.items || []).find(item => item.key === $('#adultWatchConfirmSheet').dataset.titleKey)
-  if (!pending) return
-  await updateAdultViewing(pending, button.dataset.watchResult)
-  portalSheets.dismiss($('#adultWatchConfirmSheet'))
-})
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && location.hash === '#adult-viewing') loadAdultViewing().catch(() => {})
 })

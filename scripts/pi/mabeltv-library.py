@@ -2606,6 +2606,32 @@ class Library:
             "remote_last_watched": float(value.get("remote_last_watched", 0) or 0),
         }
 
+    def set_adult_season_watched(self, series_id: str, season: Any,
+                                 watched: bool) -> dict[str, Any]:
+        """Set every local episode in one season without discarding resume history."""
+        try:
+            season_number = int(season)
+        except (TypeError, ValueError):
+            raise ValueError("Choose a valid series") from None
+        if season_number < 1:
+            raise ValueError("Choose a valid series")
+        series = next((value for value in self.adult_series_library()
+                       if value.get("id") == series_id), None)
+        if not isinstance(series, dict):
+            raise ValueError("That Adult TV series no longer exists")
+        targets = [str(episode.get("path") or "")
+                   for episode in series.get("episodes", [])
+                   if int(episode.get("season", 0) or 0) == season_number]
+        if not targets:
+            raise ValueError("That series has no episodes")
+        updated = [self.set_adult_episode_watched(series_id, relative, watched)
+                   for relative in targets]
+        return {
+            "ok": True, "series": series_id, "season": season_number,
+            "watched": bool(watched), "episodes_updated": len(targets),
+            "episodes": updated,
+        }
+
     def restart_adult_series_progress(self, series_id: str, scope: str,
                                       season: int | None = None) -> dict[str, Any]:
         """Clear watched and resume history for one season or complete show."""
@@ -4658,6 +4684,19 @@ class Library:
             if not isinstance(value.get(field), dict):
                 value[field] = {}
         value["schema_version"] = 1
+        # Provider launches used to leave a prompt behind for the next visit.
+        # Prompts are no longer part of the viewing model, and watched titles
+        # belong in history rather than the unseen Watchlist.
+        for item in value["titles"].values():
+            if not isinstance(item, dict):
+                continue
+            item.pop("pending_confirmation", None)
+            episode_states = item.get("episodes", {})
+            has_watched_episode = isinstance(episode_states, dict) and any(
+                isinstance(saved, dict) and saved.get("watched") is True
+                for saved in episode_states.values())
+            if item.get("manual_state") == "watched" or has_watched_episode:
+                item["watchlisted"] = False
         # Watchmode's free-data terms require old cached provider data to be
         # removed, rather than retained forever as ordinary application state.
         cutoff = time.time() - ADULT_PROVIDER_MAX_CACHE_SECONDS
@@ -4822,6 +4861,31 @@ class Library:
                 saved.get("watched") is True
                 for episode_key, saved in episode_states.items()
                 if str(episode_key).startswith(prefix) and isinstance(saved, dict))
+        rewatching = bool(detail["viewing"].get("series_watching")) and \
+            detail["viewing"].get("series_watching_mode") == "rewatch"
+        next_episode = None
+        local_next = detail.get("local", {}).get("next_episode") \
+            if isinstance(detail.get("local"), dict) else None
+        if isinstance(local_next, dict) and not rewatching:
+            next_episode = {
+                "season": int(local_next.get("season", 0) or 0),
+                "episode": int(local_next.get("episode", 0) or 0),
+                "title": str(local_next.get("display_name") or ""),
+                "source": "local", "rewatch": False,
+            }
+        if not next_episode:
+            for season in sorted(detail["seasons"], key=lambda item: item["number"]):
+                for episode in range(1, int(season.get("episodes", 0) or 0) + 1):
+                    saved = episode_states.get(f"{season['number']}:{episode}", {})
+                    if rewatching or not (isinstance(saved, dict) and saved.get("watched")):
+                        next_episode = {
+                            "season": season["number"], "episode": episode,
+                            "title": "", "source": "streaming", "rewatch": rewatching,
+                        }
+                        break
+                if next_episode:
+                    break
+        detail["next_episode"] = next_episode
         return detail
 
     def adult_title_season(self, tmdb_id: Any, season_number: Any) -> dict[str, Any]:
@@ -4943,9 +5007,10 @@ class Library:
     def adult_viewing_update(self, payload: dict[str, Any]) -> dict[str, Any]:
         key = self.adult_title_key(payload.get("media_type"), payload.get("tmdb_id"))
         action = str(payload.get("action", ""))
-        allowed = {"watchlist", "up_next", "move_up", "move_down",
+        allowed = {"watchlist", "rewatch", "up_next", "move_up", "move_down",
                    "part_watched", "watched", "not_watched", "dropped",
-                   "launched", "remove", "episode_watched"}
+                   "watching", "launched", "remove", "episode_watched",
+                   "season_watched"}
         if action not in allowed:
             raise ValueError("Choose a valid viewing action")
         now = time.time()
@@ -4963,9 +5028,29 @@ class Library:
                 current["runtime"] = 0
             current.update({"media_type": key.split(":", 1)[0],
                             "tmdb_id": int(key.split(":", 1)[1]), "updated": now})
+            episodes = current.get("episodes", {})
+            if not isinstance(episodes, dict):
+                episodes = {}
+            has_seen = current.get("manual_state") == "watched" or \
+                bool(current.get("history")) or any(
+                    isinstance(saved, dict) and saved.get("watched") is True
+                    for saved in episodes.values())
+            local_title = self.adult_local_title_index().get(key, {})
+            has_seen = has_seen or (
+                isinstance(local_title, dict)
+                and int(local_title.get("watched_count", 0) or 0) > 0)
             if action == "watchlist":
-                current["watchlisted"] = bool(payload.get("enabled", True))
+                enabled = bool(payload.get("enabled", True))
+                if enabled and has_seen:
+                    raise ValueError("You've already seen this. Add it to Rewatch instead.")
+                current["watchlisted"] = enabled
                 current["watchlist_updated"] = now
+            elif action == "rewatch":
+                enabled = bool(payload.get("enabled", True))
+                if enabled and not has_seen:
+                    raise ValueError("Mark this watched before adding it to Rewatch")
+                current["rewatch"] = enabled
+                current["rewatch_updated"] = now
             elif action == "up_next":
                 enabled = bool(payload.get("enabled", True))
                 current["up_next"] = enabled
@@ -4975,11 +5060,18 @@ class Library:
                              if isinstance(value, dict) and value.get("up_next")]
                     current["up_next_rank"] = max(ranks, default=0) + 1
             elif action in {"part_watched", "watched", "not_watched", "dropped"}:
+                previous_manual_state = current.get("manual_state")
                 current["manual_state"] = action
                 current["viewing_updated"] = now
                 if action == "watched":
                     current.setdefault("history", []).append(now)
+                    current["watchlisted"] = False
                     current["up_next"] = False
+                    current["series_watching"] = False
+                elif action == "not_watched" and previous_manual_state == "watched":
+                    history = current.get("history", [])
+                    if isinstance(history, list) and history:
+                        history.pop()
             elif action in {"move_up", "move_down"}:
                 queued = sorted(
                     ((stored_key, stored) for stored_key, stored in store["titles"].items()
@@ -4994,11 +5086,28 @@ class Library:
                     other_rank = int(other.get("up_next_rank", target + 1) or target + 1)
                     current["up_next_rank"], other["up_next_rank"] = other_rank, current_rank
                     store["titles"][other_key] = other
+            elif action == "watching":
+                if key.split(":", 1)[0] != "tv":
+                    raise ValueError("Watching is available for TV series")
+                enabled = bool(payload.get("enabled", True))
+                current["series_watching"] = enabled
+                current["series_watching_updated"] = now
+                if enabled:
+                    requested_mode = str(payload.get("mode") or "").strip()
+                    if requested_mode not in {"first_watch", "rewatch"}:
+                        requested_mode = "rewatch" \
+                            if current.get("manual_state") == "watched" else "first_watch"
+                    current["series_watching_mode"] = requested_mode
+                    if not current.get("up_next"):
+                        ranks = [int(value.get("up_next_rank", 0) or 0)
+                                 for value in store["titles"].values()
+                                 if isinstance(value, dict) and value.get("up_next")]
+                        current["up_next_rank"] = max(ranks, default=0) + 1
+                    current["up_next"] = True
             elif action == "launched":
-                current["pending_confirmation"] = {
-                    "provider": str(payload.get("provider") or "Streaming service")[:100],
-                    "launched": now,
-                }
+                current["last_launched"] = now
+                current["last_provider"] = str(
+                    payload.get("provider") or "Streaming service")[:100]
             elif action == "episode_watched":
                 if key.split(":", 1)[0] != "tv":
                     raise ValueError("Episodes are only available for TV series")
@@ -5014,13 +5123,35 @@ class Library:
                     episodes = {}
                     current["episodes"] = episodes
                 episodes[f"{season}:{episode}"] = {"watched": payload["watched"], "updated": now}
+                if payload["watched"]:
+                    current["watchlisted"] = False
+            elif action == "season_watched":
+                if key.split(":", 1)[0] != "tv":
+                    raise ValueError("Series are only available for TV titles")
+                try:
+                    season = int(payload.get("season"))
+                    episode_count = int(payload.get("episode_count"))
+                except (TypeError, ValueError):
+                    raise ValueError("Choose a valid series") from None
+                watched = payload.get("watched")
+                if season < 1 or episode_count < 1 or episode_count > 1000 or \
+                        not isinstance(watched, bool):
+                    raise ValueError("Choose a valid series status")
+                episodes = current.setdefault("episodes", {})
+                if not isinstance(episodes, dict):
+                    episodes = {}
+                    current["episodes"] = episodes
+                for episode in range(1, episode_count + 1):
+                    episodes[f"{season}:{episode}"] = {"watched": watched, "updated": now}
+                if watched:
+                    current["watchlisted"] = False
             elif action == "remove":
                 current["watchlisted"] = False
+                current["rewatch"] = False
                 current["up_next"] = False
+                current["series_watching"] = False
                 current["manual_state"] = "not_watched"
-                current.pop("pending_confirmation", None)
-            if action != "launched":
-                current.pop("pending_confirmation", None)
+            current.pop("pending_confirmation", None)
             store["titles"][key] = current
             self.write_adult_viewing_store(store)
         return {"ok": True, "key": key, "viewing": current}
@@ -7844,6 +7975,10 @@ class Handler(BaseHTTPRequestHandler):
                 watched = payload.get("watched")
                 if not isinstance(watched, bool):
                     raise ValueError("Choose whether the episode is watched")
+                if payload.get("scope") == "season":
+                    self.json(200, self.server.library.set_adult_season_watched(
+                        str(payload.get("series", "")), payload.get("season"),
+                        watched)); return
                 self.json(200, self.server.library.set_adult_episode_watched(
                     str(payload.get("series", "")),
                     str(payload.get("file", "")), watched)); return
