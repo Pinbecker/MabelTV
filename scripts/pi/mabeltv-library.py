@@ -2558,6 +2558,44 @@ class Library:
                 self.write_adult_series_states(states)
             return values
 
+    def sync_adult_series_viewing_episodes(
+            self, series_id: str, updates: dict[str, bool]) -> None:
+        """Keep local episode history and the combined title view aligned."""
+        if not updates:
+            return
+        with self.config_lock:
+            states = self.adult_series_states()
+            series_state = states["series"].get(series_id, {})
+            if not isinstance(series_state, dict):
+                return
+            metadata = series_state.get("metadata", {})
+            if not isinstance(metadata, dict):
+                return
+            try:
+                key = self.adult_title_key("tv", metadata.get("tmdb_id"))
+            except ValueError:
+                return
+            store = self.adult_viewing_store()
+            current = store["titles"].get(key, {})
+            if not isinstance(current, dict):
+                current = {}
+            episodes = current.setdefault("episodes", {})
+            if not isinstance(episodes, dict):
+                episodes = {}
+                current["episodes"] = episodes
+            now = time.time()
+            for episode_key, watched in updates.items():
+                episodes[episode_key] = {"watched": bool(watched), "updated": now}
+            current.update({
+                "media_type": "tv", "tmdb_id": int(key.split(":", 1)[1]),
+                "title": str(metadata.get("title") or series_state.get("title") or "Series"),
+                "year": str(metadata.get("year") or ""), "updated": now,
+            })
+            if any(updates.values()):
+                current["watchlisted"] = False
+            store["titles"][key] = current
+            self.write_adult_viewing_store(store)
+
     def set_adult_episode_watched(self, series_id: str, relative: str,
                                   watched: bool) -> dict[str, Any]:
         source = self.adult_series_path(series_id, relative)
@@ -2599,6 +2637,14 @@ class Library:
                 value["remote_last_watched"] = 0.0
             states["episodes"][key] = value
             self.write_adult_series_states(states)
+            identity = self.adult_episode_identity(source)
+            metadata = value.get("metadata", {})
+            if not isinstance(metadata, dict):
+                metadata = {}
+            season_number = int(metadata.get("season_number") or identity["season"])
+            episode_number = int(metadata.get("episode_number") or identity["episode"])
+        self.sync_adult_series_viewing_episodes(
+            series_id, {f"{season_number}:{episode_number}": bool(watched)})
         return {
             "ok": True, "series": series_id, "path": relative,
             "watched": bool(watched),
@@ -2653,6 +2699,7 @@ class Library:
 
         prefix = f"{series_id}/"
         changed = 0
+        viewing_updates: dict[str, bool] = {}
         with self.config_lock:
             states = self.adult_series_states()
             for key, raw_value in list(states["episodes"].items()):
@@ -2663,13 +2710,13 @@ class Library:
                 if not source.is_file() or source.suffix.lower() not in SUPPORTED_EXTENSIONS:
                     continue
                 value = raw_value if isinstance(raw_value, dict) else {}
+                metadata = value.get("metadata", {})
+                if not isinstance(metadata, dict):
+                    metadata = {}
+                parsed = self.adult_episode_identity(source)
+                episode_season = int(
+                    metadata.get("season_number") or parsed["season"])
                 if season_number is not None:
-                    metadata = value.get("metadata", {})
-                    if not isinstance(metadata, dict):
-                        metadata = {}
-                    parsed = self.adult_episode_identity(source)
-                    episode_season = int(
-                        metadata.get("season_number") or parsed["season"])
                     if episode_season != season_number:
                         continue
                 value["watched"] = False
@@ -2678,8 +2725,12 @@ class Library:
                 value["remote_last_watched"] = 0.0
                 value.pop("pre_watched_resume", None)
                 states["episodes"][key] = value
+                episode_number = int(
+                    metadata.get("episode_number") or parsed["episode"])
+                viewing_updates[f"{episode_season}:{episode_number}"] = False
                 changed += 1
             self.write_adult_series_states(states)
+        self.sync_adult_series_viewing_episodes(series_id, viewing_updates)
         return {
             "ok": True,
             "series": series_id,
@@ -4844,6 +4895,19 @@ class Library:
                 })
         runtime = value.get("runtime") if media_type == "movie" else (
             value.get("episode_run_time", [None]) or [None])[0]
+        local_titles = self.adult_local_title_index()
+        local_title = local_titles.get(key)
+        local_episode_states: dict[str, dict[str, Any]] = {}
+        if isinstance(local_title, dict) and local_title.get("kind") == "series":
+            local_series = next(
+                (series for series in self.adult_series_library()
+                 if series.get("id") == local_title.get("series")), None)
+            if isinstance(local_series, dict):
+                local_episode_states = {
+                    f"{episode.get('season')}:{episode.get('episode')}": episode
+                    for episode in local_series.get("episodes", [])
+                    if isinstance(episode, dict)
+                }
         detail = summary | {
             "key": key, "runtime": int(runtime or 0),
             "genres": [str(item.get("name", "")) for item in value.get("genres", [])
@@ -4858,8 +4922,8 @@ class Library:
                         and int(item.get("season_number", 0) or 0) > 0],
             "providers": groups, "provider_link": str(region.get("link", ""))
             if isinstance(region, dict) else "", "region": "GB",
-            "on_mabeltv": key in self.adult_local_title_index(),
-            "local": self.adult_local_title_index().get(key),
+            "on_mabeltv": key in local_titles,
+            "local": local_title,
             "attribution": "Streaming availability data from TMDB and JustWatch",
         }
         with self.config_lock:
@@ -4875,39 +4939,34 @@ class Library:
         if not isinstance(rewatch_episode_states, dict):
             rewatch_episode_states = {}
         for season in detail["seasons"]:
-            prefix = f"{season['number']}:"
             season["watched_count"] = sum(
-                saved.get("watched") is True
-                for episode_key, saved in episode_states.items()
-                if str(episode_key).startswith(prefix) and isinstance(saved, dict))
+                (isinstance(episode_states.get(f"{season['number']}:{episode}"), dict)
+                 and episode_states[f"{season['number']}:{episode}"].get("watched") is True)
+                or local_episode_states.get(
+                    f"{season['number']}:{episode}", {}).get("watched") is True
+                for episode in range(1, int(season.get("episodes", 0) or 0) + 1))
         rewatching = bool(detail["viewing"].get("series_watching")) and \
             detail["viewing"].get("series_watching_mode") == "rewatch"
+        states = rewatch_episode_states if rewatching else episode_states
+        available = []
+        for season in detail["seasons"]:
+            for episode in range(1, int(season.get("episodes", 0) or 0) + 1):
+                episode_key = f"{season['number']}:{episode}"
+                saved = states.get(episode_key, {})
+                locally_watched = not rewatching and local_episode_states.get(
+                    episode_key, {}).get("watched") is True
+                available.append({
+                    "season": season["number"], "episode": episode,
+                    "watched": (isinstance(saved, dict)
+                                and saved.get("watched") is True) or locally_watched,
+                })
+        candidate = self.adult_next_episode_after_progress(available)
         next_episode = None
-        local_next = detail.get("local", {}).get("next_episode") \
-            if isinstance(detail.get("local"), dict) else None
-        if isinstance(local_next, dict) and not rewatching:
+        if candidate:
             next_episode = {
-                "season": int(local_next.get("season", 0) or 0),
-                "episode": int(local_next.get("episode", 0) or 0),
-                "title": str(local_next.get("display_name") or ""),
-                "source": "local", "rewatch": False,
+                "season": candidate["season"], "episode": candidate["episode"],
+                "title": "", "source": "streaming", "rewatch": rewatching,
             }
-        if not next_episode:
-            states = rewatch_episode_states if rewatching else episode_states
-            available = []
-            for season in detail["seasons"]:
-                for episode in range(1, int(season.get("episodes", 0) or 0) + 1):
-                    saved = states.get(f"{season['number']}:{episode}", {})
-                    available.append({
-                        "season": season["number"], "episode": episode,
-                        "watched": isinstance(saved, dict) and saved.get("watched") is True,
-                    })
-            candidate = self.adult_next_episode_after_progress(available)
-            if candidate:
-                next_episode = {
-                    "season": candidate["season"], "episode": candidate["episode"],
-                    "title": "", "source": "streaming", "rewatch": rewatching,
-                }
         detail["next_episode"] = next_episode
         return detail
 
@@ -4933,6 +4992,18 @@ class Library:
                 if isinstance(state, dict) else {}
             if not isinstance(rewatch_episode_states, dict):
                 rewatch_episode_states = {}
+        local_title = self.adult_local_title_index().get(key, {})
+        local_episode_states: dict[str, dict[str, Any]] = {}
+        if isinstance(local_title, dict) and local_title.get("kind") == "series":
+            local_series = next(
+                (series for series in self.adult_series_library()
+                 if series.get("id") == local_title.get("series")), None)
+            if isinstance(local_series, dict):
+                local_episode_states = {
+                    f"{episode.get('season')}:{episode.get('episode')}": episode
+                    for episode in local_series.get("episodes", [])
+                    if isinstance(episode, dict)
+                }
         episodes = []
         for item in value.get("episodes", []):
             if not isinstance(item, dict):
@@ -4942,6 +5013,7 @@ class Library:
                 continue
             episode_key = f"{number}:{episode}"
             saved = episode_states.get(episode_key, {})
+            local_saved = local_episode_states.get(episode_key, {})
             episodes.append({
                 "number": episode,
                 "name": str(item.get("name") or f"Episode {episode}"),
@@ -4949,7 +5021,9 @@ class Library:
                 "runtime": int(item.get("runtime", 0) or 0),
                 "overview": str(item.get("overview") or ""),
                 "still_path": str(item.get("still_path") or ""),
-                "watched": bool(saved.get("watched")) if isinstance(saved, dict) else False,
+                "watched": (bool(saved.get("watched"))
+                            if isinstance(saved, dict) else False)
+                           or local_saved.get("watched") is True,
                 "rewatch_watched": bool(rewatch_episode_states.get(
                     episode_key, {}).get("watched"))
                 if isinstance(rewatch_episode_states.get(episode_key), dict) else False,
@@ -5204,6 +5278,29 @@ class Library:
             current.pop("pending_confirmation", None)
             store["titles"][key] = current
             self.write_adult_viewing_store(store)
+        if action in {"episode_watched", "season_watched"} and \
+                payload.get("rewatch") is not True and \
+                isinstance(local_title, dict) and local_title.get("kind") == "series":
+            series_id = str(local_title.get("series") or "")
+            local_series = next(
+                (series for series in self.adult_series_library()
+                 if series.get("id") == series_id), None)
+            if isinstance(local_series, dict):
+                if action == "episode_watched":
+                    target = next(
+                        (value for value in local_series.get("episodes", [])
+                         if int(value.get("season", 0) or 0) == season
+                         and int(value.get("episode", 0) or 0) == episode), None)
+                    if isinstance(target, dict) and target.get("path"):
+                        self.set_adult_episode_watched(
+                            series_id, str(target["path"]), bool(payload["watched"]))
+                else:
+                    has_local_season = any(
+                        int(value.get("season", 0) or 0) == season
+                        for value in local_series.get("episodes", []))
+                    if has_local_season:
+                        self.set_adult_season_watched(
+                            series_id, season, bool(payload["watched"]))
         return {"ok": True, "key": key, "viewing": current}
 
     def adult_viewing(self) -> dict[str, Any]:

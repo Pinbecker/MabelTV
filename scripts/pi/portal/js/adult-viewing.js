@@ -9,6 +9,9 @@ let selectedAdultTitle = null
 let pendingNetflixLaunch = null
 let adultTitleOpenRevision = 0
 let adultSeasonOpenRevision = 0
+let adultSearchViewportBaseline = Math.max(
+  window.innerHeight, window.visualViewport?.height || 0)
+let adultSearchKeyboardWasOpen = false
 
 function adultPosterUrl(path, size = 'w342') {
   return path ? `https://image.tmdb.org/t/p/${size}${path}` : ''
@@ -226,6 +229,24 @@ function syncAdultSearchMode(scrollToSearch = false) {
   if (scrollToSearch) setTimeout(() => input.scrollIntoView({ block: 'start' }), 80)
 }
 
+function syncAdultSearchKeyboard() {
+  const viewport = window.visualViewport
+  if (!viewport) return
+  adultSearchViewportBaseline = Math.max(adultSearchViewportBaseline, viewport.height)
+  const keyboardOpen = adultSearchViewportBaseline - viewport.height > 120
+  if (keyboardOpen) {
+    adultSearchKeyboardWasOpen = true
+    return
+  }
+  if (!adultSearchKeyboardWasOpen) return
+  adultSearchKeyboardWasOpen = false
+  const input = $('#watchSearch')
+  if (input && document.activeElement === input && !input.value.trim()) {
+    input.blur()
+    syncAdultSearchMode()
+  }
+}
+
 async function searchAdultDiscovery(query) {
   const revision = ++adultDiscoveryRevision
   const section = $('#adultDiscoverySection')
@@ -264,8 +285,14 @@ function localAdultAction(detail) {
     const film = (library?.adult_library || []).find(item => item.path === detail.local.path)
     return film ? () => { portalSheets.dismiss($('#adultTitleSheet')); openWatchFilmSheet(film) } : null
   }
-  const series = (library?.adult_series || []).find(item => item.id === detail.local.series)
-  return series ? () => { portalSheets.dismiss($('#adultTitleSheet')); openAdultSeriesSheet(series) } : null
+  return null
+}
+
+function manageLocalAdultSeries(detail) {
+  const series = (library?.adult_series || []).find(item => item.id === detail.local?.series)
+  if (!series) return
+  portalSheets.dismiss($('#adultTitleSheet'))
+  openAdultSeriesSheet(series, () => restoreAdultTitleSheet(detail))
 }
 
 function renderAdultProviderLinksInto(root, detail, result, options = {}) {
@@ -286,13 +313,16 @@ function renderAdultProviderLinksInto(root, detail, result, options = {}) {
   })
   const streaming = document.createElement('div')
   streaming.className = 'adult-provider-logos'
-  if (localAction) {
-    const local = document.createElement('button')
-    local.type = 'button'; local.className = 'adult-provider-logo provider-mabeltv'
-    local.setAttribute('aria-label', 'Open on MabelTV'); local.title = 'MabelTV'
+  if (detail.on_mabeltv) {
+    const local = document.createElement(localAction ? 'button' : 'span')
+    if (localAction) local.type = 'button'
+    local.className = `adult-provider-logo provider-mabeltv${localAction ? '' : ' is-availability'}`
+    local.setAttribute('aria-label', localAction ? 'Open on MabelTV' : 'Available on MabelTV')
+    local.title = localAction ? 'Open on MabelTV' : 'Available on MabelTV'
     const image = document.createElement('img')
     image.src = '/apple-touch-icon.png'; image.alt = 'MabelTV'
-    local.append(image); local.onclick = () => { beforeLaunch(); localAction() }
+    local.append(image)
+    if (localAction) local.onclick = () => { beforeLaunch(); localAction() }
     streaming.append(local)
   }
   adultProviderBrands.forEach(brand => {
@@ -397,8 +427,8 @@ function syncAdultTitleButtons(detail) {
   }
   watched.classList.toggle('hidden', detail.media_type === 'tv')
   sync(watched, titleWatched,
-    titleWatched ? 'Correct watched status' : 'Mark watched',
-    titleWatched ? 'Keeps this in your watched history' : 'Moves it out of Watchlist and Up Next')
+    titleWatched ? 'Watched' : 'Mark watched',
+    titleWatched ? 'In your watched history' : 'Moves it out of Watchlist and Up Next')
 }
 
 function adultSeasonSummary(season, watched = Number(season.watched_count || 0)) {
@@ -441,21 +471,20 @@ function deriveAdultTitleNextEpisode(detail) {
   if (detail.media_type !== 'tv') return null
   const rewatching = detail.viewing?.series_watching === true
     && detail.viewing?.series_watching_mode === 'rewatch'
-  if (detail.local?.next_episode) {
-    const local = detail.local.next_episode
-    if (!rewatching) return {
-      season: Number(local.season || 0), episode: Number(local.episode || 0),
-      title: local.display_name || '', source: 'local', rewatch: false,
-    }
-  }
   const states = rewatching
     ? detail.viewing?.rewatch_episodes || {} : detail.viewing?.episodes || {}
+  const localSeries = !rewatching && detail.local?.kind === 'series'
+    ? (library?.adult_series || []).find(value => value.id === detail.local.series) : null
   const available = []
   ;[...(detail.seasons || [])].sort((a, b) => a.number - b.number).forEach(season => {
     for (let episode = 1; episode <= Number(season.episodes || 0); episode += 1) {
+      const local = (localSeries?.episodes || []).find(value =>
+        Number(value.season) === Number(season.number)
+          && Number(value.episode) === episode)
       available.push({
         season: season.number, episode, title: '', rewatch: rewatching,
-        watched: states[`${season.number}:${episode}`]?.watched === true,
+        watched: states[`${season.number}:${episode}`]?.watched === true
+          || local?.watched === true,
       })
     }
   })
@@ -634,6 +663,8 @@ function adultStreamingEpisodeRow(detail, season, result, episode, card) {
       detail.viewing = await updateAdultViewing(detail, 'episode_watched', {
         season: season.number, episode: episode.number, watched: next, rewatch: rewatching,
       })
+      const local = findLocalAdultEpisode(detail, season.number, episode.number)
+      if (!rewatching && local) local.episode.watched = next
       if (rewatching) episode.rewatch_watched = next
       else episode.watched = next
       const statusCount = result.episodes.filter(value => rewatching
@@ -711,6 +742,13 @@ async function openAdultTitleSeason(detail, season, card, targetEpisode = 0) {
           if (rewatching) episode.rewatch_watched = targetWatched
           else episode.watched = targetWatched
         })
+        if (!rewatching && detail.local?.kind === 'series') {
+          const localSeries = (library?.adult_series || []).find(value =>
+            value.id === detail.local.series)
+          ;(localSeries?.episodes || []).filter(episode =>
+            Number(episode.season) === Number(season.number))
+            .forEach(episode => { episode.watched = targetWatched })
+        }
         if (!rewatching) season.watched_count = targetWatched ? result.episodes.length : 0
         if (targetWatched) await finishAdultTitleIfComplete(detail)
         syncAdultStreamingSeasonCard(card, season)
@@ -855,8 +893,15 @@ function renderAdultTitleDetail(detail, refreshProviders = true,
     ? `url("${adultPosterUrl(detail.backdrop_path, 'w1280')}")`
     : 'linear-gradient(135deg,#2e3a34,#101513)')
   $('#adultTitleLocal').classList.toggle('hidden', !detail.on_mabeltv)
-  $('#adultTitleLocal').textContent = detail.on_mabeltv
-    ? 'Available locally on MabelTV — this option is always shown first.' : ''
+  $('#adultTitleLocalCopy').textContent = detail.on_mabeltv
+    ? detail.media_type === 'tv'
+      ? 'Available locally on MabelTV. Stored episodes offer Play on TV and Watch on this device.'
+      : 'Available locally on MabelTV — this option is always shown first.'
+    : ''
+  const manageLocal = $('#adultTitleManageLocal')
+  manageLocal.classList.toggle('hidden', detail.local?.kind !== 'series')
+  manageLocal.onclick = detail.local?.kind === 'series'
+    ? () => manageLocalAdultSeries(detail) : null
   syncAdultTitleButtons(detail)
   const watchlist = $('#adultTitleWatchlist')
   const rewatch = $('#adultTitleRewatch')
@@ -928,7 +973,8 @@ function prepareAdultTitleSheet(title) {
   $('#adultTitleSeasons').replaceChildren()
   $('#adultTitleNextEpisode').classList.add('hidden')
   $('#adultTitleLocal').classList.add('hidden')
-  $('#adultTitleLocal').textContent = ''
+  $('#adultTitleLocalCopy').textContent = ''
+  $('#adultTitleManageLocal').classList.add('hidden')
   $('#adultProviderList').innerHTML = '<p>Loading…</p>'
   ;['#adultTitleWatchlist', '#adultTitleRewatch', '#adultTitleUpNext',
     '#adultTitleWatching', '#adultTitleWatched'].forEach(selector => {
@@ -1018,33 +1064,6 @@ function renderAdultViewing() {
         actions.append(move)
       })
     } else {
-      if (adultViewingTab === 'watching') {
-        const stop = document.createElement('button')
-        stop.type = 'button'
-        stop.setAttribute('aria-label', `Remove ${item.title} from Watching`)
-        stop.append(librarySignalIcon('signal-x'))
-        stop.onclick = async event => {
-          event.stopPropagation()
-          stop.disabled = true
-          try {
-            if (item.media_type === 'tv') {
-              await updateAdultViewing(item, 'watching', { enabled: false })
-              notice(`${item.title} is no longer being followed in Watching.`)
-            } else if (item.local?.path) {
-              await api('/api/remote/clear-position', {
-                method: 'POST', body: JSON.stringify({ kind: 'adult', file: item.local.path }),
-              })
-              await loadAdultViewing()
-              notice(`${item.title} was removed from Watching and Continue Watching.`)
-            }
-          } catch (error) {
-            showError(error)
-          } finally {
-            stop.disabled = false
-          }
-        }
-        actions.append(stop)
-      }
       const open = document.createElement('button'); open.type = 'button'; open.className = 'adult-viewing-row-open'; open.setAttribute('aria-label', `Open ${item.title}`); open.append(librarySignalIcon('signal-chevron-right')); open.onclick = () => openAdultTitle(item); actions.append(open)
     }
     const opener = document.createElement('button'); opener.type = 'button'; opener.className = 'adult-viewing-copy-button'; opener.append(copy); opener.onclick = () => openAdultTitle(item)
@@ -1061,6 +1080,8 @@ async function loadAdultViewing() {
 $('#watchSearch')?.addEventListener('input', scheduleAdultDiscovery)
 $('#watchSearch')?.addEventListener('focus', () => { syncAdultSearchMode(true); scheduleAdultDiscovery() })
 $('#watchSearch')?.addEventListener('blur', () => setTimeout(() => syncAdultSearchMode(), 0))
+$('#watchSearch')?.addEventListener('change', () => setTimeout(syncAdultSearchKeyboard, 60))
+$('#watchSearch')?.addEventListener('search', () => setTimeout(syncAdultSearchKeyboard, 60))
 $('#watchSearch')?.addEventListener('keydown', event => {
   if (event.key !== 'Escape') return
   event.currentTarget.value = ''
@@ -1068,6 +1089,12 @@ $('#watchSearch')?.addEventListener('keydown', event => {
   event.currentTarget.blur()
 })
 $('#watchSearchClear')?.addEventListener('click', () => setTimeout(() => { searchAdultDiscovery(''); syncAdultSearchMode(true) }, 0))
+window.visualViewport?.addEventListener('resize', () =>
+  setTimeout(syncAdultSearchKeyboard, 60))
+window.addEventListener('orientationchange', () => setTimeout(() => {
+  adultSearchViewportBaseline = window.visualViewport?.height || window.innerHeight
+  adultSearchKeyboardWasOpen = false
+}, 400))
 $('#adultMyViewing')?.addEventListener('click', () => { history.pushState({ adultViewing: true }, '', '#adult-viewing'); openView('adult-viewing'); loadAdultViewing().catch(showError) })
 $('#adultViewingBack')?.addEventListener('click', () => {
   remoteKind = 'adult'

@@ -908,6 +908,71 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertEqual(saved["viewing"]["rewatch_episodes"], {})
         self.assertNotIn("rewatch_completed", saved["viewing"])
 
+    def test_combined_series_view_merges_and_syncs_local_episode_history(self) -> None:
+        series_id = self.fixture.library.create_adult_series("Severance")
+        root = self.fixture.library.adult_series_root / series_id / "Season 1"
+        root.mkdir()
+        first = root / "Severance S01E01.mp4"
+        second = root / "Severance S01E02.mp4"
+        first.write_bytes(b"episode-one")
+        second.write_bytes(b"episode-two")
+        states = self.fixture.library.adult_series_states()
+        states["series"][series_id]["metadata"] = {
+            "tmdb_id": 95396, "title": "Severance", "year": "2022",
+        }
+        states["episodes"][f"{series_id}/Season 1/{first.name}"] = {
+            "watched": True, "metadata": {"season_number": 1, "episode_number": 1},
+        }
+        states["episodes"][f"{series_id}/Season 1/{second.name}"] = {
+            "watched": False, "metadata": {"season_number": 1, "episode_number": 2},
+        }
+        self.fixture.library.write_adult_series_states(states)
+
+        def tmdb(path: str, _parameters: dict | None = None) -> dict:
+            if path == "tv/95396":
+                return {
+                    "id": 95396, "name": "Severance", "first_air_date": "2022-02-18",
+                    "seasons": [
+                        {"season_number": 1, "name": "Series 1", "episode_count": 2},
+                        {"season_number": 2, "name": "Series 2", "episode_count": 2},
+                    ],
+                }
+            if path == "tv/95396/watch/providers":
+                return {"results": {"GB": {}}}
+            if path == "tv/95396/season/1":
+                return {"name": "Series 1", "episodes": [
+                    {"episode_number": 1, "name": "Good News About Hell"},
+                    {"episode_number": 2, "name": "Half Loop"},
+                ]}
+            raise AssertionError(path)
+
+        self.fixture.library.tmdb_request = mock.Mock(side_effect=tmdb)
+        detail = self.fixture.library.adult_title_detail("tv", 95396)
+        self.assertTrue(detail["on_mabeltv"])
+        self.assertEqual(detail["seasons"][0]["watched_count"], 1)
+        self.assertEqual(
+            (detail["next_episode"]["season"], detail["next_episode"]["episode"]),
+            (1, 2))
+        season = self.fixture.library.adult_title_season(95396, 1)
+        self.assertTrue(season["episodes"][0]["watched"])
+
+        self.fixture.library.adult_viewing_update({
+            "media_type": "tv", "tmdb_id": 95396, "title": "Severance",
+            "action": "episode_watched", "season": 1, "episode": 2,
+            "watched": True,
+        })
+        local = self.fixture.library.adult_series_library()[0]
+        self.assertTrue(all(episode["watched"] for episode in local["episodes"]))
+        detail = self.fixture.library.adult_title_detail("tv", 95396)
+        self.assertEqual(
+            (detail["next_episode"]["season"], detail["next_episode"]["episode"]),
+            (2, 1))
+
+        self.fixture.library.set_adult_episode_watched(
+            series_id, f"Season 1/{first.name}", False)
+        viewing = self.fixture.library.adult_viewing_store()["titles"]["tv:95396"]
+        self.assertFalse(viewing["episodes"]["1:1"]["watched"])
+
     def test_next_episode_continues_after_furthest_watched_episode(self) -> None:
         episodes = [
             {"season": 1, "episode": 1, "watched": False},
@@ -1005,7 +1070,14 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("nextLocalEpisodeAfterProgress", PORTAL_SOURCE)
         self.assertIn("adultEpisodeAirDate", PORTAL_SOURCE)
         self.assertIn("localEpisodeAirDate", PORTAL_SOURCE)
-        self.assertIn("Remove ${item.title} from Watching", PORTAL_SOURCE)
+        self.assertNotIn("Remove ${item.title} from Watching", PORTAL_SOURCE)
+        self.assertNotIn("Correct watched status", PORTAL_SOURCE)
+        self.assertIn("titleWatched ? 'Watched' : 'Mark watched'", PORTAL_SOURCE)
+        self.assertIn("Manage MabelTV episodes", PORTAL_SOURCE)
+        self.assertIn("Available on MabelTV", PORTAL_SOURCE)
+        self.assertIn("openAdultSeriesViewing", PORTAL_SOURCE)
+        self.assertIn("adultSearchKeyboardWasOpen", PORTAL_SOURCE)
+        self.assertIn("top: calc(70px + env(safe-area-inset-top))", PORTAL_SOURCE)
         self.assertIn("item.media_type === 'tv' && item.series_watching !== true", PORTAL_SOURCE)
         self.assertIn("remoteKind = 'adult'", PORTAL_SOURCE)
         self.assertNotIn('data-viewing-filter="streaming"', PORTAL_SOURCE)

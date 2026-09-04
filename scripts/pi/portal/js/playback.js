@@ -879,8 +879,23 @@ function remoteTime(value) {
       source.textContent = 'Adult TV series'
       copy.append(title, source)
       card.append(art, copy)
-      card.onclick = () => openAdultSeriesSheet(series)
+      card.onclick = () => openAdultSeriesViewing(series)
       return card
+    }
+
+    function openAdultSeriesViewing(series) {
+      const tmdbId = Number(series?.metadata?.tmdb_id || 0)
+      if (!tmdbId || typeof openAdultTitle !== 'function') {
+        openAdultSeriesSheet(series)
+        return
+      }
+      openAdultTitle({
+        media_type: 'tv', tmdb_id: tmdbId,
+        title: series.metadata?.title || series.title,
+        year: series.metadata?.year || '',
+        overview: series.metadata?.overview || '',
+        on_mabeltv: true,
+      })
     }
 
     function renderHomeLibrary() {
@@ -1222,7 +1237,7 @@ function remoteTime(value) {
         meta.textContent = `${value.season_count} series · ${value.episode_count} episode${value.episode_count === 1 ? '' : 's'} · ${value.watched_count} watched`
         copy.append(title, meta)
         card.append(art, copy)
-        card.onclick = () => openAdultSeriesSheet(value)
+        card.onclick = () => openAdultSeriesViewing(value)
         rail.append(card)
       })
       if (!allSeries.length) {
