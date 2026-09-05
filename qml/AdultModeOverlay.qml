@@ -38,6 +38,7 @@ Item {
     property string externalTitle: ""
     property url queuedExternalSource: ""
     property string queuedExternalTitle: ""
+    property real queuedExternalPosition: 0
     property string queuedLibraryFilmPath: ""
     property real queuedLibraryFilmPosition: 0
 
@@ -72,14 +73,15 @@ Item {
         refreshSelectedFilmPosition()
     }
 
-    function openExternal(source, title) {
+    function openExternal(source, title, startPosition) {
         open()
-        playExternal(source, title)
+        playExternal(source, title, startPosition)
     }
 
-    function requestExternal(source, title) {
+    function requestExternal(source, title, startPosition) {
         queuedExternalSource = source
         queuedExternalTitle = title
+        queuedExternalPosition = Math.max(0, Number(startPosition) || 0)
         if (playing || stopping) {
             stopFilm()
         } else {
@@ -111,19 +113,20 @@ Item {
         errorMessage = "That film is no longer in the Adult library."
     }
 
-    function playExternal(source, title) {
+    function playExternal(source, title, startPosition) {
         externalSession = true
         externalSource = source
         externalTitle = title || "USB video"
         queuedExternalSource = ""
         queuedExternalTitle = ""
+        queuedExternalPosition = 0
         queuedLibraryFilmPath = ""
         queuedLibraryFilmPosition = 0
         errorMessage = ""
         playing = true
         stopping = false
         controlsOpacity = 1
-        adultPlayer.play(source, 0)
+        adultPlayer.play(source, Math.max(0, Number(startPosition) || 0))
         controlsTimer.restart()
     }
 
@@ -140,6 +143,7 @@ Item {
         libraryFilmStartTimer.stop()
         queuedExternalSource = ""
         queuedExternalTitle = ""
+        queuedExternalPosition = 0
         queuedLibraryFilmPath = ""
         queuedLibraryFilmPosition = 0
         externalSession = false
@@ -724,7 +728,8 @@ Item {
         onTriggered: {
             if (!overlay.closing && overlay.queuedExternalSource.toString().length > 0)
                 overlay.playExternal(overlay.queuedExternalSource,
-                                     overlay.queuedExternalTitle)
+                                     overlay.queuedExternalTitle,
+                                     overlay.queuedExternalPosition)
         }
     }
 

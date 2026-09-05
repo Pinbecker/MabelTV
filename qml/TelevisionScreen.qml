@@ -441,9 +441,11 @@ Rectangle {
                         if (appRoot.pendingExternalSource.toString().length > 0) {
                             const source = appRoot.pendingExternalSource
                             const title = appRoot.pendingExternalTitle
+                            const position = appRoot.pendingExternalPosition
                             appRoot.pendingExternalSource = ""
                             appRoot.pendingExternalTitle = ""
-                            adultMode.openExternal(source, title)
+                            appRoot.pendingExternalPosition = 0
+                            adultMode.openExternal(source, title, position)
                         } else {
                             adultMode.open()
                             if (appRoot.pendingAdultLibraryPath.length > 0) {

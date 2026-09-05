@@ -35,8 +35,10 @@ Window {
     property bool childWasPausedBeforeAdult: false
     property bool restoreChildPauseAfterAdult: false
     property bool openingAdultMode: false
+    property string currentProgrammeTitle: ""
     property url pendingExternalSource: ""
     property string pendingExternalTitle: ""
+    property real pendingExternalPosition: 0
     property string pendingAdultLibraryPath: ""
     property real pendingAdultLibraryPosition: 0
     property int pendingPortalChannel: -1
@@ -68,6 +70,11 @@ Window {
     readonly property bool portalWidescreenAvailable: widescreenContentAvailable
     readonly property bool portalWidescreenEnabled: widescreenMode
         && widescreenContentAvailable
+    readonly property bool portalAdultHandoffAvailable: !directMediaMode
+        && !introPlaying && !filmCountdownActive && !openingAdultMode
+        && !adultMode.active && !poweringOff && pendingPowerAction.length === 0
+        && !tvController.standby && player.source.toString().length > 0
+        && (player.status === "Playing" || player.paused)
 
     function acceptRepeat(kind, isAutoRepeat) {
         const now = Date.now()
@@ -210,6 +217,7 @@ Window {
     function showProgramme(name) {
         if (name.length === 0)
             return
+        currentProgrammeTitle = name
         television.programmeNameItem.text = name.toUpperCase()
         television.programmeNameItem.opacity = 1
         programmeOsdTimer.restart()
@@ -344,6 +352,8 @@ Window {
                 guideOverlay.close()
                 enterAdultMode()
             }
+        } else if (command === "continue-in-adult-mode") {
+            continueCurrentInAdultMode()
         } else if (command === "channel-up") {
             if (adultMode.active)
                 adultMode.selectRelative(-1)
@@ -485,6 +495,20 @@ Window {
         }
         pendingExternalSource = source
         pendingExternalTitle = title
+        pendingExternalPosition = 0
+        enterAdultMode()
+    }
+
+    function continueCurrentInAdultMode() {
+        if (!portalAdultHandoffAvailable)
+            return
+        const source = player.source
+        const title = currentProgrammeTitle.length > 0
+                ? currentProgrammeTitle : tvController.currentChannelName
+        const position = Math.max(0, player.positionSeconds())
+        pendingExternalSource = source
+        pendingExternalTitle = title
+        pendingExternalPosition = position
         enterAdultMode()
     }
 

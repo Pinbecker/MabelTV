@@ -252,6 +252,45 @@ test('Experience icon controls and sheet headers keep their mobile contracts', a
 })
 
 
+test('MabelTV remote offers a contextual borderless Adult TV handoff', async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone remote contract')
+  await openPortal(page)
+  await page.getByRole('button', { name: 'Remote', exact: true }).click()
+  await page.evaluate(() => {
+    clearInterval(liveRefreshTimer)
+    liveRefreshTimer = null
+    window.__sentLiveCommands = []
+    window.fetch = async (input, init = {}) => {
+      if (String(input).includes('/api/live/control')) {
+        window.__sentLiveCommands.push(JSON.parse(init.body).command)
+        return new Response('{"ok":true}', {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      return new Response('{"ok":true}', {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      })
+    }
+    renderLiveTv({
+      available: true, standby: false, adult_mode: false, paused: false,
+      muted: false, volume: 42, remote_locked: false,
+      subtitles_available: false, subtitles_visible: false,
+      widescreen_available: false, widescreen_enabled: false,
+      adult_handoff_available: true, connected_tv_available: true,
+      connected_tv_power: 'on', channel_number: 1,
+      channel_name: 'Family Films', programme: 'Snowy Adventure',
+    })
+  })
+  const handoff = page.locator('#remoteAdultHandoff')
+  await expect(handoff).toBeVisible()
+  await expect(handoff).toHaveAttribute(
+    'aria-label', 'Continue Snowy Adventure in Adult TV without the television frame')
+  await handoff.click()
+  await expect.poll(() => page.evaluate(() => window.__sentLiveCommands.at(-1)))
+    .toBe('continue-in-adult-mode')
+})
+
+
 test('preserved Classic presentation still boots with the shared scripts', async ({ page, context }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'Compatibility smoke test')
   await context.addCookies([{

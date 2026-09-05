@@ -1241,6 +1241,7 @@ class RemotePlaybackMixin:
         status = self.live_stream.status(allow_screen_without_programme=adult_mode)
         for field in ("volume", "muted", "remote_locked", "standby", "subtitles_available",
                       "subtitles_visible", "widescreen_available", "widescreen_enabled",
+                      "adult_handoff_available",
                       "connected_tv_available", "connected_tv_power"):
             if field in mode:
                 status[field] = mode[field]
@@ -1307,7 +1308,8 @@ class RemotePlaybackMixin:
                    "turn-on", "turn-off", "turn-on-mabel-only", "turn-off-mabel-only",
                    "toggle-power",
                    "open-parent-menu", "open-tv-guide", "open-channel-menu", "close-overlay", "restart-programme",
-                   "enter-adult-mode", "navigate-up", "navigate-down", "navigate-left",
+                   "enter-adult-mode", "continue-in-adult-mode",
+                   "navigate-up", "navigate-down", "navigate-left",
                    "navigate-right", "select", "return-to-mabeltv", "toggle-remote-lock",
                    "tune-channel"}
         if command not in allowed:

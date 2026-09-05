@@ -178,6 +178,7 @@ LIVE_PAYLOAD: dict[str, Any] = {
     "subtitles_visible": False,
     "widescreen_available": False,
     "widescreen_enabled": False,
+    "adult_handoff_available": False,
     "connected_tv_available": True,
     "connected_tv_power": "standby",
     "channel_number": 1,

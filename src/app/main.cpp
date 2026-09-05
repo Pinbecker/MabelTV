@@ -631,6 +631,8 @@ int main(int argc, char *argv[])
                                                                      "portalWidescreenAvailable").toBool()},
                                                                 {QStringLiteral("widescreen_enabled"), rootObject->property(
                                                                      "portalWidescreenEnabled").toBool()},
+                                                                {QStringLiteral("adult_handoff_available"), rootObject->property(
+                                                                     "portalAdultHandoffAvailable").toBool()},
                                                            };
                                                           QObject *adultMode = rootObject->findChild<QObject *>(
                                                               QStringLiteral("mabeltvAdultMode"));
@@ -684,6 +686,7 @@ int main(int argc, char *argv[])
                                                           QStringLiteral("close-overlay"),
                                                            QStringLiteral("restart-programme"),
                                                            QStringLiteral("enter-adult-mode"),
+                                                           QStringLiteral("continue-in-adult-mode"),
                                                            QStringLiteral("return-to-mabeltv"),
                                                            QStringLiteral("toggle-remote-lock"),
                                                            QStringLiteral("navigate-up"),

@@ -155,6 +155,10 @@
       $('#remoteWidescreen').setAttribute('aria-pressed', String(widescreenEnabled))
       $('#remoteWidescreen').setAttribute('aria-label', widescreenEnabled
         ? 'Turn widescreen mode off' : 'Turn widescreen mode on')
+      const adultHandoffAvailable = available && !adult
+        && state.adult_handoff_available === true
+      $('#remoteAdultHandoff').classList.toggle('hidden', !adultHandoffAvailable)
+      $('#remoteAdultHandoff').setAttribute('aria-label', `Continue ${state.programme || 'this programme'} in Adult TV without the television frame`)
       $('#remoteChannelPickerLabel').textContent = adult
         ? 'Adult TV is open' : (available ? `CH ${state.channel_number} · ${state.channel_name}` : 'Choose a channel')
       $('#remoteLock').classList.toggle('active', locked)
@@ -165,7 +169,9 @@
           || (adult && state.subtitles_available !== false)
         const widescreenControl = button.dataset.liveCommand !== 'toggle-widescreen-mode'
           || widescreenAvailable
-        button.disabled = !adultSubtitles || !widescreenControl
+        const adultHandoffControl = button.dataset.liveCommand !== 'continue-in-adult-mode'
+          || adultHandoffAvailable
+        button.disabled = !adultSubtitles || !widescreenControl || !adultHandoffControl
       })
       $('#openLiveChannels').disabled = false
       $('#openRemotePower').disabled = false
