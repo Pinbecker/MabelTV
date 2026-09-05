@@ -77,11 +77,16 @@ The optional GPIO IR path is in [Remote setup](docs/remote-setup.md).
 
 The Windows development toolchain uses MSYS2 UCRT64 with GCC, CMake, Ninja, Qt 6, libmpv, and FFmpeg. Set `MABELTV_MSYS2_ROOT` only when MSYS2 is outside the supported defaults.
 
-Build and run all automated tests:
+Build and run the portable native, Library, JavaScript, offline-PWA and Matter
+tests:
 
 ```powershell
 .\scripts\windows\build.ps1
 ```
+
+The exact installed-iPhone and iPad layouts have a separate browser contract.
+GitHub runs both gates automatically; [Quality gates](docs/quality-gates.md)
+explains the matching local command and the additional real-Pi release boundary.
 
 For your own Pi only, deploy saved local changes quickly (not a releasable install):
 
@@ -116,6 +121,7 @@ Build, dependency-check, smoke-test, and package the Windows development build:
 
 - [Project principles](docs/project-principles.md)
 - [Architecture and data layout](docs/architecture.md)
+- [Quality gates](docs/quality-gates.md)
 - [SD-card installer and update model](docs/sd-card-installer.md)
 - [KidsTV Library](docs/media-library.md)
 - [Troubleshooting and recovery](docs/troubleshooting.md)
