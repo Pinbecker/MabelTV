@@ -20,9 +20,21 @@ The reference viewport is 393 x 852 CSS pixels. On the authenticated Home view:
 - Hidden application content must not appear behind setup or PIN screens.
 
 Reference captures cover Home, Watch, Remote, and Settings at 393 x 852, plus
-Home at 1024 x 768. Phase 2 will turn these captures and measurements into an
-automated browser suite; until then every portal change must be compared
-manually at both sizes before deployment.
+Home at 1024 x 768. The automated browser suite in `tests/browser` now protects
+these screens with deterministic data in iPhone WebKit, iPad WebKit, and iPhone
+Chromium. It also checks representative film and channel menus, the PIN gate,
+offline database upgrades, and protected-download access.
+
+Run it from `tests/browser` with:
+
+```powershell
+npm ci
+npx playwright install webkit chromium
+npm test
+```
+
+Screenshot updates are deliberate review actions. Use `npm run test:update`,
+inspect every changed PNG, and only then commit the new references.
 
 ## PWA behaviour contract
 

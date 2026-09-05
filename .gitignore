@@ -5,3 +5,5 @@
 *.autosave
 __pycache__/
 node_modules/
+tests/browser/playwright-report/
+tests/browser/test-results/
