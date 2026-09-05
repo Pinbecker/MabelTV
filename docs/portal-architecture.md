@@ -6,8 +6,10 @@ This map describes where portal work belongs without changing that contract.
 
 ## Runtime assembly
 
-`scripts/pi/mabeltv-library.py` serves the portal and recursively expands
-`portal-include` comments before returning HTML. The entry documents are:
+`scripts/pi/mabeltv_backend/portal.py` assembles the portal and recursively
+expands `portal-include` comments before the HTTP layer returns HTML. The
+installed `mabeltv-library` executable remains the stable entry point. The
+entry documents are:
 
 - `scripts/pi/mabeltv-library.html` for the current Experience design.
 - `scripts/pi/mabeltv-library-classic.html` for the preserved Classic design.
@@ -153,3 +155,6 @@ The browser suite covers the 393 x 852 installed-iPhone contract first, with
 iPad WebKit and iPhone Chromium providing additional layout and compatibility
 coverage. A portal-only checkpoint is deployed without rebuilding the native
 QML/C++ television application.
+
+The server-side boundary behind these assets is documented separately in
+[library-service-architecture.md](library-service-architecture.md).

@@ -207,6 +207,7 @@ install -o root -g root -m 0755 "$binary_root/mabeltv_media_check" "$incoming_di
 install -o root -g root -m 0755 "$source_root/scripts/pi/mabeltv-launch.sh" "$incoming_dir/mabeltv-launch"
 install -o root -g root -m 0755 "$source_root/scripts/pi/mabeltv-library.py" "$incoming_dir/mabeltv-library"
 install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-library.html" "$incoming_dir/mabeltv-library.html"
+install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-library-classic.html" "$incoming_dir/mabeltv-library-classic.html"
 install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-watch.html" "$incoming_dir/mabeltv-watch.html"
 install -o root -g root -m 0644 "$source_root/scripts/pi/hls.min.js" "$incoming_dir/hls.min.js"
 install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-offline.js" "$incoming_dir/mabeltv-offline.js"
@@ -214,6 +215,9 @@ install -o root -g root -m 0644 "$source_root/scripts/pi/service-worker.js" "$in
 install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-icon.png" "$incoming_dir/mabeltv-icon.png"
 install -o root -g root -m 0644 "$source_root/scripts/pi/apple-touch-icon.png" "$incoming_dir/apple-touch-icon.png"
 install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-manifest.json" "$incoming_dir/mabeltv-manifest.json"
+install -d -o root -g root -m 0755 "$incoming_dir/mabeltv_backend"
+install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv_backend/"*.py \
+    "$incoming_dir/mabeltv_backend/"
 install -d -o root -g root -m 0755 "$incoming_dir/portal"
 cp -a "$source_root/scripts/pi/portal/." "$incoming_dir/portal/"
 # Developer copies can carry restrictive source-directory modes (for example
@@ -240,11 +244,13 @@ if [[ -r "$binary_root/BUILD-MANIFEST.json" ]]; then
     install -o root -g root -m 0644 "$binary_root/BUILD-MANIFEST.json" \
         "$incoming_dir/BUILD-MANIFEST.json"
 fi
-python3 - "$incoming_dir/mabeltv-library" <<'PY'
+python3 - "$incoming_dir/mabeltv-library" "$incoming_dir/mabeltv_backend" <<'PY'
 import ast
 import pathlib
 import sys
-ast.parse(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"), filename=sys.argv[1])
+paths = [pathlib.Path(sys.argv[1]), *sorted(pathlib.Path(sys.argv[2]).glob("*.py"))]
+for path in paths:
+    ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 PY
 mv "$incoming_dir" "$release_dir"
 incoming_dir=""
