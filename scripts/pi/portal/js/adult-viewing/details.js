@@ -177,9 +177,7 @@ function prepareAdultTitleSheet(title) {
   $('#adultTitleLocalCopy').textContent = ''
   $('#adultTitleManageLocal').classList.add('hidden')
   $('#adultProviderList').innerHTML = '<p>Loading…</p>'
-  ;['#adultTitleWatchlist', '#adultTitleRewatch', '#adultTitleUpNext',
-    '#adultTitleWatching', '#adultTitleWatched'].forEach(selector => {
-    const button = $(selector)
+  $('#adultTitleIntents').querySelectorAll('[data-viewing-action]').forEach(button => {
     button.classList.remove('active', 'is-unavailable', 'is-progress')
     button.setAttribute('aria-pressed', 'false')
   })

@@ -255,6 +255,20 @@ class FixtureLibrary:
         return {"items": [copy.deepcopy(value) for value in self.viewing_titles.values()],
                 "watchmode_configured": False, "region": "GB"}
 
+    def adult_title_detail(self, media_type: str, tmdb_id: Any) -> dict[str, Any]:
+        identifier = int(tmdb_id)
+        return {
+            "key": f"{media_type}:{identifier}", "media_type": media_type,
+            "tmdb_id": identifier, "title": "Fixture Series",
+            "overview": "Series details opened successfully.", "seasons": [],
+            "providers": [], "on_mabeltv": True, "viewing": {},
+            "local": {"kind": "series", "series": "fixture-series"},
+        }
+
+    def adult_streaming_links(self, media_type: str, tmdb_id: Any,
+                              refresh: bool = False) -> dict[str, Any]:
+        return {"key": f"{media_type}:{int(tmdb_id)}", "sources": []}
+
     def adult_viewing_update(self, payload: dict[str, Any]) -> dict[str, Any]:
         key = f"{payload['media_type']}:{int(payload['tmdb_id'])}"
         current = self.viewing_titles.setdefault(key, {
