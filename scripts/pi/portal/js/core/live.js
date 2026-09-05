@@ -127,7 +127,6 @@
       const adult = state.adult_mode === true
       const paused = state.paused === true
       const muted = state.muted === true
-      const volume = Number.isFinite(Number(state.volume)) ? Math.max(0, Math.min(100, Number(state.volume))) : null
       $('#remoteConnectionDot').classList.toggle('off', !available)
       if (remoteFeedbackTimer === null) {
         const feedback = $('#remoteFeedback').closest('.remote-feedback')
@@ -137,17 +136,29 @@
       }
       $('#remoteMabelAction').classList.toggle('active', available && !adult)
       $('#remoteAdultAction').classList.toggle('active', available && adult)
-      $('#remoteVolumeValue').textContent = muted ? 'Muted' : (volume === null ? '—' : `${Math.round(volume)}%`)
+      const volumeValue = $('#remoteVolumeValue')
+      if (volumeValue) {
+        const volume = Number.isFinite(Number(state.volume)) ? Math.max(0, Math.min(100, Number(state.volume))) : null
+        volumeValue.textContent = muted ? 'Muted' : (volume === null ? '—' : `${Math.round(volume)}%`)
+      }
       $('#remoteMute').classList.toggle('muted', muted)
       $('#remoteMute').setAttribute('aria-label', muted ? 'Unmute' : 'Mute')
-      $('#remotePlaybackState').textContent = paused ? 'Paused' : (available ? 'Playing' : 'Offline')
-      $('#remotePlaybackState').classList.toggle('paused', paused)
-      $('#remotePlayPause').classList.toggle('paused', paused)
-      $('#remotePlayPauseLabel').textContent = paused ? 'Play' : 'Pause'
+      $('#remoteMute').setAttribute('aria-pressed', String(muted))
+      const playbackState = $('#remotePlaybackState')
+      if (playbackState) {
+        playbackState.textContent = paused ? 'Paused' : (available ? 'Playing' : 'Offline')
+        playbackState.classList.toggle('paused', paused)
+      }
+      const mabelTv = mabelTvDisplayState(state)
+      const connectedTv = connectedTvDisplayState(state)
+      if ($('#remoteMabelTvLed')) {
+        MabelPortalUI.setPowerStatus($('#remoteMabelTvLed'), $('#remoteMabelTvText'), mabelTv)
+        MabelPortalUI.setPowerStatus($('#remoteConnectedTvLed'), $('#remoteConnectedTvText'), connectedTv)
+      }
+      $('#remotePlayPause')?.classList.toggle('paused', paused)
+      if ($('#remotePlayPauseLabel')) $('#remotePlayPauseLabel').textContent = paused ? 'Play' : 'Pause'
       $('#remoteSubtitles').classList.toggle('active', state.subtitles_visible === true)
       $('#remoteSubtitles').setAttribute('aria-pressed', String(state.subtitles_visible === true))
-      $('#remoteSubtitles').querySelector('span').textContent = adult
-        ? (state.subtitles_available === false ? 'No subtitles' : 'Subtitles') : 'Adult only'
       const widescreenAvailable = !adult && state.widescreen_available === true
       const widescreenEnabled = widescreenAvailable && state.widescreen_enabled === true
       $('#remoteWidescreen').classList.toggle('hidden', !widescreenAvailable)
@@ -159,11 +170,14 @@
         && state.adult_handoff_available === true
       $('#remoteAdultHandoff').classList.toggle('hidden', !adultHandoffAvailable)
       $('#remoteAdultHandoff').setAttribute('aria-label', `Continue ${state.programme || 'this programme'} in Adult TV without the television frame`)
-      $('#remoteChannelPickerLabel').textContent = adult
+      const channelPickerLabel = $('#remoteChannelPickerLabel')
+      if (channelPickerLabel) channelPickerLabel.textContent = adult
         ? 'Adult TV is open' : (available ? `CH ${state.channel_number} · ${state.channel_name}` : 'Choose a channel')
-      $('#remoteLock').classList.toggle('active', locked)
-      $('#remoteLock').querySelector('.remote-dock-action-label').textContent = locked ? 'Unlock kids' : 'Lock kids'
-      $('#remoteLock').setAttribute('aria-label', locked ? 'Unlock kids’ physical remote' : 'Lock kids’ physical remote')
+      const lockButton = $('#remoteLock')
+      lockButton.classList.toggle('active', locked)
+      const lockLabel = lockButton.querySelector('.remote-dock-action-label') || lockButton.querySelector('span')
+      if (lockLabel) lockLabel.textContent = locked ? 'Unlock kids' : 'Lock kids'
+      lockButton.setAttribute('aria-label', locked ? 'Unlock kids’ physical remote' : 'Lock kids’ physical remote')
       $$('[data-live-command]').forEach(button => {
         const adultSubtitles = button.dataset.liveCommand !== 'toggle-subtitles'
           || (adult && state.subtitles_available !== false)
@@ -173,11 +187,12 @@
           || adultHandoffAvailable
         button.disabled = !adultSubtitles || !widescreenControl || !adultHandoffControl
       })
-      $('#openLiveChannels').disabled = false
+      if ($('#remotePlay')) $('#remotePlay').disabled = !available || !paused
+      if ($('#remotePause')) $('#remotePause').disabled = !available || paused
+      if ($('#openLiveChannels')) $('#openLiveChannels').disabled = false
       $('#openRemotePower').disabled = false
       updateLiveChannelSelection(state)
       const waking = state.standby === true
-      const connectedTv = connectedTvDisplayState(state)
       $('#remotePowerTitle').textContent = waking ? 'Turn on MabelTV?' : 'Put MabelTV in standby?'
       $('#remotePowerDescription').textContent = waking
         ? `The connected television is ${connectedTv.sentence}. Would you like to turn it on too?`
@@ -199,14 +214,14 @@
       liveTvState = state || {}
       const available = state.available === true
       $('#liveOff').classList.toggle('hidden', available && livePictureVisible)
-      $('#liveLed').classList.toggle('off', !available)
+      if ($('#liveLed')) $('#liveLed').classList.toggle('off', !available)
       $('#liveOffTitle').textContent = available ? 'Starting live picture…' : (state.reason || 'The TV is off')
       $('#liveOffText').textContent = available ? 'Connecting to MabelTV' : 'Turn on the television to start the live preview.'
       $('#liveProgramme').textContent = available ? state.programme : 'Waiting for MabelTV'
       $('#liveChannel').textContent = available
         ? (state.adult_mode ? 'ADULT TV · PRIVATE LIBRARY' : `CH ${state.channel_number} · ${state.channel_name}`)
         : 'Live preview'
-      $('#liveState').textContent = available ? (state.paused ? 'Paused' : 'Live') : 'Offline'
+      if ($('#liveState')) $('#liveState').textContent = available ? (state.paused ? 'Paused' : 'Live') : 'Offline'
       renderRemoteState(state)
     }
 

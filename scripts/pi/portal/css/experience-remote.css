@@ -1,15 +1,10 @@
 body.portal-v2 .live-page {
-  display: grid;
-  grid-template-columns: minmax(340px, 0.78fr) minmax(520px, 1.22fr);
-  align-items: start;
-  gap: 22px;
-  max-width: 1320px;
+  display: block;
+  width: min(100%, 620px);
+  padding: 30px 16px 96px;
 }
 
-body.portal-v2 .live-title,
-body.portal-v2 .live-page > footer {
-  grid-column: 1 / -1;
-}
+body.portal-v2 .live-title { display: none; }
 
 body.portal-v2 .remote-feedback {
   display: inline-flex;
@@ -41,20 +36,15 @@ body.portal-v2 .live-led.off {
   box-shadow: none;
 }
 
-body.portal-v2 .live-preview {
-  position: sticky;
-  top: 24px;
-  overflow: hidden;
-  border: 1px solid var(--experience-line);
-  border-radius: var(--experience-radius);
-  background: #000;
-}
-
 body.portal-v2 .live-screen {
   position: relative;
+  width: 100%;
   aspect-ratio: 16 / 9;
   overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 6px;
   background: #020203;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, .4), 0 8px 18px rgba(0, 0, 0, .24);
 }
 
 body.portal-v2 .live-screen video,
@@ -62,7 +52,7 @@ body.portal-v2 .live-screen img {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
 }
 
 body.portal-v2 .live-screen .hidden { display: none; }
@@ -75,67 +65,21 @@ body.portal-v2 .live-off {
   gap: 5px;
   background: radial-gradient(circle at 50% 35%, rgba(125, 55, 220, 0.18), transparent 50%), #050507;
   color: var(--experience-muted);
-  padding: 24px;
+  padding: 6px;
   text-align: center;
 }
 
 body.portal-v2 .live-off.hidden { display: none; }
-body.portal-v2 .live-off strong { font-size: 15px; }
-body.portal-v2 .live-off span { font-size: 12px; }
+body.portal-v2 .live-off strong { font-size: 10px; }
+body.portal-v2 .live-off span { display: none; }
 
-body.portal-v2 .live-now {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  min-height: 68px;
-  background: var(--experience-raised);
-  padding: 12px 15px;
-}
-
-body.portal-v2 .live-now > div {
-  display: grid;
-  min-width: 0;
-}
-
-body.portal-v2 .live-now > div span {
+body.portal-v2 .mabel-live-visual {
   overflow: hidden;
-  color: var(--experience-orange);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-body.portal-v2 .live-now > div strong {
-  overflow: hidden;
-  margin-top: 2px;
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-body.portal-v2 .live-now > small {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  flex: 0 0 auto;
-  color: var(--experience-muted);
-  font-size: 10px;
-  font-weight: 700;
+  border-radius: 6px;
 }
 
 body.portal-v2 .remote-app {
-  overflow: hidden;
-  border: 1px solid var(--experience-line);
-  border-radius: 20px;
-  background:
-    radial-gradient(circle at 50% 0, rgba(255, 122, 26, 0.075), transparent 34%),
-    linear-gradient(180deg, #17171c, #0e0e12);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.04), 0 24px 60px rgba(0, 0, 0, 0.22);
-  padding: 16px;
+  margin-top: 12px;
 }
 
 body.portal-v2 .remote-app button {
@@ -145,48 +89,32 @@ body.portal-v2 .remote-app button {
 body.portal-v2 .remote-app button:active { transform: scale(0.96); }
 
 body.portal-v2 .remote-destinations {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 7px;
-  padding-bottom: 16px;
+  padding: 0;
 }
 
 body.portal-v2 .remote-mode {
-  display: grid;
-  grid-template-rows: 34px auto;
-  align-content: center;
-  justify-items: center;
-  gap: 6px;
-  min-width: 0;
-  min-height: 76px;
-  border: 1px solid rgba(255, 255, 255, 0.045);
-  border-radius: 12px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.025));
-  color: var(--experience-muted);
-  padding: 8px 3px;
-  font-size: 10px;
-  font-weight: 750;
+  color: #dedee3;
 }
 
-body.portal-v2 .remote-mode-icon {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  background: rgba(255, 122, 26, 0.1);
-  color: var(--experience-orange);
+body.portal-v2 .remote-mode-guide svg { color: #66b4ff; }
+body.portal-v2 .remote-mode-menu svg { color: #b384ff; }
+body.portal-v2 .remote-mode-adult svg { color: #ff7898; }
+
+body.portal-v2 .remote-destinations button {
+  gap: 3px;
+  padding: 0 3px;
+  font-size: 9px;
+  white-space: nowrap;
 }
 
-body.portal-v2 .remote-mode-guide .remote-mode-icon { background: rgba(74, 163, 255, 0.12); color: #66b4ff; }
-body.portal-v2 .remote-mode-menu .remote-mode-icon { background: rgba(166, 109, 255, 0.13); color: #b384ff; }
-body.portal-v2 .remote-mode-adult .remote-mode-icon { background: rgba(255, 91, 130, 0.12); color: #ff7898; }
+body.portal-v2 .remote-destinations svg {
+  width: 13px;
+  height: 13px;
+}
 
-body.portal-v2 .remote-mode svg,
-body.portal-v2 .remote-playback svg,
-body.portal-v2 .remote-dock svg {
-  width: 21px;
-  height: 21px;
+body.portal-v2 .remote-transport-context svg {
+  width: 18px;
+  height: 18px;
   display: block;
   fill: none;
   stroke: currentColor;
@@ -197,19 +125,15 @@ body.portal-v2 .remote-dock svg {
 
 body.portal-v2 .remote-mode.active {
   border-color: rgba(255, 122, 26, 0.46);
-  background: linear-gradient(180deg, rgba(255, 122, 26, 0.15), rgba(255, 122, 26, 0.07));
+  background: rgba(255, 122, 26, 0.1);
   color: var(--experience-orange);
   box-shadow: inset 0 0 0 1px rgba(255, 122, 26, 0.08);
 }
 
-body.portal-v2 .remote-mode.active .remote-mode-icon {
-  background: var(--experience-orange);
-  color: #170b03;
-  box-shadow: 0 7px 16px rgba(255, 122, 26, 0.22);
-}
+body.portal-v2 .remote-mode.active svg { color: var(--experience-orange); }
 
 body.portal-v2 .remote-playback {
-  padding: 14px 0 8px;
+  padding: 0 0 8px;
 }
 
 body.portal-v2 .remote-playback > header {
@@ -232,14 +156,22 @@ body.portal-v2 .remote-state-pill {
 
 body.portal-v2 .remote-state-pill.paused { color: var(--experience-orange); }
 
+body.portal-v2 #view-live .tv-remote-transport-row button {
+  color: #f4f4f7;
+}
+
+body.portal-v2 #view-live .tv-remote-transport-row button:disabled {
+  color: #f4f4f7;
+  opacity: 1;
+}
+
 body.portal-v2 .remote-transport {
   display: grid;
   gap: 7px;
 }
 
-body.portal-v2 .remote-transport-primary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 body.portal-v2 .remote-transport-context {
-  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 7px;
 }
 
@@ -266,87 +198,22 @@ body.portal-v2 .remote-transport button:hover {
 
 body.portal-v2 .remote-transport button:disabled { opacity: 0.32; }
 
-body.portal-v2 .remote-transport .remote-play {
-  border-color: var(--experience-orange);
-  background: var(--experience-orange);
-  color: #170b03;
-  box-shadow: 0 8px 18px rgba(255, 122, 26, 0.2);
-}
-
-body.portal-v2 .remote-play .remote-play-icon { display: none; }
-body.portal-v2 .remote-play.paused .remote-pause-icon { display: none; }
-body.portal-v2 .remote-play.paused .remote-play-icon { display: block; }
 body.portal-v2 .remote-transport button.active { color: var(--experience-orange); }
 
 body.portal-v2 .remote-transport-context button {
-  grid-template-columns: auto minmax(0, 1fr);
+  display: flex;
   align-items: center;
-  justify-items: start;
+  justify-content: center;
+  gap: 7px;
   min-height: 50px;
-  padding: 6px 9px;
-  text-align: left;
+  padding: 6px 8px;
+  text-align: center;
 }
 
 body.portal-v2 .remote-transport-context button span {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-body.portal-v2 .remote-dock {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 78px 72px;
-  gap: 7px;
-  margin-top: 8px;
+body.portal-v2 .remote-transport-context button.hidden {
+  display: none;
 }
-
-body.portal-v2 .remote-dock button {
-  min-width: 0;
-  min-height: 62px;
-  border: 1px solid rgba(255, 255, 255, 0.045);
-  border-radius: 10px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.025));
-  color: var(--experience-muted);
-}
-
-body.portal-v2 .remote-dock-main {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  text-align: left;
-}
-
-body.portal-v2 .remote-dock-icon,
-body.portal-v2 .remote-dock-action-icon {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-}
-
-body.portal-v2 .remote-dock-icon { background: rgba(255, 122, 26, 0.11); color: var(--experience-orange); }
-
-body.portal-v2 .remote-dock-main > span:nth-child(2) { display: grid; min-width: 0; }
-body.portal-v2 .remote-dock-main small { color: var(--experience-dim); font-size: 10px; text-transform: uppercase; }
-body.portal-v2 .remote-dock-main strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-body.portal-v2 .remote-dock-chevron { width: 15px; height: 15px; }
-
-body.portal-v2 .remote-dock-action {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto;
-  align-content: center;
-  justify-content: center;
-  justify-items: center;
-  gap: 3px;
-  padding: 7px 2px;
-  font-size: 10px;
-  font-weight: 700;
-}
-
-body.portal-v2 .remote-dock-action.active { background: rgba(255, 122, 26, 0.12); color: var(--experience-orange); }
-body.portal-v2 .remote-lock .remote-dock-action-icon { background: rgba(166, 109, 255, 0.12); color: #b384ff; }
-body.portal-v2 .remote-power { color: var(--experience-danger); }
-body.portal-v2 .remote-power .remote-dock-action-icon { background: rgba(255, 82, 112, 0.11); }

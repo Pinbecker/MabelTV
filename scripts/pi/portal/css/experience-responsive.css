@@ -10,6 +10,10 @@
 }
 
 @media (max-width: 860px) {
+  body.portal-v2 .page.live-page {
+    padding: 14px 12px 22px;
+  }
+
   body.portal-v2 .activity-page { padding-top: 0; }
   body.portal-v2 .page {
     padding: 28px 18px 46px;
@@ -125,21 +129,8 @@
 
   body.portal-v2 .device-status-copy > span { white-space: normal; }
 
-  body.portal-v2 .live-page {
-    display: block;
-  }
-
-  body.portal-v2 .live-preview {
-    position: relative;
-    top: auto;
-    margin: 0 -18px;
-    border-right: 0;
-    border-left: 0;
-    border-radius: 0;
-  }
-
   body.portal-v2 .remote-app {
-    margin: 18px -2px 0;
+    margin: 12px 0 0;
   }
 
   body.portal-v2 .watch-poster-grid,
@@ -181,32 +172,6 @@
 }
 
 @media (max-width: 620px) {
-  body.portal-v2 .live-page {
-    padding-top: 6px;
-  }
-
-  body.portal-v2 .live-title {
-    margin-bottom: 5px;
-  }
-
-  body.portal-v2 .live-title .eyebrow {
-    margin-bottom: 2px;
-  }
-
-  body.portal-v2 .live-title h1 {
-    font-size: 34px;
-  }
-
-  body.portal-v2 .live-now {
-    min-height: 44px;
-    padding: 6px 12px;
-  }
-
-  body.portal-v2 .live-now > div strong {
-    margin-top: 0;
-    font-size: 12px;
-  }
-
   body.portal-v2 .watch-title {
     align-items: flex-end;
   }
@@ -555,7 +520,7 @@
 
   body.portal-v2 .remote-app {
     overflow: visible;
-    margin: 2px 0 0;
+    margin: 12px 0 0;
     border: 0;
     border-radius: 0;
     background: transparent;
@@ -565,31 +530,9 @@
 
   body.portal-v2 .remote-destinations {
     gap: 6px;
-    padding: 4px 0 6px;
-  }
-
-  body.portal-v2 .remote-mode {
-    grid-template-rows: 28px auto;
-    gap: 3px;
-    min-height: 60px;
-    padding: 4px 2px;
-  }
-
-  body.portal-v2 .remote-mode-icon {
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
-  }
-
-  body.portal-v2 .remote-mode svg {
-    width: 18px;
-    height: 18px;
   }
 
   body.portal-v2 .remote-transport button { min-height: 58px; }
-  body.portal-v2 .remote-dock { grid-template-columns: minmax(0,1fr) 66px 62px; }
-  body.portal-v2 .remote-dock button { min-height: 58px; }
-  body.portal-v2 .remote-dock-main { padding: 7px 9px; }
 
   body.portal-v2 .settings-device-card { margin-bottom: 30px; }
   body.portal-v2 .settings-fields,
@@ -604,46 +547,17 @@
 
 @media (max-width: 390px) {
   body.portal-v2 .page { padding-right: 15px; padding-left: 15px; }
-  body.portal-v2 .live-preview { margin-right: -15px; margin-left: -15px; }
   body.portal-v2 .watch-switch-wrap { margin-right: -15px; margin-left: -15px; padding-right: 15px; padding-left: 15px; }
   body.portal-v2 .home-feed { padding-right: 15px; padding-left: 15px; }
   body.portal-v2 .destination-rail { margin-right: -15px; padding-right: 15px; }
   body.portal-v2 .remote-app { margin-right: 0; margin-left: 0; }
   body.portal-v2 .remote-destinations { gap: 4px; }
   body.portal-v2 .remote-mode { font-size: 9px; }
-  body.portal-v2 .remote-dock { grid-template-columns: minmax(0,1fr) 62px 58px; gap: 5px; }
 }
 
 @media (max-width: 620px) and (max-height: 720px) {
-  body.portal-v2 .live-title { margin-bottom: 4px; }
-
-  body.portal-v2 .live-screen { aspect-ratio: 16 / 5; }
-
-  body.portal-v2 .live-now {
-    min-height: 50px;
-    padding-top: 8px;
-    padding-bottom: 8px;
-  }
-
   body.portal-v2 .remote-app {
-    margin-top: 2px;
+    margin-top: 12px;
     padding-top: 0;
   }
-
-  body.portal-v2 .remote-destinations {
-    padding-bottom: 8px;
-  }
-
-  body.portal-v2 .remote-mode {
-    min-height: 52px;
-    gap: 3px;
-    padding-top: 5px;
-    padding-bottom: 5px;
-  }
-
-  body.portal-v2 .remote-mode svg {
-    width: 18px;
-    height: 18px;
-  }
-
 }

@@ -109,7 +109,7 @@ test('iPad Remote view has no page-level horizontal overflow', async ({ page }, 
 })
 
 
-test('representative film and remote menus fit the phone viewport', async ({ page }, testInfo) => {
+test('representative film menu fits the phone viewport', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone overlay contract')
   await openPortal(page)
 
@@ -128,13 +128,6 @@ test('representative film and remote menus fit the phone viewport', async ({ pag
   await expect(watchlistIntent.locator('strong'))
     .toHaveText(wasWatchlisted ? 'Add to Watchlist' : 'In your Watchlist')
   await page.getByRole('button', { name: 'Close programme details' }).click()
-
-  await page.getByRole('button', { name: 'Remote', exact: true }).click()
-  await page.locator('#openLiveChannels').click()
-  await expect(page.locator('#liveChannelSheet')).toBeVisible()
-  const channelMenu = page.locator('#liveChannelSheet .remote-sheet-panel')
-  await expectInsideViewport(page, '#liveChannelSheet .remote-sheet-panel')
-  await expect(channelMenu).toHaveScreenshot('channel-menu.png')
 })
 
 
@@ -285,13 +278,35 @@ test('Experience icon controls and sheet headers keep their mobile contracts', a
   await page.getByRole('button', { name: 'Remote', exact: true }).click()
   await expect(page.locator('.mobile-remote-switcher')).toBeVisible()
   await expect(page.locator('[data-remote-switch="live"]')).toHaveClass(/active/)
+  const remoteSwitcher = await geometry(page, '.mobile-remote-switcher')
+  expect(remoteSwitcher.width).toBeLessThanOrEqual(180.1)
+  expect(remoteSwitcher.height).toBeLessThanOrEqual(40.1)
+  await expect(page.locator('#remoteMabelTvText')).toHaveText('Standby')
+  await expect(page.locator('#remoteMabelTvLed')).toHaveClass(/is-standby/)
+  await expect(page.locator('#remoteConnectedTvText')).toHaveText('Standby')
+  await expect(page.locator('#remoteConnectedTvLed')).toHaveClass(/is-standby/)
+  const mabelStructure = await page.evaluate(() => {
+    const rect = selector => {
+      const value = document.querySelector(selector).getBoundingClientRect()
+      return { top: value.top, right: value.right, bottom: value.bottom, left: value.left }
+    }
+    return {
+      status: rect('#view-live .tv-remote-status-card'),
+      chassis: rect('#view-live .tv-remote-chassis'),
+      utility: rect('#view-live .tv-remote-utility-row'),
+      transport: rect('#view-live .tv-remote-transport-row'),
+    }
+  })
   await page.locator('[data-remote-switch="lg-tv"]').click()
   await expect(page.locator('[data-remote-switch="lg-tv"]')).toHaveClass(/active/)
   await expect(page.locator('#lgMabelTvText')).toHaveText('Standby')
   await expect(page.locator('#lgMabelTvLed')).toHaveClass(/is-standby/)
   await expect(page.locator('#lgTvConnectionText')).toHaveText('On')
   await expect(page.locator('#lgTvConnectionLed')).toHaveClass(/is-on/)
-  await expect(page.locator('#lgVolumeValue')).toHaveText('18')
+  await expect(page.locator('#lgMute')).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.locator('#lgMute .tv-remote-volume-on')).toBeVisible()
+  await expect(page.locator('#lgMute .tv-remote-volume-off')).toBeHidden()
+  await expect(page.locator('#lgMute strong')).toHaveCount(0)
   expect(await page.locator('#lgMabelTvLed').evaluate(node => getComputedStyle(node).backgroundColor))
     .toBe('rgb(255, 90, 110)')
   expect(await page.locator('#lgTvConnectionLed').evaluate(node => getComputedStyle(node).backgroundColor))
@@ -308,6 +323,10 @@ test('Experience icon controls and sheet headers keep their mobile contracts', a
       return { top: value.top, right: value.right, bottom: value.bottom, left: value.left }
     }
     return {
+      status: rect('#view-lg-tv .tv-remote-status-card'),
+      chassis: rect('#view-lg-tv .tv-remote-chassis'),
+      utility: rect('#view-lg-tv .tv-remote-utility-row'),
+      transport: rect('#view-lg-tv .tv-remote-transport-row'),
       channel: rect('#view-lg-tv .tv-remote-channel-rocker'),
       dpad: rect('#view-lg-tv .tv-remote-dpad'),
       volume: rect('#view-lg-tv .tv-remote-volume-rocker'),
@@ -317,6 +336,14 @@ test('Experience icon controls and sheet headers keep their mobile contracts', a
   expect(sharedControls.channel.right).toBeLessThan(sharedControls.dpad.left)
   expect(sharedControls.dpad.right).toBeLessThan(sharedControls.volume.left)
   expect(sharedControls.back.top).toBeGreaterThan(sharedControls.dpad.bottom)
+  for (const key of ['status', 'chassis', 'utility', 'transport']) {
+    expect(sharedControls[key].left).toBeCloseTo(mabelStructure[key].left, 0)
+    expect(sharedControls[key].right).toBeCloseTo(mabelStructure[key].right, 0)
+    expect(sharedControls[key].bottom - sharedControls[key].top)
+      .toBeCloseTo(mabelStructure[key].bottom - mabelStructure[key].top, 0)
+  }
+  expect(sharedControls.chassis.top - sharedControls.status.bottom)
+    .toBeCloseTo(mabelStructure.chassis.top - mabelStructure.status.bottom, 0)
 
   const stickyClose = await page.evaluate(() => {
     const dialog = document.querySelector('#adultSeasonSheet')
@@ -342,7 +369,7 @@ test('MabelTV remote offers a contextual borderless Adult TV handoff', async ({ 
     available: true, standby: false, adult_mode: false, paused: false,
     muted: false, volume: 42, remote_locked: false,
     subtitles_available: false, subtitles_visible: false,
-    widescreen_available: false, widescreen_enabled: false,
+    widescreen_available: true, widescreen_enabled: false,
     adult_handoff_available: true, connected_tv_available: true,
     connected_tv_power: 'on', channel_number: 1,
     channel_name: 'Family Films', programme: 'Snowy Adventure',
@@ -369,8 +396,26 @@ test('MabelTV remote offers a contextual borderless Adult TV handoff', async ({ 
   }, liveFixture)
   await page.getByRole('button', { name: 'Remote', exact: true }).click()
   await page.evaluate((fixture) => renderLiveTv(fixture), liveFixture)
-  await expect(page.locator('#view-live .remote-transport-primary button')).toHaveCount(4)
-  await expect(page.locator('#view-live .remote-transport-context button')).toHaveCount(3)
+  await expect(page.locator('#view-live .tv-remote-transport-row button')).toHaveCount(4)
+  await expect(page.locator('#view-live .remote-transport-context button')).toHaveCount(4)
+  await expect(page.locator('#view-live #openLiveChannels')).toHaveCount(0)
+  await expect(page.locator('#remoteAdultAction')).toHaveText('Open Adult TV')
+  await expect(page.locator('#remoteSubtitles')).toHaveText('Subtitles')
+  await expect(page.locator('#remoteAdultHandoff')).toHaveText('Play in Adult TV')
+  await expect(page.locator('#remoteLock')).toHaveText('')
+  await expect(page.locator('#remoteLock')).toHaveAttribute('aria-label', 'Lock kids’ physical remote')
+  await expect(page.locator('#remoteMute strong')).toHaveCount(0)
+  await expect(page.locator('#remoteMute .tv-remote-volume-on')).toBeVisible()
+  await expect(page.locator('#remoteMute .tv-remote-volume-off')).toBeHidden()
+  await expect(page.locator('#remoteMabelTvText')).toHaveText('On')
+  await expect(page.locator('#remoteConnectedTvText')).toHaveText('On')
+  await expect(page.locator('#remotePlay')).toBeDisabled()
+  await expect(page.locator('#remotePause')).toBeEnabled()
+  const transportAppearance = await page.locator('#view-live .tv-remote-transport-row button').evaluateAll(buttons =>
+    buttons.map(button => ({ color: getComputedStyle(button).color, opacity: getComputedStyle(button).opacity })))
+  transportAppearance.forEach(style => expect(style).toEqual({ color: 'rgb(244, 244, 247)', opacity: '1' }))
+  const shortcutIcon = await geometry(page, '#remoteAdultAction svg')
+  expect(shortcutIcon.width).toBeLessThanOrEqual(13.1)
   const mabelControls = await page.evaluate(() => {
     const rect = selector => {
       const value = document.querySelector(selector).getBoundingClientRect()
@@ -386,6 +431,11 @@ test('MabelTV remote offers a contextual borderless Adult TV handoff', async ({ 
   expect(mabelControls.channel.right).toBeLessThan(mabelControls.dpad.left)
   expect(mabelControls.dpad.right).toBeLessThan(mabelControls.volume.left)
   expect(mabelControls.back.top).toBeGreaterThan(mabelControls.dpad.bottom)
+  await expect(page).toHaveScreenshot('remote-live-controls.png', { fullPage: false })
+  await page.evaluate((fixture) => renderLiveTv({ ...fixture, muted: true }), liveFixture)
+  await expect(page.locator('#remoteMute')).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('#remoteMute .tv-remote-volume-on')).toBeHidden()
+  await expect(page.locator('#remoteMute .tv-remote-volume-off')).toBeVisible()
   const handoff = page.locator('#remoteAdultHandoff')
   await expect(handoff).toBeVisible()
   await expect(handoff).toHaveAttribute(

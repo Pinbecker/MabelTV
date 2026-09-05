@@ -56,7 +56,6 @@
     const connectionText = $('#lgTvConnectionText')
     const connectionLed = $('#lgTvConnectionLed')
     const mute = $('#lgMute')
-    const volumeValue = $('#lgVolumeValue')
 
     if (!value.configured) {
       heading.textContent = 'LG TV not configured'
@@ -77,12 +76,7 @@
 
     const powerLabel = on ? 'Turn connected TV off' : 'Turn connected TV on'
     $('#lgCardPower')?.setAttribute('aria-label', powerLabel)
-    $('#lgPower')?.setAttribute('aria-label', powerLabel)
     mute?.setAttribute('aria-pressed', String(Boolean(value.muted)))
-    if (volumeValue) {
-      const volume = Number.isFinite(Number(state.volume)) ? Math.max(0, Math.min(100, Number(state.volume))) : null
-      volumeValue.textContent = !on ? '—' : (state.muted ? 'Muted' : (volume === null ? '—' : String(Math.round(volume))))
-    }
 
     const availableApps = new Set(value.available_apps || [])
     $$('[data-lg-launch]').forEach(button => {

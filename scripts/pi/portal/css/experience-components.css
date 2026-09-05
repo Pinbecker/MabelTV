@@ -245,6 +245,134 @@ body.portal-v2 .tv-remote-switcher button.active {
   box-shadow: inset 0 1px rgba(255, 255, 255, .04), 0 0 16px rgba(255, 122, 26, .08);
 }
 
+body.portal-v2 .tv-remote-status-card {
+  display: grid;
+  grid-template-columns: 126px minmax(0, 1fr) 44px;
+  gap: 16px;
+  align-items: center;
+  width: 100%;
+  min-height: 174px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 88% 8%, rgba(255, 122, 26, .07), transparent 32%),
+    linear-gradient(145deg, #19191f, #111116 70%);
+  padding: 18px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, .035), 0 20px 48px rgba(0, 0, 0, .2);
+}
+
+body.portal-v2 .tv-remote-status-visual {
+  min-width: 0;
+}
+
+body.portal-v2 .tv-remote-status-copy {
+  min-width: 0;
+}
+
+body.portal-v2 .tv-remote-status-kicker {
+  margin: 0;
+  color: #f7f7fa;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+body.portal-v2 .tv-remote-status-copy h2 {
+  overflow: hidden;
+  margin: 3px 0 1px;
+  color: #fff;
+  font-size: 21px;
+  font-weight: 820;
+  letter-spacing: -.035em;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.portal-v2 .tv-remote-status-detail {
+  overflow: hidden;
+  margin: 0;
+  color: #a4a4ad;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.portal-v2 .tv-remote-status-facts {
+  display: grid;
+  gap: 5px;
+  margin-top: 13px;
+  color: #8f8f99;
+  font-size: 10px;
+}
+
+body.portal-v2 .tv-remote-status-facts span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+body.portal-v2 .tv-remote-status-facts b {
+  flex: 0 0 auto;
+  color: #b5b5bd;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+body.portal-v2 .tv-remote-status-facts em {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.portal-v2 .tv-remote-card-actions {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+body.portal-v2 .tv-remote-card-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  border: 1px solid rgba(255, 122, 26, .32);
+  border-radius: 50%;
+  background: rgba(255, 122, 26, .1);
+  color: var(--experience-orange);
+  padding: 0;
+}
+
+body.portal-v2 .tv-remote-card-button svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+body.portal-v2 .tv-remote-card-lock {
+  border-color: rgba(179, 132, 255, .34);
+  background: rgba(166, 109, 255, .1);
+  color: #b384ff;
+}
+
+body.portal-v2 .tv-remote-card-lock.active {
+  border-color: rgba(255, 122, 26, .48);
+  background: rgba(255, 122, 26, .12);
+  color: var(--experience-orange);
+}
+
 body.portal-v2 .tv-remote-chassis {
   display: grid;
   justify-items: center;
@@ -333,7 +461,9 @@ body.portal-v2 .tv-remote-rocker-state svg {
 body.portal-v2 .tv-remote-channel-rocker .tv-remote-rocker-state svg { color: var(--experience-orange); }
 body.portal-v2 .tv-remote-volume-rocker .tv-remote-rocker-state svg { color: #67bfff; }
 body.portal-v2 .tv-remote-rocker-state strong { color: #efeff2; font-size: 11px; }
-body.portal-v2 .tv-remote-volume-off { display: none; }
+body.portal-v2 .tv-remote-mute { gap: 0; }
+body.portal-v2 .tv-remote-mute svg { width: 22px; height: 22px; }
+body.portal-v2 .tv-remote-mute .tv-remote-volume-off { display: none; }
 
 body.portal-v2 .tv-remote-mute.muted .tv-remote-volume-on,
 body.portal-v2 .tv-remote-mute[aria-pressed="true"] .tv-remote-volume-on { display: none; }
@@ -451,6 +581,86 @@ body.portal-v2 .tv-remote-back {
 
 body.portal-v2 .tv-remote-back svg { width: 18px; height: 18px; }
 
+body.portal-v2 .tv-remote-utility-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  width: 100%;
+}
+
+body.portal-v2 .tv-remote-utility-row button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  height: 46px;
+  border: 1px solid rgba(255, 255, 255, .09);
+  border-radius: 23px;
+  background: linear-gradient(180deg, #1a1a20, #141419);
+  color: #dedee3;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+body.portal-v2 .tv-remote-utility-row svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+body.portal-v2 .tv-remote-transport-row {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr 1fr;
+  height: 56px;
+  margin-top: 9px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 14px;
+  background: #141419;
+  color: #f4f4f7;
+}
+
+body.portal-v2 .tv-remote-transport-row > button,
+body.portal-v2 .tv-remote-play-pause {
+  min-width: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+body.portal-v2 .tv-remote-transport-row > button:first-child,
+body.portal-v2 .tv-remote-play-pause {
+  border-right: 1px solid rgba(255, 255, 255, .09);
+}
+
+body.portal-v2 .tv-remote-play-pause {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+body.portal-v2 .tv-remote-play-pause button {
+  min-width: 0;
+  min-height: 44px;
+  border-radius: 0;
+  background: transparent;
+}
+
+body.portal-v2 .tv-remote-transport-row svg {
+  width: 23px;
+  height: 23px;
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 @media (max-width: 860px) {
   body.portal-v2 .tv-remote-toolbar { display: none; }
 }
@@ -482,7 +692,32 @@ body.portal-v2 .tv-remote-back svg { width: 18px; height: 18px; }
   body.portal-v2 .tv-remote-dpad { width: min(188px, 100%); }
 }
 
+@media (max-width: 430px) {
+  body.portal-v2 .tv-remote-status-card {
+    grid-template-columns: 94px minmax(0, 1fr) 44px;
+    gap: 10px;
+    height: 128px;
+    min-height: 128px;
+    overflow: hidden;
+    padding: 12px;
+  }
+
+  body.portal-v2 .tv-remote-status-copy h2 { font-size: 17px; }
+  body.portal-v2 .tv-remote-status-kicker { font-size: 11px; }
+  body.portal-v2 .tv-remote-status-facts { gap: 3px; margin-top: 9px; font-size: 10px; }
+  body.portal-v2 .tv-remote-utility-row button { height: 44px; min-height: 44px; }
+  body.portal-v2 .tv-remote-utility-row svg { width: 15px; height: 15px; }
+  body.portal-v2 .tv-remote-transport-row { height: 46px; margin-top: 5px; }
+  body.portal-v2 .tv-remote-play-pause button { min-height: 44px; }
+}
+
 @media (max-width: 370px) {
+  body.portal-v2 .tv-remote-status-card { grid-template-columns: 80px minmax(0, 1fr) 36px; gap: 9px; padding: 12px; }
+  body.portal-v2 .tv-remote-status-copy h2 { font-size: 16px; }
+  body.portal-v2 .tv-remote-status-facts { font-size: 10px; }
+  body.portal-v2 .tv-remote-utility-row { gap: 4px; }
+  body.portal-v2 .tv-remote-utility-row button { gap: 3px; font-size: 9px; }
+  body.portal-v2 .tv-remote-utility-row svg { width: 16px; height: 16px; }
   body.portal-v2 .tv-remote-switcher { width: 172px; }
   body.portal-v2 .tv-remote-switcher button { padding: 0 7px; font-size: 10px; }
   body.portal-v2 .tv-remote-control-row { grid-template-columns: 56px minmax(0, 172px) 56px; gap: 6px; }

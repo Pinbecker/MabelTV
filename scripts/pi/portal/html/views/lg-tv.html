@@ -8,35 +8,25 @@
       </nav>
     </div>
 
-    <section class="lg-status-card" aria-labelledby="lgTvHeading">
-      <div class="lg-tv-illustration" aria-hidden="true">
+    <section class="tv-remote-status-card" aria-labelledby="lgTvHeading">
+      <div class="tv-remote-status-visual lg-tv-illustration" aria-hidden="true">
         <div class="lg-tv-screen"><span>LG</span></div><span class="lg-tv-stand"></span>
       </div>
-      <div class="lg-status-copy">
-        <p class="lg-status-kicker">Connected LG TV</p>
+      <div class="tv-remote-status-copy">
+        <p class="tv-remote-status-kicker">Connected LG TV</p>
         <h2 id="lgTvHeading">Checking television…</h2>
-        <p id="lgTvDetail" class="lg-status-detail">Looking for its control session</p>
-        <div class="lg-status-facts">
+        <p id="lgTvDetail" class="tv-remote-status-detail">Looking for its control session</p>
+        <div class="tv-remote-status-facts">
           <span><i id="lgMabelTvLed" class="portal-power-status-dot is-unknown"></i><b>MabelTV</b> <em id="lgMabelTvText">Checking…</em></span>
           <span><i id="lgTvConnectionLed" class="portal-power-status-dot is-unknown"></i><b>Connected TV</b> <em id="lgTvConnectionText">Checking…</em></span>
         </div>
       </div>
-      <button id="lgCardPower" class="lg-card-power" data-lg-action="power" type="button" aria-label="Turn connected TV on">
-        <svg><use href="/portal/icons.svg#signal-power"/></svg>
-      </button>
+      <div class="tv-remote-card-actions">
+        <button id="lgCardPower" class="tv-remote-card-button tv-remote-card-power" data-lg-action="power" type="button" aria-label="Turn connected TV on">
+          <svg><use href="/portal/icons.svg#signal-power"/></svg>
+        </button>
+      </div>
     </section>
-
-    <div class="lg-top-actions" aria-label="Connected TV shortcuts">
-      <button id="lgPower" class="lg-top-action lg-power-action" data-lg-action="power" type="button">
-        <svg><use href="/portal/icons.svg#signal-power"/></svg><span>Power</span>
-      </button>
-      <button data-lg-action="input" data-lg-requires-tv type="button">
-        <svg><use href="/portal/icons.svg#signal-input"/></svg><span>Source</span>
-      </button>
-      <button data-lg-action="apps" data-lg-requires-tv type="button">
-        <svg><use href="/portal/icons.svg#signal-layout-grid"/></svg><span>All apps</span>
-      </button>
-    </div>
 
     <section class="lg-control-card" aria-label="LG TV controls">
       <div class="tv-remote-chassis">
@@ -45,11 +35,11 @@
 
           <div class="tv-remote-dpad" aria-label="Directional navigation"><button class="tv-dpad-up" data-lg-action="up" data-lg-requires-tv type="button" aria-label="Up"><svg><use href="/portal/icons.svg#signal-chevron-up"/></svg></button><button class="tv-dpad-left" data-lg-action="left" data-lg-requires-tv type="button" aria-label="Left"><svg><use href="/portal/icons.svg#signal-chevron-left"/></svg></button><button class="tv-dpad-ok" data-lg-action="ok" data-lg-requires-tv type="button">OK</button><button class="tv-dpad-right" data-lg-action="right" data-lg-requires-tv type="button" aria-label="Right"><svg><use href="/portal/icons.svg#signal-chevron-right"/></svg></button><button class="tv-dpad-down" data-lg-action="down" data-lg-requires-tv type="button" aria-label="Down"><svg><use href="/portal/icons.svg#signal-chevron-down"/></svg></button></div>
 
-          <div class="tv-remote-rocker tv-remote-volume-rocker" aria-label="Volume controls"><button data-lg-action="volume-up" data-lg-requires-tv type="button" aria-label="Volume up"><svg><use href="/portal/icons.svg#signal-plus"/></svg></button><button id="lgMute" class="tv-remote-rocker-state tv-remote-mute" data-lg-action="mute" data-lg-requires-tv type="button" aria-label="Mute connected TV" aria-pressed="false"><svg class="tv-remote-volume-on"><use href="/portal/icons.svg#signal-volume"/></svg><svg class="tv-remote-volume-off"><use href="/portal/icons.svg#signal-volume-x"/></svg><strong id="lgVolumeValue">—</strong></button><button data-lg-action="volume-down" data-lg-requires-tv type="button" aria-label="Volume down"><svg><use href="/portal/icons.svg#signal-minus"/></svg></button></div>
+          <div class="tv-remote-rocker tv-remote-volume-rocker" aria-label="Volume controls"><button data-lg-action="volume-up" data-lg-requires-tv type="button" aria-label="Volume up"><svg><use href="/portal/icons.svg#signal-plus"/></svg></button><button id="lgMute" class="tv-remote-rocker-state tv-remote-mute" data-lg-action="mute" data-lg-requires-tv type="button" aria-label="Mute connected TV" aria-pressed="false"><svg class="tv-remote-volume-on"><use href="/portal/icons.svg#signal-volume"/></svg><svg class="tv-remote-volume-off"><use href="/portal/icons.svg#signal-volume-x"/></svg></button><button data-lg-action="volume-down" data-lg-requires-tv type="button" aria-label="Volume down"><svg><use href="/portal/icons.svg#signal-minus"/></svg></button></div>
         </div>
         <button class="tv-remote-back" data-lg-action="back" data-lg-requires-tv type="button"><svg><use href="/portal/icons.svg#signal-arrow-left"/></svg><span>Back</span></button>
 
-        <div class="lg-utility-row" aria-label="Navigation shortcuts">
+        <div class="tv-remote-utility-row" aria-label="Navigation shortcuts">
           <button data-lg-action="home" data-lg-requires-tv type="button"><svg><use href="/portal/icons.svg#signal-house"/></svg><span>Home</span></button>
           <button data-lg-action="guide" data-lg-requires-tv type="button"><svg><use href="/portal/icons.svg#signal-guide"/></svg><span>Guide</span></button>
           <button data-lg-action="settings" data-lg-requires-tv type="button"><svg><use href="/portal/icons.svg#settings"/></svg><span>Settings</span></button>
@@ -57,9 +47,9 @@
         </div>
       </div>
 
-      <div class="lg-transport-row" aria-label="Playback controls">
+      <div class="tv-remote-transport-row" aria-label="Playback controls">
         <button data-lg-action="rewind" data-lg-requires-tv type="button" aria-label="Rewind"><svg><use href="/portal/icons.svg#signal-rewind"/></svg></button>
-        <div class="lg-play-pause">
+        <div class="tv-remote-play-pause">
           <button data-lg-action="play" data-lg-requires-tv type="button" aria-label="Play"><svg><use href="/portal/icons.svg#signal-play"/></svg></button>
           <button data-lg-action="pause" data-lg-requires-tv type="button" aria-label="Pause"><svg><use href="/portal/icons.svg#signal-pause"/></svg></button>
         </div>

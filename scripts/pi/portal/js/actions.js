@@ -571,9 +571,11 @@ let managementBusy = false
     }
 
     $$('[data-live-command]').forEach(button => button.onclick = () => sendLiveCommand(button.dataset.liveCommand, button))
-    $('#openLiveChannels').onclick = () => {
-      renderLiveChannelOptions()
-      portalSheets.open($('#liveChannelSheet'), { lockScroll: false })
+    if ($('#openLiveChannels')) {
+      $('#openLiveChannels').onclick = () => {
+        renderLiveChannelOptions()
+        portalSheets.open($('#liveChannelSheet'), { lockScroll: false })
+      }
     }
     function connectedTvAlreadyAtTarget(state, turningOn) {
       const power = String(state?.connected_tv_power || '').trim().toLocaleLowerCase()

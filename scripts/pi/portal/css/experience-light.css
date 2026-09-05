@@ -222,24 +222,13 @@ html[data-experience-theme="light"] body.portal-experience .mobile-head-dot {
 
 html[data-experience-theme="light"] body.portal-experience .live-off strong { color: #fff; }
 
-html[data-experience-theme="light"] body.portal-experience .remote-app {
-  background: linear-gradient(180deg, #ffffff, #f8f6f3);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.8), 0 24px 60px var(--experience-shadow);
-}
-
-html[data-experience-theme="light"] body.portal-experience :is(.remote-mode, .remote-dock button) {
+html[data-experience-theme="light"] body.portal-experience .tv-remote-utility-row button {
   background: var(--experience-elevated);
 }
 
-html[data-experience-theme="light"] body.portal-experience :is(.remote-mode.active, .remote-dock-action.active) {
+html[data-experience-theme="light"] body.portal-experience :is(.remote-mode.active, .tv-remote-card-lock.active) {
   border-color: rgba(181, 72, 0, 0.38);
   background: #fff0e5;
-}
-
-html[data-experience-theme="light"] body.portal-experience .remote-transport .remote-play {
-  border-color: var(--experience-orange-hot);
-  background: var(--experience-orange-hot);
-  color: var(--experience-on-orange);
 }
 
 html[data-experience-theme="light"] body.portal-experience .settings-save { background: var(--experience-elevated); }

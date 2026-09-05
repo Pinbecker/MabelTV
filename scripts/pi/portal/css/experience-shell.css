@@ -263,7 +263,15 @@ body.portal-v2 .mobile-head {
 
   body.portal-v2 .mobile-remote-switcher {
     display: none;
-    width: 204px;
+    width: 180px;
+    min-height: 40px;
+    padding: 3px;
+  }
+
+  body.portal-v2 .mobile-remote-switcher button {
+    min-height: 32px;
+    padding: 0 7px;
+    font-size: 10px;
   }
 
   body.portal-v2.tv-remote-mode .mobile-remote-switcher {
