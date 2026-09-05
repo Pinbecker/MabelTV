@@ -17,7 +17,7 @@ function request(value) {
   return result
 }
 
-function workerContext(manifest, chunks) {
+function workerContext(manifest, chunks, cacheOverrides = {}) {
   const listeners = {}
   const stores = {
     downloads: { get: key => request(key === manifest.id ? manifest : undefined) },
@@ -32,7 +32,13 @@ function workerContext(manifest, chunks) {
     Blob, Headers, Request, Response, URL, Uint8Array,
     console,
     indexedDB: { open: () => request(database) },
-    caches: {},
+    caches: {
+      open: async () => ({ add: async () => {} }),
+      delete: async () => true,
+      keys: async () => [],
+      match: async () => undefined,
+      ...cacheOverrides,
+    },
     self: {
       location: { origin: 'https://tv.example.test' },
       addEventListener: (name, listener) => { listeners[name] = listener },
@@ -43,6 +49,31 @@ function workerContext(manifest, chunks) {
   vm.runInContext(workerSource, context, { filename: 'service-worker.js' })
   return { context, listeners }
 }
+
+test('service worker precaches the shell without concurrent request fan-out', async () => {
+  const added = []
+  let active = 0
+  let maximumActive = 0
+  const { listeners } = workerContext({ id: 'unused' }, new Map(), {
+    open: async () => ({
+      add: async url => {
+        active += 1
+        maximumActive = Math.max(maximumActive, active)
+        await new Promise(resolve => setImmediate(resolve))
+        added.push(url)
+        active -= 1
+      },
+    }),
+  })
+  let installation
+  listeners.install({ waitUntil: promise => { installation = promise } })
+  await installation
+
+  assert.equal(maximumActive, 1)
+  assert.equal(added[0], '/')
+  assert.ok(added.includes('/portal/vendor/chart.umd.min.js'))
+  assert.ok(added.length > 50)
+})
 
 function dispatchedResponse(listener, request, clientId = '') {
   let response

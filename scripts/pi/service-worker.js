@@ -1,6 +1,6 @@
 'use strict'
 
-const SHELL_CACHE = 'mabeltv-shell-v114'
+const SHELL_CACHE = 'mabeltv-shell-v115'
 const SHELL_URLS = [
   '/',
   '/manifest.webmanifest',
@@ -200,8 +200,18 @@ async function offlineMediaResponse(request, id, authorised = false) {
   return new Response(body, { status: range.partial ? 206 : 200, headers })
 }
 
+async function precacheShell() {
+  const cache = await caches.open(SHELL_CACHE)
+  try {
+    for (const url of SHELL_URLS) await cache.add(url)
+  } catch (error) {
+    await caches.delete(SHELL_CACHE)
+    throw error
+  }
+}
+
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(SHELL_CACHE).then(cache => cache.addAll(SHELL_URLS)).then(() => self.skipWaiting()))
+  event.waitUntil(precacheShell().then(() => self.skipWaiting()))
 })
 
 self.addEventListener('activate', event => {
