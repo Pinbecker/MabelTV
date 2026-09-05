@@ -94,17 +94,15 @@ Item {
                         color: navItem.selected ? "#ff6b57" : "transparent"
                     }
 
-                    Text {
+                    SignalIcon {
                         anchors.left: parent.left
                         anchors.leftMargin: 48 * host.uiScale
                         anchors.verticalCenter: parent.verticalCenter
                         width: 42 * host.uiScale
+                        height: 28 * host.uiScale
                         color: navItem.selected ? "#ff7562" : "#bbc1c5"
-                        font.family: "DejaVu Sans"
-                        font.bold: true
-                        font.pixelSize: 25 * host.uiScale
-                        horizontalAlignment: Text.AlignHCenter
-                        text: host.pageIcon(navItem.modelData)
+                        strokeWidth: 2
+                        icon: host.pageIconName(navItem.modelData)
                     }
 
                     Text {
@@ -175,20 +173,32 @@ Item {
             anchors.top: parent.top
             anchors.rightMargin: 52 * host.uiScale
             anchors.topMargin: 56 * host.uiScale
-            width: savedText.implicitWidth + 54 * host.uiScale
+            width: savedContent.implicitWidth + 54 * host.uiScale
             height: 50 * host.uiScale
             radius: height / 2
             color: "#11171a"
             border.color: "#303b3c"
             border.width: 1
 
-            Text {
-                id: savedText
+            Row {
+                id: savedContent
                 anchors.centerIn: parent
-                color: "#7dd4ca"
-                font.family: "DejaVu Sans"
-                font.pixelSize: 16 * host.uiScale
-                text: "✓   All changes saved"
+                spacing: 10 * host.uiScale
+
+                SignalIcon {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 18 * host.uiScale
+                    height: 18 * host.uiScale
+                    color: "#7dd4ca"
+                    icon: "check"
+                }
+
+                Text {
+                    color: "#7dd4ca"
+                    font.family: "DejaVu Sans"
+                    font.pixelSize: 16 * host.uiScale
+                    text: "All changes saved"
+                }
             }
         }
 
@@ -233,13 +243,13 @@ Item {
                         radius: 10 * host.uiScale
                         color: index === host.selectedRow ? "#ff6b57" : "#252c33"
 
-                        Text {
+                        SignalIcon {
                             anchors.centerIn: parent
+                            width: 28 * host.uiScale
+                            height: 28 * host.uiScale
                             color: index === host.selectedRow ? "#12161b" : "#d8dcde"
-                            font.family: "DejaVu Sans"
-                            font.bold: true
-                            font.pixelSize: 25 * host.uiScale
-                            text: host.pageIcon(["playback", "picture", "channels", "system"][overviewCard.index])
+                            strokeWidth: 2
+                            icon: host.pageIconName(["playback", "picture", "channels", "system"][overviewCard.index])
                         }
                     }
 
@@ -402,14 +412,13 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 22 * host.uiScale
 
-                        Text {
+                        SignalIcon {
                             visible: settingRow.modelData <= 10
                             anchors.verticalCenter: parent.verticalCenter
+                            width: 28 * host.uiScale
+                            height: 28 * host.uiScale
                             color: settingRow.selected ? "#ff7562" : "#747d84"
-                            font.family: "DejaVu Sans"
-                            font.bold: true
-                            font.pixelSize: 28 * host.uiScale
-                            text: "‹"
+                            icon: "chevron-left"
                         }
 
                         Text {
@@ -456,14 +465,13 @@ Item {
                             }
                         }
 
-                        Text {
+                        SignalIcon {
                             visible: settingRow.modelData <= 10
                             anchors.verticalCenter: parent.verticalCenter
+                            width: 28 * host.uiScale
+                            height: 28 * host.uiScale
                             color: settingRow.selected ? "#ff7562" : "#747d84"
-                            font.family: "DejaVu Sans"
-                            font.bold: true
-                            font.pixelSize: 28 * host.uiScale
-                            text: "›"
+                            icon: "chevron-right"
                         }
                     }
                 }
@@ -570,16 +578,30 @@ Item {
                             text: channelEntry.modelData.name
                         }
 
-                        Text {
+                        Row {
                             id: channelStatus
                             anchors.right: parent.right
                             anchors.rightMargin: 14 * host.uiScale
                             anchors.verticalCenter: parent.verticalCenter
-                            color: channelEntry.modelData.enabled ? "#7dd4ca" : "#df7d78"
-                            font.family: "DejaVu Sans"
-                            font.bold: true
-                            font.pixelSize: 14 * host.uiScale
-                            text: channelEntry.modelData.enabled ? "◉  Shown" : "⊘  Hidden"
+                            spacing: 8 * host.uiScale
+
+                            SignalIcon {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 16 * host.uiScale
+                                height: 16 * host.uiScale
+                                color: channelEntry.modelData.enabled ? "#7dd4ca" : "#df7d78"
+                                icon: channelEntry.modelData.enabled
+                                      ? "circle-check" : "circle-x"
+                            }
+
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                color: channelEntry.modelData.enabled ? "#7dd4ca" : "#df7d78"
+                                font.family: "DejaVu Sans"
+                                font.bold: true
+                                font.pixelSize: 14 * host.uiScale
+                                text: channelEntry.modelData.enabled ? "Shown" : "Hidden"
+                            }
                         }
                     }
                 }
@@ -700,18 +722,33 @@ Item {
                             text: programmeEntry.modelData.name
                         }
 
-                        Text {
+                        Row {
                             id: programmeState
                             anchors.right: parent.right
                             anchors.rightMargin: 18 * host.uiScale
                             anchors.verticalCenter: parent.verticalCenter
-                            color: programmeEntry.modelData.enabled ? "#7dd4ca" : "#df7d78"
-                            font.family: "DejaVu Sans"
-                            font.bold: true
-                            font.pixelSize: 14 * host.uiScale
-                            text: programmeEntry.selected
-                                  ? (programmeEntry.modelData.enabled ? "OK  Hide" : "OK  Show")
-                                  : (programmeEntry.modelData.enabled ? "◉  Shown" : "⊘  Hidden")
+                            spacing: 8 * host.uiScale
+
+                            SignalIcon {
+                                visible: !programmeEntry.selected
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 16 * host.uiScale
+                                height: 16 * host.uiScale
+                                color: programmeEntry.modelData.enabled ? "#7dd4ca" : "#df7d78"
+                                icon: programmeEntry.modelData.enabled
+                                      ? "circle-check" : "circle-x"
+                            }
+
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                color: programmeEntry.modelData.enabled ? "#7dd4ca" : "#df7d78"
+                                font.family: "DejaVu Sans"
+                                font.bold: true
+                                font.pixelSize: 14 * host.uiScale
+                                text: programmeEntry.selected
+                                      ? (programmeEntry.modelData.enabled ? "OK  Hide" : "OK  Show")
+                                      : (programmeEntry.modelData.enabled ? "Shown" : "Hidden")
+                            }
                         }
                     }
 

@@ -47,12 +47,12 @@ Item {
         return "System"
     }
 
-    function pageIcon(value) {
-        if (value === "overview") return "⌂"
-        if (value === "playback") return "▶"
-        if (value === "picture") return "◫"
-        if (value === "channels") return "≡"
-        return "⚙"
+    function pageIconName(value) {
+        if (value === "overview") return "home"
+        if (value === "playback") return "play"
+        if (value === "picture") return "picture"
+        if (value === "channels") return "list"
+        return "settings"
     }
 
     function pageTitle(value) {

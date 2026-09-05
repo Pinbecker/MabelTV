@@ -3,11 +3,18 @@ from __future__ import annotations
 import json
 import unittest
 
-from tests.python.test_library_service import (
-    LibraryFixture,
-    PORTAL_OVERLAY_MARKUP,
-    PORTAL_SCRIPT,
-)
+try:
+    from tests.python.test_library_service import (
+        LibraryFixture,
+        PORTAL_OVERLAY_MARKUP,
+        PORTAL_SCRIPT,
+    )
+except ModuleNotFoundError:
+    from test_library_service import (
+        LibraryFixture,
+        PORTAL_OVERLAY_MARKUP,
+        PORTAL_SCRIPT,
+    )
 
 
 class ViewingIntentTests(unittest.TestCase):

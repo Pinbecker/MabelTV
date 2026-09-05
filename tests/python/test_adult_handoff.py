@@ -4,7 +4,10 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tests.python.test_library_service import LibraryFixture, mabeltv_library
+try:
+    from tests.python.test_library_service import LibraryFixture, mabeltv_library
+except ModuleNotFoundError:
+    from test_library_service import LibraryFixture, mabeltv_library
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]

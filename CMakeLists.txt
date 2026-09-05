@@ -97,6 +97,7 @@ qt_add_resources(mabeltv "mabeltv_qml"
         qml/ModernParentOverlay.qml
         qml/ParentConfirmationView.qml
         qml/ParentDashboardView.qml
+        qml/SignalIcon.qml
         qml/AdultModeOverlay.qml
         qml/AdultLibraryView.qml
         qml/AdultPlaybackControls.qml
