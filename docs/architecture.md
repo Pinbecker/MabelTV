@@ -2,6 +2,9 @@
 
 Mabel TV is one native Qt 6 process. QML owns the television presentation and input handling; C++ owns channel policy, state, validation, logging, synthetic sounds, and the libmpv OpenGL render bridge. libmpv decodes only the current programme, while Qt ShaderTools supplies the lightweight CRT post-process.
 
+The internal QML composition and controller implementation boundaries are
+documented in [Native television architecture](native-architecture.md).
+
 ```text
 Linux rc-core / USB keyboard
              │ evdev keys

@@ -4,6 +4,23 @@ import unittest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PORTAL_ROOT = PROJECT_ROOT / "scripts" / "pi" / "portal"
+QML_ROOT = PROJECT_ROOT / "qml"
+MAIN_QML_SOURCE = "\n".join(
+    (QML_ROOT / name).read_text(encoding="utf-8")
+    for name in ("Main.qml", "TelevisionScreen.qml", "RemoteInputHandler.qml")
+)
+ADULT_QML_SOURCE = "\n".join(
+    (QML_ROOT / name).read_text(encoding="utf-8")
+    for name in (
+        "AdultModeOverlay.qml",
+        "AdultLibraryView.qml",
+        "AdultPlaybackControls.qml",
+    )
+)
+TV_CONTROLLER_SOURCE = "\n".join(
+    path.read_text(encoding="utf-8")
+    for path in sorted((PROJECT_ROOT / "src" / "core").glob("TvController*.cpp"))
+)
 PORTAL_HTML = (PROJECT_ROOT / "scripts" / "pi" / "mabeltv-library.html").read_text(
     encoding="utf-8"
 )
@@ -25,8 +42,58 @@ PORTAL_SOURCE = "\n".join(
 
 
 class PlayerSafetyTests(unittest.TestCase):
+    def test_native_sources_keep_bounded_responsibilities(self) -> None:
+        cmake = (PROJECT_ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
+        controller_units = sorted(
+            (PROJECT_ROOT / "src" / "core").glob("TvController*.cpp")
+        )
+        qml_units = sorted(QML_ROOT.glob("*.qml"))
+
+        self.assertGreaterEqual(len(controller_units), 5)
+        self.assertLessEqual(
+            max(
+                len(path.read_text(encoding="utf-8").splitlines())
+                for path in controller_units
+            ),
+            750,
+        )
+        self.assertLessEqual(
+            max(
+                len(path.read_text(encoding="utf-8").splitlines())
+                for path in qml_units
+            ),
+            1000,
+        )
+
+        sources = (
+            "src/core/TvControllerActions.cpp",
+            "src/core/TvControllerPersistence.cpp",
+            "src/core/TvControllerPlayback.cpp",
+            "src/core/TvControllerPortal.cpp",
+            "qml/TelevisionScreen.qml",
+            "qml/RemoteInputHandler.qml",
+            "qml/ParentConfirmationView.qml",
+            "qml/ParentDashboardView.qml",
+            "qml/AdultLibraryView.qml",
+            "qml/AdultPlaybackControls.qml",
+        )
+        for source in sources:
+            self.assertIn(source, cmake)
+
+        main = (QML_ROOT / "Main.qml").read_text(encoding="utf-8")
+        modern_parent = (QML_ROOT / "ModernParentOverlay.qml").read_text(
+            encoding="utf-8"
+        )
+        adult = (QML_ROOT / "AdultModeOverlay.qml").read_text(encoding="utf-8")
+        self.assertIn("TelevisionScreen", main)
+        self.assertIn("RemoteInputHandler", main)
+        self.assertIn("ParentConfirmationView", modern_parent)
+        self.assertIn("ParentDashboardView", modern_parent)
+        self.assertIn("AdultLibraryView", adult)
+        self.assertIn("AdultPlaybackControls", adult)
+
     def test_child_remote_lock_never_blocks_parent_portal_commands(self) -> None:
-        main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+        main_qml = MAIN_QML_SOURCE
         portal = PORTAL_SOURCE
 
         self.assertNotIn("if (tvController.remoteLocked || poweringOff", main_qml)
@@ -41,12 +108,12 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("tvController.restartPortalProgramme()", main_qml)
         self.assertIn(
             "event.key === Qt.Key_P && !event.isAutoRepeat) {\n"
-            "                if (!tvController.remoteLocked)",
+            "            if (!controllerObject.remoteLocked)",
             main_qml,
         )
 
     def test_portal_remote_navigates_the_visible_channel_summary(self) -> None:
-        main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+        main_qml = MAIN_QML_SOURCE
         overlay_qml = (PROJECT_ROOT / "qml" / "ChannelSummaryOverlay.qml").read_text(
             encoding="utf-8"
         )
@@ -57,7 +124,7 @@ class PlayerSafetyTests(unittest.TestCase):
             main_qml,
         )
         self.assertIn(
-            "channelSummaryOverlay.handleKey(event.key, event.isAutoRepeat)",
+            "channelOverlay.handleKey(event.key, event.isAutoRepeat)",
             main_qml,
         )
         self.assertIn("readonly property int filmColumns: 5", overlay_qml)
@@ -87,9 +154,7 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("Q_PROPERTY(double playbackDuration", header)
 
     def test_adult_overlay_binds_to_cached_telemetry(self) -> None:
-        qml = (PROJECT_ROOT / "qml" / "AdultModeOverlay.qml").read_text(
-            encoding="utf-8"
-        )
+        qml = ADULT_QML_SOURCE
 
         self.assertIn("adultPlayer.playbackPosition", qml)
         self.assertIn("adultPlayer.playbackDuration", qml)
@@ -130,10 +195,8 @@ class PlayerSafetyTests(unittest.TestCase):
         header = (PROJECT_ROOT / "src" / "media" / "MpvVideo.h").read_text(
             encoding="utf-8"
         )
-        adult_qml = (PROJECT_ROOT / "qml" / "AdultModeOverlay.qml").read_text(
-            encoding="utf-8"
-        )
-        main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+        adult_qml = ADULT_QML_SOURCE
+        main_qml = MAIN_QML_SOURCE
         application = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
             encoding="utf-8"
         )
@@ -178,19 +241,15 @@ class PlayerSafetyTests(unittest.TestCase):
         controller_header = (PROJECT_ROOT / "src" / "core" / "TvController.h").read_text(
             encoding="utf-8"
         )
-        controller_source = (PROJECT_ROOT / "src" / "core" / "TvController.cpp").read_text(
-            encoding="utf-8"
-        )
+        controller_source = TV_CONTROLLER_SOURCE
         player_header = (PROJECT_ROOT / "src" / "media" / "MpvVideo.h").read_text(
             encoding="utf-8"
         )
         player_source = (PROJECT_ROOT / "src" / "media" / "MpvVideo.cpp").read_text(
             encoding="utf-8"
         )
-        adult_qml = (PROJECT_ROOT / "qml" / "AdultModeOverlay.qml").read_text(
-            encoding="utf-8"
-        )
-        main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+        adult_qml = ADULT_QML_SOURCE
+        main_qml = MAIN_QML_SOURCE
         application = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
             encoding="utf-8"
         )
@@ -210,7 +269,7 @@ class PlayerSafetyTests(unittest.TestCase):
             encoding="utf-8")
         player_source = (PROJECT_ROOT / "src" / "media" / "MpvVideo.cpp").read_text(
             encoding="utf-8")
-        main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+        main_qml = MAIN_QML_SOURCE
         application = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
             encoding="utf-8")
 
@@ -222,23 +281,19 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn('QStringLiteral("toggle-widescreen-mode")', application)
 
     def test_adult_back_returns_to_library_before_leaving_adult_mode(self) -> None:
-        adult_qml = (PROJECT_ROOT / "qml" / "AdultModeOverlay.qml").read_text(
-            encoding="utf-8"
-        )
-        main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+        adult_qml = ADULT_QML_SOURCE
+        main_qml = MAIN_QML_SOURCE
 
         self.assertIn("function back(waitForRelease)", adult_qml)
         self.assertIn("if (playing || stopping)", adult_qml)
         self.assertIn("ignoreLibraryBackBeforeMs = Date.now() + 750", adult_qml)
         self.assertIn("function handleKeyReleased", adult_qml)
-        self.assertIn("adultMode.handleKeyReleased(event.key, event.isAutoRepeat)", main_qml)
+        self.assertIn("adultOverlay.handleKeyReleased(event.key, event.isAutoRepeat)", main_qml)
         self.assertIn("adultMode.back(false)", main_qml)
 
     def test_adult_library_is_a_remote_first_media_portal(self) -> None:
-        adult_qml = (PROJECT_ROOT / "qml" / "AdultModeOverlay.qml").read_text(
-            encoding="utf-8"
-        )
-        main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+        adult_qml = ADULT_QML_SOURCE
+        main_qml = MAIN_QML_SOURCE
         application = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
             encoding="utf-8"
         )
@@ -263,10 +318,8 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn('command == QStringLiteral("status")', application)
 
     def test_usb_playback_reuses_the_serialised_adult_decoder(self) -> None:
-        adult_qml = (PROJECT_ROOT / "qml" / "AdultModeOverlay.qml").read_text(
-            encoding="utf-8"
-        )
-        main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+        adult_qml = ADULT_QML_SOURCE
+        main_qml = MAIN_QML_SOURCE
         application = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
             encoding="utf-8"
         )
@@ -283,10 +336,8 @@ class PlayerSafetyTests(unittest.TestCase):
         controller_header = (PROJECT_ROOT / "src" / "core" / "TvController.h").read_text(
             encoding="utf-8"
         )
-        controller_source = (PROJECT_ROOT / "src" / "core" / "TvController.cpp").read_text(
-            encoding="utf-8"
-        )
-        main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+        controller_source = TV_CONTROLLER_SOURCE
+        main_qml = MAIN_QML_SOURCE
 
         self.assertIn("currentContentType", controller_header)
         self.assertIn("channel.contentType", controller_source)
@@ -299,10 +350,8 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("root.cancelFilmCountdown()", main_qml)
 
     def test_power_waits_for_adult_decoder_before_entering_standby(self) -> None:
-        main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
-        adult_qml = (PROJECT_ROOT / "qml" / "AdultModeOverlay.qml").read_text(
-            encoding="utf-8"
-        )
+        main_qml = MAIN_QML_SOURCE
+        adult_qml = ADULT_QML_SOURCE
         self.assertIn('property string pendingPowerAction: ""', main_qml)
         self.assertIn("if (adultMode.active) {\n            adultMode.close()", main_qml)
         self.assertIn("root.performPowerOff()", main_qml)
@@ -313,9 +362,7 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("if (overlay.closing)\n                overlay.finishClose()", adult_qml)
 
     def test_tv_power_uses_one_explicit_cec_layer_for_remote_and_portal(self) -> None:
-        controller = (PROJECT_ROOT / "src" / "core" / "TvController.cpp").read_text(
-            encoding="utf-8"
-        )
+        controller = TV_CONTROLLER_SOURCE
         cec = (PROJECT_ROOT / "src" / "hardware" / "CecTvControl.cpp").read_text(
             encoding="utf-8"
         )
@@ -387,7 +434,7 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("Environment=MALLOC_TRIM_THRESHOLD_=131072", service)
 
     def test_power_click_releases_hdmi_before_intro_audio_starts(self) -> None:
-        main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
+        main_qml = MAIN_QML_SOURCE
 
         self.assertIn("function schedulePlaybackAfterPowerClick", main_qml)
         self.assertIn("id: playbackAfterPowerClickTimer", main_qml)
@@ -396,10 +443,8 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("root.schedulePlaybackAfterPowerClick(false)", main_qml)
 
     def test_adult_transition_uses_one_renderer_and_preserves_film_position(self) -> None:
-        main_qml = (PROJECT_ROOT / "qml" / "Main.qml").read_text(encoding="utf-8")
-        adult_qml = (PROJECT_ROOT / "qml" / "AdultModeOverlay.qml").read_text(
-            encoding="utf-8"
-        )
+        main_qml = MAIN_QML_SOURCE
+        adult_qml = ADULT_QML_SOURCE
         application = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
             encoding="utf-8"
         )
@@ -408,7 +453,7 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("property bool openingAdultMode", main_qml)
         self.assertIn("openingAdultMode = true\n        player.stop()", main_qml)
         self.assertIn("onPlaybackStopped", main_qml)
-        self.assertIn("if (root.openingAdultMode)", main_qml)
+        self.assertIn("if (appRoot.openingAdultMode)", main_qml)
         self.assertIn("adultMode.open()", main_qml)
         self.assertIn("if (!adultMode.active && !root.openingAdultMode", main_qml)
         self.assertIn("if (adultMode.active)\n                adultMode.toggleSubtitles()", main_qml)
@@ -421,10 +466,10 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("id: playbackChoiceModal", adult_qml)
         self.assertIn("function confirmPlaybackChoice()", adult_qml)
         self.assertIn("id: filmProgressTrack", adult_qml)
-        self.assertIn("controller.adultPlaybackDuration(modelData.id)", adult_qml)
+        self.assertIn("tvController.adultPlaybackDuration(modelData.id)", adult_qml)
         self.assertIn("Number(modelData.runtime || 0) * 60", adult_qml)
         self.assertIn("id: subtitleAction", adult_qml)
-        self.assertIn("visible: overlay.scrubberActive && adultPlayer.subtitlesAvailable", adult_qml)
+        self.assertIn("visible: host.scrubberActive && mediaPlayer.subtitlesAvailable", adult_qml)
         self.assertIn("readonly property bool subtitlesAvailable: adultPlayer.subtitlesAvailable", adult_qml)
         self.assertIn("readonly property bool subtitlesVisible: adultPlayer.subtitlesVisible", adult_qml)
         self.assertIn("&& adultMode.subtitlesAvailable", main_qml)

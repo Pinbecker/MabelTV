@@ -44,7 +44,12 @@ qt_standard_project_setup(REQUIRES 6.4)
 
 add_library(mabeltv_core STATIC
     src/core/TvController.cpp
+    src/core/TvControllerActions.cpp
     src/core/TvController.h
+    src/core/TvControllerFormatting.h
+    src/core/TvControllerPersistence.cpp
+    src/core/TvControllerPlayback.cpp
+    src/core/TvControllerPortal.cpp
     src/hardware/CecTvControl.cpp
     src/hardware/CecTvControl.h
     src/library/ChannelLibrary.cpp
@@ -83,12 +88,18 @@ qt_add_resources(mabeltv "mabeltv_qml"
     PREFIX "/"
     FILES
         qml/Main.qml
+        qml/TelevisionScreen.qml
+        qml/RemoteInputHandler.qml
         qml/ChannelSummaryOverlay.qml
         qml/TvGuideOverlay.qml
         qml/ParentOverlay.qml
         qml/ClassicParentOverlay.qml
         qml/ModernParentOverlay.qml
+        qml/ParentConfirmationView.qml
+        qml/ParentDashboardView.qml
         qml/AdultModeOverlay.qml
+        qml/AdultLibraryView.qml
+        qml/AdultPlaybackControls.qml
 )
 
 qt_add_shaders(mabeltv "mabeltv_shaders"
