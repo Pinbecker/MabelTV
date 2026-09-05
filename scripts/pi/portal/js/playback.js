@@ -195,6 +195,7 @@ function remoteTime(value) {
     }
 
     async function startOfflinePlayer(manifest) {
+      if (!await authoriseOfflineDownload(manifest)) return
       const shell = $('#iosWatchPlayer'); const video = $('#iosWatchVideo'); const error = $('#iosWatchError')
       iosRemoteSession = null
       iosOfflineDownloadId = manifest.id

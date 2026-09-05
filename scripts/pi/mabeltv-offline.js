@@ -2,8 +2,11 @@
   'use strict'
 
   const DB_NAME = 'mabeltv-offline-v1'
-  const DB_VERSION = 1
+  const DB_VERSION = 2
   const CHUNK_SIZE = 4 * 1024 * 1024
+  const PIN_ITERATIONS = 260000
+  const SECURITY_ID = 'portal'
+  const PIN_PATTERN = /^\d{4,8}$/
   const activeDownloads = new Map()
 
   function offlineSupportError() {
@@ -43,6 +46,9 @@
           const chunks = database.createObjectStore('chunks', { keyPath: 'key' })
           chunks.createIndex('downloadId', 'downloadId', { unique: false })
         }
+        if (!database.objectStoreNames.contains('security')) {
+          database.createObjectStore('security', { keyPath: 'id' })
+        }
       }
       request.onsuccess = () => resolve(request.result)
       request.onerror = () => reject(request.error || new Error('Private device storage is unavailable'))
@@ -62,6 +68,114 @@
       const values = await requestResult(database.transaction('downloads').objectStore('downloads').getAll())
       return values.sort((left, right) => Number(right.updatedAt || 0) - Number(left.updatedAt || 0))
     } finally { database.close() }
+  }
+
+  function protectedDownload(manifest) {
+    return manifest?.protected === true
+      || ['adult', 'adult-series'].includes(manifest?.source?.kind)
+  }
+
+  async function getSecurity() {
+    const database = await openDatabase()
+    try {
+      return await requestResult(database.transaction('security').objectStore('security').get(SECURITY_ID))
+    } finally { database.close() }
+  }
+
+  async function putSecurity(value) {
+    const database = await openDatabase()
+    try {
+      const transaction = database.transaction('security', 'readwrite')
+      transaction.objectStore('security').put({ id: SECURITY_ID, ...value })
+      await transactionDone(transaction)
+    } finally { database.close() }
+  }
+
+  async function pinDigest(pin, salt, iterations = PIN_ITERATIONS) {
+    const material = await crypto.subtle.importKey(
+      'raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits'])
+    const digest = await crypto.subtle.deriveBits({
+      name: 'PBKDF2', salt: Uint8Array.from(salt), iterations, hash: 'SHA-256',
+    }, material, 256)
+    return [...new Uint8Array(digest)]
+  }
+
+  function equalBytes(left, right) {
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false
+    let difference = 0
+    for (let index = 0; index < left.length; index++) difference |= left[index] ^ right[index]
+    return difference === 0
+  }
+
+  function setMediaAccess(unlocked) {
+    navigator.serviceWorker?.controller?.postMessage({
+      type: 'mabeltv-offline-access', unlocked: Boolean(unlocked),
+    })
+  }
+
+  async function rememberSecurity(required, pin = '') {
+    const previous = await getSecurity()
+    const value = {
+      required: required !== false,
+      salt: previous?.salt || null,
+      digest: previous?.digest || null,
+      iterations: Number(previous?.iterations || PIN_ITERATIONS),
+      failedAttempts: 0,
+      lockedUntil: 0,
+      updatedAt: Date.now(),
+    }
+    if (pin) {
+      if (!PIN_PATTERN.test(pin)) throw new Error('The parent PIN must be 4 to 8 digits')
+      const salt = [...crypto.getRandomValues(new Uint8Array(16))]
+      value.salt = salt
+      value.iterations = PIN_ITERATIONS
+      value.digest = await pinDigest(pin, salt, value.iterations)
+    }
+    await putSecurity(value)
+    return { required: value.required, configured: Boolean(value.salt && value.digest) }
+  }
+
+  async function securityStatus() {
+    const value = await getSecurity()
+    return {
+      required: value?.required !== false,
+      configured: Boolean(value?.salt && value?.digest),
+      lockedUntil: Number(value?.lockedUntil || 0),
+    }
+  }
+
+  async function verifyPin(pin) {
+    const value = await getSecurity()
+    if (value?.required === false) {
+      setMediaAccess(true)
+      return true
+    }
+    if (!value?.salt || !value?.digest) {
+      throw new Error('Reconnect to MabelTV and sign in once to prepare secure offline access.')
+    }
+    const now = Date.now()
+    const lockedUntil = Number(value.lockedUntil || 0)
+    if (lockedUntil > now) {
+      const seconds = Math.max(1, Math.ceil((lockedUntil - now) / 1000))
+      throw new Error(`Too many attempts. Try again in ${seconds} seconds.`)
+    }
+    const candidate = PIN_PATTERN.test(pin)
+      ? await pinDigest(pin, value.salt, Number(value.iterations || PIN_ITERATIONS))
+      : []
+    if (!equalBytes(candidate, value.digest)) {
+      const attempts = Number(value.failedAttempts || 0) + 1
+      await putSecurity({
+        ...value,
+        failedAttempts: attempts >= 5 ? 0 : attempts,
+        lockedUntil: attempts >= 5 ? now + 30000 : 0,
+      })
+      throw new Error(attempts >= 5
+        ? 'Too many attempts. Try again in 30 seconds.'
+        : 'That PIN is not correct')
+    }
+    await putSecurity({ ...value, failedAttempts: 0, lockedUntil: 0 })
+    setMediaAccess(true)
+    return true
   }
 
   async function putDownload(manifest, chunkIndex = null, chunkData = null) {
@@ -165,6 +279,7 @@
       createdAt: Number(existing?.createdAt || Date.now()),
       updatedAt: Date.now(),
       error: '',
+      protected: ['adult', 'adult-series'].includes(payload?.kind),
     }
     await putDownload(manifest)
     changed()
@@ -287,6 +402,11 @@
     playbackUrl,
     subtitleUrl,
     formatBytes,
+    protectedDownload,
+    rememberSecurity,
+    securityStatus,
+    verifyPin,
+    setMediaAccess,
     activeDownloads,
   }
 })()

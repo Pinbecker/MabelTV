@@ -1,6 +1,6 @@
 'use strict'
 
-const SHELL_CACHE = 'mabeltv-shell-v110'
+const SHELL_CACHE = 'mabeltv-shell-v111'
 const SHELL_URLS = [
   '/',
   '/manifest.webmanifest',
@@ -59,7 +59,8 @@ const SHELL_URLS = [
   '/apple-touch-icon.png',
 ]
 const DB_NAME = 'mabeltv-offline-v1'
-const DB_VERSION = 1
+const DB_VERSION = 2
+const unlockedClients = new Set()
 
 function requestResult(request) {
   return new Promise((resolve, reject) => {
@@ -79,6 +80,9 @@ function openDatabase() {
       if (!database.objectStoreNames.contains('chunks')) {
         const chunks = database.createObjectStore('chunks', { keyPath: 'key' })
         chunks.createIndex('downloadId', 'downloadId', { unique: false })
+      }
+      if (!database.objectStoreNames.contains('security')) {
+        database.createObjectStore('security', { keyPath: 'id' })
       }
     }
     request.onsuccess = () => resolve(request.result)
@@ -124,10 +128,18 @@ function parseRange(value, size) {
   return { start, end: Math.min(end, size - 1), partial: true }
 }
 
-async function offlineMediaResponse(request, id) {
+function protectedDownload(manifest) {
+  return manifest?.protected === true
+    || ['adult', 'adult-series'].includes(manifest?.source?.kind)
+}
+
+async function offlineMediaResponse(request, id, authorised = false) {
   const manifest = await storedDownload(id)
   if (!manifest || manifest.status !== 'complete') {
     return new Response('That download is not complete', { status: 404 })
+  }
+  if (protectedDownload(manifest) && !authorised) {
+    return new Response('Parent PIN required', { status: 401 })
   }
   const range = parseRange(request.headers.get('Range'), Number(manifest.size))
   if (!range) {
@@ -178,6 +190,16 @@ self.addEventListener('activate', event => {
   ]))
 })
 
+self.addEventListener('message', event => {
+  if (event.data?.type !== 'mabeltv-offline-access' || !event.source?.id) return
+  if (event.data.unlocked === true) unlockedClients.add(event.source.id)
+  else unlockedClients.delete(event.source.id)
+})
+
+function offlineClientAuthorised(event) {
+  return Boolean(event.clientId) && unlockedClients.has(event.clientId)
+}
+
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url)
   if (url.origin !== self.location.origin) return
@@ -189,14 +211,19 @@ self.addEventListener('fetch', event => {
   }
   if (url.pathname.startsWith('/offline-media/')) {
     const id = decodeURIComponent(url.pathname.slice('/offline-media/'.length))
-    event.respondWith(offlineMediaResponse(event.request, id).catch(() => new Response('Offline video unavailable', { status: 500 })))
+    event.respondWith(offlineMediaResponse(event.request, id, offlineClientAuthorised(event)).catch(() => new Response('Offline video unavailable', { status: 500 })))
     return
   }
   if (url.pathname.startsWith('/offline-subtitles/')) {
     const id = decodeURIComponent(url.pathname.slice('/offline-subtitles/'.length).replace(/\.vtt$/, ''))
-    event.respondWith(storedDownload(id).then(manifest => manifest?.subtitles
-      ? new Response(manifest.subtitles, { headers: { 'Content-Type': 'text/vtt; charset=utf-8', 'Cache-Control': 'no-store' } })
-      : new Response('No offline subtitles', { status: 404 })))
+    event.respondWith(storedDownload(id).then(manifest => {
+      if (protectedDownload(manifest) && !offlineClientAuthorised(event)) {
+        return new Response('Parent PIN required', { status: 401 })
+      }
+      return manifest?.subtitles
+        ? new Response(manifest.subtitles, { headers: { 'Content-Type': 'text/vtt; charset=utf-8', 'Cache-Control': 'no-store' } })
+        : new Response('No offline subtitles', { status: 404 })
+    }))
     return
   }
   if (event.request.mode === 'navigate') {

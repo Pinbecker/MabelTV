@@ -7748,13 +7748,14 @@ class Handler(BaseHTTPRequestHandler):
     def unexpected(self, operation: str, error: Exception) -> None:
         print(f"{operation} failed: {error}", file=sys.stderr, flush=True)
 
-    def security_headers(self) -> None:
+    def security_headers(self, allow_inline_script: bool = False) -> None:
+        script_source = "'self' 'unsafe-inline'" if allow_inline_script else "'self'"
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("X-Frame-Options", "DENY")
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("Content-Security-Policy",
                          "default-src 'self'; style-src 'self' 'unsafe-inline'; "
-                         "script-src 'self' 'unsafe-inline'; img-src 'self' data: https://image.tmdb.org; "
+                         f"script-src {script_source}; img-src 'self' data: https://image.tmdb.org; "
                          "frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
 
     def json(self, status: int, value: dict[str, Any], cookie: str | None = None) -> None:
@@ -7895,7 +7896,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if self.path == "/":
                 document = CLASSIC_INDEX if self.portal_design() == "classic" else INDEX
-                data = document.encode(); self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8"); self.send_header("Content-Length", str(len(data))); self.send_header("Cache-Control", "no-store"); self.security_headers(); self.end_headers(); self.wfile.write(data); return
+                data = document.encode(); self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8"); self.send_header("Content-Length", str(len(data))); self.send_header("Cache-Control", "no-store"); self.security_headers("<script>" in document); self.end_headers(); self.wfile.write(data); return
             static_assets = {
                 "/mabeltv-icon.png": ("mabeltv-icon.png", "image/png"),
                 "/mabeltv-pwa-icon.png": ("icons/icon-512.png", "image/png"),
@@ -7948,7 +7949,7 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == "/api/setup": self.json(200, self.server.library.public_setup()); return
             if not self.require(): return
             if parsed.path == "/watch/player":
-                data = WATCH_PAGE.encode(); self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8"); self.send_header("Content-Length", str(len(data))); self.send_header("Cache-Control", "no-store"); self.security_headers(); self.end_headers(); self.wfile.write(data); return
+                data = WATCH_PAGE.encode(); self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8"); self.send_header("Content-Length", str(len(data))); self.send_header("Cache-Control", "no-store"); self.security_headers(True); self.end_headers(); self.wfile.write(data); return
             if self.path == "/api/live":
                 self.json(200, self.server.library.live_tv_status()); return
             if self.path == "/api/lg-tv/status":

@@ -1,4 +1,4 @@
-body.portal-v2 .app-shell {
+body.portal-v2 .app-shell:not(.hidden) {
   display: block;
   min-height: 100dvh;
   background: var(--experience-canvas);

@@ -824,7 +824,9 @@ function renderAdultLibrary() {
         button.className = `viewing-highlight ${item.kind}`
         if (item.artwork) button.style.backgroundImage = `linear-gradient(0deg, rgba(8,8,11,.96), rgba(8,8,11,.06) 76%), url("${item.artwork}")`
         const copy = document.createElement('span')
-        copy.innerHTML = `<small>${item.kind === 'film' ? item.source : `CH ${item.channel_number}`}</small><strong></strong><span></span>`
+        copy.innerHTML = '<small></small><strong></strong><span></span>'
+        copy.querySelector('small').textContent = item.kind === 'film'
+          ? item.source : `CH ${item.channel_number}`
         copy.querySelector('strong').textContent = item.title
         copy.querySelector('span').textContent = `${viewingDuration(item.seconds)} watched`
         button.append(copy)
@@ -1003,8 +1005,11 @@ function renderAdultLibrary() {
         row.type = 'button'
         row.className = 'viewing-period-entry'
         const time = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(session.started))
-        row.innerHTML = `<span class="viewing-period-number">${index + 1}</span><span class="viewing-period-entry-art"></span><span><small>${time} · ${session.source}</small><strong></strong><span>${session.duration}</span></span><svg><use href="/portal/icons.svg#signal-chevron-right"/></svg>`
+        row.innerHTML = '<span class="viewing-period-number"></span><span class="viewing-period-entry-art"></span><span><small></small><strong></strong><span></span></span><svg><use href="/portal/icons.svg#signal-chevron-right"/></svg>'
+        row.querySelector('.viewing-period-number').textContent = index + 1
+        row.querySelector('small').textContent = `${time} · ${session.source}`
         row.querySelector('strong').textContent = session.title
+        row.querySelector('small').parentElement.lastElementChild.textContent = session.duration
         const art = row.querySelector('.viewing-period-entry-art')
         if (item?.artwork) art.style.backgroundImage = `url("${item.artwork}")`
         row.onclick = () => openViewingItem(session.item_key, 'history')

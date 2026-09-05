@@ -67,6 +67,7 @@ const $ = selector => document.querySelector(selector)
     let offlineStorageReady = false
     let offlineStorageError = ''
     let offlineMode = false
+    let offlineProtectedAccess = false
     const pendingDownloads = new Map()
     let portalPlayerScrollY = 0
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
@@ -99,6 +100,38 @@ const $ = selector => document.querySelector(selector)
       return { open, close, dismiss }
     })()
 
+    function setOfflineProtectedAccess(unlocked) {
+      offlineProtectedAccess = Boolean(unlocked)
+      window.MabelOffline?.setMediaAccess(offlineProtectedAccess)
+    }
+
+    async function syncOfflineSecurity(required, pin = '') {
+      if (!offlineStorageReady || !window.MabelOffline) return
+      try {
+        await window.MabelOffline.rememberSecurity(required, pin)
+      } catch (error) {
+        console.warn('Offline security could not be updated', error)
+      }
+    }
+
+    async function authoriseOfflineDownload(manifest) {
+      if (!window.MabelOffline?.protectedDownload(manifest)) return true
+      if (offlineProtectedAccess) {
+        window.MabelOffline.setMediaAccess(true)
+        return true
+      }
+      const status = await window.MabelOffline.securityStatus()
+      if (status.required === false) {
+        setOfflineProtectedAccess(true)
+        return true
+      }
+      const pin = window.prompt('Enter the parent PIN to watch this Adult download offline.')
+      if (pin === null) return false
+      await window.MabelOffline.verifyPin(pin)
+      offlineProtectedAccess = true
+      return true
+    }
+
     function lockPortalPlayerScroll(fixBody = true) {
       if (document.documentElement.classList.contains('portal-player-open')) return
       portalPlayerScrollY = window.scrollY
@@ -125,6 +158,7 @@ const $ = selector => document.querySelector(selector)
       })
       const body = await response.json().catch(() => ({}))
       if (response.status === 401) {
+        setOfflineProtectedAccess(false)
         showOnly('login')
         $('#loginError').classList.add('bad')
         $('#loginError').textContent = 'Your session was locked. Enter the parent PIN to continue.'
@@ -294,6 +328,7 @@ const $ = selector => document.querySelector(selector)
       try {
         await window.MabelOffline?.initialise()
         offlineStorageReady = Boolean(window.MabelOffline)
+        setOfflineProtectedAccess(false)
       } catch (error) {
         offlineStorageError = error?.message || 'Offline storage could not start'
         console.warn('Offline storage could not start', error)
@@ -303,6 +338,7 @@ const $ = selector => document.querySelector(selector)
         configuredTvName = typeof state.tv_name === 'string' && state.tv_name.trim()
           ? state.tv_name.trim() : configuredTvName
         applyTvName()
+        await syncOfflineSecurity(state.portal_pin_required !== false)
         if (!state.configured) {
           recoveringOwner = Boolean(state.recovering_owner)
           setupChannels = state.default_channels.map(channel => ({ ...channel }))
@@ -323,6 +359,7 @@ const $ = selector => document.querySelector(selector)
           showOnly('setup')
         } else if (state.portal_pin_required === false) {
           await load()
+          setOfflineProtectedAccess(true)
           showOnly('app')
           openRequestedView()
         } else {
@@ -331,6 +368,7 @@ const $ = selector => document.querySelector(selector)
           // native player never looks like a logout.
           try {
             await load()
+            setOfflineProtectedAccess(true)
             showOnly('app')
             openRequestedView()
           } catch (error) {
@@ -344,6 +382,7 @@ const $ = selector => document.querySelector(selector)
       } catch (error) {
         if (offlineStorageReady) {
           offlineMode = true
+          setOfflineProtectedAccess(false)
           document.body.classList.add('offline-mode')
           try { configuredTvName = localStorage.getItem('mabeltv-tv-name') || configuredTvName } catch (_) { /* optional */ }
           applyTvName()
@@ -402,6 +441,8 @@ const $ = selector => document.querySelector(selector)
         if (!recoveringOwner) setupPayload.child_name = $('#childName').value
         if (!recoveringOwner) setupPayload.channels = setupChannels
         await api('/api/setup', { method: 'POST', body: JSON.stringify(setupPayload) })
+        await syncOfflineSecurity(true, setupPayload.pin)
+        setOfflineProtectedAccess(false)
         showOnly('login')
         $('#loginError').classList.remove('bad')
         $('#loginError').textContent = recoveringOwner
@@ -422,7 +463,10 @@ const $ = selector => document.querySelector(selector)
       const button = event.submitter
       button.disabled = true
       try {
-        await api('/api/login', { method: 'POST', body: JSON.stringify({ pin: $('#pin').value }) })
+        const pin = $('#pin').value
+        await api('/api/login', { method: 'POST', body: JSON.stringify({ pin }) })
+        await syncOfflineSecurity(true, pin)
+        setOfflineProtectedAccess(true)
         $('#pin').value = ''
         await load()
         showOnly('app')
@@ -432,7 +476,11 @@ const $ = selector => document.querySelector(selector)
         $('#loginError').textContent = error.message
       } finally { button.disabled = false }
     }
-    $('#logout').onclick = async () => { await api('/api/logout', { method: 'POST' }); location.reload() }
+    $('#logout').onclick = async () => {
+      setOfflineProtectedAccess(false)
+      await api('/api/logout', { method: 'POST' })
+      location.reload()
+    }
 
     const currentPortalDesign = document.body.classList.contains('portal-classic') ? 'classic' : 'experience'
     $$('[data-portal-design]').forEach(button => {

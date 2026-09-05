@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { webcrypto } from 'node:crypto'
 import fs from 'node:fs'
 import test from 'node:test'
 import vm from 'node:vm'
@@ -41,6 +42,52 @@ function workerContext(manifest, chunks) {
   })
   vm.runInContext(workerSource, context, { filename: 'service-worker.js' })
   return { context, listeners }
+}
+
+function dispatchedResponse(listener, request, clientId = '') {
+  let response
+  listener({
+    request,
+    clientId,
+    respondWith: value => { response = Promise.resolve(value) },
+  })
+  return response
+}
+
+function offlineClientContext() {
+  const records = new Map()
+  const messages = []
+  const securityStore = {
+    get: key => request(records.get(key)),
+    put: value => {
+      records.set(value.id, structuredClone(value))
+      return request(value)
+    },
+  }
+  const database = {
+    objectStoreNames: { contains: name => name === 'security' },
+    transaction: () => {
+      const transaction = { objectStore: () => securityStore }
+      queueMicrotask(() => transaction.oncomplete?.())
+      return transaction
+    },
+    close() {},
+  }
+  const context = vm.createContext({
+    Blob, CustomEvent: class {}, Error, Map, TextEncoder, Uint8Array, URL,
+    console,
+    crypto: webcrypto,
+    indexedDB: { open: () => request(database) },
+    navigator: {
+      serviceWorker: { controller: { postMessage: message => messages.push(message) } },
+    },
+    window: {
+      isSecureContext: true,
+      dispatchEvent() {},
+    },
+  })
+  vm.runInContext(offlineSource, context, { filename: 'mabeltv-offline.js' })
+  return { context, messages }
 }
 
 test('offline media returns exact byte ranges from Blob and legacy ArrayBuffer chunks', async () => {
@@ -107,4 +154,56 @@ test('offline client refuses to claim readiness outside a secure context', async
     context.window.MabelOffline.initialise(),
     /secure HTTPS address/,
   )
+})
+
+test('service worker protects adult downloads but leaves family downloads available', async () => {
+  const adultManifest = {
+    id: 'adult-film', status: 'complete', size: 4, chunkSize: 4,
+    mimeType: 'video/mp4', source: { kind: 'adult', file: 'Private Film.mp4' },
+  }
+  const adultChunks = new Map([
+    ['adult-film:0', { data: new Blob([Uint8Array.from([0, 1, 2, 3])]) }],
+  ])
+  const adultWorker = workerContext(adultManifest, adultChunks)
+  const adultRequest = new Request('https://tv.example.test/offline-media/adult-film')
+
+  let response = await dispatchedResponse(adultWorker.listeners.fetch, adultRequest, 'phone')
+  assert.equal(response.status, 401)
+
+  adultWorker.listeners.message({
+    data: { type: 'mabeltv-offline-access', unlocked: true },
+    source: { id: 'phone' },
+  })
+  response = await dispatchedResponse(adultWorker.listeners.fetch, adultRequest, 'phone')
+  assert.equal(response.status, 200)
+
+  const familyManifest = {
+    id: 'family-film', status: 'complete', size: 4, chunkSize: 4,
+    mimeType: 'video/mp4', source: { kind: 'channel', channel: 1, file: 'Film.mp4' },
+  }
+  const familyWorker = workerContext(familyManifest, new Map([
+    ['family-film:0', { data: new Blob([Uint8Array.from([4, 5, 6, 7])]) }],
+  ]))
+  response = await dispatchedResponse(
+    familyWorker.listeners.fetch,
+    new Request('https://tv.example.test/offline-media/family-film'),
+    'another-phone',
+  )
+  assert.equal(response.status, 200)
+})
+
+test('offline PIN verifier unlocks protected media without storing the PIN', async () => {
+  const { context, messages } = offlineClientContext()
+
+  await context.window.MabelOffline.rememberSecurity(true, '8642')
+  const status = await context.window.MabelOffline.securityStatus()
+  assert.equal(status.required, true)
+  assert.equal(status.configured, true)
+  await assert.rejects(
+    context.window.MabelOffline.verifyPin('1111'),
+    /not correct/,
+  )
+  await context.window.MabelOffline.verifyPin('8642')
+  assert.equal(messages.at(-1)?.type, 'mabeltv-offline-access')
+  assert.equal(messages.at(-1)?.unlocked, true)
 })

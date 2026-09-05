@@ -456,6 +456,24 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("portalPlayAdultFilm", application)
         self.assertIn('QStringLiteral("position")).toDouble(0.0)', application)
 
+    def test_viewing_insights_treats_stored_source_names_as_text(self) -> None:
+        library_script = (PORTAL_ROOT / "js" / "library.js").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertNotIn("${item.source}</small>", library_script)
+        self.assertNotIn("${session.source}</small>", library_script)
+        self.assertIn("copy.querySelector('small').textContent", library_script)
+        self.assertIn("row.querySelector('small').textContent", library_script)
+
+    def test_experience_shell_never_overrides_the_hidden_state(self) -> None:
+        experience_shell = (
+            PORTAL_ROOT / "css" / "experience-shell.css"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("body.portal-v2 .app-shell:not(.hidden)", experience_shell)
+        self.assertNotIn("body.portal-v2 .app-shell {", experience_shell)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -3841,8 +3841,11 @@ class LibraryHttpTests(unittest.TestCase):
     def test_portal_design_cookie_selects_classic_while_experience_is_default(self) -> None:
         with urllib.request.urlopen(self.base + "/", timeout=5) as response:
             default_html = response.read().decode()
+            content_security_policy = response.headers["Content-Security-Policy"]
         self.assertIn('class="portal-v2 portal-experience"', default_html)
         self.assertNotIn('/portal/css/classic-foundation.css', default_html)
+        self.assertIn("script-src 'self';", content_security_policy)
+        self.assertNotIn("script-src 'self' 'unsafe-inline'", content_security_policy)
 
         request = urllib.request.Request(self.base + "/")
         request.add_header("Cookie", "mabeltv_portal_design=classic")
@@ -3851,6 +3854,19 @@ class LibraryHttpTests(unittest.TestCase):
         self.assertIn('class="portal-v2 portal-classic"', classic_html)
         self.assertIn('/portal/css/classic-foundation.css', classic_html)
         self.assertNotIn('/portal/css/experience-foundation.css', classic_html)
+
+    def test_standalone_watch_page_keeps_its_legacy_inline_script_policy(self) -> None:
+        self.request("/api/setup", {
+            "setup_code": "135790", "pin": "8642",
+            "channels": mabeltv_library.DEFAULT_CHANNELS,
+        })
+        self.request("/api/login", {"pin": "8642"})
+
+        with self.opener.open(self.base + "/watch/player", timeout=5) as response:
+            content_security_policy = response.headers["Content-Security-Policy"]
+            self.assertIn(
+                "script-src 'self' 'unsafe-inline';", content_security_policy
+            )
 
     def test_portal_asset_handler_rejects_path_traversal(self) -> None:
         with self.assertRaises(urllib.error.HTTPError) as raised:

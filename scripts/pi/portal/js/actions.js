@@ -642,7 +642,10 @@ let managementBusy = false
       event.preventDefault()
       const required = library?.owner?.portal_pin_required !== false
       try {
-        const result = await api('/api/portal-security', { method: 'POST', body: JSON.stringify({ current_pin: $('#portalPinCurrent').value, required: !required }) })
+        const currentPin = $('#portalPinCurrent').value
+        const result = await api('/api/portal-security', { method: 'POST', body: JSON.stringify({ current_pin: currentPin, required: !required }) })
+        await syncOfflineSecurity(result.portal_pin_required, currentPin)
+        setOfflineProtectedAccess(result.portal_pin_required === false)
         $('#portalPinCurrent').value = ''
         library.owner = { ...(library.owner || {}), portal_pin_required: result.portal_pin_required }
         renderPortalPinSetting()
@@ -653,7 +656,10 @@ let managementBusy = false
       event.preventDefault()
       if ($('#newPin').value !== $('#newPinAgain').value) { notice('The two new PINs do not match.', true); return }
       try {
-        await api('/api/account', { method: 'POST', body: JSON.stringify({ current_pin: $('#currentPin').value, new_pin: $('#newPin').value }) })
+        const newPin = $('#newPin').value
+        await api('/api/account', { method: 'POST', body: JSON.stringify({ current_pin: $('#currentPin').value, new_pin: newPin }) })
+        await syncOfflineSecurity(library?.owner?.portal_pin_required !== false, newPin)
+        setOfflineProtectedAccess(false)
         $('#currentPin').value = ''; $('#newPin').value = ''; $('#newPinAgain').value = ''
         showOnly('login')
         $('#loginError').classList.remove('bad')
