@@ -283,7 +283,14 @@
           : (name === 'insights' || name === 'activity') ? 'system' : name
       $$('.view').forEach(view => view.classList.toggle('active', view.id === `view-${name}`))
       document.body.classList.toggle('watch-mode', name === 'watch' || name === 'adult-viewing' || channelFromWatch || consolidatedWatchView)
+      document.body.classList.toggle('tv-remote-mode', name === 'live' || name === 'lg-tv')
       document.body.classList.toggle('lg-tv-mode', name === 'lg-tv')
+      $$('[data-remote-switch]').forEach(button => {
+        const active = button.dataset.remoteSwitch === name
+        button.classList.toggle('active', active)
+        if (active) button.setAttribute('aria-current', 'page')
+        else button.removeAttribute('aria-current')
+      })
       $$('[data-view-button]').forEach(button => {
         const active = button.dataset.viewButton === activeNavigation
         button.classList.toggle('active', active)
@@ -308,4 +315,3 @@
       if (name === 'activity') loadActivity().catch(error => notice(error.message, true))
       if (name === 'adult-viewing') loadAdultViewing().catch(showError)
     }
-

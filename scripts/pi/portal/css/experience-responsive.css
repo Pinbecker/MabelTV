@@ -4,8 +4,6 @@
   body.portal-v2 .adult-film-list { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   body.portal-v2 .library-channel-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   body.portal-v2 .live-page { grid-template-columns: minmax(300px, .7fr) minmax(0, 1.3fr); }
-  body.portal-v2 .remote-core { grid-template-columns: 68px minmax(180px, 1fr) 68px; gap: 8px; }
-  body.portal-v2 .remote-pad { width: 190px; height: 190px; }
   body.portal-v2 .watch-channel-rail.watch-film-channel-rail {
     grid-auto-columns: calc((100% - 48px) / 5);
   }
@@ -588,30 +586,6 @@
     height: 18px;
   }
 
-  body.portal-v2 .remote-core {
-    grid-template-columns: 66px minmax(158px, 1fr) 66px;
-    gap: 5px;
-    min-height: 210px;
-    padding: 15px 0;
-  }
-
-  body.portal-v2 .remote-rocker {
-    grid-template-rows: repeat(3, minmax(0, 1fr));
-    width: 62px;
-    height: 185px;
-    border-radius: 31px;
-  }
-
-  body.portal-v2 .remote-rocker svg { width: 21px; height: 21px; }
-  body.portal-v2 .remote-rocker strong { font-size: 9px; }
-
-  body.portal-v2 .remote-pad {
-    width: 142px;
-    height: 142px;
-    padding: 8px;
-  }
-
-  body.portal-v2 .remote-back { min-height: 44px; }
   body.portal-v2 .remote-transport button { min-height: 58px; }
   body.portal-v2 .remote-dock { grid-template-columns: minmax(0,1fr) 66px 62px; }
   body.portal-v2 .remote-dock button { min-height: 58px; }
@@ -635,8 +609,6 @@
   body.portal-v2 .home-feed { padding-right: 15px; padding-left: 15px; }
   body.portal-v2 .destination-rail { margin-right: -15px; padding-right: 15px; }
   body.portal-v2 .remote-app { margin-right: 0; margin-left: 0; }
-  body.portal-v2 .remote-core { grid-template-columns: 66px minmax(146px, 1fr) 66px; }
-  body.portal-v2 .remote-pad { width: 136px; height: 136px; }
   body.portal-v2 .remote-destinations { gap: 4px; }
   body.portal-v2 .remote-mode { font-size: 9px; }
   body.portal-v2 .remote-dock { grid-template-columns: minmax(0,1fr) 62px 58px; gap: 5px; }
@@ -674,18 +646,4 @@
     height: 18px;
   }
 
-  body.portal-v2 .remote-core {
-    min-height: 170px;
-    padding-top: 8px;
-    padding-bottom: 8px;
-  }
-
-  body.portal-v2 .remote-rocker {
-    grid-template-rows: repeat(3, minmax(0, 1fr));
-    height: 138px;
-  }
-
-  body.portal-v2 .remote-centre { gap: 6px; }
-  body.portal-v2 .remote-pad { width: 116px; height: 116px; }
-  body.portal-v2 .remote-back { min-height: 44px; }
 }

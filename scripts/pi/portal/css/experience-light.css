@@ -227,7 +227,7 @@ html[data-experience-theme="light"] body.portal-experience .remote-app {
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.8), 0 24px 60px var(--experience-shadow);
 }
 
-html[data-experience-theme="light"] body.portal-experience :is(.remote-mode, .remote-back, .remote-dock button) {
+html[data-experience-theme="light"] body.portal-experience :is(.remote-mode, .remote-dock button) {
   background: var(--experience-elevated);
 }
 
@@ -236,18 +236,6 @@ html[data-experience-theme="light"] body.portal-experience :is(.remote-mode.acti
   background: #fff0e5;
 }
 
-html[data-experience-theme="light"] body.portal-experience .remote-rocker {
-  background: var(--experience-raised);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.8), 0 10px 22px rgba(39, 32, 27, 0.12);
-}
-
-html[data-experience-theme="light"] body.portal-experience .remote-pad {
-  background: radial-gradient(circle, #e6e2dd 0 30%, #ffffff 31% 68%, #f0eeeb 69%);
-  box-shadow: inset 0 2px 2px rgba(255, 255, 255, 0.85), 0 18px 36px rgba(39, 32, 27, 0.14);
-}
-
-html[data-experience-theme="light"] body.portal-experience .remote-pad button { color: var(--experience-muted); }
-html[data-experience-theme="light"] body.portal-experience .remote-pad .select,
 html[data-experience-theme="light"] body.portal-experience .remote-transport .remote-play {
   border-color: var(--experience-orange-hot);
   background: var(--experience-orange-hot);

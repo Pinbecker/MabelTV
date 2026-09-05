@@ -20,10 +20,10 @@
     <header class="mobile-head">
       <div class="mobile-brand"><img class="logo-mark" src="/mabeltv-icon.png" alt=""><strong>MabelTV</strong></div>
       <div class="mobile-head-actions">
-        <button id="mobileActivityStatus" type="button" class="mobile-activity-status is-idle hidden" data-go="activity" aria-label="Open background activity"><span class="mobile-activity-dot"></span><span id="mobileActivityText"></span></button>
-        <button id="openLgTvRemote" type="button" class="connected-tv-status" data-go="lg-tv" aria-label="Open connected LG TV remote">
-          <svg class="icon"><use href="/portal/icons.svg#signal-radio"/></svg><span class="connected-tv-status-dot"></span>
-        </button>
+        <nav class="mobile-remote-switcher tv-remote-switcher" aria-label="Choose remote control">
+          <button type="button" data-remote-switch="live" data-go="live">MabelTV</button>
+          <button type="button" data-remote-switch="lg-tv" data-go="lg-tv">LG TV</button>
+        </nav>
       </div>
     </header>
 

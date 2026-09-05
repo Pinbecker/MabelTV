@@ -227,18 +227,6 @@
       uploadsRoot.innerHTML = uploads.length ? uploads.map(job => activityJobMarkup(job, 'upload')).join('') : '<div class="activity-empty">No uploads are waiting or in progress.</div>'
       optimisationRoot.innerHTML = optimisations.length ? optimisations.map(job => activityJobMarkup(job, 'optimising')).join('') : '<div class="activity-empty">No films are being optimised right now.</div>'
       $$('[data-activity-action]').forEach(button => button.onclick = () => activityAction(button))
-      const header = $('#mobileActivityStatus')
-      const headerText = $('#mobileActivityText')
-      const warning = activity.temperature_warning
-      const firstOptimisation = activeOptimisations[0]
-      header.classList.remove('hidden')
-      header.classList.toggle('is-warning', warning)
-      const firstUpload = activeUploads[0]
-      const headerLabel = warning ? `${Number(activity.temperature_c).toFixed(0)}°C · Pi warming up`
-        : firstOptimisation ? `Optimising · ${Math.round(firstOptimisation.progress || 0)}%`
-          : activeUploads.length ? `${firstUpload.status === 'paused' ? 'Paused' : 'Uploading'} · ${Math.round((firstUpload.size ? firstUpload.offset * 100 / firstUpload.size : 0) || 0)}%` : ''
-      headerText.textContent = headerLabel
-      header.classList.toggle('is-idle', !headerLabel)
     }
 
     async function activityAction(button) {

@@ -133,7 +133,7 @@
         const feedback = $('#remoteFeedback').closest('.remote-feedback')
         feedback.classList.toggle('success', available)
         feedback.classList.remove('error')
-        $('#remoteFeedback').textContent = locked ? 'Kids’ remote locked' : (available ? 'Ready' : 'TV offline')
+        $('#remoteFeedback').textContent = available ? 'Ready' : 'TV offline'
       }
       $('#remoteMabelAction').classList.toggle('active', available && !adult)
       $('#remoteAdultAction').classList.toggle('active', available && adult)

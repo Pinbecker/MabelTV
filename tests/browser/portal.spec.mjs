@@ -76,14 +76,15 @@ test('phone shell keeps the frozen header, rail, gutters and Continue layout', a
 test('primary screens stay full-width and match their visual references', async ({ page }) => {
   await openPortal(page)
   const screens = [
-    { button: 'Home', selector: '#view-overview', snapshot: 'home.png' },
-    { button: 'Watch', selector: '#view-watch', snapshot: 'watch.png' },
-    { button: 'Remote', selector: '#view-live', snapshot: 'remote.png' },
-    { button: 'Settings', selector: '#view-system', snapshot: 'settings.png' },
+    { trigger: '[data-view-button="overview"]', selector: '#view-overview', snapshot: 'home.png' },
+    { trigger: '[data-view-button="watch"]', selector: '#view-watch', snapshot: 'watch.png' },
+    { trigger: '[data-view-button="live"]', selector: '#view-live', snapshot: 'remote.png' },
+    { trigger: '.tv-remote-switcher [data-go="lg-tv"]:visible', selector: '#view-lg-tv', snapshot: 'lg-tv-remote.png' },
+    { trigger: '[data-view-button="system"]', selector: '#view-system', snapshot: 'settings.png' },
   ]
 
   for (const screen of screens) {
-    await page.getByRole('button', { name: screen.button, exact: true }).click()
+    await page.locator(screen.trigger).click()
     await expect(page.locator(screen.selector)).toBeVisible()
     await expectInsideViewport(page, screen.selector)
     const widths = await page.evaluate(() => ({
@@ -278,14 +279,19 @@ test('Experience icon controls and sheet headers keep their mobile contracts', a
   const rowRadii = await activityRows.evaluateAll(rows => rows.map(row => getComputedStyle(row).borderRadius))
   expect(rowRadii).toEqual(['0px', '0px'])
 
-  const headerRemote = await geometry(page, '#openLgTvRemote')
-  expect(headerRemote.width).toBeGreaterThanOrEqual(43.9)
-  expect(headerRemote.height).toBeGreaterThanOrEqual(43.9)
-  await page.locator('#openLgTvRemote').click()
+  await expect(page.locator('#mobileActivityStatus')).toHaveCount(0)
+  await expect(page.locator('#openLgTvRemote')).toHaveCount(0)
+  await expect(page.locator('.mobile-remote-switcher')).toBeHidden()
+  await page.getByRole('button', { name: 'Remote', exact: true }).click()
+  await expect(page.locator('.mobile-remote-switcher')).toBeVisible()
+  await expect(page.locator('[data-remote-switch="live"]')).toHaveClass(/active/)
+  await page.locator('[data-remote-switch="lg-tv"]').click()
+  await expect(page.locator('[data-remote-switch="lg-tv"]')).toHaveClass(/active/)
   await expect(page.locator('#lgMabelTvText')).toHaveText('Standby')
   await expect(page.locator('#lgMabelTvLed')).toHaveClass(/is-standby/)
   await expect(page.locator('#lgTvConnectionText')).toHaveText('On')
   await expect(page.locator('#lgTvConnectionLed')).toHaveClass(/is-on/)
+  await expect(page.locator('#lgVolumeValue')).toHaveText('18')
   expect(await page.locator('#lgMabelTvLed').evaluate(node => getComputedStyle(node).backgroundColor))
     .toBe('rgb(255, 90, 110)')
   expect(await page.locator('#lgTvConnectionLed').evaluate(node => getComputedStyle(node).backgroundColor))
@@ -296,6 +302,21 @@ test('Experience icon controls and sheet headers keep their mobile contracts', a
   expect(cardPower.height).toBeGreaterThanOrEqual(43.9)
   expect(quickRefresh.width).toBeGreaterThanOrEqual(43.9)
   expect(quickRefresh.height).toBeGreaterThanOrEqual(43.9)
+  const sharedControls = await page.evaluate(() => {
+    const rect = selector => {
+      const value = document.querySelector(selector).getBoundingClientRect()
+      return { top: value.top, right: value.right, bottom: value.bottom, left: value.left }
+    }
+    return {
+      channel: rect('#view-lg-tv .tv-remote-channel-rocker'),
+      dpad: rect('#view-lg-tv .tv-remote-dpad'),
+      volume: rect('#view-lg-tv .tv-remote-volume-rocker'),
+      back: rect('#view-lg-tv .tv-remote-back'),
+    }
+  })
+  expect(sharedControls.channel.right).toBeLessThan(sharedControls.dpad.left)
+  expect(sharedControls.dpad.right).toBeLessThan(sharedControls.volume.left)
+  expect(sharedControls.back.top).toBeGreaterThan(sharedControls.dpad.bottom)
 
   const stickyClose = await page.evaluate(() => {
     const dialog = document.querySelector('#adultSeasonSheet')
@@ -348,6 +369,23 @@ test('MabelTV remote offers a contextual borderless Adult TV handoff', async ({ 
   }, liveFixture)
   await page.getByRole('button', { name: 'Remote', exact: true }).click()
   await page.evaluate((fixture) => renderLiveTv(fixture), liveFixture)
+  await expect(page.locator('#view-live .remote-transport-primary button')).toHaveCount(4)
+  await expect(page.locator('#view-live .remote-transport-context button')).toHaveCount(3)
+  const mabelControls = await page.evaluate(() => {
+    const rect = selector => {
+      const value = document.querySelector(selector).getBoundingClientRect()
+      return { top: value.top, right: value.right, bottom: value.bottom, left: value.left }
+    }
+    return {
+      channel: rect('#view-live .tv-remote-channel-rocker'),
+      dpad: rect('#view-live .tv-remote-dpad'),
+      volume: rect('#view-live .tv-remote-volume-rocker'),
+      back: rect('#view-live .tv-remote-back'),
+    }
+  })
+  expect(mabelControls.channel.right).toBeLessThan(mabelControls.dpad.left)
+  expect(mabelControls.dpad.right).toBeLessThan(mabelControls.volume.left)
+  expect(mabelControls.back.top).toBeGreaterThan(mabelControls.dpad.bottom)
   const handoff = page.locator('#remoteAdultHandoff')
   await expect(handoff).toBeVisible()
   await expect(handoff).toHaveAttribute(

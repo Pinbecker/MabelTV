@@ -55,8 +55,8 @@
     const mabelLed = $('#lgMabelTvLed')
     const connectionText = $('#lgTvConnectionText')
     const connectionLed = $('#lgTvConnectionLed')
-    const headerButton = $('#openLgTvRemote')
     const mute = $('#lgMute')
+    const volumeValue = $('#lgVolumeValue')
 
     if (!value.configured) {
       heading.textContent = 'LG TV not configured'
@@ -73,13 +73,16 @@
 
     MabelPortalUI.setPowerStatus(mabelLed, mabelText, mabelOn ? 'on' : 'standby')
     MabelPortalUI.setPowerStatus(connectionLed, connectionText, on ? 'on' : 'standby')
-    headerButton?.classList.toggle('is-online', on)
     setInteractiveState(on)
 
     const powerLabel = on ? 'Turn connected TV off' : 'Turn connected TV on'
     $('#lgCardPower')?.setAttribute('aria-label', powerLabel)
     $('#lgPower')?.setAttribute('aria-label', powerLabel)
     mute?.setAttribute('aria-pressed', String(Boolean(value.muted)))
+    if (volumeValue) {
+      const volume = Number.isFinite(Number(state.volume)) ? Math.max(0, Math.min(100, Number(state.volume))) : null
+      volumeValue.textContent = !on ? '—' : (state.muted ? 'Muted' : (volume === null ? '—' : String(Math.round(volume))))
+    }
 
     const availableApps = new Set(value.available_apps || [])
     $$('[data-lg-launch]').forEach(button => {
@@ -248,13 +251,11 @@
   }
 
   window.startLgTvRemote = () => {
-    $('#openLgTvRemote')?.classList.add('is-open')
     refresh()
     if (!statusTimer) statusTimer = window.setInterval(refresh, STATUS_INTERVAL_MS)
   }
 
   window.stopLgTvRemote = () => {
-    $('#openLgTvRemote')?.classList.remove('is-open')
     if (statusTimer) window.clearInterval(statusTimer)
     statusTimer = null
     pointerContacts.clear()

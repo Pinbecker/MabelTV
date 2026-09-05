@@ -100,7 +100,7 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("if (poweringOff || pendingPowerAction.length > 0)", main_qml)
         self.assertNotIn("button.disabled = state.remote_locked === true", portal)
         self.assertNotIn("(locked && !canUnlock)", portal)
-        self.assertIn("Kids’ remote locked", portal)
+        self.assertNotIn("Kids’ remote locked", portal)
         self.assertIn("Unlock kids’ physical remote", portal)
         self.assertIn("tvController.dispatchPortal(", main_qml)
         self.assertIn("tvController.tunePortalChannel(", main_qml)

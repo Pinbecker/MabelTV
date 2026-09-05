@@ -53,7 +53,7 @@ order unless a change explicitly redefines the cascade.
 
 - `experience-foundation.css`: Experience tokens and element-level defaults.
 - `experience-components.css`: reusable Experience controls, including the
-  canonical `.portal-search` contract.
+  canonical `.portal-search` contract and shared MabelTV/LG remote chassis.
 - `experience-shell.css`: fixed header, page frame, and bottom navigation.
 - `experience-home.css`, `experience-remote.css`, `experience-watch.css`,
   `experience-library.css`, and `experience-viewing.css`: route ownership.

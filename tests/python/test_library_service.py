@@ -198,8 +198,8 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("--control-min: 44px", PORTAL_STYLES)
         self.assertIn('/portal/icons.svg#signal-house', html)
         self.assertIn('class="logo-mark" src="/mabeltv-icon.png"', html)
-        self.assertIn('class="mobile-activity-status is-idle hidden"', html)
-        self.assertIn("header.classList.toggle('is-idle', !headerLabel)", PORTAL_SCRIPT)
+        self.assertNotIn('id="mobileActivityStatus"', html)
+        self.assertIn('class="mobile-remote-switcher tv-remote-switcher"', html)
         logo = (PROJECT_ROOT / "scripts" / "pi" / "mabeltv-icon.png").read_bytes()
         self.assertTrue(logo.startswith(b"\x89PNG\r\n\x1a\n"))
         self.assertTrue(logo.endswith(b"IEND\xaeB`\x82"))
@@ -332,7 +332,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn(".portal-nav button.active::before", styles)
         self.assertIn('class="settings-stack"', html)
         self.assertIn(".home-spotlight", styles)
-        self.assertIn(".remote-core", styles)
+        self.assertIn(".tv-remote-chassis", styles)
         self.assertIn(".watch-poster-grid", styles)
         self.assertIn(".library-main-card", styles)
         self.assertIn(".settings-disclosure", styles)
@@ -365,7 +365,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn('class="remote-dock-action-label"', html)
         self.assertIn("querySelector('.remote-dock-action-label')", core)
         self.assertIn(".remote-mode-icon", styles)
-        self.assertIn(".remote-pad .select", styles)
+        self.assertIn(".tv-remote-dpad .tv-dpad-ok", styles)
         self.assertNotIn('class="home-intro"', html)
         self.assertNotIn('class="settings-grid"', html)
         self.assertNotIn('class="usb-layout"', html)
@@ -1182,7 +1182,7 @@ class LibraryUnitTests(unittest.TestCase):
         service_worker = (PROJECT_ROOT / "scripts" / "pi" / "service-worker.js").read_text(
             encoding="utf-8")
 
-        self.assertIn('id="openLgTvRemote"', html)
+        self.assertNotIn('id="openLgTvRemote"', html)
         self.assertIn('data-view-button="live"', html)
         self.assertIn('id="view-lg-tv"', html)
         self.assertIn('id="lgTrackpad"', html)
@@ -1193,7 +1193,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("POINTER_INTERVAL_MS = 36", script)
         self.assertIn("available_apps", script)
         self.assertIn("grid-auto-columns: 68px", styles)
-        self.assertIn("body.portal-v2 .lg-dpad", styles)
+        self.assertIn("body.portal-v2 .tv-remote-dpad", PORTAL_EXPERIENCE_STYLES)
         self.assertIn("@media (max-width: 430px)", styles)
         self.assertNotIn("!important", styles)
         self.assertIn("'/portal/css/lg-tv-remote.css'", service_worker)
@@ -3892,7 +3892,7 @@ class LibraryHttpTests(unittest.TestCase):
                              ("/portal/css/experience-foundation.css", b"--experience-orange"),
                              ("/portal/css/experience-shell.css", b".portal-nav"),
                              ("/portal/css/experience-overlays.css", b"--experience-sheet-gutter"),
-                             ("/portal/css/lg-tv-remote.css", b".lg-dpad"),
+                             ("/portal/css/lg-tv-remote.css", b".lg-control-card"),
                              ("/portal/css/experience-light.css", b'data-experience-theme="light"'),
                              ("/portal/js/experience-theme.js", b"mabeltv-experience-theme"),
                              ("/portal/css/classic-foundation.css", b"--accent: #ff7a1a"),
