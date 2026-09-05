@@ -3,6 +3,20 @@
 MabelTV uses several deliberately different checks. No single green command is
 allowed to imply more confidence than it actually provides.
 
+## Architecture ratchet
+
+`config/architecture-guardrails.json` gives every owned source area a maximum
+file size. The Python architecture suite also requires every QML/C++ source to
+be registered, every portal partial and stylesheet/script to be reachable, and
+Library mixins to preserve their dependency direction. New source files without
+an applicable budget fail the gate.
+
+The limits are deliberately above normal working size but below another
+monolith. They are not style scores or permission to fill a file to its limit.
+When a responsibility outgrows its owner, extract a cohesive component and
+document it instead of increasing the budget. The matching change checklist is
+in [Contributing to MabelTV](../CONTRIBUTING.md).
+
 ## Portable source gate
 
 The normal CMake test suite covers the C++ controller, the complete Python

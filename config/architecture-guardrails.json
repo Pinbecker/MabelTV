@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "source_roots": [
+    "qml",
+    "src",
+    "scripts",
+    "packaging",
+    "integrations",
+    "tests",
+    "tools"
+  ],
+  "source_suffixes": [
+    ".cpp",
+    ".css",
+    ".h",
+    ".html",
+    ".js",
+    ".mjs",
+    ".ps1",
+    ".py",
+    ".qml",
+    ".sh"
+  ],
+  "excluded_paths": [
+    "integrations/matter/node_modules",
+    "scripts/pi/hls.min.js",
+    "scripts/pi/portal/vendor",
+    "tests/browser/node_modules",
+    "tests/browser/playwright-report",
+    "tests/browser/test-results"
+  ],
+  "rules": [
+    {
+      "area": "Native QML component",
+      "patterns": ["qml/*.qml"],
+      "max_lines": 1000
+    },
+    {
+      "area": "Native C++ implementation",
+      "patterns": ["src/**/*.cpp"],
+      "max_lines": 1000
+    },
+    {
+      "area": "Native C++ interface",
+      "patterns": ["src/**/*.h"],
+      "max_lines": 500
+    },
+    {
+      "area": "Library compatibility entry point and Pi utility",
+      "patterns": ["scripts/pi/*.py"],
+      "max_lines": 700
+    },
+    {
+      "area": "Library backend responsibility",
+      "patterns": ["scripts/pi/mabeltv_backend/*.py"],
+      "max_lines": 1600
+    },
+    {
+      "area": "Portal JavaScript responsibility",
+      "patterns": ["scripts/pi/portal/js/**/*.js"],
+      "max_lines": 900
+    },
+    {
+      "area": "Portal stylesheet responsibility",
+      "patterns": ["scripts/pi/portal/css/**/*.css"],
+      "max_lines": 850
+    },
+    {
+      "area": "Portal HTML responsibility",
+      "patterns": ["scripts/pi/portal/html/**/*.html"],
+      "max_lines": 650
+    },
+    {
+      "area": "Portal top-level document or worker",
+      "patterns": ["scripts/pi/*.html", "scripts/pi/*.js"],
+      "max_lines": 500
+    },
+    {
+      "area": "Shell operation",
+      "patterns": ["scripts/**/*.sh"],
+      "max_lines": 600
+    },
+    {
+      "area": "Image and appliance packaging operation",
+      "patterns": [
+        "packaging/image/**/*.sh",
+        "packaging/image/**/files/*",
+        "packaging/linux/*"
+      ],
+      "max_lines": 600
+    },
+    {
+      "area": "PowerShell operation",
+      "patterns": ["scripts/**/*.ps1", "tools/**/*.ps1"],
+      "max_lines": 500
+    },
+    {
+      "area": "Imaging or developer Python tool",
+      "patterns": ["scripts/imaging/*.py", "tools/**/*.py"],
+      "max_lines": 500
+    },
+    {
+      "area": "Matter integration",
+      "patterns": ["integrations/**/*.mjs"],
+      "max_lines": 400
+    },
+    {
+      "area": "Browser contract",
+      "patterns": ["tests/browser/*.mjs", "tests/browser/*.py"],
+      "max_lines": 500
+    },
+    {
+      "area": "JavaScript regression test",
+      "patterns": ["tests/js/*.mjs"],
+      "max_lines": 500
+    },
+    {
+      "area": "Python regression test module",
+      "patterns": ["tests/python/*.py"],
+      "max_lines": 800
+    },
+    {
+      "area": "Native regression test module",
+      "patterns": ["tests/unit/*.cpp", "tests/unit/*.h"],
+      "max_lines": 1500
+    }
+  ],
+  "exceptions": [
+    {
+      "path": "tests/python/test_library_service.py",
+      "max_lines": 3946,
+      "reason": "Frozen legacy integration suite: split an owned area before adding another test here."
+    }
+  ]
+}

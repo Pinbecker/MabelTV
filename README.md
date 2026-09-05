@@ -120,6 +120,7 @@ Build, dependency-check, smoke-test, and package the Windows development build:
 ## Architecture and operations
 
 - [Project principles](docs/project-principles.md)
+- [Contributing and architecture rules](CONTRIBUTING.md)
 - [Architecture and data layout](docs/architecture.md)
 - [Quality gates](docs/quality-gates.md)
 - [SD-card installer and update model](docs/sd-card-installer.md)
