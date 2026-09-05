@@ -330,7 +330,7 @@ class ProviderMetadataMixin:
         return ordered[next_index] if next_index < len(ordered) else None
 
     def adult_local_title_index(self) -> dict[str, dict[str, Any]]:
-        """Map confirmed Adult TV media to one canonical TMDB title."""
+        """Map every confirmed local film or series to one canonical TMDB title."""
         index: dict[str, dict[str, Any]] = {}
         for film in self.adult_library():
             metadata = film.get("metadata", {})
@@ -347,6 +347,37 @@ class ProviderMetadataMixin:
                 "last_watched": float(film.get("remote_last_watched", 0) or 0),
                 "browser_ready": film.get("browser_ready") is not False,
             }
+        channel_states = self.channel_media_states()
+        programme_metadata = channel_states.get("programmes", {})
+        if not isinstance(programme_metadata, dict):
+            programme_metadata = {}
+        for channel in self.channels():
+            if self.channel_content_type(channel) != "films":
+                continue
+            folder = self.media_root / str(channel["folder"])
+            for source in sorted(folder.glob("*") if folder.is_dir() else [],
+                                 key=lambda value: value.name.casefold()):
+                if not source.is_file() or source.suffix.lower() not in SUPPORTED_EXTENSIONS:
+                    continue
+                metadata = programme_metadata.get(self.channel_programme_key(
+                    int(channel["number"]), source.name), {})
+                if not isinstance(metadata, dict):
+                    continue
+                try:
+                    key = self.adult_title_key("movie", metadata.get("tmdb_id"))
+                except ValueError:
+                    continue
+                resume = self.channel_film_resume_state(int(channel["number"]), source.name)
+                index.setdefault(key, {
+                    "kind": "channel-film", "channel": int(channel["number"]),
+                    "file": source.name,
+                    "title": str(metadata.get("title") or self.display_name(source.name)),
+                    "poster": str(metadata.get("poster") or ""),
+                    "position": float(resume.get("position", 0) or 0),
+                    "duration": float(resume.get("duration", 0) or 0),
+                    "last_watched": float(resume.get("updated", 0) or 0),
+                    "browser_ready": self.remote_browser_ready(source),
+                })
         for series in self.adult_series_library():
             metadata = series.get("metadata", {})
             try:

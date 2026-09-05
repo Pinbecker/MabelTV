@@ -1,14 +1,14 @@
 'use strict'
 
-function adultTitleIntentAction(detail, button, request) {
+function adultTitleIntentAction(detail, button, request, root = $('#adultTitleIntents')) {
   return async () => {
     if (button.disabled) return
     button.disabled = true
     try {
       const { action, extra = {} } = request()
       detail.viewing = await updateAdultViewing(detail, action, extra)
-      syncAdultTitleButtons(detail)
-      syncAdultTitleNextEpisode(detail)
+      syncAdultTitleButtons(detail, root)
+      if (root?.id === 'adultTitleIntents') syncAdultTitleNextEpisode(detail)
       if (action === 'watchlist') notice(detail.viewing.watchlisted
         ? 'Added to Watchlist.' : 'Removed from Watchlist.')
       else if (action === 'rewatch') notice(detail.viewing.rewatch
@@ -25,6 +25,80 @@ function adultTitleIntentAction(detail, button, request) {
       button.disabled = false
     }
   }
+}
+
+function wireAdultTitleIntentActions(detail, root = $('#adultTitleIntents')) {
+  const { watchlist, rewatch, up_next: upNext, watching, watched } = adultViewingActionButtons(root)
+  if (!watchlist || !rewatch || !upNext || !watched) return
+  syncAdultTitleButtons(detail, root)
+  watchlist.onclick = () => {
+    const status = adultTitleViewingStatus(detail.viewing, detail)
+    if (status.inProgress && !detail.viewing?.watchlisted) {
+      notice('This title is already in progress. Continue it from Up Next.', true)
+      return
+    }
+    if (status.completed && !detail.viewing?.watchlisted) {
+      notice('You have already seen this. Add it to Rewatch instead.', true)
+      return
+    }
+    adultTitleIntentAction(detail, watchlist, () => ({
+      action: 'watchlist', extra: { enabled: !detail.viewing?.watchlisted },
+    }), root)()
+  }
+  rewatch.onclick = () => {
+    if (!adultTitleViewingStatus(detail.viewing, detail).completed && !detail.viewing?.rewatch) {
+      notice('Mark this watched before adding it to Rewatch.', true)
+      return
+    }
+    adultTitleIntentAction(detail, rewatch, () => ({
+      action: 'rewatch', extra: { enabled: !detail.viewing?.rewatch },
+    }), root)()
+  }
+  upNext.onclick = adultTitleIntentAction(detail, upNext, () => ({
+    action: 'up_next', extra: { enabled: !detail.viewing?.up_next },
+  }), root)
+  if (watching) watching.onclick = adultTitleIntentAction(detail, watching, () => ({
+    action: 'watching', extra: {
+      enabled: !detail.viewing?.series_watching,
+      mode: (detail.viewing?.rewatch === true
+        || ((detail.seasons || []).length > 0 && (detail.seasons || []).every(season =>
+          Number(season.watched_count || 0) >= Number(season.episodes || 0))))
+        ? 'rewatch' : 'first_watch',
+    },
+  }), root)
+  watched.onclick = adultTitleIntentAction(detail, watched, () => ({
+    action: detail.viewing?.manual_state === 'watched' ? 'not_watched' : 'watched',
+  }), root)
+}
+
+function localFilmViewingDetail(film) {
+  const metadata = film?.metadata || {}
+  const tmdbId = Number(metadata.tmdb_id || 0)
+  if (!tmdbId) return null
+  const key = `movie:${tmdbId}`
+  const stored = (adultViewingData.items || []).find(item => item.key === key) || {}
+  return {
+    media_type: 'movie', tmdb_id: tmdbId, key,
+    title: metadata.title || film.display_name || 'Untitled film',
+    year: metadata.year || stored.year || '',
+    overview: metadata.overview || stored.overview || '',
+    runtime: Number(metadata.runtime || stored.runtime || 0),
+    poster_path: stored.poster_path || '',
+    viewing: stored,
+  }
+}
+
+async function wireLocalFilmViewingActions(root, film) {
+  const detail = localFilmViewingDetail(film)
+  root.classList.toggle('hidden', !detail)
+  if (!detail) return
+  root.dataset.viewingKey = detail.key
+  root.querySelectorAll('button').forEach(button => { button.disabled = true })
+  if (!adultViewingLoaded) await loadAdultViewing()
+  if (root.dataset.viewingKey !== detail.key) return
+  detail.viewing = (adultViewingData.items || []).find(item => item.key === detail.key) || {}
+  root.querySelectorAll('button').forEach(button => { button.disabled = false })
+  wireAdultTitleIntentActions(detail, root)
 }
 
 function renderAdultTitleDetail(detail, refreshProviders = true,
@@ -72,50 +146,7 @@ function renderAdultTitleDetail(detail, refreshProviders = true,
   manageLocal.classList.toggle('hidden', detail.local?.kind !== 'series')
   manageLocal.onclick = detail.local?.kind === 'series'
     ? () => manageLocalAdultSeries(detail) : null
-  syncAdultTitleButtons(detail)
-  const watchlist = $('#adultTitleWatchlist')
-  const rewatch = $('#adultTitleRewatch')
-  const upNext = $('#adultTitleUpNext')
-  const watching = $('#adultTitleWatching')
-  const watched = $('#adultTitleWatched')
-  watchlist.onclick = () => {
-    const status = adultTitleViewingStatus(detail.viewing, detail)
-    if (status.inProgress && !detail.viewing?.watchlisted) {
-      notice('This series is already in progress. Continue it from Watching or Up Next.', true)
-      return
-    }
-    if (status.completed && !detail.viewing?.watchlisted) {
-      notice('You have already seen this. Add it to Rewatch instead.', true)
-      return
-    }
-    adultTitleIntentAction(detail, watchlist, () => ({
-      action: 'watchlist', extra: { enabled: !detail.viewing?.watchlisted },
-    }))()
-  }
-  rewatch.onclick = () => {
-    if (!adultTitleViewingStatus(detail.viewing, detail).completed && !detail.viewing?.rewatch) {
-      notice('Mark this watched before adding it to Rewatch.', true)
-      return
-    }
-    adultTitleIntentAction(detail, rewatch, () => ({
-      action: 'rewatch', extra: { enabled: !detail.viewing?.rewatch },
-    }))()
-  }
-  upNext.onclick = adultTitleIntentAction(detail, upNext, () => ({
-    action: 'up_next', extra: { enabled: !detail.viewing?.up_next },
-  }))
-  watching.onclick = adultTitleIntentAction(detail, watching, () => ({
-    action: 'watching', extra: {
-      enabled: !detail.viewing?.series_watching,
-      mode: (detail.viewing?.rewatch === true
-        || ((detail.seasons || []).length > 0 && (detail.seasons || []).every(season =>
-          Number(season.watched_count || 0) >= Number(season.episodes || 0))))
-        ? 'rewatch' : 'first_watch',
-    },
-  }))
-  watched.onclick = adultTitleIntentAction(detail, watched, () => ({
-    action: detail.viewing?.manual_state === 'watched' ? 'not_watched' : 'watched',
-  }))
+  wireAdultTitleIntentActions(detail)
   $('#adultProviderRefresh').onclick = () => loadAdultProviders(detail, true, revision)
   if (refreshProviders) {
     $('#adultProviderList').innerHTML = '<p>Checking streaming destinations…</p>'
@@ -244,6 +275,7 @@ function renderAdultViewing() {
 
 async function loadAdultViewing() {
   adultViewingData = await api('/api/adult/viewing')
+  adultViewingLoaded = true
   renderAdultViewing()
 }
 

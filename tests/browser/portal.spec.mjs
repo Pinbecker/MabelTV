@@ -117,6 +117,15 @@ test('representative film and remote menus fit the phone viewport', async ({ pag
   const filmMenu = page.locator('#watchProgrammeSheet > article')
   await expectInsideViewport(page, '#watchProgrammeSheet > article')
   await expect(filmMenu).toHaveScreenshot('film-menu.png')
+  const localIntents = page.locator('#watchProgrammeViewingActions')
+  await expect(localIntents).toBeVisible()
+  await expect(localIntents.locator('[data-viewing-action]')).toHaveCount(4)
+  const watchlistIntent = localIntents.locator('[data-viewing-action="watchlist"]')
+  const wasWatchlisted = await watchlistIntent.getAttribute('aria-pressed') === 'true'
+  await watchlistIntent.click()
+  await expect(watchlistIntent).toHaveAttribute('aria-pressed', String(!wasWatchlisted))
+  await expect(watchlistIntent.locator('strong'))
+    .toHaveText(wasWatchlisted ? 'Add to Watchlist' : 'In your Watchlist')
   await page.getByRole('button', { name: 'Close programme details' }).click()
 
   await page.getByRole('button', { name: 'Remote', exact: true }).click()

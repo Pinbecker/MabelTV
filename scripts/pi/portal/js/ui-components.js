@@ -29,6 +29,34 @@
     })
   }
 
+  const viewingIntentDefinitions = [
+    ['watchlist', 'signal-plus', 'Add to Watchlist', 'Keep unseen titles saved for later'],
+    ['rewatch', 'signal-restart', 'Add to Rewatch', 'Save a favourite you have already seen'],
+    ['up_next', 'signal-list-filter', 'Add to Up Next', 'Place it in your ordered queue'],
+    ['watching', 'signal-eye', 'Start watching series', 'Keep its next episode in Up Next'],
+    ['watched', 'signal-check', 'Mark watched', 'Move it into your watched history'],
+  ]
+
+  function decorateViewingIntentActions() {
+    document.querySelectorAll('[data-viewing-intents]').forEach(root => {
+      const includeSeries = root.dataset.viewingIntents === 'series'
+      root.replaceChildren()
+      viewingIntentDefinitions.forEach(([action, iconName, title, description]) => {
+        if (action === 'watching' && !includeSeries) return
+        const control = button({ iconName })
+        control.dataset.viewingAction = action
+        const copy = document.createElement('span')
+        const heading = document.createElement('strong')
+        heading.textContent = title
+        const detail = document.createElement('small')
+        detail.textContent = description
+        copy.append(heading, detail)
+        control.append(copy)
+        root.append(control)
+      })
+    })
+  }
+
   function emptyState({ className = 'empty', title = '', message = '', messageTag = '' } = {}) {
     const root = document.createElement('div')
     root.className = className
@@ -130,4 +158,5 @@
   })
 
   decorateExperienceCloseButtons()
+  decorateViewingIntentActions()
 })()

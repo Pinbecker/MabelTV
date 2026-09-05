@@ -28,6 +28,7 @@ def film(title: str, index: int, favourite: bool = False) -> dict[str, Any]:
         "remote_duration": 6_600,
         "remote_last_watched": 2_000_000_000 - index,
         "metadata": {
+            "tmdb_id": 1000 + index,
             "title": title,
             "year": str(1990 + index),
             "overview": f"A deterministic fixture entry for {title}.",
@@ -189,6 +190,7 @@ class FixtureLibrary:
     def __init__(self) -> None:
         self.pin_required = False
         self.sessions: set[str] = set()
+        self.viewing_titles: dict[str, dict[str, Any]] = {}
 
     def start_viewing_tracker(self) -> None:
         pass
@@ -247,6 +249,30 @@ class FixtureLibrary:
             "top_channels": [], "top_films": [], "items": [],
             "recent": [], "sessions": [],
         }
+
+    def adult_viewing(self) -> dict[str, Any]:
+        return {"items": [copy.deepcopy(value) for value in self.viewing_titles.values()],
+                "watchmode_configured": False, "region": "GB"}
+
+    def adult_viewing_update(self, payload: dict[str, Any]) -> dict[str, Any]:
+        key = f"{payload['media_type']}:{int(payload['tmdb_id'])}"
+        current = self.viewing_titles.setdefault(key, {
+            "key": key, "media_type": payload["media_type"],
+            "tmdb_id": int(payload["tmdb_id"]), "title": payload.get("title", ""),
+        })
+        action = payload.get("action")
+        if action == "watchlist":
+            current["watchlisted"] = bool(payload.get("enabled", True))
+        elif action == "rewatch":
+            current["rewatch"] = bool(payload.get("enabled", True))
+        elif action == "up_next":
+            current["up_next"] = bool(payload.get("enabled", True))
+        elif action == "watched":
+            current.update({"manual_state": "watched", "watchlisted": False,
+                            "up_next": False, "history": [2_000_000_000]})
+        elif action == "not_watched":
+            current.update({"manual_state": "not_watched", "history": []})
+        return {"ok": True, "key": key, "viewing": copy.deepcopy(current)}
 
     def login_allowed(self, address: str) -> bool:
         return True

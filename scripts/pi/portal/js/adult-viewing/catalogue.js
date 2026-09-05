@@ -3,6 +3,7 @@
 let adultDiscoveryTimer = null
 let adultDiscoveryRevision = 0
 let adultViewingData = { items: [] }
+let adultViewingLoaded = false
 let adultViewingTab = 'watchlist'
 let adultViewingFilter = 'all'
 let selectedAdultTitle = null
@@ -20,7 +21,10 @@ function adultPosterUrl(path, size = 'w342') {
 function adultViewingPosterUrl(item) {
   if (item.poster_path) return adultPosterUrl(item.poster_path)
   const localPoster = item.local?.poster
-  return localPoster ? `/api/adult/artwork/${encodeURIComponent(localPoster)}` : ''
+  if (!localPoster) return ''
+  return item.local?.kind === 'channel-film'
+    ? `/api/channel/artwork/${encodeURIComponent(localPoster)}`
+    : `/api/adult/artwork/${encodeURIComponent(localPoster)}`
 }
 
 const adultProviderBrands = [
@@ -285,6 +289,14 @@ function localAdultAction(detail) {
     const film = (library?.adult_library || []).find(item => item.path === detail.local.path)
     return film ? () => { portalSheets.dismiss($('#adultTitleSheet')); openWatchFilmSheet(film) } : null
   }
+  if (detail.local.kind === 'channel-film') {
+    const channel = (library?.channels || []).find(value =>
+      Number(value.number) === Number(detail.local.channel))
+    const programme = channel?.programmes?.find(value => value.name === detail.local.file)
+    return channel && programme
+      ? () => { portalSheets.dismiss($('#adultTitleSheet')); openWatchProgrammeSheet(channel, programme) }
+      : null
+  }
   return null
 }
 
@@ -385,13 +397,15 @@ function adultTitleViewingStatus(state = {}, detail = {}) {
   return { completed, inProgress: !completed && progress > 0, progress }
 }
 
-function syncAdultTitleButtons(detail) {
+function adultViewingActionButtons(root) {
+  return Object.fromEntries(['watchlist', 'rewatch', 'up_next', 'watching', 'watched']
+    .map(action => [action, root?.querySelector(`[data-viewing-action="${action}"]`)]))
+}
+
+function syncAdultTitleButtons(detail, root = $('#adultTitleIntents')) {
   const state = detail.viewing || {}
-  const watchlist = $('#adultTitleWatchlist')
-  const rewatch = $('#adultTitleRewatch')
-  const upNext = $('#adultTitleUpNext')
-  const watching = $('#adultTitleWatching')
-  const watched = $('#adultTitleWatched')
+  const { watchlist, rewatch, up_next: upNext, watching, watched } = adultViewingActionButtons(root)
+  if (!watchlist || !rewatch || !upNext || !watched) return
   const sync = (button, active, title, description) => {
     button.classList.toggle('active', active)
     button.setAttribute('aria-pressed', String(active))
@@ -416,8 +430,8 @@ function syncAdultTitleButtons(detail) {
     state.up_next ? 'In Up Next' : 'Add to Up Next',
     state.up_next ? 'Queued as a priority' : 'Place it in your ordered queue')
   const titleWatched = state.manual_state === 'watched'
-  watching.classList.toggle('hidden', detail.media_type !== 'tv')
-  if (detail.media_type === 'tv') {
+  watching?.classList.toggle('hidden', detail.media_type !== 'tv')
+  if (detail.media_type === 'tv' && watching) {
     const rewatching = state.series_watching === true
       && state.series_watching_mode === 'rewatch'
     sync(watching, state.series_watching === true,
@@ -430,4 +444,3 @@ function syncAdultTitleButtons(detail) {
     titleWatched ? 'Watched' : 'Mark watched',
     titleWatched ? 'In your watched history' : 'Moves it out of Watchlist and Up Next')
 }
-
