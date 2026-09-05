@@ -24,7 +24,7 @@ body.portal-v2 .watch-library-admin button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 38px;
+  min-height: 44px;
   border: 1px solid var(--experience-line);
   border-radius: 999px;
   background: transparent;
@@ -40,8 +40,8 @@ body.portal-v2 .watch-library-admin .icon {
 }
 
 body.portal-v2 .watch-mabel-admin button {
-  width: 38px;
-  min-width: 38px;
+  width: 44px;
+  min-width: 44px;
   padding: 0;
 }
 
@@ -373,7 +373,7 @@ body.portal-v2 #remoteMabel {
   gap: 12px;
 }
 body.portal-v2 .watch-mabel-utilities { display: flex; justify-content: flex-end; gap: 7px; }
-body.portal-v2 .watch-mabel-utilities button { min-height: 36px; border: 1px solid var(--experience-line); border-radius: 999px; background: transparent; color: var(--experience-muted); padding: 0 12px; font-size: 10px; font-weight: 700; }
+body.portal-v2 .watch-mabel-utilities button { min-height: 44px; border: 1px solid var(--experience-line); border-radius: 999px; background: transparent; color: var(--experience-muted); padding: 0 12px; font-size: 11px; font-weight: 700; }
 
 body.portal-v2 .watch-mabel-discovery {
   grid-template-columns: minmax(0, 1fr);
@@ -516,10 +516,10 @@ body.portal-v2 .adult-series-section { margin: 0 0 10px; }
 body.portal-v2 .adult-series-section .watch-library-head { justify-content: flex-start; }
 body.portal-v2 .adult-series-title-row { display: flex; align-items: center; gap: 8px; }
 body.portal-v2 .adult-series-create {
-  width: 32px;
-  min-width: 32px;
-  min-height: 32px;
-  height: 32px;
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  height: 44px;
   display: inline-grid;
   place-items: center;
   border: 1px solid var(--experience-line);
@@ -574,7 +574,7 @@ body.portal-v2 .adult-series-card > span:last-child { min-width: 0; display: gri
 body.portal-v2 .adult-series-card strong,
 body.portal-v2 .adult-series-card small { overflow: hidden; text-overflow: ellipsis; }
 body.portal-v2 .adult-series-card strong { font-size: 15px; line-height: 1.15; }
-body.portal-v2 .adult-series-card small { color: var(--experience-dim); font-size: 9px; line-height: 1.45; }
+body.portal-v2 .adult-series-card small { color: var(--experience-dim); font-size: 10px; line-height: 1.45; }
 body.portal-v2 .adult-series-card-progress { position: absolute; inset: auto 0 0; height: 3px; background: rgba(255,255,255,.15); }
 body.portal-v2 .adult-series-card-progress::after { display: block; width: var(--series-progress); height: 100%; background: var(--experience-orange); content: ""; }
 body.portal-v2 .adult-series-empty { min-width: min(360px, 100%); display: grid; gap: 4px; border: 1px dashed var(--experience-line); border-radius: 12px; color: var(--experience-dim); padding: 18px; }
@@ -605,7 +605,7 @@ body.portal-v2 .adult-series-tools button { min-height: 62px; display: grid; gri
 body.portal-v2 .adult-series-tools .icon { width: 20px; height: 20px; color: var(--experience-orange); }
 body.portal-v2 .adult-series-tools span { display: grid; gap: 2px; }
 body.portal-v2 .adult-series-tools strong { font-size: 11px; }
-body.portal-v2 .adult-series-tools small { color: var(--experience-dim); font-size: 8px; }
+body.portal-v2 .adult-series-tools small { color: var(--experience-dim); font-size: 10px; }
 body.portal-v2 .adult-series-tools .adult-series-danger { border-color: rgba(255, 90, 110, .3); background: rgba(255, 90, 110, .06); }
 body.portal-v2 .adult-series-tools .adult-series-danger :is(.icon, strong) { color: #ff667b; }
 body.portal-v2 :is(.adult-series-library-head, .adult-season-episode-head) {
@@ -664,7 +664,7 @@ body.portal-v2 .adult-season-card-copy {
 body.portal-v2 .adult-season-card-copy > span {
   overflow: hidden;
   color: rgba(255,255,255,.72);
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 780;
   letter-spacing: .08em;
   text-overflow: ellipsis;
@@ -672,7 +672,7 @@ body.portal-v2 .adult-season-card-copy > span {
   white-space: nowrap;
 }
 body.portal-v2 .adult-season-card-copy strong { font-size: 23px; line-height: 1; letter-spacing: -.035em; }
-body.portal-v2 .adult-season-card-copy small { color: rgba(255,255,255,.72); font-size: 9px; }
+body.portal-v2 .adult-season-card-copy small { color: rgba(255,255,255,.72); font-size: 10px; }
 body.portal-v2 .adult-season-card-chevron { position: absolute; z-index: 2; right: 15px; bottom: 19px; width: 17px; height: 17px; }
 body.portal-v2 .adult-season-card-progress { position: absolute; z-index: 3; inset: auto 0 0; height: 3px; background: rgba(255,255,255,.18); }
 body.portal-v2 .adult-season-card-progress::after { display: block; width: var(--season-progress); height: 100%; background: var(--experience-orange); content: ""; }
@@ -722,7 +722,7 @@ body.portal-v2 .adult-season-management {
 }
 body.portal-v2 .adult-season-management-head { display: flex; align-items: end; justify-content: space-between; gap: 14px; }
 body.portal-v2 .adult-season-management-head h3 { margin: 3px 0 0; font-size: 18px; letter-spacing: -.025em; }
-body.portal-v2 .adult-season-management-head > span { max-width: 150px; color: var(--experience-dim); font-size: 8px; line-height: 1.35; text-align: right; }
+body.portal-v2 .adult-season-management-head > span { max-width: 150px; color: var(--experience-dim); font-size: 10px; line-height: 1.35; text-align: right; }
 body.portal-v2 .adult-season-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 body.portal-v2 .adult-season-bottom-tools { margin-top: 0; }
 body.portal-v2 .adult-season-tools button {
@@ -741,7 +741,7 @@ body.portal-v2 .adult-season-tools button {
 body.portal-v2 .adult-season-tools button > .icon { width: 36px; height: 36px; border-radius: 10px; background: rgba(255, 122, 26, .11); color: var(--experience-orange); padding: 8px; }
 body.portal-v2 .adult-season-tools span { display: grid; gap: 2px; }
 body.portal-v2 .adult-season-tools strong { font-size: 11px; line-height: 1.25; }
-body.portal-v2 .adult-season-tools small { color: var(--experience-dim); font-size: 8px; line-height: 1.35; }
+body.portal-v2 .adult-season-tools small { color: var(--experience-dim); font-size: 10px; line-height: 1.35; }
 body.portal-v2 .adult-season-tools .adult-series-danger { grid-column: 1 / -1; min-height: 70px; grid-template-columns: 36px minmax(0, 1fr); grid-template-rows: auto; align-content: center; align-items: center; border-color: rgba(255, 90, 110, .28); background: rgba(255, 90, 110, .055); }
 body.portal-v2 .adult-season-tools .adult-series-danger > .icon { background: rgba(255, 90, 110, .12); color: #ff667b; }
 body.portal-v2 .adult-season-tools .adult-series-danger strong { color: #ff667b; }
@@ -771,7 +771,7 @@ body.portal-v2 .adult-series-episode-copy { min-width: 0; display: grid; gap: 4p
 body.portal-v2 .adult-series-episode strong,
 body.portal-v2 .adult-series-episode small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 body.portal-v2 .adult-series-episode strong { font-size: 11px; line-height: 1.25; }
-body.portal-v2 .adult-series-episode small { color: var(--experience-dim); font-size: 8px; line-height: 1.25; }
+body.portal-v2 .adult-series-episode small { color: var(--experience-dim); font-size: 10px; line-height: 1.25; }
 body.portal-v2 .adult-series-episode > svg { width: 16px; height: 16px; color: var(--experience-dim); }
 body.portal-v2 .adult-series-episode.is-watched { background: rgba(255, 255, 255, .012); }
 body.portal-v2 .adult-series-episode.is-watched .adult-series-episode-art { filter: saturate(.3); opacity: .62; }

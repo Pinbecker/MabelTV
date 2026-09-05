@@ -234,11 +234,11 @@ body.portal-v2 .lg-status-led.is-ready {
 body.portal-v2 .lg-card-power {
   display: grid;
   place-items: center;
-  width: 42px;
-  min-width: 42px;
+  width: 44px;
+  min-width: 44px;
   padding: 0;
-  height: 42px;
-  min-height: 42px;
+  height: 44px;
+  min-height: 44px;
   border: 1px solid rgba(255, 122, 26, .32);
   border-radius: 50%;
   background: rgba(255, 122, 26, .1);
@@ -408,7 +408,7 @@ body.portal-v2 .lg-utility-row button {
   background: linear-gradient(180deg, #1a1a20, #141419);
   padding: 0 5px;
   color: #dedee3;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
 }
 
@@ -581,7 +581,7 @@ body.portal-v2 .lg-trackpad > span:last-child {
 body.portal-v2 .lg-trackpad > span:last-child {
   margin-top: 2px;
   color: #777781;
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 550;
 }
 
@@ -693,7 +693,7 @@ body.portal-v2 .lg-app-icon {
 body.portal-v2 .lg-app-strip button > span:last-child {
   overflow: hidden;
   color: #a5a5ae;
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 650;
   text-align: center;
   text-overflow: ellipsis;
@@ -750,19 +750,19 @@ body.portal-v2 .lg-remote-page .is-sending {
 
   body.portal-v2 .lg-status-copy h2 { font-size: 17px; }
   body.portal-v2 .lg-status-kicker { font-size: 11px; }
-  body.portal-v2 .lg-status-facts { gap: 3px; margin-top: 9px; font-size: 9px; }
+  body.portal-v2 .lg-status-facts { gap: 3px; margin-top: 9px; font-size: 10px; }
   body.portal-v2 .lg-card-power { width: 44px; min-width: 44px; height: 44px; min-height: 44px; }
   body.portal-v2 .lg-top-actions button { height: 48px; }
   body.portal-v2 .lg-control-card { padding: 8px; }
   body.portal-v2 .lg-dpad { width: 164px; height: 164px; margin-bottom: 6px; }
-  body.portal-v2 .lg-utility-row button { height: 40px; min-height: 40px; }
+  body.portal-v2 .lg-utility-row button { height: 44px; min-height: 44px; }
   body.portal-v2 .lg-utility-row svg { width: 15px; height: 15px; }
   body.portal-v2 .lg-transport-row { height: 46px; margin-top: 5px; }
   body.portal-v2 .lg-play-pause button { min-height: 44px; }
   body.portal-v2 .lg-rocker-row { margin-top: 5px; }
   body.portal-v2 .lg-rocker,
   body.portal-v2 .lg-mute { height: 44px; }
-  body.portal-v2 .lg-rocker button { min-height: 42px; }
+  body.portal-v2 .lg-rocker button { min-height: 44px; }
   body.portal-v2 .lg-trackpad-wrap { margin-top: 6px; }
   body.portal-v2 .lg-trackpad { height: 64px; }
   body.portal-v2 .lg-trackpad svg { width: 20px; height: 20px; margin-bottom: 2px; }
@@ -778,7 +778,7 @@ body.portal-v2 .lg-remote-page .is-sending {
 @media (max-width: 370px) {
   body.portal-v2 .lg-status-card { grid-template-columns: 80px minmax(0, 1fr) 36px; gap: 9px; padding: 12px; }
   body.portal-v2 .lg-status-copy h2 { font-size: 16px; }
-  body.portal-v2 .lg-status-facts { font-size: 9px; }
+  body.portal-v2 .lg-status-facts { font-size: 10px; }
   body.portal-v2 .lg-control-card { padding: 12px 9px; }
   body.portal-v2 .lg-dpad { width: 156px; height: 156px; }
   body.portal-v2 .lg-utility-row { gap: 4px; }

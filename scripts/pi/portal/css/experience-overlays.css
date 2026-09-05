@@ -781,7 +781,7 @@ body.portal-experience .adult-series-upload-form > .primary:disabled { border-co
 body.portal-experience .upload-selection > strong { color: var(--experience-ink); font-size: 11px; }
 body.portal-experience .selected-upload-file { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 35px; border-top: 1px solid var(--experience-line); color: var(--experience-muted); padding-top: 7px; }
 body.portal-experience .selected-upload-file > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-body.portal-experience .selected-upload-file .link { min-height: 30px; border: 0; background: transparent; color: var(--experience-orange); padding: 0 4px; }
+body.portal-experience .selected-upload-file .link { min-height: 44px; border: 0; background: transparent; color: var(--experience-orange); padding: 0 4px; }
 body.portal-experience .adult-upload-form > .primary,
 body.portal-experience .adult-series-upload-form > .primary { width: 100%; min-height: 54px; }
 body.portal-experience .adult-series-restart-warning {

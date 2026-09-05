@@ -16,7 +16,7 @@ body.portal-v2 .adult-my-viewing {
 
 body.portal-v2 .adult-my-viewing > span { display: grid; }
 body.portal-v2 .adult-my-viewing strong { font-size: 12px; }
-body.portal-v2 .adult-my-viewing small { color: var(--experience-dim); font-size: 9px; }
+body.portal-v2 .adult-my-viewing small { color: var(--experience-dim); font-size: 10px; }
 body.portal-v2 .adult-my-viewing > .icon:first-child { color: var(--experience-orange); }
 
 body.portal-v2 .adult-discovery-results { margin-bottom: 28px; }
@@ -28,7 +28,7 @@ body.portal-v2 .view-back {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 28px;
+  min-height: 44px;
   margin: 0 0 9px;
   background: transparent;
   color: var(--experience-orange);
@@ -52,7 +52,7 @@ body.portal-v2 .adult-viewing-filters::-webkit-scrollbar { display: none; }
 body.portal-v2 .adult-viewing-tabs button,
 body.portal-v2 .adult-viewing-filters button {
   flex: 0 0 auto;
-  min-height: 38px;
+  min-height: 44px;
   border: 1px solid var(--experience-line);
   border-radius: 999px;
   background: var(--experience-raised);
@@ -69,7 +69,7 @@ body.portal-v2 .adult-viewing-tabs button.active {
 }
 
 body.portal-v2 .adult-viewing-filters { margin-top: 6px; }
-body.portal-v2 .adult-viewing-filters button { min-height: 32px; padding: 0 12px; font-size: 10px; }
+body.portal-v2 .adult-viewing-filters button { min-height: 44px; padding: 0 12px; font-size: 11px; }
 body.portal-v2 .adult-viewing-filters button.active { background: var(--experience-ink); color: var(--experience-canvas); }
 body.portal-v2 .adult-viewing-list-wrap { margin-top: 28px; }
 body.portal-v2 .adult-viewing-grid { display: grid; gap: 10px; }
@@ -102,7 +102,7 @@ body.portal-v2 .adult-viewing-copy-button { min-width: 0; background: transparen
 body.portal-v2 .adult-viewing-copy strong { display: block; width: 100%; overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 body.portal-v2 .adult-viewing-copy span { color: var(--experience-dim); font-size: 10px; }
 body.portal-v2 .adult-viewing-row-actions { display: flex; flex: 0 0 auto; gap: 4px; }
-body.portal-v2 .adult-viewing-row-actions button { display: grid; flex: 0 0 42px; width: 42px; height: 42px; min-width: 0; min-height: 0; box-sizing: border-box; place-items: center; border: 1px solid var(--experience-line); border-radius: 50%; background: var(--experience-soft); color: var(--experience-orange); padding: 0; }
+body.portal-v2 .adult-viewing-row-actions button { display: grid; flex: 0 0 44px; width: 44px; height: 44px; min-width: 0; min-height: 0; box-sizing: border-box; place-items: center; border: 1px solid var(--experience-line); border-radius: 50%; background: var(--experience-soft); color: var(--experience-orange); padding: 0; }
 body.portal-v2 .adult-viewing-row-actions button .icon { width: 17px; height: 17px; min-width: 17px; min-height: 17px; }
 body.portal-v2 .adult-viewing-copy-button { display: block; width: 100%; }
 body.portal-v2 .adult-viewing-copy { align-content: center; justify-items: start; text-align: left; }
@@ -275,7 +275,7 @@ body.portal-v2 :is(.adult-season-bulk-action, .adult-series-watching,
 body.portal-v2 :is(.adult-season-bulk-action, .adult-series-watching,
   .adult-next-episode) strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 body.portal-v2 :is(.adult-season-bulk-action, .adult-series-watching,
-  .adult-next-episode) small { color: var(--experience-dim); font-size: 8px; }
+  .adult-next-episode) small { color: var(--experience-dim); font-size: 10px; }
 body.portal-v2 .adult-next-episode {
   border-color: rgba(255,122,26,.42);
   background: linear-gradient(135deg, rgba(255,122,26,.16), rgba(255,122,26,.06));
@@ -324,8 +324,8 @@ body.portal-v2 .adult-intent-actions button {
 }
 body.portal-v2 .adult-intent-actions .icon { width: 20px; height: 20px; color: var(--experience-muted); }
 body.portal-v2 .adult-intent-actions button > span { display: grid; min-width: 0; gap: 2px; }
-body.portal-v2 .adult-intent-actions strong { font-size: 10px; line-height: 1.2; }
-body.portal-v2 .adult-intent-actions small { color: var(--experience-dim); font-size: 8px; line-height: 1.3; }
+body.portal-v2 .adult-intent-actions strong { font-size: 12px; line-height: 1.2; }
+body.portal-v2 .adult-intent-actions small { color: var(--experience-dim); font-size: 10px; line-height: 1.3; }
 body.portal-v2 .adult-intent-actions button.active { border-color: var(--experience-orange); color: var(--experience-orange); }
 body.portal-v2 .adult-intent-actions button.active .icon { color: var(--experience-orange); }
 body.portal-v2 .adult-intent-actions button:disabled { cursor: wait; opacity: .62; }
@@ -340,7 +340,7 @@ body.portal-v2 .adult-intent-actions button.hidden { display: none; }
 body.portal-v2 .adult-provider-section { margin-top: 24px; border-top: 1px solid var(--experience-line); padding-top: 18px; }
 body.portal-v2 .adult-provider-section > header { display: flex; align-items: end; justify-content: space-between; gap: 12px; }
 body.portal-v2 .adult-provider-section h3 { margin: 1px 0 0; font-size: 20px; }
-body.portal-v2 .adult-provider-section > header button { background: transparent; color: var(--experience-orange); font-size: 10px; }
+body.portal-v2 .adult-provider-section > header button { min-height: 44px; background: transparent; color: var(--experience-orange); font-size: 11px; }
 body.portal-v2 .adult-provider-list { display: grid; gap: 10px; margin-top: 12px; }
 body.portal-v2 .adult-provider {
   display: grid;
@@ -356,7 +356,7 @@ body.portal-v2 .adult-provider {
   text-align: left;
 }
 body.portal-v2 .adult-provider span { display: grid; }
-body.portal-v2 .adult-provider small { color: var(--experience-dim); font-size: 9px; text-transform: capitalize; }
+body.portal-v2 .adult-provider small { color: var(--experience-dim); font-size: 10px; text-transform: capitalize; }
 body.portal-v2 .adult-provider-logos { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 9px; }
 body.portal-v2 .adult-provider-logo { display: grid; min-width: 0; aspect-ratio: 1; place-items: center; overflow: hidden; border: 1px solid var(--experience-line); border-radius: 11px; background: #101014; padding: 0; }
 body.portal-v2 .adult-provider-logo img { display: block; width: 100%; height: 100%; object-fit: cover; }
@@ -411,7 +411,7 @@ body.portal-v2 .adult-netflix-launch-status { min-height: 15px; margin: -5px var
   body.portal-v2 .adult-viewing-row { grid-template-columns: 48px minmax(0, 1fr) auto; }
   body.portal-v2 .adult-viewing-row img,
   body.portal-v2 .adult-viewing-row .adult-viewing-placeholder { width: 48px; }
-  body.portal-v2 .adult-viewing-row-actions button { flex-basis: 40px; width: 40px; height: 40px; }
+  body.portal-v2 .adult-viewing-row-actions button { flex-basis: 44px; width: 44px; height: 44px; }
 
   body.portal-v2 #view-watch.adult-search-mode .watch-title,
   body.portal-v2 #view-watch.adult-search-mode .watch-switch-wrap,

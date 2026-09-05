@@ -16,9 +16,9 @@ body.portal-experience .dialog-close-bar .watch-film-close {
 }
 
 body.portal-experience .sheet-favourite {
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
   display: grid;
   place-items: center;
   border: 1px solid transparent;

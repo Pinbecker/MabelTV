@@ -279,7 +279,7 @@ body.portal-v2 .remote-rocker-state.muted .remote-volume-off { display: block; c
 
 body.portal-v2 .remote-rocker small {
   color: var(--experience-dim);
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -298,7 +298,7 @@ body.portal-v2 .remote-back {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-height: 34px;
+  min-height: 44px;
   border: 1px solid rgba(255, 122, 26, 0.2);
   border-radius: 999px;
   background: rgba(255, 122, 26, 0.055);
@@ -357,7 +357,7 @@ body.portal-v2 .remote-playback > header {
   justify-content: space-between;
   min-height: 28px;
   color: var(--experience-dim);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -388,7 +388,7 @@ body.portal-v2 .remote-transport button {
   background: rgba(255, 255, 255, 0.025);
   color: var(--experience-muted);
   padding: 6px 1px;
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 700;
 }
 
@@ -449,7 +449,7 @@ body.portal-v2 .remote-dock-action-icon {
 body.portal-v2 .remote-dock-icon { background: rgba(255, 122, 26, 0.11); color: var(--experience-orange); }
 
 body.portal-v2 .remote-dock-main > span:nth-child(2) { display: grid; min-width: 0; }
-body.portal-v2 .remote-dock-main small { color: var(--experience-dim); font-size: 8px; text-transform: uppercase; }
+body.portal-v2 .remote-dock-main small { color: var(--experience-dim); font-size: 10px; text-transform: uppercase; }
 body.portal-v2 .remote-dock-main strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 body.portal-v2 .remote-dock-chevron { width: 15px; height: 15px; }
 
@@ -462,7 +462,7 @@ body.portal-v2 .remote-dock-action {
   justify-items: center;
   gap: 3px;
   padding: 7px 2px;
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 700;
 }
 

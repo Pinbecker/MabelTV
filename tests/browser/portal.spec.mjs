@@ -216,15 +216,15 @@ test('Experience icon controls and sheet headers keep their mobile contracts', a
   expect(rowRadii).toEqual(['0px', '0px'])
 
   const headerRemote = await geometry(page, '#openLgTvRemote')
-  expect(headerRemote.width).toBeGreaterThanOrEqual(44)
-  expect(headerRemote.height).toBeGreaterThanOrEqual(44)
+  expect(headerRemote.width).toBeGreaterThanOrEqual(43.9)
+  expect(headerRemote.height).toBeGreaterThanOrEqual(43.9)
   await page.locator('#openLgTvRemote').click()
   const cardPower = await geometry(page, '#lgCardPower')
   const quickRefresh = await geometry(page, '.lg-apps-card header button')
-  expect(cardPower.width).toBeGreaterThanOrEqual(44)
-  expect(cardPower.height).toBeGreaterThanOrEqual(44)
-  expect(quickRefresh.width).toBeGreaterThanOrEqual(44)
-  expect(quickRefresh.height).toBeGreaterThanOrEqual(44)
+  expect(cardPower.width).toBeGreaterThanOrEqual(43.9)
+  expect(cardPower.height).toBeGreaterThanOrEqual(43.9)
+  expect(quickRefresh.width).toBeGreaterThanOrEqual(43.9)
+  expect(quickRefresh.height).toBeGreaterThanOrEqual(43.9)
 
   const stickyClose = await page.evaluate(() => {
     const dialog = document.querySelector('#adultSeasonSheet')

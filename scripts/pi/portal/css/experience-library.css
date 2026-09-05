@@ -444,7 +444,7 @@ body.portal-v2 .usb-browser-back .icon { width: 18px; height: 18px; }
 body.portal-v2 .usb-browser-location { min-width: 0; }
 body.portal-v2 .usb-browser-head .section-kicker { margin: 0 0 3px; }
 body.portal-v2 .usb-browser-head h3 { margin: 0; font-size: 23px; letter-spacing: -0.04em; }
-body.portal-v2 .usb-eject { min-height: 42px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid rgba(255,93,108,.3); background: transparent; color: #ff8a95; padding: 0 12px; font-size: 10px; font-weight: 700; }
+body.portal-v2 .usb-eject { min-height: 44px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid rgba(255,93,108,.3); background: transparent; color: #ff8a95; padding: 0 12px; font-size: 11px; font-weight: 700; }
 body.portal-v2 .usb-eject .icon { width: 17px; height: 17px; }
 
 body.portal-v2 .usb-breadcrumb {
@@ -466,7 +466,7 @@ body.portal-v2 .usb-toolbar {
   padding: 8px 10px;
 }
 
-body.portal-v2 .usb-toolbar button { min-height: 40px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--experience-line); background: transparent; color: var(--experience-muted); padding: 0 10px; font-size: 10px; font-weight: 700; }
+body.portal-v2 .usb-toolbar button { min-height: 44px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--experience-line); background: transparent; color: var(--experience-muted); padding: 0 10px; font-size: 11px; font-weight: 700; }
 body.portal-v2 .usb-toolbar .icon { width: 15px; height: 15px; }
 body.portal-v2 #usbSelectionCount { margin-left: auto; color: var(--experience-dim); font-size: 9px; }
 
@@ -503,7 +503,7 @@ body.portal-v2 .usb-file-select input { position: absolute; inset: 0; width: 100
 body.portal-v2 .usb-file-select .icon { width: 15px; height: 15px; }
 body.portal-v2 .usb-file-select:has(input:checked) { border-color: var(--experience-orange); background: var(--experience-orange); color: #160a02; }
 body.portal-v2 .usb-file-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
-body.portal-v2 .usb-file-actions button { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; flex: 0 1 auto; border-color: var(--experience-line); background: var(--experience-elevated); color: var(--experience-muted); padding: 0 9px; white-space: nowrap; font-size: 9px; }
+body.portal-v2 .usb-file-actions button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; flex: 0 1 auto; border-color: var(--experience-line); background: var(--experience-elevated); color: var(--experience-muted); padding: 0 9px; white-space: nowrap; font-size: 10px; }
 body.portal-v2 .usb-file-actions .icon { width: 15px; height: 15px; }
 body.portal-v2 .usb-folder-toggle {
   width: 34px;
@@ -548,7 +548,7 @@ body.portal-v2 .channel-page {
 }
 
 body.portal-v2 .channel-page-nav { margin-bottom: 14px; }
-body.portal-v2 .channel-page-back { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; background: transparent; color: var(--experience-orange); padding: 0; font-size: 11px; font-weight: 750; }
+body.portal-v2 .channel-page-back { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; background: transparent; color: var(--experience-orange); padding: 0; font-size: 11px; font-weight: 750; }
 body.portal-v2 .channel-page-back svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; }
 
 body.portal-v2 .channel-page-hero {
@@ -596,11 +596,11 @@ body.portal-v2 .channel-page-overview { display: none; }
 body.portal-v2 .channel-page-facts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; color: var(--experience-muted); font-size: 10px; }
 body.portal-v2 .channel-page-actions { display: flex; width: 100%; max-width: 100%; min-width: 0; flex-wrap: nowrap; align-items: center; gap: 8px; margin-top: 16px; }
 body.portal-v2 .channel-page-actions > * { min-width: 0; }
-body.portal-v2 .channel-page-actions button { min-height: 42px; }
+body.portal-v2 .channel-page-actions button { min-height: 44px; }
 body.portal-v2 .channel-page-favourite.active {
   color: var(--experience-orange);
 }
-body.portal-v2 .channel-page-title-row .channel-page-favourite { width: 32px; min-width: 32px; height: 32px; min-height: 32px; display: grid; place-items: center; border: 0; border-radius: 0; background: transparent; color: var(--experience-muted); padding: 0; }
+body.portal-v2 .channel-page-title-row .channel-page-favourite { width: 44px; min-width: 44px; height: 44px; min-height: 44px; display: grid; place-items: center; border: 0; border-radius: 0; background: transparent; color: var(--experience-muted); padding: 0; }
 body.portal-v2 .channel-page-title-row .channel-page-favourite .icon { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; }
 body.portal-v2 .channel-page-title-row .channel-page-favourite.active .icon { fill: currentColor; }
 
@@ -662,7 +662,7 @@ body.portal-v2 .channel-page-filters { display: flex; gap: 4px; }
 body.portal-v2 .channel-page-filters.hidden { display: none; }
 body.portal-v2 .channel-page.is-film-channel .channel-page-library { padding-top: 18px; }
 body.portal-v2 .channel-page.is-film-channel .channel-page-toolbar { margin: 12px 0 16px; }
-body.portal-v2 .channel-page-filter { min-height: 36px; border-radius: 999px; background: transparent; color: var(--experience-dim); padding: 0 10px; font-size: 10px; font-weight: 700; }
+body.portal-v2 .channel-page-filter { min-height: 44px; border-radius: 999px; background: transparent; color: var(--experience-dim); padding: 0 10px; font-size: 11px; font-weight: 700; }
 body.portal-v2 .channel-page-filter.active { background: var(--experience-soft); color: var(--experience-ink); }
 body.portal-v2 .channel-page-programmes { display: grid; width: 100%; max-width: 100%; min-width: 0; gap: 1px; }
 body.portal-v2 .channel-page-programmes.is-film-grid {
