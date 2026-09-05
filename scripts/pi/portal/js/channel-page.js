@@ -2,16 +2,7 @@
 
 const ChannelPageComponents = (() => {
   const artworkPath = name => `/api/channel/artwork/${encodeURIComponent(name)}`
-
-  function signalIcon(name, className = 'icon') {
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use')
-    svg.classList.add(...className.split(' ').filter(Boolean))
-    svg.setAttribute('aria-hidden', 'true')
-    use.setAttribute('href', `/portal/icons.svg#${name}`)
-    svg.append(use)
-    return svg
-  }
+  const signalIcon = window.MabelPortalUI.icon
 
   function mount() {
     const root = document.querySelector('[data-channel-page-root]')
@@ -263,14 +254,16 @@ const ChannelPageComponents = (() => {
     document.querySelector('#programmeSearch').value = search
 
     if (!visible.length) {
-      const empty = document.createElement('div')
-      empty.className = 'channel-page-empty'
-      const heading = document.createElement('strong')
-      const message = document.createElement('span')
-      heading.textContent = channel.programmes.length ? 'Nothing matches that search' : `No ${isFilms ? 'films' : 'episodes'} yet`
-      message.textContent = channel.programmes.length ? 'Try another title.' : 'Use Add videos to put the first one here.'
-      empty.append(heading, message)
-      root.append(empty)
+      root.append(portalEmptyState({
+        className: 'channel-page-empty',
+        title: channel.programmes.length
+          ? 'Nothing matches that search'
+          : `No ${isFilms ? 'films' : 'episodes'} yet`,
+        message: channel.programmes.length
+          ? 'Try another title.'
+          : 'Use Add videos to put the first one here.',
+        messageTag: 'span',
+      }))
     } else {
       visible.forEach((programme, index) => {
         const ordinal = filtered.indexOf(programme) + 1
@@ -287,14 +280,12 @@ const ChannelPageComponents = (() => {
     if (hasMore) {
       const status = document.createElement('span')
       status.textContent = `Showing ${visibleCount} of ${filtered.length}`
-      const button = document.createElement('button')
-      button.type = 'button'
-      button.className = 'channel-page-load-more'
-      button.append(
-        signalIcon('signal-chevron-down'),
-        document.createTextNode(`Show ${Math.min(pageSize, filtered.length - visibleCount)} more`)
-      )
-      button.onclick = onLoadMore
+      const button = portalButton({
+        className: 'channel-page-load-more',
+        iconName: 'signal-chevron-down',
+        text: `Show ${Math.min(pageSize, filtered.length - visibleCount)} more`,
+        onClick: onLoadMore,
+      })
       more.append(status, button)
     }
   }

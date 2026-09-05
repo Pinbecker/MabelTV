@@ -1,0 +1,321 @@
+<dialog id="usbEjectSheet" class="library-sheet usb-eject-sheet">
+  <section class="library-sheet-panel">
+    <span class="library-sheet-handle" aria-hidden="true"></span>
+    <header class="library-sheet-head">
+      <div>
+        <p class="section-kicker">Disconnect for removal</p>
+        <h2>Fully eject this drive?</h2>
+        <p>This is different from automatic sleep.</p>
+      </div>
+      <button
+        id="closeUsbEject"
+        type="button"
+        class="portal-sheet-close library-sheet-close"
+        aria-label="Close USB eject warning"
+      >
+        ×
+      </button>
+    </header>
+    <div class="library-sheet-body">
+      <div class="usb-eject-warning">
+        <span aria-hidden="true">!</span>
+        <div>
+          <strong>You will need to unplug and reconnect it.</strong>
+          <p>
+            Fully ejecting removes the drive from the Raspberry Pi. Scan drives
+            cannot bring it back until the USB cable is replugged.
+          </p>
+        </div>
+      </div>
+      <div class="library-sheet-actions">
+        <button id="cancelUsbEject" type="button" class="secondary">
+          Keep it connected</button
+        ><button id="confirmUsbEject" type="button" class="danger">
+          Fully eject drive
+        </button>
+      </div>
+    </div>
+  </section>
+</dialog>
+<dialog id="addChannelPanel" class="library-sheet">
+  <section class="library-sheet-panel">
+    <span class="library-sheet-handle" aria-hidden="true"></span>
+    <header class="library-sheet-head">
+      <div>
+        <p class="section-kicker">Build the schedule</p>
+        <h2>Create a channel</h2>
+        <p>
+          Give it a number and name. You can add videos as soon as it is
+          created.
+        </p>
+      </div>
+      <button
+        id="closeAddChannel"
+        type="button"
+        class="portal-sheet-close library-sheet-close"
+        aria-label="Close new channel"
+      >
+        ×
+      </button>
+    </header>
+    <div class="library-sheet-body">
+      <form id="addChannelForm" class="field-grid">
+        <label
+          >Channel number<input
+            id="newChannelNumber"
+            type="number"
+            min="1"
+            max="999"
+            required /></label
+        ><label
+          >Channel name<input
+            id="newChannelName"
+            maxlength="60"
+            placeholder="Nature"
+            required /></label
+        ><label
+          >Picture mode<select id="newChannelAspect">
+            <option value="crop">Fill screen</option>
+            <option value="fit">Show whole picture</option>
+            <option value="stretch">Stretch to screen</option>
+          </select></label
+        ><label
+          >What plays here?<select id="newChannelContentType">
+            <option value="shows">Shows / episodes</option>
+            <option value="films">Films / long videos</option>
+          </select></label
+        >
+        <div class="wide library-sheet-actions">
+          <button id="cancelAddChannel" type="button" class="secondary">
+            Cancel</button
+          ><button type="submit" class="primary">Create channel</button>
+        </div>
+      </form>
+    </div>
+  </section>
+</dialog>
+<dialog id="recycleSheet" class="library-sheet">
+  <section class="library-sheet-panel wide">
+    <span class="library-sheet-handle" aria-hidden="true"></span>
+    <header class="library-sheet-head">
+      <div>
+        <p class="section-kicker">Safe to change your mind</p>
+        <h2>Recycle bin</h2>
+        <p>
+          Binned programmes stay here for 30 days unless you restore or remove
+          them sooner.
+        </p>
+      </div>
+      <button
+        id="closeRecycleBin"
+        type="button"
+        class="portal-sheet-close library-sheet-close"
+        aria-label="Close recycle bin"
+      >
+        ×
+      </button>
+    </header>
+    <div id="bin" class="library-sheet-body library-recycle-list"></div>
+  </section>
+</dialog>
+<dialog id="channelUploadPanel" class="library-sheet channel-upload-sheet">
+  <section class="library-sheet-panel wide">
+    <span class="library-sheet-handle" aria-hidden="true"></span>
+    <header class="library-sheet-head">
+      <div>
+        <p class="section-kicker">Add to this channel</p>
+        <h2>Upload videos</h2>
+        <p>
+          Everything selected here goes straight into
+          <strong id="uploadDestination">this channel</strong>.
+        </p>
+      </div>
+      <button
+        id="closeChannelUpload"
+        type="button"
+        class="portal-sheet-close library-sheet-close"
+        aria-label="Close video upload"
+      >
+        ×
+      </button>
+    </header>
+    <div class="library-sheet-body">
+      <form id="uploadForm" class="upload-form channel-upload-form">
+        <select
+          id="channel"
+          class="hidden"
+          aria-hidden="true"
+          tabindex="-1"
+          required
+        ></select
+        ><label class="drop-field" for="file"
+          ><input
+            id="file"
+            type="file"
+            accept="video/*,.mkv,.m4v,.avi,.mpg,.mpeg"
+            multiple
+          /><span class="drop-copy"
+            ><span class="drop-icon"
+              ><svg class="icon">
+                <use href="/portal/icons.svg#signal-upload" /></svg></span
+            ><strong>Choose videos</strong
+            ><small>Select one or several files for this channel</small></span
+          ></label
+        >
+        <div id="selectedFiles" class="upload-selection channel-upload-selection" aria-live="polite">
+          No videos selected yet.
+        </div>
+        <button id="uploadButton" type="submit" class="primary" disabled>
+          Upload selected videos
+        </button>
+      </form>
+      <div id="uploadState" class="hidden upload-state channel-upload-state" aria-live="polite">
+        <p id="uploadText">Preparing…</p>
+        <progress id="progress" max="1" value="0"></progress>
+      </div>
+      <div class="upload-activity channel-upload-activity">
+        <p class="section-kicker">Upload activity</p>
+        <div id="uploadJobs" aria-live="polite">No videos are waiting.</div>
+      </div>
+    </div>
+  </section>
+</dialog>
+<dialog id="channelSettingsSheet" class="library-sheet channel-settings-sheet">
+  <section class="library-sheet-panel">
+    <span class="library-sheet-handle" aria-hidden="true"></span>
+    <header class="library-sheet-head">
+      <div>
+        <p class="section-kicker">Manage channel</p>
+        <h2 id="channelSettingsTitle">Edit channel</h2>
+        <p>Choose how this channel looks and behaves on MabelTV.</p>
+      </div>
+      <button
+        id="closeChannelSettings"
+        type="button"
+        class="portal-sheet-close library-sheet-close"
+        aria-label="Close channel settings"
+      >
+        ×
+      </button>
+    </header>
+    <div class="library-sheet-body channel-settings-body">
+      <div class="channel-settings-actions">
+        <button
+          id="workspaceToggleChannel"
+          type="button"
+          class="channel-setting-action"
+        >
+          <span class="channel-setting-action-icon"
+            ><svg class="icon" aria-hidden="true">
+              <use href="/portal/icons.svg#signal-eye" /></svg></span
+          ><span
+            ><strong id="channelVisibilityTitle">Hide channel</strong
+            ><small id="channelVisibilityHint"
+              >Keep every video, but remove this channel from the
+              television.</small
+            ></span
+          ><svg class="channel-setting-action-arrow" aria-hidden="true">
+            <use href="/portal/icons.svg#signal-chevron-right" />
+          </svg></button
+        ><button
+          id="channelMetadataAction"
+          type="button"
+          class="channel-setting-action channel-metadata-action hidden"
+        >
+          <span class="channel-setting-action-icon channel-metadata-icon"
+            ><svg class="icon" aria-hidden="true">
+              <use
+                href="/portal/icons.svg#signal-panels-top-left"
+              /></svg></span
+          ><span
+            ><strong id="channelMetadataActionTitle"
+              >Add channel metadata</strong
+            ><small id="channelMetadataActionHint"
+              >Search TMDB and choose the correct show.</small
+            ></span
+          ><svg
+            class="channel-setting-action-arrow channel-metadata-arrow"
+            aria-hidden="true"
+          >
+            <use href="/portal/icons.svg#signal-chevron-right" />
+          </svg>
+        </button>
+      </div>
+      <form id="editChannelForm" class="channel-settings-form">
+        <p class="channel-settings-section-label">Channel details</p>
+        <label class="channel-setting-field"
+          ><span class="channel-setting-field-heading"
+            ><span class="channel-setting-field-icon"
+              ><svg class="icon" aria-hidden="true">
+                <use href="/portal/icons.svg#signal-list-filter" /></svg></span
+            ><span
+              ><strong>Channel number</strong
+              ><small>Where this channel appears on the television</small></span
+            ></span
+          ><input
+            id="editChannelNumber"
+            type="number"
+            min="1"
+            max="999"
+            inputmode="numeric"
+            required /></label
+        ><label class="channel-setting-field"
+          ><span class="channel-setting-field-heading"
+            ><span class="channel-setting-field-icon"
+              ><svg class="icon" aria-hidden="true">
+                <use href="/portal/icons.svg#signal-tv" /></svg></span
+            ><span
+              ><strong>Channel name</strong
+              ><small>The name shown throughout MabelTV</small></span
+            ></span
+          ><input id="editChannelName" maxlength="60" required /></label
+        ><label class="channel-setting-field"
+          ><span class="channel-setting-field-heading"
+            ><span class="channel-setting-field-icon"
+              ><svg class="icon" aria-hidden="true">
+                <use href="/portal/icons.svg#signal-image" /></svg></span
+            ><span
+              ><strong>Picture mode</strong
+              ><small>How videos fill the television screen</small></span
+            ></span
+          ><select id="editChannelAspect">
+            <option value="crop">Fill screen</option>
+            <option value="fit">Show whole picture</option>
+            <option value="stretch">Stretch to screen</option>
+          </select></label
+        ><label class="channel-setting-field"
+          ><span class="channel-setting-field-heading"
+            ><span class="channel-setting-field-icon"
+              ><svg class="icon" aria-hidden="true">
+                <use href="/portal/icons.svg#signal-film" /></svg></span
+            ><span
+              ><strong>What plays here?</strong
+              ><small>Choose episodes or a dedicated film channel</small></span
+            ></span
+          ><select id="editChannelContentType">
+            <option value="shows">Shows / episodes</option>
+            <option value="films">Films / long videos</option>
+          </select></label
+        >
+        <div class="channel-settings-footer">
+          <button id="deleteChannel" type="button" class="danger">
+            Delete channel</button
+          ><button type="submit" class="primary">Save changes</button>
+        </div>
+      </form>
+    </div>
+  </section>
+</dialog>
+<dialog id="tmdbDialog" class="tmdb-dialog" aria-labelledby="tmdbDialogTitle">
+  <section class="tmdb-dialog-panel">
+    <span class="library-sheet-handle" aria-hidden="true"></span>
+    <div class="tmdb-dialog-head">
+      <div>
+        <p class="section-kicker">TMDB match</p>
+        <h2 id="tmdbDialogTitle">Choose the correct film</h2>
+      </div>
+      <button id="tmdbClose" type="button" class="portal-sheet-close" aria-label="Close metadata choices"></button>
+    </div>
+    <div id="tmdbResults" class="tmdb-results"></div>
+  </section>
+</dialog>

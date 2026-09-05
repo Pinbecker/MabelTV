@@ -26,14 +26,58 @@ mabeltv_library = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(mabeltv_library)
 
 PORTAL_ROOT = PROJECT_ROOT / "scripts" / "pi" / "portal"
-PORTAL_SCRIPT = "\n".join(
-    (PORTAL_ROOT / "js" / name).read_text(encoding="utf-8")
-    for name in ("core.js", "channel-page.js", "library.js", "playback.js",
-                 "adult-viewing.js", "actions.js", "lg-tv-remote.js")
+
+
+def read_portal_files(root: str, names: tuple[str, ...]) -> str:
+    return "\n".join(
+        (PORTAL_ROOT / root / name).read_text(encoding="utf-8")
+        for name in names
+    )
+
+
+CORE_SCRIPTS = (
+    "foundation.js", "navigation.js", "live.js", "load.js",
 )
+LIBRARY_SCRIPTS = (
+    "adult-library.js", "usb-browser.js", "viewing-insights.js",
+    "device-status.js", "channels.js",
+)
+PLAYBACK_SCRIPTS = (
+    "players.js", "film-library.js", "adult-series.js", "programmes.js",
+    "downloads.js", "view.js",
+)
+ADULT_VIEWING_SCRIPTS = (
+    "catalogue.js", "seasons.js", "details.js",
+)
+OVERLAY_PARTIALS = (
+    "watch.html", "adult-library.html", "device-playback.html", "remote.html",
+    "library-management.html", "adult-viewing.html",
+)
+
+PORTAL_CORE = read_portal_files("js/core", CORE_SCRIPTS)
+PORTAL_LIBRARY = read_portal_files("js/library", LIBRARY_SCRIPTS)
+PORTAL_PLAYBACK = read_portal_files("js/playback", PLAYBACK_SCRIPTS)
+PORTAL_ADULT_VIEWING = read_portal_files(
+    "js/adult-viewing", ADULT_VIEWING_SCRIPTS)
+PORTAL_OVERLAY_MARKUP = read_portal_files("html/overlays", OVERLAY_PARTIALS)
+PORTAL_SCRIPT = "\n".join((
+    (PORTAL_ROOT / "js" / "ui-components.js").read_text(encoding="utf-8"),
+    PORTAL_CORE,
+    (PORTAL_ROOT / "js" / "channel-page.js").read_text(encoding="utf-8"),
+    PORTAL_LIBRARY,
+    PORTAL_PLAYBACK,
+    PORTAL_ADULT_VIEWING,
+    (PORTAL_ROOT / "js" / "actions.js").read_text(encoding="utf-8"),
+    (PORTAL_ROOT / "js" / "lg-tv-remote.js").read_text(encoding="utf-8"),
+))
 PORTAL_STYLES = "\n".join(
     path.read_text(encoding="utf-8")
     for path in sorted((PORTAL_ROOT / "css").glob("*.css"))
+)
+PORTAL_EXPERIENCE_STYLES = "\n".join(
+    path.read_text(encoding="utf-8")
+    for path in sorted((PORTAL_ROOT / "css").glob("experience-*.css"))
+    if path.name != "experience-light.css"
 )
 PORTAL_SOURCE = "\n".join((mabeltv_library.INDEX, PORTAL_SCRIPT, PORTAL_STYLES))
 
@@ -112,20 +156,39 @@ class LibraryUnitTests(unittest.TestCase):
         source = MODULE_PATH.with_name("mabeltv-library.html").read_text(encoding="utf-8")
         css_names = (
             "tokens", "base", "components", "shell", "home", "live",
-            "watch", "management", "usb", "settings", "responsive", "channel-page",
-            "experience-foundation", "experience-shell", "experience-home",
+            "watch", "watch-overlays", "watch-library", "management",
+            "player-shell", "usb", "settings", "responsive", "channel-page",
+            "experience-foundation", "experience-components",
+            "experience-shell", "experience-home",
             "experience-remote", "experience-watch", "experience-library",
             "experience-viewing",
-            "experience-settings", "experience-responsive", "experience-overlays",
+            "experience-settings", "experience-insights", "experience-responsive",
+            "experience-overlays", "experience-playback-overlays",
             "lg-tv-remote", "portal-design-switch", "experience-light",
         )
-        js_names = ("core", "channel-page", "library", "playback",
-                    "adult-viewing", "actions", "lg-tv-remote")
+        js_paths = (
+            "ui-components.js",
+            *(f"core/{name}" for name in CORE_SCRIPTS),
+            "channel-page.js",
+            *(f"library/{name}" for name in LIBRARY_SCRIPTS),
+            *(f"playback/{name}" for name in PLAYBACK_SCRIPTS),
+            *(f"adult-viewing/{name}" for name in ADULT_VIEWING_SCRIPTS),
+            "actions.js", "lg-tv-remote.js",
+        )
 
         css_positions = [html.index(f'/portal/css/{name}.css') for name in css_names]
-        js_positions = [html.index(f'/portal/js/{name}.js') for name in js_names]
+        js_positions = [html.index(f'/portal/js/{path}') for path in js_paths]
         self.assertEqual(css_positions, sorted(css_positions))
         self.assertEqual(js_positions, sorted(js_positions))
+        service_worker = (PROJECT_ROOT / "scripts" / "pi" / "service-worker.js").read_text(
+            encoding="utf-8")
+        linked_shell_assets = set(re.findall(
+            r'(?:href|src)="(/portal/(?:css|js)/[^"?]+)"',
+            html + mabeltv_library.CLASSIC_INDEX,
+        ))
+        for asset in linked_shell_assets:
+            self.assertTrue((PROJECT_ROOT / "scripts" / "pi" / asset.lstrip("/")).is_file())
+            self.assertIn(repr(asset), service_worker)
         self.assertLess(html.index('/portal/js/experience-theme.js'),
                         html.index('/portal/css/experience-foundation.css'))
         self.assertNotIn("<style", html)
@@ -149,6 +212,21 @@ class LibraryUnitTests(unittest.TestCase):
         for name in ("overview", "live", "lg-tv", "channels", "adult", "watch", "usb", "system"):
             self.assertTrue((PORTAL_ROOT / "html" / "views" / f"{name}.html").is_file())
         self.assertTrue((PORTAL_ROOT / "html" / "views" / "adult-viewing.html").is_file())
+        for retired in ("core.js", "library.js", "playback.js", "adult-viewing.js"):
+            self.assertFalse((PORTAL_ROOT / "js" / retired).exists())
+        component_script = (PORTAL_ROOT / "js" / "ui-components.js").read_text(
+            encoding="utf-8")
+        feature_scripts = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in (PORTAL_ROOT / "js").rglob("*.js")
+            if path.name != "ui-components.js"
+        )
+        self.assertIn("window.MabelPortalUI", component_script)
+        self.assertNotIn(".showModal()", feature_scripts)
+        self.assertNotIn("document.documentElement.style.overflow = 'hidden'",
+                         feature_scripts)
+        self.assertNotIn("createElementNS('http://www.w3.org/2000/svg'",
+                         feature_scripts)
         self.assertEqual(html.count('id="iosWatchPlayer"'), 1)
         self.assertEqual(html.count('id="mabelWatchPlayer"'), 1)
         self.assertEqual(mabeltv_library.CLASSIC_INDEX.count('id="iosWatchPlayer"'), 1)
@@ -157,20 +235,14 @@ class LibraryUnitTests(unittest.TestCase):
     def test_portal_uses_experience_by_default_and_one_isolated_classic_system(self) -> None:
         html = mabeltv_library.INDEX
         classic = mabeltv_library.CLASSIC_INDEX
-        styles = "\n".join(
-            (PORTAL_ROOT / "css" / f"experience-{name}.css").read_text(encoding="utf-8")
-            for name in ("foundation", "shell", "home", "remote", "watch",
-                         "library", "settings", "responsive", "overlays")
-        )
+        styles = PORTAL_EXPERIENCE_STYLES
         light_styles = (PORTAL_ROOT / "css" / "experience-light.css").read_text(
             encoding="utf-8")
         theme_script = (PORTAL_ROOT / "js" / "experience-theme.js").read_text(
             encoding="utf-8")
-        core = (PORTAL_ROOT / "js" / "core.js").read_text(encoding="utf-8")
-        playback = (PORTAL_ROOT / "js" / "playback.js").read_text(
-            encoding="utf-8")
-        markup = (PORTAL_ROOT / "html" / "overlays.html").read_text(
-            encoding="utf-8")
+        core = PORTAL_CORE
+        playback = PORTAL_PLAYBACK
+        markup = PORTAL_OVERLAY_MARKUP
         channel_page = (PORTAL_ROOT / "js" / "channel-page.js").read_text(
             encoding="utf-8")
 
@@ -310,10 +382,8 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertTrue((PORTAL_ROOT / "LICENSE-LUCIDE.txt").is_file())
 
     def test_experience_overlay_system_covers_every_portal_dialog_family(self) -> None:
-        markup = (PORTAL_ROOT / "html" / "overlays.html").read_text(
-            encoding="utf-8")
-        styles = (PORTAL_ROOT / "css" / "experience-overlays.css").read_text(
-            encoding="utf-8")
+        markup = PORTAL_OVERLAY_MARKUP
+        styles = PORTAL_EXPERIENCE_STYLES
         light_styles = (PORTAL_ROOT / "css" / "experience-light.css").read_text(
             encoding="utf-8")
         dialog_selector = styles.split("dialog:is(", 1)[1].split(")", 1)[0]
@@ -341,21 +411,21 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn(".remote-sheet-close", light_styles)
 
     def test_media_sheets_share_header_geometry_and_parent_navigation(self) -> None:
-        markup = (PORTAL_ROOT / "html" / "overlays.html").read_text(
-            encoding="utf-8")
-        core = (PORTAL_ROOT / "js" / "core.js").read_text(encoding="utf-8")
-        playback = (PORTAL_ROOT / "js" / "playback.js").read_text(
-            encoding="utf-8")
-        styles = (PORTAL_ROOT / "css" / "experience-overlays.css").read_text(
+        markup = PORTAL_OVERLAY_MARKUP
+        core = PORTAL_CORE
+        playback = PORTAL_PLAYBACK
+        styles = PORTAL_EXPERIENCE_STYLES
+        ui_components = (PORTAL_ROOT / "js" / "ui-components.js").read_text(
             encoding="utf-8")
 
         for dialog in re.findall(r"<dialog\b.*?</dialog>", markup, re.DOTALL):
             with self.subTest(dialog=re.search(r'id="([^"]+)"', dialog).group(1)):
                 self.assertIn("portal-sheet-close", dialog)
 
-        self.assertIn("const portalSheets = (() =>", core)
-        self.assertIn("const parents = new WeakMap()", core)
-        self.assertIn("return { open, close, dismiss }", core)
+        self.assertIn("const portalSheets = window.MabelPortalUI?.dialogs", core)
+        self.assertIn("const dialogParents = new WeakMap()", ui_components)
+        self.assertIn("open: openDialog", ui_components)
+        self.assertIn("wire: wireDialog", ui_components)
         self.assertIn("body.portal-experience .portal-sheet-close {", styles)
         self.assertIn("body.portal-experience .portal-sheet-title-row {", styles)
         self.assertIn("border: 1px solid rgba(255, 122, 26, 0.72);", styles)
@@ -413,8 +483,7 @@ class LibraryUnitTests(unittest.TestCase):
             encoding="utf-8")
         experience_responsive = (PORTAL_ROOT / "css" / "experience-responsive.css").read_text(
             encoding="utf-8")
-        experience_overlays = (PORTAL_ROOT / "css" / "experience-overlays.css").read_text(
-            encoding="utf-8")
+        experience_overlays = PORTAL_EXPERIENCE_STYLES
 
         self.assertIn('id="channelWorkspace" class="hidden" data-channel-page-root', html)
         self.assertNotIn('id="workspaceChannelName"', html)
@@ -465,7 +534,8 @@ class LibraryUnitTests(unittest.TestCase):
                 "watchProgrammeRename", "watchProgrammeMove", "watchProgrammeBin"):
             self.assertNotIn(f'id="{action_id}"', primary_sheet)
             self.assertIn(f'id="{action_id}"', more_sheet)
-        self.assertIn("closeWatchProgrammeMoreSheet()", PORTAL_SCRIPT)
+        self.assertIn("function closeWatchProgrammeMoreSheet(", PORTAL_SCRIPT)
+        self.assertIn("closeWatchProgrammeMoreSheet],", PORTAL_SCRIPT)
         self.assertNotIn('id="programmeActionMetadata"', html)
         self.assertIn("/api/tmdb/programme", PORTAL_SCRIPT)
         self.assertIn("scanProgrammeTmdb(channel, programme, () =>", PORTAL_SCRIPT)
@@ -533,7 +603,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("grid-auto-columns: calc((100% - 22px) / 3)", experience_responsive)
         self.assertIn("grid-auto-columns: calc((100% - 60px) / 6)", PORTAL_STYLES)
         self.assertIn("grid-auto-columns: calc((100% + 18px - 11px) / 2)", experience_responsive)
-        self.assertIn(".watch-search:focus-within", experience_watch)
+        self.assertIn(".portal-search:focus-within", PORTAL_EXPERIENCE_STYLES)
         self.assertIn(".channel-page-search:focus-within", experience_library)
         self.assertIn("body.portal-v2 .channel-page-search input:focus-visible", experience_library)
         self.assertIn("body.portal-v2 .watch-page {", experience_responsive)
@@ -638,7 +708,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("const consolidatedWatchView", index)
 
     def test_global_notices_expire_and_do_not_follow_navigation(self) -> None:
-        core = (PORTAL_ROOT / "js" / "core.js").read_text(encoding="utf-8")
+        core = PORTAL_CORE
 
         self.assertIn("}, bad ? 7000 : 3500)", core)
         self.assertNotIn("message.endsWith('…')", core)
@@ -646,10 +716,10 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("notice('')", open_view[:500])
 
     def test_channel_entry_is_instant_and_favourite_is_primary(self) -> None:
-        core = (PORTAL_ROOT / "js" / "core.js").read_text(encoding="utf-8")
-        library = (PORTAL_ROOT / "js" / "library.js").read_text(encoding="utf-8")
+        core = PORTAL_CORE
+        library = PORTAL_LIBRARY
         actions = (PORTAL_ROOT / "js" / "actions.js").read_text(encoding="utf-8")
-        overlays = (PORTAL_ROOT / "html" / "overlays.html").read_text(encoding="utf-8")
+        overlays = PORTAL_OVERLAY_MARKUP
 
         self.assertIn("history.scrollRestoration = 'manual'", core)
         self.assertIn("function resetViewScroll()", core)
@@ -3647,21 +3717,18 @@ class UsbAndMetadataTests(unittest.TestCase):
     def test_experience_uses_shared_icons_and_clear_channel_pager(self) -> None:
         channel_script = (PORTAL_ROOT / "js" / "channel-page.js").read_text(
             encoding="utf-8")
-        library_script = (PORTAL_ROOT / "js" / "library.js").read_text(
-            encoding="utf-8")
+        library_script = PORTAL_LIBRARY
         system_view = (PORTAL_ROOT / "html" / "views" / "system.html").read_text(
             encoding="utf-8")
         insights_view = (PORTAL_ROOT / "html" / "views" / "insights.html").read_text(
             encoding="utf-8")
         experience_css = (PORTAL_ROOT / "css" / "experience-library.css").read_text(
             encoding="utf-8")
-        settings_css = (PORTAL_ROOT / "css" / "experience-settings.css").read_text(
-            encoding="utf-8")
-        playback_script = (PORTAL_ROOT / "js" / "playback.js").read_text(
-            encoding="utf-8")
+        settings_css = PORTAL_EXPERIENCE_STYLES
+        playback_script = PORTAL_PLAYBACK
         design_switch = (PORTAL_ROOT / "html" / "portal-design-switch.html").read_text(
             encoding="utf-8")
-        self.assertIn("signalIcon('signal-chevron-down')", channel_script)
+        self.assertIn("iconName: 'signal-chevron-down'", channel_script)
         self.assertIn("programmePager", channel_script)
         self.assertNotIn('<svg viewBox="0 0 24 24"', channel_script)
         self.assertIn("body.portal-v2 .channel-page-load-more", experience_css)
@@ -3821,7 +3888,7 @@ class LibraryHttpTests(unittest.TestCase):
                              ("/portal/css/tokens.css", b"--control-min: 44px"),
                              ("/portal/css/components.css", b"@layer components"),
                              ("/portal/icons.svg", b'id="settings"'),
-                             ("/portal/js/core.js", b"function initialise"),
+                             ("/portal/js/core/navigation.js", b"function initialise"),
                              ("/portal/css/experience-foundation.css", b"--experience-orange"),
                              ("/portal/css/experience-shell.css", b".portal-nav"),
                              ("/portal/css/experience-overlays.css", b"--experience-sheet-gutter"),

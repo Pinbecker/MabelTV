@@ -1,0 +1,262 @@
+<dialog id="watchFilmSheet" class="watch-film-sheet">
+  <article class="watch-film-panel">
+    <div class="dialog-close-bar">
+      <button
+        id="watchFilmClose"
+        type="button"
+        class="portal-sheet-close watch-film-close dialog-close"
+        aria-label="Close film details"
+      ></button>
+    </div>
+    <div id="watchFilmBackdrop" class="watch-film-backdrop"></div>
+    <div class="watch-film-body">
+      <div class="watch-film-summary">
+        <div id="watchFilmPoster" class="watch-film-poster"></div>
+        <div class="watch-film-heading">
+          <p id="watchFilmEyebrow" class="watch-film-eyebrow"></p>
+          <div class="portal-sheet-title-row">
+            <h2 id="watchFilmTitle"></h2>
+            <button id="watchFilmFavourite" type="button" class="sheet-favourite" aria-label="Add film to favourites"><svg class="icon"><use href="/portal/icons.svg#signal-heart" /></svg></button>
+          </div>
+          <div id="watchFilmMeta" class="watch-film-meta"></div>
+        </div>
+      </div>
+      <div id="watchFilmProgress" class="watch-film-progress hidden">
+        <div>
+          <span>Progress</span><strong id="watchFilmProgressLabel"></strong>
+        </div>
+        <span class="watch-film-progress-track"
+          ><i id="watchFilmProgressFill"></i
+        ></span>
+      </div>
+      <p id="watchFilmOverview" class="watch-film-overview"></p>
+      <p id="watchFilmAvailability" class="watch-film-availability hidden"></p>
+      <div class="watch-film-actions">
+        <button id="watchFilmTv" type="button" class="watch-film-play">
+          <span class="watch-action-icon"
+            ><svg class="icon">
+              <use href="/portal/icons.svg#signal-monitor-play" /></svg></span
+          ><span
+            ><strong>Play on TV</strong
+            ><small>Replaces what is playing there</small></span
+          ></button
+        ><button id="watchFilmHere" type="button" class="watch-film-play">
+          <span class="watch-action-icon"
+            ><svg class="icon">
+              <use href="/portal/icons.svg#signal-play" /></svg></span
+          ><span
+            ><strong>Play on this device</strong
+            ><small>Uses the shared film position</small></span
+          ></button
+        ><button
+          id="watchFilmManage"
+          type="button"
+          class="watch-film-secondary primary-sheet-more hidden"
+        >
+          <svg class="icon" aria-hidden="true">
+            <use href="/portal/icons.svg#signal-ellipsis" /></svg
+          ><span>More</span>
+        </button>
+      </div>
+    </div>
+  </article>
+</dialog>
+<dialog id="watchProgrammeSheet" class="watch-programme-sheet">
+  <article>
+    <div class="dialog-close-bar">
+      <button
+        id="watchProgrammeClose"
+        type="button"
+        class="portal-sheet-close watch-film-close dialog-close"
+        aria-label="Close programme details"
+      ></button>
+    </div>
+    <p class="watch-film-eyebrow" id="watchProgrammeEyebrow">MabelTV</p>
+    <div class="portal-sheet-title-row">
+      <h2 id="watchProgrammeTitle">Programme</h2>
+      <button id="watchProgrammeFavourite" type="button" class="sheet-favourite hidden" aria-label="Add film to favourites"><svg class="icon"><use href="/portal/icons.svg#signal-heart" /></svg></button>
+    </div>
+    <p id="watchProgrammeMeta"></p>
+    <div class="watch-destination-actions">
+      <button id="watchProgrammeTv" type="button" class="watch-film-play">
+        <span class="watch-action-icon"
+          ><svg class="icon">
+            <use href="/portal/icons.svg#signal-monitor-play" /></svg></span
+        ><span
+          ><strong>Play on TV</strong
+          ><small>Replaces what is playing there</small></span
+        ></button
+      ><button id="watchProgrammeHere" type="button" class="watch-film-play">
+        <span class="watch-action-icon"
+          ><svg class="icon">
+            <use href="/portal/icons.svg#signal-play" /></svg></span
+        ><span
+          ><strong>Watch on this device</strong
+          ><small>Starts an independent stream</small></span
+        ></button>
+    </div>
+    <div
+      id="watchProgrammeEpisodeTools"
+      class="watch-programme-film-tools hidden"
+    >
+      <button id="watchProgrammeEpisodeMore" type="button" class="watch-film-play primary-sheet-more">
+        <span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-ellipsis" /></svg></span>
+        <span><strong>More</strong><small>Download and episode management</small></span>
+      </button>
+    </div>
+    <div id="watchProgrammeFilmTools" class="watch-programme-film-tools hidden">
+      <button id="watchProgrammeMore" type="button" class="watch-film-play primary-sheet-more">
+        <span class="watch-action-icon"
+          ><svg class="icon" aria-hidden="true">
+            <use href="/portal/icons.svg#signal-ellipsis" /></svg></span
+        ><span
+          ><strong>More</strong
+          ><small>Download, metadata and film management</small></span
+        ></button>
+    </div>
+    <p class="watch-programme-note">
+      Film progress is shared between the television and this device.
+    </p>
+  </article>
+</dialog>
+<dialog id="watchProgrammeEpisodeMoreSheet" class="watch-programme-sheet">
+  <article>
+    <div class="dialog-close-bar"><button id="watchProgrammeEpisodeMoreClose" type="button" class="portal-sheet-close watch-film-close dialog-close" aria-label="Close episode options"></button></div>
+    <p id="watchProgrammeEpisodeMoreEyebrow" class="watch-film-eyebrow">Episode options</p>
+    <h2 id="watchProgrammeEpisodeMoreTitle">Episode</h2>
+    <p id="watchProgrammeEpisodeMoreMeta"></p>
+    <div class="watch-programme-film-tools">
+      <button id="watchProgrammeEpisodeDownload" type="button" class="watch-film-play">
+        <span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-download" /></svg></span>
+        <span><strong>Download to this device</strong><small>Save a copy for offline viewing</small></span>
+      </button>
+      <button
+        id="watchProgrammeEpisodeToggle"
+        type="button"
+        class="watch-film-play"
+      >
+        <span class="watch-action-icon"
+          ><svg class="icon" aria-hidden="true">
+            <use href="/portal/icons.svg#signal-eye" /></svg></span
+        ><span
+          ><strong>Hide from TV</strong
+          ><small
+            >Keep the episode without showing it on this channel</small
+          ></span
+        ></button
+      ><button
+        id="watchProgrammeEpisodeRename"
+        type="button"
+        class="watch-film-play"
+      >
+        <span class="watch-action-icon"
+          ><svg class="icon" aria-hidden="true">
+            <use href="/portal/icons.svg#signal-pencil" /></svg></span
+        ><span
+          ><strong>Rename episode</strong
+          ><small>Change the stored episode name</small></span
+        ></button
+      ><button
+        id="watchProgrammeEpisodeBin"
+        type="button"
+        class="watch-film-play watch-programme-danger"
+      >
+        <span class="watch-action-icon"
+          ><svg class="icon" aria-hidden="true">
+            <use href="/portal/icons.svg#signal-trash" /></svg></span
+        ><span
+          ><strong>Move to bin</strong
+          ><small>Remove this episode from its channel</small></span
+        >
+      </button>
+    </div>
+  </article>
+</dialog>
+<dialog id="watchProgrammeMoreSheet" class="watch-programme-sheet">
+  <article>
+    <div class="dialog-close-bar">
+      <button
+        id="watchProgrammeMoreClose"
+        type="button"
+        class="portal-sheet-close watch-film-close dialog-close"
+        aria-label="Close more film options"
+      ></button>
+    </div>
+    <p class="watch-film-eyebrow" id="watchProgrammeMoreEyebrow">
+      Film options
+    </p>
+    <h2 id="watchProgrammeMoreTitle">Film</h2>
+    <p id="watchProgrammeMoreMeta"></p>
+    <div class="watch-programme-film-tools">
+      <button id="watchProgrammeDownload" type="button" class="watch-film-play">
+        <span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-download" /></svg></span>
+        <span><strong>Download to this device</strong><small>Save a copy for offline viewing</small></span>
+      </button>
+      <button
+        id="watchProgrammeMetadata"
+        type="button"
+        class="watch-film-play metadata-action"
+      >
+        <span class="watch-action-icon"
+          ><svg class="icon" aria-hidden="true">
+            <use href="/portal/icons.svg#signal-panels-top-left" /></svg></span
+        ><span
+          ><strong>Refresh metadata</strong
+          ><small>Search TMDB and choose the correct film</small></span
+        ></button
+      ><button id="watchProgrammeToggle" type="button" class="watch-film-play">
+        <span class="watch-action-icon"
+          ><svg class="icon" aria-hidden="true">
+            <use href="/portal/icons.svg#signal-eye" /></svg></span
+        ><span
+          ><strong>Hide from TV</strong
+          ><small>Keep the film without showing it on this channel</small></span
+        ></button
+      ><button id="watchProgrammeRename" type="button" class="watch-film-play">
+        <span class="watch-action-icon"
+          ><svg class="icon" aria-hidden="true">
+            <use href="/portal/icons.svg#signal-pencil" /></svg></span
+        ><span
+          ><strong>Rename film</strong
+          ><small>Change the stored film name</small></span
+        ></button
+      ><button id="watchProgrammeMove" type="button" class="watch-film-play">
+        <span class="watch-action-icon"
+          ><svg class="icon" aria-hidden="true">
+            <use href="/portal/icons.svg#signal-arrow-right" /></svg></span
+        ><span
+          ><strong>Move to another channel</strong
+          ><small>Choose another MabelTV film channel</small></span
+        >
+      </button>
+      <button id="watchProgrammeBin" type="button" class="watch-film-play watch-programme-danger">
+        <span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-trash" /></svg></span>
+        <span><strong>Move to bin</strong><small>Remove this film from its channel</small></span>
+      </button>
+    </div>
+  </article>
+</dialog>
+<dialog id="watchProgrammeMoveSheet" class="library-sheet">
+  <section class="library-sheet-panel">
+    <span class="library-sheet-handle" aria-hidden="true"></span>
+    <header class="library-sheet-head">
+      <div>
+        <p class="section-kicker">Move film</p>
+        <h2 id="watchProgrammeMoveTitle">Choose a film channel</h2>
+        <p>The film keeps its selected metadata and artwork.</p>
+      </div>
+      <button
+        id="watchProgrammeMoveClose"
+        type="button"
+        class="portal-sheet-close library-sheet-close"
+        aria-label="Close film channel picker"
+      >
+        ×
+      </button>
+    </header>
+    <div
+      id="watchProgrammeChannelOptions"
+      class="library-sheet-body watch-programme-channel-options"
+    ></div>
+  </section>
+</dialog>

@@ -36,6 +36,9 @@ npm test
 Screenshot updates are deliberate review actions. Use `npm run test:update`,
 inspect every changed PNG, and only then commit the new references.
 
+The ownership and loading rules for future portal changes are recorded in
+[portal-architecture.md](portal-architecture.md).
+
 ## PWA behaviour contract
 
 - Launch, resume, authentication, and locking must not flash protected content.

@@ -1,0 +1,666 @@
+body.portal-experience .dialog-close-bar {
+  position: sticky;
+  z-index: 7;
+  top: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+body.portal-experience .dialog-close-bar .watch-film-close {
+  border-color: rgba(255, 122, 26, 0.72);
+  background: rgba(37, 37, 45, 0.88);
+  color: #fff;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  pointer-events: auto;
+}
+
+body.portal-experience .sheet-favourite {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--experience-muted);
+  padding: 0;
+}
+
+body.portal-experience .sheet-favourite .icon { width: 18px; height: 18px; }
+body.portal-experience .sheet-favourite.active {
+  color: var(--experience-orange);
+}
+body.portal-experience .sheet-favourite.active .icon { fill: currentColor; }
+body.portal-experience .sheet-favourite.hidden { display: none; }
+
+body.portal-experience .portal-sheet-title-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding-right: 44px;
+}
+
+body.portal-experience .portal-sheet-title-row > h2 {
+  display: -webkit-box;
+  min-width: 0;
+  max-width: none;
+  overflow: hidden;
+  overflow-wrap: normal;
+  text-overflow: ellipsis;
+  word-break: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+body.portal-experience .portal-sheet-title-row .sheet-favourite {
+  flex: 0 0 32px;
+}
+
+body.portal-experience .sheet-favourite:focus-visible {
+  outline: 0;
+  color: var(--experience-orange);
+  filter: drop-shadow(0 0 4px rgba(255, 122, 26, 0.5));
+}
+
+body.portal-experience .portal-sheet-close:focus-visible {
+  outline: 0;
+}
+
+body.portal-experience .watch-film-panel {
+  overflow: auto;
+  background: #0a0a0e;
+}
+
+body.portal-experience .watch-film-backdrop {
+  position: relative;
+  height: 132px;
+  overflow: hidden;
+  background: #111117;
+}
+
+body.portal-experience .watch-film-backdrop::before {
+  position: absolute;
+  inset: -34px;
+  content: "";
+  background: var(--watch-film-art, linear-gradient(145deg, #282832, #0d0d12));
+  background-position: center;
+  background-size: cover;
+  filter: blur(22px) saturate(48%) brightness(56%);
+  transform: scale(1.18);
+}
+
+body.portal-experience .watch-film-backdrop::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background:
+    linear-gradient(180deg, rgba(7, 7, 10, 0.18), rgba(7, 7, 10, 0.36) 52%, #0a0a0e 100%),
+    linear-gradient(90deg, rgba(7, 7, 10, 0.3), transparent 60%);
+}
+
+body.portal-experience .watch-film-body {
+  position: relative;
+  z-index: 2;
+  display: flow-root;
+  padding: 1px var(--experience-sheet-padding) var(--experience-sheet-padding);
+}
+
+body.portal-experience .watch-film-summary {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
+  align-items: end;
+  gap: 18px;
+  margin-top: -54px;
+}
+
+body.portal-experience .watch-film-poster {
+  width: 116px;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  background: var(--experience-raised);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.58);
+}
+
+body.portal-experience .watch-film-poster :is(img, .watch-card-placeholder) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+body.portal-experience .watch-film-heading {
+  min-width: 0;
+  padding-bottom: 8px;
+}
+
+body.portal-experience .watch-film-heading .portal-sheet-title-row {
+  padding-right: 0;
+}
+
+body.portal-experience .watch-film-eyebrow {
+  margin: 0 0 3px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+body.portal-experience .watch-film-body h2 {
+  overflow-wrap: normal;
+  word-break: normal;
+  margin: 0 0 4px;
+  font-size: clamp(27px, 7vw, 38px);
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+}
+
+body.portal-experience .watch-film-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  color: var(--experience-muted);
+  font-size: 11px;
+}
+
+body.portal-experience .watch-film-meta span + span::before {
+  margin-right: 5px;
+  content: "·";
+  color: var(--experience-dim);
+}
+
+body.portal-experience .watch-film-progress {
+  margin-top: 20px;
+}
+
+body.portal-experience .watch-film-progress > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  color: var(--experience-muted);
+  font-size: 11px;
+}
+
+body.portal-experience .watch-film-progress-track {
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: var(--experience-soft);
+}
+
+body.portal-experience .watch-film-progress-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--experience-orange);
+}
+
+body.portal-experience .watch-film-overview {
+  max-width: 64ch;
+  margin: 20px 0 0;
+  color: rgba(247, 247, 248, 0.76);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+body.portal-experience .watch-film-actions,
+body.portal-experience .watch-destination-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 22px;
+}
+
+/* The experience theme does not load the classic spacing tokens. Give the
+   lower action groups their own explicit rhythm so adjacent cards never
+   collapse into one segmented control. */
+body.portal-experience .watch-programme-film-tools {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+body.portal-experience .watch-programme-film-tools.hidden {
+  display: none;
+}
+
+body.portal-experience .primary-sheet-more {
+  position: relative;
+  margin-top: 13px;
+}
+
+body.portal-experience .primary-sheet-more::before {
+  position: absolute;
+  right: 0;
+  left: 0;
+  top: -8px;
+  height: 1px;
+  content: "";
+  background: var(--experience-line);
+}
+
+body.portal-experience :is(.watch-film-play, .watch-film-secondary) {
+  width: 100%;
+  min-width: 0;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  border: 1px solid var(--experience-line);
+  border-radius: 10px;
+  background: var(--experience-raised);
+  color: var(--experience-ink);
+  padding: 10px 13px;
+  text-align: left;
+}
+
+body.portal-experience :is(.watch-film-actions, .watch-destination-actions) > .hidden {
+  display: none;
+}
+
+body.portal-experience .watch-film-play > span:last-child,
+body.portal-experience .watch-film-secondary > span:last-child {
+  display: grid;
+  min-width: 0;
+}
+
+body.portal-experience .watch-film-play strong,
+body.portal-experience .watch-film-secondary span {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+
+body.portal-experience .watch-film-play small {
+  margin-top: 2px;
+  color: var(--experience-dim);
+  font-size: 10px;
+  font-weight: 520;
+}
+
+body.portal-experience .watch-action-icon {
+  min-width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--experience-soft);
+  color: var(--experience-orange);
+  font-size: 10px;
+  font-weight: 850;
+}
+
+body.portal-experience .watch-programme-danger {
+  border-color: rgba(255, 91, 111, 0.42);
+  background: rgba(255, 91, 111, 0.08);
+}
+
+body.portal-experience .watch-film-danger {
+  border-color: rgba(255, 91, 111, 0.42);
+  background: rgba(255, 91, 111, 0.08);
+  color: #ff687f;
+}
+
+body.portal-experience .watch-film-danger .watch-action-icon {
+  background: rgba(255, 91, 111, 0.14);
+  color: #ff687f;
+}
+
+body.portal-experience .watch-programme-danger .watch-action-icon {
+  background: rgba(255, 91, 111, 0.14);
+  color: #ff687f;
+}
+
+body.portal-experience .watch-programme-sheet {
+  width: min(620px, calc(100vw - 32px));
+}
+
+body.portal-experience .film-resume-choice-sheet {
+  width: min(430px, calc(100vw - 32px));
+}
+
+body.portal-experience .film-resume-choice-sheet .watch-destination-actions {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+body.portal-experience .film-resume-choice-meta {
+  margin: 9px 0 0;
+  color: var(--experience-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+body.portal-experience .watch-programme-sheet > article {
+  width: 100%;
+  padding: 28px;
+  background: #0d0d12;
+}
+
+body.portal-experience .watch-programme-sheet .dialog-close-bar {
+  margin-bottom: 4px;
+}
+
+body.portal-experience .watch-programme-sheet .watch-film-eyebrow {
+  max-width: calc(100% - 58px);
+  margin: 0 0 7px;
+  color: var(--experience-orange);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+body.portal-experience .watch-programme-sheet h2 {
+  max-width: calc(100% - 58px);
+  overflow-wrap: anywhere;
+  margin: 0;
+  font-size: clamp(25px, 5vw, 34px);
+  letter-spacing: -0.04em;
+  line-height: 1.04;
+}
+
+body.portal-experience #watchProgrammeMeta {
+  margin: 7px 0 0;
+  color: var(--experience-muted);
+  font-size: 12px;
+}
+
+body.portal-experience .watch-programme-note {
+  margin: 20px 0 0;
+  border-top: 1px solid var(--experience-line);
+  padding-top: 18px;
+  color: var(--experience-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+body.portal-experience .adult-film-collection-action {
+  grid-column: 1 / -1;
+  align-items: flex-start;
+}
+
+body.portal-experience .adult-film-collection-content {
+  flex: 1;
+}
+
+body.portal-experience .adult-film-collection-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+body.portal-experience .adult-film-collection-controls select,
+body.portal-experience .adult-film-collection-controls button {
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  border: 1px solid var(--experience-line);
+  border-radius: 8px;
+}
+
+body.portal-experience .adult-film-collection-controls select {
+  width: 100%;
+  background: var(--experience-soft);
+  color: var(--experience-ink);
+  padding: 0 36px 0 12px;
+}
+
+body.portal-experience .adult-film-collection-controls button {
+  background: rgba(255, 122, 26, 0.14);
+  color: var(--experience-orange);
+  padding: 0 14px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+body.portal-experience .adult-film-danger {
+  grid-column: 1 / -1;
+  border-color: rgba(255, 91, 111, 0.42);
+  background: rgba(255, 91, 111, 0.08);
+}
+
+body.portal-experience .adult-film-danger .watch-action-icon {
+  background: rgba(255, 91, 111, 0.14);
+  color: #ff687f;
+}
+
+@media (max-width: 620px) {
+  body.portal-experience dialog:is(.library-sheet, .watch-sheet, .watch-film-sheet, .watch-programme-sheet, .remote-sheet, .tmdb-dialog)[open] {
+    inset: 0;
+    width: 100%;
+    height: 100dvh;
+    max-height: none;
+    display: flex;
+    align-items: flex-end;
+    margin: 0;
+    padding:
+      calc(env(safe-area-inset-top) + 10px)
+      var(--experience-sheet-gutter)
+      calc(env(safe-area-inset-bottom) + 9px);
+  }
+
+  body.portal-experience :is(
+    .library-sheet-panel,
+    .watch-sheet-panel,
+    .watch-film-panel,
+    .watch-programme-sheet > article,
+    .remote-sheet-panel,
+    .tmdb-dialog-panel
+  ) {
+    width: 100%;
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 19px);
+    border: 1px solid var(--experience-line-strong);
+    border-radius: 18px;
+    padding-bottom: 0;
+  }
+
+  body.portal-experience .library-sheet-panel.wide {
+    width: 100%;
+    transform: none;
+  }
+
+  body.portal-experience :is(.library-sheet-handle, .remote-sheet-handle) {
+    display: block;
+    width: 38px;
+    height: 4px;
+    margin: 9px auto 0;
+    border-radius: 999px;
+    background: var(--experience-line-strong);
+  }
+
+  body.portal-experience .watch-sheet-handle {
+    display: block;
+    width: 38px;
+    height: 4px;
+    margin: 9px auto 0;
+    border-radius: 999px;
+    background: var(--experience-line-strong);
+  }
+
+  body.portal-experience .watch-sheet-panel > header {
+    padding: 13px 18px 16px;
+  }
+
+  body.portal-experience .watch-collection-options {
+    padding: 10px 8px 14px;
+  }
+
+  body.portal-experience :is(.library-sheet-head, .remote-sheet-panel > header, .tmdb-dialog-head) {
+    padding: 13px 18px 16px;
+  }
+
+  body.portal-experience :is(.library-sheet-body, .remote-channel-options, .remote-power-actions, .tmdb-results) {
+    padding: 18px;
+  }
+
+  body.portal-experience .tmdb-result {
+    grid-template-columns: 56px minmax(0, 1fr);
+    align-items: start;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  body.portal-experience .tmdb-result-poster {
+    width: 56px;
+  }
+
+  body.portal-experience .tmdb-result-choose {
+    width: 100%;
+    min-width: 0;
+    grid-column: 1 / -1;
+  }
+
+  body.portal-experience .field-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  body.portal-experience .field-grid > * {
+    grid-column: 1;
+  }
+
+  body.portal-experience .library-sheet-actions {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: 10px;
+    margin-top: 2px;
+  }
+
+  body.portal-experience .channel-settings-body {
+    gap: 18px;
+  }
+
+  body.portal-experience .channel-settings-form {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 9px;
+  }
+
+  body.portal-experience .channel-settings-form > * {
+    grid-column: 1;
+  }
+
+  body.portal-experience .channel-setting-action {
+    min-height: 72px;
+    grid-template-columns: 44px minmax(0, 1fr) 16px;
+    gap: 11px;
+    padding: 11px 12px;
+  }
+
+  body.portal-experience .channel-setting-action-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  body.portal-experience .channel-setting-field {
+    gap: 9px;
+    padding: 11px;
+  }
+
+  body.portal-experience .channel-settings-footer {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: 9px;
+  }
+
+  body.portal-experience #adultFolderTabs {
+    gap: 8px;
+  }
+
+  body.portal-experience .adult-folder-tools {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  body.portal-experience .adult-folder-tools > label,
+  body.portal-experience .adult-folder-tools > #adultCreateFolder {
+    grid-column: 1;
+  }
+
+  body.portal-experience .adult-folder-tools button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  body.portal-experience .watch-film-backdrop {
+    height: 104px;
+  }
+
+  body.portal-experience .watch-film-body {
+    padding-right: 18px;
+    padding-bottom: 22px;
+    padding-left: 18px;
+  }
+
+  body.portal-experience .watch-film-summary {
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 14px;
+    margin-top: -54px;
+  }
+
+  body.portal-experience .watch-film-poster {
+    width: 92px;
+  }
+
+  body.portal-experience .watch-film-heading {
+    padding-bottom: 5px;
+  }
+
+  body.portal-experience .watch-film-body h2 {
+    font-size: clamp(25px, 7.8vw, 32px);
+  }
+
+  body.portal-experience .watch-film-progress {
+    margin-top: 18px;
+  }
+
+  body.portal-experience .watch-film-overview {
+    margin-top: 17px;
+    font-size: 13px;
+  }
+
+  body.portal-experience .watch-film-actions,
+  body.portal-experience .watch-destination-actions {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    margin-top: 19px;
+  }
+
+  body.portal-experience :is(.watch-film-play, .watch-film-secondary) {
+    min-height: 56px;
+  }
+
+  body.portal-experience .watch-programme-sheet > article {
+    padding: 24px 18px 24px;
+  }
+
+  body.portal-experience .watch-programme-sheet .watch-destination-actions {
+    margin-top: 20px;
+  }
+
+  body.portal-experience .adult-film-collection-controls,
+  body.portal-experience .adult-film-move-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.portal-experience .adult-film-collection-controls button,
+  body.portal-experience .adult-film-move-panel button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 370px) {
+  body.portal-experience #adultFolderTabs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.portal-experience .watch-film-summary {
+    grid-template-columns: 82px minmax(0, 1fr);
+  }
+
+  body.portal-experience .watch-film-poster {
+    width: 82px;
+  }
+}

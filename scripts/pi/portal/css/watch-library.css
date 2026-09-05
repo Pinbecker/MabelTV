@@ -1,0 +1,101 @@
+@layer pages {
+  .watch-mabel-layout {
+    width: 100%;
+    min-width: 0;
+    display: grid;
+  }
+
+  #remoteMabel {
+    min-width: 0;
+  }
+
+  .watch-mabel-utilities {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .watch-mabel-primary-tools {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 0 0 var(--space-5);
+  }
+
+  .watch-mabel-recycle-tools {
+    grid-template-columns: minmax(0, 1fr);
+    margin: 0 0 var(--space-4);
+  }
+
+  .watch-mabel-utilities button {
+    width: 100%;
+    border-color: var(--border);
+    background: var(--surface-2);
+    color: var(--text-soft);
+  }
+
+  .watch-downloads-layout {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .downloads-intro {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-panel);
+    padding: var(--space-5);
+    background: var(--surface-1);
+  }
+
+  .downloads-intro h2,
+  .downloads-intro p {
+    margin-bottom: 0;
+  }
+
+  .downloads-intro p {
+    margin-top: var(--space-2);
+    color: var(--text-muted);
+  }
+
+  .downloads-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+    gap: var(--space-3);
+  }
+
+  .download-card {
+    display: grid;
+    gap: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: var(--space-4);
+    background: var(--surface-1);
+  }
+
+  .download-card-head {
+    min-width: 0;
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .download-card-copy {
+    min-width: 0;
+  }
+
+  .download-card-copy strong,
+  .download-card-copy small {
+    display: block;
+    overflow-wrap: anywhere;
+  }
+
+  .download-card-copy small {
+    margin-top: 3px;
+    color: var(--text-muted);
+    font-size: var(--type-caption);
+  }
+
+  .download-remove {
+    color: var(--danger);
+  }
+}

@@ -1,0 +1,228 @@
+<dialog
+  id="watchChannelSheet"
+  class="watch-programme-sheet watch-channel-sheet"
+>
+  <article>
+    <div class="dialog-close-bar">
+      <button
+        id="watchChannelClose"
+        type="button"
+        class="portal-sheet-close watch-film-close dialog-close"
+        aria-label="Close channel details"
+      ></button>
+    </div>
+    <p id="watchChannelEyebrow" class="watch-film-eyebrow">
+      MabelTV series channel
+    </p>
+    <div class="portal-sheet-title-row">
+      <h2 id="watchChannelTitle">Channel</h2>
+      <button id="watchChannelFavourite" type="button" class="sheet-favourite" aria-label="Add channel to favourites"><svg class="icon"><use href="/portal/icons.svg#signal-heart" /></svg></button>
+    </div>
+    <p id="watchChannelMeta"></p>
+    <div class="watch-destination-actions">
+      <button id="watchChannelTv" type="button" class="watch-film-play">
+        <span class="watch-action-icon"
+          ><svg class="icon">
+            <use href="/portal/icons.svg#signal-monitor-play" /></svg></span
+        ><span
+          ><strong>Continue on TV</strong
+          ><small id="watchChannelTvHint"
+            >Pick up the channel where it is now</small
+          ></span
+        ></button
+      ><button id="watchChannelHere" type="button" class="watch-film-play">
+        <span class="watch-action-icon"
+          ><svg class="icon">
+            <use href="/portal/icons.svg#signal-play" /></svg></span
+        ><span
+          ><strong>Continue on this device</strong
+          ><small id="watchChannelHereHint"
+            >Pick up the channel where it is now</small
+          ></span
+        ></button
+      ><button id="watchChannelOpen" type="button" class="watch-film-play">
+        <span class="watch-action-icon"
+          ><svg class="icon">
+            <use href="/portal/icons.svg#signal-panels-top-left" /></svg></span
+        ><span
+          ><strong>Open channel</strong
+          ><small>Browse every episode and manage this channel</small></span
+        >
+      </button>
+    </div>
+  </article>
+</dialog>
+<dialog
+  id="filmResumeChoiceSheet"
+  class="watch-programme-sheet film-resume-choice-sheet"
+>
+  <article>
+    <div class="dialog-close-bar">
+      <button
+        id="filmResumeChoiceClose"
+        type="button"
+        class="portal-sheet-close watch-film-close dialog-close"
+        aria-label="Close playback choice"
+      ></button>
+    </div>
+    <p id="filmResumeChoiceEyebrow" class="watch-film-eyebrow">Play film</p>
+    <h2 id="filmResumeChoiceTitle">Film</h2>
+    <p id="filmResumeChoiceMeta" class="film-resume-choice-meta">
+      Continue where you left off or start from the beginning?
+    </p>
+    <div class="watch-destination-actions">
+      <button id="filmResumeContinue" type="button" class="watch-film-play">
+        <span class="watch-action-icon"
+          ><svg class="icon">
+            <use href="/portal/icons.svg#signal-play" /></svg></span
+        ><span
+          ><strong>Continue</strong
+          ><small>Resume from your saved position</small></span
+        ></button
+      ><button id="filmResumeRestart" type="button" class="watch-film-play">
+        <span class="watch-action-icon"
+          ><svg class="icon">
+            <use href="/portal/icons.svg#signal-restart" /></svg></span
+        ><span
+          ><strong>Start from beginning</strong
+          ><small>Play this film from the opening</small></span
+        >
+      </button>
+    </div>
+  </article>
+</dialog>
+<section
+  id="iosWatchPlayer"
+  class="ios-watch-player hidden"
+  aria-label="Remote video player"
+>
+  <header class="ios-watch-head">
+    <button
+      id="iosWatchBack"
+      type="button"
+      class="ios-watch-back"
+      aria-label="Back to library"
+    >
+      ←
+    </button>
+    <div>
+      <strong id="iosWatchTitle">MabelTV</strong
+      ><small id="iosWatchContext">MabelTV remote viewing</small>
+    </div>
+    <button id="iosWatchStartOver" type="button" class="hidden">
+      Start over
+    </button>
+  </header>
+  <div class="ios-watch-stage">
+    <video
+      id="iosWatchVideo"
+      controls
+      playsinline
+      webkit-playsinline
+      preload="metadata"
+    ></video>
+    <p id="iosWatchError" class="ios-watch-error hidden"></p>
+  </div>
+</section>
+<section
+  id="mabelWatchPlayer"
+  class="mabel-watch-player hidden"
+  aria-label="Mabel TV remote player"
+>
+  <div id="mabelWatchShell" class="mabel-watch-shell slim-black">
+    <div id="mabelWatchCabinet" class="mabel-watch-cabinet slim-black">
+      <div id="mabelWatchScreen" class="mabel-watch-screen" tabindex="0">
+        <video
+          id="mabelWatchVideo"
+          playsinline
+          webkit-playsinline
+          preload="metadata"
+        ></video><button
+          id="mabelWatchBack"
+          type="button"
+          class="mabel-watch-icon-button"
+          aria-label="Back to Mabel TV programmes"
+        >
+          <svg class="icon" aria-hidden="true">
+            <use href="/portal/icons.svg#signal-arrow-left" />
+          </svg>
+        </button><div id="mabelWatchControls" class="mabel-watch-hud">
+          <div class="mabel-watch-topbar">
+            <div class="mabel-watch-title">
+              <strong id="mabelWatchTitle">MabelTV</strong
+              ><small id="mabelWatchChannel">Remote Mabel TV</small>
+            </div>
+            <span class="mabel-watch-live-badge">MabelTV</span>
+          </div>
+          <div class="mabel-watch-bottom">
+            <label class="mabel-watch-timeline"
+              ><span id="mabelWatchCurrent">0:00</span
+              ><input
+                id="mabelWatchSeek"
+                type="range"
+                min="0"
+                max="1000"
+                value="0"
+                aria-label="Playback position"
+              /><span id="mabelWatchDuration">0:00</span></label
+            >
+            <div class="mabel-watch-controls">
+              <button
+                type="button"
+                class="mabel-watch-skip"
+                data-mabel-watch-action="back"
+                aria-label="Back 15 seconds"
+              >
+                <svg class="icon" aria-hidden="true">
+                  <use href="/portal/icons.svg#signal-rotate-ccw" /></svg
+                ><span>15</span></button
+              ><button
+                type="button"
+                class="mabel-watch-play"
+                data-mabel-watch-action="play"
+                aria-label="Play or pause"
+              >
+                <svg class="mabel-watch-play-icon" aria-hidden="true">
+                  <use href="/portal/icons.svg#signal-play" /></svg
+                ><svg class="mabel-watch-pause-icon" aria-hidden="true">
+                  <use href="/portal/icons.svg#signal-pause" />
+                </svg></button
+              ><button
+                type="button"
+                class="mabel-watch-skip"
+                data-mabel-watch-action="forward"
+                aria-label="Forward 15 seconds"
+              >
+                <svg class="icon" aria-hidden="true">
+                  <use href="/portal/icons.svg#signal-rotate-cw" /></svg
+                ><span>15</span></button
+              ><span class="mabel-watch-control-spacer"></span
+              ><button
+                type="button"
+                class="mabel-watch-icon-button mabel-watch-mute"
+                data-mabel-watch-action="mute"
+                aria-label="Mute"
+              >
+                <svg class="mabel-watch-sound-icon" aria-hidden="true">
+                  <use href="/portal/icons.svg#signal-volume" /></svg
+                ><svg class="mabel-watch-muted-icon" aria-hidden="true">
+                  <use href="/portal/icons.svg#signal-volume-x" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mabel-watch-charcoal-fascia" aria-hidden="true">
+        <span class="mabel-watch-charcoal-speaker left"></span
+        ><span class="mabel-watch-charcoal-speaker right"></span
+        ><span class="mabel-watch-charcoal-logo">MABEL</span
+        ><span class="mabel-watch-charcoal-control"></span>
+      </div>
+      <div class="mabel-watch-brand">
+        <span>MabelTV</span><span>Remote broadcast</span>
+      </div>
+    </div>
+    <p id="mabelWatchError" class="mabel-watch-error hidden"></p>
+  </div>
+</section>

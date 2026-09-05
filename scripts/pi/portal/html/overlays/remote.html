@@ -1,0 +1,72 @@
+<dialog id="liveChannelSheet" class="remote-sheet">
+  <section class="remote-sheet-panel">
+    <span class="remote-sheet-handle" aria-hidden="true"></span>
+    <header>
+      <div>
+        <p class="section-kicker">Jump straight to</p>
+        <h2>Choose a channel</h2>
+        <p>Change channel without tapping through them one at a time.</p>
+      </div>
+      <button
+        id="closeLiveChannels"
+        type="button"
+        class="portal-sheet-close remote-sheet-close"
+        aria-label="Close channel picker"
+      >
+        ×
+      </button>
+    </header>
+    <div id="liveChannelOptions" class="remote-channel-options"></div>
+  </section>
+</dialog>
+<dialog id="remotePowerSheet" class="remote-sheet remote-power-sheet">
+  <section class="remote-sheet-panel">
+    <span class="remote-sheet-handle" aria-hidden="true"></span>
+    <header>
+      <div>
+        <p class="section-kicker">Power options</p>
+        <h2 id="remotePowerTitle">Put MabelTV in standby?</h2>
+        <p id="remotePowerDescription">
+          Would you also like to put the connected television in standby?
+        </p>
+      </div>
+      <button
+        id="closeRemotePower"
+        type="button"
+        class="portal-sheet-close remote-sheet-close"
+        aria-label="Close power controls"
+      >
+        ×
+      </button>
+    </header>
+    <div class="remote-power-actions">
+      <button
+        id="confirmRemotePower"
+        type="button"
+        class="remote-power-confirm"
+      >
+        <svg class="icon"><use href="/portal/icons.svg#signal-power" /></svg
+        ><span
+          ><strong id="remotePowerActionTitle">Yes, put both in standby</strong
+          ><small id="remotePowerActionHint"
+            >MabelTV and the connected television</small
+          ></span
+        ></button
+      ><button
+        id="mabelOnlyRemotePower"
+        type="button"
+        class="remote-power-confirm remote-power-mabel-only"
+      >
+        <svg class="icon"><use href="/portal/icons.svg#signal-radio" /></svg
+        ><span
+          ><strong id="mabelOnlyPowerActionTitle">No, MabelTV only</strong
+          ><small id="mabelOnlyPowerActionHint"
+            >Leave the connected television as it is</small
+          ></span
+        ></button
+      ><button id="cancelRemotePower" type="button" class="secondary">
+        Cancel
+      </button>
+    </div>
+  </section>
+</dialog>

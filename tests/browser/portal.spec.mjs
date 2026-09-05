@@ -140,3 +140,81 @@ test('PIN gate never reveals the application shell before authentication', async
   await expect(page.getByRole('heading', { name: 'Nothing playing' })).toBeVisible()
   await page.request.get('/__fixture/pin-required?value=0')
 })
+
+
+test('shared portal component contracts stay canonical', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'iphone-webkit', 'One engine is enough for DOM contracts')
+  await openPortal(page)
+
+  const contract = await page.evaluate(() => {
+    const searches = [...document.querySelectorAll('.portal-search')]
+    const searchStyles = searches.map(element => {
+      const style = getComputedStyle(element)
+      return {
+        display: style.display,
+        minHeight: style.minHeight,
+        radius: style.borderRadius,
+      }
+    })
+    const icon = window.MabelPortalUI.icon('signal-play')
+    const empty = window.MabelPortalUI.emptyState({
+      className: 'watch-empty',
+      title: 'Empty title',
+      message: 'Empty message',
+      messageTag: 'span',
+    })
+    const button = window.MabelPortalUI.button({ text: 'Action' })
+    const dialog = document.createElement('dialog')
+    document.body.append(dialog)
+    window.MabelPortalUI.dialogs.open(dialog, { lockScroll: false })
+    const unlockedOverflow = document.documentElement.style.overflow
+    window.MabelPortalUI.dialogs.dismiss(dialog)
+    window.MabelPortalUI.dialogs.open(dialog)
+    const lockedOverflow = document.documentElement.style.overflow
+    window.MabelPortalUI.dialogs.dismiss(dialog)
+    const restoredOverflow = document.documentElement.style.overflow
+    dialog.remove()
+    return {
+      searchCount: searches.length,
+      searchStyles,
+      iconClass: icon.getAttribute('class'),
+      iconHref: icon.querySelector('use')?.getAttribute('href'),
+      emptyMarkup: empty.innerHTML,
+      buttonType: button.type,
+      buttonHasClass: button.hasAttribute('class'),
+      unlockedOverflow,
+      lockedOverflow,
+      restoredOverflow,
+    }
+  })
+
+  expect(contract.searchCount).toBe(4)
+  contract.searchStyles.forEach(style => expect(style).toMatchObject({
+      display: 'grid',
+      minHeight: '48px',
+      radius: '8px',
+    }))
+  expect(contract.iconClass).toBe('icon')
+  expect(contract.iconHref).toBe('/portal/icons.svg#signal-play')
+  expect(contract.emptyMarkup).toBe('<strong>Empty title</strong><span>Empty message</span>')
+  expect(contract.buttonType).toBe('button')
+  expect(contract.buttonHasClass).toBe(false)
+  expect(contract.unlockedOverflow).toBe('')
+  expect(contract.lockedOverflow).toBe('hidden')
+  expect(contract.restoredOverflow).toBe('')
+})
+
+
+test('preserved Classic presentation still boots with the shared scripts', async ({ page, context }, testInfo) => {
+  test.skip(testInfo.project.name !== 'iphone-chromium', 'Compatibility smoke test')
+  await context.addCookies([{
+    name: 'mabeltv_portal_design',
+    value: 'classic',
+    domain: '127.0.0.1',
+    path: '/',
+  }])
+  await page.goto('/')
+  await expect(page.locator('body.portal-classic')).toBeVisible()
+  await expect(page.locator('.app-shell')).toBeVisible()
+  await expect(page.getByRole('button', { name: /Home/ }).first()).toBeVisible()
+})

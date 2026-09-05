@@ -1,0 +1,55 @@
+<dialog id="adultTitleSheet" class="watch-film-sheet adult-title-sheet">
+  <article class="watch-film-panel">
+    <div class="dialog-close-bar"><button id="adultTitleClose" type="button" class="portal-sheet-close watch-film-close dialog-close" aria-label="Close title details"></button></div>
+    <div id="adultTitleBackdrop" class="watch-film-backdrop"></div>
+    <div class="watch-film-body">
+      <div class="watch-film-summary"><div id="adultTitlePoster" class="watch-film-poster"></div><div class="watch-film-heading"><p id="adultTitleEyebrow" class="watch-film-eyebrow">Adult TV</p><h2 id="adultTitleName">Title</h2><div id="adultTitleMeta" class="watch-film-meta"></div></div></div>
+      <p id="adultTitleOverview" class="watch-film-overview"></p>
+      <section id="adultTitleSeriesLibrary" class="adult-title-series-library hidden" aria-labelledby="adultTitleSeriesHeading"><button id="adultTitleNextEpisode" type="button" class="adult-next-episode hidden"><svg class="icon"><use href="/portal/icons.svg#signal-play" /></svg><span><small>Next episode</small><strong>Continue this series</strong></span><svg class="icon adult-next-chevron"><use href="/portal/icons.svg#signal-chevron-right" /></svg></button><header class="adult-series-library-head"><div><p class="section-kicker">Series library</p><h3 id="adultTitleSeriesHeading">Choose a series</h3></div><span id="adultTitleSeasonCount"></span></header><div id="adultTitleSeasons" class="adult-series-seasons"></div></section>
+      <div id="adultTitleLocal" class="adult-title-local hidden"><span id="adultTitleLocalCopy"></span><button id="adultTitleManageLocal" type="button" class="hidden">Manage MabelTV episodes</button></div>
+      <div class="adult-intent-actions"><button id="adultTitleWatchlist" type="button"><svg class="icon"><use href="/portal/icons.svg#signal-plus"/></svg><span><strong>Add to Watchlist</strong><small>Keep unseen titles saved for later</small></span></button><button id="adultTitleRewatch" type="button"><svg class="icon"><use href="/portal/icons.svg#signal-restart"/></svg><span><strong>Add to Rewatch</strong><small>Save a favourite you have already seen</small></span></button><button id="adultTitleUpNext" type="button"><svg class="icon"><use href="/portal/icons.svg#signal-list-filter"/></svg><span><strong>Add to Up Next</strong><small>Place it in your ordered queue</small></span></button><button id="adultTitleWatching" type="button" class="adult-series-only-action"><svg class="icon"><use href="/portal/icons.svg#signal-eye"/></svg><span><strong>Start watching series</strong><small>Keep its next episode in Up Next</small></span></button><button id="adultTitleWatched" type="button"><svg class="icon"><use href="/portal/icons.svg#signal-check"/></svg><span><strong>Mark watched</strong><small>Move it into your watched history</small></span></button></div>
+      <section class="adult-provider-section"><header><div><p class="watch-section-kicker">Available in Great Britain</p><h3>Where to watch</h3></div><button id="adultProviderRefresh" type="button">Refresh</button></header><div id="adultProviderList" class="adult-provider-list"><p>Checking services…</p></div><p class="provider-attribution">Availability by TMDB and JustWatch. Direct destinations by Watchmode.</p></section>
+    </div>
+  </article>
+</dialog>
+
+<dialog id="adultTitleSeasonSheet" class="library-sheet adult-season-sheet adult-streaming-season-sheet">
+  <section class="library-sheet-panel wide">
+    <span class="library-sheet-handle" aria-hidden="true"></span>
+    <header class="adult-season-sheet-head">
+      <span id="adultTitleSeasonArtwork" class="adult-season-sheet-art"></span>
+      <div>
+        <p id="adultTitleSeasonEyebrow" class="section-kicker">Streaming TV series</p>
+        <h2 id="adultTitleSeasonName">Series 1</h2>
+        <p id="adultTitleSeasonMeta"></p>
+      </div>
+      <button id="adultTitleSeasonClose" type="button" class="portal-sheet-close library-sheet-close" aria-label="Close streaming series">×</button>
+    </header>
+    <div class="library-sheet-body">
+      <p id="adultTitleSeasonOverview" class="adult-series-overview hidden"></p>
+      <div class="adult-season-episode-head">
+        <div><p class="section-kicker">Episodes</p><h3 id="adultTitleSeasonEpisodeHeading">Everything in this series</h3></div>
+        <span id="adultTitleSeasonEpisodeCount"></span>
+      </div>
+      <button id="adultTitleSeasonWatched" type="button" class="adult-season-bulk-action"></button>
+      <div id="adultTitleSeasonEpisodes" class="adult-series-episodes"></div>
+    </div>
+  </section>
+</dialog>
+
+<dialog id="adultNetflixLaunchSheet" class="library-sheet adult-netflix-launch-sheet">
+  <section class="library-sheet-panel">
+    <span class="library-sheet-handle" aria-hidden="true"></span>
+    <header class="library-sheet-head"><div><p class="section-kicker">Netflix</p><h2 id="adultNetflixLaunchTitle">Where would you like to play it?</h2><p id="adultNetflixLaunchCopy">Choose this device or the connected TV.</p></div><button id="adultNetflixLaunchClose" type="button" class="portal-sheet-close library-sheet-close" aria-label="Close Netflix choices">×</button></header>
+    <div class="library-sheet-body adult-netflix-launch-actions"><button id="adultNetflixLaunchDevice" type="button" class="remote-power-confirm remote-power-mabel-only"><svg class="icon"><use href="/portal/icons.svg#signal-smartphone" /></svg><span><strong>Play on this device</strong><small>Open Netflix here</small></span></button><button id="adultNetflixLaunchTv" type="button" class="remote-power-confirm remote-power-mabel-only"><svg class="icon"><use href="/portal/icons.svg#signal-tv" /></svg><span><strong>Play on TV</strong><small>Open Netflix on the connected television</small></span></button></div>
+    <p id="adultNetflixLaunchStatus" class="adult-netflix-launch-status" aria-live="polite"></p>
+  </section>
+</dialog>
+
+<dialog id="adultEpisodeLaunchSheet" class="library-sheet adult-episode-launch-sheet">
+  <section class="library-sheet-panel">
+    <span class="library-sheet-handle" aria-hidden="true"></span>
+    <header class="library-sheet-head"><div><p id="adultEpisodeLaunchEyebrow" class="section-kicker">Choose where to watch</p><h2 id="adultEpisodeLaunchTitle">Open this episode</h2><p id="adultEpisodeLaunchCopy">Choose an available streaming service.</p></div><button id="adultEpisodeLaunchClose" type="button" class="portal-sheet-close library-sheet-close" aria-label="Close streaming choices">×</button></header>
+    <div class="library-sheet-body"><div id="adultEpisodeProviderList" class="adult-provider-list"><p>Checking streaming destinations…</p></div><p class="provider-attribution">The service may open the series page rather than this exact episode.</p></div>
+  </section>
+</dialog>

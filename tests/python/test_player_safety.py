@@ -8,8 +8,8 @@ PORTAL_HTML = (PROJECT_ROOT / "scripts" / "pi" / "mabeltv-library.html").read_te
     encoding="utf-8"
 )
 PORTAL_SCRIPT = "\n".join(
-    (PORTAL_ROOT / "js" / name).read_text(encoding="utf-8")
-    for name in ("core.js", "library.js", "playback.js", "actions.js")
+    path.read_text(encoding="utf-8")
+    for path in sorted((PORTAL_ROOT / "js").rglob("*.js"))
 )
 PORTAL_PARTIALS = "\n".join(
     path.read_text(encoding="utf-8")
@@ -457,8 +457,9 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn('QStringLiteral("position")).toDouble(0.0)', application)
 
     def test_viewing_insights_treats_stored_source_names_as_text(self) -> None:
-        library_script = (PORTAL_ROOT / "js" / "library.js").read_text(
-            encoding="utf-8"
+        library_script = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in sorted((PORTAL_ROOT / "js" / "library").glob("*.js"))
         )
 
         self.assertNotIn("${item.source}</small>", library_script)

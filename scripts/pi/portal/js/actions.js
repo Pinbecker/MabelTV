@@ -60,22 +60,17 @@ let managementBusy = false
     $('#watchNewChannel').onclick = showAddChannelSheet
     $('#openRecycleBin').onclick = () => openLibrarySheet($('#recycleSheet'))
     $('#watchRecycleBin').onclick = () => $('#openRecycleBin').click()
-    $('#closeAddChannel').onclick = () => closeLibrarySheet($('#addChannelPanel'))
     $('#cancelAddChannel').onclick = () => closeLibrarySheet($('#addChannelPanel'))
-    $('#closeRecycleBin').onclick = () => closeLibrarySheet($('#recycleSheet'))
-    $('#closeChannelUpload').onclick = () => closeLibrarySheet($('#channelUploadPanel'))
-    $('#closeChannelSettings').onclick = () => closeLibrarySheet($('#channelSettingsSheet'))
-    $('#watchProgrammeMoveClose').onclick = () => closeLibrarySheet($('#watchProgrammeMoveSheet'))
-    ;[$('#addChannelPanel'), $('#recycleSheet'), $('#channelUploadPanel'), $('#channelSettingsSheet'), $('#watchProgrammeMoveSheet')].forEach(dialog => {
-      dialog.onclick = event => { if (event.target === dialog) closeLibrarySheet(dialog) }
-      dialog.oncancel = event => {
-        event.preventDefault()
-        closeLibrarySheet(dialog)
-      }
-      dialog.onclose = () => {
-        document.documentElement.style.overflow = ''
-      }
-    })
+    ;[
+      [$('#addChannelPanel'), $('#closeAddChannel')],
+      [$('#recycleSheet'), $('#closeRecycleBin')],
+      [$('#channelUploadPanel'), $('#closeChannelUpload')],
+      [$('#channelSettingsSheet'), $('#closeChannelSettings')],
+      [$('#watchProgrammeMoveSheet'), $('#watchProgrammeMoveClose')],
+    ].forEach(([dialog, closeButton]) => portalSheets.wire(dialog, {
+      closeButton,
+      close: () => closeLibrarySheet(dialog),
+    }))
     $('#programmeSearch').oninput = event => {
       programmeSearch = event.target.value
       programmePage = 1
@@ -571,13 +566,15 @@ let managementBusy = false
     async function tuneLiveChannel(channel, button) {
       if (!Number.isInteger(channel)) return
       await sendLiveCommand('tune-channel', button, { channel })
-      $('#liveChannelSheet').close()
+      portalSheets.dismiss($('#liveChannelSheet'))
       setRemoteFeedback(`Opening channel ${channel}`, 'success')
     }
 
     $$('[data-live-command]').forEach(button => button.onclick = () => sendLiveCommand(button.dataset.liveCommand, button))
-    $('#openLiveChannels').onclick = () => { renderLiveChannelOptions(); $('#liveChannelSheet').showModal() }
-    $('#closeLiveChannels').onclick = () => $('#liveChannelSheet').close()
+    $('#openLiveChannels').onclick = () => {
+      renderLiveChannelOptions()
+      portalSheets.open($('#liveChannelSheet'), { lockScroll: false })
+    }
     function connectedTvAlreadyAtTarget(state, turningOn) {
       const power = String(state?.connected_tv_power || '').trim().toLocaleLowerCase()
       return turningOn
@@ -599,7 +596,7 @@ let managementBusy = false
         return
       }
       const dialog = $('#remotePowerSheet')
-      if (!dialog.open) dialog.showModal()
+      portalSheets.open(dialog, { lockScroll: false })
     }
 
     async function applyPortalPower(includeConnectedTv, button) {
@@ -608,7 +605,7 @@ let managementBusy = false
         ? (includeConnectedTv ? 'turn-on' : 'turn-on-mabel-only')
         : (includeConnectedTv ? 'turn-off' : 'turn-off-mabel-only')
       const dialog = $('#remotePowerSheet')
-      if (dialog.open) dialog.close()
+      portalSheets.dismiss(dialog)
       if (await sendLiveCommand(command, button)) {
         notice(turningOn
           ? (includeConnectedTv
@@ -621,11 +618,15 @@ let managementBusy = false
     }
 
     $('#openRemotePower').onclick = openPortalPowerSheet
-    $('#closeRemotePower').onclick = $('#cancelRemotePower').onclick = () => $('#remotePowerSheet').close()
     $('#confirmRemotePower').onclick = () => applyPortalPower(true, $('#confirmRemotePower'))
     $('#mabelOnlyRemotePower').onclick = () => applyPortalPower(false, $('#mabelOnlyRemotePower'))
-    ;[$('#liveChannelSheet'), $('#remotePowerSheet')].forEach(dialog => dialog.onclick = event => {
-      if (event.target === dialog) dialog.close()
+    portalSheets.wire($('#liveChannelSheet'), {
+      closeButton: $('#closeLiveChannels'),
+      close: () => portalSheets.dismiss($('#liveChannelSheet')),
+    })
+    portalSheets.wire($('#remotePowerSheet'), {
+      closeButton: [$('#closeRemotePower'), $('#cancelRemotePower')],
+      close: () => portalSheets.dismiss($('#remotePowerSheet')),
     })
     const enterAdultMode = $('#enterAdultMode')
     if (enterAdultMode) enterAdultMode.onclick = async () => {

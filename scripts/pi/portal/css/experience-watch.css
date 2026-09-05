@@ -110,50 +110,6 @@ body.portal-v2 .watch-discovery {
   margin-bottom: 16px;
 }
 
-body.portal-v2 .watch-search,
-body.portal-v2 .adult-search {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  min-height: 48px;
-  border: 1px solid var(--experience-line);
-  border-radius: 8px;
-  background: var(--experience-raised);
-  color: var(--experience-dim);
-  padding: 0 13px;
-}
-
-body.portal-v2 .watch-search input,
-body.portal-v2 .adult-search input {
-  min-height: 46px;
-  margin: 0;
-  border: 0;
-  background: transparent;
-  padding: 0;
-}
-
-body.portal-v2 .watch-search:focus-within,
-body.portal-v2 .adult-search:focus-within {
-  border-color: var(--experience-orange);
-  box-shadow: 0 0 0 3px rgba(255, 122, 26, 0.32);
-}
-
-body.portal-v2 .watch-search input:focus-visible,
-body.portal-v2 .adult-search input:focus-visible {
-  outline: 0;
-  box-shadow: none;
-}
-
-body.portal-v2 .watch-search button,
-body.portal-v2 .adult-search button {
-  min-width: 30px;
-  min-height: 30px;
-  border-radius: 50%;
-  background: var(--experience-soft);
-  color: var(--experience-muted);
-}
-
 body.portal-v2 .watch-tool,
 body.portal-v2 .adult-tool {
   display: grid;
