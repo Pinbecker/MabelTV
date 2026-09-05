@@ -97,28 +97,28 @@
 
     function connectedTvDisplayState(state) {
       if (state?.connected_tv_available === false) {
-        return { label: 'Unavailable', sentence: 'status unavailable', className: 'is-unknown' }
+        return MabelPortalUI.powerStatus('unavailable', { sentence: 'status unavailable' })
       }
       const power = String(state?.connected_tv_power || '').trim().toLocaleLowerCase()
-      if (power === 'on') return { label: 'On', sentence: 'on', className: 'is-on' }
-      if (power === 'standby') return { label: 'Standby', sentence: 'in standby', className: 'is-standby' }
+      if (power === 'on') return MabelPortalUI.powerStatus('on')
+      if (power === 'standby') return MabelPortalUI.powerStatus('standby')
       if (power.includes('standby to on')) {
-        return { label: 'Turning on', sentence: 'turning on', className: 'is-changing' }
+        return MabelPortalUI.powerStatus('turning-on')
       }
       if (power.includes('on to standby')) {
-        return { label: 'Going to standby', sentence: 'going to standby', className: 'is-changing' }
+        return MabelPortalUI.powerStatus('going-standby')
       }
-      return { label: 'Checking…', sentence: 'being checked', className: 'is-unknown' }
+      return MabelPortalUI.powerStatus('unknown')
     }
 
     function mabelTvDisplayState(state) {
       if (state?.standby === true) {
-        return { label: 'Standby', sentence: 'in standby', className: 'is-standby' }
+        return MabelPortalUI.powerStatus('standby')
       }
       if (state?.standby === false || state?.available === true) {
-        return { label: 'On', sentence: 'on', className: 'is-on' }
+        return MabelPortalUI.powerStatus('on')
       }
-      return { label: 'Unavailable', sentence: 'unavailable', className: 'is-unknown' }
+      return MabelPortalUI.powerStatus('unavailable')
     }
 
     function renderRemoteState(state) {
@@ -232,13 +232,11 @@
       const connectedTv = connectedTvDisplayState(state)
       $('#homePowerState').textContent = mabelTv.label
       const mabelState = $('#homeMabelTvState')
-      if (mabelState) mabelState.textContent = mabelTv.label
       const mabelDot = $('#homeMabelTvDot')
-      if (mabelDot) mabelDot.className = `home-power-dot ${mabelTv.className}`
+      MabelPortalUI.setPowerStatus(mabelDot, mabelState, mabelTv)
       const connectedState = $('#homeConnectedTvState')
-      if (connectedState) connectedState.textContent = connectedTv.label
       const connectedDot = $('#homeConnectedTvDot')
-      if (connectedDot) connectedDot.className = `home-power-dot ${connectedTv.className}`
+      MabelPortalUI.setPowerStatus(connectedDot, connectedState, connectedTv)
       $('#homePowerToggle').textContent = standby ? 'Turn On' : 'Turn Off'
       const nowPlayingMeta = $('#homeNowPlayingMeta')
       if (standby) {

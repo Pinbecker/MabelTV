@@ -67,7 +67,9 @@ merely because that file already has access to the needed state.
    suite for any portal, PWA, API-shape or shared-component change.
 6. QML, C++, launcher, hardware or packaging work must be built and tested on
    the Pi before the short atomic install. Portal-only work uses the targeted
-   portal deployment and must not trigger a native rebuild.
+   `scripts/windows/deploy-portal-to-pi.ps1` path and must not trigger a native
+   rebuild. Do not replace its validation, backup, hash and health checks with
+   an ad hoc copy unless that script cannot represent the approved change.
 7. Deployment requires explicit user authorization. Capture the current release
    and service restart counts first; verify the selected release, services,
    restart counts, watchdog, HTTP and thermal/throttle state afterward.

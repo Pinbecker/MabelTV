@@ -64,7 +64,19 @@ confirmed on the physical television because a hosted runner cannot reproduce
 that hardware.
 
 Portal-only changes use the narrower portal checks and deployment path. They do
-not justify rebuilding the native television application.
+not justify rebuilding the native television application. Once deployment has
+been explicitly approved, the standard fast path is:
+
+```powershell
+.\scripts\windows\deploy-portal-to-pi.ps1
+```
+
+The command refuses mixed native changes, deleted live assets, unreviewed
+snapshot updates and shell changes without a service-worker cache revision. It
+runs the architecture and complete browser gates, takes a targeted rollback
+backup, copies only changed runtime files, restarts only the Library service,
+then checks hashes, HTTP, services, restart counters, watchdog and Pi thermal
+state. `-PlanOnly` shows the exact files without testing, copying or restarting.
 
 ## Customer release qualification
 

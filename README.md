@@ -94,10 +94,17 @@ For your own Pi only, deploy saved local changes quickly (not a releasable insta
 .\scripts\windows\deploy-dev-to-pi.ps1
 ```
 
-It needs the laptop and Pi on the same home network. C++/QML changes use an
-incremental Pi build; Library page/Python changes restart only the Library
-service. Use the qualified release bundle and SD-image processes for anything
-you intend to keep, share, or sell.
+For portal-only HTML, CSS and JavaScript work, use the narrower guarded command:
+
+```powershell
+.\scripts\windows\deploy-portal-to-pi.ps1
+```
+
+Both commands need the laptop and Pi on the same home network. The portal-only
+path validates and backs up only the changed portal files and never touches the
+native player. C++/QML changes use the broader developer command and an
+incremental Pi build. Use the qualified release bundle and SD-image processes
+for anything you intend to keep, share, or sell.
 
 Generate synthetic, non-copyrighted development media and launch:
 

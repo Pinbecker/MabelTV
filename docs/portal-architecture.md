@@ -117,6 +117,10 @@ Classic intentionally omits Experience-only Adult-viewing and LG-remote scripts.
   icon, label, class, accessible name, disabled state, and click handler.
 - `emptyState(options)` creates the canonical empty-state structure without
   interpolating untrusted text into HTML.
+- `powerStatus(kind, overrides)` owns the canonical power labels, explanatory
+  wording and state classes for On, Standby, transitions and unavailable state.
+- `setPowerStatus(indicator, label, status)` applies that contract to an
+  existing status dot and label without replacing their public IDs.
 - `dialogs.open`, `dialogs.close`, `dialogs.dismiss`, and `dialogs.wire` own the
   common modal lifecycle, optional document scroll lock, backdrop/cancel
   behaviour, and focus restoration. `wire` accepts one close button or a list.
@@ -154,7 +158,12 @@ npm test
 The browser suite covers the 393 x 852 installed-iPhone contract first, with
 iPad WebKit and iPhone Chromium providing additional layout and compatibility
 coverage. A portal-only checkpoint is deployed without rebuilding the native
-QML/C++ television application.
+QML/C++ television application. After explicit deployment approval, use
+`scripts/windows/deploy-portal-to-pi.ps1`; it selects only saved portal changes,
+requires a PWA cache revision, runs the architecture and browser gates, backs
+up the live targets, verifies hashes and Pi health, and rolls back a failed
+handoff. It never builds or restarts the native player and never commits or
+pushes.
 
 The server-side boundary behind these assets is documented separately in
 [library-service-architecture.md](library-service-architecture.md).

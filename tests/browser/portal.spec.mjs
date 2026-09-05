@@ -213,6 +213,12 @@ test('shared portal component contracts stay canonical', async ({ page }, testIn
       messageTag: 'span',
     })
     const button = window.MabelPortalUI.button({ text: 'Action' })
+    const powerIndicator = document.createElement('i')
+    const powerLabel = document.createElement('strong')
+    const standbyStatus = window.MabelPortalUI.setPowerStatus(
+      powerIndicator, powerLabel, 'standby')
+    const unavailableStatus = window.MabelPortalUI.powerStatus(
+      'unavailable', { sentence: 'status unavailable' })
     const dialog = document.createElement('dialog')
     document.body.append(dialog)
     window.MabelPortalUI.dialogs.open(dialog, { lockScroll: false })
@@ -231,6 +237,10 @@ test('shared portal component contracts stay canonical', async ({ page }, testIn
       emptyMarkup: empty.innerHTML,
       buttonType: button.type,
       buttonHasClass: button.hasAttribute('class'),
+      powerClass: powerIndicator.className,
+      powerLabel: powerLabel.textContent,
+      standbySentence: standbyStatus.sentence,
+      unavailableSentence: unavailableStatus.sentence,
       unlockedOverflow,
       lockedOverflow,
       restoredOverflow,
@@ -248,6 +258,10 @@ test('shared portal component contracts stay canonical', async ({ page }, testIn
   expect(contract.emptyMarkup).toBe('<strong>Empty title</strong><span>Empty message</span>')
   expect(contract.buttonType).toBe('button')
   expect(contract.buttonHasClass).toBe(false)
+  expect(contract.powerClass).toBe('portal-power-status-dot is-standby')
+  expect(contract.powerLabel).toBe('Standby')
+  expect(contract.standbySentence).toBe('in standby')
+  expect(contract.unavailableSentence).toBe('status unavailable')
   expect(contract.unlockedOverflow).toBe('')
   expect(contract.lockedOverflow).toBe('hidden')
   expect(contract.restoredOverflow).toBe('')
@@ -303,10 +317,17 @@ test('Experience icon controls and sheet headers keep their mobile contracts', a
 test('MabelTV remote offers a contextual borderless Adult TV handoff', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone remote contract')
   await openPortal(page)
-  await page.getByRole('button', { name: 'Remote', exact: true }).click()
-  await page.evaluate(() => {
-    clearInterval(liveRefreshTimer)
-    liveRefreshTimer = null
+  const liveFixture = {
+    available: true, standby: false, adult_mode: false, paused: false,
+    muted: false, volume: 42, remote_locked: false,
+    subtitles_available: false, subtitles_visible: false,
+    widescreen_available: false, widescreen_enabled: false,
+    adult_handoff_available: true, connected_tv_available: true,
+    connected_tv_power: 'on', channel_number: 1,
+    channel_name: 'Family Films', programme: 'Snowy Adventure',
+  }
+  await page.evaluate((fixture) => {
+    stopHomeStatusRefresh()
     window.__sentLiveCommands = []
     window.fetch = async (input, init = {}) => {
       if (String(input).includes('/api/live/control')) {
@@ -315,20 +336,18 @@ test('MabelTV remote offers a contextual borderless Adult TV handoff', async ({ 
           status: 200, headers: { 'Content-Type': 'application/json' },
         })
       }
+      if (String(input).includes('/api/live')) {
+        return new Response(JSON.stringify(fixture), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        })
+      }
       return new Response('{"ok":true}', {
         status: 200, headers: { 'Content-Type': 'application/json' },
       })
     }
-    renderLiveTv({
-      available: true, standby: false, adult_mode: false, paused: false,
-      muted: false, volume: 42, remote_locked: false,
-      subtitles_available: false, subtitles_visible: false,
-      widescreen_available: false, widescreen_enabled: false,
-      adult_handoff_available: true, connected_tv_available: true,
-      connected_tv_power: 'on', channel_number: 1,
-      channel_name: 'Family Films', programme: 'Snowy Adventure',
-    })
-  })
+  }, liveFixture)
+  await page.getByRole('button', { name: 'Remote', exact: true }).click()
+  await page.evaluate((fixture) => renderLiveTv(fixture), liveFixture)
   const handoff = page.locator('#remoteAdultHandoff')
   await expect(handoff).toBeVisible()
   await expect(handoff).toHaveAttribute(

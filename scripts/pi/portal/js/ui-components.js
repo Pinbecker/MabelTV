@@ -5,6 +5,17 @@
   const ICON_SPRITE = '/portal/icons.svg'
   const dialogParents = new WeakMap()
   const dialogScrollLocks = new WeakMap()
+  const powerStatusDefinitions = Object.freeze({
+    on: Object.freeze({ label: 'On', sentence: 'on', className: 'is-on' }),
+    standby: Object.freeze({ label: 'Standby', sentence: 'in standby', className: 'is-standby' }),
+    'turning-on': Object.freeze({ label: 'Turning on', sentence: 'turning on', className: 'is-changing' }),
+    'going-standby': Object.freeze({ label: 'Going to standby', sentence: 'going to standby', className: 'is-changing' }),
+    unavailable: Object.freeze({ label: 'Unavailable', sentence: 'unavailable', className: 'is-unknown' }),
+    unknown: Object.freeze({ label: 'Checking…', sentence: 'being checked', className: 'is-unknown' }),
+  })
+  const powerStatusClasses = Object.freeze([
+    'is-on', 'is-standby', 'is-changing', 'is-unknown',
+  ])
 
   function syncDialogScrollLock() {
     const lockedDialogOpen = [...document.querySelectorAll('dialog[open]')]
@@ -97,6 +108,21 @@
     return control
   }
 
+  function powerStatus(kind = 'unknown', overrides = {}) {
+    return { ...(powerStatusDefinitions[kind] || powerStatusDefinitions.unknown), ...overrides }
+  }
+
+  function setPowerStatus(indicator, label, status) {
+    const resolved = typeof status === 'string' ? powerStatus(status) : status
+    if (label) label.textContent = resolved.label
+    if (indicator) {
+      indicator.classList.add('portal-power-status-dot')
+      indicator.classList.remove(...powerStatusClasses)
+      indicator.classList.add(resolved.className)
+    }
+    return resolved
+  }
+
   function openDialog(dialog, { returnTo = null, focus = null, lockScroll = true } = {}) {
     if (!dialog) return
     if (typeof returnTo === 'function') dialogParents.set(dialog, returnTo)
@@ -149,6 +175,8 @@
     icon,
     button,
     emptyState,
+    powerStatus,
+    setPowerStatus,
     dialogs: Object.freeze({
       open: openDialog,
       close: closeDialog,

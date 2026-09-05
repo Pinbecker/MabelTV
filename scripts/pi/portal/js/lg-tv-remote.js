@@ -71,12 +71,8 @@
         .filter(Boolean).join(' · ')
     }
 
-    mabelText.textContent = mabelOn ? 'On' : 'Standby'
-    mabelLed.classList.toggle('is-on', mabelOn)
-    mabelLed.classList.toggle('is-standby', !mabelOn)
-    connectionText.textContent = on ? 'On' : 'Standby'
-    connectionLed.classList.toggle('is-on', on)
-    connectionLed.classList.toggle('is-standby', !on)
+    MabelPortalUI.setPowerStatus(mabelLed, mabelText, mabelOn ? 'on' : 'standby')
+    MabelPortalUI.setPowerStatus(connectionLed, connectionText, on ? 'on' : 'standby')
     headerButton?.classList.toggle('is-online', on)
     setInteractiveState(on)
 

@@ -133,35 +133,6 @@ body.portal-v2 .home-power-statuses strong {
   font-weight: 800;
 }
 
-body.portal-v2 .home-power-dot {
-  width: 7px;
-  height: 7px;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  background: #39d899;
-  box-shadow: 0 0 0 4px rgba(57, 216, 153, 0.08);
-}
-
-body.portal-v2 .home-power-dot.is-standby {
-  background: #ff5a6e;
-  box-shadow: 0 0 0 4px rgba(255, 90, 110, 0.1);
-}
-
-body.portal-v2 .home-power-dot.is-on {
-  background: #39d899;
-  box-shadow: 0 0 0 4px rgba(57, 216, 153, 0.08);
-}
-
-body.portal-v2 .home-power-dot.is-changing {
-  background: var(--experience-orange);
-  box-shadow: 0 0 0 4px rgba(255, 122, 26, 0.09);
-}
-
-body.portal-v2 .home-power-dot.is-unknown {
-  background: var(--experience-dim);
-  box-shadow: none;
-}
-
 body.portal-v2 .home-spotlight-actions {
   display: flex;
   gap: 10px;
