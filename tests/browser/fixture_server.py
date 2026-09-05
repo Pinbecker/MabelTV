@@ -234,6 +234,14 @@ class FixtureLibrary:
             "temperature_warning": False, "active": False,
         }
 
+    def lg_tv_status(self) -> dict[str, Any]:
+        return {
+            "configured": True, "connected": True, "power": "on",
+            "app": "Live TV", "app_id": "com.webos.app.livetv",
+            "input": "Live TV", "volume": 18, "muted": False,
+            "catalog_known": True, "available_apps": ["netflix"],
+        }
+
     def viewing_insights(self, days: int, timezone_offset: int) -> dict[str, Any]:
         summary = {
             "today_seconds": 0, "week_seconds": 0, "month_seconds": 0,

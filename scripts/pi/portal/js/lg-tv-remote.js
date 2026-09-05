@@ -6,6 +6,7 @@
   let statusTimer = null
   let refreshPromise = null
   let state = { configured: false, connected: false, power: 'off', muted: false }
+  let mabelState = { standby: true }
   const pointerContacts = new Map()
   let pointerQueue = { action: '', dx: 0, dy: 0 }
   let pointerTimer = null
@@ -42,11 +43,16 @@
     })
   }
 
-  function renderStatus(value) {
+  function renderStatus(value, liveValue = mabelState) {
     state = { ...state, ...value }
+    mabelState = { ...mabelState, ...liveValue }
     const on = value.connected === true && value.power === 'on'
+    const mabelOn = mabelState.standby === true
+      ? false : mabelState.standby === false || mabelState.available === true
     const heading = $('#lgTvHeading')
     const detail = $('#lgTvDetail')
+    const mabelText = $('#lgMabelTvText')
+    const mabelLed = $('#lgMabelTvLed')
     const connectionText = $('#lgTvConnectionText')
     const connectionLed = $('#lgTvConnectionLed')
     const headerButton = $('#openLgTvRemote')
@@ -55,20 +61,22 @@
     if (!value.configured) {
       heading.textContent = 'LG TV not configured'
       detail.textContent = 'Connected-TV control needs setting up on MabelTV'
-      connectionText.textContent = 'not configured'
     } else if (!on) {
       heading.textContent = 'TV is off or unavailable'
       detail.textContent = 'Tap Power to wake the connected television'
-      connectionText.textContent = 'offline'
     } else {
       const volume = value.volume == null ? '' : `Volume ${value.volume}`
       heading.textContent = value.input || value.app || 'LG TV ready'
       detail.textContent = [value.input ? 'Input active' : 'LG TV ready', value.muted ? 'Muted' : volume]
         .filter(Boolean).join(' · ')
-      connectionText.textContent = 'ready'
     }
 
-    connectionLed.classList.toggle('is-ready', on)
+    mabelText.textContent = mabelOn ? 'On' : 'Standby'
+    mabelLed.classList.toggle('is-on', mabelOn)
+    mabelLed.classList.toggle('is-standby', !mabelOn)
+    connectionText.textContent = on ? 'On' : 'Standby'
+    connectionLed.classList.toggle('is-on', on)
+    connectionLed.classList.toggle('is-standby', !on)
     headerButton?.classList.toggle('is-online', on)
     setInteractiveState(on)
 
@@ -91,14 +99,15 @@
 
   async function refresh() {
     if (refreshPromise) return refreshPromise
-    refreshPromise = api('/api/lg-tv/status')
-      .then(renderStatus)
-      .catch(() => renderStatus({
+    refreshPromise = Promise.all([
+      api('/api/lg-tv/status').catch(() => ({
         configured: state.configured,
         connected: false,
         power: 'off',
         available_apps: [],
-      }))
+      })),
+      api('/api/live').catch(() => mabelState),
+    ]).then(([value, liveValue]) => renderStatus(value, liveValue))
       .finally(() => { refreshPromise = null })
     return refreshPromise
   }

@@ -226,9 +226,14 @@ body.portal-v2 .lg-status-led {
   box-shadow: 0 0 0 4px rgba(87, 87, 96, .11);
 }
 
-body.portal-v2 .lg-status-led.is-ready {
-  background: #ff496f;
-  box-shadow: 0 0 0 4px rgba(255, 73, 111, .1), 0 0 9px rgba(255, 73, 111, .38);
+body.portal-v2 .lg-status-led.is-on {
+  background: #39d899;
+  box-shadow: 0 0 0 4px rgba(57, 216, 153, .08);
+}
+
+body.portal-v2 .lg-status-led.is-standby {
+  background: #ff5a6e;
+  box-shadow: 0 0 0 4px rgba(255, 90, 110, .1);
 }
 
 body.portal-v2 .lg-card-power {
