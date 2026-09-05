@@ -205,6 +205,44 @@ test('shared portal component contracts stay canonical', async ({ page }, testIn
 })
 
 
+test('Experience icon controls and sheet headers keep their mobile contracts', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'iphone-webkit', 'Primary installed-PWA contract')
+  await openPortal(page)
+
+  const activityRows = page.locator('#settingsActivityGroup + .settings-stack .settings-link-row')
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await expect(activityRows).toHaveCount(2)
+  const rowRadii = await activityRows.evaluateAll(rows => rows.map(row => getComputedStyle(row).borderRadius))
+  expect(rowRadii).toEqual(['0px', '0px'])
+
+  const headerRemote = await geometry(page, '#openLgTvRemote')
+  expect(headerRemote.width).toBeGreaterThanOrEqual(44)
+  expect(headerRemote.height).toBeGreaterThanOrEqual(44)
+  await page.locator('#openLgTvRemote').click()
+  const cardPower = await geometry(page, '#lgCardPower')
+  const quickRefresh = await geometry(page, '.lg-apps-card header button')
+  expect(cardPower.width).toBeGreaterThanOrEqual(44)
+  expect(cardPower.height).toBeGreaterThanOrEqual(44)
+  expect(quickRefresh.width).toBeGreaterThanOrEqual(44)
+  expect(quickRefresh.height).toBeGreaterThanOrEqual(44)
+
+  const stickyClose = await page.evaluate(() => {
+    const dialog = document.querySelector('#adultSeasonSheet')
+    const panel = dialog.querySelector('.library-sheet-panel')
+    const close = dialog.querySelector('.portal-sheet-close')
+    dialog.showModal()
+    const before = close.getBoundingClientRect().top
+    panel.scrollTop = 400
+    const after = close.getBoundingClientRect().top
+    const icon = close.querySelector('use')?.getAttribute('href')
+    dialog.close()
+    return { before, after, icon }
+  })
+  expect(stickyClose.after).toBeCloseTo(stickyClose.before, 0)
+  expect(stickyClose.icon).toBe('/portal/icons.svg#signal-x')
+})
+
+
 test('preserved Classic presentation still boots with the shared scripts', async ({ page, context }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'Compatibility smoke test')
   await context.addCookies([{

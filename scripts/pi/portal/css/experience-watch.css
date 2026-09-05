@@ -271,7 +271,21 @@ body.portal-v2 .watch-continue-copy {
 body.portal-v2 .watch-continue-copy small { color: var(--experience-orange); font-size: 9px; font-weight: 800; text-transform: uppercase; }
 body.portal-v2 .watch-continue-copy strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 body.portal-v2 .watch-continue-copy span { color: rgba(255, 255, 255, 0.68); font-size: 10px; }
-body.portal-v2 .watch-continue-copy i { position: absolute; top: 50%; right: 13px; color: var(--experience-orange); font-size: 13px; transform: translateY(-50%); }
+body.portal-v2 .watch-continue-copy i {
+  position: absolute;
+  top: 50%;
+  right: 13px;
+  width: 20px;
+  height: 20px;
+  overflow: visible;
+  margin: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--experience-orange);
+  transform: translateY(-50%);
+}
+body.portal-v2 .watch-continue-copy i::before { content: none; }
+body.portal-v2 .watch-continue-copy i .icon { width: 20px; height: 20px; }
 
 body.portal-v2 .watch-catalogue { margin-top: 0; }
 
@@ -567,13 +581,18 @@ body.portal-v2 .adult-series-empty { min-width: min(360px, 100%); display: grid;
 body.portal-v2 .adult-series-empty strong { color: var(--experience-ink); }
 
 body.portal-v2 .adult-series-sheet-head {
-  position: relative;
+  position: sticky;
+  z-index: 4;
+  top: 0;
   display: grid;
   grid-template-columns: 76px minmax(0, 1fr);
   align-items: center;
   gap: 14px;
   border-bottom: 1px solid var(--experience-line);
-  padding: 16px 58px 16px 18px;
+  background: rgba(14, 14, 19, .94);
+  -webkit-backdrop-filter: blur(20px) saturate(130%);
+  backdrop-filter: blur(20px) saturate(130%);
+  padding: 16px 68px 16px 18px;
 }
 body.portal-v2 .adult-series-sheet-head h2 { margin: 2px 0 3px; font-size: 28px; letter-spacing: -.04em; }
 body.portal-v2 .adult-series-sheet-head p:last-child { margin: 0; color: var(--experience-dim); font-size: 10px; }
@@ -675,13 +694,18 @@ body.portal-v2 .adult-season-add-card > span { display: grid; gap: 3px; }
 body.portal-v2 .adult-season-add-card strong { font-size: 14px; }
 body.portal-v2 .adult-season-add-card small { color: var(--experience-dim); font-size: 9px; }
 body.portal-v2 .adult-season-sheet-head {
-  position: relative;
+  position: sticky;
+  z-index: 4;
+  top: 0;
   display: grid;
   grid-template-columns: 112px minmax(0, 1fr);
   align-items: center;
   gap: 12px;
   border-bottom: 1px solid var(--experience-line);
-  padding: 15px 58px 15px 18px;
+  background: rgba(14, 14, 19, .94);
+  -webkit-backdrop-filter: blur(20px) saturate(130%);
+  backdrop-filter: blur(20px) saturate(130%);
+  padding: 15px 68px 15px 18px;
 }
 body.portal-v2 .adult-season-sheet-art { width: 112px; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 9px; background: var(--experience-elevated); }
 body.portal-v2 .adult-season-sheet-artwork,

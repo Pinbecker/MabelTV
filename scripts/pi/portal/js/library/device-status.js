@@ -130,7 +130,9 @@
       const warningCount = warnings.length || 1
       $('#topHealth').textContent = system.healthy ? 'Everything looks good' : `${warningCount} item${warningCount === 1 ? '' : 's'} need attention`
       $('#topHealth').classList.toggle('bad', !system.healthy)
-      $('#homeStatusIcon').textContent = system.healthy ? '✓' : '!'
+      if (document.body.classList.contains('portal-experience')) {
+        $('#homeStatusIcon').replaceChildren(portalIcon(system.healthy ? 'signal-check' : 'signal-triangle-alert'))
+      } else $('#homeStatusIcon').textContent = system.healthy ? '✓' : '!'
       $('#homeStatusIcon').classList.toggle('warn', !system.healthy)
       $('#healthTitle').textContent = system.healthy ? 'Everything looks good' : `${tvName()} needs a little attention`
       $('#healthSummary').textContent = system.healthy ? 'The player, temperature, power, and storage checks are all healthy.' : (warnings[0] || 'Check the system details below.')
@@ -272,4 +274,3 @@
     })
 
     window.setInterval(() => loadActivity().catch(() => {}), 5000)
-

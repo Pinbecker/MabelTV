@@ -17,7 +17,7 @@
           .map(programme => `<span>${escapeHtml(programme.display_name)}</span>`).join('')
         const remainder = Math.max(0, total - previewLimit)
         const preview = total
-          ? `${previews}${remainder ? `<span class="more">＋ ${remainder} more</span>` : ''}`
+          ? `${previews}${remainder ? `<span class="more"><svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-plus"/></svg>${remainder} more</span>` : ''}`
           : '<span class="muted">Ready for its first programme</span>'
         return `<button type="button" class="channel-card overview-channel-card ${channel.enabled ? '' : 'hidden-channel'}" data-open-channel="${channel.number}" data-open-channel-folder="${escapeHtml(channel.folder)}" aria-label="Manage channel ${channel.number}, ${escapeHtml(channel.name)}">
           <span class="channel-card-top"><span class="channel-number">CH ${channel.number}</span><span class="channel-status">${channel.enabled ? 'On TV' : 'Hidden'}</span></span>

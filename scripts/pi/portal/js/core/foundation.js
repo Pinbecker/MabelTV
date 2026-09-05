@@ -6,6 +6,7 @@ const $ = selector => document.querySelector(selector)
     if (!portalSheets) throw new Error('MabelTV portal UI components are unavailable')
     const portalEmptyState = window.MabelPortalUI.emptyState
     const portalButton = window.MabelPortalUI.button
+    const portalIcon = window.MabelPortalUI.icon
     let library = null
     let selectedManageChannel = null
     let selectedManageChannelFolder = ''

@@ -106,7 +106,8 @@
               const copy = document.createElement('span'); copy.className = 'watch-mabel-copy'
               const title = document.createElement('strong'); title.textContent = programmeMetadata.title || programme.display_name
               const play = document.createElement('small')
-              play.textContent = programme.browser_ready === false ? 'TV or VLC · choose where to play' : 'Choose where to watch  ›'
+              play.textContent = programme.browser_ready === false ? 'TV or VLC · choose where to play' : 'Choose where to watch'
+              if (programme.browser_ready !== false) play.append(portalIcon('signal-chevron-right'))
               copy.append(title, play); card.append(copy)
             }
             card.onclick = () => openWatchProgrammeSheet(channel, programme)

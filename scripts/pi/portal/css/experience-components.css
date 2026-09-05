@@ -154,11 +154,19 @@ body.portal-v2 .portal-search input:focus-visible {
 }
 
 body.portal-v2 .portal-search button {
-  min-width: 30px;
-  min-height: 30px;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
   border-radius: 50%;
   background: var(--experience-soft);
   color: var(--experience-muted);
+}
+
+body.portal-v2 .portal-search button .icon {
+  width: 18px;
+  height: 18px;
 }
 
 @media (prefers-reduced-motion: reduce) {

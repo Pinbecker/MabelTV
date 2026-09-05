@@ -44,7 +44,13 @@ body.portal-experience .library-sheet-panel.wide {
   transform: translateX(calc((720px - min(920px, calc(100vw - 32px))) / 2));
 }
 
-body.portal-experience :is(.library-sheet-head, .remote-sheet-panel > header, .tmdb-dialog-head) {
+body.portal-experience :is(
+  .library-sheet-head,
+  .adult-series-sheet-head,
+  .adult-season-sheet-head,
+  .remote-sheet-panel > header,
+  .tmdb-dialog-head
+) {
   position: sticky;
   z-index: 4;
   top: 0;
@@ -278,11 +284,11 @@ body.portal-experience .portal-sheet-close {
   z-index: 12;
   top: 12px;
   right: 12px;
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  min-height: 32px;
-  flex: 0 0 32px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  flex: 0 0 44px;
   border: 1px solid rgba(255, 122, 26, 0.72);
   border-radius: 50%;
   background: rgba(37, 37, 45, 0.88);
@@ -290,21 +296,14 @@ body.portal-experience .portal-sheet-close {
   font-size: 0;
 }
 
-body.portal-experience .portal-sheet-close::before,
-body.portal-experience .portal-sheet-close::after {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 13px;
-  height: 1.5px;
-  border-radius: 999px;
-  content: "";
-  background: currentColor;
-  transform: translate(-50%, -50%) rotate(45deg);
+body.portal-experience .portal-sheet-close .icon {
+  width: 20px;
+  height: 20px;
 }
 
+body.portal-experience .portal-sheet-close::before,
 body.portal-experience .portal-sheet-close::after {
-  transform: translate(-50%, -50%) rotate(-45deg);
+  content: none;
 }
 
 body.portal-experience .field-grid {

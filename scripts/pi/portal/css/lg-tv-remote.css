@@ -2,10 +2,11 @@ body.portal-v2 .connected-tv-status {
   position: relative;
   display: grid;
   place-items: center;
-  width: 40px;
-  min-width: 40px;
-  height: 40px;
-  min-height: 40px;
+  width: 44px;
+  padding: 0;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
   border: 1px solid rgba(255, 255, 255, .12);
   border-radius: 50%;
   background: linear-gradient(145deg, #1b1a20, #101014);
@@ -235,6 +236,7 @@ body.portal-v2 .lg-card-power {
   place-items: center;
   width: 42px;
   min-width: 42px;
+  padding: 0;
   height: 42px;
   min-height: 42px;
   border: 1px solid rgba(255, 122, 26, .32);
@@ -626,10 +628,11 @@ body.portal-v2 .lg-apps-card header h2 {
 body.portal-v2 .lg-apps-card header button {
   display: grid;
   place-items: center;
-  width: 36px;
-  min-width: 36px;
-  height: 36px;
-  min-height: 36px;
+  width: 44px;
+  min-width: 44px;
+  padding: 0;
+  height: 44px;
+  min-height: 44px;
   border: 1px solid rgba(255, 255, 255, .1);
   border-radius: 50%;
   background: #19191f;
@@ -739,7 +742,7 @@ body.portal-v2 .lg-remote-page .is-sending {
 
 @media (max-width: 430px) {
   body.portal-v2 .lg-status-card {
-    grid-template-columns: 94px minmax(0, 1fr) 38px;
+    grid-template-columns: 94px minmax(0, 1fr) 44px;
     gap: 10px;
     min-height: 128px;
     padding: 12px;
@@ -748,7 +751,7 @@ body.portal-v2 .lg-remote-page .is-sending {
   body.portal-v2 .lg-status-copy h2 { font-size: 17px; }
   body.portal-v2 .lg-status-kicker { font-size: 11px; }
   body.portal-v2 .lg-status-facts { gap: 3px; margin-top: 9px; font-size: 9px; }
-  body.portal-v2 .lg-card-power { width: 38px; min-width: 38px; height: 38px; min-height: 38px; }
+  body.portal-v2 .lg-card-power { width: 44px; min-width: 44px; height: 44px; min-height: 44px; }
   body.portal-v2 .lg-top-actions button { height: 48px; }
   body.portal-v2 .lg-control-card { padding: 8px; }
   body.portal-v2 .lg-dpad { width: 164px; height: 164px; margin-bottom: 6px; }

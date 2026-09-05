@@ -272,7 +272,7 @@
   body.portal-v2 .adult-series-sheet-head {
     grid-template-columns: 62px minmax(0, 1fr);
     gap: 10px;
-    padding: 14px 54px 14px 12px;
+    padding: 14px 66px 14px 12px;
   }
   body.portal-v2 .adult-series-sheet-poster,
   body.portal-v2 .adult-series-sheet-art { width: 62px; }
@@ -282,7 +282,7 @@
   body.portal-v2 .adult-season-sheet-head {
     grid-template-columns: 70px minmax(0, 1fr);
     gap: 8px;
-    padding: 13px 54px 13px 12px;
+    padding: 13px 66px 13px 12px;
   }
   body.portal-v2 .adult-season-sheet-art { width: 70px; }
   body.portal-v2 .adult-season-sheet-head h2 { font-size: 22px; }

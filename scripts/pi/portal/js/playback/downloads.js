@@ -1,5 +1,23 @@
 'use strict'
 
+    function downloadCardHeader(iconName, title, status, statusClass = '') {
+      const head = document.createElement('div')
+      head.className = 'download-card-head'
+      const icon = document.createElement('span')
+      icon.className = 'download-card-icon'
+      icon.append(portalIcon(iconName))
+      const copy = document.createElement('span')
+      copy.className = 'download-card-copy'
+      const heading = document.createElement('strong')
+      heading.textContent = title
+      const detail = document.createElement('small')
+      if (statusClass) detail.className = statusClass
+      detail.textContent = status
+      copy.append(heading, detail)
+      head.append(icon, copy)
+      return head
+    }
+
     async function renderDownloads() {
       const root = $('#downloadsGrid')
       $('#offlineModeBanner').classList.toggle('hidden', navigator.onLine && !offlineMode)
@@ -31,7 +49,12 @@
         const card = document.createElement('article')
         card.className = 'download-card'
         const bad = pending.phase === 'error'
-        card.innerHTML = `<div class="download-card-head"><span class="download-card-icon">↓</span><span class="download-card-copy"><strong>${escapeHtml(pending.title)}</strong><small class="${bad ? 'bad' : 'download-preparing'}">${escapeHtml(pending.message || 'Preparing download…')}</small></span></div>`
+        card.append(downloadCardHeader(
+          'signal-download',
+          pending.title,
+          pending.message || 'Preparing download…',
+          bad ? 'bad' : 'download-preparing',
+        ))
         if (!bad) {
           const progress = document.createElement('progress')
           progress.removeAttribute('value')
@@ -56,7 +79,7 @@
         const status = complete ? `Ready offline · ${window.MabelOffline.formatBytes(manifest.size)}`
           : active ? `Downloading · ${percent}%`
             : `Paused · ${percent}%${manifest.error ? ` · ${manifest.error}` : ''}`
-        card.innerHTML = `<div class="download-card-head"><span class="download-card-icon">${complete ? '▶' : '↓'}</span><span class="download-card-copy"><strong>${escapeHtml(manifest.title)}</strong><small>${escapeHtml(status)}</small></span></div>`
+        card.append(downloadCardHeader(complete ? 'signal-play' : 'signal-download', manifest.title, status))
         if (!complete) {
           const progress = document.createElement('progress'); progress.max = 100; progress.value = percent; card.append(progress)
         }

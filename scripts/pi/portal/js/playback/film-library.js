@@ -238,7 +238,7 @@
       const time = document.createElement('span')
       time.textContent = `${watchTimeLabel(film.remote_position)} watched`
       const play = document.createElement('i')
-      play.textContent = '▶'
+      play.append(portalIcon('signal-play'))
       copy.append(label, title, time, play)
       card.append(art, copy)
       card.onclick = () => openFilmEntry(entry, 'continue')
@@ -292,7 +292,7 @@
       const time = document.createElement('span')
       time.textContent = `${watchTimeLabel(episode.remote_position)} watched`
       const play = document.createElement('i')
-      play.textContent = '▶'
+      play.append(portalIcon('signal-play'))
       copy.append(label, title, time, play)
       card.append(art, copy)
       // Continue Watching is a direct launch surface, not a drill-down into
@@ -313,7 +313,7 @@
       if (entry.film.favourite) {
         const favourite = document.createElement('span')
         favourite.className = 'home-favourite-mark'
-        favourite.textContent = '♥'
+        favourite.append(portalIcon('signal-heart'))
         art.append(favourite)
       }
       const copy = document.createElement('span')
@@ -350,7 +350,7 @@
       }
       const favourite = document.createElement('span')
       favourite.className = 'home-favourite-mark'
-      favourite.textContent = '♥'
+      favourite.append(portalIcon('signal-heart'))
       art.append(favourite)
       const badge = document.createElement('span')
       badge.className = 'home-channel-mark'
@@ -378,7 +378,7 @@
       art.append(adultSeriesArtwork(series))
       const favourite = document.createElement('span')
       favourite.className = 'home-favourite-mark'
-      favourite.textContent = '♥'
+      favourite.append(portalIcon('signal-heart'))
       art.append(favourite)
       const copy = document.createElement('span')
       copy.className = 'home-poster-copy'
@@ -608,4 +608,3 @@
       const dialog = $('#watchFilmSheet')
       portalSheets.open(dialog, { returnTo })
     }
-

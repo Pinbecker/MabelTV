@@ -155,6 +155,8 @@ html[data-experience-theme="light"] body.portal-experience :is(
 
 html[data-experience-theme="light"] body.portal-experience :is(
   .library-sheet-head,
+  .adult-series-sheet-head,
+  .adult-season-sheet-head,
   .watch-sheet-panel > header,
   .remote-sheet-panel > header,
   .tmdb-dialog-head

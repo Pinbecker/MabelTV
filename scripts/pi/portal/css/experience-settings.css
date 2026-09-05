@@ -158,6 +158,16 @@ body.portal-v2 .settings-link-row {
   text-align: left;
 }
 
+body.portal-v2 .settings-stack > .settings-link-row {
+  border: 0;
+  border-bottom: 1px solid var(--experience-line);
+  border-radius: 0;
+}
+
+body.portal-v2 .settings-stack > .settings-link-row:last-child {
+  border-bottom: 0;
+}
+
 body.portal-v2 .settings-link-row > span:nth-child(2) { display: grid; min-width: 0; }
 body.portal-v2 .settings-link-row strong { font-size: 13px; }
 body.portal-v2 .settings-link-row small { overflow: hidden; color: var(--experience-dim); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }

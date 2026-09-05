@@ -22,6 +22,13 @@
     return svg
   }
 
+  function decorateExperienceCloseButtons() {
+    if (!document.body.classList.contains('portal-experience')) return
+    document.querySelectorAll('.portal-sheet-close').forEach(control => {
+      control.replaceChildren(icon('signal-x'))
+    })
+  }
+
   function emptyState({ className = 'empty', title = '', message = '', messageTag = '' } = {}) {
     const root = document.createElement('div')
     root.className = className
@@ -121,4 +128,6 @@
       wire: wireDialog,
     }),
   })
+
+  decorateExperienceCloseButtons()
 })()
