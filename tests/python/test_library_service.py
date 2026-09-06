@@ -164,7 +164,7 @@ class LibraryUnitTests(unittest.TestCase):
             "experience-viewing",
             "experience-settings", "experience-insights", "experience-responsive",
             "experience-overlays", "experience-playback-overlays",
-            "lg-tv-remote", "portal-design-switch", "experience-light",
+            "lg-tv-remote", "experience-light",
         )
         js_paths = (
             "ui-components.js",
@@ -184,7 +184,7 @@ class LibraryUnitTests(unittest.TestCase):
             encoding="utf-8")
         linked_shell_assets = set(re.findall(
             r'(?:href|src)="(/portal/(?:css|js)/[^"?]+)"',
-            html + mabeltv_library.CLASSIC_INDEX,
+            html,
         ))
         for asset in linked_shell_assets:
             self.assertTrue((PROJECT_ROOT / "scripts" / "pi" / asset.lstrip("/")).is_file())
@@ -229,12 +229,9 @@ class LibraryUnitTests(unittest.TestCase):
                          feature_scripts)
         self.assertEqual(html.count('id="iosWatchPlayer"'), 1)
         self.assertEqual(html.count('id="mabelWatchPlayer"'), 1)
-        self.assertEqual(mabeltv_library.CLASSIC_INDEX.count('id="iosWatchPlayer"'), 1)
-        self.assertEqual(mabeltv_library.CLASSIC_INDEX.count('id="mabelWatchPlayer"'), 1)
 
-    def test_portal_uses_experience_by_default_and_one_isolated_classic_system(self) -> None:
+    def test_portal_uses_one_experience_system_with_device_theme_and_accent(self) -> None:
         html = mabeltv_library.INDEX
-        classic = mabeltv_library.CLASSIC_INDEX
         styles = PORTAL_EXPERIENCE_STYLES
         light_styles = (PORTAL_ROOT / "css" / "experience-light.css").read_text(
             encoding="utf-8")
@@ -255,46 +252,42 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn('/portal/css/experience-settings.css', html)
         self.assertIn('/portal/css/experience-responsive.css', html)
         self.assertIn('/portal/css/experience-overlays.css', html)
-        self.assertIn('/portal/css/portal-design-switch.css', html)
         self.assertIn('/portal/css/experience-light.css', html)
         self.assertIn('/portal/js/experience-theme.js', html)
         self.assertNotIn('/portal/css/product-', html)
         self.assertIn('class="portal-v2 portal-experience"', html)
-        self.assertIn('/portal/css/classic-foundation.css', classic)
-        self.assertIn('/portal/css/classic-shell.css', classic)
-        self.assertIn('/portal/css/classic-library.css', classic)
-        self.assertIn('/portal/css/classic-responsive.css', classic)
-        self.assertIn('/portal/css/portal-design-switch.css', classic)
-        self.assertNotIn('/portal/css/experience-', classic)
-        self.assertNotIn('/portal/js/experience-theme.js', classic)
-        self.assertNotIn('/portal/css/product-', classic)
-        self.assertIn('class="portal-v2 portal-classic"', classic)
-        for document in (html, classic):
-            self.assertNotIn('/portal/js/appearance.js', document)
-            self.assertNotIn('/portal/js/component-gallery.js', document)
-            self.assertNotIn('id="view-components"', document)
-            self.assertNotIn('id="portalAppearanceControl"', document)
-            self.assertIn('data-portal-design="experience"', document)
-            self.assertIn('data-portal-design="classic"', document)
+        self.assertNotIn('/portal/js/appearance.js', html)
+        self.assertNotIn('/portal/js/component-gallery.js', html)
+        self.assertNotIn('id="view-components"', html)
+        self.assertNotIn('id="portalAppearanceControl"', html)
+        self.assertNotIn('data-portal-design', html)
+        self.assertFalse(MODULE_PATH.with_name("mabeltv-library-classic.html").exists())
         for retired in ("appearance.js", "component-gallery.js"):
             self.assertFalse((PORTAL_ROOT / "js" / retired).exists())
         self.assertFalse(any((PORTAL_ROOT / "css").glob("component-direction-*.css")))
         self.assertNotIn("'components'", core)
-        self.assertIn("mabeltv_portal_design=${design}", core)
-        self.assertIn("--experience-orange: #ff7a1a", styles)
+        self.assertNotIn("mabeltv_portal_design", core)
+        self.assertIn("--experience-accent-hue: 48", styles)
+        self.assertIn("--experience-orange: var(--experience-accent)", styles)
         self.assertIn("color-scheme: dark", styles)
-        self.assertIn("--experience-orange: #b54800", light_styles)
-        self.assertIn("--experience-orange-hot: #ff7a1a", light_styles)
+        self.assertIn("--experience-orange: var(--experience-accent-ink)", light_styles)
         self.assertIn("color-scheme: light", light_styles)
         self.assertIn('html[data-experience-theme="light"]', light_styles)
         self.assertIn('<meta name="theme-color" content="#0b0a0d">', html)
         self.assertIn('<meta name="apple-mobile-web-app-status-bar-style" content="default">', html)
-        self.assertIn('<meta name="apple-mobile-web-app-status-bar-style" content="default">', classic)
-        self.assertIn('<meta name="theme-color" content="#0b0a0d">', classic)
         self.assertIn('id="experienceThemeToggle"', html)
+        self.assertIn('id="experienceAccentHue"', html)
         self.assertIn('role="switch"', html)
         self.assertIn("mabeltv-experience-theme", theme_script)
         self.assertIn("localStorage.setItem(STORAGE_KEY, theme)", theme_script)
+        self.assertIn("mabeltv-experience-accent-hue", theme_script)
+        self.assertIn("localStorage.setItem(ACCENT_STORAGE_KEY", theme_script)
+        self.assertIn("--accent: var(--experience-orange)", styles)
+        self.assertNotRegex(
+            styles,
+            r"(?i)#(?:ff7a1a|ff8f3a|b54800|b84600)|rgba\(\s*(?:255\s*,\s*122\s*,\s*26|255\s*,\s*116\s*,\s*23)",
+        )
+        self.assertNotIn("#f4f3f1", light_styles)
         self.assertIn("dark: 'default'", theme_script)
         self.assertIn("light: 'default'", theme_script)
         self.assertNotIn("black-translucent", theme_script)
@@ -338,9 +331,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn(".settings-disclosure", styles)
         self.assertNotIn('data-view-button="channels"', html)
         self.assertIn('data-view-button="usb"', html)
-        self.assertIn('data-view-button="usb"', classic)
         self.assertIn('<h1>USB</h1>', html)
-        self.assertNotIn('<strong>Browse USB</strong>', classic)
         self.assertIn('class="library-switch"', html)
         self.assertIn('class="home-spotlight"', html)
         self.assertIn('id="homeSpotlightArt"', html)
@@ -428,7 +419,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("wire: wireDialog", ui_components)
         self.assertIn("body.portal-experience .portal-sheet-close {", styles)
         self.assertIn("body.portal-experience .portal-sheet-title-row {", styles)
-        self.assertIn("border: 1px solid rgba(255, 122, 26, 0.72);", styles)
+        self.assertIn("border: 1px solid color-mix(in srgb, var(--experience-accent) 72%, transparent);", styles)
         self.assertIn("-webkit-line-clamp: 2;", styles)
         self.assertIn("word-break: normal;", styles)
         self.assertIn(".watch-film-heading .portal-sheet-title-row", styles)
@@ -455,21 +446,6 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("openWatchProgrammeMoreSheet(channel, programme, context, parentReturn)", playback)
         self.assertIn("returnTo: () => openAdultEpisodeSheet(current, episode, returnTo)", playback)
         self.assertIn("card.onclick = () => openAdultEpisodeSheet(series, episode)", playback)
-
-    def test_classic_portal_is_preserved_from_the_previous_core_design(self) -> None:
-        classic_root = MODULE_PATH.with_name("mabeltv-library-classic.html")
-        classic = mabeltv_library.CLASSIC_INDEX
-        self.assertTrue(classic_root.is_file())
-        self.assertLess(len(classic_root.read_text(encoding="utf-8")), 5_000)
-        self.assertNotIn("portal-include:", classic)
-        self.assertIn('class="home-intro"', classic)
-        self.assertIn('class="settings-grid"', classic)
-        self.assertIn('class="usb-layout"', classic)
-        self.assertIn('class="library-hero', classic)
-        for name in ("overview", "live", "channels", "adult", "watch", "usb", "system"):
-            self.assertTrue(
-                (PORTAL_ROOT / "html" / "classic" / "views" / f"{name}.html").is_file()
-            )
 
     def test_channel_detail_is_modular_watch_oriented_and_deep_linkable(self) -> None:
         html = mabeltv_library.INDEX
@@ -621,7 +597,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("includeConnectedTv ? 'turn-off' : 'turn-off-mabel-only'", PORTAL_SCRIPT)
         self.assertIn('id="homeConnectedTvState"', PORTAL_SOURCE)
         self.assertIn(".remote-power-confirm.is-wake", experience_overlays)
-        self.assertIn("border-color: rgba(255, 122, 26, .52)", experience_overlays)
+        self.assertIn("border-color: color-mix(in srgb, var(--experience-accent) 52%, transparent)", experience_overlays)
         self.assertIn("body.portal-experience .remote-power-actions {\n  display: grid;\n  gap: 8px;", experience_overlays)
         self.assertIn("const visibleCount = isFilms", channel_script)
         self.assertIn("? filtered.length", channel_script)
@@ -3726,17 +3702,15 @@ class UsbAndMetadataTests(unittest.TestCase):
             encoding="utf-8")
         settings_css = PORTAL_EXPERIENCE_STYLES
         playback_script = PORTAL_PLAYBACK
-        design_switch = (PORTAL_ROOT / "html" / "portal-design-switch.html").read_text(
-            encoding="utf-8")
         self.assertIn("iconName: 'signal-chevron-down'", channel_script)
         self.assertIn("programmePager", channel_script)
         self.assertNotIn('<svg viewBox="0 0 24 24"', channel_script)
         self.assertIn("body.portal-v2 .channel-page-load-more", experience_css)
-        self.assertIn("border: 1px solid rgba(255, 122, 26, .48)", experience_css)
+        self.assertIn("color-mix(in srgb, var(--experience-accent) 48%, transparent)", experience_css)
         self.assertIn("mabelRemotePositionTimer = setInterval(saveMabelRemotePosition, 15000)",
                       playback_script)
-        self.assertNotIn("viewBox=", design_switch)
-        self.assertEqual(design_switch.count("/portal/icons.svg#signal-check"), 2)
+        self.assertIn('id="experienceThemeToggle"', system_view)
+        self.assertIn('id="experienceAccentHue"', system_view)
         self.assertNotIn('id="viewingInsights"', system_view)
         self.assertIn('data-go="insights"', system_view)
         self.assertIn('id="viewingInsights"', insights_view)
@@ -3895,8 +3869,6 @@ class LibraryHttpTests(unittest.TestCase):
                              ("/portal/css/lg-tv-remote.css", b".lg-control-card"),
                              ("/portal/css/experience-light.css", b'data-experience-theme="light"'),
                              ("/portal/js/experience-theme.js", b"mabeltv-experience-theme"),
-                             ("/portal/css/classic-foundation.css", b"--accent: #ff7a1a"),
-                             ("/portal/css/portal-design-switch.css", b".portal-design-option"),
                              ("/portal/assets/providers/bbc-iplayer-app.jpg", b"\xff\xd8\xff"),
                              ("/portal/js/actions.js", b"managementBusy"),
                              ("/portal/js/lg-tv-remote.js", b"POINTER_INTERVAL_MS")):
@@ -3905,7 +3877,7 @@ class LibraryHttpTests(unittest.TestCase):
                 self.assertEqual(response.headers.get("Connection"), "close")
                 self.assertIn(marker, response.read())
 
-    def test_portal_design_cookie_selects_classic_while_experience_is_default(self) -> None:
+    def test_experience_is_the_only_portal_even_with_a_stale_classic_cookie(self) -> None:
         with urllib.request.urlopen(self.base + "/", timeout=5) as response:
             default_html = response.read().decode()
             content_security_policy = response.headers["Content-Security-Policy"]
@@ -3917,10 +3889,10 @@ class LibraryHttpTests(unittest.TestCase):
         request = urllib.request.Request(self.base + "/")
         request.add_header("Cookie", "mabeltv_portal_design=classic")
         with urllib.request.urlopen(request, timeout=5) as response:
-            classic_html = response.read().decode()
-        self.assertIn('class="portal-v2 portal-classic"', classic_html)
-        self.assertIn('/portal/css/classic-foundation.css', classic_html)
-        self.assertNotIn('/portal/css/experience-foundation.css', classic_html)
+            stale_cookie_html = response.read().decode()
+        self.assertIn('class="portal-v2 portal-experience"', stale_cookie_html)
+        self.assertIn('/portal/css/experience-foundation.css', stale_cookie_html)
+        self.assertNotIn('/portal/css/classic-foundation.css', stale_cookie_html)
 
     def test_standalone_watch_page_keeps_its_legacy_inline_script_policy(self) -> None:
         self.request("/api/setup", {

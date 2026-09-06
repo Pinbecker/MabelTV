@@ -109,8 +109,8 @@ body.portal-experience .remote-power-confirm {
 }
 
 body.portal-experience .remote-power-confirm.is-wake {
-  border-color: rgba(255, 122, 26, .52);
-  background: rgba(255, 122, 26, .09);
+  border-color: color-mix(in srgb, var(--experience-accent) 52%, transparent);
+  background: color-mix(in srgb, var(--experience-accent) 9%, transparent);
   color: var(--experience-ink);
 }
 
@@ -182,8 +182,8 @@ body.portal-experience .remote-channel-option {
 }
 
 body.portal-experience .remote-channel-option:is(:hover, .active) {
-  border-color: rgba(255, 122, 26, 0.52);
-  background: rgba(255, 122, 26, 0.09);
+  border-color: color-mix(in srgb, var(--experience-accent) 52%, transparent);
+  background: color-mix(in srgb, var(--experience-accent) 9%, transparent);
   color: var(--experience-ink);
 }
 
@@ -191,7 +191,7 @@ body.portal-experience .remote-channel-number {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: rgba(255, 122, 26, 0.12);
+  background: color-mix(in srgb, var(--experience-accent) 12%, transparent);
   color: var(--experience-orange);
   font-size: 9px;
   font-weight: 800;
@@ -289,7 +289,7 @@ body.portal-experience .portal-sheet-close {
   min-width: 44px;
   min-height: 44px;
   flex: 0 0 44px;
-  border: 1px solid rgba(255, 122, 26, 0.72);
+  border: 1px solid color-mix(in srgb, var(--experience-accent) 72%, transparent);
   border-radius: 50%;
   background: rgba(37, 37, 45, 0.88);
   color: #fff;
@@ -330,7 +330,7 @@ body.portal-experience .channel-metadata-action {
 }
 
 body.portal-experience .channel-metadata-action:hover {
-  border-color: rgba(255, 122, 26, 0.55);
+  border-color: color-mix(in srgb, var(--experience-accent) 55%, transparent);
 }
 
 body.portal-experience .channel-metadata-action:disabled {
@@ -379,8 +379,8 @@ body.portal-experience .channel-setting-action.hidden {
 }
 
 body.portal-experience .channel-setting-action:is(:hover, :focus-visible) {
-  border-color: rgba(255, 122, 26, 0.58);
-  background: rgba(255, 122, 26, 0.08);
+  border-color: color-mix(in srgb, var(--experience-accent) 58%, transparent);
+  background: color-mix(in srgb, var(--experience-accent) 8%, transparent);
 }
 
 body.portal-experience .channel-setting-action:disabled {
@@ -461,8 +461,8 @@ body.portal-experience .channel-setting-field {
 }
 
 body.portal-experience .channel-setting-field:focus-within {
-  border-color: rgba(255, 122, 26, 0.58);
-  box-shadow: 0 0 0 1px rgba(255, 122, 26, 0.22);
+  border-color: color-mix(in srgb, var(--experience-accent) 58%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--experience-accent) 22%, transparent);
 }
 
 body.portal-experience .channel-setting-field-heading {
@@ -585,8 +585,8 @@ body.portal-experience #adultFolderTabs .adult-folder-tab strong {
 }
 
 body.portal-experience #adultFolderTabs .adult-folder-tab.active {
-  border-color: rgba(255, 122, 26, 0.72);
-  background: rgba(255, 122, 26, 0.11);
+  border-color: color-mix(in srgb, var(--experience-accent) 72%, transparent);
+  background: color-mix(in srgb, var(--experience-accent) 11%, transparent);
   color: var(--experience-ink);
 }
 
@@ -663,8 +663,8 @@ body.portal-experience .watch-collection-option small {
 }
 
 body.portal-experience .watch-collection-option.active {
-  border-color: rgba(255, 122, 26, 0.28);
-  background: rgba(255, 122, 26, 0.11);
+  border-color: color-mix(in srgb, var(--experience-accent) 28%, transparent);
+  background: color-mix(in srgb, var(--experience-accent) 11%, transparent);
   color: var(--experience-ink);
 }
 
@@ -697,9 +697,9 @@ body.portal-experience .adult-sheet .library-sheet-body { padding-top: 18px; }
 body.portal-experience .adult-upload-form { gap: 12px; }
 body.portal-experience .adult-sheet .adult-drop-field {
   min-height: 112px;
-  border-color: rgba(255, 122, 26, 0.32);
+  border-color: color-mix(in srgb, var(--experience-accent) 32%, transparent);
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(255, 122, 26, 0.09), rgba(255, 122, 26, 0.025));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--experience-accent) 9%, transparent), color-mix(in srgb, var(--experience-accent) 2.5%, transparent));
   padding: 16px;
 }
 body.portal-experience .adult-sheet .adult-drop-field .drop-copy {
@@ -718,7 +718,7 @@ body.portal-experience .adult-sheet .adult-drop-field .drop-icon {
   width: 42px;
   height: 42px;
   border-radius: 12px;
-  background: rgba(255, 122, 26, 0.14);
+  background: color-mix(in srgb, var(--experience-accent) 14%, transparent);
   color: var(--experience-orange);
 }
 body.portal-experience .adult-sheet .adult-drop-field .drop-icon .icon { width: 20px; height: 20px; }
@@ -736,9 +736,9 @@ body.portal-experience .channel-upload-sheet .library-sheet-panel.wide { width: 
 body.portal-experience .channel-upload-sheet .library-sheet-head { padding-top: 17px; padding-bottom: 14px; }
 body.portal-experience .channel-upload-sheet .library-sheet-body { display: grid; gap: 12px; padding-top: 14px; padding-bottom: 16px; }
 body.portal-experience .channel-upload-form { gap: 10px; }
-body.portal-experience .channel-upload-form .drop-field { min-height: 108px; border: 1px solid rgba(255, 122, 26, .3); border-radius: 12px; background: linear-gradient(135deg, rgba(255, 122, 26, .08), rgba(255, 122, 26, .02)); padding: 14px; }
+body.portal-experience .channel-upload-form .drop-field { min-height: 108px; border: 1px solid color-mix(in srgb, var(--experience-accent) 30%, transparent); border-radius: 12px; background: linear-gradient(135deg, color-mix(in srgb, var(--experience-accent) 8%, transparent), color-mix(in srgb, var(--experience-accent) 2%, transparent)); padding: 14px; }
 body.portal-experience .channel-upload-form .drop-copy { grid-template-columns: 38px minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; justify-items: start; gap: 2px 11px; width: min(330px, 100%); text-align: left; }
-body.portal-experience .channel-upload-form .drop-icon { display: grid; grid-row: 1 / 3; place-items: center; width: 38px; height: 38px; border-radius: 11px; background: rgba(255, 122, 26, .13); color: var(--experience-orange); }
+body.portal-experience .channel-upload-form .drop-icon { display: grid; grid-row: 1 / 3; place-items: center; width: 38px; height: 38px; border-radius: 11px; background: color-mix(in srgb, var(--experience-accent) 13%, transparent); color: var(--experience-orange); }
 body.portal-experience .channel-upload-form .drop-icon .icon { width: 19px; height: 19px; }
 body.portal-experience .channel-upload-selection { min-height: 44px; align-content: center; background: rgba(255, 255, 255, .018); }
 body.portal-experience .channel-upload-form > .primary { width: 100%; min-height: 52px; }
@@ -754,11 +754,11 @@ body.portal-experience .adult-series-source-trigger { width: 100%; border: 1px s
 body.portal-experience .adult-series-source-trigger:active { transform: none; }
 body.portal-experience .adult-series-source-actions { display: grid; gap: 10px; }
 body.portal-experience .adult-series-source-actions > button { display: grid; grid-template-columns: 42px minmax(0, 1fr) 16px; align-items: center; gap: 12px; min-height: 82px; border: 1px solid var(--experience-line); border-radius: 13px; background: var(--experience-raised); color: var(--experience-ink); font: inherit; padding: 12px; text-align: left; }
-body.portal-experience .adult-series-source-actions > button:focus-visible { border-color: var(--experience-orange); outline: 2px solid rgba(255, 122, 26, .24); outline-offset: 2px; }
+body.portal-experience .adult-series-source-actions > button:focus-visible { border-color: var(--experience-orange); outline: 2px solid color-mix(in srgb, var(--experience-accent) 24%, transparent); outline-offset: 2px; }
 body.portal-experience .adult-series-source-actions > button > span:nth-child(2) { display: grid; gap: 4px; min-width: 0; }
 body.portal-experience .adult-series-source-actions strong { font-size: 13px; }
 body.portal-experience .adult-series-source-actions small { color: var(--experience-dim); font-size: 9px; line-height: 1.45; }
-body.portal-experience .adult-series-source-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: rgba(255, 122, 26, .12); color: var(--experience-orange); }
+body.portal-experience .adult-series-source-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: color-mix(in srgb, var(--experience-accent) 12%, transparent); color: var(--experience-orange); }
 body.portal-experience .adult-series-source-icon .icon { width: 21px; height: 21px; }
 body.portal-experience .adult-series-source-chevron { width: 16px; height: 16px; color: var(--experience-dim); }
 body.portal-experience .adult-series-upload-destination {
@@ -775,7 +775,7 @@ body.portal-experience .adult-series-upload-number .icon { width: 18px; height: 
 body.portal-experience .adult-series-upload-number strong { overflow: hidden; color: var(--experience-ink); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 body.portal-experience .adult-series-upload-destination > span:last-child { max-width: none; color: var(--experience-dim); font-size: 8px; line-height: 1.4; text-align: left; }
 body.portal-experience .adult-series-upload-sheet .adult-series-source-trigger { border-color: var(--experience-line); background: rgba(255, 255, 255, .025); box-shadow: none; }
-body.portal-experience .adult-series-upload-sheet .adult-series-source-trigger .drop-icon { background: rgba(255, 122, 26, .11); }
+body.portal-experience .adult-series-upload-sheet .adult-series-source-trigger .drop-icon { background: color-mix(in srgb, var(--experience-accent) 11%, transparent); }
 body.portal-experience .adult-series-upload-sheet .upload-selection { min-height: 43px; align-content: center; background: rgba(255, 255, 255, .018); }
 body.portal-experience .adult-series-upload-form > .primary:disabled { border-color: var(--experience-line); background: rgba(255, 255, 255, .055); color: var(--experience-dim); opacity: 1; }
 body.portal-experience .upload-selection > strong { color: var(--experience-ink); font-size: 11px; }

@@ -210,7 +210,7 @@ body.portal-v2 .mobile-head {
     border-radius: 50%;
     background: var(--experience-orange);
     color: #170a02;
-    box-shadow: 0 0 0 6px #09090c, 0 9px 24px rgba(255, 122, 26, 0.22);
+    box-shadow: 0 0 0 6px #09090c, 0 9px 24px color-mix(in srgb, var(--experience-accent) 22%, transparent);
     padding: 13px;
     box-sizing: content-box;
   }

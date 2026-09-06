@@ -39,11 +39,9 @@ from mabeltv_backend.http import Handler, LibraryServer
 from mabeltv_backend.lg import LgWebOsError, LgWebOsSocket, RemoteTvActiveError
 from mabeltv_backend.media import MediaCatalogueMixin
 from mabeltv_backend.portal import (
-    CLASSIC_INDEX,
     INDEX,
     PORTAL_INCLUDE,
     WATCH_PAGE,
-    load_classic_index,
     load_index,
     load_portal_document,
     load_watch_page,
@@ -56,7 +54,6 @@ from mabeltv_backend.usb import UsbMixin
 from mabeltv_backend.viewing import ViewingMixin
 
 __all__ = [
-    "CLASSIC_INDEX",
     "DEFAULT_CHANNELS",
     "INDEX",
     "PORTAL_INCLUDE",
@@ -68,7 +65,6 @@ __all__ = [
     "LibraryServer",
     "LiveStream",
     "RemoteTvActiveError",
-    "load_classic_index",
     "load_index",
     "load_portal_document",
     "load_watch_page",

@@ -17,7 +17,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from .constants import CHUNK_LIMIT, SESSION_SECONDS
 from .lg import RemoteTvActiveError
-from .portal import CLASSIC_INDEX, INDEX, SERVICE_ROOT, WATCH_PAGE
+from .portal import INDEX, SERVICE_ROOT, WATCH_PAGE
 
 STATIC_ASSETS = {
     "/mabeltv-icon.png": ("mabeltv-icon.png", "image/png"),
@@ -224,12 +224,6 @@ class Handler(BaseHTTPRequestHandler):
         cookie = SimpleCookie(self.headers.get("Cookie")); token = cookie.get("mabeltv_library")
         return token.value if token else None
 
-    def portal_design(self) -> str:
-        """Return the requested presentation without changing authentication state."""
-        cookie = SimpleCookie(self.headers.get("Cookie"))
-        design = cookie.get("mabeltv_portal_design")
-        return "classic" if design and design.value == "classic" else "experience"
-
     def authorised(self) -> bool:
         return (self.server.library.configured()
                 and not self.server.library.portal_pin_required()) \
@@ -428,8 +422,7 @@ class Handler(BaseHTTPRequestHandler):
             parsed = urlsplit(self.path)
             query = parse_qs(parsed.query)
             if self.path == "/":
-                document = CLASSIC_INDEX if self.portal_design() == "classic" else INDEX
-                self.serve_html(document, inline_script="<script>" in document)
+                self.serve_html(INDEX, inline_script="<script>" in INDEX)
                 return
             if self.serve_static_asset() or self.serve_portal_asset(parsed.path):
                 return
@@ -617,4 +610,3 @@ class LibraryServer(ThreadingHTTPServer):
             super().process_request_thread(request, client_address)
         finally:
             self.worker_slots.release()
-

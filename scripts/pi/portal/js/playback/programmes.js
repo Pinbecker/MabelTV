@@ -174,8 +174,7 @@
       const filmTools = $('#watchProgrammeFilmTools')
       filmTools.classList.toggle('hidden', !filmChannel)
       const viewingActions = $('#watchProgrammeViewingActions')
-      if (filmChannel && currentPortalDesign === 'experience'
-          && typeof wireLocalFilmViewingActions === 'function') {
+      if (filmChannel && typeof wireLocalFilmViewingActions === 'function') {
         void wireLocalFilmViewingActions(viewingActions, programme).catch(showError)
       } else viewingActions.classList.add('hidden')
 

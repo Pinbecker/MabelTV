@@ -93,6 +93,14 @@ body.portal-v2 .home-spotlight-content {
   padding: 0;
 }
 
+body.portal-v2 .home-now-playing {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  border-left: 2px solid var(--experience-orange);
+  padding-left: 14px;
+}
+
 body.portal-v2 .home-now-playing h1 {
   max-width: 900px;
   margin: 0;
@@ -384,7 +392,7 @@ body.portal-v2 .destination-icon {
   width: 46px;
   height: 46px;
   border-radius: 9px;
-  background: linear-gradient(145deg, rgba(255, 122, 26, 0.22), rgba(255, 122, 26, 0.05));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--experience-accent) 22%, transparent), color-mix(in srgb, var(--experience-accent) 5%, transparent));
   color: var(--experience-orange);
 }
 
@@ -512,9 +520,9 @@ body.portal-v2 .home-refresh {
 
 body.portal-v2 .attention {
   margin-top: 28px;
-  border: 1px solid rgba(255, 122, 26, 0.3);
+  border: 1px solid color-mix(in srgb, var(--experience-accent) 30%, transparent);
   border-radius: var(--experience-radius);
-  background: rgba(255, 122, 26, 0.06);
+  background: color-mix(in srgb, var(--experience-accent) 6%, transparent);
   padding: 18px;
 }
 
@@ -535,7 +543,7 @@ body.portal-v2 .status-icon.warn {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: rgba(255, 122, 26, 0.16);
+  background: color-mix(in srgb, var(--experience-accent) 16%, transparent);
   color: var(--experience-orange);
   font-weight: 900;
 }

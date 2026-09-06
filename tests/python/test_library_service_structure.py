@@ -61,7 +61,7 @@ class LibraryServiceStructureTests(unittest.TestCase):
                   "deploy-dev-to-pi.ps1").read_text(encoding="utf-8")
         for source in (install, deploy):
             self.assertIn("mabeltv_backend", source)
-            self.assertIn("mabeltv-library-classic.html", source)
+            self.assertNotIn("mabeltv-library-classic.html", source)
 
 
 if __name__ == "__main__":

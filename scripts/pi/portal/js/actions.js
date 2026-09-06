@@ -571,6 +571,14 @@ let managementBusy = false
     }
 
     $$('[data-live-command]').forEach(button => button.onclick = () => sendLiveCommand(button.dataset.liveCommand, button))
+    const livePreviewToggle = $('#toggleLivePreview')
+    if (livePreviewToggle) livePreviewToggle.onclick = () => {
+      const card = livePreviewToggle.closest('.mabel-status-card')
+      const expanded = !card.classList.contains('is-preview-expanded')
+      card.classList.toggle('is-preview-expanded', expanded)
+      livePreviewToggle.setAttribute('aria-expanded', String(expanded))
+      livePreviewToggle.setAttribute('aria-label', `${expanded ? 'Collapse' : 'Expand'} live TV preview`)
+    }
     if ($('#openLiveChannels')) {
       $('#openLiveChannels').onclick = () => {
         renderLiveChannelOptions()

@@ -161,14 +161,12 @@
       $('#remoteSubtitles').setAttribute('aria-pressed', String(state.subtitles_visible === true))
       const widescreenAvailable = !adult && state.widescreen_available === true
       const widescreenEnabled = widescreenAvailable && state.widescreen_enabled === true
-      $('#remoteWidescreen').classList.toggle('hidden', !widescreenAvailable)
       $('#remoteWidescreen').classList.toggle('active', widescreenEnabled)
       $('#remoteWidescreen').setAttribute('aria-pressed', String(widescreenEnabled))
       $('#remoteWidescreen').setAttribute('aria-label', widescreenEnabled
         ? 'Turn widescreen mode off' : 'Turn widescreen mode on')
       const adultHandoffAvailable = available && !adult
         && state.adult_handoff_available === true
-      $('#remoteAdultHandoff').classList.toggle('hidden', !adultHandoffAvailable)
       $('#remoteAdultHandoff').setAttribute('aria-label', `Continue ${state.programme || 'this programme'} in Adult TV without the television frame`)
       const channelPickerLabel = $('#remoteChannelPickerLabel')
       if (channelPickerLabel) channelPickerLabel.textContent = adult

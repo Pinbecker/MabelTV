@@ -36,7 +36,6 @@ function Get-PortalTarget {
     }
     $topLevelAssets = @{
         'scripts/pi/mabeltv-library.html' = 'mabeltv-library.html'
-        'scripts/pi/mabeltv-library-classic.html' = 'mabeltv-library-classic.html'
         'scripts/pi/mabeltv-offline.js' = 'mabeltv-offline.js'
         'scripts/pi/service-worker.js' = 'service-worker.js'
         'scripts/pi/hls.min.js' = 'hls.min.js'

@@ -1,4 +1,8 @@
 :root {
+  --experience-accent-hue: 48;
+  --experience-accent: oklch(0.72 0.19 var(--experience-accent-hue));
+  --experience-accent-hot: oklch(0.78 0.17 var(--experience-accent-hue));
+  --experience-accent-ink: oklch(0.5 0.16 var(--experience-accent-hue));
   --experience-canvas: #08080b;
   --experience-raised: #111116;
   --experience-elevated: #18181e;
@@ -8,9 +12,13 @@
   --experience-ink: #f7f7f8;
   --experience-muted: #a7a7b0;
   --experience-dim: #73737d;
-  --experience-orange: #ff7a1a;
-  --experience-orange-hot: #ff8f3a;
+  --experience-orange: var(--experience-accent);
+  --experience-orange-hot: var(--experience-accent-hot);
   --experience-on-orange: #160a02;
+  --accent: var(--experience-orange);
+  --accent-hover: var(--experience-orange-hot);
+  --accent-soft: color-mix(in srgb, var(--experience-accent) 12%, transparent);
+  --accent-contrast: var(--experience-on-orange);
   --experience-good: #4fdda0;
   --experience-danger: #ff5d6c;
   --experience-shadow: rgba(0, 0, 0, 0.42);
@@ -21,8 +29,8 @@
   --experience-control-height: 48px;
   --experience-control-radius: 8px;
   --experience-icon-size: 20px;
-  --experience-focus-outline: 3px solid rgba(255, 122, 26, 0.58);
-  --experience-focus-shadow: 0 0 0 3px rgba(255, 122, 26, 0.32);
+  --experience-focus-outline: 3px solid color-mix(in srgb, var(--experience-accent) 58%, transparent);
+  --experience-focus-shadow: 0 0 0 3px color-mix(in srgb, var(--experience-accent) 32%, transparent);
   --experience-font: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
 }
 

@@ -190,7 +190,7 @@ body.portal-v2 .portal-power-status-dot.is-standby {
 
 body.portal-v2 .portal-power-status-dot.is-changing {
   background: var(--experience-orange);
-  box-shadow: 0 0 0 4px rgba(255, 122, 26, .09);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--experience-accent) 9%, transparent);
 }
 
 body.portal-v2 .tv-remote-toolbar {
@@ -239,10 +239,10 @@ body.portal-v2 .tv-remote-switcher button {
 }
 
 body.portal-v2 .tv-remote-switcher button.active {
-  border-color: rgba(255, 122, 26, .7);
-  background: rgba(255, 122, 26, .08);
+  border-color: color-mix(in srgb, var(--experience-accent) 70%, transparent);
+  background: color-mix(in srgb, var(--experience-accent) 8%, transparent);
   color: var(--experience-orange);
-  box-shadow: inset 0 1px rgba(255, 255, 255, .04), 0 0 16px rgba(255, 122, 26, .08);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .04), 0 0 16px color-mix(in srgb, var(--experience-accent) 8%, transparent);
 }
 
 body.portal-v2 .tv-remote-status-card {
@@ -255,7 +255,7 @@ body.portal-v2 .tv-remote-status-card {
   border: 1px solid rgba(255, 255, 255, .1);
   border-radius: 18px;
   background:
-    radial-gradient(circle at 88% 8%, rgba(255, 122, 26, .07), transparent 32%),
+    radial-gradient(circle at 88% 8%, color-mix(in srgb, var(--experience-accent) 7%, transparent), transparent 32%),
     linear-gradient(145deg, #19191f, #111116 70%);
   padding: 18px;
   box-shadow: inset 0 1px rgba(255, 255, 255, .035), 0 20px 48px rgba(0, 0, 0, .2);
@@ -344,9 +344,9 @@ body.portal-v2 .tv-remote-card-button {
   min-width: 44px;
   height: 44px;
   min-height: 44px;
-  border: 1px solid rgba(255, 122, 26, .32);
+  border: 1px solid color-mix(in srgb, var(--experience-accent) 32%, transparent);
   border-radius: 50%;
-  background: rgba(255, 122, 26, .1);
+  background: color-mix(in srgb, var(--experience-accent) 10%, transparent);
   color: var(--experience-orange);
   padding: 0;
 }
@@ -368,8 +368,8 @@ body.portal-v2 .tv-remote-card-lock {
 }
 
 body.portal-v2 .tv-remote-card-lock.active {
-  border-color: rgba(255, 122, 26, .48);
-  background: rgba(255, 122, 26, .12);
+  border-color: color-mix(in srgb, var(--experience-accent) 48%, transparent);
+  background: color-mix(in srgb, var(--experience-accent) 12%, transparent);
   color: var(--experience-orange);
 }
 
@@ -514,7 +514,7 @@ body.portal-v2 .tv-remote-dpad button {
 }
 
 body.portal-v2 .tv-remote-dpad button:active:not(:disabled) {
-  background: rgba(255, 122, 26, .12);
+  background: color-mix(in srgb, var(--experience-accent) 12%, transparent);
   transform: none;
 }
 

@@ -24,7 +24,7 @@
       const view = requested === 'home' ? 'overview' : requested
       const allowed = new Set(['overview', 'live', 'lg-tv', 'channels', 'adult', 'watch', 'adult-viewing', 'usb', 'system', 'insights'])
       if (allowed.has(view)) {
-        if (currentPortalDesign === 'experience' && (view === 'channels' || view === 'adult')) {
+        if (view === 'channels' || view === 'adult') {
           remoteKind = view === 'channels' ? 'channel' : 'adult'
           renderRemoteViewing()
           history.replaceState({ consolidatedWatch: true }, '', '#watch')
@@ -212,19 +212,6 @@
       location.reload()
     }
 
-    const currentPortalDesign = document.body.classList.contains('portal-classic') ? 'classic' : 'experience'
-    $$('[data-portal-design]').forEach(button => {
-      const selected = button.dataset.portalDesign === currentPortalDesign
-      button.setAttribute('aria-pressed', selected ? 'true' : 'false')
-      button.onclick = () => {
-        const design = button.dataset.portalDesign === 'classic' ? 'classic' : 'experience'
-        if (design === currentPortalDesign) return
-        document.cookie = `mabeltv_portal_design=${design}; Path=/; Max-Age=31536000; SameSite=Strict`
-        $$('[data-portal-design]').forEach(choice => { choice.disabled = true })
-        location.reload()
-      }
-    })
-
     function resetViewScroll() {
       const scroller = document.scrollingElement || document.documentElement
       scroller.scrollTop = 0
@@ -277,7 +264,7 @@
       // parent subsequently visits. Clear it whenever navigation begins.
       notice('')
       const channelFromWatch = name === 'channels' && selectedManageChannel !== null && channelWorkspaceReturnToWatch
-      const consolidatedWatchView = currentPortalDesign === 'experience' && (name === 'channels' || name === 'adult')
+      const consolidatedWatchView = name === 'channels' || name === 'adult'
       const activeNavigation = channelFromWatch || consolidatedWatchView || name === 'adult-viewing' ? 'watch'
         : name === 'lg-tv' ? 'live'
           : (name === 'insights' || name === 'activity') ? 'system' : name

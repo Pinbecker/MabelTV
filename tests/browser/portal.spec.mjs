@@ -69,9 +69,14 @@ test('phone shell keeps the frozen header, rail, gutters and Continue layout', a
   expect(continuing.width).toBeCloseTo(pageSize.clientWidth - 36, 0)
   expect(continuing.height).toBeGreaterThanOrEqual(180)
   expect(continuing.height).toBeLessThanOrEqual(183)
+  const nowPlayingMarker = await page.locator('.home-now-playing').evaluate(element => ({
+    border: parseFloat(getComputedStyle(element).borderLeftWidth),
+    padding: parseFloat(getComputedStyle(element).paddingLeft),
+  }))
+  expect(nowPlayingMarker.border).toBe(2)
+  expect(nowPlayingMarker.padding).toBeGreaterThanOrEqual(14)
   await expect(page.locator('#homeContinueRail .watch-continue-card')).toHaveCount(8)
 })
-
 
 test('primary screens stay full-width and match their visual references', async ({ page }) => {
   await openPortal(page)
@@ -401,7 +406,8 @@ test('MabelTV remote offers a contextual borderless Adult TV handoff', async ({ 
   await expect(page.locator('#view-live #openLiveChannels')).toHaveCount(0)
   await expect(page.locator('#remoteAdultAction')).toHaveText('Open Adult TV')
   await expect(page.locator('#remoteSubtitles')).toHaveText('Subtitles')
-  await expect(page.locator('#remoteAdultHandoff')).toHaveText('Play in Adult TV')
+  await expect(page.locator('#remoteAdultHandoff')).toHaveText('Open in Adult TV')
+  await expect(page.locator('#remoteWidescreen')).toBeVisible()
   await expect(page.locator('#remoteLock')).toHaveText('')
   await expect(page.locator('#remoteLock')).toHaveAttribute('aria-label', 'Lock kids’ physical remote')
   await expect(page.locator('#remoteMute strong')).toHaveCount(0)
@@ -432,6 +438,22 @@ test('MabelTV remote offers a contextual borderless Adult TV handoff', async ({ 
   expect(mabelControls.dpad.right).toBeLessThan(mabelControls.volume.left)
   expect(mabelControls.back.top).toBeGreaterThan(mabelControls.dpad.bottom)
   await expect(page).toHaveScreenshot('remote-live-controls.png', { fullPage: false })
+  const preview = page.locator('#toggleLivePreview')
+  const collapsedWidth = (await preview.boundingBox()).width
+  await preview.click()
+  await expect(preview).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.locator('.mabel-status-card')).toHaveClass(/is-preview-expanded/)
+  const expanded = await page.evaluate(() => {
+    const card = document.querySelector('.mabel-status-card').getBoundingClientRect()
+    const preview = document.querySelector('.mabel-live-visual').getBoundingClientRect()
+    const remote = document.querySelector('#view-live .tv-remote-chassis').getBoundingClientRect()
+    return { cardBottom: card.bottom, previewWidth: preview.width, remoteTop: remote.top }
+  })
+  expect(expanded.previewWidth).toBeGreaterThan(collapsedWidth * 2.5)
+  expect(expanded.remoteTop).toBeGreaterThan(expanded.cardBottom)
+  await expect(page).toHaveScreenshot('remote-preview-expanded.png', { fullPage: false })
+  await preview.click()
+  await expect(preview).toHaveAttribute('aria-expanded', 'false')
   await page.evaluate((fixture) => renderLiveTv({ ...fixture, muted: true }), liveFixture)
   await expect(page.locator('#remoteMute')).toHaveAttribute('aria-pressed', 'true')
   await expect(page.locator('#remoteMute .tv-remote-volume-on')).toBeHidden()
@@ -443,19 +465,10 @@ test('MabelTV remote offers a contextual borderless Adult TV handoff', async ({ 
   await handoff.click()
   await expect.poll(() => page.evaluate(() => window.__sentLiveCommands.at(-1)))
     .toBe('continue-in-adult-mode')
-})
-
-
-test('preserved Classic presentation still boots with the shared scripts', async ({ page, context }, testInfo) => {
-  test.skip(testInfo.project.name !== 'iphone-chromium', 'Compatibility smoke test')
-  await context.addCookies([{
-    name: 'mabeltv_portal_design',
-    value: 'classic',
-    domain: '127.0.0.1',
-    path: '/',
-  }])
-  await page.goto('/')
-  await expect(page.locator('body.portal-classic')).toBeVisible()
-  await expect(page.locator('.app-shell')).toBeVisible()
-  await expect(page.getByRole('button', { name: /Home/ }).first()).toBeVisible()
+  await page.evaluate((fixture) => renderLiveTv({ ...fixture,
+    widescreen_available: false, adult_handoff_available: false }), liveFixture)
+  await expect(page.locator('#remoteWidescreen')).toBeVisible()
+  await expect(page.locator('#remoteWidescreen')).toBeDisabled()
+  await expect(handoff).toBeVisible()
+  await expect(handoff).toBeDisabled()
 })

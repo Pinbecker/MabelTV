@@ -599,17 +599,15 @@
             ? 'Remove film from favourites' : 'Add film to favourites')
         }).catch(showError)
       const viewingActions = $('#watchFilmViewingActions')
-      if (currentPortalDesign === 'experience'
-          && typeof wireLocalFilmViewingActions === 'function') {
+      if (typeof wireLocalFilmViewingActions === 'function') {
         void wireLocalFilmViewingActions(viewingActions, film).catch(showError)
       } else viewingActions.classList.add('hidden')
       const manageFilm = $('#watchFilmManage')
-      const managementAvailable = currentPortalDesign === 'experience'
-      manageFilm.classList.toggle('hidden', !managementAvailable)
-      manageFilm.onclick = managementAvailable ? () => {
+      manageFilm.classList.remove('hidden')
+      manageFilm.onclick = () => {
         closeWatchFilmSheet(false)
         openAdultFilmSheet(film, () => openWatchFilmSheet(film, context, returnTo))
-      } : null
+      }
       const dialog = $('#watchFilmSheet')
       portalSheets.open(dialog, { returnTo })
     }

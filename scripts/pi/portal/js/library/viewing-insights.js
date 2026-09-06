@@ -91,7 +91,7 @@
       const canvas = document.createElement('canvas')
       root.append(canvas)
       const css = getComputedStyle(document.body)
-      const orange = css.getPropertyValue('--experience-orange').trim() || '#ff7a1a'
+      const orange = css.getPropertyValue('--experience-orange').trim() || 'oklch(0.72 0.19 48)'
       const muted = css.getPropertyValue('--experience-dim').trim() || '#8f8d98'
       const grid = css.getPropertyValue('--experience-line').trim() || 'rgba(255,255,255,.1)'
       const isDoughnut = type === 'doughnut'
@@ -135,6 +135,10 @@
       root.setAttribute('aria-label', usable.map(item =>
         `${item.chartLabel} ${viewingDuration(item.seconds)}`).join(', '))
     }
+
+    document.addEventListener('mabeltv:accent-change', () => {
+      if (viewingInsightsData) renderInsightsRoute()
+    })
 
     function setViewingArtwork(root, url) {
       root.classList.toggle('has-artwork', Boolean(url))
@@ -694,4 +698,3 @@
         renderViewingBrowse(viewingInsightsRoute.screen)
       }
     }
-

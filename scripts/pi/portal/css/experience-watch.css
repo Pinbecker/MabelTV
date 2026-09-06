@@ -389,8 +389,8 @@ body.portal-v2 .watch-mabel-search-results.hidden { display: none; }
 
 body.portal-v2 .favourite-action.active,
 body.portal-v2 #adultFilmFavourite.active {
-  border-color: rgba(255, 122, 26, 0.7);
-  background: rgba(255, 122, 26, 0.12);
+  border-color: color-mix(in srgb, var(--experience-accent) 70%, transparent);
+  background: color-mix(in srgb, var(--experience-accent) 12%, transparent);
   color: var(--experience-orange);
 }
 
@@ -409,8 +409,8 @@ body.portal-v2 .mabel-channel-section {
 }
 
 body.portal-v2 .mabel-film-channel {
-  border-color: rgba(255, 122, 26, 0.28);
-  background: linear-gradient(145deg, rgba(255, 122, 26, 0.07), var(--experience-raised) 32%);
+  border-color: color-mix(in srgb, var(--experience-accent) 28%, transparent);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--experience-accent) 7%, transparent), var(--experience-raised) 32%);
 }
 
 body.portal-v2 .mabel-show-channel {
@@ -682,9 +682,9 @@ body.portal-v2 .adult-season-add-card {
   grid-template-columns: 42px minmax(0, 1fr);
   align-items: center;
   gap: 12px;
-  border: 1px dashed rgba(255, 122, 26, .4);
+  border: 1px dashed color-mix(in srgb, var(--experience-accent) 40%, transparent);
   border-radius: 13px;
-  background: rgba(255, 122, 26, .055);
+  background: color-mix(in srgb, var(--experience-accent) 5.5%, transparent);
   color: var(--experience-ink);
   padding: 16px;
   text-align: left;
@@ -738,7 +738,7 @@ body.portal-v2 .adult-season-tools button {
   padding: 13px;
   text-align: left;
 }
-body.portal-v2 .adult-season-tools button > .icon { width: 36px; height: 36px; border-radius: 10px; background: rgba(255, 122, 26, .11); color: var(--experience-orange); padding: 8px; }
+body.portal-v2 .adult-season-tools button > .icon { width: 36px; height: 36px; border-radius: 10px; background: color-mix(in srgb, var(--experience-accent) 11%, transparent); color: var(--experience-orange); padding: 8px; }
 body.portal-v2 .adult-season-tools span { display: grid; gap: 2px; }
 body.portal-v2 .adult-season-tools strong { font-size: 11px; line-height: 1.25; }
 body.portal-v2 .adult-season-tools small { color: var(--experience-dim); font-size: 10px; line-height: 1.35; }
@@ -764,7 +764,7 @@ body.portal-v2 .adult-series-episode {
 }
 body.portal-v2 .adult-series-episode::after { position: absolute; right: 0; bottom: 0; left: 0; height: 2px; background: linear-gradient(90deg, var(--experience-orange) var(--episode-progress), rgba(255, 255, 255, .09) var(--episode-progress)); content: ''; opacity: 0; }
 body.portal-v2 .adult-series-episode.has-progress::after { opacity: 1; }
-body.portal-v2 .adult-series-episode-art { position: relative; display: grid; width: 76px; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 8px; background: linear-gradient(145deg, rgba(255, 122, 26, .2), rgba(255, 255, 255, .04)); place-items: end start; }
+body.portal-v2 .adult-series-episode-art { position: relative; display: grid; width: 76px; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 8px; background: linear-gradient(145deg, color-mix(in srgb, var(--experience-accent) 20%, transparent), rgba(255, 255, 255, .04)); place-items: end start; }
 body.portal-v2 .adult-series-episode-art > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 body.portal-v2 .adult-series-episode-number { position: relative; z-index: 1; margin: 5px; border-radius: 5px; background: rgba(8, 7, 12, .82); color: var(--experience-orange); padding: 3px 5px; font-size: 8px; font-weight: 850; letter-spacing: .04em; }
 body.portal-v2 .adult-series-episode-copy { min-width: 0; display: grid; gap: 4px; }

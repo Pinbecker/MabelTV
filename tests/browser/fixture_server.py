@@ -222,6 +222,16 @@ class FixtureLibrary:
     def live_tv_status(self) -> dict[str, Any]:
         return copy.deepcopy(LIVE_PAYLOAD)
 
+    def live_status(self) -> dict[str, Any]:
+        return {
+            "uploads": [],
+            "storage": copy.deepcopy(LIBRARY_PAYLOAD["storage"]),
+            "system": copy.deepcopy(LIBRARY_PAYLOAD["system"]),
+        }
+
+    def usb_volumes(self) -> dict[str, Any]:
+        return {"volumes": [], "imports": []}
+
     def stop_live_tv(self) -> dict[str, Any]:
         return {"ok": True}
 

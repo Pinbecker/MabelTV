@@ -120,7 +120,7 @@ body.portal-v2 .lg-trackpad {
 body.portal-v2 .lg-trackpad-glow {
   position: absolute;
   inset: -40%;
-  background: radial-gradient(circle, rgba(255, 122, 26, .1), transparent 46%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--experience-accent) 10%, transparent), transparent 46%);
   pointer-events: none;
 }
 
@@ -152,7 +152,7 @@ body.portal-v2 .lg-trackpad > span:last-child {
 }
 
 body.portal-v2 .lg-trackpad.is-active {
-  border-color: rgba(255, 122, 26, .32);
+  border-color: color-mix(in srgb, var(--experience-accent) 32%, transparent);
 }
 
 body.portal-v2 .lg-trackpad.is-active svg,
@@ -297,7 +297,7 @@ body.portal-v2 .lg-remote-page .is-sending {
 }
 
 @keyframes lg-command-pulse {
-  to { border-color: rgba(255, 122, 26, .5); box-shadow: 0 0 18px rgba(255, 122, 26, .12); }
+  to { border-color: color-mix(in srgb, var(--experience-accent) 50%, transparent); box-shadow: 0 0 18px color-mix(in srgb, var(--experience-accent) 12%, transparent); }
 }
 
 @media (max-width: 860px) {

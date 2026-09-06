@@ -11,6 +11,7 @@
         <section class="tv-remote-status-card mabel-status-card" aria-label="MabelTV status and live television preview">
           <div class="tv-remote-status-visual mabel-live-visual">
             <div class="live-screen"><video id="liveVideo" muted autoplay playsinline preload="none"></video><img id="liveMjpeg" class="hidden" alt="Live MabelTV picture"><div id="liveOff" class="live-off"><strong id="liveOffTitle">Connecting…</strong><span id="liveOffText">Preparing the live picture</span></div></div>
+            <button id="toggleLivePreview" class="mabel-live-toggle" type="button" aria-label="Expand live TV preview" aria-expanded="false"><span><svg><use href="/portal/icons.svg#signal-maximize"/></svg></span></button>
           </div>
           <div class="tv-remote-status-copy">
             <p class="tv-remote-status-kicker">MabelTV</p>
@@ -58,7 +59,7 @@
               <button type="button" data-live-command="restart-programme"><svg><use href="/portal/icons.svg#signal-restart"/></svg><span>Restart</span></button>
               <button type="button" id="remoteSubtitles" data-live-command="toggle-subtitles"><svg><use href="/portal/icons.svg#signal-captions"/></svg><span>Subtitles</span></button>
               <button type="button" id="remoteWidescreen" data-live-command="toggle-widescreen-mode" aria-pressed="false"><svg><use href="/portal/icons.svg#signal-maximize"/></svg><span>Widescreen</span></button>
-              <button type="button" id="remoteAdultHandoff" class="hidden" data-live-command="continue-in-adult-mode"><svg><use href="/portal/icons.svg#signal-monitor-play"/></svg><span>Play in Adult TV</span></button>
+              <button type="button" id="remoteAdultHandoff" data-live-command="continue-in-adult-mode"><svg><use href="/portal/icons.svg#signal-monitor-play"/></svg><span>Open in Adult TV</span></button>
             </div>
           </section>
         </section>

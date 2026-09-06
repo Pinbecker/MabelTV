@@ -400,18 +400,16 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn('QStringLiteral("playback_duration")', application)
         self.assertIn("m_currentCommand.input == powerQuery", cec)
 
-    def test_portal_uses_shared_intro_and_sheet_design_tokens(self) -> None:
+    def test_portal_uses_experience_page_and_sheet_design_tokens(self) -> None:
         portal = PORTAL_SOURCE
 
-        self.assertEqual(portal.count('class="home-greeting surface portal-intro"'), 1)
-        self.assertEqual(portal.count('library-hero portal-intro'), 1)
-        self.assertEqual(portal.count('adult-hero surface portal-intro'), 1)
-        self.assertEqual(portal.count('watch-top portal-intro'), 1)
-        self.assertEqual(portal.count('<header class="page-head portal-page-head'), 2)
+        self.assertEqual(portal.count('class="home-spotlight"'), 1)
+        self.assertEqual(portal.count('class="screen-title watch-title"'), 1)
+        self.assertEqual(portal.count('class="library-intro adult-library-head"'), 1)
+        self.assertNotIn('portal-intro', portal)
         self.assertIn("--experience-radius: 12px", portal)
+        self.assertIn("--experience-control-radius: 8px", portal)
         self.assertIn("--experience-sheet-gutter", portal)
-        self.assertIn("--radius-panel: 6px", portal)
-        self.assertIn("--radius-sheet: 10px", portal)
         self.assertIn("dialog:is(.library-sheet, .watch-sheet", portal)
         self.assertIn(":is(.library-sheet-panel, .watch-sheet-panel", portal)
 

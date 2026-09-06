@@ -140,10 +140,7 @@ class ArchitectureGuardrailTests(unittest.TestCase):
         self.assertEqual(undocumented, [], "Undocumented Library backend modules")
 
     def test_every_portal_partial_is_reachable_from_an_entry_document(self) -> None:
-        entry_documents = (
-            PROJECT_ROOT / "scripts/pi/mabeltv-library.html",
-            PROJECT_ROOT / "scripts/pi/mabeltv-library-classic.html",
-        )
+        entry_documents = (PROJECT_ROOT / "scripts/pi/mabeltv-library.html",)
         visited: set[Path] = set()
         active: set[Path] = set()
 
@@ -169,12 +166,8 @@ class ArchitectureGuardrailTests(unittest.TestCase):
         )
 
     def test_every_portal_css_and_javascript_module_is_loaded(self) -> None:
-        entries = "\n".join(
-            (PROJECT_ROOT / name).read_text(encoding="utf-8")
-            for name in (
-                "scripts/pi/mabeltv-library.html",
-                "scripts/pi/mabeltv-library-classic.html",
-            )
+        entries = (PROJECT_ROOT / "scripts/pi/mabeltv-library.html").read_text(
+            encoding="utf-8"
         )
         referenced = set(re.findall(r"/portal/((?:css|js)/[^\"']+)", entries))
         assets = {

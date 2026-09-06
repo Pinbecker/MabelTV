@@ -1,30 +1,24 @@
 html[data-experience-theme="light"] {
-  --experience-canvas: #f4f3f1;
+  --experience-canvas: #f4f6f9;
   --experience-raised: #ffffff;
-  --experience-elevated: #faf9f7;
-  --experience-soft: #ece9e5;
-  --experience-line: rgba(35, 31, 28, 0.11);
-  --experience-line-strong: rgba(35, 31, 28, 0.2);
-  --experience-ink: #19171b;
-  --experience-muted: #55525a;
-  --experience-dim: #6e6a73;
-  --experience-orange: #b54800;
-  --experience-orange-hot: #ff7a1a;
-  --experience-on-orange: #241006;
-  --experience-good: #087457;
-  --experience-danger: #c83249;
-  --experience-shadow: rgba(39, 32, 27, 0.14);
+  --experience-elevated: #f8f9fb;
+  --experience-soft: #edf0f4;
+  --experience-line: rgba(23, 27, 35, 0.1);
+  --experience-line-strong: rgba(23, 27, 35, 0.18);
+  --experience-ink: #171b23;
+  --experience-muted: #535b68;
+  --experience-dim: #727b89;
+  --experience-orange: var(--experience-accent-ink);
+  --experience-orange-hot: var(--experience-accent);
+  --experience-on-orange: #1b0c03;
+  --experience-good: #08765a;
+  --experience-danger: #c7354b;
+  --experience-shadow: rgba(20, 27, 39, 0.12);
   color-scheme: light;
 }
 
-html[data-experience-theme="light"] body.portal-experience :is(
-  button,
-  a,
-  input,
-  select,
-  summary
-):focus-visible {
-  outline-color: rgba(181, 72, 0, 0.42);
+html[data-experience-theme="light"] body.portal-experience :is(button, a, input, select, summary):focus-visible {
+  outline-color: color-mix(in srgb, var(--experience-accent-ink) 42%, transparent);
 }
 
 html[data-experience-theme="light"] body.portal-experience :is(
@@ -43,8 +37,8 @@ html[data-experience-theme="light"] body.portal-experience :is(
 html[data-experience-theme="light"] body.portal-experience :is(
   .screen-action,
   button.primary,
-  button[type="submit"]:not([class]),
   .button:not(.secondary),
+  button[type="submit"]:not([class]),
   button.danger,
   #setupNext,
   #setupFinish,
@@ -53,47 +47,57 @@ html[data-experience-theme="light"] body.portal-experience :is(
   color: inherit;
 }
 
-html[data-experience-theme="light"] body.portal-experience button:disabled {
-  border-color: var(--experience-line);
-  background: #e6e2dd;
-  color: #68636b;
-  opacity: 1;
-}
-
 html[data-experience-theme="light"] body.portal-experience :is(input, select, textarea) {
   background: var(--experience-raised);
 }
 
 html[data-experience-theme="light"] body.portal-experience :is(input, textarea)::placeholder {
-  color: #77727a;
+  color: var(--experience-dim);
   opacity: 1;
 }
 
 html[data-experience-theme="light"] body.portal-experience :is(input, select, textarea):disabled {
-  background: #e9e6e2;
-  color: #68636b;
+  background: var(--experience-soft);
+  color: var(--experience-dim);
   opacity: 1;
 }
 
 html[data-experience-theme="light"] body.portal-experience .notice {
-  border-color: rgba(8, 116, 87, 0.28);
-  background: rgba(235, 248, 242, 0.98);
-  color: #075d45;
+  border-color: rgba(8, 118, 90, 0.27);
+  background: rgba(235, 249, 244, 0.98);
+  color: #075d47;
   box-shadow: 0 18px 60px var(--experience-shadow);
 }
 
 html[data-experience-theme="light"] body.portal-experience .notice.bad {
-  border-color: rgba(200, 50, 73, 0.3);
-  background: rgba(255, 240, 243, 0.98);
-  color: #9f2437;
+  border-color: rgba(199, 53, 75, 0.28);
+  background: rgba(255, 240, 244, 0.98);
+  color: #9d293b;
 }
 
-html[data-experience-theme="light"] body.portal-experience .channel-page-identity h1 {
-  color: var(--experience-ink);
+html[data-experience-theme="light"] body.portal-experience .rail,
+html[data-experience-theme="light"] body.portal-experience .mobile-head {
+  background: var(--experience-raised);
 }
 
-html[data-experience-theme="light"] body.portal-experience :is(.mabel-show-identity, .mabel-film-head) h2 {
-  color: #fff;
+html[data-experience-theme="light"] body.portal-experience .portal-nav button {
+  color: var(--experience-muted);
+}
+
+html[data-experience-theme="light"] body.portal-experience .portal-nav button.active {
+  background: transparent;
+  color: var(--experience-orange);
+}
+
+html[data-experience-theme="light"] body.portal-experience .home-spotlight-art.is-empty {
+  background:
+    radial-gradient(circle at 72% 24%, rgba(123, 91, 205, 0.12), transparent 37%),
+    linear-gradient(145deg, #eef1f6, #dfe4eb);
+  box-shadow: inset 0 0 0 1px var(--experience-line);
+}
+
+html[data-experience-theme="light"] body.portal-experience .home-spotlight-art.is-empty::before {
+  color: #8b93a0;
 }
 
 html[data-experience-theme="light"] body.portal-experience .home-spotlight .eyebrow,
@@ -101,33 +105,58 @@ html[data-experience-theme="light"] body.portal-experience :is(.mabel-show-ident
   color: var(--experience-orange-hot);
 }
 
-html[data-experience-theme="light"] body.portal-experience .destination-library .destination-icon { color: #7045b1; }
-html[data-experience-theme="light"] body.portal-experience .destination-adult .destination-icon { color: #ad3157; }
-html[data-experience-theme="light"] body.portal-experience .device-status-icon { background: rgba(8, 116, 87, 0.1); }
-
-html[data-experience-theme="light"] body.portal-experience .attention {
-  border-color: rgba(181, 72, 0, 0.26);
-  background: #fff6ef;
+html[data-experience-theme="light"] body.portal-experience :is(.mabel-show-identity, .mabel-film-head) h2,
+html[data-experience-theme="light"] body.portal-experience .live-off strong {
+  color: #fff;
 }
 
-html[data-experience-theme="light"] body.portal-experience .status-icon.warn { background: rgba(181, 72, 0, 0.11); }
+html[data-experience-theme="light"] body.portal-experience .watch-continue-copy small {
+  color: var(--experience-accent-hot);
+}
+
+html[data-experience-theme="light"] body.portal-experience .watch-continue-copy strong {
+  color: #fff;
+}
+
+html[data-experience-theme="light"] body.portal-experience .watch-continue-card {
+  box-shadow: 0 9px 26px rgba(20, 27, 39, 0.1);
+}
+
+html[data-experience-theme="light"] body.portal-experience .watch-switch-wrap {
+  background: rgba(244, 246, 249, 0.93);
+}
+
+html[data-experience-theme="light"] body.portal-experience .watch-tabs button,
+html[data-experience-theme="light"] body.portal-experience .watch-tabs button.active {
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-experience-theme="light"] body.portal-experience .watch-tabs button.active {
+  color: var(--experience-ink);
+}
 
 html[data-experience-theme="light"] body.portal-experience .library-switch button.active {
-  background: var(--experience-ink);
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(39, 32, 27, 0.18);
+  border-color: color-mix(in srgb, var(--experience-accent-ink) 26%, transparent);
+  background: color-mix(in srgb, var(--experience-accent) 9%, transparent);
+  color: var(--experience-orange);
+  box-shadow: none;
 }
 
-html[data-experience-theme="light"] body.portal-experience .usb-eject {
-  border-color: rgba(200, 50, 73, 0.3);
-  color: var(--experience-danger);
+html[data-experience-theme="light"] body.portal-experience .attention {
+  border-color: color-mix(in srgb, var(--experience-accent-ink) 24%, transparent);
+  background: color-mix(in srgb, var(--experience-accent) 7%, var(--experience-raised));
 }
 
-html[data-experience-theme="light"] body.portal-experience :is(.usb-import button, .channel-page-primary, .channel-page-badge) {
-  background: var(--experience-orange-hot);
-  color: var(--experience-on-orange);
+html[data-experience-theme="light"] body.portal-experience .status-icon.warn {
+  background: color-mix(in srgb, var(--experience-accent-ink) 10%, transparent);
 }
 
+html[data-experience-theme="light"] body.portal-experience .destination-library .destination-icon { color: #7045b1; }
+html[data-experience-theme="light"] body.portal-experience .destination-adult .destination-icon { color: #ad3157; }
+html[data-experience-theme="light"] body.portal-experience .device-status-icon { background: rgba(8, 118, 90, 0.1); }
+html[data-experience-theme="light"] body.portal-experience .usb-eject { border-color: rgba(199, 53, 75, 0.3); color: var(--experience-danger); }
+html[data-experience-theme="light"] body.portal-experience :is(.usb-import button, .channel-page-primary, .channel-page-badge) { background: var(--experience-orange-hot); color: var(--experience-on-orange); }
 html[data-experience-theme="light"] body.portal-experience .channel-page-eyebrow { color: var(--experience-orange-hot); }
 
 html[data-experience-theme="light"] body.portal-experience dialog:is(
@@ -138,7 +167,7 @@ html[data-experience-theme="light"] body.portal-experience dialog:is(
   .remote-sheet,
   .tmdb-dialog
 )::backdrop {
-  background: rgba(31, 27, 24, 0.42);
+  background: rgba(25, 31, 42, 0.42);
 }
 
 html[data-experience-theme="light"] body.portal-experience :is(
@@ -150,7 +179,7 @@ html[data-experience-theme="light"] body.portal-experience :is(
   .tmdb-dialog-panel
 ) {
   background: var(--experience-raised);
-  box-shadow: 0 28px 90px rgba(39, 32, 27, 0.28);
+  box-shadow: 0 28px 90px rgba(20, 27, 39, 0.25);
 }
 
 html[data-experience-theme="light"] body.portal-experience :is(
@@ -161,29 +190,27 @@ html[data-experience-theme="light"] body.portal-experience :is(
   .remote-sheet-panel > header,
   .tmdb-dialog-head
 ) {
-  background: rgba(255, 255, 255, 0.94);
-}
-
-html[data-experience-theme="light"] body.portal-experience .tmdb-result {
-  background: var(--experience-elevated);
-}
-
-html[data-experience-theme="light"] body.portal-experience .tmdb-result-poster {
-  background: linear-gradient(145deg, #f4eee8, #e8dfd7);
+  background: rgba(255, 255, 255, 0.95);
 }
 
 html[data-experience-theme="light"] body.portal-experience :is(
   .library-sheet-close,
   .watch-sheet-close,
   .watch-film-close,
-  .remote-sheet-close
+  .remote-sheet-close,
+  .tmdb-result
 ) {
   background: var(--experience-elevated);
 }
 
-html[data-experience-theme="light"] body.portal-experience #adultFolderTabs .adult-folder-tab.active {
-  border-color: rgba(181, 72, 0, 0.52);
-  background: #fff0e5;
+html[data-experience-theme="light"] body.portal-experience .tmdb-result-poster {
+  background: linear-gradient(145deg, #eef1f5, #e0e5ec);
+}
+
+html[data-experience-theme="light"] body.portal-experience #adultFolderTabs .adult-folder-tab.active,
+html[data-experience-theme="light"] body.portal-experience .watch-collection-option.active {
+  border-color: color-mix(in srgb, var(--experience-accent-ink) 28%, transparent);
+  background: color-mix(in srgb, var(--experience-accent) 10%, var(--experience-raised));
 }
 
 html[data-experience-theme="light"] body.portal-experience #adultFolderTabs .adult-folder-tab.active strong {
@@ -191,96 +218,98 @@ html[data-experience-theme="light"] body.portal-experience #adultFolderTabs .adu
   color: var(--experience-on-orange);
 }
 
-html[data-experience-theme="light"] body.portal-experience .watch-collection-option.active {
-  border-color: rgba(181, 72, 0, 0.24);
-  background: #fff0e5;
-}
-
-html[data-experience-theme="light"] body.portal-experience .watch-film-panel { background: var(--experience-raised); }
-
 html[data-experience-theme="light"] body.portal-experience .watch-film-backdrop::after {
   background:
-    linear-gradient(180deg, rgba(7, 7, 10, 0.18), rgba(7, 7, 10, 0.28) 44%, rgba(255, 255, 255, 0.88) 82%, #fff 100%),
-    linear-gradient(90deg, rgba(7, 7, 10, 0.3), transparent 60%);
+    linear-gradient(180deg, rgba(7, 7, 10, 0.15), rgba(7, 7, 10, 0.25) 44%, rgba(255, 255, 255, 0.88) 82%, #fff 100%),
+    linear-gradient(90deg, rgba(7, 7, 10, 0.28), transparent 60%);
 }
 
 html[data-experience-theme="light"] body.portal-experience .watch-film-poster {
   border-color: var(--experience-line-strong);
-  box-shadow: 0 18px 42px rgba(39, 32, 27, 0.24);
+  box-shadow: 0 18px 42px rgba(20, 27, 39, 0.22);
 }
 
 html[data-experience-theme="light"] body.portal-experience :is(.watch-film-eyebrow, .watch-film-overview) {
   color: var(--experience-muted);
 }
 
-html[data-experience-theme="light"] body.portal-experience .watch-programme-sheet > article { background: var(--experience-raised); }
-
-html[data-experience-theme="light"] body.portal-experience .live-led,
-html[data-experience-theme="light"] body.portal-experience .mobile-head-dot {
-  box-shadow: 0 0 0 4px rgba(8, 116, 87, 0.1);
+html[data-experience-theme="light"] body.portal-experience :is(
+  .tv-remote-switcher,
+  .tv-remote-status-card,
+  .remote-app,
+  .lg-control-card,
+  .lg-apps-card
+) {
+  --experience-raised: #111116;
+  --experience-elevated: #18181e;
+  --experience-soft: #222229;
+  --experience-line: rgba(255, 255, 255, 0.1);
+  --experience-line-strong: rgba(255, 255, 255, 0.18);
+  --experience-ink: #f7f7f8;
+  --experience-muted: #a7a7b0;
+  --experience-dim: #73737d;
+  --experience-orange: var(--experience-accent);
+  --experience-orange-hot: var(--experience-accent-hot);
+  --experience-on-orange: #160a02;
+  --experience-good: #4fdda0;
+  --experience-danger: #ff5d6c;
+  --experience-shadow: rgba(0, 0, 0, 0.42);
+  color: var(--experience-ink);
 }
 
-html[data-experience-theme="light"] body.portal-experience .live-off strong { color: #fff; }
+html[data-experience-theme="light"] body.portal-experience :is(.remote-app, .lg-control-card) button:disabled {
+  color: inherit;
+}
 
-html[data-experience-theme="light"] body.portal-experience .tv-remote-utility-row button {
+html[data-experience-theme="light"] body.portal-experience .settings-save {
   background: var(--experience-elevated);
 }
-
-html[data-experience-theme="light"] body.portal-experience :is(.remote-mode.active, .tv-remote-card-lock.active) {
-  border-color: rgba(181, 72, 0, 0.38);
-  background: #fff0e5;
-}
-
-html[data-experience-theme="light"] body.portal-experience .settings-save { background: var(--experience-elevated); }
 
 html[data-experience-theme="light"] body.portal-experience .settings-save button {
   background: var(--experience-orange-hot);
   color: var(--experience-on-orange);
 }
 
-html[data-experience-theme="light"] body.portal-experience .feature-toggle[aria-pressed="true"] {
-  border-color: rgba(8, 116, 87, 0.3);
-  background: rgba(8, 116, 87, 0.08);
+html[data-experience-theme="light"] body.portal-experience .feature-toggle:is([aria-pressed="true"], [aria-checked="true"]) {
+  border-color: rgba(8, 118, 90, 0.3);
+  background: rgba(8, 118, 90, 0.08);
 }
 
-html[data-experience-theme="light"] body.portal-experience .design-option { background: var(--experience-raised); }
+html[data-experience-theme="light"] body.portal-experience .design-option {
+  background: var(--experience-raised);
+}
 
 html[data-experience-theme="light"] body.portal-experience .settings-danger {
-  border-color: rgba(200, 50, 73, 0.24);
-  background: #fff4f5;
+  border-color: rgba(199, 53, 75, 0.24);
+  background: #fff3f5;
 }
 
-html[data-experience-theme="light"] body.portal-experience .rail { background: var(--experience-raised); }
-html[data-experience-theme="light"] body.portal-experience .portal-nav button { color: var(--experience-muted); }
-html[data-experience-theme="light"] body.portal-experience .portal-nav button.active { background: #f7e8dd; color: var(--experience-ink); }
-
-html[data-experience-theme="light"] body.portal-experience .watch-switch-wrap {
-  background: rgba(244, 243, 241, 0.92);
+html[data-experience-theme="light"] body.portal-experience .insights-page .viewing-range {
+  background: rgba(255, 255, 255, 0.94);
 }
 
-html[data-experience-theme="light"] body.portal-experience .watch-continue-card {
-  box-shadow: 0 8px 24px rgba(39, 32, 27, 0.07);
+html[data-experience-theme="light"] body.portal-experience .viewing-range button.active {
+  background: color-mix(in srgb, var(--experience-accent) 9%, transparent);
+  color: var(--experience-orange);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--experience-accent-ink) 18%, transparent);
 }
 
-html[data-experience-theme="light"] body.portal-experience .portal-design-copy strong small {
-  background: rgba(181, 72, 0, 0.1);
-}
-
-html[data-experience-theme="light"] body.portal-experience .portal-design-option[aria-pressed="true"] .portal-design-check {
-  background: var(--experience-orange-hot);
-  color: var(--experience-on-orange);
+html[data-experience-theme="light"] body.portal-experience .activity-tabs button.active {
+  border-color: color-mix(in srgb, var(--experience-accent-ink) 28%, transparent);
+  background: color-mix(in srgb, var(--experience-accent) 9%, transparent);
+  color: var(--experience-orange);
 }
 
 @media (max-width: 860px) {
   html[data-experience-theme="light"] body.portal-experience .portal-nav {
     border-top-color: var(--experience-line-strong);
-    background: rgba(255, 255, 255, 0.94);
+    background: rgba(255, 255, 255, 0.95);
   }
 
   html[data-experience-theme="light"] body.portal-experience .portal-nav button.nav-remote .icon {
     background: var(--experience-orange-hot);
     color: var(--experience-on-orange);
-    box-shadow: 0 0 0 6px var(--experience-raised), 0 9px 24px rgba(181, 72, 0, 0.2);
+    box-shadow: 0 0 0 6px var(--experience-raised), 0 9px 24px color-mix(in srgb, var(--experience-accent-ink) 20%, transparent);
   }
 
   html[data-experience-theme="light"] body.portal-experience .portal-nav button.nav-remote.active .icon {
@@ -289,7 +318,6 @@ html[data-experience-theme="light"] body.portal-experience .portal-design-option
 
   html[data-experience-theme="light"] body.portal-experience .mobile-head {
     border-bottom-color: var(--experience-line);
-    background: #fff;
   }
 
   html[data-experience-theme="light"] body.portal-experience .mobile-head-status {

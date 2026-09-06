@@ -8,21 +8,15 @@ This map describes where portal work belongs without changing that contract.
 
 `scripts/pi/mabeltv_backend/portal.py` assembles the portal and recursively
 expands `portal-include` comments before the HTTP layer returns HTML. The
-installed `mabeltv-library` executable remains the stable entry point. The
-entry documents are:
-
-- `scripts/pi/mabeltv-library.html` for the current Experience design.
-- `scripts/pi/mabeltv-library-classic.html` for the preserved Classic design.
-
-Both entry documents deliberately contain only document metadata, ordered CSS
-and JavaScript assets, and top-level includes. Page markup lives under
+installed `mabeltv-library` executable remains the stable entry point.
+`scripts/pi/mabeltv-library.html` is the single Experience entry document. It
+deliberately contains only document metadata, ordered CSS and JavaScript
+assets, and top-level includes. Page markup lives under
 `scripts/pi/portal/html`:
 
-- `auth.html` owns setup and PIN-gate markup shared by both designs.
+- `auth.html` owns setup and PIN-gate markup.
 - `app-shell.html` owns the Experience header, navigation, and view includes.
-- `classic/app-shell.html` owns the Classic shell and its view includes.
 - `views/` contains one Experience file per top-level route.
-- `classic/views/` contains one Classic file per top-level route.
 - `overlays.html` is an ordered dispatcher for the focused overlay partials in
   `overlays/`. The IDs in those partials are public JavaScript contracts.
 
@@ -63,17 +57,12 @@ order unless a change explicitly redefines the cascade.
 - `experience-overlays.css`: common Experience dialog and management shells.
 - `experience-playback-overlays.css`: playback-specific dialog presentation.
 - `lg-tv-remote.css`: the separate LG TV remote surface.
-- `experience-light.css`: light-theme overrides, intentionally last.
+- `experience-light.css`: the complete light-theme token and component
+  adaptation layer, intentionally last.
 
-### Classic design
-
-The Classic entry point loads `classic-foundation.css`, `classic-shell.css`,
-`classic-library.css`, and `classic-responsive.css` after the shared base. Keep
-Classic overrides isolated in those files rather than adding Classic branches
-to Experience modules.
-
-`portal-design-switch.css` is shared by both entry points and follows their
-design-specific styles.
+Experience is the only portal presentation. Theme and accent are device-local
+preferences owned by `experience-theme.js`; the accent hue feeds the shared
+Experience colour tokens so route modules do not own fixed accent colours.
 
 ## JavaScript ownership and execution order
 

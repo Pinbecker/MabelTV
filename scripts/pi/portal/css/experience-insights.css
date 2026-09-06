@@ -27,12 +27,12 @@ body.portal-v2 .viewing-destinations > button {
   gap: 12px;
   border: 1px solid var(--experience-line);
   border-radius: 13px;
-  background: linear-gradient(135deg, rgba(255,122,26,.07), rgba(124,47,220,.04)), var(--experience-raised);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--experience-accent) 7%, transparent), rgba(124,47,220,.04)), var(--experience-raised);
   color: var(--experience-ink);
   padding: 12px;
   text-align: left;
 }
-body.portal-v2 .viewing-destinations > button:active { border-color: rgba(255,122,26,.45); transform: scale(.99); }
+body.portal-v2 .viewing-destinations > button:active { border-color: color-mix(in srgb, var(--experience-accent) 45%, transparent); transform: scale(.99); }
 body.portal-v2 .viewing-destinations > button > svg { width: 18px; height: 18px; color: var(--experience-dim); }
 body.portal-v2 .viewing-destination-art {
   position: relative;
@@ -47,7 +47,7 @@ body.portal-v2 .viewing-destination-art > span:nth-child(1) { left: 0; transform
 body.portal-v2 .viewing-destination-art > span:nth-child(2) { left: 14px; z-index: 1; }
 body.portal-v2 .viewing-destination-art > span:nth-child(3) { right: 0; transform: rotate(6deg); }
 body.portal-v2 .viewing-destination-art > svg { width: 28px; height: 28px; color: var(--experience-dim); }
-body.portal-v2 .viewing-destination-icon { display: grid; width: 62px; height: 62px; place-items: center; border-radius: 16px; background: rgba(255,122,26,.1); color: var(--experience-orange); }
+body.portal-v2 .viewing-destination-icon { display: grid; width: 62px; height: 62px; place-items: center; border-radius: 16px; background: color-mix(in srgb, var(--experience-accent) 10%, transparent); color: var(--experience-orange); }
 body.portal-v2 .viewing-destination-icon svg { width: 27px; height: 27px; }
 body.portal-v2 .viewing-destination-copy { display: grid; min-width: 0; gap: 2px; }
 body.portal-v2 .viewing-destination-copy small { color: var(--experience-orange); font-size: 10px; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
@@ -66,13 +66,13 @@ body.portal-v2 .viewing-highlight {
   overflow: hidden;
   border: 1px solid var(--experience-line);
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(255,122,26,.14), rgba(124,47,220,.12)), var(--experience-elevated) center / cover no-repeat;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--experience-accent) 14%, transparent), rgba(124,47,220,.12)), var(--experience-elevated) center / cover no-repeat;
   color: #fff;
   padding: 13px;
   text-align: left;
 }
 body.portal-v2 .viewing-highlight > span { display: grid; min-width: 0; text-shadow: 0 1px 8px rgba(0,0,0,.65); }
-body.portal-v2 .viewing-highlight small { color: #ff9d58; font-size: 10px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+body.portal-v2 .viewing-highlight small { color: var(--experience-accent-hot); font-size: 10px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
 body.portal-v2 .viewing-highlight strong { overflow: hidden; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
 body.portal-v2 .viewing-highlight span span { color: rgba(255,255,255,.72); font-size: 10px; }
 
@@ -87,20 +87,20 @@ body.portal-v2 .viewing-section-hero {
   overflow: hidden;
   border: 1px solid var(--experience-line);
   border-radius: 14px;
-  background: linear-gradient(135deg, rgba(255,122,26,.14), rgba(124,47,220,.1)), var(--experience-raised);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--experience-accent) 14%, transparent), rgba(124,47,220,.1)), var(--experience-raised);
   padding: 18px;
 }
 body.portal-v2 .viewing-section-hero h2 { margin: 0; font-size: 28px; letter-spacing: -.045em; }
 body.portal-v2 .viewing-section-hero p:not(.section-kicker) { max-width: 560px; margin: 3px 0 0; color: var(--experience-muted); font-size: 11px; }
-body.portal-v2 .viewing-section-hero > strong { display: grid; min-width: 58px; height: 58px; place-items: center; border-radius: 16px; background: rgba(255,122,26,.12); color: var(--experience-orange); font-size: 21px; }
-body.portal-v2 .viewing-section-hero > svg { width: 52px; height: 52px; border-radius: 15px; background: rgba(255,122,26,.1); color: var(--experience-orange); padding: 13px; }
+body.portal-v2 .viewing-section-hero > strong { display: grid; min-width: 58px; height: 58px; place-items: center; border-radius: 16px; background: color-mix(in srgb, var(--experience-accent) 12%, transparent); color: var(--experience-orange); font-size: 21px; }
+body.portal-v2 .viewing-section-hero > svg { width: 52px; height: 52px; border-radius: 15px; background: color-mix(in srgb, var(--experience-accent) 10%, transparent); color: var(--experience-orange); padding: 13px; }
 body.portal-v2 .viewing-search { display: flex; width: 100%; min-width: 0; min-height: 50px; align-items: center; gap: 10px; border: 1px solid var(--experience-line); border-radius: 12px; background: var(--experience-raised); padding: 0 14px; }
 body.portal-v2 .viewing-search svg { display: block; flex: 0 0 21px; width: 21px; height: 21px; color: var(--experience-dim); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 body.portal-v2 .viewing-search input { flex: 1 1 auto; width: 100%; min-width: 0; min-height: 46px; border: 0; outline: 0; background: transparent; color: var(--experience-ink); padding: 0; font-size: 16px; font-weight: 700; }
 
 body.portal-v2 .viewing-catalog-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 body.portal-v2 .viewing-catalog-card { display: grid; min-width: 0; grid-template-columns: 82px minmax(0, 1fr); align-items: center; gap: 11px; overflow: hidden; border: 1px solid var(--experience-line); border-radius: 12px; background: var(--experience-raised); color: var(--experience-ink); padding: 8px; text-align: left; }
-body.portal-v2 .viewing-catalog-card:active { border-color: rgba(255,122,26,.5); }
+body.portal-v2 .viewing-catalog-card:active { border-color: color-mix(in srgb, var(--experience-accent) 50%, transparent); }
 body.portal-v2 .viewing-catalog-art { display: grid; width: 82px; aspect-ratio: 4 / 3; place-items: center; border-radius: 9px; background-color: var(--experience-elevated); background-position: center; background-size: cover; background-repeat: no-repeat; color: var(--experience-dim); }
 body.portal-v2 .viewing-catalog-card.film .viewing-catalog-art { aspect-ratio: 2 / 3; background-size: contain; }
 body.portal-v2 .viewing-catalog-art svg { width: 24px; height: 24px; }
@@ -111,7 +111,7 @@ body.portal-v2 .viewing-catalog-copy > span { color: var(--experience-dim); font
 
 body.portal-v2 .viewing-subnav { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; border: 1px solid var(--experience-line); border-radius: 12px; background: var(--experience-raised); padding: 5px; }
 body.portal-v2 .viewing-subnav button { min-height: 44px; border: 0; border-radius: 8px; background: transparent; color: var(--experience-dim); font-size: 11px; font-weight: 800; }
-body.portal-v2 .viewing-subnav button.active { background: rgba(255,122,26,.12); color: var(--experience-orange); box-shadow: inset 0 0 0 1px rgba(255,122,26,.25); }
+body.portal-v2 .viewing-subnav button.active { background: color-mix(in srgb, var(--experience-accent) 12%, transparent); color: var(--experience-orange); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--experience-accent) 25%, transparent); }
 body.portal-v2 .viewing-tab-panel { display: grid; gap: 10px; }
 body.portal-v2 .viewing-tab-panel.hidden { display: none; }
 
@@ -127,7 +127,7 @@ body.portal-v2 .viewing-diary-periods > button > svg { width: 15px; height: 15px
 body.portal-v2 .viewing-period-thumbs { grid-column: 1 / -1; display: flex; min-height: 28px; }
 body.portal-v2 .viewing-period-thumbs i { width: 28px; height: 28px; margin-right: -8px; border: 2px solid var(--experience-raised); border-radius: 50%; background: var(--experience-elevated) center / cover no-repeat; }
 
-body.portal-v2 .viewing-period-hero { display: grid; grid-template-columns: 48px minmax(0, 1fr) 48px; align-items: center; gap: 14px; border: 1px solid var(--experience-line); border-radius: 14px; background: linear-gradient(135deg, rgba(255,122,26,.14), rgba(124,47,220,.1)), var(--experience-raised); padding: 18px; text-align: center; }
+body.portal-v2 .viewing-period-hero { display: grid; grid-template-columns: 48px minmax(0, 1fr) 48px; align-items: center; gap: 14px; border: 1px solid var(--experience-line); border-radius: 14px; background: linear-gradient(135deg, color-mix(in srgb, var(--experience-accent) 14%, transparent), rgba(124,47,220,.1)), var(--experience-raised); padding: 18px; text-align: center; }
 body.portal-v2 .viewing-period-hero h2 { margin: 0; font-size: 30px; }
 body.portal-v2 .viewing-period-hero p:not(.section-kicker) { margin: 3px 0 0; color: var(--experience-muted); font-size: 10px; }
 body.portal-v2 .viewing-period-hero > button { display: grid; width: 48px; height: 48px; place-items: center; border: 1px solid var(--experience-line); border-radius: 50%; background: var(--experience-elevated); color: var(--experience-orange); }

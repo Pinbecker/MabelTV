@@ -67,17 +67,6 @@ def load_index() -> str:
 INDEX = load_index()
 
 
-def load_classic_index() -> str:
-    """Load the preserved previous portal as an optional presentation shell."""
-    try:
-        return load_portal_document(SERVICE_ROOT / "mabeltv-library-classic.html")
-    except OSError:
-        return INDEX
-
-
-CLASSIC_INDEX = load_classic_index()
-
-
 def load_watch_page() -> str:
     try:
         return (SERVICE_ROOT / "mabeltv-watch.html").read_text(encoding="utf-8")

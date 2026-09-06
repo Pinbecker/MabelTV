@@ -114,7 +114,6 @@ function renderAdultLibrary() {
         tab.innerHTML = `<span>${escapeHtml(item.name)}</span><strong>${count}</strong>`
         tab.onclick = () => {
           adultFolderFilter = item.value
-          if (currentPortalDesign !== 'experience') $('#adultCollectionSheet').close()
           renderAdultLibrary()
         }
         tabs.append(tab)

@@ -7,7 +7,7 @@ body.portal-experience .dialog-close-bar {
 }
 
 body.portal-experience .dialog-close-bar .watch-film-close {
-  border-color: rgba(255, 122, 26, 0.72);
+  border-color: color-mix(in srgb, var(--experience-accent) 72%, transparent);
   background: rgba(37, 37, 45, 0.88);
   color: #fff;
   -webkit-backdrop-filter: blur(14px);
@@ -62,7 +62,7 @@ body.portal-experience .portal-sheet-title-row .sheet-favourite {
 body.portal-experience .sheet-favourite:focus-visible {
   outline: 0;
   color: var(--experience-orange);
-  filter: drop-shadow(0 0 4px rgba(255, 122, 26, 0.5));
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--experience-accent) 50%, transparent));
 }
 
 body.portal-experience .portal-sheet-close:focus-visible {
@@ -411,7 +411,7 @@ body.portal-experience .adult-film-collection-controls select {
 }
 
 body.portal-experience .adult-film-collection-controls button {
-  background: rgba(255, 122, 26, 0.14);
+  background: color-mix(in srgb, var(--experience-accent) 14%, transparent);
   color: var(--experience-orange);
   padding: 0 14px;
   font-size: 11px;
