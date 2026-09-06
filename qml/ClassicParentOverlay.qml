@@ -24,6 +24,7 @@ Item {
         if (value === "silver-90s") return "SILVER 90s"
         if (value === "charcoal-90s") return "CHARCOAL 90s"
         if (value === "vintage-black") return "VINTAGE BLACK"
+        if (value === "dinosaur-den") return "DINOSAUR DEN"
         return value.toUpperCase()
     }
 

@@ -860,6 +860,14 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
     QCOMPARE(restored.crtGlass(), 100);
     QCOMPARE(restored.videoDistortion(), 100);
     QVERIFY(restored.scrubbingEnabled());
+    restored.cycleTvBorderStyle(1);
+    QCOMPARE(restored.tvBorderStyle(), QStringLiteral("charcoal-90s"));
+    restored.cycleTvBorderStyle(1);
+    QCOMPARE(restored.tvBorderStyle(), QStringLiteral("vintage-black"));
+    restored.cycleTvBorderStyle(1);
+    QCOMPARE(restored.tvBorderStyle(), QStringLiteral("dinosaur-den"));
+    restored.cycleTvBorderStyle(1);
+    QCOMPARE(restored.tvBorderStyle(), QStringLiteral("slim-black"));
 }
 
 void CoreTests::tvGuideBuildsOrderedScheduleAndTunesChannels()

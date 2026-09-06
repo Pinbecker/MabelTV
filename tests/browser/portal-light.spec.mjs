@@ -58,6 +58,18 @@ test('light Home and Watch use the dark design language on neutral surfaces', as
 })
 
 
+test('light programme sheet keeps its global close icon visible', async ({ page }, testInfo) => {
+  phoneOnly(testInfo)
+  await openLightPortal(page)
+
+  await page.locator('#homeContinueRail .watch-continue-card').first().click()
+  const programmeClose = page.getByRole('button', { name: 'Close programme details' })
+  await expect(programmeClose).toBeVisible()
+  const closeColour = await programmeClose.evaluate(element => getComputedStyle(element).color)
+  expect(closeColour).not.toBe('rgb(255, 255, 255)')
+})
+
+
 test('light remote pages keep one cohesive dark control surface', async ({ page }, testInfo) => {
   phoneOnly(testInfo)
   await openLightPortal(page)

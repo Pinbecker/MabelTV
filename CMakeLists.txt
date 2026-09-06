@@ -89,6 +89,7 @@ qt_add_resources(mabeltv "mabeltv_qml"
     FILES
         qml/Main.qml
         qml/TelevisionScreen.qml
+        qml/DinosaurDenSurround.qml
         qml/RemoteInputHandler.qml
         qml/ChannelSummaryOverlay.qml
         qml/TvGuideOverlay.qml

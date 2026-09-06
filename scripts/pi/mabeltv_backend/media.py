@@ -848,7 +848,7 @@ class MediaCatalogueMixin:
             "playback_mode": choice("playback_mode", {"continuous", "resume"}, "continuous"),
             "episode_reset_minutes": episode_reset,
             "picture_mode": choice("picture_mode", {"channel", "crop", "fit", "stretch"}, "channel"),
-            "tv_border": choice("tv_border", {"slim-black", "silver-90s", "charcoal-90s", "vintage-black"}, "slim-black"),
+            "tv_border": choice("tv_border", {"slim-black", "silver-90s", "charcoal-90s", "vintage-black", "dinosaur-den"}, "slim-black"),
             "crt_glass": bounded(settings.get("crt_glass"), 35),
             "video_distortion": bounded(settings.get("video_distortion"), 20),
             "display_resolution": choice("display_resolution", {"720p", "1080p", "native"}, "720p"),
@@ -1140,7 +1140,7 @@ class MediaCatalogueMixin:
                 raise ValueError("Choose a playback behaviour")
             if picture_mode not in {"channel", "crop", "fit", "stretch"}:
                 raise ValueError("Choose a picture mode")
-            if tv_border not in {"slim-black", "silver-90s", "charcoal-90s", "vintage-black"}:
+            if tv_border not in {"slim-black", "silver-90s", "charcoal-90s", "vintage-black", "dinosaur-den"}:
                 raise ValueError("Choose a TV cabinet")
             if display_resolution not in {"720p", "1080p", "native"}:
                 raise ValueError("Choose a display resolution")

@@ -191,6 +191,12 @@
     box-shadow: 0 30px 82px #000d, inset 0 1px #ffffff28, inset 0 0 0 4px #111311;
   }
 
+  .mabel-watch-cabinet.dinosaur-den {
+    border-color: #91a67b;
+    background: linear-gradient(145deg, #91a67b 0%, #6f825f 45%, #4c5e41 100%);
+    box-shadow: 0 30px 82px #000d, inset 0 1px #ffffff35, inset 0 0 0 4px #36432d;
+  }
+
   .mabel-watch-cabinet.charcoal-90s::before {
     position: absolute;
     z-index: 0;
@@ -244,6 +250,11 @@
     box-shadow: inset 0 1px #ffffff0a;
   }
 
+  .mabel-watch-cabinet.dinosaur-den .mabel-watch-charcoal-speaker {
+    border-color: #516747;
+    background: repeating-linear-gradient(to bottom, #152016 0 3%, #35452e 3% 14%, #152016 14% 17%);
+  }
+
   .mabel-watch-charcoal-speaker.left {
     left: 0;
   }
@@ -263,6 +274,10 @@
     letter-spacing: 0.16em;
     text-align: center;
     text-shadow: 0 1px #000;
+  }
+
+  .mabel-watch-cabinet.dinosaur-den .mabel-watch-charcoal-logo {
+    color: #edf5d9;
   }
 
   .mabel-watch-charcoal-control {

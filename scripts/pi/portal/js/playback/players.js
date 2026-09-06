@@ -316,8 +316,11 @@ function remoteTime(value) {
         const settings = library?.tv_settings || {}
         const cabinet = $('#mabelWatchCabinet')
         const cabinetStyle = settings.tv_border || 'slim-black'
-        cabinet.className = `mabel-watch-cabinet ${cabinetStyle}`
-        $('#mabelWatchShell').className = `mabel-watch-shell ${cabinetStyle}`
+        const cabinetClasses = cabinetStyle === 'dinosaur-den'
+          ? 'charcoal-90s dinosaur-den'
+          : cabinetStyle
+        cabinet.className = `mabel-watch-cabinet ${cabinetClasses}`
+        $('#mabelWatchShell').className = `mabel-watch-shell ${cabinetClasses}`
         cabinet.style.setProperty('--glass', String(Math.min(.5, Math.max(0, Number(settings.crt_glass || 35) / 100 * .65))))
         cabinet.style.setProperty('--distortion', String(Math.min(1, Math.max(0, Number(settings.video_distortion || 20) / 100))))
         video.pause(); video.removeAttribute('src')

@@ -203,6 +203,10 @@ html[data-experience-theme="light"] body.portal-experience :is(
   background: var(--experience-elevated);
 }
 
+html[data-experience-theme="light"] body.portal-experience .portal-sheet-close {
+  color: var(--experience-ink);
+}
+
 html[data-experience-theme="light"] body.portal-experience .tmdb-result-poster {
   background: linear-gradient(145deg, #eef1f5, #e0e5ec);
 }

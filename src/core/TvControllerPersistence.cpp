@@ -130,7 +130,8 @@ void TvController::loadSettings(const QString &settingsPath, bool preserveRuntim
         m_tvBorderStyle = QStringLiteral("vintage-black");
     } else if (borderStyle == QStringLiteral("silver-90s")
                || borderStyle == QStringLiteral("charcoal-90s")
-               || borderStyle == QStringLiteral("vintage-black")) {
+               || borderStyle == QStringLiteral("vintage-black")
+               || borderStyle == QStringLiteral("dinosaur-den")) {
         m_tvBorderStyle = borderStyle;
     } else {
         m_tvBorderStyle = QStringLiteral("slim-black");

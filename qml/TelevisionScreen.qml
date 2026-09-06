@@ -25,6 +25,8 @@ Rectangle {
     readonly property bool isSilver: styleName === "silver-90s"
     readonly property bool isCharcoal: styleName === "charcoal-90s"
     readonly property bool isVintage: styleName === "vintage-black"
+    readonly property bool isDinosaur: styleName === "dinosaur-den"
+    readonly property bool usesCharcoalGeometry: isCharcoal || isDinosaur
     readonly property bool widescreen: appRoot.portalWidescreenEnabled
     // Keep Slim Black's original proportions exactly. The three physical
     // sets have a smaller tube so there is room for their real cabinet
@@ -33,7 +35,7 @@ Rectangle {
     readonly property real tubeWidth: widescreen ? width * 0.89
         : (isSlim ? width - sideInset * 2
            : (isSilver ? width * 0.790
-              : (isCharcoal ? width * 0.770 : width * 0.740)))
+              : (usesCharcoalGeometry ? width * 0.770 : width * 0.740)))
     readonly property real tubeHeight: tubeWidth * (widescreen ? 9 / 16 : 3 / 4)
     readonly property real tubeTop: widescreen ? width * 0.030
         : (isSlim ? (height - tubeHeight) / 2
@@ -42,7 +44,7 @@ Rectangle {
         isSlim ? 0.015 : (isVintage ? 0.020 : 0.017)))
     readonly property color lipColor: isSlim ? "#060807"
         : (isSilver ? "#484a47"
-           : (isCharcoal ? "#111311" : "#080908"))
+           : (usesCharcoalGeometry ? "#111311" : "#080908"))
     readonly property real fasciaTop: tubeTop + tubeHeight + lipWidth
 
     anchors.centerIn: parent
@@ -52,31 +54,32 @@ Rectangle {
     height: width * (widescreen ? 0.64 : 3 / 4)
     radius: isSlim ? Math.max(38, width * 0.055)
         : Math.max(44, width * 0.067)
-    color: "#151a16"
-    border.color: isSlim ? "#454c46"
+    color: isDinosaur ? "transparent" : "#151a16"
+    border.color: isDinosaur ? "transparent" : (isSlim ? "#454c46"
         : (isSilver ? "#f5f3eb"
-           : (isCharcoal ? "#555a55" : "#333632"))
+           : (isCharcoal ? "#555a55" : "#333632")))
     border.width: 2
     antialiasing: true
 
     gradient: Gradient {
         GradientStop {
             position: 0
-            color: cabinet.isSlim ? "#252a26"
+            color: cabinet.isDinosaur ? "transparent" : (cabinet.isSlim ? "#252a26"
                 : (cabinet.isSilver ? "#deded7"
-                   : (cabinet.isCharcoal ? "#3f433f" : "#2d302d"))
+                   : (cabinet.isCharcoal ? "#3f433f" : "#2d302d")))
         }
         GradientStop {
             position: 1
-            color: cabinet.isSlim ? "#0d100e"
+            color: cabinet.isDinosaur ? "transparent" : (cabinet.isSlim ? "#0d100e"
                 : (cabinet.isSilver ? "#979992"
-                   : (cabinet.isCharcoal ? "#171a18" : "#101210"))
+                   : (cabinet.isCharcoal ? "#171a18" : "#101210")))
         }
     }
 
     Rectangle {
         anchors.fill: parent
         anchors.margins: 3
+        visible: !cabinet.isDinosaur
         radius: Math.max(0, cabinet.radius - 3)
         color: "transparent"
         border.color: cabinet.isSilver ? "#70ffffff" : "#36ffffff"
@@ -339,6 +342,7 @@ Rectangle {
     Rectangle {
         id: bezelLip
 
+        visible: !cabinet.isDinosaur
         x: screen.x - cabinet.lipWidth
         y: screen.y - cabinet.lipWidth
         width: screen.width + cabinet.lipWidth * 2
@@ -946,6 +950,19 @@ Rectangle {
                 radius: height / 2
                 color: "#e8f1df"
                 opacity: (1 - appRoot.warmProgress) * 0.8
+            }
+        }
+    }
+
+    Loader {
+        anchors.fill: parent
+        active: cabinet.isDinosaur
+        visible: active
+        z: 10
+
+        sourceComponent: Component {
+            DinosaurDenSurround {
+                appRoot: cabinet.appRoot
             }
         }
     }

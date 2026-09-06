@@ -14,6 +14,7 @@ sections are composed from focused components:
 | Component | Responsibility |
 | --- | --- |
 | `TelevisionScreen.qml` | Cabinet, screen, player, CRT treatment, picture geometry and television OSDs. |
+| `DinosaurDenSurround.qml` | Optional dinosaur cabinet artwork using the existing charcoal screen geometry. |
 | `RemoteInputHandler.qml` | Physical key routing, holds, repeat throttling and overlay precedence. |
 | `ParentConfirmationView.qml` | Modern parent-access confirmation screen. |
 | `ParentDashboardView.qml` | Modern parent settings and channel-management screen. |

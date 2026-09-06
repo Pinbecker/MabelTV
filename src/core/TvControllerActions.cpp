@@ -461,7 +461,8 @@ void TvController::cycleTvBorderStyle(int direction)
     m_tvBorderStyle = cycleValue({QStringLiteral("slim-black"),
                                   QStringLiteral("silver-90s"),
                                   QStringLiteral("charcoal-90s"),
-                                  QStringLiteral("vintage-black")},
+                                  QStringLiteral("vintage-black"),
+                                  QStringLiteral("dinosaur-den")},
                                  m_tvBorderStyle,
                                  direction);
     emit tvBorderStyleChanged();
