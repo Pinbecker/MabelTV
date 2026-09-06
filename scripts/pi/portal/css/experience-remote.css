@@ -245,22 +245,26 @@ body.portal-v2 .remote-transport button {
   gap: 3px;
   min-width: 0;
   min-height: 62px;
-  border: 1px solid transparent;
+  border: 1px solid var(--experience-line);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.025);
-  color: var(--experience-muted);
+  background: var(--experience-raised);
+  color: var(--experience-ink);
   padding: 6px 1px;
   font-size: 10px;
   font-weight: 700;
 }
 
-body.portal-v2 .remote-transport button:hover {
+body.portal-v2 .remote-transport button:hover:not(:disabled) {
   border-color: var(--experience-line);
   background: rgba(255, 255, 255, 0.055);
   color: var(--experience-ink);
 }
 
-body.portal-v2 .remote-transport button:disabled { opacity: 0.32; }
+body.portal-v2 .remote-transport button:disabled {
+  background: var(--experience-elevated);
+  color: var(--experience-muted);
+  opacity: 1;
+}
 
 body.portal-v2 .remote-transport button.active { color: var(--experience-orange); }
 

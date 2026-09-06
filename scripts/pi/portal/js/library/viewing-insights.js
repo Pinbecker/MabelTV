@@ -1,5 +1,8 @@
 'use strict'
 
+    const insightsPositions = new Map()
+    let currentInsightsPath = 'insights'
+
     function viewingDuration(seconds) {
       const minutes = Math.max(0, Math.round(Number(seconds || 0) / 60))
       const hours = Math.floor(minutes / 60)
@@ -416,6 +419,10 @@
     }
 
     function renderInsightsRoute() {
+      return preservePortalPosition(renderInsightsScreen)
+    }
+
+    function renderInsightsScreen() {
       if (!viewingInsightsData) return
       const route = viewingInsightsRoute
       if (route.screen === 'channels' || route.screen === 'films') renderViewingBrowse(route.screen)
@@ -435,6 +442,13 @@
     }
 
     function openInsightsRoute(requested) {
+      if ($('#view-insights').classList.contains('active')) {
+        insightsPositions.set(currentInsightsPath, {
+          position: capturePortalPosition(), search: $('#viewingBrowseSearch').value,
+        })
+      }
+      const saved = insightsPositions.get(requested)
+      currentInsightsPath = requested
       const previousScreen = viewingInsightsRoute.screen
       const item = requested.match(/^insights\/item\/(.+)\/(summary|patterns|history)$/)
       const period = requested.match(/^insights\/period\/(\d{4}-\d{2}-\d{2})\/([0-3])$/)
@@ -446,13 +460,17 @@
       else viewingInsightsRoute = { screen: 'dashboard' }
       if ((viewingInsightsRoute.screen === 'channels' || viewingInsightsRoute.screen === 'films')
           && viewingInsightsRoute.screen !== previousScreen && $('#viewingBrowseSearch')) {
-        $('#viewingBrowseSearch').value = ''
+        $('#viewingBrowseSearch').value = saved?.search || ''
       }
       $('.insights-page')?.classList.toggle('is-child', viewingInsightsRoute.screen !== 'dashboard')
       $('#viewingRangeControls')?.classList.toggle('hidden', viewingInsightsRoute.screen !== 'dashboard')
-      openView('insights', { instantScroll: true })
+      openView('insights', { instantScroll: true, resetScroll: true })
       renderInsightsRoute()
-      requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }))
+      if (saved) {
+        restorePortalPosition(saved.position)
+        settlePortalPosition(saved.position)
+      }
+      else resetViewScroll()
     }
     window.openInsightsRoute = openInsightsRoute
     if (location.hash === '#insights' || location.hash.startsWith('#insights/')) {
@@ -634,6 +652,7 @@
       }
       try {
         const data = await api(`/api/viewing-insights?days=${viewingInsightsRange}&timezone_offset=${new Date().getTimezoneOffset()}`)
+        const position = capturePortalPosition()
         viewingInsightsData = data
         viewingInsightsLoadedRange = viewingInsightsRange
         const rangeLabels = { 1: 'Today', 7: 'Last 7 days', 30: 'Last 30 days', 365: 'Last 12 months' }
@@ -668,6 +687,7 @@
         renderInsightsRoute()
         root.classList.remove('hidden')
         loading.classList.add('hidden')
+        restorePortalPosition(position)
       } catch (error) {
         loading.textContent = 'Viewing insights are temporarily unavailable.'
         loading.classList.remove('hidden')
@@ -695,6 +715,6 @@
     }
     $('#viewingBrowseSearch').oninput = () => {
       if (viewingInsightsRoute.screen === 'channels' || viewingInsightsRoute.screen === 'films') {
-        renderViewingBrowse(viewingInsightsRoute.screen)
+        preservePortalPosition(() => renderViewingBrowse(viewingInsightsRoute.screen))
       }
     }

@@ -42,18 +42,8 @@ function updateAdultOptimisationCards(film) {
       })
     }
 
-async function reloadLibraryWithoutLosingPlace() {
-      const scrollY = window.scrollY
-      const horizontal = [...document.querySelectorAll(
-        '.watch-channel-rail,.watch-continue-rail,.home-poster-rail')]
-        .map(element => ({ element, left: element.scrollLeft }))
-      await load()
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        window.scrollTo({ top: scrollY, left: 0, behavior: 'instant' })
-        horizontal.forEach(value => {
-          if (value.element.isConnected) value.element.scrollLeft = value.left
-        })
-      }))
+async function reloadLibraryWithoutLosingPlace(preferredUploadChannel = null) {
+      await load(preferredUploadChannel)
     }
 
 async function pollAdultOptimisations() {
@@ -89,6 +79,10 @@ async function pollAdultOptimisations() {
     }
 
 function renderAdultLibrary() {
+      return preservePortalPosition(renderAdultLibraryContents)
+    }
+
+function renderAdultLibraryContents() {
       const films = library?.adult_library || []
       const folders = library?.adult_folders || []
       if (adultFolderFilter !== '*' && adultFolderFilter !== '' && !folders.includes(adultFolderFilter)) adultFolderFilter = '*'
@@ -103,32 +97,43 @@ function renderAdultLibrary() {
       })
       uploadFolder.value = folders.includes(uploadChoice) ? uploadChoice : ''
 
-      const tabs = $('#adultFolderTabs'); tabs.innerHTML = ''
+      const tabs = document.createDocumentFragment()
       const tabValues = [{ value: '*', name: 'All films' }, { value: '', name: 'Unfiled' },
         ...folders.map(folder => ({ value: folder, name: folder }))]
       tabValues.forEach(item => {
         const count = item.value === '*' ? films.length : films.filter(film => film.folder === item.value).length
         if (item.value === '' && count === 0) return
-        const tab = document.createElement('button'); tab.type = 'button'
+        const tab = portalButton({ iconName: 'folder', iconClass: 'icon' })
         tab.className = `adult-folder-tab${adultFolderFilter === item.value ? ' active' : ''}`
-        tab.innerHTML = `<span>${escapeHtml(item.name)}</span><strong>${count}</strong>`
+        const copy = document.createElement('span')
+        const title = document.createElement('strong'); title.textContent = item.name
+        copy.append(title)
+        const badge = document.createElement('span'); badge.className = 'count-badge'; badge.textContent = count
+        tab.append(copy, badge)
+        tab.setAttribute('aria-pressed', String(adultFolderFilter === item.value))
         tab.onclick = () => {
           adultFolderFilter = item.value
           renderAdultLibrary()
         }
         tabs.append(tab)
       })
+      $('#adultFolderTabs').replaceChildren(tabs)
       const realFolderSelected = adultFolderFilter !== '*' && adultFolderFilter !== ''
       $('#adultRenameFolder').disabled = !realFolderSelected
-      $('#adultDeleteFolder').disabled = !realFolderSelected
+      const selectedCount = films.filter(film => film.folder === adultFolderFilter).length
+      $('#adultDeleteFolder').disabled = !realFolderSelected || selectedCount > 0
+      $('#adultFolderSelectionActions').classList.toggle('hidden', !realFolderSelected)
+      $('#adultFolderSelectionActions [data-selected-collection]').textContent = folderName
+      $('#adultDeleteFolderHint').textContent = selectedCount ? 'Move its films first' : 'This collection is empty'
 
-      const root = $('#adultFilmList')
-      root.innerHTML = ''
+      const target = $('#adultFilmList')
+      const root = document.createDocumentFragment()
       if (!films.length) {
         root.append(portalEmptyState({
           title: 'No films yet',
           message: 'Upload one here and it will appear in Adult mode on the television.',
         }))
+        target.replaceChildren(root)
         return
       }
       const query = adultSearchText.trim().toLocaleLowerCase()
@@ -175,6 +180,7 @@ function renderAdultLibrary() {
         row.onclick = () => openAdultFilmSheet(film)
         root.append(row)
       })
+      target.replaceChildren(root)
       if (films.some(film => ['queued', 'processing'].includes(film.playback_state))) {
         adultOptimisationWasActive = true
         clearTimeout(adultOptimisationRefresh)
@@ -253,7 +259,7 @@ function renderAdultLibrary() {
             choose.disabled = true
             try {
               await api('/api/tmdb/apply', { method: 'POST', body: JSON.stringify({ file: film.path, tmdb_id: match.id }) })
-              portalSheets.dismiss($('#tmdbDialog')); await load(); notice('Film metadata, artwork, and available subtitles were saved locally.')
+              portalSheets.dismiss($('#tmdbDialog')); await reloadLibraryWithoutLosingPlace(); notice('Film metadata, artwork, and available subtitles were saved locally.')
             } catch (error) { notice(error.message, true); choose.disabled = false }
           }
           row.append(poster, copy, choose); root.append(row)
@@ -304,7 +310,7 @@ function renderAdultLibrary() {
                 })
               })
               portalSheets.dismiss($('#tmdbDialog'))
-              await load(channel.number)
+              await reloadLibraryWithoutLosingPlace(channel.number)
               notice('The selected film metadata and artwork were saved locally.')
             } catch (error) {
               notice(error.message, true)
@@ -357,7 +363,7 @@ function renderAdultLibrary() {
                 body: JSON.stringify({ channel: channel.number, tmdb_id: match.id })
               })
               portalSheets.dismiss($('#tmdbDialog'))
-              await load(channel.number)
+              await reloadLibraryWithoutLosingPlace(channel.number)
               notice('The selected show metadata and channel artwork were saved locally.')
             } catch (error) {
               notice(error.message, true)

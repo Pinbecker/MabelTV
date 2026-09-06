@@ -30,6 +30,8 @@ Item {
         if (value === "charcoal-90s") return "Charcoal 90s"
         if (value === "vintage-black") return "Vintage black"
         if (value === "dinosaur-den") return "Dinosaur Den"
+        if (value === "finding-nemo") return "Finding Nemo"
+        if (value === "ocean-club") return "Ocean Club"
         return value
     }
 

@@ -409,10 +409,7 @@
       api('/api/live/stop', { method: 'POST', body: '{}' }).catch(() => {})
     }
     $$('[data-view-button]').forEach(button => button.onclick = () => {
-      if (button.dataset.viewButton === 'watch' && !offlineMode) {
-        remoteKind = 'channel'
-        renderRemoteViewing()
-      }
+      if (button.dataset.viewButton === 'watch' && !offlineMode) renderRemoteViewing()
       if (button.dataset.viewButton === 'channels') showChannelHub()
       openView(button.dataset.viewButton)
       if (button.dataset.viewButton === 'adult') refreshTmdbStatus().catch(() => {})
@@ -428,10 +425,7 @@
         history.back()
         return
       }
-      if (button.dataset.go === 'watch' && !offlineMode) {
-        remoteKind = 'channel'
-        renderRemoteViewing()
-      }
+      if (button.dataset.go === 'watch' && !offlineMode) renderRemoteViewing()
       if (button.dataset.go === 'channels') showChannelHub()
       openView(button.dataset.go)
       if (button.classList.contains('home-device-summary')) {

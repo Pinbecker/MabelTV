@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 import shutil
 import socket
 import subprocess
 import sys
-import threading
 import time
 import uuid
 from pathlib import Path
@@ -17,6 +15,7 @@ from typing import Any
 
 from .constants import (
     CHUNK_LIMIT,
+    MAX_UPLOAD_BYTES,
     SAFE_NAME,
     SUPPORTED_EXTENSIONS,
     USB_IMPORT_RESERVE_BYTES,
@@ -101,6 +100,19 @@ class UsbMixin:
                    and job.get("status") not in {"complete", "error"}
                    for job in self.usb_imports.values()):
                 return "Wait for the USB import to finish"
+        for manifest in self.incoming.glob("*.json"):
+            if manifest.name.endswith(".result.json"):
+                continue
+            job = self.read_json(manifest, {})
+            if (isinstance(job, dict) and job.get("source_kind") == "usb"
+                    and job.get("source_volume") == identity
+                    and job.get("status", "uploading") not in {"error"}):
+                try:
+                    part = self.incoming / f"{job['id']}.part"
+                    if not part.is_file() or part.stat().st_size < int(job.get("size", 0)):
+                        return "Finish or cancel the USB transfer"
+                except (KeyError, OSError, TypeError, ValueError):
+                    return "Finish or cancel the USB transfer"
         with self.remote_stream_lock:
             stream = self.remote_stream
             if stream and float(stream.get("expires", 0)) > time.time() \
@@ -223,6 +235,10 @@ class UsbMixin:
             expected = self.usb_root / identity
             mounted = any(Path(str(point)).resolve() == expected
                           for point in mountpoints if point)
+            try:
+                free = shutil.disk_usage(expected).free if mounted and expected.is_dir() else None
+            except OSError:
+                free = None
             volumes.append({
                 "id": identity,
                 "device": device,
@@ -230,20 +246,24 @@ class UsbMixin:
                 "filesystem": str(item.get("fstype") or "unknown"),
                 "size": int(item.get("size") or 0),
                 "mounted": mounted and expected.is_dir(),
+                "free": free,
             })
         # Test/development mounts can exist without a real lsblk device.
         if not self.usb_requires_mount and self.usb_root.is_dir():
             for path in self.usb_root.iterdir():
                 if path.is_dir() and path.name not in seen:
                     volumes.append({"id": path.name, "device": "", "label": path.name,
-                                    "filesystem": "directory", "size": 0, "mounted": True})
+                                    "filesystem": "directory", "size": 0, "mounted": True,
+                                    "free": shutil.disk_usage(path).free})
         with self.usb_power_lock:
             for volume in volumes:
                 volume["sleeping"] = volume["id"] in self.usb_sleeping
         volumes.sort(key=lambda value: (not value["mounted"], value["label"].lower()))
+        jobs = self.usb_import_jobs(active_only=True)
         with self.usb_import_lock:
-            jobs = [dict(job) for job in self.usb_imports.values()
-                    if job.get("status") not in {"complete", "error"}]
+            jobs.extend(dict(job) for job in self.usb_imports.values()
+                        if job.get("status") not in {"complete", "error"}
+                        and not any(value.get("id") == job.get("id") for value in jobs))
         return {"volumes": volumes, "imports": jobs}
 
     def usb_resolve(self, identity: str, relative: str = "") -> Path:
@@ -367,148 +387,339 @@ class UsbMixin:
             raise ValueError("Choose at least one video or folder to import")
         return unique
 
-    def _usb_series_selected_files(
-            self, identity: str, selected: list[Any]) -> list[tuple[Path, Path]]:
-        values: list[tuple[Path, Path]] = []
-        for raw in selected:
-            item = self.usb_resolve(identity, str(raw))
-            if item.is_file():
-                candidates = [(item, Path(item.name))]
-            else:
-                prefix = Path(item.name) if re.search(
-                    r"(?i)\b(?:series|season)\s*\d+\b", item.name) else Path()
-                candidates = [
-                    (candidate, prefix / candidate.relative_to(item))
-                    for candidate in sorted(item.rglob("*"))
-                    if candidate.is_file()
-                ]
-            for candidate, relative in candidates:
-                if candidate.is_symlink() or candidate.suffix.lower() not in SUPPORTED_EXTENSIONS:
-                    continue
-                clean_parts = [
-                    SAFE_NAME.sub("", part).strip(". ") or "Episode"
-                    for part in relative.parts
-                ]
-                values.append((candidate, Path(*clean_parts)))
-                if len(values) > USB_MAX_SELECTION_FILES:
-                    raise ValueError("Choose fewer than 2,000 episodes at a time")
-        unique: dict[Path, Path] = {}
-        for source, relative in values:
-            unique.setdefault(source, relative)
-        if not unique:
-            raise ValueError("Choose at least one episode or series folder")
-        return list(unique.items())
-
-    @staticmethod
-    def unique_destination(folder: Path, name: str) -> Path:
-        clean = SAFE_NAME.sub("", Path(name).stem).strip(". ") or "USB video"
-        suffix = Path(name).suffix.lower()
-        destination = folder / f"{clean}{suffix}"
-        index = 2
-        while destination.exists() or destination.with_name(destination.name + ".part").exists():
-            destination = folder / f"{clean} ({index}){suffix}"
-            index += 1
-        return destination
-
     def start_usb_import(self, payload: dict[str, Any]) -> dict[str, Any]:
+        with self.config_lock:
+            plan, specifications = self._usb_import_plan(payload)
+            if not plan["enough_space"]:
+                raise ValueError("There is not enough free space to copy those USB videos")
+
+            series_id = plan.get("series")
+
+            batch_id = uuid.uuid4().hex
+            batch = {
+                "id": batch_id,
+                "volume": plan["volume"],
+                "target": plan["target"],
+                "channel": plan.get("channel"),
+                "folder": plan.get("folder"),
+                "series": series_id,
+                "series_name": plan.get("series_name"),
+                "season": plan.get("season"),
+                "created": time.time(),
+                "files_total": len(specifications),
+                "bytes_total": int(plan["bytes_total"]),
+                "upload_ids": [],
+            }
+            batch_path = self.usb_import_root / f"{batch_id}.json"
+            self.write_json(batch_path, batch)
+
+            for specification in specifications:
+                upload_id = uuid.uuid4().hex
+                metadata = {
+                    "id": upload_id,
+                    "kind": specification["kind"],
+                    "file_name": specification["file_name"],
+                    "size": specification["size"],
+                    "created": time.time(),
+                    "source_kind": "usb",
+                    "source_volume": plan["volume"],
+                    "source_path": specification["source_path"],
+                    "source_label": plan["source_label"],
+                    "batch_id": batch_id,
+                }
+                if specification.get("channel") is not None:
+                    metadata["channel"] = specification["channel"]
+                if specification.get("folder"):
+                    metadata["folder"] = specification["folder"]
+                if specification.get("series_id"):
+                    metadata["series_id"] = specification["series_id"]
+                    metadata["season"] = specification["season"]
+                self.initialise_upload_queue(metadata, "")
+                metadata["source_seen"] = time.time()
+                self.write_json(self.incoming / f"{upload_id}.json", metadata)
+                batch["upload_ids"].append(upload_id)
+                self.write_json(batch_path, batch)
+
+            self.usb_transfer_wakeup.set()
+        return self.usb_import_status(batch_id)
+
+    def usb_import_plan(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Resolve a USB selection into a safe, owner-readable copy preview."""
+        with self.config_lock:
+            plan, _specifications = self._usb_import_plan(payload)
+            return plan
+
+    def _usb_import_plan(
+            self, payload: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         identity = self.usb_identity(str(payload.get("volume", "")))
         selected = payload.get("paths")
         if not isinstance(selected, list):
-            raise ValueError("Choose the USB videos to import")
+            raise ValueError("Choose the USB videos to copy")
         target = str(payload.get("target", ""))
         channel_number: int | None = None
-        relative_destinations: dict[Path, Path] | None = None
-        if target == "adult":
-            files = self._usb_selected_files(identity, selected)
-            destination_root = self.adult_root
-        elif target == "series":
-            pairs = self._usb_series_selected_files(identity, selected)
-            requested_title = str(payload.get("series_name", "")).strip()
-            if not requested_title and len(selected) == 1:
-                requested_title = self.usb_resolve(identity, str(selected[0])).stem
-            series_id = self.create_adult_series(requested_title)
-            destination_root = self.adult_series_root / series_id
-            files = [source for source, _relative in pairs]
-            relative_destinations = dict(pairs)
-        elif target == "channel":
-            files = self._usb_selected_files(identity, selected)
-            channel_number = int(payload.get("channel"))
-            channel = self.channel(channel_number)
-            destination_root = self.media_root / str(channel["folder"])
-        else:
-            raise ValueError("Choose Adult mode or a children’s channel")
-        destination_root.mkdir(mode=0o750, exist_ok=True)
-        total = sum(path.stat().st_size for path in files)
-        if shutil.disk_usage(self.media_root).free < total + USB_IMPORT_RESERVE_BYTES:
-            raise ValueError("There is not enough free space to import those USB videos")
-        job_id = uuid.uuid4().hex
-        job = {"id": job_id, "volume": identity, "target": target,
-               "channel": channel_number, "status": "queued", "files_total": len(files),
-               "files_done": 0, "bytes_total": total, "bytes_done": 0,
-               "current": "", "message": "Waiting to copy"}
-        with self.usb_import_lock:
-            completed = [key for key, value in self.usb_imports.items()
-                         if value.get("status") in {"complete", "error"}]
-            for key in completed[:-20]:
-                self.usb_imports.pop(key, None)
-            self.usb_imports[job_id] = job
+        series_name = ""
+        series_id = ""
+        season_number: int | None = None
+        adult_folder = ""
         if target == "series":
-            job["series"] = series_id
-        threading.Thread(target=self._run_usb_import,
-                         args=(job_id, files, destination_root, relative_destinations),
-                         name=f"mabeltv-usb-{job_id[:8]}", daemon=True).start()
-        return dict(job)
+            series_id = str(payload.get("series", ""))
+            series_root = self.adult_series_path(series_id)
+            try:
+                season_number = int(payload.get("season"))
+            except (TypeError, ValueError) as error:
+                raise ValueError("Choose an existing series") from error
+            if season_number < 1 or season_number > 99 \
+                    or not (series_root / f"Season {season_number}").is_dir():
+                raise ValueError("Choose an existing series")
+            states = self.adult_series_states()
+            series_state = states["series"].get(series_id, {})
+            if not isinstance(series_state, dict):
+                raise ValueError("Choose an existing Adult TV series")
+            metadata = series_state.get("metadata", {})
+            series_name = str(metadata.get("title", "")) \
+                if isinstance(metadata, dict) else ""
+            series_name = series_name or str(series_state.get("title", "Series"))
+            files = self._usb_selected_files(identity, selected)
+            candidates = [(source, Path(source.name)) for source in files]
+        elif target in {"adult", "channel"}:
+            files = self._usb_selected_files(identity, selected)
+            candidates = [(source, Path(source.name)) for source in files]
+            if target == "adult":
+                requested_folder = str(payload.get("folder", "")).strip()
+                if requested_folder:
+                    adult_folder = self.normalise_adult_folder(requested_folder)
+                    if adult_folder not in self.adult_folders():
+                        raise ValueError("Choose an existing Adult TV collection")
+            else:
+                channel_number = int(payload.get("channel"))
+                self.channel(channel_number)
+        else:
+            raise ValueError("Choose Adult TV or a children’s channel")
 
-    def _run_usb_import(self, job_id: str, files: list[Path], destination_root: Path,
-                        relative_destinations: dict[Path, Path] | None = None) -> None:
+        volume = self._usb_volume(identity)
+        root = self.usb_mount_path(identity)
+        occupied = self._usb_reserved_destinations()
+        specifications: list[dict[str, Any]] = []
+        renamed: list[dict[str, str]] = []
+        total = 0
+        for ordinal, (source, relative) in enumerate(candidates, start=1):
+            size = source.stat().st_size
+            if size <= 0 or size > MAX_UPLOAD_BYTES:
+                raise ValueError(f"{source.name} has a file size MabelTV cannot copy")
+            clean_stem = SAFE_NAME.sub("", source.stem).strip(". ") or "USB video"
+            clean_name = f"{clean_stem}{source.suffix.lower()}"
+            specification: dict[str, Any] = {
+                "source_path": source.relative_to(root).as_posix(),
+                "size": size,
+                "kind": "channel",
+            }
+            if target == "adult":
+                destination_root = self.adult_folder_path(adult_folder) \
+                    if adult_folder else self.adult_root
+                specification["kind"] = "adult"
+                if adult_folder:
+                    specification["folder"] = adult_folder
+            elif target == "series":
+                destination_root = self.adult_series_root / series_id / \
+                    f"Season {season_number}"
+                specification.update(
+                    kind="adult-series", series_id=series_id,
+                    season=season_number)
+            else:
+                channel = self.channel(int(channel_number))
+                destination_root = self.media_root / str(channel["folder"])
+                specification["channel"] = channel_number
+
+            destination = destination_root / clean_name
+            index = 2
+            while destination.exists() or destination in occupied:
+                destination = destination_root / f"{clean_stem} ({index}){source.suffix.lower()}"
+                index += 1
+            occupied.add(destination)
+            specification["file_name"] = destination.name
+            if destination.name != source.name:
+                renamed.append({"from": source.name, "to": destination.name})
+            specifications.append(specification)
+            total += size
+
+        free = shutil.disk_usage(self.media_root).free
+        destination_label = (f"Adult TV films · {adult_folder} collection"
+                             if adult_folder else
+                             "Adult TV films · All films (no collection)") \
+            if target == "adult" else \
+            f"Adult TV series · {series_name} · Series {season_number}" \
+            if target == "series" else \
+            str(self.channel(int(channel_number))["name"])
+        plan = {
+            "volume": identity,
+            "source_label": str(volume.get("label") or "USB drive"),
+            "target": target,
+            "channel": channel_number,
+            "folder": adult_folder,
+            "series": series_id,
+            "series_name": series_name,
+            "season": season_number,
+            "destination_label": destination_label,
+            "files_total": len(specifications),
+            "bytes_total": total,
+            "free_bytes": free,
+            "enough_space": free >= total + USB_IMPORT_RESERVE_BYTES,
+            "rename_count": len(renamed),
+            "renames": renamed[:20],
+            "truncated_renames": len(renamed) > 20,
+        }
+        return plan, specifications
+
+    def _usb_reserved_destinations(self) -> set[Path]:
+        destinations: set[Path] = set()
+        for manifest in self.incoming.glob("*.json"):
+            if manifest.name.endswith(".result.json"):
+                continue
+            metadata = self.read_json(manifest, {})
+            if not isinstance(metadata, dict):
+                continue
+            try:
+                destinations.add(self.upload_destination(metadata))
+            except (TypeError, ValueError):
+                continue
+        return destinations
+
+    def _next_usb_transfer(self) -> tuple[str, dict[str, Any]] | None:
+        candidates: list[tuple[int, str, dict[str, Any]]] = []
+        for manifest in self.incoming.glob("*.json"):
+            if manifest.name.endswith(".result.json"):
+                continue
+            metadata = self.read_json(manifest, {})
+            if (not isinstance(metadata, dict) or metadata.get("source_kind") != "usb"
+                    or metadata.get("status", "uploading") != "uploading"
+                    or metadata.get("transfer_state") != "active"):
+                continue
+            candidates.append((int(metadata.get("queue_order", 0) or 0),
+                               str(metadata.get("id", "")), metadata))
+        if not candidates:
+            return None
+        _order, upload_id, metadata = min(candidates, key=lambda value: value[0])
+        return upload_id, metadata
+
+    def run_usb_transfer_worker(self) -> None:
+        """Feed Pi-owned USB bytes into the durable upload publication queue."""
+        while not self.usb_transfer_closed.is_set():
+            job = self._next_usb_transfer()
+            if job is None:
+                self.usb_transfer_wakeup.wait(0.5)
+                self.usb_transfer_wakeup.clear()
+                continue
+            upload_id, metadata = job
+            self._copy_usb_upload(upload_id, metadata)
+
+    def _copy_usb_upload(self, upload_id: str, metadata: dict[str, Any]) -> None:
         try:
-            with self.usb_import_lock:
-                job = self.usb_imports[job_id]
-                job.update(status="copying", message="Copying from USB")
-            for index, source in enumerate(files):
-                if relative_destinations is None:
-                    destination = self.unique_destination(destination_root, source.name)
-                else:
-                    relative = relative_destinations[source]
-                    parent = destination_root.joinpath(*relative.parts[:-1])
-                    parent.mkdir(parents=True, mode=0o750, exist_ok=True)
-                    destination = self.unique_destination(parent, relative.name)
-                partial = self.incoming / f"usb-{job_id}-{index}.part"
-                with self.usb_import_lock:
-                    job["current"] = source.name
-                try:
-                    with source.open("rb") as reader, partial.open("xb") as writer:
-                        while True:
-                            chunk = reader.read(CHUNK_LIMIT)
-                            if not chunk:
-                                break
-                            writer.write(chunk)
-                            with self.usb_import_lock:
-                                job["bytes_done"] += len(chunk)
-                        writer.flush()
-                        os.fsync(writer.fileno())
-                    os.replace(partial, destination)
-                finally:
-                    partial.unlink(missing_ok=True)
-                with self.usb_import_lock:
-                    job["files_done"] += 1
-            refreshed = True if job.get("target") == "series" else self.refresh_tv()
-            with self.usb_import_lock:
-                job.update(status="complete", current="",
-                           message="Import complete" if refreshed else
-                           "Copied successfully; TV refresh is still pending")
-            self.usb_touch(str(job.get("volume", "")))
+            volume = str(metadata.get("source_volume", ""))
+            source = self.usb_resolve(volume, str(metadata.get("source_path", "")))
+            expected_size = int(metadata.get("size", 0))
+            if not source.is_file() or source.stat().st_size != expected_size:
+                raise ValueError("The USB source file changed or is no longer available")
+            part = self.incoming / f"{upload_id}.part"
+            offset = part.stat().st_size if part.is_file() else 0
+            if offset > expected_size:
+                raise ValueError("The saved partial copy is larger than the USB source")
+            with source.open("rb") as reader:
+                reader.seek(offset)
+                while offset < expected_size and not self.usb_transfer_closed.is_set():
+                    current = self.read_json(self.incoming / f"{upload_id}.json", None)
+                    if not isinstance(current, dict):
+                        return
+                    if (current.get("status", "uploading") != "uploading"
+                            or current.get("transfer_state") != "active"):
+                        return
+                    chunk = reader.read(min(CHUNK_LIMIT, expected_size - offset))
+                    if not chunk:
+                        raise ValueError("The USB source ended before copying completed")
+                    result = self.append_upload(upload_id, offset, chunk)
+                    offset = int(result["offset"])
+            self.usb_touch(volume)
         except Exception as error:
-            with self.usb_import_lock:
-                job = self.usb_imports[job_id]
-                job.update(status="error", message=str(error), current="")
-            self.usb_touch(str(job.get("volume", "")))
+            manifest = self.incoming / f"{upload_id}.json"
+            with self.config_lock:
+                current = self.read_json(manifest, None)
+                if not isinstance(current, dict):
+                    return
+                if current.get("status") in {"paused", "error"}:
+                    return
+                current["status"] = "paused"
+                current["transfer_state"] = "source-missing"
+                current["error"] = str(error)
+                current["updated"] = time.time()
+                self.write_json(manifest, current)
+                self.promote_next_upload()
+
+    def usb_source_available(self, metadata: dict[str, Any]) -> bool:
+        identity = str(metadata.get("source_volume", ""))
+        if not identity:
+            return False
+        try:
+            self.usb_mount_path(identity)
+            return True
+        except ValueError:
+            return False
+
+    def usb_import_jobs(self, active_only: bool = False) -> list[dict[str, Any]]:
+        jobs: list[dict[str, Any]] = []
+        for manifest in self.usb_import_root.glob("*.json"):
+            try:
+                job = self.usb_import_status(manifest.stem)
+            except ValueError:
+                continue
+            if not active_only or job.get("status") not in {"complete", "error"}:
+                jobs.append(job)
+        return sorted(jobs, key=lambda value: float(value.get("created", 0)))
 
     def usb_import_status(self, job_id: str) -> dict[str, Any]:
         if not re.fullmatch(r"[a-f0-9]{32}", job_id):
+            with self.usb_import_lock:
+                legacy = self.usb_imports.get(job_id)
+            if legacy is not None:
+                return dict(legacy)
             raise ValueError("USB import not found")
-        with self.usb_import_lock:
-            job = self.usb_imports.get(job_id)
-            if job is None:
-                raise ValueError("USB import not found")
-            return dict(job)
+        batch = self.read_json(self.usb_import_root / f"{job_id}.json", None)
+        if not isinstance(batch, dict):
+            with self.usb_import_lock:
+                legacy = self.usb_imports.get(job_id)
+            if legacy is not None:
+                return dict(legacy)
+            raise ValueError("USB import not found")
+
+        states: list[dict[str, Any]] = []
+        missing = 0
+        for upload_id in batch.get("upload_ids", []):
+            try:
+                states.append(self.upload_status(str(upload_id)))
+            except ValueError:
+                missing += 1
+        bytes_done = sum(int(state.get("offset", 0) or 0) for state in states)
+        files_done = sum(bool(state.get("complete")) for state in states)
+        failures = [state for state in states
+                    if state.get("status") in {"error", "refresh-error"}]
+        active = [state for state in states if not state.get("complete")
+                  and state.get("status") not in {"error", "refresh-error"}]
+        if active:
+            status = "paused" if all(state.get("status") == "paused" for state in active) \
+                else "copying"
+            message = "Waiting for the USB drive" if status == "paused" else "Copying through Uploads"
+        elif failures or missing:
+            status = "error"
+            message = str(failures[0].get("error") or "One or more transfers need attention") \
+                if failures else "One or more transfers were cancelled"
+        else:
+            status = "complete"
+            message = "Copy complete"
+        current = next((str(state.get("file_name", "")) for state in states
+                        if not state.get("complete")), "")
+        return {
+            **batch,
+            "status": status,
+            "files_done": files_done,
+            "bytes_done": bytes_done,
+            "current": current,
+            "message": message,
+        }

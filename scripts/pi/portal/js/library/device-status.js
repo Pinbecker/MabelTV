@@ -4,20 +4,117 @@
     $('#usbUp').onclick = () => browseUsb(usbPath.split('/').slice(0, -1).join('/')).catch(error => notice(error.message, true))
     $('#usbSelectAll').onclick = () => {
       const videos = usbEntries.filter(entry => entry.type === 'video')
-      const allSelected = videos.every(entry => usbSelection.has(entry.path))
+      const allSelected = videos.length > 0 && videos.every(entry => usbSelection.has(entry.path))
       videos.forEach(entry => allSelected ? usbSelection.delete(entry.path) : usbSelection.add(entry.path))
       renderUsbFiles()
     }
-    $('#usbTarget').onchange = () => {
-      const target = $('#usbTarget').value
-      $('#usbChannelLabel').classList.toggle('hidden', target !== 'channel')
-      $('#usbSeriesLabel').classList.toggle('hidden', target !== 'series')
-      if (target === 'series' && !$('#usbSeriesName').value.trim() && usbSelection.size === 1) {
-        const selected = [...usbSelection][0]
-        const entry = usbEntries.find(value => value.path === selected)
-        if (entry?.type === 'folder') $('#usbSeriesName').value = entry.name
+
+    function usbTransferPayload(action) {
+      const payload = {
+        action, volume: usbVolume, paths: [...usbSelection], target: $('#usbTarget').value,
+      }
+      if (payload.target === 'adult') payload.folder = $('#usbAdultFolder').value
+      if (payload.target === 'channel') payload.channel = Number($('#usbChannel').value)
+      if (payload.target === 'series') {
+        payload.series = $('#usbSeries').value
+        payload.season = Number($('#usbSeason').value)
+      }
+      return payload
+    }
+
+    async function refreshUsbImportPlan() {
+      const button = $('#confirmUsbImport')
+      button.disabled = true
+      usbImportPlan = null
+      $('#usbPlanStatus').textContent = 'Checking videos, names and available space…'
+      try {
+        const plan = await api('/api/usb', {
+          method: 'POST', body: JSON.stringify(usbTransferPayload('plan')),
+        })
+        usbImportPlan = plan
+        $('#usbPlanFiles').textContent = String(plan.files_total)
+        $('#usbPlanSize').textContent = formatBytes(plan.bytes_total)
+        $('#usbPlanSpace').textContent = plan.enough_space
+          ? formatBytes(Math.max(0, plan.free_bytes - plan.bytes_total)) : 'Not enough space'
+        $('#usbPlanStatus').textContent = `${plan.files_total} video${plan.files_total === 1 ? '' : 's'} will be copied to ${plan.destination_label}.`
+        const rename = $('#usbRenameSummary')
+        rename.classList.toggle('hidden', !plan.rename_count)
+        rename.innerHTML = plan.rename_count ? `<strong>${plan.rename_count} name${plan.rename_count === 1 ? '' : 's'} will be adjusted safely</strong><p>${plan.renames.map(value => `${escapeHtml(value.from)} → ${escapeHtml(value.to)}`).join('<br>')}${plan.truncated_renames ? '<br>…and more' : ''}</p>` : ''
+        button.disabled = !plan.enough_space || plan.files_total < 1
+      } catch (error) {
+        $('#usbPlanStatus').textContent = error.message
+        $('#usbPlanFiles').textContent = '—'
+        $('#usbPlanSize').textContent = '—'
+        $('#usbPlanSpace').textContent = '—'
+        $('#usbRenameSummary').classList.add('hidden')
       }
     }
+
+    $('#usbTarget').onchange = () => {
+      const target = $('#usbTarget').value
+      $('#usbAdultFolderLabel').classList.toggle('hidden', target !== 'adult')
+      $('#usbChannelLabel').classList.toggle('hidden', target !== 'channel')
+      $('#usbSeriesLabel').classList.toggle('hidden', target !== 'series')
+      $('#usbSeasonLabel').classList.toggle('hidden', target !== 'series')
+      if ($('#usbImportSheet').open) refreshUsbImportPlan()
+    }
+    $('#usbAdultFolder').onchange = () => {
+      if ($('#usbImportSheet').open) refreshUsbImportPlan()
+    }
+    $('#usbChannel').onchange = () => {
+      if ($('#usbImportSheet').open) refreshUsbImportPlan()
+    }
+    $('#usbSeries').onchange = () => {
+      renderUsbSeriesDestinations($('#usbSeries').value)
+      if ($('#usbImportSheet').open) refreshUsbImportPlan()
+    }
+    $('#usbSeason').onchange = () => {
+      if ($('#usbImportSheet').open) refreshUsbImportPlan()
+    }
+
+    const usbImportSheet = $('#usbImportSheet')
+    const closeUsbImportSheet = () => closeLibrarySheet(usbImportSheet)
+    $('#cancelUsbImport').onclick = closeUsbImportSheet
+    portalSheets.wire(usbImportSheet, {
+      closeButton: $('#closeUsbImport'), close: closeUsbImportSheet,
+      onClose: () => { usbImportPlan = null },
+    })
+
+    const usbFileActionsSheet = $('#usbFileActionsSheet')
+    const closeUsbFileActionsSheet = () => closeLibrarySheet(usbFileActionsSheet)
+    portalSheets.wire(usbFileActionsSheet, {
+      closeButton: $('#closeUsbFileActions'), close: closeUsbFileActionsSheet,
+      onClose: () => { selectedUsbEntry = null },
+    })
+
+    $('#usbWatchHere').onclick = () => {
+      const entry = selectedUsbEntry
+      if (!entry) return
+      closeUsbFileActionsSheet()
+      if (entry.browser_ready) openRemotePlayer({ kind: 'usb', volume: usbVolume, file: entry.path })
+      else openInVlc({ kind: 'usb', volume: usbVolume, file: entry.path }, entry.name)
+    }
+    $('#usbDownload').onclick = () => {
+      const entry = selectedUsbEntry
+      if (!entry) return
+      closeUsbFileActionsSheet()
+      downloadToDevice({ kind: 'usb', volume: usbVolume, file: entry.path }, entry.name)
+    }
+    $('#usbPlayTv').onclick = async () => {
+      const entry = selectedUsbEntry
+      if (!entry || !confirm(`Play “${entry.name}” directly from the USB drive on the TV?`)) return
+      const button = $('#usbPlayTv')
+      button.disabled = true
+      try {
+        const result = await api('/api/usb', {
+          method: 'POST', body: JSON.stringify({ action: 'play', volume: usbVolume, path: entry.path }),
+        })
+        closeUsbFileActionsSheet()
+        notice(result.message)
+      } catch (error) { notice(error.message, true) }
+      finally { button.disabled = false }
+    }
+
     $('#usbEject').onclick = () => openLibrarySheet($('#usbEjectSheet'), $('#cancelUsbEject'))
     const usbEjectSheet = $('#usbEjectSheet')
     const closeUsbEjectSheet = () => closeLibrarySheet(usbEjectSheet)
@@ -37,32 +134,25 @@
       finally { button.disabled = false }
     }
     $('#usbImport').onclick = async () => {
-      const selectedCount = usbSelection.size
-      if (!confirm(`Copy ${selectedCount} selected item${selectedCount === 1 ? '' : 's'} into MabelTV? The USB originals will not be changed.`)) return
-      const button = $('#usbImport'); button.disabled = true
-      try {
-        const payload = { action: 'import', volume: usbVolume, paths: [...usbSelection], target: $('#usbTarget').value }
-        if (payload.target === 'channel') payload.channel = Number($('#usbChannel').value)
-        if (payload.target === 'series') payload.series_name = $('#usbSeriesName').value.trim()
-        const job = await api('/api/usb', { method: 'POST', body: JSON.stringify(payload) })
-        usbSelection.clear(); renderUsbFiles(); monitorUsbJob(job.id)
-      } catch (error) { notice(error.message, true); updateUsbSelection() }
+      $('#usbTarget').onchange()
+      openLibrarySheet(usbImportSheet, $('#usbTarget'))
+      await refreshUsbImportPlan()
     }
-
-    async function monitorUsbJob(id) {
-      clearTimeout(usbJobTimer)
-      $('#usbJob').classList.remove('hidden')
+    $('#confirmUsbImport').onclick = async () => {
+      const button = $('#confirmUsbImport')
+      button.disabled = true
       try {
-        const job = await api(`/api/usb/imports/${id}`)
-        $('#usbJobTitle').textContent = job.status === 'complete' ? 'Copy complete' : job.status === 'error' ? 'Copy stopped' : `Copying ${job.current || 'videos'}…`
-        $('#usbJobText').textContent = `${job.files_done} of ${job.files_total} files · ${formatBytes(job.bytes_done)} of ${formatBytes(job.bytes_total)} — ${job.message}`
-        $('#usbJobProgress').max = Math.max(1, job.bytes_total)
-        $('#usbJobProgress').value = job.bytes_done
-        if (job.status === 'complete') { await load(); notice('USB videos copied into MabelTV.') }
-        else if (job.status === 'error') notice(job.message, true)
-        else usbJobTimer = setTimeout(() => monitorUsbJob(id), 1000)
-      } catch (error) { notice(error.message, true) }
+        await api('/api/usb', { method: 'POST', body: JSON.stringify(usbTransferPayload('import')) })
+        closeUsbImportSheet()
+        usbSelection.clear()
+        renderUsbFiles()
+        await refreshUsb()
+        openView('activity')
+        await loadActivity()
+        notice('USB transfer added to Activity. You can leave this page while it copies.')
+      } catch (error) { notice(error.message, true); button.disabled = false }
     }
+    $('#usbViewActivity').onclick = () => { openView('activity'); loadActivity().catch(() => {}) }
 
 
     function renderTvSettings() {
@@ -198,19 +288,49 @@
 
     function activityJobMarkup(job, kind) {
       const isOptimising = kind === 'optimising'
+      const isUsb = !isOptimising && job.source_kind === 'usb'
       const percent = Math.max(0, Math.min(100, Number(job.progress ?? (job.size ? (job.offset || 0) * 100 / job.size : 0)) || 0))
       const transfer = job.transfer_state || 'active'
-      const state = isOptimising ? (job.state === 'queued' ? 'Waiting for the encoder' : job.message || 'Optimising for Pi') : (transfer === 'waiting' ? 'Waiting in upload queue' : transfer === 'paused' ? 'Paused' : !job.source_available && job.status === 'uploading' ? 'Waiting for source file — select the same file again on the laptop to resume' : ({ uploading: 'Uploading', validating: 'Checking video', queued: 'Waiting to publish', processing: 'Preparing video', publishing: 'Publishing', finalising: 'Refreshing TV', error: job.error || 'Needs attention', 'refresh-error': 'TV refresh needed' }[job.status] || job.status))
-      const detail = isOptimising ? activityDuration(job.eta_seconds) : `${job.channel_name || 'MabelTV'} · ${Math.round(percent)}%`
+      const uploadStates = {
+        uploading: isUsb ? `Copying from ${job.source_label || 'USB drive'}` : 'Uploading',
+        validating: 'Checking video', queued: 'Waiting to publish', processing: 'Preparing video',
+        publishing: 'Publishing', finalising: 'Refreshing TV', error: job.error || 'Needs attention',
+        'refresh-error': 'TV refresh needed', paused: 'Paused',
+      }
+      const state = isOptimising
+        ? (job.state === 'queued' ? 'Waiting for the encoder' : job.message || 'Optimising for Pi')
+        : transfer === 'waiting' ? (isUsb ? 'Waiting in transfer queue' : 'Waiting in upload queue')
+          : transfer === 'source-missing' ? (job.error || 'USB drive disconnected — reconnect it, then resume')
+            : transfer === 'paused' ? 'Paused' : !job.source_available && job.status === 'uploading'
+              ? 'Waiting for source file — select the same file again on the laptop to resume'
+              : (uploadStates[job.status] || job.status)
+      const source = isUsb ? `${job.source_label || 'USB drive'} → ` : ''
+      const detail = isOptimising ? activityDuration(job.eta_seconds)
+        : `${source}${job.channel_name || 'MabelTV'} · ${Math.round(percent)}%`
       const paused = isOptimising ? job.state === 'paused' : (job.status === 'paused' || transfer === 'paused')
-      const cancellable = isOptimising ? ['queued', 'processing', 'paused'].includes(job.state) : ['uploading', 'queued', 'paused'].includes(job.status)
-      const pausable = isOptimising ? ['queued', 'processing'].includes(job.state) : ['uploading', 'queued'].includes(job.status)
+      const cancellable = isOptimising ? ['queued', 'processing', 'paused'].includes(job.state)
+        : job.cancelable === true
+      const pausable = isOptimising ? ['queued', 'processing'].includes(job.state)
+        : ['uploading', 'queued'].includes(job.status) && transfer === 'active'
       const startable = !isOptimising && job.status === 'uploading' && transfer !== 'active'
-      const controls = cancellable ? `<div class="activity-job-controls">${startable ? `<button type="button" data-activity-action="start" data-activity-kind="${kind}" data-activity-id="${escapeHtml(job.path || job.id)}">Start next</button>` : paused ? `<button type="button" data-activity-action="resume" data-activity-kind="${kind}" data-activity-id="${escapeHtml(job.path || job.id)}">Resume</button>` : pausable ? `<button type="button" data-activity-action="pause" data-activity-kind="${kind}" data-activity-id="${escapeHtml(job.path || job.id)}">Pause</button>` : ''}<button type="button" class="danger" data-activity-action="cancel" data-activity-kind="${kind}" data-activity-id="${escapeHtml(job.path || job.id)}">Cancel</button></div>` : ''
+      const retry = !isOptimising && job.retryable
+        ? `<button type="button" data-activity-action="retry" data-activity-kind="${kind}" data-activity-id="${escapeHtml(job.id)}">Retry now</button>` : ''
+      const refresh = !isOptimising && job.refreshable
+        ? `<button type="button" data-activity-action="refresh" data-activity-kind="${kind}" data-activity-id="${escapeHtml(job.id)}">Retry TV refresh</button>` : ''
+      const primary = startable ? `<button type="button" data-activity-action="start" data-activity-kind="${kind}" data-activity-id="${escapeHtml(job.path || job.id)}">Start next</button>`
+        : paused || transfer === 'source-missing' ? `<button type="button" data-activity-action="resume" data-activity-kind="${kind}" data-activity-id="${escapeHtml(job.path || job.id)}">Resume</button>`
+          : pausable ? `<button type="button" data-activity-action="pause" data-activity-kind="${kind}" data-activity-id="${escapeHtml(job.path || job.id)}">Pause</button>` : ''
+      const cancel = cancellable ? `<button type="button" class="danger" data-activity-action="cancel" data-activity-kind="${kind}" data-activity-source="${isUsb ? 'usb' : 'browser'}" data-activity-id="${escapeHtml(job.path || job.id)}">${isUsb ? 'Cancel transfer' : 'Cancel'}</button>` : ''
+      const controls = primary || retry || refresh || cancel
+        ? `<div class="activity-job-controls">${primary}${retry}${refresh}${cancel}</div>` : ''
       return `<article class="activity-job"><div class="activity-job-top"><div><h2>${escapeHtml(job.title || job.file_name || 'Video')}</h2><p>${escapeHtml(state)}</p></div><strong>${Math.round(percent)}%</strong></div><div class="activity-progress"><i style="width:${percent}%"></i></div><div class="activity-job-meta"><span>${escapeHtml(detail)}</span><span>${isOptimising && job.started ? 'In progress' : ''}</span></div>${controls}</article>`
     }
 
     function renderActivity(activity) {
+      return preservePortalPosition(() => renderActivityLists(activity))
+    }
+
+    function renderActivityLists(activity) {
       const uploads = activity.uploads || [], optimisations = activity.optimisations || []
       const activeUploads = uploads.filter(job => !['error', 'refresh-error'].includes(job.status))
       const activeOptimisations = optimisations.filter(job => ['queued', 'processing'].includes(job.state))
@@ -220,11 +340,11 @@
       $('#activityOptimisationCount').textContent = String(activeOptimisations.length)
       $('#activitySummary').textContent = activity.active
         ? `${activeUploads.length + activeOptimisations.length} background job${activeUploads.length + activeOptimisations.length === 1 ? '' : 's'} in progress.`
-        : 'Nothing is uploading or being prepared right now.'
+        : 'Nothing is transferring or being prepared right now.'
       const temperature = $('#activityTemperature')
       temperature.classList.toggle('hidden', !activity.temperature_warning)
       temperature.textContent = activity.temperature_warning ? `${Number(activity.temperature_c).toFixed(0)}°C · watching temperature` : ''
-      uploadsRoot.innerHTML = uploads.length ? uploads.map(job => activityJobMarkup(job, 'upload')).join('') : '<div class="activity-empty">No uploads are waiting or in progress.</div>'
+      uploadsRoot.innerHTML = uploads.length ? uploads.map(job => activityJobMarkup(job, 'upload')).join('') : '<div class="activity-empty">No uploads or USB transfers are waiting or in progress.</div>'
       optimisationRoot.innerHTML = optimisations.length ? optimisations.map(job => activityJobMarkup(job, 'optimising')).join('') : '<div class="activity-empty">No films are being optimised right now.</div>'
       $$('[data-activity-action]').forEach(button => button.onclick = () => activityAction(button))
     }
@@ -234,7 +354,9 @@
       if (action === 'cancel') {
         const message = button.dataset.activityKind === 'optimising'
           ? 'Cancel this optimisation? The unfinished optimised copy will be deleted. Your original film will be kept.'
-          : 'Cancel this upload? All partially uploaded data for it will be deleted and its storage freed.'
+          : button.dataset.activitySource === 'usb'
+            ? 'Cancel this USB transfer? The unfinished copy on the Pi will be deleted. The original on the USB drive will stay untouched.'
+            : 'Cancel this upload? All partially uploaded data for it will be deleted and its storage freed.'
         if (!confirm(message)) return
       }
       button.disabled = true
@@ -254,11 +376,16 @@
       return activity
     }
 
+    const activityTabPositions = new Map()
     $$('[data-activity-tab]').forEach(button => button.onclick = () => {
+      const previous = $('[data-activity-tab].active')?.dataset.activityTab
+      const position = capturePortalPosition({ anchor: false })
+      if (previous) activityTabPositions.set(previous, position)
       const optimisation = button.dataset.activityTab === 'optimising'
       $$('[data-activity-tab]').forEach(item => item.classList.toggle('active', item === button))
       $('#activityUploads').classList.toggle('hidden', optimisation)
       $('#activityOptimising').classList.toggle('hidden', !optimisation)
+      restorePortalPosition(activityTabPositions.get(button.dataset.activityTab) || position)
     })
 
     window.setInterval(() => loadActivity().catch(() => {}), 5000)

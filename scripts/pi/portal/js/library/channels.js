@@ -179,6 +179,10 @@
     }
 
     function renderProgrammeList(channel) {
+      return preservePortalPosition(() => renderChannelProgrammes(channel))
+    }
+
+    function renderChannelProgrammes(channel) {
       const selected = selectedChannelFromLibrary()
       if (!selected) return
       // Always render the currently selected channel. A delayed callback may

@@ -19,14 +19,17 @@ class; callers do not need to know which module implements a method.
   and session lifetime.
 - `media.py`: channel and Adult media catalogues, saved state, recycle-bin and
   management actions, settings, and safe media paths.
-- `uploads.py`: resumable upload records, queueing, publication, playback
-  inspection, and conversion/optimisation workers.
+- `uploads.py`: the shared durable transfer queue, resumable records,
+  publication, playback inspection, and conversion/optimisation workers.
 - `viewing.py`: private viewing samples, session compaction, retention, and
   insights.
 - `providers.py`: TMDB, Watchmode, OpenSubtitles, artwork, Adult discovery, and
   provider-backed viewing metadata.
+  Explicit film matches retain TMDB genre names in `metadata.genres` for the
+  local film filter; films without a match remain visible in All genres.
 - `usb.py`: removable-volume discovery, browsing, power state, playback, and
-  imports.
+  imports. USB imports feed the shared upload queue so they retain progress,
+  survive restarts, and use the same validation and publication path.
 - `remote.py`: phone playback, external streams/downloads, live TV control,
   and the separate LG TV remote.
 - `system.py`: service/device status, temperature, support and admin actions.
@@ -62,6 +65,24 @@ complete release and restart the library service. Never combine an executable
 from one revision with backend modules from another.
 
 ## Change rules
+
+### External-player transport
+
+VLC receives a temporary bearer URL from the authenticated
+`POST /api/external/start` route. It does not inherit the browser's Cloudflare
+Access cookie. On the live `mabeltv.dancoakes.uk` deployment, the Cloudflare
+application **MabelTV VLC token streams** applies a path-specific Bypass policy
+only to `/api/external/media`; MabelTV still validates the stream token before
+serving bytes. Keep the portal and `/api/external/start` behind the normal
+Access policy. Do not broaden this exception to `/api/external/*`.
+
+Verify changes with a fresh token and cookie-free HTTPS range requests,
+including a middle-file range and suffix range. Missing and invalid tokens
+must return the backend's rejection, while protected portal routes must still
+require Cloudflare sign-in. A sign-in HTML response to a media request is a
+transport failure, even if following the redirect produces HTTP 200.
+
+### Source changes
 
 - Preserve route paths, status codes, cookie attributes, response fields, and
   on-disk schemas during a refactor.

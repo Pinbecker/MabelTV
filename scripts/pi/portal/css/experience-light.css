@@ -156,7 +156,7 @@ html[data-experience-theme="light"] body.portal-experience .destination-library 
 html[data-experience-theme="light"] body.portal-experience .destination-adult .destination-icon { color: #ad3157; }
 html[data-experience-theme="light"] body.portal-experience .device-status-icon { background: rgba(8, 118, 90, 0.1); }
 html[data-experience-theme="light"] body.portal-experience .usb-eject { border-color: rgba(199, 53, 75, 0.3); color: var(--experience-danger); }
-html[data-experience-theme="light"] body.portal-experience :is(.usb-import button, .channel-page-primary, .channel-page-badge) { background: var(--experience-orange-hot); color: var(--experience-on-orange); }
+html[data-experience-theme="light"] body.portal-experience :is(.usb-selection-tray > button, .channel-page-primary, .channel-page-badge) { background: var(--experience-orange-hot); color: var(--experience-on-orange); }
 html[data-experience-theme="light"] body.portal-experience .channel-page-eyebrow { color: var(--experience-orange-hot); }
 
 html[data-experience-theme="light"] body.portal-experience dialog:is(
@@ -217,7 +217,7 @@ html[data-experience-theme="light"] body.portal-experience .watch-collection-opt
   background: color-mix(in srgb, var(--experience-accent) 10%, var(--experience-raised));
 }
 
-html[data-experience-theme="light"] body.portal-experience #adultFolderTabs .adult-folder-tab.active strong {
+html[data-experience-theme="light"] body.portal-experience #adultFolderTabs .adult-folder-tab.active .count-badge {
   background: var(--experience-orange-hot);
   color: var(--experience-on-orange);
 }
@@ -240,7 +240,9 @@ html[data-experience-theme="light"] body.portal-experience :is(.watch-film-eyebr
 html[data-experience-theme="light"] body.portal-experience :is(
   .tv-remote-switcher,
   .tv-remote-status-card,
-  .remote-app,
+  .tv-remote-chassis,
+  .tv-remote-transport-row,
+  .ios-watch-player,
   .lg-control-card,
   .lg-apps-card
 ) {
@@ -261,7 +263,7 @@ html[data-experience-theme="light"] body.portal-experience :is(
   color: var(--experience-ink);
 }
 
-html[data-experience-theme="light"] body.portal-experience :is(.remote-app, .lg-control-card) button:disabled {
+html[data-experience-theme="light"] body.portal-experience :is(.tv-remote-chassis, .lg-control-card) button:disabled {
   color: inherit;
 }
 
@@ -327,4 +329,14 @@ html[data-experience-theme="light"] body.portal-experience .activity-tabs button
   html[data-experience-theme="light"] body.portal-experience .mobile-head-status {
     background: var(--experience-elevated);
   }
+}
+
+/* Channel facts sit on the light page canvas, rather than dark hero artwork. */
+html[data-experience-theme="light"] body.portal-experience .channel-page-facts > span,
+html[data-experience-theme="light"] body.portal-experience .channel-page-facts > span + span::before {
+  color: var(--experience-muted);
+  background: transparent;
+}
+html[data-experience-theme="light"] body.portal-experience .channel-page-facts strong {
+  color: var(--experience-ink);
 }

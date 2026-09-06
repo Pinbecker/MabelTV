@@ -19,10 +19,12 @@
     }
 
     async function renderDownloads() {
-      const root = $('#downloadsGrid')
+      const target = $('#downloadsGrid')
+      const root = document.createElement('div')
       $('#offlineModeBanner').classList.toggle('hidden', navigator.onLine && !offlineMode)
       if (!offlineStorageReady || !window.MabelOffline) {
         root.innerHTML = offlineSetupMarkup()
+        target.replaceChildren(...root.childNodes)
         $('#downloadsStorage').textContent = 'Setup needed'
         return
       }
@@ -34,6 +36,7 @@
           title: 'Downloads could not be opened',
           message: error.message,
         }))
+        preservePortalPosition(() => target.replaceChildren(...root.childNodes))
         return
       }
       if (navigator.storage?.estimate) {
@@ -121,6 +124,7 @@
         title: 'No downloads yet',
         message: 'Choose Download to this device on a film, programme, or USB video.',
       }))
+      preservePortalPosition(() => target.replaceChildren(...root.childNodes))
     }
 
     function mabelSearchCard(entry) {
@@ -158,6 +162,10 @@
     }
 
     function renderMabelDiscovery(entries) {
+      return preservePortalPosition(() => renderMabelDiscoveryContents(entries))
+    }
+
+    function renderMabelDiscoveryContents(entries) {
       const input = $('#watchMabelSearch')
       if (!input) return
       const sorted = [...entries].sort((left, right) => filmSortTitle(left.film)

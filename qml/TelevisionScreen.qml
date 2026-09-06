@@ -26,7 +26,10 @@ Rectangle {
     readonly property bool isCharcoal: styleName === "charcoal-90s"
     readonly property bool isVintage: styleName === "vintage-black"
     readonly property bool isDinosaur: styleName === "dinosaur-den"
-    readonly property bool usesCharcoalGeometry: isCharcoal || isDinosaur
+    readonly property bool isOcean: styleName === "ocean-club"
+    readonly property bool isNemo: styleName === "finding-nemo"
+    readonly property bool usesDecorativeSurround: isDinosaur || isOcean || isNemo
+    readonly property bool usesCharcoalGeometry: isCharcoal || usesDecorativeSurround
     readonly property bool widescreen: appRoot.portalWidescreenEnabled
     // Keep Slim Black's original proportions exactly. The three physical
     // sets have a smaller tube so there is room for their real cabinet
@@ -54,8 +57,8 @@ Rectangle {
     height: width * (widescreen ? 0.64 : 3 / 4)
     radius: isSlim ? Math.max(38, width * 0.055)
         : Math.max(44, width * 0.067)
-    color: isDinosaur ? "transparent" : "#151a16"
-    border.color: isDinosaur ? "transparent" : (isSlim ? "#454c46"
+    color: usesDecorativeSurround ? "transparent" : "#151a16"
+    border.color: usesDecorativeSurround ? "transparent" : (isSlim ? "#454c46"
         : (isSilver ? "#f5f3eb"
            : (isCharcoal ? "#555a55" : "#333632")))
     border.width: 2
@@ -64,13 +67,13 @@ Rectangle {
     gradient: Gradient {
         GradientStop {
             position: 0
-            color: cabinet.isDinosaur ? "transparent" : (cabinet.isSlim ? "#252a26"
+            color: cabinet.usesDecorativeSurround ? "transparent" : (cabinet.isSlim ? "#252a26"
                 : (cabinet.isSilver ? "#deded7"
                    : (cabinet.isCharcoal ? "#3f433f" : "#2d302d")))
         }
         GradientStop {
             position: 1
-            color: cabinet.isDinosaur ? "transparent" : (cabinet.isSlim ? "#0d100e"
+            color: cabinet.usesDecorativeSurround ? "transparent" : (cabinet.isSlim ? "#0d100e"
                 : (cabinet.isSilver ? "#979992"
                    : (cabinet.isCharcoal ? "#171a18" : "#101210")))
         }
@@ -79,7 +82,7 @@ Rectangle {
     Rectangle {
         anchors.fill: parent
         anchors.margins: 3
-        visible: !cabinet.isDinosaur
+        visible: !cabinet.usesDecorativeSurround
         radius: Math.max(0, cabinet.radius - 3)
         color: "transparent"
         border.color: cabinet.isSilver ? "#70ffffff" : "#36ffffff"
@@ -342,7 +345,7 @@ Rectangle {
     Rectangle {
         id: bezelLip
 
-        visible: !cabinet.isDinosaur
+        visible: !cabinet.usesDecorativeSurround
         x: screen.x - cabinet.lipWidth
         y: screen.y - cabinet.lipWidth
         width: screen.width + cabinet.lipWidth * 2
@@ -964,6 +967,23 @@ Rectangle {
             DinosaurDenSurround {
                 appRoot: cabinet.appRoot
             }
+        }
+    }
+
+    Loader {
+        anchors.fill: parent
+        active: cabinet.isOcean || cabinet.isNemo
+        visible: active
+        z: 10
+
+        sourceComponent: cabinet.isNemo ? nemoSurround : oceanSurround
+        Component {
+            id: nemoSurround
+            FindingNemo { appRoot: cabinet.appRoot }
+        }
+        Component {
+            id: oceanSurround
+            OceanClubSurround { appRoot: cabinet.appRoot }
         }
     }
 }

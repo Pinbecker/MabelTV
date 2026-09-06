@@ -357,6 +357,7 @@ class Handler(BaseHTTPRequestHandler):
             "eject": lambda: self.server.library.usb_eject(str(payload.get("volume", ""))),
             "play": lambda: self.server.library.usb_play(
                 str(payload.get("volume", "")), str(payload.get("path", ""))),
+            "plan": lambda: self.server.library.usb_import_plan(payload),
             "import": lambda: self.server.library.start_usb_import(payload),
         }
         route = routes.get(action)

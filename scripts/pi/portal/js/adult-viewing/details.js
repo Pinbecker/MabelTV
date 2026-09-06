@@ -221,6 +221,10 @@ function adultViewingItems() {
 }
 
 function renderAdultViewing() {
+  return preservePortalPosition(renderAdultViewingList)
+}
+
+function renderAdultViewingList() {
   const labels = {
     'up-next': ['Your chosen order', 'Up Next'],
     watchlist: ['Unseen and saved for later', 'Watchlist'],
@@ -233,9 +237,11 @@ function renderAdultViewing() {
   $('#adultViewingHeading').textContent = heading
   const values = adultViewingItems()
   $('#adultViewingCount').textContent = `${values.length} title${values.length === 1 ? '' : 's'}`
-  const root = $('#adultViewingGrid'); root.replaceChildren()
+  const target = $('#adultViewingGrid')
+  const root = document.createElement('div')
   values.forEach((item, index) => {
     const row = document.createElement('article'); row.className = 'adult-viewing-row'
+    row.dataset.viewingKey = `${item.media_type}:${item.tmdb_id}`
     const posterUrl = adultViewingPosterUrl(item)
     const art = posterUrl ? document.createElement('img') : document.createElement('span')
     if (posterUrl) { art.src = posterUrl; art.alt = '' } else art.className = 'adult-viewing-placeholder'
@@ -269,6 +275,7 @@ function renderAdultViewing() {
     row.append(art, opener, actions); root.append(row)
   })
   if (!values.length) root.innerHTML = `<div class="watch-empty"><strong>Nothing in ${heading} yet</strong><br>Add titles from search and they will appear here.</div>`
+  target.replaceChildren(...root.childNodes)
 }
 
 async function loadAdultViewing() {
@@ -295,8 +302,13 @@ window.addEventListener('orientationchange', () => setTimeout(() => {
   adultSearchViewportBaseline = window.visualViewport?.height || window.innerHeight
   adultSearchKeyboardWasOpen = false
 }, 400))
-$('#adultMyViewing')?.addEventListener('click', () => { history.pushState({ adultViewing: true }, '', '#adult-viewing'); openView('adult-viewing'); loadAdultViewing().catch(showError) })
+$('#adultMyViewing')?.addEventListener('click', () => {
+  history.replaceState({ consolidatedWatch: true }, '', '#watch')
+  history.pushState({ adultViewing: true }, '', '#adult-viewing')
+  openView('adult-viewing')
+})
 $('#adultViewingBack')?.addEventListener('click', () => {
+  if (history.state?.adultViewing) { history.back(); return }
   remoteKind = 'adult'
   renderRemoteViewing()
   history.replaceState({ consolidatedWatch: true }, '', '#watch')

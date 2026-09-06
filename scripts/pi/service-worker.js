@@ -1,6 +1,6 @@
 'use strict'
 
-const SHELL_CACHE = 'mabeltv-shell-v123'
+const SHELL_CACHE = 'mabeltv-shell-v130'
 const SHELL_URLS = [
   '/',
   '/manifest.webmanifest',
@@ -40,6 +40,7 @@ const SHELL_URLS = [
   '/portal/icons.svg',
   '/portal/js/ui-components.js',
   '/portal/js/core/foundation.js',
+  '/portal/js/core/scroll.js',
   '/portal/js/core/navigation.js',
   '/portal/js/core/live.js',
   '/portal/js/core/load.js',
@@ -53,6 +54,7 @@ const SHELL_URLS = [
   '/portal/js/playback/players.js',
   '/portal/js/playback/film-library.js',
   '/portal/js/playback/adult-series.js',
+  '/portal/js/playback/film-catalogue.js',
   '/portal/js/playback/programmes.js',
   '/portal/js/playback/downloads.js',
   '/portal/js/playback/view.js',

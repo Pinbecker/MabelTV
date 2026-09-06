@@ -71,10 +71,12 @@ is deliberately shared between the files, so changing script order can break
 initialisation even when each file is syntactically valid.
 
 1. `mabeltv-offline.js`: service-worker registration and offline storage.
-2. `portal/js/ui-components.js`: dependency-free shared DOM components.
+2. `portal/js/ui-components.js`: shared DOM components and dialog lifecycle.
 3. `portal/js/core/foundation.js`: shared state, API, escaping, auth, and base
    helpers.
-4. `portal/js/core/navigation.js`: routes, views, history, and navigation.
+4. `portal/js/core/scroll.js`: viewport snapshots, shared render preservation,
+   horizontal rail restoration and screen positions. It precedes
+   `portal/js/core/navigation.js`, which owns routes, views and history.
 5. `portal/js/core/live.js`: live-picture and live-channel behaviour.
 6. `portal/js/core/load.js`: initial portal boot and data loading.
 7. `portal/js/channel-page.js`: reusable channel detail renderer.
@@ -84,8 +86,11 @@ initialisation even when each file is syntactically valid.
 11. `portal/js/library/device-status.js`: device, storage, and job status.
 12. `portal/js/library/channels.js`: channel-management rendering.
 13. `portal/js/playback/players.js`: local player primitives and state.
-14. `portal/js/playback/film-library.js`: film catalogue and film sheets.
+14. `portal/js/playback/film-library.js`: film cards and film sheets.
 15. `portal/js/playback/adult-series.js`: Adult series catalogue and tools.
+    `portal/js/playback/film-catalogue.js` follows it and owns the Adult Watch
+    film catalogue, collection and metadata-genre filters, and combined search.
+    Filters apply to films; series and Continue watching keep their own scope.
 16. `portal/js/playback/programmes.js`: programme sheets and actions.
 17. `portal/js/playback/downloads.js`: device-download rendering and actions.
 18. `portal/js/playback/view.js`: Watch view composition and dialog wiring.
@@ -99,7 +104,12 @@ Classic intentionally omits Experience-only Adult-viewing and LG-remote scripts.
 
 ## Shared UI contracts
 
-`window.MabelPortalUI` is the dependency-free shared component boundary:
+`window.MabelPortalUI` is the shared component boundary. Its dialog lifecycle
+uses the scroll owner at runtime, after the ordered core scripts initialise:
+
+Collections reuse the `.library-actions` row list, `.library-action-icon`,
+`.count-badge`, sprite icons and the shared dialog lifecycle. Collection
+management selection is separate from the Watch film filters.
 
 - `icon(name, className)` creates sprite-backed SVG icons.
 - `button(options)` creates safe `type="button"` controls and supports a sprite
@@ -156,3 +166,30 @@ pushes.
 
 The server-side boundary behind these assets is documented separately in
 [library-service-architecture.md](library-service-architecture.md).
+
+## Scroll and return navigation
+
+`core/scroll.js` captures the visible page immediately before a synchronous DOM
+update and restores it before yielding. Network readers capture after awaiting
+the response, so a slow refresh cannot undo a later scroll gesture. Snapshots
+include stable content anchors, open sheet panels and horizontal rails matched
+by owner identity, even when a render replaces the rail element. Large library
+refreshes and returning views also settle after the existing screen animation
+and two rendering frames. A newer restoration, navigation or user input cancels
+that final correction; browser scrolling and entrance animations remain intact.
+
+`core/navigation.js` remembers each top-level view; first entry begins at the
+top, returning restores its position, and revisiting the active view stays put.
+`playback/view.js` separately remembers Watch tabs. My Viewing and channel
+history return through the same navigation boundary. Insights retains a position
+and search per subroute. USB retains positions per drive and folder and discards
+obsolete browse responses. New folders begin at the file browser; Up and
+breadcrumbs restore visited folders. Same-folder selection and refresh retain
+the viewport. Activity keeps a separate position for each of its job tabs.
+
+Shared dialogs save their scroll containers on close and restore them when a
+child invokes its parent callback. Explicit next-episode navigation still brings
+the requested episode into view; ordinary Back preserves the earlier position.
+Film filters retain native option nodes when their choices have not changed.
+`tests/browser/portal-scroll.spec.mjs` exercises these contracts with long lists
+on iPhone WebKit, iPad WebKit and Chromium; screenshots remain unchanged.

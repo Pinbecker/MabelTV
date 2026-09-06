@@ -90,6 +90,15 @@ qt_add_resources(mabeltv "mabeltv_qml"
         qml/Main.qml
         qml/TelevisionScreen.qml
         qml/DinosaurDenSurround.qml
+        qml/FindingNemo.qml
+        qml/FindingNemoBubbles.qml
+        qml/OceanClubSurround.qml
+        qml/OceanClownfishArt.qml
+        qml/OceanJellyfishArt.qml
+        qml/OceanSeahorseArt.qml
+        qml/OceanSharkArt.qml
+        qml/OceanStarfishArt.qml
+        qml/OceanTurtleArt.qml
         qml/RemoteInputHandler.qml
         qml/ChannelSummaryOverlay.qml
         qml/TvGuideOverlay.qml

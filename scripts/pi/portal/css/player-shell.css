@@ -41,6 +41,7 @@
       var(--space-3)
       calc(var(--space-4) + var(--safe-left));
     background: #090d0b;
+    color: #f7f7f8;
   }
 
   .ios-watch-head > div {
@@ -57,8 +58,20 @@
   }
 
   .ios-watch-head small {
-    color: #89958f;
+    color: #a7b2ac;
     font-size: var(--type-caption);
+  }
+
+  .ios-watch-head .ios-watch-back {
+    flex: 0 0 44px;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 1px solid #414944;
+    background: #202722;
+    color: #f7f7f8;
+    padding: 0;
   }
 
   .ios-watch-stage {
@@ -197,6 +210,12 @@
     box-shadow: 0 30px 82px #000d, inset 0 1px #ffffff35, inset 0 0 0 4px #36432d;
   }
 
+  .mabel-watch-cabinet:is(.ocean-club, .finding-nemo) {
+    border-color: #8dd8d3;
+    background: linear-gradient(145deg, #69babc 0%, #328694 48%, #235464 100%);
+    box-shadow: 0 30px 82px #000d, inset 0 1px #ffffff45, inset 0 0 0 4px #173e4b;
+  }
+
   .mabel-watch-cabinet.charcoal-90s::before {
     position: absolute;
     z-index: 0;
@@ -255,6 +274,11 @@
     background: repeating-linear-gradient(to bottom, #152016 0 3%, #35452e 3% 14%, #152016 14% 17%);
   }
 
+  .mabel-watch-cabinet:is(.ocean-club, .finding-nemo) .mabel-watch-charcoal-speaker {
+    border-color: #2d6873;
+    background: repeating-linear-gradient(to bottom, #153b47 0 3%, #2e7180 3% 14%, #153b47 14% 17%);
+  }
+
   .mabel-watch-charcoal-speaker.left {
     left: 0;
   }
@@ -278,6 +302,10 @@
 
   .mabel-watch-cabinet.dinosaur-den .mabel-watch-charcoal-logo {
     color: #edf5d9;
+  }
+
+  .mabel-watch-cabinet:is(.ocean-club, .finding-nemo) .mabel-watch-charcoal-logo {
+    color: #effbf3;
   }
 
   .mabel-watch-charcoal-control {

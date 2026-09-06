@@ -46,8 +46,6 @@ body.portal-experience .library-sheet-panel.wide {
 
 body.portal-experience :is(
   .library-sheet-head,
-  .adult-series-sheet-head,
-  .adult-season-sheet-head,
   .remote-sheet-panel > header,
   .tmdb-dialog-head
 ) {
@@ -541,59 +539,23 @@ body.portal-experience .library-sheet-actions button {
   padding: 0 14px;
 }
 
-body.portal-experience #adultFolderTabs {
+body.portal-experience .adult-collection-body .library-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px;
-  margin: 0 0 20px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  margin: 0;
 }
-
-body.portal-experience #adultFolderTabs .adult-folder-tab {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  min-width: 0;
-  min-height: 50px;
-  border: 1px solid var(--experience-line);
-  border-radius: 10px;
-  background: var(--experience-raised);
-  color: var(--experience-muted);
-  padding: 0 13px;
-  text-align: left;
-}
-
-body.portal-experience #adultFolderTabs .adult-folder-tab span {
-  overflow: hidden;
-  min-width: 0;
-  font-size: 12px;
-  font-weight: 720;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-body.portal-experience #adultFolderTabs .adult-folder-tab strong {
-  display: grid;
-  place-items: center;
-  min-width: 25px;
-  height: 25px;
-  border-radius: 999px;
-  background: var(--experience-soft);
-  color: var(--experience-muted);
-  padding: 0 6px;
-  font-size: 10px;
-}
-
+body.portal-experience .adult-collection-body .library-actions > button { min-height: 58px; }
+body.portal-experience .adult-collection-body .library-actions.hidden { display: none; }
+body.portal-experience #adultFolderTabs .adult-folder-tab { padding: 9px 10px; }
+body.portal-experience #adultFolderTabs .adult-folder-tab > .icon { color: var(--experience-orange); }
+body.portal-experience #adultFolderTabs .adult-folder-tab strong { overflow-wrap: anywhere; }
 body.portal-experience #adultFolderTabs .adult-folder-tab.active {
-  border-color: color-mix(in srgb, var(--experience-accent) 72%, transparent);
-  background: color-mix(in srgb, var(--experience-accent) 11%, transparent);
-  color: var(--experience-ink);
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 var(--experience-orange);
 }
-
-body.portal-experience #adultFolderTabs .adult-folder-tab.active strong {
-  background: var(--experience-orange);
-  color: #160a02;
-}
+body.portal-experience .adult-collection-delete .library-action-icon { color: var(--experience-danger); }
+body.portal-experience .adult-folder-selection-actions small { overflow-wrap: anywhere; }
 
 body.portal-experience .watch-sheet {
   width: min(520px, calc(100vw - 32px));
@@ -675,22 +637,6 @@ body.portal-experience .watch-collection-option.active::before {
   border-radius: 50%;
   background: var(--experience-orange);
   content: "";
-}
-
-body.portal-experience .adult-folder-tools {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) repeat(3, auto);
-  gap: 10px;
-}
-
-body.portal-experience .adult-folder-tools input {
-  min-width: 0;
-  margin: 0;
-}
-
-body.portal-experience .adult-folder-tools button {
-  min-height: 48px;
-  padding: 0 14px;
 }
 
 body.portal-experience .adult-sheet .library-sheet-body { padding-top: 18px; }
@@ -799,9 +745,7 @@ body.portal-experience .adult-series-restart-warning strong { overflow: hidden; 
 body.portal-experience .adult-series-restart-warning small { color: var(--experience-dim); font-size: 9px; line-height: 1.4; }
 body.portal-experience .adult-collection-body { display: grid; gap: 18px; }
 body.portal-experience .adult-sheet-label { margin: 0 0 9px; color: var(--experience-dim); font-size: 9px; font-weight: 820; letter-spacing: .12em; text-transform: uppercase; }
-body.portal-experience .adult-folder-tools { grid-template-columns: minmax(0, 1fr) auto; align-items: end; border-top: 1px solid var(--experience-line); padding-top: 17px; }
-body.portal-experience .adult-folder-tools > label { display: grid; gap: 7px; color: var(--experience-muted); font-size: 10px; font-weight: 740; }
-body.portal-experience .adult-folder-tools .icon { width: 17px; height: 17px; }
-body.portal-experience .adult-folder-tools button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
-body.portal-experience .adult-folder-selection-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-column: 1 / -1; gap: 9px; }
-body.portal-experience .adult-folder-selection-actions button:disabled { opacity: .34; }
+body.portal-experience .adult-folder-tools { display: grid; gap: 8px; border-top: 1px solid var(--experience-line); padding-top: 17px; }
+body.portal-experience .adult-folder-create-row { display: flex; gap: 10px; }
+body.portal-experience .adult-folder-create-row input { min-width: 0; flex: 1; margin: 0; }
+body.portal-experience .adult-folder-create-row button { flex: 0 0 auto; min-height: 48px; padding: 0 14px; font-size: 13px; }

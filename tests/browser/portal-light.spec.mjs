@@ -70,6 +70,145 @@ test('light programme sheet keeps its global close icon visible', async ({ page 
 })
 
 
+test('USB browser keeps compact controls and reviews the real transfer', async ({ page }, testInfo) => {
+  phoneOnly(testInfo)
+  await openLightPortal(page)
+  await page.locator('[data-view-button="usb"]').click()
+  await expect(page.locator('#usbDriveList')).toContainText('No USB drive found')
+  await page.evaluate(() => {
+    usbState = { volumes: [{
+      id: 'FAMILY-USB', device: '/dev/sda1', label: 'Family Videos',
+      filesystem: 'ntfs', size: 2_000_000_000_000, free: 800_000_000_000,
+      mounted: true, sleeping: false,
+    }], imports: [] }
+    usbVolume = 'FAMILY-USB'
+    usbPath = 'Films'
+    usbEntries = [
+      { name: 'X-Men', path: 'Films/X-Men', type: 'folder' },
+      { name: 'Finding Nemo.mp4', path: 'Films/Finding Nemo.mp4', type: 'video', size: 734_000_000, browser_ready: true },
+    ]
+    library.adult_series = [{
+      id: 'b'.repeat(32), title: 'Silicon Valley', stored_title: 'Silicon Valley',
+      seasons: [1, 7], episodes: [], season_count: 2, episode_count: 0,
+    }]
+    renderUsbSeriesDestinations()
+    renderUsbDrives()
+    renderUsbFiles()
+    const originalApi = api
+    api = async (path, options = {}) => {
+      if (path === '/api/usb' && JSON.parse(options.body || '{}').action === 'plan') {
+        const payload = JSON.parse(options.body)
+        const destination = payload.target === 'series'
+          ? `Adult TV series · Silicon Valley · Series ${payload.season}`
+          : payload.target === 'channel' ? 'CH 1 — CBeebies'
+            : 'Adult TV films · All films (no collection)'
+        return {
+          files_total: 3, bytes_total: 1_468_000_000, free_bytes: 800_000_000_000,
+          enough_space: true, destination_label: destination, rename_count: 1,
+          renames: [{ from: 'Finding Nemo.mp4', to: 'Finding Nemo (2).mp4' }],
+          truncated_renames: false,
+        }
+      }
+      return originalApi(path, options)
+    }
+  })
+  const folderToggle = page.getByRole('button', { name: 'Select X-Men for copying' })
+  const videoToggle = page.getByRole('button', { name: 'Select Finding Nemo.mp4 for copying' })
+  for (const control of [folderToggle, videoToggle]) {
+    const box = await control.boundingBox()
+    expect(box.width).toBeGreaterThanOrEqual(43.9)
+    expect(box.width).toBeLessThan(46)
+    expect(box.height).toBeGreaterThanOrEqual(43.9)
+    expect(box.height).toBeLessThan(46)
+  }
+  await folderToggle.click()
+  await expect(page).toHaveScreenshot('light-usb-connected.png')
+  await page.getByRole('button', { name: 'Review copy' }).click()
+  await expect(page.locator('#usbImportSheet')).toBeVisible()
+  await expect(page.locator('#usbPlanFiles')).toHaveText('3')
+  await expect(page.locator('#usbRenameSummary')).toContainText('Finding Nemo (2).mp4')
+  await expect(page.locator('#confirmUsbImport')).toBeEnabled()
+  await expect(page.locator('#usbAdultFolderLabel')).toBeVisible()
+  await expect(page.locator('#usbAdultFolder')).toContainText('All films — no collection')
+  await expect(page.locator('#usbSeriesLabel')).toBeHidden()
+  await expect(page.locator('#usbSeasonLabel')).toBeHidden()
+  await expect(page.locator('#usbChannelLabel')).toBeHidden()
+  await expect(page).toHaveScreenshot('light-usb-transfer-destination.png')
+  await page.locator('#usbTarget').selectOption('series')
+  await expect(page.locator('#usbAdultFolderLabel')).toBeHidden()
+  await expect(page.locator('#usbSeriesLabel')).toBeVisible()
+  await expect(page.locator('#usbSeasonLabel')).toBeVisible()
+  await expect(page.locator('#usbChannelLabel')).toBeHidden()
+  await expect(page.locator('#usbSeries')).toHaveValue('b'.repeat(32))
+  await expect(page.locator('#usbSeries')).toContainText('Silicon Valley')
+  await page.locator('#usbSeason').selectOption('7')
+  await expect(page.locator('#usbPlanStatus')).toContainText('Silicon Valley · Series 7')
+  await expect(page).toHaveScreenshot('light-usb-transfer-series.png')
+  await page.locator('#usbTarget').selectOption('channel')
+  await expect(page.locator('#usbAdultFolderLabel')).toBeHidden()
+  await expect(page.locator('#usbSeriesLabel')).toBeHidden()
+  await expect(page.locator('#usbSeasonLabel')).toBeHidden()
+  await expect(page.locator('#usbChannelLabel')).toBeVisible()
+  const widths = await page.evaluate(() => ({
+    client: document.documentElement.clientWidth,
+    scroll: document.documentElement.scrollWidth,
+  }))
+  expect(widths.scroll).toBe(widths.client)
+  await page.locator('#closeUsbImport').click()
+  await page.evaluate(async () => {
+    openView('activity')
+    await new Promise(resolve => setTimeout(resolve, 100))
+    renderActivity({
+      active: true, temperature_warning: false, uploads: [{
+        id: 'a'.repeat(32), file_name: 'Finding Nemo.mp4', source_kind: 'usb',
+        source_label: 'Family Videos', channel_name: 'Adult TV · All films', size: 100,
+        offset: 35, status: 'uploading', transfer_state: 'active',
+        source_available: true, cancelable: true,
+      }], optimisations: [],
+    })
+  })
+  await expect(page.locator('#activityUploadList')).toContainText('Copying from Family Videos')
+  await expect(page.locator('#activityUploadList')).toContainText('Family Videos → Adult TV · All films')
+  await expect(page.getByRole('button', { name: 'Cancel transfer' })).toBeVisible()
+})
+
+
+test('Adult management reloads keep the exact list position', async ({ page }, testInfo) => {
+  phoneOnly(testInfo)
+  await openLightPortal(page)
+  await page.evaluate(() => {
+    const fixture = structuredClone(library)
+    fixture.adult_library = Array.from({ length: 80 }, (_, index) => ({
+      path: `Film ${String(index).padStart(2, '0')}.mp4`,
+      display_name: `Film ${String(index).padStart(2, '0')}`,
+      size: 500_000_000, folder: '', playback_state: 'original', metadata: {},
+    }))
+    library = fixture
+    renderAdultLibrary()
+    openView('adult')
+    const originalApi = api
+    api = async (path, options = {}) => {
+      if (path === '/api/manage') return { ok: true, message: 'Renamed' }
+      if (path === '/api/library') return structuredClone(fixture)
+      return originalApi(path, options)
+    }
+  })
+  await page.evaluate(() => setPortalScrollTop(document.documentElement.scrollHeight))
+  const before = await page.evaluate(() => portalScrollTop())
+  expect(before).toBeGreaterThan(1000)
+  await page.evaluate(() => manage('rename-adult', {
+    file: 'Film 79.mp4', name: 'X-Men 79',
+  }))
+  await page.waitForTimeout(80)
+  const afterRename = await page.evaluate(() => portalScrollTop())
+  expect(Math.abs(afterRename - before)).toBeLessThan(6)
+  await page.evaluate(() => reloadLibraryWithoutLosingPlace())
+  await page.waitForTimeout(80)
+  const afterMetadata = await page.evaluate(() => portalScrollTop())
+  expect(Math.abs(afterMetadata - before)).toBeLessThan(6)
+})
+
+
 test('light remote pages keep one cohesive dark control surface', async ({ page }, testInfo) => {
   phoneOnly(testInfo)
   await openLightPortal(page)

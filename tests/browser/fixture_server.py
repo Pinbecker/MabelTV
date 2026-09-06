@@ -334,6 +334,17 @@ class FixtureLibrary:
 
 class FixtureHandler(mabeltv_library.Handler):
     def do_GET(self) -> None:
+        if self.path in ("/api/adult/series/artwork/bright.svg",
+                         "/api/adult/series/artwork/dark.svg"):
+            colour = "#101820" if self.path.endswith("dark.svg") else "#ffffff"
+            artwork = (f'<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400">'
+                       f'<rect width="600" height="400" fill="{colour}"/></svg>').encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "image/svg+xml")
+            self.send_header("Content-Length", str(len(artwork)))
+            self.end_headers()
+            self.wfile.write(artwork)
+            return
         if self.path.startswith("/__fixture/pin-required"):
             self.server.library.pin_required = "value=1" in self.path
             self.json(200, {"required": self.server.library.pin_required})

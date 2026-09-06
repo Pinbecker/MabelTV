@@ -1,3 +1,71 @@
+<dialog id="usbImportSheet" class="library-sheet usb-import-sheet" aria-labelledby="usbImportTitle">
+  <section class="library-sheet-panel">
+    <span class="library-sheet-handle" aria-hidden="true"></span>
+    <header class="library-sheet-head">
+      <div>
+        <p class="section-kicker">Check before copying</p>
+        <h2 id="usbImportTitle">Review USB transfer</h2>
+        <p id="usbPlanStatus">Choose where these videos belong.</p>
+      </div>
+      <button id="closeUsbImport" type="button" class="portal-sheet-close library-sheet-close" aria-label="Close USB transfer review"></button>
+    </header>
+    <div class="library-sheet-body">
+      <div class="usb-plan-summary" aria-live="polite">
+        <div><span>Videos</span><strong id="usbPlanFiles">—</strong></div>
+        <div><span>Copy size</span><strong id="usbPlanSize">—</strong></div>
+        <div><span>Free afterward</span><strong id="usbPlanSpace">—</strong></div>
+      </div>
+      <div id="usbRenameSummary" class="usb-rename-summary hidden"></div>
+      <div class="usb-destination-fields">
+        <label>Copy into<select id="usbTarget">
+          <option value="adult">Adult TV films</option>
+          <option value="series">Adult TV series</option>
+          <option value="channel">Kids TV channel</option>
+        </select></label>
+        <label id="usbAdultFolderLabel">Film collection<select id="usbAdultFolder"></select></label>
+        <label id="usbSeriesLabel" class="hidden">TV series<select id="usbSeries"></select></label>
+        <label id="usbSeasonLabel" class="hidden">Series<select id="usbSeason"></select></label>
+        <input id="usbSeriesName" type="hidden">
+        <label id="usbChannelLabel" class="hidden">Kids channel<select id="usbChannel"></select></label>
+      </div>
+      <p class="usb-plan-note">Each video is checked through the same upload and publishing process as files sent from this device. The originals stay on the USB drive.</p>
+      <div class="library-sheet-actions">
+        <button id="cancelUsbImport" type="button" class="secondary">Keep browsing</button>
+        <button id="confirmUsbImport" type="button" class="primary" disabled>Start copying</button>
+      </div>
+    </div>
+  </section>
+</dialog>
+<dialog id="usbFileActionsSheet" class="library-sheet usb-file-actions-sheet" aria-labelledby="usbFileActionsTitle">
+  <section class="library-sheet-panel">
+    <span class="library-sheet-handle" aria-hidden="true"></span>
+    <header class="library-sheet-head">
+      <div>
+        <p class="section-kicker">USB video</p>
+        <h2 id="usbFileActionsTitle">Video options</h2>
+        <p id="usbFileActionsMeta">Play temporarily or save a copy.</p>
+      </div>
+      <button id="closeUsbFileActions" type="button" class="portal-sheet-close library-sheet-close" aria-label="Close USB video options"></button>
+    </header>
+    <div class="library-sheet-body usb-file-sheet-actions">
+      <button id="usbWatchHere" type="button" class="channel-setting-action">
+        <span class="channel-setting-action-icon"><svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-play"/></svg></span>
+        <span><strong>Watch on this device</strong><small>Stream directly from the USB drive</small></span>
+        <svg class="channel-setting-action-arrow" aria-hidden="true"><use href="/portal/icons.svg#signal-chevron-right"/></svg>
+      </button>
+      <button id="usbDownload" type="button" class="channel-setting-action">
+        <span class="channel-setting-action-icon"><svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-download"/></svg></span>
+        <span><strong>Download to this device</strong><small>Keep a local copy for this browser</small></span>
+        <svg class="channel-setting-action-arrow" aria-hidden="true"><use href="/portal/icons.svg#signal-chevron-right"/></svg>
+      </button>
+      <button id="usbPlayTv" type="button" class="channel-setting-action">
+        <span class="channel-setting-action-icon"><svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-monitor-play"/></svg></span>
+        <span><strong>Play directly on TV</strong><small>Temporary playback from the connected drive</small></span>
+        <svg class="channel-setting-action-arrow" aria-hidden="true"><use href="/portal/icons.svg#signal-chevron-right"/></svg>
+      </button>
+    </div>
+  </section>
+</dialog>
 <dialog id="usbEjectSheet" class="library-sheet usb-eject-sheet">
   <section class="library-sheet-panel">
     <span class="library-sheet-handle" aria-hidden="true"></span>

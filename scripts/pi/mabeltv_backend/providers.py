@@ -1330,6 +1330,8 @@ class ProviderMetadataMixin:
             "year": str(value.get("release_date", ""))[:4],
             "overview": str(value.get("overview", "")),
             "runtime": int(value.get("runtime") or 0), "poster": poster_name,
+            "genres": [str(item["name"]).strip() for item in value.get("genres", [])
+                       if isinstance(item, dict) and item.get("name")],
             "updated": time.time(), "provider": "TMDB",
         }
         metadata["subtitles"] = self.fetch_automatic_subtitle(source, tmdb_id)

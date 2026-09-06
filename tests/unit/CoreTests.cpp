@@ -867,6 +867,10 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
     restored.cycleTvBorderStyle(1);
     QCOMPARE(restored.tvBorderStyle(), QStringLiteral("dinosaur-den"));
     restored.cycleTvBorderStyle(1);
+    QCOMPARE(restored.tvBorderStyle(), QStringLiteral("ocean-club"));
+    restored.cycleTvBorderStyle(1);
+    QCOMPARE(restored.tvBorderStyle(), QStringLiteral("finding-nemo"));
+    restored.cycleTvBorderStyle(1);
     QCOMPARE(restored.tvBorderStyle(), QStringLiteral("slim-black"));
 }
 

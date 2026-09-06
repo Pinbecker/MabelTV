@@ -15,7 +15,12 @@
           <section id="adultDiscoverySection" class="adult-discovery-results hidden" aria-labelledby="adultDiscoveryTitle"><header class="watch-library-head"><div><p class="watch-section-kicker">From across streaming</p><h2 id="adultDiscoveryTitle">Search results</h2></div><span id="adultDiscoveryCount" class="watch-library-count"></span></header><div id="adultDiscoveryGrid" class="watch-poster-grid"></div><p class="provider-attribution">Streaming availability data from TMDB and JustWatch.</p></section>
           <section id="watchContinueSection" class="watch-continue hidden" aria-labelledby="watchContinueTitle"><header class="watch-section-head"><div><p class="watch-section-kicker">Pick up where you left off</p><h2 id="watchContinueTitle">Continue watching</h2></div><span id="watchContinueCount"></span></header><div id="watchContinueRail" class="watch-continue-rail"></div></section>
           <section id="adultSeriesSection" class="adult-series-section" aria-labelledby="adultSeriesTitle"><header class="watch-library-head"><div><p class="watch-section-kicker">Episodes and seasons</p><div class="adult-series-title-row"><h2 id="adultSeriesTitle">TV series</h2><button id="adultSeriesCreate" type="button" class="adult-series-create" aria-label="New series"><svg class="icon"><use href="/portal/icons.svg#signal-plus"/></svg><span>New series</span></button></div></div></header><div id="adultSeriesRail" class="adult-series-rail"></div></section>
-          <section class="watch-catalogue" aria-labelledby="watchLibraryTitle"><header class="watch-library-head"><div><p id="watchLibraryKicker" class="watch-section-kicker">Your library</p><h2 id="watchLibraryTitle">All films</h2></div><span id="watchLibraryCount" class="watch-library-count">0 films</span></header><div id="remoteAdult"></div></section>
+          <section class="watch-catalogue" aria-labelledby="watchLibraryTitle"><header class="watch-library-head"><div><p id="watchLibraryKicker" class="watch-section-kicker">Your library</p><h2 id="watchLibraryTitle">All films</h2></div><span id="watchLibraryCount" class="watch-library-count">0 films</span></header>
+            <div class="watch-film-filters" role="group" aria-label="Filter films">
+              <select id="watchCollectionFilter" aria-label="Filter films by collection"><option value="*">All collections</option></select>
+              <select id="watchGenreFilter" aria-label="Filter films by genre"><option value="">All genres</option></select>
+            </div>
+            <div id="remoteAdult"></div></section>
         </div>
 
         <div id="watchMabelLayout" class="watch-mabel-layout">

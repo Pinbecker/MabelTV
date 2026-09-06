@@ -47,7 +47,9 @@ const $ = selector => document.querySelector(selector)
     let usbPath = ''
     let usbEntries = []
     let usbSelection = new Set()
-    let usbJobTimer = null
+    let usbBrowseTruncated = false
+    let selectedUsbEntry = null
+    let usbImportPlan = null
     let tmdbConfigured = false
     // Watch opens on the family MabelTV library. Adult TV and downloads remain
     // explicit choices rather than carrying over from an earlier visit.

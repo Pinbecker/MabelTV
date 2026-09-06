@@ -1,6 +1,20 @@
 'use strict'
 
+    const watchTabPositions = new Map()
+    let renderedWatchKind = null
+
     function renderRemoteViewing() {
+      const position = capturePortalPosition()
+      const visible = position.view?.id === 'view-watch'
+      if (visible && renderedWatchKind && !position.locked) watchTabPositions.set(renderedWatchKind, position)
+      const changed = renderedWatchKind !== remoteKind
+      if (changed) cancelPortalScrollSettlement()
+      renderWatchSections()
+      renderedWatchKind = remoteKind
+      restorePortalPosition(visible && changed ? watchTabPositions.get(remoteKind) || position : position)
+    }
+
+    function renderWatchSections() {
       const remote = library?.remote_viewing || {}; const simultaneous = remote.allow_simultaneous === true
       $('#remoteConcurrentToggle').textContent = simultaneous ? 'On' : 'Off'
       $('#remoteConcurrentState').textContent = simultaneous
@@ -165,7 +179,7 @@
           || series.title?.toLocaleLowerCase() === name.trim().toLocaleLowerCase())
         if (!created) throw new Error('The series was created, but could not be reopened')
         openAdultSeriesSheet(created)
-        notice(`${created.title} is ready. Start Series 1 when you are ready to add episodes.`)
+        notice(`${created.title} is ready. Create Series 1 when you are ready to add episodes.`)
       } catch (error) { showError(error) }
     }
     const adultSeriesClose = $('#adultSeriesClose')

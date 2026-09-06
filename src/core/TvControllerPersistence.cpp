@@ -131,7 +131,9 @@ void TvController::loadSettings(const QString &settingsPath, bool preserveRuntim
     } else if (borderStyle == QStringLiteral("silver-90s")
                || borderStyle == QStringLiteral("charcoal-90s")
                || borderStyle == QStringLiteral("vintage-black")
-               || borderStyle == QStringLiteral("dinosaur-den")) {
+               || borderStyle == QStringLiteral("dinosaur-den")
+               || borderStyle == QStringLiteral("ocean-club")
+               || borderStyle == QStringLiteral("finding-nemo")) {
         m_tvBorderStyle = borderStyle;
     } else {
         m_tvBorderStyle = QStringLiteral("slim-black");

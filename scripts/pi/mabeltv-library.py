@@ -453,10 +453,13 @@ class Library(ViewingMixin, UploadConversionMixin, AuthenticationMixin,
         self.external_stream_lock = threading.RLock()
         self.external_streams: dict[str, dict[str, Any]] = {}
         self.offline_cache = self.media_root / ".offline-prepared"
+        self.usb_import_root = self.incoming / ".usb-imports"
         self.offline_preparation_lock = threading.RLock()
         self.offline_preparations: dict[str, dict[str, Any]] = {}
         self.usb_imports: dict[str, dict[str, Any]] = {}
         self.usb_import_lock = threading.RLock()
+        self.usb_transfer_closed = threading.Event()
+        self.usb_transfer_wakeup = threading.Event()
         self.usb_action_lock = threading.RLock()
         self.usb_power_lock = threading.RLock()
         self.usb_last_activity: dict[str, float] = {}
@@ -474,6 +477,7 @@ class Library(ViewingMixin, UploadConversionMixin, AuthenticationMixin,
         self.adult_series_artwork_root.mkdir(mode=0o750, exist_ok=True)
         self.channel_artwork_root.mkdir(mode=0o750, exist_ok=True)
         self.offline_cache.mkdir(mode=0o750, exist_ok=True)
+        self.usb_import_root.mkdir(mode=0o750, exist_ok=True)
         self.bin.mkdir(mode=0o750, exist_ok=True)
         self.reconcile_recycle_items()
         self.cleanup_stale_temporary_files()
@@ -488,6 +492,12 @@ class Library(ViewingMixin, UploadConversionMixin, AuthenticationMixin,
             daemon=True,
         )
         self.conversion_worker.start()
+        self.usb_transfer_worker = threading.Thread(
+            target=self.run_usb_transfer_worker,
+            name="mabeltv-usb-transfer",
+            daemon=True,
+        )
+        self.usb_transfer_worker.start()
         self.live_stream = LiveStream(self)
         if os.name == "posix" and self.usb_requires_mount:
             self.usb_power_worker = threading.Thread(
@@ -503,6 +513,11 @@ class Library(ViewingMixin, UploadConversionMixin, AuthenticationMixin,
             return
         with self.lg_tv_lock:
             self.close_lg_tv_pointer()
+        self.usb_transfer_closed.set()
+        self.usb_transfer_wakeup.set()
+        self.usb_transfer_worker.join(timeout=timeout)
+        if self.usb_transfer_worker.is_alive():
+            raise RuntimeError("The USB transfer worker did not stop cleanly")
         self.conversion_closed.set()
         self.usb_power_closed.set()
         self.viewing_closed.set()

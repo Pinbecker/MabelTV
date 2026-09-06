@@ -316,9 +316,8 @@ function remoteTime(value) {
         const settings = library?.tv_settings || {}
         const cabinet = $('#mabelWatchCabinet')
         const cabinetStyle = settings.tv_border || 'slim-black'
-        const cabinetClasses = cabinetStyle === 'dinosaur-den'
-          ? 'charcoal-90s dinosaur-den'
-          : cabinetStyle
+        const cabinetClasses = ['dinosaur-den', 'ocean-club', 'finding-nemo'].includes(cabinetStyle)
+          ? `charcoal-90s ${cabinetStyle}` : cabinetStyle
         cabinet.className = `mabel-watch-cabinet ${cabinetClasses}`
         $('#mabelWatchShell').className = `mabel-watch-shell ${cabinetClasses}`
         cabinet.style.setProperty('--glass', String(Math.min(.5, Math.max(0, Number(settings.crt_glass || 35) / 100 * .65))))

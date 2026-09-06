@@ -53,6 +53,12 @@ class UploadConversionMixin:
                 candidate.unlink()
             except OSError:
                 pass
+        for batch in self.usb_import_root.glob("*.json"):
+            try:
+                if batch.stat().st_mtime < result_cutoff:
+                    batch.unlink()
+            except OSError:
+                pass
         for candidate in self.incoming.glob("usb-*.part"):
             try:
                 candidate.unlink()
@@ -213,6 +219,10 @@ class UploadConversionMixin:
                     "kind": metadata.get("kind", "channel"),
                     "series_id": metadata.get("series_id"),
                     "season": metadata.get("season"),
+                    "source_kind": metadata.get("source_kind", "browser"),
+                    "source_label": metadata.get("source_label"),
+                    "source_volume": metadata.get("source_volume"),
+                    "batch_id": metadata.get("batch_id"),
                     "offset": int(metadata.get("size", 0)),
                     "complete": False,
                     "processing": False,
@@ -345,6 +355,10 @@ class UploadConversionMixin:
                 else "adult" if adult_film_upload else "channel",
                 "series_id": metadata.get("series_id"),
                 "season": metadata.get("season"),
+                "source_kind": metadata.get("source_kind", "browser"),
+                "source_label": metadata.get("source_label"),
+                "source_volume": metadata.get("source_volume"),
+                "batch_id": metadata.get("batch_id"),
                 "finished": time.time(),
             }
             result_path = self.incoming / f"{upload_id}.result.json"
@@ -390,12 +404,17 @@ class UploadConversionMixin:
                 continue
             transfer_state = str(value.get("transfer_state", "active" if status == "uploading" else "complete"))
             source_seen = float(value.get("source_seen", 0) or 0)
+            source_kind = str(value.get("source_kind") or "browser")
+            source_available = self.usb_source_available(value) if source_kind == "usb" \
+                else bool(source_seen and time.time() - source_seen <= UPLOAD_SOURCE_GRACE_SECONDS)
             jobs.append({
                 "id": value["id"],
                 "file_name": str(value.get("file_name", "Video")),
                 "channel": number,
                 "channel_name": "Adult TV series" if adult_series else
-                "Adult mode" if adult else channel_names.get(number, f"CH {number}"),
+                (f"Adult TV · {value.get('folder')}" if value.get("folder")
+                 else "Adult TV · All films") if adult else
+                channel_names.get(number, f"CH {number}"),
                 "kind": "adult-series" if adult_series else "adult" if adult else "channel",
                 "size": size,
                 "offset": offset,
@@ -404,9 +423,13 @@ class UploadConversionMixin:
                 "created": float(value.get("created", 0)),
                 "queue_order": int(value.get("queue_order", 0) or 0),
                 "transfer_state": transfer_state,
-                "source_available": bool(source_seen and time.time() - source_seen <= UPLOAD_SOURCE_GRACE_SECONDS),
+                "source_kind": source_kind,
+                "source_label": value.get("source_label"),
+                "source_volume": value.get("source_volume"),
+                "batch_id": value.get("batch_id"),
+                "source_available": source_available,
                 "cancelable": status in {
-                    "uploading", "queued", "error"
+                    "uploading", "queued", "paused", "error"
                 },
                 "retryable": (status == "error"
                               and part.is_file() and offset == size),
@@ -420,17 +443,24 @@ class UploadConversionMixin:
             adult = upload_kind == "adult"
             adult_series = upload_kind == "adult-series"
             number = -1 if adult or adult_series else int(value.get("channel", -1))
+            source_kind = str(value.get("source_kind") or "browser")
             jobs.append({
                 "id": value.get("id", result_path.name.removesuffix(".result.json")),
                 "file_name": str(value.get("file_name", "Video")),
                 "channel": number,
                 "channel_name": "Adult TV series" if adult_series else
-                "Adult mode" if adult else channel_names.get(number, f"CH {number}"),
+                (f"Adult TV · {value.get('folder')}" if value.get("folder")
+                 else "Adult TV · All films") if adult else
+                channel_names.get(number, f"CH {number}"),
                 "kind": "adult-series" if adult_series else "adult" if adult else "channel",
                 "size": int(value.get("offset", 0)),
                 "offset": int(value.get("offset", 0)),
                 "status": str(value.get("status")),
                 "error": value.get("error"),
+                "source_kind": source_kind,
+                "source_label": value.get("source_label"),
+                "source_volume": value.get("source_volume"),
+                "batch_id": value.get("batch_id"),
                 "created": float(value.get("finished", 0)),
                 "cancelable": value.get("status") == "error",
                 "retryable": False,
@@ -1020,7 +1050,10 @@ class UploadConversionMixin:
                     metadata["transfer_state"] = "active"
                     metadata["updated"] = time.time()
                     self.write_json(manifest, metadata)
-                    return {"ok": True, "message": "This upload will start next on its source laptop."}
+                    self.usb_transfer_wakeup.set()
+                    return {"ok": True, "message": "This USB transfer will start now."
+                            if metadata.get("source_kind") == "usb" else
+                            "This upload will start next on its source laptop."}
                 if action == "retry":
                     if not isinstance(metadata, dict) or metadata.get("status") != "error":
                         raise ValueError("This upload is not waiting to be retried")
@@ -1052,7 +1085,9 @@ class UploadConversionMixin:
                     metadata["transfer_state"] = "paused"
                     metadata["updated"] = time.time()
                     self.write_json(manifest, metadata)
-                    return {"ok": True, "message": "Upload paused. It will keep its received files."}
+                    self.promote_next_upload()
+                    self.usb_transfer_wakeup.set()
+                    return {"ok": True, "message": "Transfer paused. It will keep its received files."}
 
                 if action == "resume":
                     if not isinstance(metadata, dict) or metadata.get("status") != "paused":
@@ -1069,7 +1104,8 @@ class UploadConversionMixin:
                     self.write_json(manifest, metadata)
                     if complete:
                         self.queue_conversion(upload_id)
-                    return {"ok": True, "message": "Upload resumed."}
+                    self.usb_transfer_wakeup.set()
+                    return {"ok": True, "message": "Transfer resumed."}
 
                 status = str(metadata.get("status", "uploading")) \
                     if isinstance(metadata, dict) else str(
@@ -1085,7 +1121,8 @@ class UploadConversionMixin:
                 self.upload_locks.pop(upload_id, None)
                 if metadata and metadata.get("transfer_state") == "active":
                     self.promote_next_upload()
-                return {"ok": True, "message": "The upload was removed and its space was freed."}
+                self.usb_transfer_wakeup.set()
+                return {"ok": True, "message": "The transfer was removed and its space was freed."}
             finally:
                 lock.release()
 
@@ -1129,11 +1166,20 @@ class UploadConversionMixin:
             offset = 0
         return {
             "id": upload_id,
+            "file_name": str(metadata.get("file_name", "Video")),
+            "channel": metadata.get("channel"),
+            "kind": metadata.get("kind", "channel"),
+            "series_id": metadata.get("series_id"),
+            "season": metadata.get("season"),
             "offset": offset,
             "complete": False,
             "processing": status in processing_statuses,
             "status": status,
             "transfer_state": str(metadata.get("transfer_state", "active")),
+            "source_kind": metadata.get("source_kind", "browser"),
+            "source_label": metadata.get("source_label"),
+            "source_volume": metadata.get("source_volume"),
+            "batch_id": metadata.get("batch_id"),
             "error": metadata.get("error"),
         }
 

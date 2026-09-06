@@ -103,7 +103,7 @@
       adultSeriesUploadTarget = null
       if (!target) return
       $('#usbTarget').value = 'series'
-      $('#usbSeriesName').value = target.title
+      renderUsbSeriesDestinations(target.id, target.season)
       $('#usbTarget').dispatchEvent(new Event('change'))
       openView('usb')
       refreshUsb().catch(showError)
@@ -536,7 +536,7 @@
         row.onclick = () => {
           closeAdultSeasonSheet(false)
           openAdultEpisodeSheet(current, episode, () =>
-            openAdultSeasonSheet(current, number, returnTo, episode.path))
+            openAdultSeasonSheet(current, number, returnTo))
         }
         root.append(row)
       })
@@ -544,7 +544,7 @@
         root.replaceChildren(portalEmptyState({
           className: 'adult-series-empty',
           title: 'No episodes in this series',
-          message: 'Add prepared videos directly from this phone or computer.',
+          message: 'Add prepared videos from this device or choose USB.',
           messageTag: 'span',
         }))
       }
@@ -661,6 +661,7 @@
       const root = $('#adultSeriesEpisodes')
       root.innerHTML = ''
       const groups = new Map()
+      ;(current.seasons || []).forEach(season => groups.set(Number(season), []))
       ;(current.episodes || []).forEach(episode => {
         if (!groups.has(episode.season)) groups.set(episode.season, [])
         groups.get(episode.season).push(episode)
@@ -729,8 +730,25 @@
       addCard.type = 'button'
       addCard.className = 'adult-season-add-card'
       addCard.append(librarySignalIcon('signal-plus'), document.createElement('span'))
-      addCard.querySelector('span').innerHTML = `<strong>Start Series ${nextSeries}</strong><small>Upload its first episodes</small>`
-      addCard.onclick = () => openAdultSeriesUpload(current, nextSeries, true)
+      addCard.querySelector('span').innerHTML = `<strong>Create Series ${nextSeries}</strong><small>Make it available for uploads and USB</small>`
+      addCard.onclick = async () => {
+        addCard.disabled = true
+        try {
+          await api('/api/manage', { method: 'POST', body: JSON.stringify({
+            action: 'create-adult-season', series: current.id, season: nextSeries,
+          }) })
+          closeAdultSeriesSheet(false)
+          await reloadLibraryWithoutLosingPlace()
+          const refreshed = library?.adult_series?.find(value => value.id === current.id)
+          if (!refreshed) throw new Error('The series was created, but the show could not be reopened')
+          openAdultSeasonSheet(refreshed, nextSeries,
+            () => openAdultSeriesSheet(refreshed, returnTo))
+          notice(`${refreshed.title} · Series ${nextSeries} is ready for uploads and USB.`)
+        } catch (error) {
+          showError(error)
+          addCard.disabled = false
+        }
+      }
       root.append(addCard)
       $('#adultSeriesMetadata').disabled = !tmdbConfigured
       $('#adultSeriesMetadata').onclick = () => {
@@ -792,50 +810,4 @@
         portalSheets.open($('#tmdbDialog'), { returnTo })
         notice('')
       } catch (error) { showError(error) }
-    }
-
-    function renderAdultWatch() {
-      const adult = $('#remoteAdult')
-      adult.innerHTML = ''
-      const allFilms = [...(library?.adult_library || [])].sort((left, right) => watchFilmTitle(left).localeCompare(watchFilmTitle(right), undefined, { sensitivity: 'base' }))
-      watchFolder = '*'
-      $('#watchSearch').value = watchSearchText
-      $('#watchSearchClear').classList.toggle('hidden', !watchSearchText)
-
-      const query = watchSearchText.trim().toLocaleLowerCase()
-      renderAdultSeries(watchSearchText)
-      const resumableFilms = allFilms
-        .filter(film => film.browser_ready !== false && watchFilmResumable(film))
-        .map(film => ({ ...adultFilmEntry(film),
-          lastWatched: Number(film.remote_last_watched || 0) }))
-      const resumable = [...resumableFilms, ...adultSeriesContinueEntries()]
-        .sort((left, right) => Number(right.lastWatched || 0) - Number(left.lastWatched || 0))
-        .slice(0, 10)
-      const continueSection = $('#watchContinueSection')
-      continueSection.classList.toggle('hidden', !resumable.length || Boolean(query))
-      $('#watchContinueCount').textContent = resumable.length ? `${resumable.length} in progress` : ''
-      const continueRail = $('#watchContinueRail')
-      continueRail.innerHTML = ''
-      resumable.forEach(entry => continueRail.append(continueWatchCard(entry)))
-
-      const films = allFilms.filter(film => {
-        // Search is always global. A film should never look missing merely
-        // because someone last browsed a different collection.
-        if (!query) return true
-        const metadata = film.metadata || {}
-        return [watchFilmTitle(film), film.display_name, film.folder, metadata.year].filter(Boolean).join(' ').toLocaleLowerCase().includes(query)
-      })
-      $('#watchLibraryKicker').textContent = query ? 'Search all films' : 'Your library'
-      $('#watchLibraryTitle').textContent = query ? `“${watchSearchText.trim()}”` : 'All films'
-      $('#watchLibraryCount').textContent = `${films.length} film${films.length === 1 ? '' : 's'}`
-      const grid = document.createElement('div')
-      grid.className = 'watch-poster-grid'
-      films.forEach(film => grid.append(adultWatchCard(film)))
-      if (!films.length) {
-        const empty = document.createElement('div')
-        empty.className = 'watch-empty'
-        empty.innerHTML = query ? '<strong>No matches</strong><br>Try another title or clear your filters.' : '<strong>Nothing here yet</strong><br>This collection has no films matching the current filters.'
-        grid.append(empty)
-      }
-      adult.append(grid)
     }

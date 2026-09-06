@@ -15,6 +15,8 @@ sections are composed from focused components:
 | --- | --- |
 | `TelevisionScreen.qml` | Cabinet, screen, player, CRT treatment, picture geometry and television OSDs. |
 | `DinosaurDenSurround.qml` | Optional dinosaur cabinet artwork using the existing charcoal screen geometry. |
+| `OceanClubSurround.qml` and `Ocean*Art.qml` | Optional aquatic cabinet artwork, with its reusable vector animals split into focused components, using the existing charcoal screen geometry. |
+| `FindingNemo.qml` and `FindingNemoBubbles.qml` | Supplied Finding Nemo cabinet and embedded character artwork, with bubble decoration in a focused component; preserves charcoal screen geometry. |
 | `RemoteInputHandler.qml` | Physical key routing, holds, repeat throttling and overlay precedence. |
 | `ParentConfirmationView.qml` | Modern parent-access confirmation screen. |
 | `ParentDashboardView.qml` | Modern parent settings and channel-management screen. |

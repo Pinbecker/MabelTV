@@ -565,25 +565,6 @@ body.portal-experience .adult-film-danger .watch-action-icon {
     gap: 9px;
   }
 
-  body.portal-experience #adultFolderTabs {
-    gap: 8px;
-  }
-
-  body.portal-experience .adult-folder-tools {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
-  }
-
-  body.portal-experience .adult-folder-tools > label,
-  body.portal-experience .adult-folder-tools > #adultCreateFolder {
-    grid-column: 1;
-  }
-
-  body.portal-experience .adult-folder-tools button {
-    width: 100%;
-    min-width: 0;
-  }
-
   body.portal-experience .watch-film-backdrop {
     height: 104px;
   }

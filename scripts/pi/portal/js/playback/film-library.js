@@ -408,6 +408,10 @@
     }
 
     function renderHomeLibrary() {
+      return preservePortalPosition(renderHomeLibraryContents)
+    }
+
+    function renderHomeLibraryContents() {
       const search = $('#homeFilmSearch')
       if (!search) return
       const entries = allFilmEntries()

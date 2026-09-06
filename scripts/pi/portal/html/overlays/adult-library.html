@@ -63,7 +63,7 @@
       <div>
         <p class="section-kicker">Organise Adult TV</p>
         <h2>Collections</h2>
-        <p>Choose a collection to rename or remove, or create a new one.</p>
+        <p>Keep your films together in collections.</p>
       </div>
       <button
         id="adultCollectionClose"
@@ -76,31 +76,26 @@
     <div class="library-sheet-body adult-collection-body">
       <div>
         <p class="adult-sheet-label">Your collections</p>
-        <div id="adultFolderTabs" class="adult-folder-tabs"></div>
+        <div id="adultFolderTabs" class="adult-folder-tabs library-actions"></div>
+      </div>
+      <div id="adultFolderSelectionActions" class="adult-folder-selection-actions library-actions hidden">
+        <button id="adultRenameFolder" type="button" class="adult-collection-action" disabled>
+          <span class="library-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-edit" /></svg></span>
+          <span><strong>Rename collection</strong><small data-selected-collection></small></span>
+          <svg class="icon"><use href="/portal/icons.svg#signal-chevron-right" /></svg>
+        </button>
+        <button id="adultDeleteFolder" type="button" class="adult-collection-delete" disabled>
+          <span class="library-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-trash" /></svg></span>
+          <span><strong>Delete collection</strong><small id="adultDeleteFolderHint">Empty collections only</small></span>
+          <svg class="icon"><use href="/portal/icons.svg#signal-chevron-right" /></svg>
+        </button>
       </div>
       <div class="adult-folder-tools">
-        <label
-          ><span>New collection</span
-          ><input
-            id="adultFolderName"
-            maxlength="80"
-            placeholder="e.g. Comedies" /></label
-        ><button id="adultCreateFolder" type="button" class="primary">
-          <svg class="icon"><use href="/portal/icons.svg#signal-plus" /></svg
-          ><span>Create collection</span>
-        </button>
-        <div class="adult-folder-selection-actions">
-          <button
-            id="adultRenameFolder"
-            type="button"
-            class="secondary"
-            disabled
-          >
-            <svg class="icon"><use href="/portal/icons.svg#signal-edit" /></svg
-            ><span>Rename selected</span></button
-          ><button id="adultDeleteFolder" type="button" class="danger" disabled>
-            <svg class="icon"><use href="/portal/icons.svg#signal-trash" /></svg
-            ><span>Delete selected</span>
+        <label for="adultFolderName">New collection</label>
+        <div class="adult-folder-create-row">
+          <input id="adultFolderName" maxlength="80" placeholder="e.g. Comedies" />
+          <button id="adultCreateFolder" type="button" class="primary">
+            <svg class="icon"><use href="/portal/icons.svg#signal-plus" /></svg><span>Create</span>
           </button>
         </div>
       </div>

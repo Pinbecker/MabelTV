@@ -161,13 +161,6 @@
     grid-template-columns: minmax(0, 1fr) 180px;
   }
 
-  body.portal-v2 .usb-import {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  body.portal-v2 .usb-import > div,
-  body.portal-v2 .usb-import > button { grid-column: 1 / -1; }
-
   body.portal-v2 .settings-page { max-width: 760px; }
 }
 
@@ -249,9 +242,6 @@
   }
   body.portal-v2 .adult-season-sheet-art { width: 70px; }
   body.portal-v2 .adult-season-sheet-head h2 { font-size: 22px; }
-  body.portal-v2 .adult-season-tools { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  body.portal-v2 .adult-season-tools button { min-height: 108px; }
-  body.portal-v2 .adult-season-tools .adult-series-danger { min-height: 70px; }
 
   body.portal-v2 .home-poster-rail {
     grid-auto-columns: calc((100% - 22px) / 3);
@@ -353,15 +343,16 @@
   body.portal-v2 .usb-eject { padding: 0 9px; }
   body.portal-v2 .usb-toolbar { flex-wrap: wrap; padding: 8px; }
   body.portal-v2 #usbSelectionCount { width: 100%; margin: 0; padding: 0 5px 3px; }
-  body.portal-v2 .usb-file { grid-template-columns: auto minmax(0, 1fr); padding: 10px; }
+  body.portal-v2 .usb-file { grid-template-columns: minmax(0, 1fr) auto; padding: 10px; }
   body.portal-v2 .usb-file-main { grid-template-columns: 40px minmax(0, 1fr) auto; }
   body.portal-v2 .usb-file-icon { width: 40px; height: 40px; }
-  body.portal-v2 .usb-file-actions { grid-column: 1 / -1; width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding-left: 36px; }
-  body.portal-v2 .is-folder .usb-file-actions { grid-column: 2; display: flex; width: auto; padding-left: 0; }
-  body.portal-v2 .usb-file-actions button { width: 100%; padding: 0 5px; }
-  body.portal-v2 .usb-import { grid-template-columns: 1fr; }
-  body.portal-v2 .usb-import > * { grid-column: 1; }
-  body.portal-v2 .usb-import-icon { display: none; }
+  body.portal-v2 .usb-file-actions { width: auto; display: flex; padding-left: 0; }
+  body.portal-v2 .usb-file-actions :is(.usb-item-toggle, .usb-file-more) { width: 44px; min-width: 44px; padding: 0; }
+  body.portal-v2 .usb-selection-tray { grid-template-columns: minmax(0, 1fr) auto; gap: 9px; padding: 11px; }
+  body.portal-v2 .usb-selection-tray .usb-import-icon { display: none; }
+  body.portal-v2 .usb-selection-tray h3 { font-size: 16px; }
+  body.portal-v2 .usb-selection-tray > button { min-width: 112px; padding: 0 11px; }
+  body.portal-v2 .usb-plan-summary { grid-template-columns: 1fr; }
 
   body.portal-v2 .insights-page { padding-top: 18px; }
   body.portal-v2 .insights-hero { padding: 15px; }

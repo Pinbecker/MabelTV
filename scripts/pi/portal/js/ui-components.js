@@ -5,6 +5,19 @@
   const ICON_SPRITE = '/portal/icons.svg'
   const dialogParents = new WeakMap()
   const dialogScrollLocks = new WeakMap()
+  const dialogPositions = new WeakMap()
+  let returningToDialog = false
+
+  function dialogScrollers(dialog) {
+    return [dialog, ...dialog.querySelectorAll('.library-sheet-panel,.watch-film-panel,.portal-sheet-panel')]
+  }
+
+  function restoreDialogPosition(dialog) {
+    for (const saved of dialogPositions.get(dialog) || []) {
+      saved.element.scrollTop = saved.top
+      saved.element.scrollLeft = saved.left
+    }
+  }
   const powerStatusDefinitions = Object.freeze({
     on: Object.freeze({ label: 'On', sentence: 'on', className: 'is-on' }),
     standby: Object.freeze({ label: 'Standby', sentence: 'in standby', className: 'is-standby' }),
@@ -125,22 +138,36 @@
 
   function openDialog(dialog, { returnTo = null, focus = null, lockScroll = true } = {}) {
     if (!dialog) return
+    const position = capturePortalPosition()
     if (typeof returnTo === 'function') dialogParents.set(dialog, returnTo)
     else dialogParents.delete(dialog)
     dialogScrollLocks.set(dialog, lockScroll)
     if (!dialog.open) dialog.showModal()
     syncDialogScrollLock()
+    restorePortalPosition(position)
+    if (returningToDialog) restoreDialogPosition(dialog)
     if (focus) requestAnimationFrame(() => focus.focus({ preventScroll: true }))
   }
 
   function closeDialog(dialog, { restore = true } = {}) {
     if (!dialog) return
+    const position = capturePortalPosition()
+    if (dialog.open) dialogPositions.set(dialog, dialogScrollers(dialog)
+      .map(element => ({ element, top: element.scrollTop, left: element.scrollLeft })))
     const returnTo = dialogParents.get(dialog)
     dialogParents.delete(dialog)
     if (dialog.open) dialog.close()
     dialogScrollLocks.delete(dialog)
     syncDialogScrollLock()
-    if (restore && typeof returnTo === 'function') queueMicrotask(returnTo)
+    restorePortalPosition(position)
+    if (restore && typeof returnTo === 'function') queueMicrotask(() => {
+      returningToDialog = true
+      try {
+        returnTo()
+        // Some parents rebuild their contents after opening the dialog.
+        document.querySelectorAll('dialog[open]').forEach(restoreDialogPosition)
+      } finally { returningToDialog = false }
+    })
   }
 
   function dismissDialog(dialog) {

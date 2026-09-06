@@ -36,15 +36,15 @@ def read_portal_files(root: str, names: tuple[str, ...]) -> str:
 
 
 CORE_SCRIPTS = (
-    "foundation.js", "navigation.js", "live.js", "load.js",
+    "foundation.js", "scroll.js", "navigation.js", "live.js", "load.js",
 )
 LIBRARY_SCRIPTS = (
     "adult-library.js", "usb-browser.js", "viewing-insights.js",
     "device-status.js", "channels.js",
 )
 PLAYBACK_SCRIPTS = (
-    "players.js", "film-library.js", "adult-series.js", "programmes.js",
-    "downloads.js", "view.js",
+    "players.js", "film-library.js", "adult-series.js", "film-catalogue.js",
+    "programmes.js", "downloads.js", "view.js",
 )
 ADULT_VIEWING_SCRIPTS = (
     "catalogue.js", "seasons.js", "details.js",
@@ -1989,7 +1989,8 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("function openAdultSeasonSheet(series, season, returnTo = null, targetPath = '')", PORTAL_SOURCE)
         self.assertIn("openAdultSeriesUpload(current, number)", PORTAL_SOURCE)
         self.assertIn("const season = Number(target?.season)", PORTAL_SOURCE)
-        self.assertIn("Start Series ${nextSeries}", PORTAL_SOURCE)
+        self.assertIn("Create Series ${nextSeries}", PORTAL_SOURCE)
+        self.assertIn("action: 'create-adult-season'", PORTAL_SOURCE)
         self.assertIn("scope: 'season', season: number", PORTAL_SOURCE)
         self.assertIn('id="adultSeriesSourceSheet"', PORTAL_SOURCE)
         self.assertIn('id="adultSeriesSourceFiles"', PORTAL_SOURCE)
@@ -3013,6 +3014,10 @@ class UsbAndMetadataTests(unittest.TestCase):
         (folder / "One.mp4").write_bytes(b"one" * 1000)
         (folder / "Two.mkv").write_bytes(b"two" * 1000)
         (folder / "ignore.txt").write_text("no", encoding="utf-8")
+        self.fixture.library.video_info = mock.Mock(return_value={
+            "codec_type": "video", "width": 1280, "height": 720,
+            "avg_frame_rate": "25/1",
+        })
         job = self.fixture.library.start_usb_import({
             "volume": "TEST-USB", "paths": ["Films"], "target": "adult",
         })
@@ -3026,19 +3031,27 @@ class UsbAndMetadataTests(unittest.TestCase):
         self.assertEqual((self.fixture.library.adult_root / "One.mp4").read_bytes(),
                          b"one" * 1000)
         self.assertFalse(any(self.fixture.library.adult_root.glob("*.part")))
-        self.fixture.library.refresh_tv.assert_called_once()
+        self.assertEqual(self.fixture.library.video_info.call_count, 2)
+        self.assertEqual(self.fixture.library.refresh_tv.call_count, 2)
 
     def test_usb_series_import_preserves_season_folders_without_refreshing_tv(self) -> None:
         season = self.volume / "Silicon Valley" / "Season 1"
         season.mkdir(parents=True)
         episode = season / "Silicon.Valley.S01E06.720p.HDTV.x264.mkv"
         episode.write_bytes(b"episode" * 1000)
+        self.fixture.library.video_info = mock.Mock(return_value={
+            "codec_type": "video", "width": 1280, "height": 720,
+            "avg_frame_rate": "25/1",
+        })
 
+        series_id = self.fixture.library.create_adult_series("Silicon Valley")
+        self.fixture.library.create_adult_season(series_id, 1)
         job = self.fixture.library.start_usb_import({
             "volume": "TEST-USB",
             "paths": ["Silicon Valley/Season 1"],
             "target": "series",
-            "series_name": "Silicon Valley",
+            "series": series_id,
+            "season": 1,
         })
         deadline = time.time() + 5
         result = job
@@ -3050,6 +3063,7 @@ class UsbAndMetadataTests(unittest.TestCase):
         imported = (self.fixture.library.adult_series_root / result["series"] /
                     "Season 1" / episode.name)
         self.assertEqual(imported.read_bytes(), b"episode" * 1000)
+        self.fixture.library.video_info.assert_called_once()
         self.fixture.library.refresh_tv.assert_not_called()
         series = self.fixture.library.adult_series_library()[0]
         self.assertEqual(series["episodes"][0]["season"], 1)

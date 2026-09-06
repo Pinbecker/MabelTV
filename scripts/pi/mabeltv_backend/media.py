@@ -429,6 +429,20 @@ class MediaCatalogueMixin:
             self.write_adult_series_states(states)
             return series_id
 
+    def create_adult_season(self, series_id: str, season: Any) -> int:
+        """Create one explicit, empty series destination inside an existing show."""
+        try:
+            number = int(season)
+        except (TypeError, ValueError) as error:
+            raise ValueError("Choose a valid series number") from error
+        if number < 1 or number > 99:
+            raise ValueError("Choose a series number from 1 to 99")
+        destination = self.adult_series_path(series_id, f"Season {number}")
+        if destination.exists():
+            raise ValueError(f"Series {number} already exists")
+        destination.mkdir(mode=0o750)
+        return number
+
     def adult_series_path(self, series_id: str, relative: str = "") -> Path:
         if not re.fullmatch(r"[a-f0-9]{32}", str(series_id)):
             raise ValueError("That Adult TV series is not valid")
@@ -518,6 +532,15 @@ class MediaCatalogueMixin:
                     })
                 episodes.sort(key=lambda value: (
                     value["season"], value["episode"], value["display_name"].casefold()))
+                folder_seasons = {
+                    int(match.group(1))
+                    for item in root.iterdir() if item.is_dir()
+                    for match in [re.fullmatch(r"(?i)Season\s+0*([1-9][0-9]?)", item.name)]
+                    if match
+                }
+                seasons = sorted(folder_seasons | {
+                    int(value["season"]) for value in episodes
+                })
                 metadata = series_state.get("metadata", {})
                 values.append({
                     "id": series_id,
@@ -526,8 +549,9 @@ class MediaCatalogueMixin:
                     "favourite": series_state.get("favourite") is True,
                     "metadata": metadata if isinstance(metadata, dict) else {},
                     "episodes": episodes,
+                    "seasons": seasons,
                     "episode_count": len(episodes),
-                    "season_count": len({value["season"] for value in episodes}),
+                    "season_count": len(seasons),
                     "watched_count": sum(value["watched"] for value in episodes),
                 })
             if changed:
@@ -732,6 +756,7 @@ class MediaCatalogueMixin:
                 or str(series_state.get("title") or "Series")
             all_files = [item for item in root.rglob("*") if item.is_file()
                          and item.suffix.lower() in SUPPORTED_EXTENSIONS]
+            season_directory: Path | None = None
             if scope == "episode":
                 source = self.adult_series_path(series_id, str(payload.get("file", "")))
                 if not source.is_file() or source.suffix.lower() not in SUPPORTED_EXTENSIONS:
@@ -749,8 +774,10 @@ class MediaCatalogueMixin:
                 }
                 files = [item for item in all_files
                          if episode_seasons.get(item.relative_to(root).as_posix()) == season]
-                if not files:
-                    raise ValueError(f"Series {season} has no episodes to remove")
+                season_directory = self.adult_series_path(
+                    series_id, f"Season {season}")
+                if not files and not season_directory.is_dir():
+                    raise ValueError(f"Series {season} does not exist")
             else:
                 files = all_files
 
@@ -784,11 +811,15 @@ class MediaCatalogueMixin:
             if scope == "series":
                 states["series"].pop(series_id, None)
             self.write_adult_series_states(states)
-            for directory in sorted(
-                    (item for item in root.rglob("*") if item.is_dir()),
-                    key=lambda item: len(item.parts), reverse=True):
-                if not any(directory.iterdir()):
-                    directory.rmdir()
+            if season_directory is not None and season_directory.is_dir() \
+                    and not any(season_directory.iterdir()):
+                season_directory.rmdir()
+            if scope == "series":
+                for directory in sorted(
+                        (item for item in root.rglob("*") if item.is_dir()),
+                        key=lambda item: len(item.parts), reverse=True):
+                    if not any(directory.iterdir()):
+                        directory.rmdir()
             if scope == "series" and root.is_dir() and not any(root.iterdir()):
                 root.rmdir()
             return moved
@@ -848,7 +879,7 @@ class MediaCatalogueMixin:
             "playback_mode": choice("playback_mode", {"continuous", "resume"}, "continuous"),
             "episode_reset_minutes": episode_reset,
             "picture_mode": choice("picture_mode", {"channel", "crop", "fit", "stretch"}, "channel"),
-            "tv_border": choice("tv_border", {"slim-black", "silver-90s", "charcoal-90s", "vintage-black", "dinosaur-den"}, "slim-black"),
+            "tv_border": choice("tv_border", {"slim-black", "silver-90s", "charcoal-90s", "vintage-black", "dinosaur-den", "ocean-club", "finding-nemo"}, "slim-black"),
             "crt_glass": bounded(settings.get("crt_glass"), 35),
             "video_distortion": bounded(settings.get("video_distortion"), 20),
             "display_resolution": choice("display_resolution", {"720p", "1080p", "native"}, "720p"),
@@ -1046,7 +1077,8 @@ class MediaCatalogueMixin:
         if payload.get("action") in {
                 "optimise-adult", "set-portal-design", "set-portal-palette",
                 "set-portal-theme", "set-remote-simultaneous",
-                "create-adult-series", "trash-adult-series", "optimisation-action"}:
+                "create-adult-series", "create-adult-season",
+                "trash-adult-series", "optimisation-action"}:
             # These settings belong to the portal/library service.  In
             # particular, allowing a browser stream alongside the television
             # must never refresh or otherwise disturb the TV player.
@@ -1061,6 +1093,10 @@ class MediaCatalogueMixin:
             return
         if action == "create-adult-series":
             self.create_adult_series(str(payload.get("name", "")))
+            return
+        if action == "create-adult-season":
+            self.create_adult_season(
+                str(payload.get("series", "")), payload.get("season"))
             return
         if action == "trash-adult-series":
             self.trash_adult_series_items(payload)
@@ -1140,7 +1176,7 @@ class MediaCatalogueMixin:
                 raise ValueError("Choose a playback behaviour")
             if picture_mode not in {"channel", "crop", "fit", "stretch"}:
                 raise ValueError("Choose a picture mode")
-            if tv_border not in {"slim-black", "silver-90s", "charcoal-90s", "vintage-black", "dinosaur-den"}:
+            if tv_border not in {"slim-black", "silver-90s", "charcoal-90s", "vintage-black", "dinosaur-den", "ocean-club", "finding-nemo"}:
                 raise ValueError("Choose a TV cabinet")
             if display_resolution not in {"720p", "1080p", "native"}:
                 raise ValueError("Choose a display resolution")

@@ -32,7 +32,6 @@
           return
         }
         if (view === 'watch' && !offlineMode) {
-          remoteKind = 'channel'
           renderRemoteViewing()
         }
         if (view === 'channels') showChannelHub()
@@ -212,26 +211,6 @@
       location.reload()
     }
 
-    function resetViewScroll() {
-      const scroller = document.scrollingElement || document.documentElement
-      scroller.scrollTop = 0
-      document.body.scrollTop = 0
-      window.scrollTo(0, 0)
-    }
-
-    function portalScrollTop() {
-      const scroller = document.scrollingElement || document.documentElement
-      return Math.max(0, Number(scroller.scrollTop || window.scrollY || 0))
-    }
-
-    function setPortalScrollTop(value) {
-      const top = Math.max(0, Number(value) || 0)
-      const scroller = document.scrollingElement || document.documentElement
-      scroller.scrollTop = top
-      document.body.scrollTop = top
-      window.scrollTo(0, top)
-    }
-
     function channelReturnSnapshot(channel) {
       const folder = String(channel?.folder || '')
       const anchor = [...document.querySelectorAll('[data-watch-channel-folder]')]
@@ -246,7 +225,9 @@
     function restoreViewScroll(snapshot) {
       if (!snapshot || !Number.isFinite(Number(snapshot.scrollY))) return false
       setPortalScrollTop(snapshot.scrollY)
+      const view = document.querySelector('.view.active')
       const alignAnchor = () => {
+        if (view !== document.querySelector('.view.active')) return
         if (!snapshot.folder || !Number.isFinite(Number(snapshot.anchorTop))) return
         const anchor = [...document.querySelectorAll('[data-watch-channel-folder]')]
           .find(element => element.dataset.watchChannelFolder === snapshot.folder)
@@ -259,7 +240,9 @@
     }
 
     function openView(name, options = {}) {
+      cancelPortalScrollSettlement()
       if (offlineMode && name !== 'watch') name = 'watch'
+      rememberPortalView()
       // A status belongs to the action that created it, not every page the
       // parent subsequently visits. Clear it whenever navigation begins.
       notice('')
@@ -287,8 +270,9 @@
       const restoredScroll = options.restoreScroll
         ? restoreViewScroll(options.restoreScroll) : false
       if (!restoredScroll) {
-        if (options.instantScroll) resetViewScroll()
-        else window.scrollTo({ top: 0, behavior: 'smooth' })
+        const saved = portalViewPositions.get(`view-${name}`)
+        if (saved && !options.resetScroll) restorePortalPosition(saved)
+        else resetViewScroll()
       }
       if (name === 'live') startLiveTv()
       else stopLiveTv()
@@ -301,4 +285,6 @@
       if (name === 'insights') loadViewingInsights().catch(() => {})
       if (name === 'activity') loadActivity().catch(error => notice(error.message, true))
       if (name === 'adult-viewing') loadAdultViewing().catch(showError)
+      const savedPosition = portalViewPositions.get(`view-${name}`)
+      if (!options.restoreScroll && !options.resetScroll && savedPosition) settlePortalPosition(savedPosition)
     }

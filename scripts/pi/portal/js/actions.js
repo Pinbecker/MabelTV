@@ -31,7 +31,7 @@ let managementBusy = false
         if (preferredChannel !== null && channelNavigationRevision === navigationRevision) {
           selectedManageChannel = Number(preferredChannel)
         }
-        await load(preferredChannel)
+        await reloadLibraryWithoutLosingPlace(preferredChannel)
         notice(result.message || 'Done.', result.refreshed === false)
       } catch (error) { notice(error.message, true) }
       finally { managementBusy = false }

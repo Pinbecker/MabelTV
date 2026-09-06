@@ -346,197 +346,95 @@ body.portal-v2 .adult-film-more {
 
 body.portal-v2 .adult-film-more svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; }
 
-/* USB is a clear choose → browse → copy workflow with phone-sized targets. */
+/* USB is a calm choose, browse, review and transfer workflow. */
 body.portal-v2 .usb-flow { margin-top: 0; }
 body.portal-v2 .usb-intro { margin-bottom: 18px; }
-
-body.portal-v2 .usb-drive-stage {
-  border-top: 1px solid var(--experience-line);
-  padding: 16px 0 0;
-}
-
+body.portal-v2 .usb-drive-stage { border-top: 1px solid var(--experience-line); padding-top: 16px; }
 body.portal-v2 .usb-stage-heading,
 body.portal-v2 .usb-browser-head,
-body.portal-v2 .usb-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
+body.portal-v2 .usb-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 body.portal-v2 .usb-stage-heading { margin-bottom: 10px; }
-body.portal-v2 .usb-stage-heading > span:last-child { color: var(--experience-dim); font-size: 10px; }
+body.portal-v2 .usb-stage-heading > span:last-child { color: var(--experience-dim); font-size: 11px; }
 body.portal-v2 .usb-stage-title { display: inline-flex; align-items: center; gap: 8px; }
 body.portal-v2 .usb-stage-title .icon { width: 18px; height: 18px; color: var(--experience-orange); }
-body.portal-v2 .usb-stage-title strong { font-size: 12px; }
-
-body.portal-v2 .usb-drive-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 8px;
-}
-
-body.portal-v2 .usb-drive {
-  width: 100%;
-  min-width: 0;
-  min-height: 72px;
-  display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 11px;
-  border: 1px solid var(--experience-line);
-  border-radius: 12px;
-  background: var(--experience-raised);
-  color: var(--experience-ink);
-  padding: 11px 13px;
-  text-align: left;
-}
-
-body.portal-v2 .usb-drive.active {
-  border-color: color-mix(in srgb, var(--experience-orange) 70%, var(--experience-line));
-  background: color-mix(in srgb, var(--experience-orange) 8%, var(--experience-raised));
-}
-
-body.portal-v2 .usb-drive-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 10px;
-  padding: 11px;
-  background: color-mix(in srgb, var(--experience-orange) 12%, var(--experience-raised));
-  color: var(--experience-orange);
-}
-
+body.portal-v2 .usb-stage-title strong { font-size: 13px; }
+body.portal-v2 .usb-drive-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px; }
+body.portal-v2 .usb-drive { width: 100%; min-width: 0; min-height: 72px; display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: 11px; border: 1px solid var(--experience-line); border-radius: 12px; background: var(--experience-raised); color: var(--experience-ink); padding: 11px 13px; text-align: left; }
+body.portal-v2 .usb-drive.active { border-color: color-mix(in srgb, var(--experience-orange) 70%, var(--experience-line)); background: color-mix(in srgb, var(--experience-orange) 8%, var(--experience-raised)); }
+body.portal-v2 .usb-drive-icon { width: 42px; height: 42px; border-radius: 10px; padding: 11px; background: color-mix(in srgb, var(--experience-orange) 12%, var(--experience-raised)); color: var(--experience-orange); }
 body.portal-v2 .usb-drive-copy { min-width: 0; }
 body.portal-v2 .usb-drive-copy strong,
 body.portal-v2 .usb-drive-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-body.portal-v2 .usb-drive-copy strong { font-size: 12px; }
-body.portal-v2 .usb-drive-copy small { margin-top: 3px; color: var(--experience-dim); font-size: 9px; }
-body.portal-v2 .usb-drive-action { display: inline-flex; align-items: center; gap: 3px; color: var(--experience-orange); font-size: 10px; font-weight: 760; }
+body.portal-v2 .usb-drive-copy strong { font-size: 13px; }
+body.portal-v2 .usb-drive-copy small { margin-top: 3px; color: var(--experience-dim); font-size: 11px; }
+body.portal-v2 .usb-drive-action { display: inline-flex; align-items: center; gap: 3px; color: var(--experience-orange); font-size: 11px; font-weight: 760; }
 body.portal-v2 .usb-drive-action .icon { width: 15px; height: 15px; }
+body.portal-v2 .usb-job { margin: 14px 0 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+body.portal-v2 :is(.usb-job, .usb-eject, .usb-truncated, .usb-selection-tray).hidden { display: none; }
+body.portal-v2 .usb-job p { margin: 4px 0 0; color: var(--experience-dim); font-size: 11px; }
 
-body.portal-v2 .usb-browser {
-  min-width: 0;
-  margin-top: 26px;
-  border: 1px solid var(--experience-line);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--experience-raised) 78%, transparent);
-  overflow: hidden;
-}
-
-body.portal-v2 .usb-browser-head {
-  display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
-  padding: 13px 14px;
-}
-body.portal-v2 .usb-browser-back {
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--experience-line);
-  border-radius: 50%;
-  background: var(--experience-elevated);
-  color: var(--experience-ink);
-  padding: 0;
-}
+body.portal-v2 .usb-browser { min-width: 0; margin-top: 22px; border: 1px solid var(--experience-line); border-radius: 14px; background: color-mix(in srgb, var(--experience-raised) 78%, transparent); overflow: hidden; }
+body.portal-v2 .usb-browser-head { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; padding: 13px 14px; }
+body.portal-v2 .usb-browser-back { width: 42px; height: 42px; display: grid; place-items: center; border: 1px solid var(--experience-line); border-radius: 50%; background: var(--experience-elevated); color: var(--experience-ink); padding: 0; }
 body.portal-v2 .usb-browser-back:disabled { visibility: hidden; }
 body.portal-v2 .usb-browser-back .icon { width: 18px; height: 18px; }
 body.portal-v2 .usb-browser-location { min-width: 0; }
 body.portal-v2 .usb-browser-head .section-kicker { margin: 0 0 3px; }
-body.portal-v2 .usb-browser-head h3 { margin: 0; font-size: 23px; letter-spacing: -0.04em; }
+body.portal-v2 .usb-browser-head h3 { margin: 0; font-size: 23px; letter-spacing: -.04em; }
 body.portal-v2 .usb-eject { min-height: 44px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid rgba(255,93,108,.3); background: transparent; color: #ff8a95; padding: 0 12px; font-size: 11px; font-weight: 700; }
 body.portal-v2 .usb-eject .icon { width: 17px; height: 17px; }
-
-body.portal-v2 .usb-breadcrumb {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-  border-top: 1px solid var(--experience-line);
-  border-bottom: 1px solid var(--experience-line);
-  padding: 0 14px;
-}
-
-body.portal-v2 .usb-breadcrumb > span { min-width: 0; min-height: 34px; display: inline-flex; align-items: center; gap: 6px; overflow: hidden; color: var(--experience-dim); font-size: 9px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+body.portal-v2 .usb-breadcrumb { min-width: 0; display: flex; align-items: center; gap: 2px; overflow-x: auto; border-top: 1px solid var(--experience-line); border-bottom: 1px solid var(--experience-line); padding: 5px 10px; scrollbar-width: none; }
+body.portal-v2 .usb-breadcrumb > span { min-height: 34px; display: inline-flex; align-items: center; color: var(--experience-dim); font-size: 11px; white-space: nowrap; }
+body.portal-v2 .usb-breadcrumb-button { min-height: 34px; display: inline-flex; align-items: center; gap: 5px; border: 0; background: transparent; color: var(--experience-muted); padding: 0 5px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+body.portal-v2 .usb-breadcrumb-divider { color: var(--experience-dim); }
 body.portal-v2 .usb-breadcrumb .icon { width: 15px; height: 15px; }
-
-body.portal-v2 .usb-toolbar {
-  justify-content: flex-start;
-  min-height: 58px;
-  padding: 8px 10px;
-}
-
+body.portal-v2 .usb-toolbar { justify-content: flex-start; min-height: 58px; padding: 8px 10px; }
 body.portal-v2 .usb-toolbar button { min-height: 44px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--experience-line); background: transparent; color: var(--experience-muted); padding: 0 10px; font-size: 11px; font-weight: 700; }
 body.portal-v2 .usb-toolbar .icon { width: 15px; height: 15px; }
-body.portal-v2 #usbSelectionCount { margin-left: auto; color: var(--experience-dim); font-size: 9px; }
+body.portal-v2 #usbSelectionCount { margin-left: auto; color: var(--experience-dim); font-size: 11px; }
+body.portal-v2 .usb-truncated { margin: 0; border-top: 1px solid var(--experience-line); background: color-mix(in srgb, var(--experience-orange) 8%, transparent); color: var(--experience-muted); padding: 10px 14px; font-size: 11px; }
 
 body.portal-v2 .usb-file-list { display: grid; border-top: 1px solid var(--experience-line); }
-body.portal-v2 .usb-file {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  min-height: 70px;
-  border: 0;
-  border-bottom: 1px solid var(--experience-line);
-  border-radius: 0;
-  background: transparent;
-  padding: 9px 12px;
-}
-
+body.portal-v2 .usb-file { min-width: 0; min-height: 70px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; border-bottom: 1px solid var(--experience-line); background: transparent; padding: 9px 12px; }
 body.portal-v2 .usb-file:last-child { border-bottom: 0; }
 body.portal-v2 .usb-file.selected { background: color-mix(in srgb, var(--experience-orange) 7%, transparent); }
-body.portal-v2 .usb-file-main { min-width: 0; display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: 11px; border: 0; background: transparent; color: var(--experience-ink); padding: 0; text-align: left; }
-body.portal-v2 button.usb-file-main { width: 100%; min-height: 50px; }
+body.portal-v2 .usb-file-main { width: 100%; min-width: 0; min-height: 50px; display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: 11px; border: 0; background: transparent; color: var(--experience-ink); padding: 0; text-align: left; }
 body.portal-v2 .usb-file-icon { width: 42px; height: 42px; border-radius: 10px; padding: 11px; background: var(--experience-elevated); color: var(--experience-muted); }
 body.portal-v2 .is-folder .usb-file-icon { color: #69b8ff; }
 body.portal-v2 .usb-file-copy { min-width: 0; }
 body.portal-v2 .usb-file-copy strong,
 body.portal-v2 .usb-file-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-body.portal-v2 .usb-file-copy strong { font-size: 12px; }
-body.portal-v2 .usb-file-copy small { margin-top: 3px; color: var(--experience-dim); font-size: 9px; }
+body.portal-v2 .usb-file-copy strong { font-size: 13px; }
+body.portal-v2 .usb-file-copy small { margin-top: 3px; color: var(--experience-dim); font-size: 11px; }
 body.portal-v2 .usb-file-chevron { width: 16px; height: 16px; color: var(--experience-dim); }
-
-body.portal-v2 .usb-file-select { position: relative; width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid var(--experience-line); border-radius: 8px; color: transparent; }
-body.portal-v2 .usb-file-select input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; }
-body.portal-v2 .usb-file-select .icon { width: 15px; height: 15px; }
-body.portal-v2 .usb-file-select:has(input:checked) { border-color: var(--experience-orange); background: var(--experience-orange); color: #160a02; }
 body.portal-v2 .usb-file-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
-body.portal-v2 .usb-file-actions button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; flex: 0 1 auto; border-color: var(--experience-line); background: var(--experience-elevated); color: var(--experience-muted); padding: 0 9px; white-space: nowrap; font-size: 10px; }
-body.portal-v2 .usb-file-actions .icon { width: 15px; height: 15px; }
-body.portal-v2 .usb-folder-toggle {
-  width: 34px;
-  min-height: 34px;
-  border-radius: 50%;
-  padding: 0;
-}
-body.portal-v2 .usb-folder-toggle[aria-pressed="true"] {
-  border-color: var(--experience-orange);
-  background: var(--experience-orange);
-  color: #160a02;
-}
-body.portal-v2 .usb-folder-select { color: var(--experience-orange); }
+body.portal-v2 .usb-file-actions :is(.usb-item-toggle, .usb-file-more) { width: 44px; min-width: 44px; height: 44px; min-height: 44px; display: grid; place-items: center; flex: 0 0 44px; border: 1px solid var(--experience-line); border-radius: 50%; background: var(--experience-elevated); color: var(--experience-muted); padding: 0; }
+body.portal-v2 .usb-file-actions .icon { width: 17px; height: 17px; }
+body.portal-v2 .usb-file-actions .usb-item-toggle[aria-pressed="true"] { border-color: var(--experience-orange); background: var(--experience-orange); color: #160a02; }
 
-body.portal-v2 .usb-import {
-  display: grid;
-  grid-template-columns: 44px minmax(190px, 1fr) minmax(150px, .7fr) minmax(150px, .7fr) auto;
-  align-items: end;
-  gap: 12px;
-  margin-top: 18px;
-  border: 1px solid var(--experience-line);
-  border-radius: 14px;
-  background: var(--experience-raised);
-  padding: 16px;
-}
-
-body.portal-v2 .usb-import-icon { align-self: center; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 11px; background: color-mix(in srgb, var(--experience-orange) 12%, transparent); color: var(--experience-orange); }
+body.portal-v2 .usb-selection-tray { position: sticky; bottom: calc(78px + env(safe-area-inset-bottom)); z-index: 8; display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 12px; margin-top: 16px; border: 1px solid color-mix(in srgb, var(--experience-orange) 42%, var(--experience-line)); border-radius: 15px; background: color-mix(in srgb, var(--experience-raised) 94%, transparent); box-shadow: 0 12px 32px rgba(0,0,0,.24); padding: 13px; backdrop-filter: blur(18px); }
+body.portal-v2 .usb-import-icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 11px; background: color-mix(in srgb, var(--experience-orange) 12%, transparent); color: var(--experience-orange); }
 body.portal-v2 .usb-import-icon .icon { width: 21px; height: 21px; }
-body.portal-v2 .usb-import h3 { margin: 0; font-size: 19px; }
-body.portal-v2 .usb-import p:not(.section-kicker) { margin: 4px 0 0; color: var(--experience-dim); font-size: 9px; }
-body.portal-v2 .usb-import button { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; background: var(--experience-orange); color: #160a02; padding: 0 16px; font-weight: 800; }
-body.portal-v2 .usb-import button .icon { width: 17px; height: 17px; }
-body.portal-v2 .usb-safety-note { margin: 13px 0 0; color: var(--experience-dim); font-size: 10px; text-align: center; }
+body.portal-v2 .usb-selection-tray h3 { margin: 0; font-size: 18px; }
+body.portal-v2 .usb-selection-tray p:not(.section-kicker) { margin: 3px 0 0; color: var(--experience-dim); font-size: 11px; }
+body.portal-v2 .usb-selection-tray > button { min-height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; background: var(--experience-orange); color: #160a02; padding: 0 15px; font-weight: 800; }
+body.portal-v2 .usb-selection-tray > button .icon { width: 17px; height: 17px; }
+body.portal-v2 .usb-safety-note { margin: 13px 0 0; color: var(--experience-dim); font-size: 11px; text-align: center; }
+
+body.portal-v2 .usb-plan-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+body.portal-v2 .usb-plan-summary > div { border: 1px solid var(--experience-line); border-radius: 11px; background: var(--experience-elevated); padding: 11px; }
+body.portal-v2 .usb-plan-summary span,
+body.portal-v2 .usb-plan-summary strong { display: block; }
+body.portal-v2 .usb-plan-summary span { color: var(--experience-dim); font-size: 10px; }
+body.portal-v2 .usb-plan-summary strong { margin-top: 4px; font-size: 14px; }
+body.portal-v2 .usb-destination-fields { display: grid; gap: 11px; margin-top: 14px; }
+body.portal-v2 .usb-destination-fields label { display: grid; gap: 6px; color: var(--experience-muted); font-size: 11px; font-weight: 700; }
+body.portal-v2 .usb-destination-fields > label.hidden { display: none; }
+body.portal-v2 .usb-rename-summary { margin-top: 12px; border: 1px solid color-mix(in srgb, var(--experience-orange) 35%, var(--experience-line)); border-radius: 11px; background: color-mix(in srgb, var(--experience-orange) 7%, transparent); padding: 11px; }
+body.portal-v2 .usb-rename-summary p,
+body.portal-v2 .usb-plan-note { margin: 5px 0 0; color: var(--experience-dim); font-size: 11px; line-height: 1.5; }
+body.portal-v2 .usb-plan-note { margin-top: 13px; }
+body.portal-v2 .usb-file-sheet-actions { display: grid; gap: 8px; }
 
 /* Channel workspace becomes a focused detail screen. */
 body.portal-v2 .channel-page {
