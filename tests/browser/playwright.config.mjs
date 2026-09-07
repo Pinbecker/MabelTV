@@ -55,6 +55,7 @@ export default defineConfig({
       name: 'iphone-chromium',
       use: {
         browserName: 'chromium',
+        channel: 'chromium',
         viewport: { width: 393, height: 852 },
         hasTouch: true,
         isMobile: true,

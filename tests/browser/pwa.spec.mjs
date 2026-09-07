@@ -28,6 +28,18 @@ function seedVersionOneDatabase() {
   })
 }
 
+async function ensureControlledOfflinePage(page) {
+  await page.waitForFunction(() => Boolean(window.MabelOffline))
+  await page.evaluate(async () => { await navigator.serviceWorker.ready })
+  if (!await page.evaluate(() => Boolean(navigator.serviceWorker.controller))) {
+    await page.reload({ waitUntil: 'load' })
+  }
+  await page.waitForFunction(() => (
+    Boolean(navigator.serviceWorker.controller)
+      && typeof window.MabelOffline?.setMediaAccess === 'function'
+  ))
+}
+
 test.afterEach(async ({ request }) => {
   await request.get('/__fixture/pin-required?value=0')
 })
@@ -68,13 +80,7 @@ test('the real worker serves family media and PIN-locks Adult media', async ({ p
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One authoritative service-worker run')
   await page.request.get('/__fixture/pin-required?value=1')
   await page.goto('/')
-  await page.waitForFunction(() => Boolean(window.MabelOffline))
-  await page.evaluate(async () => {
-    await navigator.serviceWorker.ready
-    if (!navigator.serviceWorker.controller) location.reload()
-  })
-  await page.waitForLoadState('load')
-  await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller))
+  await ensureControlledOfflinePage(page)
 
   const locked = await page.evaluate(async () => {
     await new Promise((resolve, reject) => {
