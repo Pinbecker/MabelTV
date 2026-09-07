@@ -97,6 +97,7 @@ test('primary screens stay full-width and match their visual references', async 
       scroll: document.documentElement.scrollWidth,
     }))
     expect(widths.scroll).toBe(widths.client)
+    await expect(page.locator(screen.selector)).toHaveCSS('opacity', '1')
     await expect(page).toHaveScreenshot(screen.snapshot, { fullPage: false })
   }
 })
