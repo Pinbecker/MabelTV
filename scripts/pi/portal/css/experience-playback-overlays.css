@@ -199,8 +199,8 @@ body.portal-experience .watch-film-overview {
 
 body.portal-experience .compact-film-intents + .watch-film-actions {
   border-top: 1px solid var(--experience-line);
-  margin-top: 18px;
-  padding-top: 18px;
+  margin-top: 16px;
+  padding-top: 16px;
 }
 
 body.portal-experience .watch-film-actions,
@@ -237,6 +237,18 @@ body.portal-experience .primary-sheet-more::before {
   height: 1px;
   content: "";
   background: var(--experience-line);
+}
+
+body.portal-experience .watch-film-actions .primary-sheet-more {
+  grid-column: 1 / -1;
+  margin-top: 24px;
+}
+
+body.portal-experience .watch-film-actions .primary-sheet-more::before { top: -17px; }
+
+body.portal-experience .watch-film-panel .adult-provider-section {
+  margin-top: 16px;
+  padding-top: 16px;
 }
 
 body.portal-experience :is(.watch-film-play, .watch-film-secondary) {

@@ -214,6 +214,22 @@ for (const theme of ['light', 'dark']) {
         beforePlayback: Boolean(root.compareDocumentPosition(document.querySelector('.watch-film-actions'))
           & Node.DOCUMENT_POSITION_FOLLOWING),
         clamp: getComputedStyle($('#watchFilmOverview')).webkitLineClamp,
+        compactHeight: Number.parseFloat(getComputedStyle(root.querySelector('button')).minHeight),
+        actionFits: Number.parseFloat(getComputedStyle(root.querySelector('button')).minHeight)
+          <= Number.parseFloat(getComputedStyle($('#watchFilmTv')).minHeight),
+        firstDivider: {
+          margin: Number.parseFloat(getComputedStyle(document.querySelector('.watch-film-actions')).marginTop),
+          padding: Number.parseFloat(getComputedStyle(document.querySelector('.watch-film-actions')).paddingTop),
+        },
+        moreDivider: {
+          column: getComputedStyle($('#watchFilmManage')).gridColumn,
+          margin: Number.parseFloat(getComputedStyle($('#watchFilmManage')).marginTop),
+          offset: Number.parseFloat(getComputedStyle($('#watchFilmManage'), '::before').top),
+        },
+        providersDivider: {
+          margin: Number.parseFloat(getComputedStyle($('#watchFilmProviders')).marginTop),
+          padding: Number.parseFloat(getComputedStyle($('#watchFilmProviders')).paddingTop),
+        },
       }
     })
     expect(initial).toEqual({
@@ -225,6 +241,11 @@ for (const theme of ['light', 'dark']) {
       ],
       beforePlayback: true,
       clamp: '6',
+      compactHeight: 52,
+      actionFits: true,
+      firstDivider: { margin: 16, padding: 16 },
+      moreDivider: { column: '1 / -1', margin: 24, offset: -17 },
+      providersDivider: { margin: 16, padding: 16 },
     })
     const unwatched = await page.evaluate(() => {
       const root = $('#watchFilmViewingActions')
@@ -234,5 +255,30 @@ for (const theme of ['light', 'dark']) {
         .map(button => button.dataset.viewingAction)
     })
     expect(unwatched).toEqual(['watchlist', 'up_next', 'watched'])
+  })
+
+  test(`${theme} viewing actions update before their background refresh completes`, async ({ page }) => {
+    await openPortal(page, theme)
+    const result = await page.evaluate(async () => {
+      const originalApi = window.api
+      const originalLoad = window.loadAdultViewing
+      let refreshStarted = false
+      let releaseRefresh
+      window.api = async () => ({ viewing: { manual_state: 'watched' } })
+      window.loadAdultViewing = () => {
+        refreshStarted = true
+        return new Promise(resolve => { releaseRefresh = resolve })
+      }
+      try {
+        const detail = { media_type: 'movie', tmdb_id: 123, title: 'Fast update', viewing: {} }
+        const viewing = await updateAdultViewing(detail, 'watched')
+        return { refreshStarted, returned: viewing.manual_state, detail: detail.viewing.manual_state }
+      } finally {
+        releaseRefresh?.()
+        window.api = originalApi
+        window.loadAdultViewing = originalLoad
+      }
+    })
+    expect(result).toEqual({ refreshStarted: true, returned: 'watched', detail: 'watched' })
   })
 }

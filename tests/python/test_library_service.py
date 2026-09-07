@@ -849,7 +849,7 @@ class LibraryUnitTests(unittest.TestCase):
             title | {"action": "not_watched"})
         self.assertFalse(saved["viewing"]["watchlisted"])
         self.assertTrue(saved["viewing"]["up_next"])
-        self.assertTrue(saved["viewing"]["rewatch"])
+        self.assertFalse(saved["viewing"]["rewatch"])
         self.assertEqual(len(saved["viewing"]["history"]), 0)
 
     def test_watchmode_links_are_validated_cached_and_expire_before_thirty_days(self) -> None:

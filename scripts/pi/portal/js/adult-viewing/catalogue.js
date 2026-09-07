@@ -181,7 +181,7 @@ async function updateAdultViewing(title, action, extra = {}) {
     method: 'POST', body: JSON.stringify(adultTitlePayload(title, action, extra)),
   })
   title.viewing = result.viewing
-  await loadAdultViewing()
+  void loadAdultViewing().catch(() => {})
   return result.viewing
 }
 

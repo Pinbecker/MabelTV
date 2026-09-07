@@ -750,6 +750,8 @@ class ProviderMetadataMixin:
                     history = current.get("history", [])
                     if isinstance(history, list) and history:
                         history.pop()
+                    current["rewatch"] = False
+                    current["rewatch_updated"] = now
             elif action in {"move_up", "move_down"}:
                 queued = sorted(
                     ((stored_key, stored) for stored_key, stored in store["titles"].items()
