@@ -300,13 +300,6 @@ function localAdultAction(detail) {
   return null
 }
 
-function manageLocalAdultSeries(detail) {
-  const series = (library?.adult_series || []).find(item => item.id === detail.local?.series)
-  if (!series) return
-  portalSheets.dismiss($('#adultTitleSheet'))
-  openAdultSeriesSheet(series, () => restoreAdultTitleSheet(detail))
-}
-
 function renderAdultProviderLinksInto(root, detail, result, options = {}) {
   root.replaceChildren()
   const localAction = Object.prototype.hasOwnProperty.call(options, 'localAction')
@@ -407,6 +400,7 @@ function syncAdultTitleButtons(detail, root = $('#adultTitleIntents')) {
   const { watchlist, rewatch, up_next: upNext, watching, watched } = adultViewingActionButtons(root)
   if (!watchlist || !rewatch || !upNext || !watched) return
   const compactFilm = detail.media_type !== 'tv'
+  const compactSeries = detail.media_type === 'tv'
   const sync = (button, active, title, description) => {
     button.classList.toggle('active', active)
     button.setAttribute('aria-pressed', String(active))
@@ -414,25 +408,26 @@ function syncAdultTitleButtons(detail, root = $('#adultTitleIntents')) {
     button.querySelector('small').textContent = description
   }
   const status = adultTitleViewingStatus(state, detail)
-  const showRewatch = compactFilm && (status.completed || state.rewatch === true)
+  const showRewatch = status.completed || state.rewatch === true
   root.classList.toggle('compact-film-intents', compactFilm)
+  root.classList.toggle('compact-series-intents', compactSeries)
   sync(watchlist, state.watchlisted === true,
-    compactFilm ? 'Watchlist' : state.watchlisted ? 'In your Watchlist' : status.inProgress ? 'Series in progress'
-      : status.completed ? 'Already watched' : 'Add to Watchlist',
+    compactFilm || compactSeries ? 'Watchlist' : state.watchlisted ? 'In your Watchlist'
+      : status.inProgress ? 'Series in progress' : status.completed ? 'Already watched' : 'Add to Watchlist',
     state.watchlisted ? 'Unseen and saved for later'
       : status.inProgress ? 'Continue it from Watching or Up Next'
         : status.completed ? 'Use Rewatch for something you have seen' : 'Keep this unseen title saved for later')
   watchlist.classList.toggle('hidden', showRewatch)
-  watchlist.classList.toggle('is-unavailable', !compactFilm && (status.completed || status.inProgress) && !state.watchlisted)
+  watchlist.classList.toggle('is-unavailable', status.inProgress && !state.watchlisted)
   watchlist.classList.toggle('is-progress', status.inProgress && !state.watchlisted)
   sync(rewatch, state.rewatch === true,
-    compactFilm ? 'Rewatch' : state.rewatch ? 'In your Rewatch list' : 'Add to Rewatch',
+    compactFilm || compactSeries ? 'Rewatch' : state.rewatch ? 'In your Rewatch list' : 'Add to Rewatch',
     state.rewatch ? 'Saved to enjoy again' : status.completed
       ? 'Remember this for another watch' : 'Available once you mark it watched')
-  rewatch.classList.toggle('hidden', compactFilm && !showRewatch)
-  rewatch.classList.toggle('is-unavailable', !compactFilm && !status.completed && !state.rewatch)
+  rewatch.classList.toggle('hidden', !showRewatch)
+  rewatch.classList.toggle('is-unavailable', false)
   sync(upNext, state.up_next === true,
-    compactFilm ? 'Up Next' : state.up_next ? 'In Up Next' : 'Add to Up Next',
+    compactFilm || compactSeries ? 'Up Next' : state.up_next ? 'In Up Next' : 'Add to Up Next',
     state.up_next ? 'Queued as a priority' : 'Place it in your ordered queue')
   const titleWatched = state.manual_state === 'watched'
   watching?.classList.toggle('hidden', detail.media_type !== 'tv')
@@ -440,12 +435,13 @@ function syncAdultTitleButtons(detail, root = $('#adultTitleIntents')) {
     const rewatching = state.series_watching === true
       && state.series_watching_mode === 'rewatch'
     sync(watching, state.series_watching === true,
-      state.series_watching ? rewatching ? 'Rewatching this series' : 'Watching this series'
+      compactSeries ? 'Watching' : state.series_watching
+        ? rewatching ? 'Rewatching this series' : 'Watching this series'
         : state.rewatch ? 'Start rewatching series' : 'Start watching series',
       state.series_watching ? 'Its next episode stays in Up Next' : 'Keep the show and its next episode in Up Next')
   }
-  watched.classList.toggle('hidden', detail.media_type === 'tv')
+  watched.classList.remove('hidden')
   sync(watched, titleWatched,
-    compactFilm ? 'Watched' : titleWatched ? 'Watched' : 'Mark watched',
+    compactFilm || compactSeries ? 'Watched' : titleWatched ? 'Watched' : 'Mark watched',
     titleWatched ? 'In your watched history' : 'Moves it out of Watchlist and Up Next')
 }

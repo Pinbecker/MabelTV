@@ -203,6 +203,11 @@
       close: closeAdultSeriesSheet,
       onClose: () => { selectedAdultSeries = null },
     })
+    const adultSeriesMoreSheet = $('#adultSeriesMoreSheet')
+    portalSheets.wire(adultSeriesMoreSheet, {
+      closeButton: $('#adultSeriesMoreClose'),
+      close: closeAdultSeriesMoreSheet,
+    })
     const adultSeasonClose = $('#adultSeasonClose')
     const adultSeasonSheet = $('#adultSeasonSheet')
     portalSheets.wire(adultSeasonSheet, {

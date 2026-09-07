@@ -55,7 +55,8 @@ for (const theme of ['light', 'dark']) {
     await page.evaluate(() => {
       library.adult_series = [{
         id: 'layout-series', title: 'Severance', seasons: [1, 2, 3, 4, 5, 6, 7],
-        season_count: 7, episode_count: 2, watched_count: 0, metadata: { poster: 'bright.svg' },
+        season_count: 7, episode_count: 2, watched_count: 0,
+        metadata: { tmdb_id: 6001, poster: 'bright.svg' },
         episodes: [1, 2].map(season => ({ season, episode: 1,
           still: season === 1 ? 'bright.svg' : 'dark.svg',
           path: `Series ${season}/Episode 1.mp4`, display_name: 'Episode 1',
@@ -65,6 +66,8 @@ for (const theme of ['light', 'dark']) {
       openAdultSeriesSheet(library.adult_series[0])
     })
     const titles = page.locator('#adultSeriesEpisodes .adult-season-card-copy strong')
+    await expect(page.locator('#adultSeriesIntents')).toBeVisible()
+    await expect(page.locator('#adultSeriesIntents [data-viewing-action]:not(.hidden)')).toHaveCount(4)
     await expect.poll(() => page.locator('#adultSeriesEpisodes img').first()
       .evaluate(image => image.naturalWidth)).toBe(600)
     for (const index of [0, 1]) await expect(titles.nth(index)).toHaveCSS('color', 'rgb(255, 255, 255)')
@@ -82,6 +85,10 @@ for (const theme of ['light', 'dark']) {
       const r = dialog.querySelector('.adult-season-status').getBoundingClientRect()
       return header.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2))
     })).toBe(true)
+    await page.locator('#adultSeriesMore').click()
+    await expect(page.locator('#adultSeriesMoreSheet')).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath('series-more.png') })
+    await page.locator('#adultSeriesMoreClose').click()
     await page.locator('#adultSeriesClose').click()
     await expect(page.locator('#adultSeriesSheet')).not.toBeVisible()
     await page.evaluate(() => openAdultSeasonSheet(library.adult_series[0], 3))

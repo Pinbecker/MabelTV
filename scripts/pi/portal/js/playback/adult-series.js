@@ -162,6 +162,10 @@
       selectedAdultSeason = null
     }
 
+    function closeAdultSeriesMoreSheet(restoreParent = true) {
+      portalSheets.close($('#adultSeriesMoreSheet'), { restore: restoreParent })
+    }
+
     function returnToAdultSeriesSheet() {
       closeAdultSeasonSheet()
     }
@@ -172,7 +176,7 @@
       adultSeriesRestartTarget = null
     }
 
-    function openAdultSeriesRestartSheet(series, season = null) {
+    function openAdultSeriesRestartSheet(series, season = null, returnToOverride = null) {
       const current = library?.adult_series?.find(value => value.id === series.id) || series
       const scope = season === null ? 'series' : 'season'
       const seasonNumber = season === null ? null : Number(season)
@@ -191,13 +195,41 @@
         ? `${current.title} · Series ${seasonNumber}` : current.title
       const seasonReturn = selectedAdultSeason?.returnTo || null
       const seriesReturn = selectedAdultSeries?.returnTo || null
-      const parentReturn = selectedAdultSeason
+      const parentReturn = returnToOverride || (selectedAdultSeason
         ? () => openAdultSeasonSheet(current, seasonNumber, seasonReturn)
-        : () => openAdultSeriesSheet(current, seriesReturn)
+        : () => openAdultSeriesSheet(current, seriesReturn))
       closeAdultSeasonSheet(false)
       closeAdultSeriesSheet(false)
       const dialog = $('#adultSeriesRestartSheet')
       portalSheets.open(dialog, { returnTo: parentReturn })
+    }
+
+    function openAdultSeriesMoreSheet(series, returnTo = null) {
+      const current = library?.adult_series?.find(value => value.id === series.id) || series
+      $('#adultSeriesMoreTitle').textContent = current.title
+      $('#adultSeriesMoreMeta').textContent = `${current.season_count} series · ${current.episode_count} episodes · More show options`
+      $('#adultSeriesRestart').onclick = () => {
+        closeAdultSeriesMoreSheet(false)
+        openAdultSeriesRestartSheet(current, null,
+          () => openAdultSeriesMoreSheet(current, returnTo))
+      }
+      const metadata = $('#adultSeriesMetadata')
+      metadata.disabled = !tmdbConfigured
+      metadata.onclick = tmdbConfigured ? () => {
+        closeAdultSeriesMoreSheet(false)
+        scanAdultSeriesTmdb(current, () => openAdultSeriesMoreSheet(current, returnTo))
+      } : null
+      $('#adultSeriesDelete').onclick = async () => {
+        if (!confirm(`Move the complete “${current.title}” show and every series and episode to the recycle bin?`)) return
+        closeAdultSeriesMoreSheet(false)
+        try {
+          await manage('trash-adult-series', { series: current.id, scope: 'series' })
+          notice(`${current.title} moved to the recycle bin.`)
+        } catch (error) { showError(error) }
+      }
+      portalSheets.open($('#adultSeriesMoreSheet'), {
+        returnTo: () => openAdultSeriesSheet(current, returnTo),
+      })
     }
 
     async function confirmAdultSeriesRestart() {
@@ -613,50 +645,16 @@
           favourite.setAttribute('aria-label', current.favourite
             ? 'Remove series from favourites' : 'Add series to favourites')
         }).catch(showError)
-      const watching = $('#adultSeriesWatching')
       const tmdbId = Number(current.metadata?.tmdb_id || 0)
-      watching.classList.toggle('hidden', !tmdbId)
       if (tmdbId) {
-        const trackingTitle = {
-          media_type: 'tv', tmdb_id: tmdbId, title: current.title,
-          year: current.metadata?.year || '', overview: current.metadata?.overview || '',
-        }
         const syncWatching = state => {
-          trackingTitle.viewing = state || {}
           localViewingState = state || {}
-          watching.classList.toggle('active', state?.series_watching === true)
-          watching.setAttribute('aria-pressed', String(state?.series_watching === true))
-          const rewatching = state?.series_watching === true
-            && state?.series_watching_mode === 'rewatch'
-          watching.querySelector('strong').textContent = state?.series_watching
-            ? rewatching ? 'Rewatching this series' : 'Watching this series'
-            : state?.rewatch ? 'Start rewatching series' : 'Start watching series'
-          watching.querySelector('small').textContent = state?.series_watching
-            ? 'Its next episode is kept in Up Next' : 'Keep the show and its next episode in Up Next'
           syncSeriesHeader()
         }
-        syncWatching({})
-        watching.disabled = true
-        watching.onclick = async () => {
-          if (watching.disabled) return
-          watching.disabled = true
-          try {
-            const state = await updateAdultViewing(trackingTitle, 'watching', {
-              enabled: !trackingTitle.viewing?.series_watching,
-              mode: trackingTitle.viewing?.rewatch
-                || (current.episode_count > 0 && current.watched_count >= current.episode_count)
-                ? 'rewatch' : 'first_watch',
-            })
-            syncWatching(state)
-            notice(state.series_watching
-              ? 'Series added to Watching and Up Next.' : 'Series removed from Watching.')
-          } catch (error) { showError(error) } finally { watching.disabled = false }
-        }
-        api('/api/adult/viewing').then(result => {
-          if (selectedAdultSeries?.series?.id !== current.id) return
-          const item = (result.items || []).find(value => value.key === `tv:${tmdbId}`)
-          syncWatching(item || {})
-        }).catch(() => syncWatching({})).finally(() => { watching.disabled = false })
+        void wireLocalSeriesViewingActions($('#adultSeriesIntents'), current, syncWatching)
+          .catch(showError)
+      } else {
+        $('#adultSeriesIntents').classList.add('hidden')
       }
       const root = $('#adultSeriesEpisodes')
       root.innerHTML = ''
@@ -750,19 +748,9 @@
         }
       }
       root.append(addCard)
-      $('#adultSeriesMetadata').disabled = !tmdbConfigured
-      $('#adultSeriesMetadata').onclick = () => {
+      $('#adultSeriesMore').onclick = () => {
         closeAdultSeriesSheet(false)
-        scanAdultSeriesTmdb(current, () => openAdultSeriesSheet(current, returnTo))
-      }
-      $('#adultSeriesRestart').onclick = () => openAdultSeriesRestartSheet(current)
-      $('#adultSeriesDelete').onclick = async () => {
-        if (!confirm(`Move the complete “${current.title}” show and every series and episode to the recycle bin?`)) return
-        closeAdultSeriesSheet(false)
-        try {
-          await manage('trash-adult-series', { series: current.id, scope: 'series' })
-          notice(`${current.title} moved to the recycle bin.`)
-        } catch (error) { showError(error) }
+        openAdultSeriesMoreSheet(current, returnTo)
       }
       const dialog = $('#adultSeriesSheet')
       portalSheets.open(dialog, { returnTo })

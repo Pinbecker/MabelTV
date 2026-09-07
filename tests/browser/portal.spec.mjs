@@ -137,55 +137,6 @@ test('representative film menu fits the phone viewport', async ({ page }, testIn
 })
 
 
-test('Adult TV series cards and global-search results open their title sheet', async ({ page }, testInfo) => {
-  test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone series-card contract')
-  await openPortal(page)
-  await page.evaluate(() => {
-    library.adult_series = [{
-      id: 'fixture-series', title: 'Fixture Series', favourite: true,
-      metadata: {
-        tmdb_id: 6001, title: 'Fixture Series',
-        overview: 'A stable series-card regression fixture.',
-      },
-      episodes: [], season_count: 0, episode_count: 0, watched_count: 0,
-    }]
-    renderHomeLibrary()
-  })
-
-  await page.getByRole('button', { name: 'Open favourite series Fixture Series' }).click()
-  await expect(page.locator('#adultTitleSheet')).toBeVisible()
-  await expect(page.locator('#adultTitleName')).toHaveText('Fixture Series')
-  await expect(page.locator('#adultTitleIntents [data-viewing-action]')).toHaveCount(5)
-  const seriesHeader = await page.locator('#adultTitleSheet').evaluate(sheet => {
-    const panel = sheet.querySelector('.watch-film-panel').getBoundingClientRect()
-    const summary = sheet.querySelector('.watch-film-summary').getBoundingClientRect()
-    return {
-      left: Math.abs(summary.left - panel.left) <= 1,
-      right: Math.abs(summary.right - panel.right) <= 1,
-    }
-  })
-  expect(seriesHeader).toEqual({ left: true, right: true })
-
-  await page.evaluate(() => {
-    portalSheets.dismiss(document.querySelector('#adultTitleSheet'))
-  })
-  await page.getByRole('button', { name: 'Watch', exact: true }).click()
-  await page.locator('#watchAdultTab').click()
-  await page.evaluate(() => {
-    document.querySelector('#watchAdultLayout').classList.remove('hidden')
-    document.querySelector('#view-watch').classList.add('adult-search-mode')
-    document.querySelector('#adultDiscoverySection').classList.remove('hidden')
-    document.querySelector('#adultDiscoveryGrid').replaceChildren(adultDiscoveryCard({
-      media_type: 'tv', tmdb_id: 6001, title: 'Fixture Series', year: '2026',
-      overview: 'A global-search result regression fixture.',
-    }))
-  })
-  await page.locator('#adultDiscoveryGrid .watch-card').click()
-  await expect(page.locator('#adultTitleSheet')).toBeVisible()
-  await expect(page.locator('#adultTitleName')).toHaveText('Fixture Series')
-})
-
-
 test('PIN gate never reveals the application shell before authentication', async ({ page }) => {
   await page.request.get('/__fixture/pin-required?value=1')
   await page.goto('/')

@@ -339,11 +339,14 @@ body.portal-v2 .adult-intent-actions button.is-progress {
   opacity: .82;
 }
 body.portal-v2 .adult-intent-actions button.hidden { display: none; }
-body.portal-v2 .adult-intent-actions.compact-film-intents {
+body.portal-v2 .adult-intent-actions:is(.compact-film-intents, .compact-series-intents) {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-top: 18px;
 }
-body.portal-v2 .adult-intent-actions.compact-film-intents button {
+body.portal-v2 .adult-intent-actions.compact-series-intents {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+body.portal-v2 .adult-intent-actions:is(.compact-film-intents, .compact-series-intents) button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -352,23 +355,23 @@ body.portal-v2 .adult-intent-actions.compact-film-intents button {
   padding: 3px 6px;
   text-align: center;
 }
-body.portal-v2 .adult-intent-actions.compact-film-intents .icon { width: 16px; height: 16px; flex: 0 0 16px; }
-body.portal-v2 .adult-intent-actions.compact-film-intents button > span {
+body.portal-v2 .adult-intent-actions:is(.compact-film-intents, .compact-series-intents) .icon { width: 16px; height: 16px; flex: 0 0 16px; }
+body.portal-v2 .adult-intent-actions:is(.compact-film-intents, .compact-series-intents) button > span {
   display: flex;
   flex: 0 1 auto;
   align-items: center;
   height: 16px;
 }
-body.portal-v2 .adult-intent-actions.compact-film-intents small { display: none; }
-body.portal-v2 .adult-intent-actions.compact-film-intents strong {
+body.portal-v2 .adult-intent-actions:is(.compact-film-intents, .compact-series-intents) small { display: none; }
+body.portal-v2 .adult-intent-actions:is(.compact-film-intents, .compact-series-intents) strong {
   display: block;
   font-size: 11px;
   font-weight: 400;
   line-height: 16px;
   white-space: nowrap;
 }
-body.portal-v2 .adult-intent-actions.compact-film-intents button.hidden { display: none; }
-body.portal-v2 .adult-intent-actions.compact-film-intents button.active {
+body.portal-v2 .adult-intent-actions:is(.compact-film-intents, .compact-series-intents) button.hidden { display: none; }
+body.portal-v2 .adult-intent-actions:is(.compact-film-intents, .compact-series-intents) button.active {
   background: color-mix(in srgb, var(--experience-accent) 12%, var(--experience-soft));
 }
 
@@ -433,6 +436,9 @@ body.portal-v2 .adult-netflix-launch-status { min-height: 15px; margin: -5px var
   }
   body.portal-v2 .adult-intent-actions { grid-template-columns: 1fr; }
   body.portal-v2 .adult-intent-actions.compact-film-intents { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  body.portal-v2 .adult-intent-actions.compact-series-intents { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  body.portal-v2 .adult-intent-actions.compact-series-intents button { gap: 4px; padding-inline: 4px; }
+  body.portal-v2 .adult-intent-actions.compact-series-intents strong { font-size: 10px; }
   body.portal-v2 .adult-streaming-episode {
     grid-template-columns: 70px minmax(0, 1fr) 76px;
     gap: 9px;

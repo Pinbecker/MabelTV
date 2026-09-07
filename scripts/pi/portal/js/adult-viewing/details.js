@@ -1,6 +1,6 @@
 'use strict'
 
-function adultTitleIntentAction(detail, button, request, root = $('#adultTitleIntents')) {
+function adultTitleIntentAction(detail, button, request, root = $('#adultTitleIntents'), onUpdate = null) {
   return async () => {
     if (button.disabled) return
     button.disabled = true
@@ -8,6 +8,7 @@ function adultTitleIntentAction(detail, button, request, root = $('#adultTitleIn
       const { action, extra = {} } = request()
       detail.viewing = await updateAdultViewing(detail, action, extra)
       syncAdultTitleButtons(detail, root)
+      if (onUpdate) onUpdate(detail.viewing)
       if (root?.id === 'adultTitleIntents') syncAdultTitleNextEpisode(detail)
       if (action === 'watchlist') notice(detail.viewing.watchlisted
         ? 'Added to Watchlist.' : 'Removed from Watchlist.')
@@ -27,7 +28,7 @@ function adultTitleIntentAction(detail, button, request, root = $('#adultTitleIn
   }
 }
 
-function wireAdultTitleIntentActions(detail, root = $('#adultTitleIntents')) {
+function wireAdultTitleIntentActions(detail, root = $('#adultTitleIntents'), onUpdate = null) {
   const { watchlist, rewatch, up_next: upNext, watching, watched } = adultViewingActionButtons(root)
   if (!watchlist || !rewatch || !upNext || !watched) return
   syncAdultTitleButtons(detail, root)
@@ -43,7 +44,7 @@ function wireAdultTitleIntentActions(detail, root = $('#adultTitleIntents')) {
     }
     adultTitleIntentAction(detail, watchlist, () => ({
       action: 'watchlist', extra: { enabled: !detail.viewing?.watchlisted },
-    }), root)()
+    }), root, onUpdate)()
   }
   rewatch.onclick = () => {
     if (!adultTitleViewingStatus(detail.viewing, detail).completed && !detail.viewing?.rewatch) {
@@ -52,11 +53,11 @@ function wireAdultTitleIntentActions(detail, root = $('#adultTitleIntents')) {
     }
     adultTitleIntentAction(detail, rewatch, () => ({
       action: 'rewatch', extra: { enabled: !detail.viewing?.rewatch },
-    }), root)()
+    }), root, onUpdate)()
   }
   upNext.onclick = adultTitleIntentAction(detail, upNext, () => ({
     action: 'up_next', extra: { enabled: !detail.viewing?.up_next },
-  }), root)
+  }), root, onUpdate)
   if (watching) watching.onclick = adultTitleIntentAction(detail, watching, () => ({
     action: 'watching', extra: {
       enabled: !detail.viewing?.series_watching,
@@ -65,10 +66,10 @@ function wireAdultTitleIntentActions(detail, root = $('#adultTitleIntents')) {
           Number(season.watched_count || 0) >= Number(season.episodes || 0))))
         ? 'rewatch' : 'first_watch',
     },
-  }), root)
+  }), root, onUpdate)
   watched.onclick = adultTitleIntentAction(detail, watched, () => ({
     action: detail.viewing?.manual_state === 'watched' ? 'not_watched' : 'watched',
-  }), root)
+  }), root, onUpdate)
 }
 
 function localFilmViewingDetail(film) {
@@ -141,10 +142,67 @@ async function wireLocalFilmViewingActions(root, film) {
   wireAdultTitleIntentActions(detail, root)
 }
 
+function localAdultSeriesForTitle(title = {}) {
+  const localId = title.local?.kind === 'series' ? title.local.series : ''
+  const tmdbId = Number(title.tmdb_id || 0)
+  return (library?.adult_series || []).find(series => series.id === localId)
+    || (tmdbId ? (library?.adult_series || []).find(series =>
+      Number(series.metadata?.tmdb_id || 0) === tmdbId) : null)
+}
+
+function localSeriesViewingDetail(series) {
+  const metadata = series?.metadata || {}
+  const tmdbId = Number(metadata.tmdb_id || 0)
+  if (!tmdbId) return null
+  const key = `tv:${tmdbId}`
+  const stored = (adultViewingData.items || []).find(item => item.key === key) || {}
+  const seasonNumbers = new Set((series.seasons || []).map(Number))
+  ;(series.episodes || []).forEach(episode => seasonNumbers.add(Number(episode.season)))
+  return {
+    media_type: 'tv', tmdb_id: tmdbId, key,
+    title: metadata.title || series.title || 'Untitled series',
+    year: metadata.year || stored.year || '',
+    overview: metadata.overview || stored.overview || '',
+    local: {
+      kind: 'series', series: series.id,
+      watched_count: Number(series.watched_count || 0),
+    },
+    seasons: [...seasonNumbers].filter(Number.isFinite).map(number => {
+      const episodes = (series.episodes || []).filter(episode => Number(episode.season) === number)
+      return {
+        number, episodes: episodes.length,
+        watched_count: episodes.filter(episode => episode.watched).length,
+      }
+    }),
+    viewing: stored,
+  }
+}
+
+async function wireLocalSeriesViewingActions(root, series, onUpdate) {
+  const detail = localSeriesViewingDetail(series)
+  root.classList.toggle('hidden', !detail)
+  if (!detail) return
+  root.dataset.viewingKey = detail.key
+  root.querySelectorAll('button').forEach(button => { button.disabled = true })
+  if (!adultViewingLoaded) await loadAdultViewing()
+  if (root.dataset.viewingKey !== detail.key) return
+  detail.viewing = (adultViewingData.items || []).find(item => item.key === detail.key) || {}
+  root.querySelectorAll('button').forEach(button => { button.disabled = false })
+  wireAdultTitleIntentActions(detail, root, onUpdate)
+  onUpdate(detail.viewing)
+}
+
 function renderAdultTitleDetail(detail, refreshProviders = true,
                                 revision = adultTitleOpenRevision) {
-  selectedAdultTitle = detail
   const sheet = $('#adultTitleSheet')
+  const localSeries = detail.media_type === 'tv' ? localAdultSeriesForTitle(detail) : null
+  if (localSeries) {
+    selectedAdultTitle = null
+    portalSheets.dismiss(sheet)
+    openAdultSeriesSheet(localSeries)
+    return
+  }
+  selectedAdultTitle = detail
   sheet.classList.remove('is-loading-title')
   const isSeries = detail.media_type === 'tv'
   sheet.classList.toggle('is-series', isSeries)
@@ -182,10 +240,6 @@ function renderAdultTitleDetail(detail, refreshProviders = true,
       ? 'Available locally on MabelTV. Stored episodes offer Play on TV and Watch on this device.'
       : 'Available locally on MabelTV — this option is always shown first.'
     : ''
-  const manageLocal = $('#adultTitleManageLocal')
-  manageLocal.classList.toggle('hidden', detail.local?.kind !== 'series')
-  manageLocal.onclick = detail.local?.kind === 'series'
-    ? () => manageLocalAdultSeries(detail) : null
   wireAdultTitleIntentActions(detail)
   $('#adultProviderRefresh').onclick = () => loadAdultProviders(detail, true, revision)
   if (refreshProviders) {
@@ -215,7 +269,6 @@ function prepareAdultTitleSheet(title) {
   $('#adultTitleNextEpisode').classList.add('hidden')
   $('#adultTitleLocal').classList.add('hidden')
   $('#adultTitleLocalCopy').textContent = ''
-  $('#adultTitleManageLocal').classList.add('hidden')
   $('#adultProviderList').innerHTML = '<p>Loading…</p>'
   $('#adultTitleIntents').querySelectorAll('[data-viewing-action]').forEach(button => {
     button.classList.remove('active', 'is-unavailable', 'is-progress')
@@ -225,6 +278,11 @@ function prepareAdultTitleSheet(title) {
 }
 
 async function openAdultTitle(title) {
+  const localSeries = title.media_type === 'tv' ? localAdultSeriesForTitle(title) : null
+  if (localSeries) {
+    openAdultSeriesSheet(localSeries)
+    return
+  }
   const revision = ++adultTitleOpenRevision
   const sheet = prepareAdultTitleSheet(title)
   portalSheets.open(sheet, { focus: sheet.querySelector('.watch-film-panel') })

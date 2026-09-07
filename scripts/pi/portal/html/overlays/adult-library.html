@@ -234,9 +234,9 @@
     </header>
     <div class="library-sheet-body">
       <p id="adultSeriesOverview" class="adult-series-overview"></p>
+      <div id="adultSeriesIntents" class="adult-intent-actions compact-series-intents hidden" data-viewing-intents="series"></div>
       <div class="adult-series-now-actions">
         <button id="adultSeriesNextEpisode" type="button" class="adult-next-episode hidden"><svg class="icon"><use href="/portal/icons.svg#signal-play" /></svg><span><small>Next episode</small><strong>Continue this series</strong></span><svg class="icon adult-next-chevron"><use href="/portal/icons.svg#signal-chevron-right" /></svg></button>
-        <button id="adultSeriesWatching" type="button" class="adult-series-watching hidden"><svg class="icon"><use href="/portal/icons.svg#signal-eye" /></svg><span><strong>Start watching series</strong><small>Keep the show and its next episode in Up Next</small></span></button>
       </div>
       <div class="adult-series-library-head">
         <div>
@@ -246,36 +246,24 @@
         <span id="adultSeriesSeasonCount"></span>
       </div>
       <div id="adultSeriesEpisodes" class="adult-series-seasons"></div>
-      <div class="adult-series-tools adult-series-bottom-tools">
-        <button id="adultSeriesRestart" type="button">
-          <svg class="icon"><use href="/portal/icons.svg#signal-restart" /></svg
-          ><span
-            ><strong>Restart watching</strong
-            ><small>Clear progress across the complete show</small></span
-          >
-        </button>
-        <button id="adultSeriesMetadata" type="button">
-          <svg class="icon">
-            <use href="/portal/icons.svg#signal-panels-top-left" /></svg
-          ><span
-            ><strong>Match metadata</strong
-            ><small>Match the show, series and episode details</small></span
-          >
-        </button>
-        <button
-          id="adultSeriesDelete"
-          type="button"
-          class="adult-series-danger"
-        >
-          <svg class="icon"><use href="/portal/icons.svg#signal-trash" /></svg
-          ><span
-            ><strong>Move show to bin</strong
-            ><small>Remove every series and episode</small></span
-          >
-        </button>
-      </div>
+      <button id="adultSeriesMore" type="button" class="watch-film-secondary primary-sheet-more adult-series-more">
+        <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-ellipsis" /></svg><span>More</span>
+      </button>
     </div>
   </section>
+</dialog>
+<dialog id="adultSeriesMoreSheet" class="watch-programme-sheet adult-series-more-sheet">
+  <article>
+    <div class="dialog-close-bar"><button id="adultSeriesMoreClose" type="button" class="portal-sheet-close watch-film-close dialog-close" aria-label="Close series options"></button></div>
+    <p id="adultSeriesMoreEyebrow" class="watch-film-eyebrow">Adult TV series options</p>
+    <h2 id="adultSeriesMoreTitle">Series</h2>
+    <p id="adultSeriesMoreMeta"></p>
+    <div class="watch-programme-film-tools">
+      <button id="adultSeriesRestart" type="button" class="watch-film-play"><span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-restart" /></svg></span><span><strong>Restart watching</strong><small>Clear progress across the complete show</small></span></button>
+      <button id="adultSeriesMetadata" type="button" class="watch-film-play"><span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-panels-top-left" /></svg></span><span><strong>Match metadata</strong><small>Match the show, series and episode details</small></span></button>
+      <button id="adultSeriesDelete" type="button" class="watch-film-play watch-film-danger"><span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-trash" /></svg></span><span><strong>Move show to bin</strong><small>Remove every series and episode</small></span></button>
+    </div>
+  </article>
 </dialog>
 <dialog id="adultSeasonSheet" class="library-sheet adult-season-sheet">
   <section class="library-sheet-panel wide">

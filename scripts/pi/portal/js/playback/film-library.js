@@ -393,18 +393,7 @@
     }
 
     function openAdultSeriesViewing(series) {
-      const tmdbId = Number(series?.metadata?.tmdb_id || 0)
-      if (!tmdbId || typeof openAdultTitle !== 'function') {
-        openAdultSeriesSheet(series)
-        return
-      }
-      openAdultTitle({
-        media_type: 'tv', tmdb_id: tmdbId,
-        title: series.metadata?.title || series.title,
-        year: series.metadata?.year || '',
-        overview: series.metadata?.overview || '',
-        on_mabeltv: true,
-      })
+      openAdultSeriesSheet(series)
     }
 
     function renderHomeLibrary() {
