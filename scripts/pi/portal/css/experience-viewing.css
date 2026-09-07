@@ -225,6 +225,8 @@ body.portal-v2 .adult-season-status.is-confirming span {
   white-space: nowrap;
 }
 body.portal-v2 .adult-streaming-season-sheet .adult-series-overview { margin: 0 0 16px; }
+body.portal-v2 .adult-streaming-season-sheet .library-sheet-panel { scrollbar-width: none; }
+body.portal-v2 .adult-streaming-season-sheet .library-sheet-panel::-webkit-scrollbar { display: none; }
 body.portal-v2 .adult-streaming-episode {
   grid-template-columns: 76px minmax(0, 1fr) auto;
 }

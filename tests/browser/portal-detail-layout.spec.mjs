@@ -113,4 +113,36 @@ for (const theme of ['light', 'dark']) {
       ? 'rgb(23, 27, 35)' : 'rgb(247, 247, 248)')
     await page.screenshot({ path: testInfo.outputPath('series-no-artwork.png') })
   })
+
+  test(`${theme} streaming season sheets hide their scrollbar without blocking scrolling`, async ({ page }) => {
+    await openPortal(page, theme)
+    const panel = page.locator('#adultTitleSeasonSheet .library-sheet-panel')
+    await page.evaluate(() => {
+      const sheet = document.querySelector('#adultTitleSeasonSheet')
+      const sheetPanel = sheet?.querySelector('.library-sheet-panel')
+      if (!(sheet instanceof HTMLDialogElement) || !(sheetPanel instanceof HTMLElement)) {
+        throw new Error('Streaming season sheet is unavailable')
+      }
+      const filler = document.createElement('div')
+      filler.style.height = '1200px'
+      filler.setAttribute('aria-hidden', 'true')
+      sheetPanel.append(filler)
+      portalSheets.open(sheet)
+    })
+    await expect(panel).toBeVisible()
+    const state = await panel.evaluate(element => {
+      element.scrollTop = 240
+      return {
+        scrollTop: element.scrollTop,
+        scrollable: element.scrollHeight > element.clientHeight,
+        scrollbarWidth: getComputedStyle(element).scrollbarWidth,
+        webkitScrollbarDisplay: getComputedStyle(element, '::-webkit-scrollbar').display,
+        supportsScrollbarWidth: CSS.supports('scrollbar-width: none'),
+      }
+    })
+    expect(state.scrollable).toBe(true)
+    expect(state.scrollTop).toBeGreaterThan(0)
+    if (state.supportsScrollbarWidth) expect(state.scrollbarWidth).toBe('none')
+    else expect(state.webkitScrollbarDisplay).toBe('none')
+  })
 }
