@@ -131,4 +131,108 @@ for (const theme of ['light', 'dark']) {
     await expect(collection).toHaveValue('*')
     await expect(page.locator('#remoteAdult .watch-card')).toHaveCount(5)
   })
+
+  test(`${theme} film title card keeps its divider over scrolling detail content`, async ({ page }) => {
+    await openPortal(page, theme)
+    await filmFixture(page)
+    await page.evaluate(() => {
+      openWatchFilmSheet(library.adult_library[0])
+      const filler = $('#watchFilmViewingActions')
+      filler.classList.remove('hidden')
+      filler.textContent = 'Extra detail '.repeat(300)
+    })
+    await expect(page.locator('#watchFilmSheet')).toBeVisible()
+    await page.locator('#watchFilmViewingActions').scrollIntoViewIfNeeded()
+    const result = await page.locator('#watchFilmSheet').evaluate(sheet => {
+      const panel = sheet.querySelector('.watch-film-panel')
+      const summary = sheet.querySelector('.watch-film-summary')
+      panel.scrollTop = 480
+      const panelBox = panel.getBoundingClientRect()
+      const summaryBox = summary.getBoundingClientRect()
+      const visibleElement = document.elementFromPoint(
+        summaryBox.x + summaryBox.width / 2,
+        summaryBox.y + summaryBox.height - 12,
+      )
+      return {
+        border: getComputedStyle(summary).borderBottomWidth,
+        fullBleed: Math.abs(summaryBox.left - panelBox.left) <= 1
+          && Math.abs(summaryBox.right - panelBox.right) <= 1,
+        dividerGap: Number.parseFloat(getComputedStyle(summary).paddingBottom),
+        position: getComputedStyle(summary).position,
+        pinned: Math.abs(summaryBox.top - panelBox.top) <= 1,
+        covered: summary.contains(visibleElement),
+      }
+    })
+    expect(result).toEqual({
+      border: '1px',
+      fullBleed: true,
+      dividerGap: 16,
+      position: 'sticky',
+      pinned: true,
+      covered: true,
+    })
+  })
+
+  test(`${theme} local film sheets reuse the Great Britain availability footer`, async ({ page }) => {
+    await page.route(url => new URL(url).pathname === '/api/adult/title', route => route.fulfill({ json: {
+      key: 'movie:123', media_type: 'movie', tmdb_id: 123, title: 'Captain America',
+      providers: [{ provider_id: 8, name: 'Netflix', type: 'flatrate' }],
+    } }))
+    await page.route(url => new URL(url).pathname === '/api/adult/providers', route => route.fulfill({ json: {
+      key: 'movie:123', sources: [{ source_id: 203, name: 'Netflix', type: 'sub' }],
+    } }))
+    await openPortal(page, theme)
+    await filmFixture(page)
+    await page.evaluate(() => {
+      library.adult_library[0].metadata.tmdb_id = 123
+      openWatchFilmSheet(library.adult_library[0])
+    })
+    await expect(page.locator('#watchFilmProviders')).toBeVisible()
+    await expect(page.locator('#watchFilmProvidersHeading')).toHaveText('Where to watch')
+    await expect(page.locator('#watchFilmProviderList .provider-mabeltv')).toHaveCount(1)
+    await page.evaluate(() => openWatchFilmSheet(library.adult_library[4]))
+    await expect(page.locator('#watchFilmProviders')).toBeVisible()
+    await expect(page.locator('#watchFilmProviderRefresh')).toBeHidden()
+    await expect(page.locator('#watchFilmProviderList')).toContainText('Match this film’s metadata')
+  })
+
+  test(`${theme} film actions condense into a three-button state row`, async ({ page }) => {
+    await openPortal(page, theme)
+    const initial = await page.evaluate(() => {
+      const root = $('#watchFilmViewingActions')
+      const detail = { media_type: 'movie', viewing: { manual_state: 'watched' } }
+      root.classList.remove('hidden')
+      wireAdultTitleIntentActions(detail, root)
+      const visible = [...root.querySelectorAll('button')]
+        .filter(button => !button.classList.contains('hidden'))
+        .map(button => ({ action: button.dataset.viewingAction, label: button.querySelector('strong').textContent,
+          active: button.classList.contains('active') }))
+      $('#watchFilmOverview').textContent = 'Long synopsis '.repeat(120)
+      return {
+        compact: root.classList.contains('compact-film-intents'),
+        visible,
+        beforePlayback: Boolean(root.compareDocumentPosition(document.querySelector('.watch-film-actions'))
+          & Node.DOCUMENT_POSITION_FOLLOWING),
+        clamp: getComputedStyle($('#watchFilmOverview')).webkitLineClamp,
+      }
+    })
+    expect(initial).toEqual({
+      compact: true,
+      visible: [
+        { action: 'rewatch', label: 'Rewatch', active: false },
+        { action: 'up_next', label: 'Up Next', active: false },
+        { action: 'watched', label: 'Watched', active: true },
+      ],
+      beforePlayback: true,
+      clamp: '6',
+    })
+    const unwatched = await page.evaluate(() => {
+      const root = $('#watchFilmViewingActions')
+      syncAdultTitleButtons({ media_type: 'movie', viewing: {} }, root)
+      return [...root.querySelectorAll('button')]
+        .filter(button => !button.classList.contains('hidden'))
+        .map(button => button.dataset.viewingAction)
+    })
+    expect(unwatched).toEqual(['watchlist', 'up_next', 'watched'])
+  })
 }

@@ -552,11 +552,7 @@
     min-width: 0;
     flex: 1 1 140px;
   }
-
-  :is(.library-sheet-handle, .watch-sheet-handle, .remote-sheet-handle) {
-    display: none;
-  }
-
+`r`n
   .zero-state,
   .watch-empty,
   .downloads-empty,

@@ -31,6 +31,7 @@
       </div>
       <p id="watchFilmOverview" class="watch-film-overview"></p>
       <p id="watchFilmAvailability" class="watch-film-availability hidden"></p>
+      <div id="watchFilmViewingActions" class="adult-intent-actions hidden" data-viewing-intents="film"></div>
       <div class="watch-film-actions">
         <button id="watchFilmTv" type="button" class="watch-film-play">
           <span class="watch-action-icon"
@@ -58,7 +59,14 @@
           ><span>More</span>
         </button>
       </div>
-      <div id="watchFilmViewingActions" class="adult-intent-actions hidden" data-viewing-intents="film"></div>
+      <section id="watchFilmProviders" class="adult-provider-section hidden" aria-labelledby="watchFilmProvidersHeading">
+        <header>
+          <div><p class="watch-section-kicker">Available in Great Britain</p><h3 id="watchFilmProvidersHeading">Where to watch</h3></div>
+          <button id="watchFilmProviderRefresh" type="button">Refresh</button>
+        </header>
+        <div id="watchFilmProviderList" class="adult-provider-list"><p>Checking services…</p></div>
+        <p class="provider-attribution">Availability by TMDB and JustWatch. Direct destinations by Watchmode.</p>
+      </section>
     </div>
   </article>
 </dialog>
@@ -240,7 +248,6 @@
 </dialog>
 <dialog id="watchProgrammeMoveSheet" class="library-sheet">
   <section class="library-sheet-panel">
-    <span class="library-sheet-handle" aria-hidden="true"></span>
     <header class="library-sheet-head">
       <div>
         <p class="section-kicker">Move film</p>

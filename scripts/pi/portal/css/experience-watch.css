@@ -535,10 +535,10 @@ body.portal-v2 .watch-film-filters select {
 body.portal-v2 .adult-series-section .watch-library-head { justify-content: flex-start; }
 body.portal-v2 .adult-series-title-row { display: flex; align-items: center; gap: 8px; }
 body.portal-v2 .adult-series-create {
-  width: 44px;
-  min-width: 44px;
-  min-height: 44px;
-  height: 44px;
+  width: var(--experience-icon-control-size);
+  min-width: var(--experience-icon-control-size);
+  min-height: var(--experience-icon-control-size);
+  height: var(--experience-icon-control-size);
   display: inline-grid;
   place-items: center;
   border: 1px solid var(--experience-line);
@@ -547,7 +547,7 @@ body.portal-v2 .adult-series-create {
   color: var(--experience-muted);
   padding: 0;
 }
-body.portal-v2 .adult-series-create .icon { width: 15px; height: 15px; color: var(--experience-orange); }
+body.portal-v2 .adult-series-create .icon { width: var(--experience-icon-control-glyph); height: var(--experience-icon-control-glyph); color: var(--experience-orange); }
 body.portal-v2 .adult-series-create span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 body.portal-v2 .adult-series-rail {
   display: grid;

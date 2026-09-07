@@ -125,13 +125,13 @@ test('representative film menu fits the phone viewport', async ({ page }, testIn
   await expect(filmMenu).toHaveScreenshot('film-menu.png')
   const localIntents = page.locator('#watchProgrammeViewingActions')
   await expect(localIntents).toBeVisible()
-  await expect(localIntents.locator('[data-viewing-action]')).toHaveCount(4)
+  await expect(localIntents).toHaveClass(/compact-film-intents/)
+  await expect(localIntents.locator('[data-viewing-action]:not(.hidden)')).toHaveCount(3)
   const watchlistIntent = localIntents.locator('[data-viewing-action="watchlist"]')
   const wasWatchlisted = await watchlistIntent.getAttribute('aria-pressed') === 'true'
   await watchlistIntent.click()
   await expect(watchlistIntent).toHaveAttribute('aria-pressed', String(!wasWatchlisted))
-  await expect(watchlistIntent.locator('strong'))
-    .toHaveText(wasWatchlisted ? 'Add to Watchlist' : 'In your Watchlist')
+  await expect(watchlistIntent.locator('strong')).toHaveText('Watchlist')
   await page.getByRole('button', { name: 'Close programme details' }).click()
 })
 
@@ -155,6 +155,15 @@ test('Adult TV series cards and global-search results open their title sheet', a
   await expect(page.locator('#adultTitleSheet')).toBeVisible()
   await expect(page.locator('#adultTitleName')).toHaveText('Fixture Series')
   await expect(page.locator('#adultTitleIntents [data-viewing-action]')).toHaveCount(5)
+  const seriesHeader = await page.locator('#adultTitleSheet').evaluate(sheet => {
+    const panel = sheet.querySelector('.watch-film-panel').getBoundingClientRect()
+    const summary = sheet.querySelector('.watch-film-summary').getBoundingClientRect()
+    return {
+      left: Math.abs(summary.left - panel.left) <= 1,
+      right: Math.abs(summary.right - panel.right) <= 1,
+    }
+  })
+  expect(seriesHeader).toEqual({ left: true, right: true })
 
   await page.evaluate(() => {
     portalSheets.dismiss(document.querySelector('#adultTitleSheet'))

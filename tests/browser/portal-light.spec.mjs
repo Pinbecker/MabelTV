@@ -116,10 +116,10 @@ test('USB browser keeps compact controls and reviews the real transfer', async (
   const videoToggle = page.getByRole('button', { name: 'Select Finding Nemo.mp4 for copying' })
   for (const control of [folderToggle, videoToggle]) {
     const box = await control.boundingBox()
-    expect(box.width).toBeGreaterThanOrEqual(43.9)
-    expect(box.width).toBeLessThan(46)
-    expect(box.height).toBeGreaterThanOrEqual(43.9)
-    expect(box.height).toBeLessThan(46)
+    expect(box.width).toBeGreaterThanOrEqual(37.9)
+    expect(box.width).toBeLessThan(40)
+    expect(box.height).toBeGreaterThanOrEqual(37.9)
+    expect(box.height).toBeLessThan(40)
   }
   await folderToggle.click()
   await expect(page).toHaveScreenshot('light-usb-connected.png')

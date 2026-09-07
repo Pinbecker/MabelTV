@@ -88,6 +88,46 @@ function localFilmViewingDetail(film) {
   }
 }
 
+let localFilmProviderRevision = 0
+
+async function loadLocalFilmProviders(film, refresh = false) {
+  const revision = ++localFilmProviderRevision
+  const section = $('#watchFilmProviders')
+  const root = $('#watchFilmProviderList')
+  const detail = localFilmViewingDetail(film)
+  section.classList.remove('hidden')
+  const refreshButton = $('#watchFilmProviderRefresh')
+  refreshButton.classList.toggle('hidden', !detail)
+  if (!detail) {
+    root.innerHTML = '<p>Match this film’s metadata to see where it is available in Great Britain.</p>'
+    return
+  }
+  refreshButton.onclick = () => {
+    void loadLocalFilmProviders(film, true).catch(showError)
+  }
+  root.dataset.providerKey = detail.key
+  root.innerHTML = '<p>Checking streaming destinations…</p>'
+  try {
+    const [title, sources] = await Promise.all([
+      api(`/api/adult/title?media_type=movie&tmdb_id=${detail.tmdb_id}`),
+      api(`/api/adult/providers?media_type=movie&tmdb_id=${detail.tmdb_id}${refresh ? '&refresh=1' : ''}`),
+    ])
+    if (revision !== localFilmProviderRevision || root.dataset.providerKey !== detail.key) return
+    renderAdultProviderLinksInto(root, {
+      ...title,
+      on_mabeltv: true,
+      local: { kind: 'film', path: film.path },
+    }, sources, { localAction: null })
+  } catch (error) {
+    if (revision !== localFilmProviderRevision || root.dataset.providerKey !== detail.key) return
+    renderAdultProviderLinksInto(root, { ...detail, on_mabeltv: true }, { sources: [] },
+      { localAction: null })
+    const message = document.createElement('p')
+    message.textContent = error.message || 'Streaming destinations are unavailable right now.'
+    root.append(message)
+  }
+}
+
 async function wireLocalFilmViewingActions(root, film) {
   const detail = localFilmViewingDetail(film)
   root.classList.toggle('hidden', !detail)

@@ -606,6 +606,9 @@
       if (typeof wireLocalFilmViewingActions === 'function') {
         void wireLocalFilmViewingActions(viewingActions, film).catch(showError)
       } else viewingActions.classList.add('hidden')
+      if (typeof loadLocalFilmProviders === 'function') {
+        void loadLocalFilmProviders(film).catch(showError)
+      } else $('#watchFilmProviders').classList.add('hidden')
       const manageFilm = $('#watchFilmManage')
       manageFilm.classList.remove('hidden')
       manageFilm.onclick = () => {

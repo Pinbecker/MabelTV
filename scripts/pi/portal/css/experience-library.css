@@ -397,8 +397,8 @@ body.portal-v2 .usb-file-copy strong { font-size: 13px; }
 body.portal-v2 .usb-file-copy small { margin-top: 3px; color: var(--experience-dim); font-size: 11px; }
 body.portal-v2 .usb-file-chevron { width: 16px; height: 16px; color: var(--experience-dim); }
 body.portal-v2 .usb-file-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
-body.portal-v2 .usb-file-actions .usb-item-toggle { width: 44px; min-width: 44px; height: 44px; min-height: 44px; display: grid; place-items: center; flex: 0 0 44px; border: 1px solid var(--experience-line); border-radius: 50%; background: var(--experience-elevated); color: var(--experience-muted); padding: 0; }
-body.portal-v2 .usb-file-actions .icon { width: 17px; height: 17px; }
+body.portal-v2 .usb-file-actions .usb-item-toggle { width: var(--experience-icon-control-size); min-width: var(--experience-icon-control-size); height: var(--experience-icon-control-size); min-height: var(--experience-icon-control-size); display: grid; place-items: center; flex: 0 0 var(--experience-icon-control-size); border: 1px solid var(--experience-line); border-radius: var(--experience-icon-control-radius); background: var(--experience-elevated); color: var(--experience-muted); padding: 0; }
+body.portal-v2 .usb-file-actions .icon { width: var(--experience-icon-control-glyph); height: var(--experience-icon-control-glyph); }
 body.portal-v2 .usb-file-actions .usb-item-toggle[aria-pressed="true"] { border-color: var(--experience-orange); background: var(--experience-orange); color: #160a02; }
 
 body.portal-v2 .usb-selection-tray { position: sticky; bottom: calc(78px + env(safe-area-inset-bottom)); z-index: 8; display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 12px; margin-top: 16px; border: 1px solid color-mix(in srgb, var(--experience-orange) 42%, var(--experience-line)); border-radius: 15px; background: color-mix(in srgb, var(--experience-raised) 94%, transparent); box-shadow: 0 12px 32px rgba(0,0,0,.24); padding: 13px; backdrop-filter: blur(18px); }

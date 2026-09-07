@@ -169,11 +169,18 @@
     align-items: flex-end;
   }
 
+  body.portal-v2 .watch-library-admin { gap: 8px; }
   body.portal-v2 .watch-library-admin button {
-    width: 38px;
-    min-width: 38px;
+    width: var(--experience-icon-control-size);
+    min-width: var(--experience-icon-control-size);
+    min-height: var(--experience-icon-control-size);
+    height: var(--experience-icon-control-size);
+    justify-content: center;
+    border-radius: var(--experience-icon-control-radius);
+    background: var(--experience-elevated);
     padding: 0;
   }
+  body.portal-v2 .watch-library-admin .icon { width: var(--experience-icon-control-glyph); height: var(--experience-icon-control-glyph); }
 
   body.portal-v2 .watch-library-admin button span { display: none; }
 
@@ -346,7 +353,7 @@
   body.portal-v2 .usb-file-main { grid-template-columns: 40px minmax(0, 1fr) auto; }
   body.portal-v2 .usb-file-icon { width: 40px; height: 40px; }
   body.portal-v2 .usb-file-actions { width: auto; display: flex; padding-left: 0; }
-  body.portal-v2 .usb-file-actions .usb-item-toggle { width: 44px; min-width: 44px; padding: 0; }
+  body.portal-v2 .usb-file-actions .usb-item-toggle { width: var(--experience-icon-control-size); min-width: var(--experience-icon-control-size); padding: 0; }
   body.portal-v2 .usb-selection-tray { grid-template-columns: minmax(0, 1fr) auto; gap: 9px; padding: 11px; }
   body.portal-v2 .usb-selection-tray .usb-import-icon { display: none; }
   body.portal-v2 .usb-selection-tray h3 { font-size: 16px; }
