@@ -1,6 +1,6 @@
 'use strict'
 
-const SHELL_CACHE = 'mabeltv-shell-v144'
+const SHELL_CACHE = 'mabeltv-shell-v148'
 const SHELL_URLS = [
   '/',
   '/manifest.webmanifest',
@@ -219,9 +219,10 @@ self.addEventListener('activate', event => {
 })
 
 self.addEventListener('message', event => {
-  if (event.data?.type !== 'mabeltv-offline-access' || !event.source?.id) return
-  if (event.data.unlocked === true) unlockedClients.add(event.source.id)
-  else unlockedClients.delete(event.source.id)
+  if (event.data?.type !== 'mabeltv-offline-access') return
+  if (event.data.unlocked === true && event.source?.id) unlockedClients.add(event.source.id)
+  else unlockedClients.clear()
+  event.ports?.[0]?.postMessage({ type: 'mabeltv-offline-access', unlocked: event.data.unlocked === true })
 })
 
 function offlineClientAuthorised(event) {

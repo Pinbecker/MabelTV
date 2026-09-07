@@ -28,6 +28,10 @@ function seedVersionOneDatabase() {
   })
 }
 
+test.afterEach(async ({ request }) => {
+  await request.get('/__fixture/pin-required?value=0')
+})
+
 
 test('version-one downloads survive the PWA database and worker upgrade', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One authoritative service-worker run')
@@ -62,8 +66,9 @@ test('version-one downloads survive the PWA database and worker upgrade', async 
 
 test('the real worker serves family media and PIN-locks Adult media', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One authoritative service-worker run')
+  await page.request.get('/__fixture/pin-required?value=1')
   await page.goto('/')
-  await expect(page.locator('.app-shell')).toBeVisible()
+  await page.waitForFunction(() => Boolean(window.MabelOffline))
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready
     if (!navigator.serviceWorker.controller) location.reload()
@@ -71,7 +76,7 @@ test('the real worker serves family media and PIN-locks Adult media', async ({ p
   await page.waitForLoadState('load')
   await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller))
 
-  await page.evaluate(async () => {
+  const locked = await page.evaluate(async () => {
     await new Promise((resolve, reject) => {
       const request = indexedDB.open('mabeltv-offline-v1', 2)
       request.onerror = () => reject(request.error)
@@ -95,8 +100,9 @@ test('the real worker serves family media and PIN-locks Adult media', async ({ p
         transaction.onerror = () => reject(transaction.error)
       }
     })
-    window.MabelOffline.setMediaAccess(false)
+    return window.MabelOffline.setMediaAccess(false)
   })
+  expect(locked).toBe(true)
 
   await expect.poll(() => page.evaluate(async () => (await fetch('/offline-media/family-film')).status)).toBe(200)
   await expect.poll(() => page.evaluate(async () => (await fetch('/offline-media/adult-film')).status)).toBe(401)

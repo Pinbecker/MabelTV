@@ -53,21 +53,32 @@
 
     window.addEventListener('popstate', event => openRequestedView(event))
 
+    function startOfflineStorage() {
+      return Promise.resolve(window.MabelOffline?.initialise())
+        .then(() => {
+          offlineStorageReady = Boolean(window.MabelOffline)
+          return offlineStorageReady
+        })
+        .catch(error => {
+          offlineStorageError = error?.message || 'Offline storage could not start'
+          console.warn('Offline storage could not start', error)
+          return false
+        })
+    }
+
     async function initialise() {
-      try {
-        await window.MabelOffline?.initialise()
-        offlineStorageReady = Boolean(window.MabelOffline)
-        setOfflineProtectedAccess(false)
-      } catch (error) {
-        offlineStorageError = error?.message || 'Offline storage could not start'
-        console.warn('Offline storage could not start', error)
-      }
+      const offlineStartup = startOfflineStorage()
+      let offlineRequired = true
+      const syncOfflineState = () => offlineStartup.then(ready => {
+        if (!ready) return false
+        return syncOfflineSecurity(offlineRequired).then(() => true)
+      })
       try {
         const state = await api('/api/setup')
         configuredTvName = typeof state.tv_name === 'string' && state.tv_name.trim()
           ? state.tv_name.trim() : configuredTvName
         applyTvName()
-        await syncOfflineSecurity(state.portal_pin_required !== false)
+        offlineRequired = state.portal_pin_required !== false
         if (!state.configured) {
           recoveringOwner = Boolean(state.recovering_owner)
           setupChannels = state.default_channels.map(channel => ({ ...channel }))
@@ -108,7 +119,9 @@
             }
           }
         }
+        void syncOfflineState()
       } catch (error) {
+        await offlineStartup
         if (offlineStorageReady) {
           offlineMode = true
           setOfflineProtectedAccess(false)

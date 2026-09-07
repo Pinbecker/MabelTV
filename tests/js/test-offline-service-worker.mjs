@@ -187,6 +187,39 @@ test('offline client refuses to claim readiness outside a secure context', async
   )
 })
 
+test('offline client shares one in-progress worker initialisation', async () => {
+  let registrations = 0
+  let readinessChecks = 0
+  const database = { close() {} }
+  const context = vm.createContext({
+    Blob, CustomEvent: class {}, Error, Map, Promise, Response, TextEncoder, Uint8Array, URL,
+    clearTimeout, console, crypto: webcrypto, setTimeout,
+    fetch: async () => {
+      readinessChecks += 1
+      return new Response(JSON.stringify({ ready: true }), { status: 200 })
+    },
+    indexedDB: { open: () => request(database) },
+    navigator: {
+      serviceWorker: {
+        controller: { postMessage() {} },
+        getRegistration: async () => null,
+        register: async () => { registrations += 1; return {} },
+        ready: Promise.resolve({}),
+      },
+    },
+    window: { isSecureContext: true, indexedDB: {}, dispatchEvent() {} },
+  })
+  vm.runInContext(offlineSource, context, { filename: 'mabeltv-offline.js' })
+
+  const first = context.window.MabelOffline.initialise()
+  const second = context.window.MabelOffline.initialise()
+  assert.strictEqual(first, second)
+  await first
+
+  assert.equal(registrations, 1)
+  assert.equal(readinessChecks, 1)
+})
+
 test('service worker protects adult downloads but leaves family downloads available', async () => {
   const adultManifest = {
     id: 'adult-film', status: 'complete', size: 4, chunkSize: 4,
@@ -208,6 +241,13 @@ test('service worker protects adult downloads but leaves family downloads availa
   response = await dispatchedResponse(adultWorker.listeners.fetch, adultRequest, 'phone')
   assert.equal(response.status, 200)
 
+  adultWorker.listeners.message({
+    data: { type: 'mabeltv-offline-access', unlocked: false },
+    source: {},
+  })
+  response = await dispatchedResponse(adultWorker.listeners.fetch, adultRequest, 'phone')
+  assert.equal(response.status, 401)
+
   const familyManifest = {
     id: 'family-film', status: 'complete', size: 4, chunkSize: 4,
     mimeType: 'video/mp4', source: { kind: 'channel', channel: 1, file: 'Film.mp4' },
@@ -221,6 +261,18 @@ test('service worker protects adult downloads but leaves family downloads availa
     'another-phone',
   )
   assert.equal(response.status, 200)
+})
+
+test('service worker acknowledges each client access state change', () => {
+  const worker = workerContext({ id: 'unused' }, new Map())
+  let acknowledgement = null
+  worker.listeners.message({
+    data: { type: 'mabeltv-offline-access', unlocked: false },
+    source: {},
+    ports: [{ postMessage: value => { acknowledgement = value } }],
+  })
+  assert.equal(acknowledgement.type, 'mabeltv-offline-access')
+  assert.equal(acknowledgement.unlocked, false)
 })
 
 test('offline PIN verifier unlocks protected media without storing the PIN', async () => {

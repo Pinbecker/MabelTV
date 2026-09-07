@@ -8,6 +8,9 @@
   const SECURITY_ID = 'portal'
   const PIN_PATTERN = /^\d{4,8}$/
   const activeDownloads = new Map()
+  let initialisePromise = null
+  let mediaAccess = false
+  let mediaAccessRevision = 0
 
   function offlineSupportError() {
     if (!window.isSecureContext) {
@@ -108,8 +111,24 @@
   }
 
   function setMediaAccess(unlocked) {
-    navigator.serviceWorker?.controller?.postMessage({
-      type: 'mabeltv-offline-access', unlocked: Boolean(unlocked),
+    mediaAccess = Boolean(unlocked)
+    mediaAccessRevision += 1
+    const controller = navigator.serviceWorker?.controller
+    if (!controller) return Promise.resolve(false)
+    const payload = { type: 'mabeltv-offline-access', unlocked: mediaAccess }
+    if (typeof MessageChannel === 'undefined') {
+      controller.postMessage(payload)
+      return Promise.resolve(true)
+    }
+    return new Promise(resolve => {
+      const channel = new MessageChannel()
+      const timeout = setTimeout(() => resolve(false), 2000)
+      channel.port1.onmessage = () => {
+        clearTimeout(timeout)
+        channel.port1.close()
+        resolve(true)
+      }
+      controller.postMessage(payload, [channel.port2])
     })
   }
 
@@ -356,7 +375,7 @@
     window.dispatchEvent(new CustomEvent('mabeltv-downloads-changed'))
   }
 
-  async function initialise() {
+  async function initialiseStorage() {
     const unsupported = offlineSupportError()
     if (unsupported) throw unsupported
     if (!('indexedDB' in window)) throw new Error('Private device storage is not supported here')
@@ -386,10 +405,22 @@
       })
     }
 
+    const accessRevision = mediaAccessRevision
     const check = await fetch('/offline-ready', { cache: 'no-store' })
     if (!check.ok) {
       throw new Error('The MabelTV offline player did not finish starting. Close and reopen the app, then try again.')
     }
+    if (accessRevision === mediaAccessRevision) setMediaAccess(mediaAccess)
+  }
+
+  function initialise() {
+    if (initialisePromise) return initialisePromise
+    const pending = initialiseStorage()
+    initialisePromise = pending
+    pending.catch(() => {
+      if (initialisePromise === pending) initialisePromise = null
+    })
+    return pending
   }
 
   window.MabelOffline = {

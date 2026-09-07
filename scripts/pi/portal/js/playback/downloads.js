@@ -22,6 +22,14 @@
       const target = $('#downloadsGrid')
       const root = document.createElement('div')
       $('#offlineModeBanner').classList.toggle('hidden', navigator.onLine && !offlineMode)
+      if (!offlineStorageReady && window.MabelOffline) {
+        try {
+          await window.MabelOffline.initialise()
+          offlineStorageReady = true
+        } catch (error) {
+          offlineStorageError = error?.message || 'Offline storage could not start'
+        }
+      }
       if (!offlineStorageReady || !window.MabelOffline) {
         root.innerHTML = offlineSetupMarkup()
         target.replaceChildren(...root.childNodes)
