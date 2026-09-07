@@ -6,7 +6,6 @@
   let statusTimer = null
   let refreshPromise = null
   let state = { configured: false, connected: false, power: 'off', muted: false }
-  let mabelState = { standby: true }
   const pointerContacts = new Map()
   let pointerQueue = { action: '', dx: 0, dy: 0 }
   let pointerTimer = null
@@ -43,18 +42,18 @@
     })
   }
 
-  function renderStatus(value, liveValue = mabelState) {
+  function renderSharedPowerState(liveValue = liveTvState) {
+    const mabelTv = mabelTvDisplayState(liveValue)
+    const connectedTv = connectedTvDisplayState(liveValue)
+    MabelPortalUI.setPowerStatus($('#lgMabelTvLed'), $('#lgMabelTvText'), mabelTv)
+    MabelPortalUI.setPowerStatus($('#lgTvConnectionLed'), $('#lgTvConnectionText'), connectedTv)
+  }
+
+  function renderStatus(value) {
     state = { ...state, ...value }
-    mabelState = { ...mabelState, ...liveValue }
     const on = value.connected === true && value.power === 'on'
-    const mabelOn = mabelState.standby === true
-      ? false : mabelState.standby === false || mabelState.available === true
     const heading = $('#lgTvHeading')
     const detail = $('#lgTvDetail')
-    const mabelText = $('#lgMabelTvText')
-    const mabelLed = $('#lgMabelTvLed')
-    const connectionText = $('#lgTvConnectionText')
-    const connectionLed = $('#lgTvConnectionLed')
     const mute = $('#lgMute')
 
     if (!value.configured) {
@@ -70,8 +69,7 @@
         .filter(Boolean).join(' · ')
     }
 
-    MabelPortalUI.setPowerStatus(mabelLed, mabelText, mabelOn ? 'on' : 'standby')
-    MabelPortalUI.setPowerStatus(connectionLed, connectionText, on ? 'on' : 'standby')
+    renderSharedPowerState()
     setInteractiveState(on)
 
     const powerLabel = on ? 'Turn connected TV off' : 'Turn connected TV on'
@@ -92,15 +90,12 @@
 
   async function refresh() {
     if (refreshPromise) return refreshPromise
-    refreshPromise = Promise.all([
-      api('/api/lg-tv/status').catch(() => ({
+    refreshPromise = api('/api/lg-tv/status').catch(() => ({
         configured: state.configured,
         connected: false,
         power: 'off',
         available_apps: [],
-      })),
-      api('/api/live').catch(() => mabelState),
-    ]).then(([value, liveValue]) => renderStatus(value, liveValue))
+      })).then(value => renderStatus(value))
       .finally(() => { refreshPromise = null })
     return refreshPromise
   }
@@ -244,7 +239,10 @@
     })
   }
 
+  window.renderLgTvPowerState = renderSharedPowerState
+
   window.startLgTvRemote = () => {
+    renderSharedPowerState()
     refresh()
     if (!statusTimer) statusTimer = window.setInterval(refresh, STATUS_INTERVAL_MS)
   }

@@ -121,6 +121,15 @@
       return MabelPortalUI.powerStatus('unavailable')
     }
 
+    function syncPortalPowerButton(state) {
+      const button = $('#openPortalPower')
+      if (!button) return
+      const waking = state?.standby === true
+      button.disabled = false
+      button.setAttribute('aria-label', waking ? 'Turn MabelTV on' : 'MabelTV power options')
+      button.title = waking ? 'Turn MabelTV on' : 'MabelTV power options'
+    }
+
     function renderRemoteState(state) {
       const available = state.available === true
       const locked = state.remote_locked === true
@@ -189,6 +198,7 @@
       if ($('#remotePause')) $('#remotePause').disabled = !available || paused
       if ($('#openLiveChannels')) $('#openLiveChannels').disabled = false
       $('#openRemotePower').disabled = false
+      syncPortalPowerButton(state)
       updateLiveChannelSelection(state)
       const waking = state.standby === true
       $('#remotePowerTitle').textContent = waking ? 'Turn on MabelTV?' : 'Put MabelTV in standby?'
@@ -221,6 +231,7 @@
         : 'Live preview'
       if ($('#liveState')) $('#liveState').textContent = available ? (state.paused ? 'Paused' : 'Live') : 'Offline'
       renderRemoteState(state)
+      window.renderLgTvPowerState?.(state)
     }
 
     async function refreshLiveTv(restartStream = false) {
@@ -250,7 +261,7 @@
       const connectedState = $('#homeConnectedTvState')
       const connectedDot = $('#homeConnectedTvDot')
       MabelPortalUI.setPowerStatus(connectedDot, connectedState, connectedTv)
-      $('#homePowerToggle').textContent = standby ? 'Turn On' : 'Turn Off'
+      syncPortalPowerButton(state)
       const nowPlayingMeta = $('#homeNowPlayingMeta')
       if (standby) {
         $('#homeNowPlayingTitle').textContent = 'Nothing playing'

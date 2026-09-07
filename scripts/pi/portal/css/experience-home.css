@@ -141,27 +141,6 @@ body.portal-v2 .home-power-statuses strong {
   font-weight: 800;
 }
 
-body.portal-v2 .home-spotlight-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 20px;
-}
-
-body.portal-v2 .home-spotlight-actions button {
-  min-height: 50px;
-  border-radius: 7px;
-  padding: 0 22px;
-}
-
-body.portal-v2 .home-power-toggle {
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  background: rgba(9, 9, 13, 0.5);
-  color: #fff;
-  font-weight: 750;
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-}
-
 body.portal-v2 .home-feed {
   position: relative;
   z-index: 3;

@@ -258,7 +258,26 @@ body.portal-v2 .mobile-head {
     display: flex;
     align-items: center;
     justify-content: flex-end;
+    gap: 8px;
     min-width: 0;
+  }
+
+  body.portal-v2 .mobile-header-power {
+    display: inline-grid;
+    place-items: center;
+    width: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    border: 1px solid var(--experience-line);
+    border-radius: 50%;
+    background: var(--experience-raised);
+    color: var(--experience-orange);
+    padding: 0;
+  }
+
+  body.portal-v2 .mobile-header-power .icon {
+    width: 19px;
+    height: 19px;
   }
 
   body.portal-v2 .mobile-remote-switcher {
@@ -277,6 +296,8 @@ body.portal-v2 .mobile-head {
   body.portal-v2.tv-remote-mode .mobile-remote-switcher {
     display: grid;
   }
+
+  body.portal-v2.tv-remote-mode .mobile-header-power { display: none; }
 
   body.portal-v2 .mobile-health {
     display: inline-flex;

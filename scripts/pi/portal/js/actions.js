@@ -601,7 +601,7 @@ let managementBusy = false
       }
       renderRemoteState(liveTvState)
       const turningOn = liveTvState.standby === true
-      if (connectedTvAlreadyAtTarget(liveTvState, turningOn)) {
+      if (trigger?.id !== 'openPortalPower' && connectedTvAlreadyAtTarget(liveTvState, turningOn)) {
         await applyPortalPower(false, trigger)
         return
       }
@@ -628,6 +628,7 @@ let managementBusy = false
     }
 
     $('#openRemotePower').onclick = openPortalPowerSheet
+    $('#openPortalPower').onclick = openPortalPowerSheet
     $('#confirmRemotePower').onclick = () => applyPortalPower(true, $('#confirmRemotePower'))
     $('#mabelOnlyRemotePower').onclick = () => applyPortalPower(false, $('#mabelOnlyRemotePower'))
     portalSheets.wire($('#liveChannelSheet'), {
@@ -648,7 +649,6 @@ let managementBusy = false
       } catch (error) { notice(error.message, true) }
       finally { setTimeout(() => { button.disabled = false }, 450) }
     }
-    $('#homePowerToggle').onclick = openPortalPowerSheet
     $('#portalPinForm').onsubmit = async event => {
       event.preventDefault()
       const required = library?.owner?.portal_pin_required !== false
