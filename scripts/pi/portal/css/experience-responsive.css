@@ -334,20 +334,19 @@
 
   body.portal-v2 .adult-total strong { font-size: 23px; }
 
-  body.portal-v2 .usb-stage-heading > span:last-child { display: none; }
+  body.portal-v2 .usb-stage-actions > span { display: none; }
   body.portal-v2 .usb-drive-list { grid-template-columns: 1fr; }
   body.portal-v2 .usb-drive { grid-template-columns: 40px minmax(0, 1fr) auto; }
   body.portal-v2 .usb-drive-icon { width: 40px; height: 40px; }
   body.portal-v2 .usb-browser { margin-top: 20px; }
   body.portal-v2 .usb-browser-head { padding: 14px 12px; }
   body.portal-v2 .usb-eject { padding: 0 9px; }
-  body.portal-v2 .usb-toolbar { flex-wrap: wrap; padding: 8px; }
-  body.portal-v2 #usbSelectionCount { width: 100%; margin: 0; padding: 0 5px 3px; }
+  body.portal-v2 .usb-browser-head { gap: 8px; }
   body.portal-v2 .usb-file { grid-template-columns: minmax(0, 1fr) auto; padding: 10px; }
   body.portal-v2 .usb-file-main { grid-template-columns: 40px minmax(0, 1fr) auto; }
   body.portal-v2 .usb-file-icon { width: 40px; height: 40px; }
   body.portal-v2 .usb-file-actions { width: auto; display: flex; padding-left: 0; }
-  body.portal-v2 .usb-file-actions :is(.usb-item-toggle, .usb-file-more) { width: 44px; min-width: 44px; padding: 0; }
+  body.portal-v2 .usb-file-actions .usb-item-toggle { width: 44px; min-width: 44px; padding: 0; }
   body.portal-v2 .usb-selection-tray { grid-template-columns: minmax(0, 1fr) auto; gap: 9px; padding: 11px; }
   body.portal-v2 .usb-selection-tray .usb-import-icon { display: none; }
   body.portal-v2 .usb-selection-tray h3 { font-size: 16px; }

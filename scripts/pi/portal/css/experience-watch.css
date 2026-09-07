@@ -7,6 +7,8 @@ body.portal-v2 .watch-title {
   margin-bottom: 22px;
 }
 
+body.portal-v2 .watch-title > div:first-child { cursor: pointer; }
+
 body.portal-v2 .watch-library-admin {
   display: flex;
   flex-direction: row;

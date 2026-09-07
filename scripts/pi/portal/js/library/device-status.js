@@ -2,13 +2,6 @@
 
     $('#usbRefresh').onclick = () => refreshUsb().catch(error => notice(error.message, true))
     $('#usbUp').onclick = () => browseUsb(usbPath.split('/').slice(0, -1).join('/')).catch(error => notice(error.message, true))
-    $('#usbSelectAll').onclick = () => {
-      const videos = usbEntries.filter(entry => entry.type === 'video')
-      const allSelected = videos.length > 0 && videos.every(entry => usbSelection.has(entry.path))
-      videos.forEach(entry => allSelected ? usbSelection.delete(entry.path) : usbSelection.add(entry.path))
-      renderUsbFiles()
-    }
-
     function usbTransferPayload(action) {
       const payload = {
         action, volume: usbVolume, paths: [...usbSelection], target: $('#usbTarget').value,

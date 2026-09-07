@@ -143,9 +143,23 @@
       renderHomeLibrary()
     }
 
-    $('#watchMabelTab').onclick = () => { remoteKind = 'channel'; renderRemoteViewing() }
-    $('#watchAdultTab').onclick = () => { remoteKind = 'adult'; renderRemoteViewing() }
-    $('#watchDownloadsTab').onclick = () => { remoteKind = 'downloads'; renderRemoteViewing() }
+    function chooseWatchLibrary(kind, returnToTop = false) {
+      remoteKind = kind
+      renderRemoteViewing()
+      if (returnToTop) scrollPortalToTop()
+    }
+
+    $('#watchMabelTab').onclick = () => chooseWatchLibrary('channel', true)
+    $('#watchAdultTab').onclick = () => chooseWatchLibrary('adult', true)
+    $('#watchDownloadsTab').onclick = () => chooseWatchLibrary('downloads')
+    const watchTitle = $('#view-watch .watch-title > div:first-child')
+    watchTitle.onclick = () => scrollPortalToTop()
+    watchTitle.onkeydown = event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault()
+        scrollPortalToTop()
+      }
+    }
     window.addEventListener('mabeltv-downloads-changed', () => {
       if (remoteKind === 'downloads') renderDownloads().catch(() => {})
     })

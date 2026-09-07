@@ -106,15 +106,6 @@
       else setPortalScrollTop(portalScrollTop() + $('#usbBrowser').getBoundingClientRect().top - 72)
     }
 
-    function usbBreadcrumbButton(label, path, first = false) {
-      const button = document.createElement('button')
-      button.type = 'button'
-      button.className = 'usb-breadcrumb-button'
-      if (first) button.append(librarySignalIcon('signal-hard-drive'))
-      button.append(document.createTextNode(label))
-      button.onclick = () => browseUsb(path).catch(error => notice(error.message, true))
-      return button
-    }
 
     function toggleUsbSelection(entry) {
       if (usbSelection.has(entry.path)) usbSelection.delete(entry.path)
@@ -142,34 +133,16 @@
       const target = $('#usbFileList')
       const root = document.createDocumentFragment()
       const volume = usbState.volumes.find(item => item.id === usbVolume)
-      const breadcrumb = $('#usbBreadcrumb')
-      breadcrumb.replaceChildren()
       if (volume) {
         const parts = usbPath.split('/').filter(Boolean)
-        $('#usbFolderTitle').textContent = parts.at(-1) || volume.label
-        $('#usbPathContext').textContent = parts.length
-          ? `${volume.label} · ${parts.slice(0, -1).join(' / ') || 'Drive root'}` : 'Drive root'
-        breadcrumb.append(usbBreadcrumbButton(volume.label, '', true))
-        parts.forEach((part, index) => {
-          const divider = document.createElement('span')
-          divider.className = 'usb-breadcrumb-divider'
-          divider.textContent = '›'
-          breadcrumb.append(divider, usbBreadcrumbButton(part, parts.slice(0, index + 1).join('/')))
-        })
+        $('#usbFolderTitle').textContent = parts.at(-1) || 'Drive root'
+        $('#usbPathContext').textContent = parts.length > 1
+          ? parts.slice(0, -1).join(' / ') : 'Browse drive'
       } else {
-        const empty = document.createElement('span')
-        empty.textContent = 'Choose a connected drive to begin'
-        breadcrumb.append(empty)
         $('#usbFolderTitle').textContent = 'Choose a drive'
         $('#usbPathContext').textContent = 'Browse drive'
       }
       $('#usbUp').disabled = !usbVolume || !usbPath
-      const visibleVideos = usbEntries.filter(entry => entry.type === 'video')
-      const allVisibleSelected = visibleVideos.length > 0
-        && visibleVideos.every(entry => usbSelection.has(entry.path))
-      $('#usbSelectAll').disabled = visibleVideos.length === 0
-      $('#usbSelectAll').querySelector('span').textContent = allVisibleSelected
-        ? 'Clear visible selection' : 'Select visible videos'
       $('#usbEject').classList.toggle('hidden', !usbVolume)
       $('#usbTruncated').classList.toggle('hidden', !usbBrowseTruncated)
       if (!usbEntries.length) root.append(portalEmptyState({
@@ -205,15 +178,6 @@
         select.append(librarySignalIcon(usbSelection.has(entry.path) ? 'signal-check' : 'signal-plus'))
         select.onclick = () => toggleUsbSelection(entry)
         actions.append(select)
-        if (entry.type === 'video') {
-          const more = document.createElement('button')
-          more.type = 'button'
-          more.className = 'usb-file-more'
-          more.setAttribute('aria-label', `More options for ${entry.name}`)
-          more.append(librarySignalIcon('signal-ellipsis'))
-          more.onclick = () => openUsbFileActions(entry)
-          actions.append(more)
-        }
         row.append(main, actions)
         root.append(row)
       })

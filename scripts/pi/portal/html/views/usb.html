@@ -5,19 +5,15 @@
         </header>
 
         <section class="usb-flow">
-          <header class="library-intro usb-intro"><div><p class="section-kicker">External storage</p><h2>USB videos</h2><p>Choose a drive, browse its folders, then select videos to copy safely into MabelTV.</p></div></header>
-
           <div class="usb-drive-stage">
-            <div class="usb-stage-heading"><span class="usb-stage-title"><svg class="icon"><use href="/portal/icons.svg#signal-hard-drive"/></svg><strong>Connected drives</strong></span><span>Original files always stay on the drive</span></div>
+            <div class="usb-stage-heading"><span class="usb-stage-title"><svg class="icon"><use href="/portal/icons.svg#signal-hard-drive"/></svg><strong>Connected drives</strong></span><div class="usb-stage-actions"><span>Original files always stay on the drive</span><button id="usbEject" type="button" class="usb-eject hidden"><svg class="icon"><use href="/portal/icons.svg#signal-eject"/></svg><span>Eject safely</span></button></div></div>
             <div id="usbDriveList" class="usb-drive-list"><div class="empty">Connect a USB drive, then scan.</div></div>
           </div>
 
           <div id="usbJob" class="usb-job callout hidden"><div><strong id="usbJobTitle">USB transfer active</strong><p id="usbJobText">Follow progress from Activity.</p></div><button id="usbViewActivity" type="button" class="secondary">View Activity</button><progress id="usbJobProgress" class="hidden" max="1" value="0"></progress></div>
 
           <section id="usbBrowser" class="usb-browser">
-            <header class="usb-browser-head"><button id="usbUp" type="button" class="usb-browser-back" disabled aria-label="Go back one folder"><svg class="icon"><use href="/portal/icons.svg#signal-arrow-left"/></svg></button><div class="usb-browser-location"><p id="usbPathContext" class="section-kicker">Browse drive</p><h3 id="usbFolderTitle">Choose a drive</h3></div><button id="usbEject" type="button" class="usb-eject hidden"><svg class="icon"><use href="/portal/icons.svg#signal-eject"/></svg><span>Eject safely</span></button></header>
-            <nav id="usbBreadcrumb" class="usb-breadcrumb usb-path-context" aria-label="Current USB folder"><span>Select a connected drive to begin</span></nav>
-            <div class="usb-toolbar"><button id="usbSelectAll" type="button" disabled><svg class="icon"><use href="/portal/icons.svg#signal-check"/></svg><span>Select visible videos</span></button><span id="usbSelectionCount">Nothing selected</span></div>
+            <header class="usb-browser-head"><button id="usbUp" type="button" class="usb-browser-back" disabled aria-label="Go back one folder"><svg class="icon"><use href="/portal/icons.svg#signal-arrow-left"/></svg></button><div class="usb-browser-location"><p id="usbPathContext" class="section-kicker">Browse drive</p><h3 id="usbFolderTitle">Choose a drive</h3></div><span id="usbSelectionCount">Nothing selected</span></header>
             <p id="usbTruncated" class="usb-truncated hidden">This folder contains more than 500 items. Open a smaller folder to see everything.</p>
             <div id="usbFileList" class="usb-file-list"><div class="empty"><strong>No drive selected</strong>Select a connected USB drive to browse its videos.</div></div>
           </section>

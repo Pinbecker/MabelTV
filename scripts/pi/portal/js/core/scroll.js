@@ -39,6 +39,15 @@ function setPortalScrollTop(value) {
 
 function resetViewScroll() { setPortalScrollTop(0) }
 
+function scrollPortalToTop() {
+  cancelPortalScrollSettlement()
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    resetViewScroll()
+    return
+  }
+  window.scrollTo({ top: 0, left: window.scrollX, behavior: 'smooth' })
+}
+
 function portalAnchorTop(element) {
   return element.getBoundingClientRect().top
 }
