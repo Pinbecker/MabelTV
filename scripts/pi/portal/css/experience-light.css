@@ -233,6 +233,12 @@ html[data-experience-theme="light"] body.portal-experience .watch-film-poster {
   box-shadow: 0 18px 42px rgba(20, 27, 39, 0.22);
 }
 
+html[data-experience-theme="light"] body.portal-experience .watch-film-summary {
+  background: var(--experience-raised);
+  box-shadow: 0 12px 18px rgba(20, 27, 39, 0.16);
+  color: var(--experience-ink);
+}
+
 html[data-experience-theme="light"] body.portal-experience :is(.watch-film-eyebrow, .watch-film-overview) {
   color: var(--experience-muted);
 }

@@ -526,6 +526,24 @@
       }, watchFilmTitle(film))
     }
 
+    function configureWatchFilmExpansion(content, control) {
+      const label = control.querySelector('span')
+      content.classList.remove('is-expanded')
+      control.classList.add('hidden')
+      control.setAttribute('aria-expanded', 'false')
+      label.textContent = 'More'
+      control.onclick = () => {
+        const expanded = !content.classList.contains('is-expanded')
+        content.classList.toggle('is-expanded', expanded)
+        control.setAttribute('aria-expanded', String(expanded))
+        label.textContent = expanded ? 'Less' : 'More'
+      }
+      requestAnimationFrame(() => {
+        const expandable = content.scrollHeight > content.clientHeight + 1
+        control.classList.toggle('hidden', !expandable)
+      })
+    }
+
     function openWatchFilmSheet(film, context = 'library', returnTo = null) {
       selectedWatchFilm = film
       const metadata = film.metadata || {}
@@ -547,6 +565,8 @@
         metaRoot.append(span)
       })
       $('#watchFilmOverview').textContent = metadata.overview || 'A film from your private MabelTV library.'
+      configureWatchFilmExpansion($('#watchFilmTitle'), $('#watchFilmTitleExpand'))
+      configureWatchFilmExpansion($('#watchFilmOverview'), $('#watchFilmOverviewExpand'))
       const progressRoot = $('#watchFilmProgress')
       progressRoot.classList.toggle('hidden', !resumable)
       $('#watchFilmProgressLabel').textContent = resumable ? `${Math.round(progress)}% · ${watchTimeLabel(film.remote_position)} watched` : ''

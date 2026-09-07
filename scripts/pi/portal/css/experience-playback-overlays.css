@@ -91,7 +91,7 @@ body.portal-experience .watch-film-summary {
   top: 0;
   display: grid;
   grid-template-columns: 116px minmax(0, 1fr);
-  align-items: end;
+  align-items: start;
   gap: 18px;
   margin: 0 calc(var(--experience-sheet-padding) * -1);
   border-bottom: 1px solid var(--experience-line);
@@ -195,6 +195,31 @@ body.portal-experience .watch-film-overview {
   line-height: 1.6;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 6;
+}
+
+body.portal-experience :is(.portal-sheet-title-row > h2, .watch-film-overview).is-expanded {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+}
+
+body.portal-experience .watch-film-expand {
+  min-height: 0;
+  margin-top: 5px;
+  border: 0;
+  background: transparent;
+  color: var(--experience-orange);
+  padding: 0;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+body.portal-experience .watch-film-expand.hidden { display: none; }
+body.portal-experience .watch-film-title-expand { margin-top: 4px; }
+body.portal-experience .watch-film-expand:focus-visible {
+  outline: 0;
+  text-decoration: underline;
 }
 
 body.portal-experience .compact-film-intents + .watch-film-actions {

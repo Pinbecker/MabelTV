@@ -342,16 +342,30 @@ body.portal-v2 .adult-intent-actions.compact-film-intents {
   margin-top: 18px;
 }
 body.portal-v2 .adult-intent-actions.compact-film-intents button {
-  grid-template-columns: 18px minmax(0, 1fr);
+  display: flex;
+  align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 52px;
-  padding: 6px;
+  min-height: 44px;
+  padding: 3px 6px;
   text-align: center;
 }
-body.portal-v2 .adult-intent-actions.compact-film-intents button > span { display: block; }
+body.portal-v2 .adult-intent-actions.compact-film-intents .icon { width: 16px; height: 16px; flex: 0 0 16px; }
+body.portal-v2 .adult-intent-actions.compact-film-intents button > span {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  height: 16px;
+}
 body.portal-v2 .adult-intent-actions.compact-film-intents small { display: none; }
-body.portal-v2 .adult-intent-actions.compact-film-intents strong { font-size: 11px; white-space: nowrap; }
+body.portal-v2 .adult-intent-actions.compact-film-intents strong {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 16px;
+  white-space: nowrap;
+}
+body.portal-v2 .adult-intent-actions.compact-film-intents button.hidden { display: none; }
 body.portal-v2 .adult-intent-actions.compact-film-intents button.active {
   background: color-mix(in srgb, var(--experience-accent) 12%, var(--experience-soft));
 }

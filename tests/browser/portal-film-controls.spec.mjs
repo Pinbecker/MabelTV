@@ -159,6 +159,7 @@ for (const theme of ['light', 'dark']) {
           && Math.abs(summaryBox.right - panelBox.right) <= 1,
         dividerGap: Number.parseFloat(getComputedStyle(summary).paddingBottom),
         position: getComputedStyle(summary).position,
+        surface: getComputedStyle(summary).backgroundColor,
         pinned: Math.abs(summaryBox.top - panelBox.top) <= 1,
         covered: summary.contains(visibleElement),
       }
@@ -168,6 +169,7 @@ for (const theme of ['light', 'dark']) {
       fullBleed: true,
       dividerGap: 16,
       position: 'sticky',
+      surface: theme === 'light' ? 'rgb(255, 255, 255)' : 'rgba(10, 10, 14, 0.96)',
       pinned: true,
       covered: true,
     })
@@ -204,7 +206,7 @@ for (const theme of ['light', 'dark']) {
       root.classList.remove('hidden')
       wireAdultTitleIntentActions(detail, root)
       const visible = [...root.querySelectorAll('button')]
-        .filter(button => !button.classList.contains('hidden'))
+        .filter(button => getComputedStyle(button).display !== 'none')
         .map(button => ({ action: button.dataset.viewingAction, label: button.querySelector('strong').textContent,
           active: button.classList.contains('active') }))
       $('#watchFilmOverview').textContent = 'Long synopsis '.repeat(120)
@@ -217,6 +219,19 @@ for (const theme of ['light', 'dark']) {
         compactHeight: Number.parseFloat(getComputedStyle(root.querySelector('button')).minHeight),
         actionFits: Number.parseFloat(getComputedStyle(root.querySelector('button')).minHeight)
           <= Number.parseFloat(getComputedStyle($('#watchFilmTv')).minHeight),
+        compactControls: [...root.querySelectorAll('button:not(.hidden)')].map(button => {
+          const style = getComputedStyle(button)
+          const icon = button.querySelector('.icon').getBoundingClientRect()
+          const label = button.querySelector('strong').getBoundingClientRect()
+          return {
+            display: style.display,
+            alignItems: style.alignItems,
+            justifyContent: style.justifyContent,
+            weight: getComputedStyle(button.querySelector('strong')).fontWeight,
+            verticallyAligned: Math.abs(icon.top + icon.height / 2
+              - (label.top + label.height / 2)) <= 1,
+          }
+        }),
         firstDivider: {
           margin: Number.parseFloat(getComputedStyle(document.querySelector('.watch-film-actions')).marginTop),
           padding: Number.parseFloat(getComputedStyle(document.querySelector('.watch-film-actions')).paddingTop),
@@ -241,8 +256,13 @@ for (const theme of ['light', 'dark']) {
       ],
       beforePlayback: true,
       clamp: '6',
-      compactHeight: 52,
+      compactHeight: 44,
       actionFits: true,
+      compactControls: [
+        { display: 'flex', alignItems: 'center', justifyContent: 'center', weight: '400', verticallyAligned: true },
+        { display: 'flex', alignItems: 'center', justifyContent: 'center', weight: '400', verticallyAligned: true },
+        { display: 'flex', alignItems: 'center', justifyContent: 'center', weight: '400', verticallyAligned: true },
+      ],
       firstDivider: { margin: 16, padding: 16 },
       moreDivider: { column: '1 / -1', margin: 24, offset: -17 },
       providersDivider: { margin: 16, padding: 16 },
@@ -255,6 +275,43 @@ for (const theme of ['light', 'dark']) {
         .map(button => button.dataset.viewingAction)
     })
     expect(unwatched).toEqual(['watchlist', 'up_next', 'watched'])
+  })
+
+  test(`${theme} truncated film titles and synopses offer an expansion control`, async ({ page }) => {
+    await openPortal(page, theme)
+    await filmFixture(page)
+    await page.evaluate(() => {
+      const film = {
+        ...library.adult_library[0],
+        metadata: {
+          ...library.adult_library[0].metadata,
+          title: 'Captain America and the extremely long title that needs more room on an iPhone screen',
+          overview: 'This deliberately long synopsis needs to remain compact until someone asks to read it. '.repeat(16),
+        },
+      }
+      openWatchFilmSheet(film)
+    })
+    const titleControl = page.locator('#watchFilmTitleExpand')
+    const overviewControl = page.locator('#watchFilmOverviewExpand')
+    await expect(titleControl).toBeVisible()
+    await expect(overviewControl).toBeVisible()
+    await titleControl.click()
+    await expect(page.locator('#watchFilmTitle')).toHaveClass(/is-expanded/)
+    await expect(titleControl).toHaveAttribute('aria-expanded', 'true')
+    await expect(titleControl).toHaveText('Less')
+    const headerAlignment = await page.evaluate(() => {
+      const poster = $('#watchFilmPoster').getBoundingClientRect()
+      const heading = document.querySelector('.watch-film-heading').getBoundingClientRect()
+      return Math.abs(poster.top - heading.top) <= 1
+    })
+    expect(headerAlignment).toBe(true)
+    await overviewControl.click()
+    await expect(page.locator('#watchFilmOverview')).toHaveClass(/is-expanded/)
+    await expect(overviewControl).toHaveAttribute('aria-expanded', 'true')
+    await expect(overviewControl).toHaveText('Less')
+    await overviewControl.click()
+    await expect(page.locator('#watchFilmOverview')).not.toHaveClass(/is-expanded/)
+    await expect(overviewControl).toHaveText('More')
   })
 
   test(`${theme} viewing actions update before their background refresh completes`, async ({ page }) => {
