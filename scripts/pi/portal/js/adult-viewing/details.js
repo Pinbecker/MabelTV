@@ -1,5 +1,243 @@
 'use strict'
 
+let adultPersonOpenRevision = 0
+
+function adultExactDateLabel(value) {
+  const source = String(value || '').slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(source)) return ''
+  const date = new Date(`${source}T00:00:00Z`)
+  if (Number.isNaN(date.getTime())) return ''
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC',
+  }).format(date)
+}
+
+function renderAdultTitleMetadata(root, detail, { facts = [], creditLabel = '', credits = [] } = {}) {
+  root.replaceChildren()
+  root.classList.add('is-title-facts')
+  facts.filter(fact => fact?.value).forEach(fact => {
+    const span = document.createElement('span')
+    span.className = 'adult-title-fact'
+    const label = document.createElement('small')
+    label.textContent = fact.label
+    const value = document.createElement('strong')
+    value.textContent = fact.value
+    span.append(label, value)
+    root.append(span)
+  })
+  const rating = Number(detail.rating || 0)
+  if (rating > 0) {
+    const fact = document.createElement('span')
+    fact.className = 'adult-title-fact adult-title-rating'
+    const mark = document.createElement('small')
+    const logo = document.createElement('i')
+    logo.className = 'adult-title-rating-mark'
+    logo.textContent = 'TMDB'
+    mark.append(logo)
+    const score = document.createElement('strong')
+    score.textContent = rating.toFixed(1)
+    fact.title = detail.rating_count
+      ? `${Number(detail.rating_count).toLocaleString('en-GB')} TMDB ratings` : 'TMDB user score'
+    fact.append(mark, score)
+    root.append(fact)
+  }
+  if (creditLabel && credits.length) {
+    const credit = document.createElement('span')
+    credit.className = 'adult-title-fact adult-title-credit'
+    const label = document.createElement('small')
+    label.textContent = creditLabel
+    const names = document.createElement('strong')
+    names.textContent = credits.map(name => String(name).trim().replace(/\s+/g, '\u00a0')).join(', ')
+    credit.append(label, names)
+    root.append(credit)
+  }
+}
+
+function clearAdultTitleEnrichment(prefix) {
+  for (const suffix of ['Franchise', 'Cast']) {
+    $(`#${prefix}${suffix}`)?.classList.add('hidden')
+    $(`#${prefix}${suffix}Rail`)?.replaceChildren()
+  }
+}
+
+function renderAdultTitleEnrichment(detail, prefix, openTitle) {
+  clearAdultTitleEnrichment(prefix)
+  const franchise = $(`#${prefix}Franchise`)
+  const franchiseName = $(`#${prefix}FranchiseName`)
+  const franchiseRail = $(`#${prefix}FranchiseRail`)
+  const parts = detail.media_type === 'movie' ? detail.collection?.parts || [] : []
+  if (franchise && franchiseRail && parts.length > 1) {
+    franchiseName.textContent = detail.collection.name || 'Film collection'
+    parts.forEach(part => {
+      const current = part.key === detail.key
+      const card = document.createElement('button')
+      card.type = 'button'
+      card.className = `adult-franchise-card${current ? ' is-current' : ''}`
+      card.disabled = current
+      if (current) card.setAttribute('aria-current', 'true')
+      card.setAttribute('aria-label', current ? `${part.title}, current film` : `Open ${part.title}`)
+      const art = document.createElement('span')
+      art.className = 'adult-franchise-art'
+      if (part.poster_path) {
+        const image = document.createElement('img')
+        image.src = adultPosterUrl(part.poster_path, 'w185')
+        image.alt = ''
+        art.append(image)
+      } else {
+        const placeholder = document.createElement('b')
+        placeholder.textContent = String(part.title || '?').slice(0, 1).toUpperCase()
+        art.append(placeholder)
+      }
+      if (part.on_mabeltv) {
+        const local = document.createElement('i')
+        local.textContent = 'MabelTV'
+        art.append(local)
+      }
+      const title = document.createElement('strong')
+      title.textContent = part.title
+      const year = document.createElement('small')
+      year.textContent = part.year || 'Date unknown'
+      card.append(art, title, year)
+      if (!current) card.onclick = () => openTitle(part)
+      franchiseRail.append(card)
+    })
+    franchise.classList.remove('hidden')
+  }
+  const castSection = $(`#${prefix}Cast`)
+  const castRail = $(`#${prefix}CastRail`)
+  const cast = Array.isArray(detail.cast) ? detail.cast.slice(0, 15) : []
+  if (castSection && castRail && cast.length) {
+    cast.forEach(person => {
+      const interactive = Number(person.tmdb_id || 0) > 0
+      const card = document.createElement(interactive ? 'button' : 'article')
+      if (interactive) card.type = 'button'
+      card.className = 'adult-cast-card'
+      const portrait = document.createElement('span')
+      portrait.className = 'adult-cast-photo'
+      if (person.profile_path) {
+        const image = document.createElement('img')
+        image.src = adultPosterUrl(person.profile_path, 'w185')
+        image.alt = ''
+        portrait.append(image)
+      } else {
+        const initials = document.createElement('b')
+        initials.textContent = String(person.name || '?').split(/\s+/).slice(0, 2)
+          .map(part => part.slice(0, 1)).join('').toUpperCase()
+        portrait.append(initials)
+      }
+      const name = document.createElement('strong')
+      name.textContent = person.name
+      const character = document.createElement('small')
+      character.textContent = person.character || 'Cast'
+      card.append(portrait, name, character)
+      if (interactive) {
+        card.setAttribute('aria-label', `Open cast details for ${person.name}`)
+        card.onclick = () => openAdultPerson(person, detail.title)
+      }
+      castRail.append(card)
+    })
+    castSection.classList.remove('hidden')
+  }
+}
+
+function adultPersonInitials(name) {
+  return String(name || '?').split(/\s+/).slice(0, 2)
+    .map(part => part.slice(0, 1)).join('').toUpperCase()
+}
+
+function renderAdultPersonPhoto(person) {
+  const root = $('#adultPersonPhoto')
+  root.replaceChildren()
+  if (person.profile_path) {
+    const image = document.createElement('img')
+    image.src = adultPosterUrl(person.profile_path, 'w342')
+    image.alt = `Portrait of ${person.name}`
+    root.append(image)
+    return
+  }
+  const initials = document.createElement('b')
+  initials.textContent = adultPersonInitials(person.name)
+  root.append(initials)
+}
+
+function renderAdultPersonDetail(person) {
+  $('#adultPersonName').textContent = person.name
+  renderAdultPersonPhoto(person)
+  const facts = $('#adultPersonFacts')
+  facts.replaceChildren()
+  const addFact = (label, value) => {
+    if (!value) return
+    const row = document.createElement('div')
+    const term = document.createElement('dt')
+    const description = document.createElement('dd')
+    term.textContent = label
+    description.textContent = value
+    row.append(term, description)
+    facts.append(row)
+  }
+  addFact('Known for', person.known_for_department)
+  addFact('Born', adultExactDateLabel(person.birthday))
+  addFact('Died', adultExactDateLabel(person.deathday))
+  addFact('From', person.place_of_birth)
+  $('#adultPersonBiography').textContent = person.biography || 'No biography is available for this cast member.'
+  const section = $('#adultPersonKnownFor')
+  const credits = $('#adultPersonCredits')
+  credits.replaceChildren()
+  ;(person.known_for || []).forEach(title => {
+    const card = document.createElement('button')
+    card.type = 'button'
+    card.className = 'adult-franchise-card'
+    card.setAttribute('aria-label', `Open ${title.title}`)
+    const art = document.createElement('span')
+    art.className = 'adult-franchise-art'
+    if (title.poster_path) {
+      const image = document.createElement('img')
+      image.src = adultPosterUrl(title.poster_path, 'w185')
+      image.alt = ''
+      art.append(image)
+    } else {
+      const placeholder = document.createElement('b')
+      placeholder.textContent = String(title.title || '?').slice(0, 1).toUpperCase()
+      art.append(placeholder)
+    }
+    const name = document.createElement('strong')
+    name.textContent = title.title
+    const role = document.createElement('small')
+    role.textContent = [title.year, title.character].filter(Boolean).join(' · ') || 'Title'
+    card.append(art, name, role)
+    card.onclick = () => {
+      closeAdultPersonSheet()
+      void openAdultTitle(title)
+    }
+    credits.append(card)
+  })
+  section.classList.toggle('hidden', !credits.children.length)
+}
+
+async function openAdultPerson(person, title) {
+  const personId = Number(person.tmdb_id || 0)
+  if (!personId) return
+  const revision = ++adultPersonOpenRevision
+  const sheet = $('#adultPersonSheet')
+  $('#adultPersonName').textContent = person.name
+  $('#adultPersonContext').textContent = person.character
+    ? `As ${person.character} in ${title}` : `Principal cast in ${title}`
+  $('#adultPersonFacts').replaceChildren()
+  $('#adultPersonBiography').textContent = 'Loading biography…'
+  $('#adultPersonKnownFor').classList.add('hidden')
+  $('#adultPersonCredits').replaceChildren()
+  renderAdultPersonPhoto(person)
+  portalSheets.open(sheet, { focus: sheet.querySelector('.library-sheet-panel') })
+  try {
+    const detail = await api(`/api/adult/person?tmdb_id=${personId}`)
+    if (revision !== adultPersonOpenRevision || !sheet.open) return
+    renderAdultPersonDetail(detail)
+  } catch (error) {
+    if (revision !== adultPersonOpenRevision || !sheet.open) return
+    $('#adultPersonBiography').textContent = error.message || 'Cast details are unavailable right now.'
+  }
+}
+
 function adultTitleIntentAction(detail, button, request, root = $('#adultTitleIntents'), onUpdate = null) {
   return async () => {
     if (button.disabled) return
@@ -69,6 +307,9 @@ async function loadLocalFilmProviders(film, refresh = false) {
   const section = $('#watchFilmProviders')
   const root = $('#watchFilmProviderList')
   const detail = localFilmViewingDetail(film)
+  clearAdultTitleEnrichment('watchFilm')
+  $('#watchFilmRentBuy')?.classList.add('hidden')
+  $('#watchFilmRentBuyList')?.replaceChildren()
   section.classList.remove('hidden')
   const refreshButton = $('#watchFilmProviderRefresh')
   refreshButton.classList.toggle('hidden', !detail)
@@ -87,15 +328,35 @@ async function loadLocalFilmProviders(film, refresh = false) {
       api(`/api/adult/providers?media_type=movie&tmdb_id=${detail.tmdb_id}${refresh ? '&refresh=1' : ''}`),
     ])
     if (revision !== localFilmProviderRevision || root.dataset.providerKey !== detail.key) return
-    renderAdultProviderLinksInto(root, {
+    const fullDetail = {
       ...title,
       on_mabeltv: true,
       local: { kind: 'film', path: film.path },
-    }, sources, { localAction: null })
+    }
+    const directors = fullDetail.directors || []
+    renderAdultTitleMetadata($('#watchFilmMeta'), fullDetail, {
+      facts: [
+        { label: 'Release', value: adultExactDateLabel(fullDetail.release_date) || fullDetail.year },
+        { label: 'Runtime', value: fullDetail.runtime ? `${fullDetail.runtime} min` : '' },
+        { label: 'Genre', value: (fullDetail.genres || [])[0] || '' },
+      ],
+      creditLabel: directors.length > 1 ? 'Directors' : 'Director',
+      credits: directors,
+    })
+    renderAdultTitleEnrichment(fullDetail, 'watchFilm', part => {
+      portalSheets.dismiss($('#watchFilmSheet'))
+      openAdultTitle(part)
+    })
+    renderAdultProviderLinksInto(root, fullDetail, sources, {
+      localAction: null, purchaseSection: $('#watchFilmRentBuy'),
+      purchaseRoot: $('#watchFilmRentBuyList'),
+    })
   } catch (error) {
     if (revision !== localFilmProviderRevision || root.dataset.providerKey !== detail.key) return
-    renderAdultProviderLinksInto(root, { ...detail, on_mabeltv: true }, { sources: [] },
-      { localAction: null })
+    renderAdultProviderLinksInto(root, { ...detail, on_mabeltv: true }, { sources: [] }, {
+      localAction: null, purchaseSection: $('#watchFilmRentBuy'),
+      purchaseRoot: $('#watchFilmRentBuyList'),
+    })
     const message = document.createElement('p')
     message.textContent = error.message || 'Streaming destinations are unavailable right now.'
     root.append(message)
@@ -183,18 +444,33 @@ function renderAdultTitleDetail(detail, refreshProviders = true,
     ? 'On MabelTV' : isSeries ? 'Streaming TV series' : 'Film'
   $('#adultTitleOverview').textContent = detail.overview || 'No description is available.'
   renderAdultTitleSeasons(detail)
-  const metadata = $('#adultTitleMeta')
-  metadata.replaceChildren()
-  const values = isSeries ? [
-    `${(detail.seasons || []).length} series`,
-    `${(detail.seasons || []).reduce((total, season) => total + Number(season.episodes || 0), 0)} episodes`,
-    detail.on_mabeltv ? `${(localSeries?.episodes || []).length} on MabelTV` : 'Not on MabelTV',
-    `${(detail.seasons || []).reduce((total, season) => total + Number(season.watched_count || 0), 0)} watched`,
-  ] : [detail.year, detail.runtime ? `${detail.runtime} min` : '', ...(detail.genres || []).slice(0, 2)]
-  values.filter(Boolean).forEach(value => {
-    const span = document.createElement('span')
-    span.textContent = value
-    metadata.append(span)
+  const date = isSeries
+    ? [adultExactDateLabel(detail.first_air_date), adultExactDateLabel(detail.last_air_date)]
+      .filter((value, index, values) => value && (index === 0 || value !== values[0])).join(' – ')
+    : adultExactDateLabel(detail.release_date)
+  const seasons = detail.seasons || []
+  const episodeCount = seasons.reduce((total, season) =>
+    total + Number(season.episodes || 0), 0)
+  const watchedCount = seasons.reduce((total, season) =>
+    total + Number(season.watched_count || 0), 0)
+  const credits = detail.directors || []
+  const facts = isSeries ? [
+    { label: 'Aired', value: date || detail.year },
+    { label: 'Series', value: String(seasons.length) },
+    { label: 'Episodes', value: String(episodeCount) },
+    { label: 'MabelTV', value: detail.on_mabeltv
+      ? `${(localSeries?.episodes || []).length} episodes` : 'Not available' },
+    { label: 'Watched', value: String(watchedCount) },
+    { label: 'Genre', value: (detail.genres || [])[0] || '' },
+  ] : [
+    { label: 'Release', value: date || detail.year },
+    { label: 'Runtime', value: detail.runtime ? `${detail.runtime} min` : '' },
+    { label: 'Genre', value: (detail.genres || [])[0] || '' },
+  ]
+  renderAdultTitleMetadata($('#adultTitleMeta'), detail, {
+    facts,
+    creditLabel: isSeries ? 'Created by' : credits.length > 1 ? 'Directors' : 'Director',
+    credits,
   })
   const poster = $('#adultTitlePoster')
   poster.replaceChildren()
@@ -221,6 +497,7 @@ function renderAdultTitleDetail(detail, refreshProviders = true,
     portalSheets.dismiss(sheet)
     openAdultSeriesMoreSheet(localSeries, null, () => restoreAdultTitleSheet(detail))
   } : null
+  renderAdultTitleEnrichment(detail, 'adultTitle', part => openAdultTitle(part))
   $('#adultProviderRefresh').onclick = () => loadAdultProviders(detail, true, revision)
   if (refreshProviders) {
     $('#adultProviderList').innerHTML = '<p>Checking streaming destinations…</p>'
@@ -251,6 +528,9 @@ function prepareAdultTitleSheet(title) {
   $('#adultTitleLocalCopy').textContent = ''
   $('#adultTitleMore').classList.add('hidden')
   $('#adultTitleMore').onclick = null
+  clearAdultTitleEnrichment('adultTitle')
+  $('#adultTitleRentBuy').classList.add('hidden')
+  $('#adultTitleRentBuyList').replaceChildren()
   $('#adultProviderList').innerHTML = '<p>Loading…</p>'
   $('#adultTitleIntents').querySelectorAll('[data-viewing-action]').forEach(button => {
     button.classList.remove('active', 'is-unavailable')
@@ -425,6 +705,18 @@ function closeAdultTitleSheet() {
 }
 $('#adultTitleClose')?.addEventListener('click', closeAdultTitleSheet)
 $('#adultTitleSheet')?.addEventListener('click', event => { if (event.target === $('#adultTitleSheet')) closeAdultTitleSheet() })
+function closeAdultPersonSheet() {
+  adultPersonOpenRevision += 1
+  portalSheets.dismiss($('#adultPersonSheet'))
+}
+$('#adultPersonClose')?.addEventListener('click', closeAdultPersonSheet)
+$('#adultPersonSheet')?.addEventListener('click', event => {
+  if (event.target === $('#adultPersonSheet')) closeAdultPersonSheet()
+})
+$('#adultPersonSheet')?.addEventListener('cancel', event => {
+  event.preventDefault()
+  closeAdultPersonSheet()
+})
 function closeAdultTitleSeasonSheet() {
   adultSeasonOpenRevision += 1
   portalSheets.close($('#adultTitleSeasonSheet'))

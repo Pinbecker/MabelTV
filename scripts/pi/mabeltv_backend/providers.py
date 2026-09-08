@@ -7,6 +7,7 @@ import os
 import re
 import subprocess
 import time
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -14,6 +15,7 @@ from urllib.parse import urlencode, urlsplit
 from urllib.request import Request
 
 from .constants import (
+    ADULT_METADATA_CACHE_SECONDS,
     ADULT_PROVIDER_CACHE_SECONDS,
     ADULT_PROVIDER_MAX_CACHE_SECONDS,
     OPENSUBTITLES_API_BASE_URL,
@@ -236,6 +238,25 @@ class ProviderMetadataMixin:
         except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as error:
             raise ValueError("Streaming services could not be reached. Try again later") from error
 
+    def adult_cached_tmdb_request(self, endpoint: str,
+                                  parameters: dict[str, Any] | None = None) -> Any:
+        """Cache catalogue metadata while keeping viewing and local state live."""
+        marker = f"{endpoint}?{urlencode(sorted((parameters or {}).items()))}"
+        now = time.time()
+        with self.config_lock:
+            cache = getattr(self, "_adult_tmdb_cache", None)
+            if not isinstance(cache, dict):
+                cache = {}
+                self._adult_tmdb_cache = cache
+            saved = cache.get(marker, {})
+            if isinstance(saved, dict) and now - float(
+                    saved.get("checked", 0) or 0) < ADULT_METADATA_CACHE_SECONDS:
+                return deepcopy(saved.get("value"))
+        value = self.tmdb_request(endpoint, parameters)
+        with self.config_lock:
+            cache[marker] = {"checked": now, "value": deepcopy(value)}
+        return value
+
     @staticmethod
     def netflix_content_id(destination: Any) -> str:
         """Turn an official Watchmode Netflix URL into LG's proven launch value."""
@@ -359,6 +380,10 @@ class ProviderMetadataMixin:
     def adult_title_summary(value: dict[str, Any], media_type: str) -> dict[str, Any]:
         date = str(value.get("release_date" if media_type == "movie" else
                              "first_air_date", ""))
+        try:
+            rating = round(float(value.get("vote_average", 0) or 0), 1)
+        except (TypeError, ValueError):
+            rating = 0.0
         return {
             "media_type": media_type,
             "tmdb_id": int(value.get("id", 0) or 0),
@@ -366,6 +391,10 @@ class ProviderMetadataMixin:
             "original_title": str(value.get("original_title" if media_type == "movie"
                                              else "original_name", "")),
             "year": date[:4],
+            "release_date": date[:10] if media_type == "movie" else "",
+            "first_air_date": date[:10] if media_type == "tv" else "",
+            "rating": rating if rating > 0 else 0,
+            "rating_count": int(value.get("vote_count", 0) or 0),
             "overview": str(value.get("overview", "")),
             "poster_path": str(value.get("poster_path") or ""),
             "backdrop_path": str(value.get("backdrop_path") or ""),
@@ -468,11 +497,30 @@ class ProviderMetadataMixin:
     def adult_title_detail(self, media_type: str, tmdb_id: Any) -> dict[str, Any]:
         key = self.adult_title_key(media_type, tmdb_id)
         media_type, raw_id = key.split(":", 1)
-        value = self.tmdb_request(f"{media_type}/{raw_id}", {"language": "en-GB"})
+        value = self.adult_cached_tmdb_request(f"{media_type}/{raw_id}", {
+            "language": "en-GB", "append_to_response": "credits,release_dates",
+        })
         if not isinstance(value, dict):
             raise ValueError("That title could not be loaded")
         summary = self.adult_title_summary(value, media_type)
-        providers = self.tmdb_request(f"{media_type}/{raw_id}/watch/providers")
+        if media_type == "movie":
+            release_regions = value.get("release_dates", {}).get("results", []) \
+                if isinstance(value.get("release_dates"), dict) else []
+            gb_releases = next((region.get("release_dates", []) for region in
+                                release_regions if isinstance(region, dict)
+                                and region.get("iso_3166_1") == "GB"), [])
+            dated = [release for release in gb_releases if isinstance(release, dict)
+                     and str(release.get("release_date") or "")[:10]]
+            theatrical = [release for release in dated
+                           if int(release.get("type", 0) or 0) in {2, 3}]
+            choices = theatrical or dated
+            if choices:
+                uk_date = min(str(release["release_date"])[:10]
+                              for release in choices)
+                summary["release_date"] = uk_date
+                summary["year"] = uk_date[:4]
+        providers = self.adult_cached_tmdb_request(
+            f"{media_type}/{raw_id}/watch/providers")
         region = providers.get("results", {}).get("GB", {}) \
             if isinstance(providers, dict) else {}
         groups = []
@@ -490,7 +538,59 @@ class ProviderMetadataMixin:
                 })
         runtime = value.get("runtime") if media_type == "movie" else (
             value.get("episode_run_time", [None]) or [None])[0]
+        credits = value.get("credits", {}) if isinstance(value.get("credits"), dict) else {}
+        directors = []
+        if media_type == "movie":
+            directors = [str(member.get("name") or "") for member in
+                         credits.get("crew", []) if isinstance(member, dict)
+                         and member.get("job") == "Director" and member.get("name")][:3]
+        else:
+            directors = [str(member.get("name") or "") for member in
+                         value.get("created_by", []) if isinstance(member, dict)
+                         and member.get("name")][:3]
+        cast = []
+        for member in credits.get("cast", []) if isinstance(credits, dict) else []:
+            if not isinstance(member, dict) or not member.get("name"):
+                continue
+            cast.append({
+                "tmdb_id": int(member.get("id", 0) or 0),
+                "name": str(member.get("name") or ""),
+                "character": str(member.get("character") or ""),
+                "profile_path": str(member.get("profile_path") or ""),
+                "order": int(member.get("order", len(cast)) or 0),
+            })
+            if len(cast) >= 15:
+                break
+        collection = None
+        collection_summary = value.get("belongs_to_collection")
+        if media_type == "movie" and isinstance(collection_summary, dict) and \
+                int(collection_summary.get("id", 0) or 0) > 0:
+            collection_id = int(collection_summary["id"])
+            collection_value = self.adult_cached_tmdb_request(
+                f"collection/{collection_id}", {"language": "en-GB"})
+            parts = []
+            for item in collection_value.get("parts", []) \
+                    if isinstance(collection_value, dict) else []:
+                if not isinstance(item, dict) or item.get("adult") is True:
+                    continue
+                part = self.adult_title_summary(item, "movie")
+                if not part["tmdb_id"] or not part["title"]:
+                    continue
+                part["key"] = self.adult_title_key("movie", part["tmdb_id"])
+                parts.append(part)
+            parts.sort(key=lambda item: (item.get("release_date") or "9999-99-99",
+                                         item.get("title") or ""))
+            if len(parts) > 1:
+                collection = {
+                    "tmdb_id": collection_id,
+                    "name": str(collection_value.get("name") or
+                                collection_summary.get("name") or "Film collection"),
+                    "parts": parts,
+                }
         local_titles = self.adult_local_title_index()
+        if collection:
+            for part in collection["parts"]:
+                part["on_mabeltv"] = part["key"] in local_titles
         local_title = local_titles.get(key)
         local_episode_states: dict[str, dict[str, Any]] = {}
         if isinstance(local_title, dict) and local_title.get("kind") == "series":
@@ -505,6 +605,10 @@ class ProviderMetadataMixin:
                 }
         detail = summary | {
             "key": key, "runtime": int(runtime or 0),
+            "last_air_date": str(value.get("last_air_date") or "")[:10]
+            if media_type == "tv" else "",
+            "cast": cast, "collection": collection,
+            "directors": directors,
             "genres": [str(item.get("name", "")) for item in value.get("genres", [])
                        if isinstance(item, dict) and item.get("name")],
             "seasons": [{"number": int(item.get("season_number", 0) or 0),
@@ -557,6 +661,59 @@ class ProviderMetadataMixin:
             }
         detail["next_episode"] = next_episode
         return detail
+
+    def adult_person_detail(self, tmdb_id: Any) -> dict[str, Any]:
+        try:
+            person_id = int(tmdb_id)
+        except (TypeError, ValueError):
+            raise ValueError("Choose a valid cast member") from None
+        if person_id < 1:
+            raise ValueError("Choose a valid cast member")
+        value = self.adult_cached_tmdb_request(f"person/{person_id}", {
+            "language": "en-GB", "append_to_response": "combined_credits",
+        })
+        if not isinstance(value, dict) or not value.get("name"):
+            raise ValueError("That cast member could not be loaded")
+        credits = value.get("combined_credits", {})
+        cast_credits = credits.get("cast", []) if isinstance(credits, dict) else []
+        ranked = sorted(
+            (item for item in cast_credits if isinstance(item, dict)),
+            key=lambda item: (
+                float(item.get("popularity", 0) or 0),
+                int(item.get("vote_count", 0) or 0),
+            ), reverse=True,
+        )
+        known_for: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for item in ranked:
+            media_type = str(item.get("media_type") or "")
+            if media_type not in {"movie", "tv"} or item.get("adult") is True:
+                continue
+            summary = self.adult_title_summary(item, media_type)
+            if not summary["tmdb_id"] or not summary["title"]:
+                continue
+            key = self.adult_title_key(media_type, summary["tmdb_id"])
+            if key in seen:
+                continue
+            seen.add(key)
+            summary.update({
+                "key": key,
+                "character": str(item.get("character") or ""),
+            })
+            known_for.append(summary)
+            if len(known_for) >= 15:
+                break
+        return {
+            "tmdb_id": person_id,
+            "name": str(value.get("name") or ""),
+            "known_for_department": str(value.get("known_for_department") or ""),
+            "biography": str(value.get("biography") or ""),
+            "birthday": str(value.get("birthday") or "")[:10],
+            "deathday": str(value.get("deathday") or "")[:10],
+            "place_of_birth": str(value.get("place_of_birth") or ""),
+            "profile_path": str(value.get("profile_path") or ""),
+            "known_for": known_for,
+        }
 
     def adult_title_season(self, tmdb_id: Any, season_number: Any) -> dict[str, Any]:
         key = self.adult_title_key("tv", tmdb_id)
@@ -641,7 +798,7 @@ class ProviderMetadataMixin:
             return ""
 
         sources: list[dict[str, Any]] = []
-        seen: set[tuple[str, str]] = set()
+        seen: set[tuple[str, str, str, str]] = set()
         for value in values if isinstance(values, list) else []:
             if not isinstance(value, dict):
                 continue
@@ -652,7 +809,16 @@ class ProviderMetadataMixin:
                 continue
             name = str(value.get("name") or "Streaming service")
             source_type = str(value.get("type") or "sub").lower()
-            marker = (name.casefold(), source_type)
+            media_format = str(value.get("format") or "")[:20]
+            try:
+                raw_price = value.get("price")
+                price = round(float(raw_price), 2) if raw_price is not None else None
+                if price is not None and (price < 0 or price > 10000):
+                    price = None
+            except (TypeError, ValueError):
+                price = None
+            marker = (name.casefold(), source_type, media_format.casefold(),
+                      str(price))
             if marker in seen:
                 continue
             seen.add(marker)
@@ -662,7 +828,7 @@ class ProviderMetadataMixin:
                 "region": str(value.get("region") or "GB").upper(),
                 "web_url": web_url, "ios_url": ios_url,
                 "android_url": android_url,
-                "format": str(value.get("format") or ""),
+                "format": media_format, "price": price,
             })
         return sources
 
@@ -674,13 +840,13 @@ class ProviderMetadataMixin:
             store = self.adult_viewing_store()
             cached = store["availability"].get(key, {})
             if not refresh and isinstance(cached, dict) and \
-                    cached.get("link_schema") == 2 and \
+                    cached.get("link_schema") == 3 and \
                     now - float(cached.get("checked", 0) or 0) < ADULT_PROVIDER_CACHE_SECONDS:
                 return dict(cached)
         external_id = f"{key.split(':', 1)[0]}-{key.split(':', 1)[1]}"
         values = self.watchmode_request(
             f"title/{external_id}/sources/", {"regions": "GB"})
-        result = {"key": key, "region": "GB", "checked": now, "link_schema": 2,
+        result = {"key": key, "region": "GB", "checked": now, "link_schema": 3,
                   "sources": self.normalise_watchmode_sources(values),
                   "provider": "Watchmode"}
         with self.config_lock:

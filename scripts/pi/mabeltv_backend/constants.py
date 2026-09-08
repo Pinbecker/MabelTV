@@ -23,6 +23,7 @@ LG_WEBOS_DEFAULT_PORT = 3001
 LG_WEBOS_CLIENT_KEY_PATH = "/var/lib/mabeltv/secrets/lg-webos-client-key"
 NETFLIX_TV_APP_ID = "netflix"
 ADULT_DISCOVERY_CACHE_SECONDS = 24 * 60 * 60
+ADULT_METADATA_CACHE_SECONDS = 24 * 60 * 60
 ADULT_PROVIDER_CACHE_SECONDS = 7 * 24 * 60 * 60
 ADULT_PROVIDER_MAX_CACHE_SECONDS = 29 * 24 * 60 * 60
 OPENSUBTITLES_API_BASE_URL = "https://api.opensubtitles.com/api/v1"
@@ -57,4 +58,3 @@ DEFAULT_CHANNELS = [
     {"number": 4, "name": "Family Videos", "folder": "family", "aspect": "fit",
      "content_type": "films"},
 ]
-

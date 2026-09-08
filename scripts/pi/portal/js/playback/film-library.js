@@ -557,6 +557,7 @@
       $('#watchFilmTitle').textContent = title
       const metaRoot = $('#watchFilmMeta')
       metaRoot.innerHTML = ''
+      metaRoot.classList.remove('is-title-facts')
       ;[metadata.year, film.folder || 'Adult library', Number(film.remote_duration || 0) > 0 ? watchTimeLabel(film.remote_duration) : 'Film'].filter(Boolean).forEach(value => {
         const span = document.createElement('span')
         span.textContent = value

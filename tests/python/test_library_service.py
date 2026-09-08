@@ -161,7 +161,7 @@ class LibraryUnitTests(unittest.TestCase):
             "experience-foundation", "experience-components",
             "experience-shell", "experience-home",
             "experience-remote", "experience-watch", "experience-library",
-            "experience-viewing",
+            "experience-viewing", "experience-title-metadata",
             "experience-settings", "experience-insights", "experience-responsive",
             "experience-overlays", "experience-playback-overlays",
             "lg-tv-remote", "experience-light",
@@ -861,7 +861,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertEqual(first["sources"][1]["web_url"],
                          "https://www.bbc.co.uk/iplayer/episode/m0022wzs")
         self.assertEqual(first["sources"][1]["ios_url"], "")
-        self.assertEqual(first["link_schema"], 2)
+        self.assertEqual(first["link_schema"], 3)
         self.assertEqual(first, second)
         self.fixture.library.watchmode_request.assert_called_once()
         store = self.fixture.library.adult_viewing_store()

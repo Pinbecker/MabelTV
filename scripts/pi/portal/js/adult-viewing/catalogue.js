@@ -52,6 +52,21 @@ const adultProviderBrands = [
     hosts: ['disneyplus.com'], fallback: () => 'https://www.disneyplus.com/en-gb/home',
   },
   {
+    id: 'now', label: 'NOW', asset: 'https://cdn.watchmode.com/provider_logos/406_generic_v4.png',
+    match: /(?:now\s*tv|^now$)/i, tmdbIds: [39, 591], watchmodeIds: [406],
+    hosts: ['nowtv.com'], fallback: title => `https://www.nowtv.com/search?q=${encodeURIComponent(title)}`,
+  },
+  {
+    id: 'my5', label: 'My5', asset: 'https://cdn.watchmode.com/provider_logos/418_generic_v4.png',
+    match: /my\s*5/i, tmdbIds: [], watchmodeIds: [418],
+    hosts: ['channel5.com'], fallback: () => 'https://www.channel5.com/',
+  },
+  {
+    id: 'hbo-max', label: 'HBO Max', asset: 'https://cdn.watchmode.com/provider_logos/max_100px.png',
+    match: /(?:hbo\s*)?max/i, tmdbIds: [1825, 1899], watchmodeIds: [387, 490],
+    hosts: ['hbomax.com', 'max.com', 'amazon.co.uk'], fallback: () => 'https://www.hbomax.com/gb/en',
+  },
+  {
     id: 'sky-go', label: 'Sky Go', asset: 'sky-go-app.jpg', match: /sky\s*go/i,
     tmdbIds: [29], watchmodeIds: [408],
     hosts: ['sky.com'], fallback: () => 'https://www.sky.com/watch/sky-go/',
@@ -124,6 +139,119 @@ function adultProviderDestination(brand, source, title, platform = adultProvider
     }
   }
   return brand.fallback(String(title || '').trim())
+}
+
+function adultProviderAssetUrl(brand) {
+  return /^https:\/\//i.test(brand.asset)
+    ? brand.asset : `/portal/assets/providers/${brand.asset}`
+}
+
+function adultSourceDestination(source, platform = adultProviderPlatform()) {
+  const fields = platform === 'ios'
+    ? ['ios_url', 'web_url', 'android_url']
+    : platform === 'android'
+      ? ['android_url', 'web_url', 'ios_url']
+      : ['web_url', 'ios_url', 'android_url']
+  for (const field of fields) {
+    const direct = String(source?.[field] || '').trim()
+    if (!direct) continue
+    try {
+      const url = new URL(direct)
+      if (['javascript:', 'data:', 'file:', 'blob:'].includes(url.protocol)) continue
+      if (url.protocol === 'http:') url.protocol = 'https:'
+      if (['http:', 'https:'].includes(url.protocol) && !url.hostname) continue
+      return url.href
+    } catch (_) {
+      // Invalid destinations are ignored rather than exposed as navigation.
+    }
+  }
+  return ''
+}
+
+function adultPurchaseProviderKey(name) {
+  const compact = String(name || '').toLocaleLowerCase().replace(/[^a-z0-9]/g, '')
+  if (compact.includes('amazon')) return 'amazon'
+  if (compact.includes('appletv')) return 'appletv'
+  return compact
+}
+
+function adultPurchaseProviderAsset(group, detail) {
+  const source = group.sources[0]
+  const brand = adultProviderBrandFor(source, 'source_id', 'watchmodeIds')
+  if (brand) return adultProviderAssetUrl(brand)
+  const provider = (detail.providers || []).find(value =>
+    adultPurchaseProviderKey(value.name) === adultPurchaseProviderKey(group.name)
+    && value.logo_path)
+  return provider?.logo_path ? adultPosterUrl(provider.logo_path, 'w92') : ''
+}
+
+function renderAdultPurchaseOffersInto(section, root, detail, result) {
+  if (!section || !root) return
+  root.replaceChildren()
+  const groups = new Map()
+  const add = source => {
+    const type = String(source?.type || '').toLowerCase()
+    if (!['rent', 'buy'].includes(type)) return
+    const name = String(source?.name || 'Store').trim()
+    if (/(?:rakuten|google\s*play|youtube)/i.test(name)) return
+    const marker = `${adultPurchaseProviderKey(name)}|${type}`
+    const group = groups.get(marker) || {
+      name, type, sources: [], prices: new Set(),
+    }
+    group.sources.push(source)
+    const price = source?.price === null || source?.price === undefined || source?.price === ''
+      ? Number.NaN : Number(source.price)
+    if (Number.isFinite(price) && price >= 0) group.prices.add(price)
+    groups.set(marker, group)
+  }
+  ;(result.sources || []).forEach(add)
+  for (const type of ['rent', 'buy']) {
+    const offers = [...groups.values()].filter(group => group.type === type
+      && group.prices.size).sort((a, b) => a.name.localeCompare(b.name))
+    if (!offers.length) continue
+    const row = document.createElement('div')
+    row.className = 'adult-purchase-row'
+    const kind = document.createElement('strong')
+    kind.className = 'adult-purchase-kind'
+    kind.textContent = type === 'rent' ? 'Rent' : 'Buy'
+    const providers = document.createElement('div')
+    providers.className = 'adult-purchase-providers'
+    offers.forEach(group => {
+      const destinationSource = group.sources.find(source => adultSourceDestination(source))
+      const destination = adultSourceDestination(destinationSource)
+      const offer = document.createElement(destination ? 'button' : 'div')
+      if (destination) offer.type = 'button'
+      offer.className = 'adult-purchase-provider'
+      offer.dataset.provider = adultPurchaseProviderKey(group.name)
+      const logo = document.createElement('span')
+      logo.className = 'adult-purchase-logo'
+      const asset = adultPurchaseProviderAsset(group, detail)
+      if (asset) {
+        const image = document.createElement('img')
+        image.src = asset
+        image.alt = group.name
+        logo.append(image)
+      } else {
+        const initials = document.createElement('b')
+        initials.textContent = group.name.split(/\s+/).slice(0, 2)
+          .map(part => part.slice(0, 1)).join('').toUpperCase()
+        logo.append(initials)
+      }
+      const prices = [...group.prices].sort((a, b) => a - b)
+      const price = new Intl.NumberFormat('en-GB', {
+        style: 'currency', currency: 'GBP', minimumFractionDigits: 2,
+      }).format(prices[0])
+      const priceLabel = document.createElement('strong')
+      priceLabel.textContent = `${prices.length > 1 ? 'From ' : ''}${price}`
+      offer.append(logo, priceLabel)
+      offer.setAttribute('aria-label', `${kind.textContent} ${group.name} for ${priceLabel.textContent}`)
+      if (destination) offer.onclick = () => window.location.assign(destination)
+      providers.append(offer)
+    })
+    row.append(kind, providers)
+    root.append(row)
+  }
+  section.classList.toggle('hidden', !root.children.length)
 }
 
 function openNetflixLaunchChoice(detail, provider, brand, source) {
@@ -322,6 +450,11 @@ function renderAdultProviderLinksInto(root, detail, result, options = {}) {
     const brand = adultProviderBrandFor(provider, 'provider_id', 'tmdbIds')
     if (brand && !includedByBrand.has(brand.id)) includedByBrand.set(brand.id, { brand, provider })
   })
+  sourcesByBrand.forEach((source, brandId) => {
+    if (includedByBrand.has(brandId)) return
+    const brand = adultProviderBrands.find(value => value.id === brandId)
+    if (brand) includedByBrand.set(brandId, { brand, provider: source })
+  })
   const streaming = document.createElement('div')
   streaming.className = 'adult-provider-logos'
   if (detail.on_mabeltv) {
@@ -345,7 +478,7 @@ function renderAdultProviderLinksInto(root, detail, result, options = {}) {
     button.setAttribute('aria-label', `Open ${brand.label}`)
     button.title = brand.label
     const image = document.createElement('img')
-    image.src = `/portal/assets/providers/${brand.asset}`
+    image.src = adultProviderAssetUrl(brand)
     image.alt = brand.label
     button.append(image)
     button.onclick = () => {
@@ -365,15 +498,21 @@ function renderAdultProviderLinksInto(root, detail, result, options = {}) {
   })
   if (streaming.children.length) root.append(streaming)
   if (!root.children.length) root.innerHTML = '<p>No direct streaming destinations were found in Great Britain.</p>'
+  renderAdultPurchaseOffersInto(options.purchaseSection, options.purchaseRoot,
+    detail, result)
 }
 
 function renderAdultProviderLinks(detail, result) {
-  renderAdultProviderLinksInto($('#adultProviderList'), detail, result)
+  renderAdultProviderLinksInto($('#adultProviderList'), detail, result, {
+    purchaseSection: $('#adultTitleRentBuy'), purchaseRoot: $('#adultTitleRentBuyList'),
+  })
 }
 
 async function loadAdultProviders(detail, refresh = false, revision = adultTitleOpenRevision) {
   const root = $('#adultProviderList')
   root.innerHTML = '<p>Checking streaming destinations…</p>'
+  $('#adultTitleRentBuy')?.classList.add('hidden')
+  $('#adultTitleRentBuyList')?.replaceChildren()
   try {
     const result = await api(`/api/adult/providers?media_type=${detail.media_type}&tmdb_id=${detail.tmdb_id}${refresh ? '&refresh=1' : ''}`)
     if (revision !== adultTitleOpenRevision || selectedAdultTitle?.key !== detail.key) return

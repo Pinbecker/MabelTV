@@ -118,7 +118,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("Content-Security-Policy",
                          "default-src 'self'; style-src 'self' 'unsafe-inline'; "
-                         f"script-src {script_source}; img-src 'self' data: https://image.tmdb.org; "
+                         f"script-src {script_source}; img-src 'self' data: "
+                         "https://image.tmdb.org https://cdn.watchmode.com; "
                          "frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
 
     def json(self, status: int, value: dict[str, Any], cookie: str | None = None) -> None:
@@ -482,6 +483,8 @@ class Handler(BaseHTTPRequestHandler):
                     str(query.get("q", [""])[0])),
                 "/api/adult/title": lambda: self.server.library.adult_title_detail(
                     str(query.get("media_type", [""])[0]), str(query.get("tmdb_id", [""])[0])),
+                "/api/adult/person": lambda: self.server.library.adult_person_detail(
+                    str(query.get("tmdb_id", [""])[0])),
                 "/api/adult/season": lambda: self.server.library.adult_title_season(
                     str(query.get("tmdb_id", [""])[0]), str(query.get("season", [""])[0])),
                 "/api/adult/providers": lambda: self.server.library.adult_streaming_links(

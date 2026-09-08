@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test'
 
+// Visual and interaction fixtures use request interception; keep the real PWA
+// worker isolated to pwa.spec.mjs so it cannot claim this page mid-test.
+test.use({ serviceWorkers: 'block' })
+
 async function openPortal(page, theme) {
   await page.addInitScript(theme => {
     localStorage.setItem('mabeltv-experience-theme', theme)
@@ -198,6 +202,127 @@ for (const theme of ['light', 'dark']) {
     await expect(page.locator('#watchFilmProviderList')).toContainText('Match this film’s metadata')
   })
 
+  test(`${theme} film details show franchise cast services and priced offers without clipping`, async ({ page }, testInfo) => {
+    const titleDetail = {
+      key: 'movie:12', media_type: 'movie', tmdb_id: 12, title: 'Finding Nemo',
+      release_date: '2003-05-30', year: '2003', runtime: 100, rating: 7.8,
+      rating_count: 19000, directors: ['Andrew Stanton', 'Lee Unkrich'], genres: ['Animation', 'Family'],
+      overview: 'A clownfish crosses the ocean to find his son.', providers: [],
+      on_mabeltv: false, viewing: {}, cast: [
+        { tmdb_id: 1, name: 'Albert Brooks', character: 'Marlin', profile_path: '' },
+        { tmdb_id: 2, name: 'Ellen DeGeneres', character: 'Dory', profile_path: '' },
+      ],
+      collection: {
+        name: 'Finding Nemo Collection',
+        parts: Array.from({ length: 8 }, (_, index) => ({
+          key: `movie:${12 + index}`, media_type: 'movie', tmdb_id: 12 + index,
+          title: index ? `Franchise film ${index + 1}` : 'Finding Nemo',
+          year: String(2003 + index), release_date: `${2003 + index}-05-30`,
+          poster_path: '', on_mabeltv: index === 1,
+        })),
+      },
+    }
+    await page.route(url => new URL(url).pathname === '/api/adult/title', route =>
+      route.fulfill({ json: titleDetail }))
+    await page.route(url => new URL(url).pathname === '/api/adult/person', route =>
+      route.fulfill({ json: {
+        tmdb_id: 1, name: 'Albert Brooks', known_for_department: 'Acting',
+        birthday: '1947-07-22', place_of_birth: 'Beverly Hills, California',
+        profile_path: '', biography: 'Albert Brooks is an actor, writer and filmmaker.',
+        known_for: [
+          { key: 'movie:12', media_type: 'movie', tmdb_id: 12, title: 'Finding Nemo',
+            year: '2003', character: 'Marlin', poster_path: '' },
+          { key: 'movie:99', media_type: 'movie', tmdb_id: 99, title: 'Broadcast News',
+            year: '1987', character: 'Aaron Altman', poster_path: '' },
+        ],
+      } }))
+    await page.route(url => new URL(url).pathname === '/api/adult/providers', route =>
+      route.fulfill({ json: { key: 'movie:12', sources: [
+        { source_id: 406, name: 'Now TV', type: 'sub', web_url: 'https://www.nowtv.com/watch/12' },
+        { source_id: 418, name: 'My5', type: 'free', web_url: 'https://www.channel5.com/show/12' },
+        { source_id: 387, name: 'HBO Max', type: 'sub', web_url: 'https://www.hbomax.com/gb/en/movies/12' },
+        { source_id: 349, name: 'AppleTV', type: 'rent', format: 'SD', price: 3.49,
+          web_url: 'https://tv.apple.com/gb/movie/12' },
+        { source_id: 349, name: 'AppleTV', type: 'rent', format: '4K', price: 4.99,
+          web_url: 'https://tv.apple.com/gb/movie/12' },
+        { source_id: 349, name: 'AppleTV', type: 'buy', format: '4K', price: 9.99,
+          web_url: 'https://tv.apple.com/gb/movie/12' },
+        { source_id: 26, name: 'Amazon Prime Video', type: 'rent', format: 'HD', price: 3.99,
+          web_url: 'https://www.amazon.co.uk/gp/video/detail/12' },
+        { source_id: 26, name: 'Amazon Prime Video', type: 'buy', format: '4K', price: 8.99,
+          web_url: 'https://www.amazon.co.uk/gp/video/detail/12' },
+        { source_id: 35, name: 'Rakuten TV', type: 'buy', price: 7.99,
+          web_url: 'https://www.rakuten.tv/uk/movies/12' },
+        { source_id: 40, name: 'Google Play Movies', type: 'buy', price: 7.99,
+          web_url: 'https://play.google.com/store/movies/details/12' },
+        { source_id: 41, name: 'YouTube', type: 'rent', price: 2.99,
+          web_url: 'https://www.youtube.com/watch?v=12' },
+      ] } }))
+    await openPortal(page, theme)
+    await page.evaluate(() => openAdultTitle({
+      key: 'movie:12', media_type: 'movie', tmdb_id: 12, title: 'Finding Nemo',
+    }))
+    await expect(page.locator('#adultTitleMeta')).toContainText('30 May 2003')
+    await expect(page.locator('#adultTitleMeta')).toContainText('Andrew Stanton, Lee Unkrich')
+    await expect(page.locator('#adultTitleMeta')).toContainText('Animation')
+    await expect(page.locator('#adultTitleMeta')).not.toContainText('Family')
+    await expect(page.locator('#adultTitleMeta .adult-title-rating-mark')).toHaveText('TMDB')
+    await expect(page.locator('#adultTitleMeta .adult-title-rating > strong')).toHaveText('7.8')
+    await expect(page.locator('#adultTitleFranchise')).toBeVisible()
+    await expect(page.locator('#adultTitleFranchiseHeading')).toHaveText('Finding Nemo Collection')
+    await expect(page.locator('#adultTitleCastHeading')).toHaveText('Principal Cast')
+    await expect(page.locator('#adultTitleFranchiseRail .adult-franchise-card')).toHaveCount(8)
+    await expect(page.locator('#adultTitleFranchiseRail .adult-franchise-card').first()).toBeDisabled()
+    await expect(page.locator('#adultTitleCastRail .adult-cast-card')).toHaveCount(2)
+    for (const provider of ['now', 'my5', 'hbo-max']) {
+      await expect(page.locator(`#adultProviderList .provider-${provider}`)).toBeVisible()
+    }
+    await expect(page.locator('#adultTitleRentBuyList .adult-purchase-row')).toHaveCount(2)
+    await expect(page.locator('#adultTitleRentBuyList .adult-purchase-kind')).toHaveText(['Rent', 'Buy'])
+    await expect(page.locator('#adultTitleRentBuyList [data-provider="appletv"]')).toHaveCount(2)
+    await expect(page.locator('#adultTitleRentBuyList [data-provider="amazon"]')).toHaveCount(2)
+    await expect(page.locator('#adultTitleRentBuyList [data-provider="rakutentv"]')).toHaveCount(0)
+    await expect(page.locator('#adultTitleRentBuyList [data-provider="googleplaymovies"]')).toHaveCount(0)
+    await expect(page.locator('#adultTitleRentBuyList [data-provider="youtube"]')).toHaveCount(0)
+    await expect(page.locator('#adultTitleRentBuyList')).not.toContainText('4K')
+    await page.locator('#adultTitleCastRail .adult-cast-card').first().click()
+    await expect(page.locator('#adultPersonSheet')).toBeVisible()
+    await expect(page.locator('#adultPersonName')).toHaveText('Albert Brooks')
+    await expect(page.locator('#adultPersonContext')).toHaveText('As Marlin in Finding Nemo')
+    await expect(page.locator('#adultPersonBiography')).toContainText('actor, writer and filmmaker')
+    await expect(page.locator('#adultPersonCredits .adult-franchise-card')).toHaveCount(2)
+    await page.screenshot({ path: testInfo.outputPath('cast-detail.png') })
+    await page.locator('#adultPersonClose').click()
+    await expect(page.locator('#adultTitleSheet')).toBeVisible()
+    const geometry = await page.locator('#adultTitleSheet').evaluate(sheet => {
+      const panel = sheet.querySelector('.watch-film-panel')
+      const rail = sheet.querySelector('#adultTitleFranchiseRail')
+      const cards = [...rail.querySelectorAll('.adult-franchise-card')]
+      const first = cards[0].getBoundingClientRect()
+      const last = cards.at(-1).getBoundingClientRect()
+      const railBox = rail.getBoundingClientRect()
+      return {
+        pageContained: panel.scrollWidth <= panel.clientWidth + 1,
+        fiveAcross: first.width <= (railBox.width - 28) / 5 + 1,
+        horizontalOverflow: last.right > railBox.right,
+      }
+    })
+    expect(geometry).toEqual({ pageContained: true, fiveAcross: true, horizontalOverflow: true })
+    await page.screenshot({ path: testInfo.outputPath('film-enrichment.png') })
+
+    await page.locator('#adultTitleClose').click()
+    await filmFixture(page)
+    await page.evaluate(() => {
+      library.adult_library[0].metadata.tmdb_id = 12
+      openWatchFilmSheet(library.adult_library[0])
+    })
+    await expect(page.locator('#watchFilmFranchise')).toBeVisible()
+    await expect(page.locator('#watchFilmCast')).toBeVisible()
+    await expect(page.locator('#watchFilmFranchiseHeading')).toHaveText('Finding Nemo Collection')
+    await expect(page.locator('#watchFilmCastHeading')).toHaveText('Principal Cast')
+    await expect(page.locator('#watchFilmRentBuy')).toBeVisible()
+  })
+
   test(`${theme} film actions condense into a three-button state row`, async ({ page }) => {
     await openPortal(page, theme)
     const initial = await page.evaluate(() => {
@@ -265,7 +390,7 @@ for (const theme of ['light', 'dark']) {
       ],
       firstDivider: { margin: 16, padding: 16 },
       moreDivider: { column: '1 / -1', margin: 24, offset: -17 },
-      providersDivider: { margin: 16, padding: 16 },
+      providersDivider: { margin: 12, padding: 10 },
     })
     const unwatched = await page.evaluate(() => {
       const root = $('#watchFilmViewingActions')

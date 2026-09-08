@@ -272,8 +272,8 @@ body.portal-experience .watch-film-actions .primary-sheet-more {
 body.portal-experience .watch-film-actions .primary-sheet-more::before { top: -17px; }
 
 body.portal-experience .watch-film-panel .adult-provider-section {
-  margin-top: 16px;
-  padding-top: 16px;
+  margin-top: 12px;
+  padding-top: 10px;
 }
 
 body.portal-experience :is(.watch-film-play, .watch-film-secondary) {

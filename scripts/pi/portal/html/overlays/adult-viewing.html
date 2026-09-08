@@ -11,9 +11,45 @@
       <button id="adultTitleMore" type="button" class="watch-film-secondary primary-sheet-more adult-series-more hidden">
         <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-ellipsis" /></svg><span>More</span>
       </button>
-      <section class="adult-provider-section"><header><div><p class="watch-section-kicker">Available in Great Britain</p><h3>Where to watch</h3></div><button id="adultProviderRefresh" type="button">Refresh</button></header><div id="adultProviderList" class="adult-provider-list"><p>Checking services…</p></div><p class="provider-attribution">Availability by TMDB and JustWatch. Direct destinations by Watchmode.</p></section>
+      <section id="adultTitleFranchise" class="adult-title-enrichment hidden" aria-labelledby="adultTitleFranchiseHeading">
+        <header><h3 id="adultTitleFranchiseHeading"><span id="adultTitleFranchiseName">Film collection</span></h3></header>
+        <div id="adultTitleFranchiseRail" class="adult-franchise-rail"></div>
+      </section>
+      <section id="adultTitleCast" class="adult-title-enrichment hidden" aria-labelledby="adultTitleCastHeading">
+        <header><h3 id="adultTitleCastHeading">Principal Cast</h3></header>
+        <div id="adultTitleCastRail" class="adult-cast-rail"></div>
+      </section>
+      <section class="adult-provider-section">
+        <header><div><p class="watch-section-kicker">Available in Great Britain</p><h3>Where to watch</h3></div><button id="adultProviderRefresh" type="button">Refresh</button></header>
+        <div id="adultProviderList" class="adult-provider-list"><p>Checking services…</p></div>
+        <section id="adultTitleRentBuy" class="adult-rent-buy hidden" aria-labelledby="adultTitleRentBuyHeading">
+          <h4 id="adultTitleRentBuyHeading">Rent or buy</h4>
+          <div id="adultTitleRentBuyList" class="adult-rent-buy-list"></div>
+        </section>
+        <p class="provider-attribution">Availability by TMDB and JustWatch. Direct destinations and prices by Watchmode.</p>
+      </section>
     </div>
   </article>
+</dialog>
+
+<dialog id="adultPersonSheet" class="library-sheet adult-person-sheet">
+  <section class="library-sheet-panel">
+    <header class="library-sheet-head">
+      <div><h2 id="adultPersonName">Cast member</h2><p id="adultPersonContext"></p></div>
+      <button id="adultPersonClose" type="button" class="portal-sheet-close library-sheet-close" aria-label="Close cast details"></button>
+    </header>
+    <div class="library-sheet-body">
+      <div class="adult-person-summary">
+        <span id="adultPersonPhoto" class="adult-person-photo"></span>
+        <dl id="adultPersonFacts" class="adult-person-facts"></dl>
+      </div>
+      <p id="adultPersonBiography" class="adult-person-biography"></p>
+      <section id="adultPersonKnownFor" class="adult-person-known-for hidden" aria-labelledby="adultPersonKnownForHeading">
+        <h3 id="adultPersonKnownForHeading">Known for</h3>
+        <div id="adultPersonCredits" class="adult-person-credits"></div>
+      </section>
+    </div>
+  </section>
 </dialog>
 
 <dialog id="adultTitleSeasonSheet" class="library-sheet adult-season-sheet adult-streaming-season-sheet">
