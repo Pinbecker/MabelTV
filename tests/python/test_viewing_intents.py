@@ -24,7 +24,7 @@ class ViewingIntentTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.fixture.close()
 
-    def test_channel_films_share_one_tmdb_record_with_global_search(self) -> None:
+    def test_channel_films_are_separate_from_adult_tv_viewing(self) -> None:
         self.fixture.channels.write_text(json.dumps({
             "schema_version": 1,
             "channels": [{"number": 5, "name": "Films", "folder": "films",
@@ -39,11 +39,15 @@ class ViewingIntentTests(unittest.TestCase):
             "poster": "mabel-film-5-603.jpg",
         }}
         self.fixture.library.write_channel_media_states(states)
+        self.fixture.library.player_state_path = self.fixture.root / "player-state.json"
+        self.fixture.library.player_state_path.write_text(json.dumps({
+            "channel_film_positions": {"5/The Matrix.mp4": 1200},
+            "channel_film_durations": {"5/The Matrix.mp4": 8100},
+        }), encoding="utf-8")
 
-        local = self.fixture.library.adult_local_title_index()["movie:603"]
-        self.assertEqual(local["kind"], "channel-film")
-        self.assertEqual(local["channel"], 5)
-        self.assertEqual(local["file"], "The Matrix.mp4")
+        self.assertNotIn("movie:603", self.fixture.library.adult_local_title_index())
+        self.assertFalse(any(item["key"] == "movie:603"
+                             for item in self.fixture.library.adult_viewing()["items"]))
 
         self.fixture.library.adult_viewing_update({
             "action": "watchlist", "enabled": True,
@@ -60,15 +64,41 @@ class ViewingIntentTests(unittest.TestCase):
         matches = [item for item in self.fixture.library.adult_viewing()["items"]
                    if item["key"] == "movie:603"]
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0]["local"]["kind"], "channel-film")
+        self.assertFalse(matches[0]["on_mabeltv"])
+        self.assertIsNone(matches[0]["local"])
 
-    def test_local_film_sheets_use_shared_viewing_intent_component(self) -> None:
+        store = self.fixture.library.adult_viewing_store()
+        store["titles"]["movie:603"]["local_progress"] = {
+            "kind": "channel-film", "position": 1200,
+        }
+        self.fixture.library.write_adult_viewing_store(store)
+        migrated = next(item for item in self.fixture.library.adult_viewing()["items"]
+                        if item["key"] == "movie:603")
+        self.assertNotIn("local_progress", migrated)
+        self.assertTrue(migrated["watchlisted"])
+
+        adult_copy = self.fixture.library.adult_root / "Films" / "The Matrix 4K.mkv"
+        adult_copy.parent.mkdir(parents=True)
+        adult_copy.write_bytes(b"adult-film")
+        self.fixture.library.adult_library()
+        adult_states = self.fixture.library.adult_media_states()
+        adult_states["Films/The Matrix 4K.mkv"]["metadata"] = {
+            "tmdb_id": 603, "title": "The Matrix", "year": "1999",
+        }
+        self.fixture.library.write_adult_media_states(adult_states)
+        local_adult = self.fixture.library.adult_local_title_index()["movie:603"]
+        self.assertEqual(local_adult["kind"], "film")
+        self.assertEqual(local_adult["path"], "Films/The Matrix 4K.mkv")
+
+    def test_only_adult_film_sheets_use_shared_viewing_intent_component(self) -> None:
         self.assertIn('id="adultTitleIntents"', PORTAL_OVERLAY_MARKUP)
         self.assertIn('id="watchFilmViewingActions"', PORTAL_OVERLAY_MARKUP)
         self.assertIn('id="watchProgrammeViewingActions"', PORTAL_OVERLAY_MARKUP)
         self.assertIn("function decorateViewingIntentActions()", PORTAL_SCRIPT)
         self.assertIn("function wireAdultTitleIntentActions", PORTAL_SCRIPT)
-        self.assertIn("wireLocalFilmViewingActions(viewingActions, programme)",
+        self.assertNotIn("wireLocalFilmViewingActions(viewingActions, programme)",
+                         PORTAL_SCRIPT)
+        self.assertIn("wireLocalFilmViewingActions(viewingActions, film)",
                       PORTAL_SCRIPT)
 
     def test_part_watched_series_is_a_progress_fact_not_a_list_intent(self) -> None:

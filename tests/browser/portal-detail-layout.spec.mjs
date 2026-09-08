@@ -152,4 +152,49 @@ for (const theme of ['light', 'dark']) {
     if (state.supportsScrollbarWidth) expect(state.scrollbarWidth).toBe('none')
     else expect(state.webkitScrollbarDisplay).toBe('none')
   })
+
+  test(`${theme} My Viewing uses compact tabs and segmented filters`, async ({ page }, testInfo) => {
+    await openPortal(page, theme)
+    await page.evaluate(async () => {
+      openView('adult-viewing')
+      await new Promise(resolve => setTimeout(resolve, 100))
+      adultViewingData = { items: [{
+        key: 'tv:6001', media_type: 'tv', tmdb_id: 6001,
+        title: 'Severance', year: '2022', series_watching: true,
+        viewing_updated: 2_000_000_000,
+      }] }
+      adultViewingLoaded = true
+      adultViewingTab = 'watching'
+      adultViewingFilter = 'all'
+      document.querySelectorAll('[data-viewing-tab]').forEach(button =>
+        button.classList.toggle('active', button.dataset.viewingTab === 'watching'))
+      document.querySelectorAll('[data-viewing-filter]').forEach(button =>
+        button.classList.toggle('active', button.dataset.viewingFilter === 'all'))
+      renderAdultViewing()
+    })
+    await expect(page.locator('#view-adult-viewing')).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath('my-viewing.png'), animations: 'disabled' })
+    const layout = await page.evaluate(() => {
+      const tabs = document.querySelector('#adultViewingTabs')
+      const filters = document.querySelector('.adult-viewing-filters')
+      const tabButtons = [...tabs.querySelectorAll('button')]
+      const filterButtons = [...filters.querySelectorAll('button')]
+      return {
+        pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+        tabRows: new Set(tabButtons.map(button => Math.round(button.getBoundingClientRect().top))).size,
+        maxTabRadius: Math.max(...tabButtons.map(button =>
+          parseFloat(getComputedStyle(button).borderRadius))),
+        maxFilterRadius: Math.max(...filterButtons.map(button =>
+          parseFloat(getComputedStyle(button).borderRadius))),
+        tabHeight: tabs.getBoundingClientRect().height,
+        filterHeight: filters.getBoundingClientRect().height,
+      }
+    })
+    expect(layout.pageOverflow).toBe(false)
+    expect(layout.tabRows).toBe(1)
+    expect(layout.maxTabRadius).toBe(0)
+    expect(layout.maxFilterRadius).toBeLessThan(12)
+    expect(layout.tabHeight).toBeLessThanOrEqual(44)
+    expect(layout.filterHeight).toBeLessThanOrEqual(44)
+  })
 }

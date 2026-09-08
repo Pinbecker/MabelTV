@@ -125,14 +125,7 @@ test('representative film menu fits the phone viewport', async ({ page }, testIn
   await expectInsideViewport(page, '#watchProgrammeSheet > article')
   await expect(filmMenu).toHaveScreenshot('film-menu.png')
   const localIntents = page.locator('#watchProgrammeViewingActions')
-  await expect(localIntents).toBeVisible()
-  await expect(localIntents).toHaveClass(/compact-film-intents/)
-  await expect(localIntents.locator('[data-viewing-action]:not(.hidden)')).toHaveCount(3)
-  const watchlistIntent = localIntents.locator('[data-viewing-action="watchlist"]')
-  const wasWatchlisted = await watchlistIntent.getAttribute('aria-pressed') === 'true'
-  await watchlistIntent.click()
-  await expect(watchlistIntent).toHaveAttribute('aria-pressed', String(!wasWatchlisted))
-  await expect(watchlistIntent.locator('strong')).toHaveText('Watchlist')
+  await expect(localIntents).toBeHidden()
   await page.getByRole('button', { name: 'Close programme details' }).click()
 })
 
