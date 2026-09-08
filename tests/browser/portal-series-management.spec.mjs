@@ -64,6 +64,8 @@ test('series sheets use the full metadata catalogue with local availability over
 
   await page.getByRole('button', { name: 'Open favourite series Fixture Series' }).click()
   await expect(page.locator('#adultTitleSheet')).toBeVisible()
+  await expect(page.locator('#adultTitleSheet .watch-film-summary')).toHaveCSS('box-shadow', 'none')
+  await expect(page.locator('#adultTitleSheet .watch-film-summary')).toHaveCSS('border-bottom-width', '1px')
   await expect(page.locator('#adultSeriesSheet')).toBeHidden()
   await expect(page.locator('#adultTitleName')).toHaveText('Fixture Series')
   await expect(page.locator('#adultTitleOverview + #adultTitleIntents')).toBeVisible()

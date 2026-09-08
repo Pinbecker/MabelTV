@@ -23,8 +23,8 @@
         <header><div><p class="watch-section-kicker">Available in Great Britain</p><h3>Where to watch</h3></div><button id="adultProviderRefresh" type="button">Refresh</button></header>
         <div id="adultProviderList" class="adult-provider-list"><p>Checking services…</p></div>
         <section id="adultTitleRentBuy" class="adult-rent-buy hidden" aria-labelledby="adultTitleRentBuyHeading">
-          <h4 id="adultTitleRentBuyHeading">Rent or buy</h4>
-          <div id="adultTitleRentBuyList" class="adult-rent-buy-list"></div>
+          <button id="adultTitleRentBuyToggle" type="button" class="adult-rent-toggle" aria-controls="adultTitleRentBuyList" aria-expanded="false"><span><strong id="adultTitleRentBuyHeading">Rent</strong><small class="adult-rent-summary"></small></span><svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-chevron-down" /></svg></button>
+          <div id="adultTitleRentBuyList" class="adult-rent-buy-list" hidden></div>
         </section>
         <p class="provider-attribution">Availability by TMDB and JustWatch. Direct destinations and prices by Watchmode.</p>
       </section>
@@ -44,6 +44,7 @@
         <dl id="adultPersonFacts" class="adult-person-facts"></dl>
       </div>
       <p id="adultPersonBiography" class="adult-person-biography"></p>
+      <button id="adultPersonBiographyExpand" type="button" class="watch-film-expand adult-person-biography-expand hidden" aria-controls="adultPersonBiography" aria-expanded="false"><span>More</span></button>
       <section id="adultPersonKnownFor" class="adult-person-known-for hidden" aria-labelledby="adultPersonKnownForHeading">
         <h3 id="adultPersonKnownForHeading">Known for</h3>
         <div id="adultPersonCredits" class="adult-person-credits"></div>

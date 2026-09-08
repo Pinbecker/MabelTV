@@ -76,8 +76,8 @@
         </header>
         <div id="watchFilmProviderList" class="adult-provider-list"><p>Checking services…</p></div>
         <section id="watchFilmRentBuy" class="adult-rent-buy hidden" aria-labelledby="watchFilmRentBuyHeading">
-          <h4 id="watchFilmRentBuyHeading">Rent or buy</h4>
-          <div id="watchFilmRentBuyList" class="adult-rent-buy-list"></div>
+          <button id="watchFilmRentBuyToggle" type="button" class="adult-rent-toggle" aria-controls="watchFilmRentBuyList" aria-expanded="false"><span><strong id="watchFilmRentBuyHeading">Rent</strong><small class="adult-rent-summary"></small></span><svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-chevron-down" /></svg></button>
+          <div id="watchFilmRentBuyList" class="adult-rent-buy-list" hidden></div>
         </section>
         <p class="provider-attribution">Availability by TMDB and JustWatch. Direct destinations and prices by Watchmode.</p>
       </section>

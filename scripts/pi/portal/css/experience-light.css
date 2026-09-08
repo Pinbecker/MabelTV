@@ -235,7 +235,7 @@ html[data-experience-theme="light"] body.portal-experience .watch-film-poster {
 
 html[data-experience-theme="light"] body.portal-experience .watch-film-summary {
   background: var(--experience-raised);
-  box-shadow: 0 12px 18px rgba(20, 27, 39, 0.16);
+  box-shadow: none;
   color: var(--experience-ink);
 }
 

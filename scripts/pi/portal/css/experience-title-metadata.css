@@ -176,11 +176,16 @@ body.portal-v2 .adult-provider-logo.provider-mabeltv img { border-radius: 8px; }
 body.portal-v2 .adult-provider-logo.is-availability { cursor: default; }
 body.portal-v2 .adult-provider-logo:focus-visible { outline: 2px solid var(--experience-orange); outline-offset: 2px; }
 
-body.portal-v2 .adult-rent-buy { margin-top: 10px; border-top: 1px solid var(--experience-line); padding-top: 9px; }
-body.portal-v2 .adult-rent-buy h4 { margin: 0; font-size: 14px; }
-body.portal-v2 .adult-rent-buy-list { display: grid; gap: 8px; margin-top: 7px; }
-body.portal-v2 .adult-purchase-row { display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: start; gap: 8px; }
-body.portal-v2 .adult-purchase-kind { padding-top: 18px; color: var(--experience-muted); font-size: 8px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+body.portal-v2 .adult-rent-buy { margin-top: 10px; border-top: 1px solid var(--experience-line); }
+body.portal-v2 .adult-rent-toggle { display: flex; width: 100%; min-height: 42px; align-items: center; justify-content: space-between; gap: 12px; border: 0; background: transparent; color: var(--experience-ink); padding: 8px 0; text-align: left; }
+body.portal-v2 .adult-rent-toggle > span { display: flex; min-width: 0; align-items: baseline; gap: 8px; }
+body.portal-v2 .adult-rent-toggle strong { font-size: 14px; }
+body.portal-v2 .adult-rent-toggle small { overflow: hidden; color: var(--experience-dim); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+body.portal-v2 .adult-rent-toggle > .icon { width: 16px; height: 16px; flex: 0 0 auto; color: var(--experience-muted); transition: transform 160ms ease; }
+body.portal-v2 .adult-rent-buy.is-expanded .adult-rent-toggle > .icon { transform: rotate(180deg); }
+body.portal-v2 .adult-rent-toggle:focus-visible { outline: 2px solid var(--experience-orange); outline-offset: 2px; }
+body.portal-v2 .adult-rent-buy-list { margin-bottom: 8px; }
+body.portal-v2 .adult-rent-buy-list[hidden] { display: none; }
 body.portal-v2 .adult-purchase-providers { display: flex; min-width: 0; gap: 8px; overflow-x: auto; scrollbar-width: none; }
 body.portal-v2 .adult-purchase-providers::-webkit-scrollbar { display: none; }
 body.portal-v2 .adult-purchase-provider { display: grid; flex: 0 0 54px; min-width: 0; gap: 3px; border: 0; background: transparent; color: var(--experience-ink); padding: 0; text-align: center; }
@@ -199,6 +204,8 @@ body.portal-v2 .adult-person-facts { display: grid; gap: 8px; margin: 0; }
 body.portal-v2 .adult-person-facts div { display: grid; gap: 2px; }
 body.portal-v2 .adult-person-facts dt { color: var(--experience-dim); font-size: 8px; font-weight: 820; letter-spacing: .08em; text-transform: uppercase; }
 body.portal-v2 .adult-person-facts dd { margin: 0; color: var(--experience-ink); font-size: 11px; line-height: 1.35; }
-body.portal-v2 .adult-person-biography { margin: 14px 0 0; color: var(--experience-muted); font-size: 12px; line-height: 1.55; }
+body.portal-v2 .adult-person-biography { display: -webkit-box; overflow: hidden; margin: 14px 0 0; color: var(--experience-muted); font-size: 12px; line-height: 1.55; -webkit-box-orient: vertical; -webkit-line-clamp: 5; }
+body.portal-v2 .adult-person-biography.is-expanded { display: block; overflow: visible; -webkit-line-clamp: unset; }
+body.portal-v2 .adult-person-biography-expand { margin-top: 4px; }
 body.portal-v2 .adult-person-known-for { margin-top: 14px; border-top: 1px solid var(--experience-line); padding-top: 10px; }
 body.portal-v2 .adult-person-known-for h3 { margin: 0; font-size: 18px; }

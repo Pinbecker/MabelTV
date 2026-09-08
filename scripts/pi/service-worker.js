@@ -1,6 +1,6 @@
 'use strict'
 
-const SHELL_CACHE = 'mabeltv-shell-v161'
+const SHELL_CACHE = 'mabeltv-shell-v162'
 const SHELL_URLS = [
   '/',
   '/manifest.webmanifest',
@@ -67,6 +67,7 @@ const SHELL_URLS = [
   '/portal/assets/providers/netflix-app.jpg',
   '/portal/assets/providers/prime-video-app.jpg',
   '/portal/assets/providers/disney-plus-app.jpg',
+  '/portal/assets/providers/now-app.jpg',
   '/portal/assets/providers/sky-go-app.jpg',
   '/portal/assets/providers/bbc-iplayer-app.jpg',
   '/portal/assets/providers/channel-4-app.jpg',

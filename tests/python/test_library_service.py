@@ -1125,6 +1125,7 @@ class LibraryUnitTests(unittest.TestCase):
         provider_assets = PORTAL_ROOT / "assets" / "providers"
         for asset in (
             "netflix-app.jpg", "prime-video-app.jpg", "disney-plus-app.jpg",
+            "now-app.jpg",
             "sky-go-app.jpg", "bbc-iplayer-app.jpg", "channel-4-app.jpg",
             "itvx-app.jpg", "paramount-plus-app.jpg", "apple-tv-app.jpg",
         ):

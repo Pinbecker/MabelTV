@@ -179,7 +179,7 @@ function renderAdultPersonDetail(person) {
   addFact('Born', adultExactDateLabel(person.birthday))
   addFact('Died', adultExactDateLabel(person.deathday))
   addFact('From', person.place_of_birth)
-  $('#adultPersonBiography').textContent = person.biography || 'No biography is available for this cast member.'
+  configureAdultPersonBiography(person.biography || 'No biography is available for this cast member.')
   const section = $('#adultPersonKnownFor')
   const credits = $('#adultPersonCredits')
   credits.replaceChildren()
@@ -214,6 +214,26 @@ function renderAdultPersonDetail(person) {
   section.classList.toggle('hidden', !credits.children.length)
 }
 
+function configureAdultPersonBiography(value) {
+  const biography = $('#adultPersonBiography')
+  const control = $('#adultPersonBiographyExpand')
+  const label = control.querySelector('span')
+  biography.textContent = value
+  biography.classList.remove('is-expanded')
+  control.classList.add('hidden')
+  control.setAttribute('aria-expanded', 'false')
+  label.textContent = 'More'
+  control.onclick = () => {
+    const expanded = !biography.classList.contains('is-expanded')
+    biography.classList.toggle('is-expanded', expanded)
+    control.setAttribute('aria-expanded', String(expanded))
+    label.textContent = expanded ? 'Less' : 'More'
+  }
+  requestAnimationFrame(() => {
+    control.classList.toggle('hidden', biography.scrollHeight <= biography.clientHeight + 1)
+  })
+}
+
 async function openAdultPerson(person, title) {
   const personId = Number(person.tmdb_id || 0)
   if (!personId) return
@@ -224,6 +244,9 @@ async function openAdultPerson(person, title) {
     ? `As ${person.character} in ${title}` : `Principal cast in ${title}`
   $('#adultPersonFacts').replaceChildren()
   $('#adultPersonBiography').textContent = 'Loading biography…'
+  $('#adultPersonBiography').classList.remove('is-expanded')
+  $('#adultPersonBiographyExpand').classList.add('hidden')
+  $('#adultPersonBiographyExpand').setAttribute('aria-expanded', 'false')
   $('#adultPersonKnownFor').classList.add('hidden')
   $('#adultPersonCredits').replaceChildren()
   renderAdultPersonPhoto(person)
@@ -235,6 +258,7 @@ async function openAdultPerson(person, title) {
   } catch (error) {
     if (revision !== adultPersonOpenRevision || !sheet.open) return
     $('#adultPersonBiography').textContent = error.message || 'Cast details are unavailable right now.'
+    $('#adultPersonBiographyExpand').classList.add('hidden')
   }
 }
 

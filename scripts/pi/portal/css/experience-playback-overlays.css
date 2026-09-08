@@ -96,7 +96,7 @@ body.portal-experience .watch-film-summary {
   margin: 0 calc(var(--experience-sheet-padding) * -1);
   border-bottom: 1px solid var(--experience-line);
   background: rgba(10, 10, 14, 0.96);
-  box-shadow: 0 12px 18px rgba(10, 10, 14, 0.96);
+  box-shadow: none;
   padding: 16px 58px 16px var(--experience-sheet-padding);
   -webkit-backdrop-filter: blur(18px) saturate(120%);
   backdrop-filter: blur(18px) saturate(120%);

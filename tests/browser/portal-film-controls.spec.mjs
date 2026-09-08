@@ -162,6 +162,7 @@ for (const theme of ['light', 'dark']) {
         fullBleed: Math.abs(summaryBox.left - panelBox.left) <= 1
           && Math.abs(summaryBox.right - panelBox.right) <= 1,
         dividerGap: Number.parseFloat(getComputedStyle(summary).paddingBottom),
+        shadow: getComputedStyle(summary).boxShadow,
         position: getComputedStyle(summary).position,
         surface: getComputedStyle(summary).backgroundColor,
         pinned: Math.abs(summaryBox.top - panelBox.top) <= 1,
@@ -172,6 +173,7 @@ for (const theme of ['light', 'dark']) {
       border: '1px',
       fullBleed: true,
       dividerGap: 16,
+      shadow: 'none',
       position: 'sticky',
       surface: theme === 'light' ? 'rgb(255, 255, 255)' : 'rgba(10, 10, 14, 0.96)',
       pinned: true,
@@ -228,7 +230,7 @@ for (const theme of ['light', 'dark']) {
       route.fulfill({ json: {
         tmdb_id: 1, name: 'Albert Brooks', known_for_department: 'Acting',
         birthday: '1947-07-22', place_of_birth: 'Beverly Hills, California',
-        profile_path: '', biography: 'Albert Brooks is an actor, writer and filmmaker.',
+        profile_path: '', biography: 'Albert Brooks is an actor, writer and filmmaker. '.repeat(14),
         known_for: [
           { key: 'movie:12', media_type: 'movie', tmdb_id: 12, title: 'Finding Nemo',
             year: '2003', character: 'Marlin', poster_path: '' },
@@ -257,6 +259,8 @@ for (const theme of ['light', 'dark']) {
           web_url: 'https://play.google.com/store/movies/details/12' },
         { source_id: 41, name: 'YouTube', type: 'rent', price: 2.99,
           web_url: 'https://www.youtube.com/watch?v=12' },
+        { source_id: 445, name: 'CHILI', type: 'rent', price: 2.49,
+          web_url: 'https://uk.chili.com/movies/12' },
       ] } }))
     await openPortal(page, theme)
     await page.evaluate(() => openAdultTitle({
@@ -277,21 +281,36 @@ for (const theme of ['light', 'dark']) {
     for (const provider of ['now', 'my5', 'hbo-max']) {
       await expect(page.locator(`#adultProviderList .provider-${provider}`)).toBeVisible()
     }
-    await expect(page.locator('#adultTitleRentBuyList .adult-purchase-row')).toHaveCount(2)
-    await expect(page.locator('#adultTitleRentBuyList .adult-purchase-kind')).toHaveText(['Rent', 'Buy'])
-    await expect(page.locator('#adultTitleRentBuyList [data-provider="appletv"]')).toHaveCount(2)
-    await expect(page.locator('#adultTitleRentBuyList [data-provider="amazon"]')).toHaveCount(2)
+    await expect(page.locator('#adultProviderList .provider-now img')).toHaveAttribute('src', /now-app\.jpg$/)
+    await expect(page.locator('#adultTitleRentBuyToggle')).toHaveAttribute('aria-expanded', 'false')
+    await expect(page.locator('#adultTitleRentBuyToggle')).toContainText('Rent')
+    await expect(page.locator('#adultTitleRentBuyToggle')).toContainText('From £3.49')
+    await expect(page.locator('#adultTitleRentBuyList')).toBeHidden()
+    await expect(page.locator('#adultTitleRentBuyList [data-provider="appletv"]')).toHaveCount(1)
+    await expect(page.locator('#adultTitleRentBuyList [data-provider="amazon"]')).toHaveCount(1)
     await expect(page.locator('#adultTitleRentBuyList [data-provider="rakutentv"]')).toHaveCount(0)
     await expect(page.locator('#adultTitleRentBuyList [data-provider="googleplaymovies"]')).toHaveCount(0)
     await expect(page.locator('#adultTitleRentBuyList [data-provider="youtube"]')).toHaveCount(0)
+    await expect(page.locator('#adultTitleRentBuyList [data-provider="chili"]')).toHaveCount(0)
+    await expect(page.locator('#adultTitleRentBuyList')).not.toContainText('Buy')
     await expect(page.locator('#adultTitleRentBuyList')).not.toContainText('4K')
+    await page.locator('#adultTitleRentBuyToggle').click()
+    await expect(page.locator('#adultTitleRentBuyToggle')).toHaveAttribute('aria-expanded', 'true')
+    await expect(page.locator('#adultTitleRentBuyList')).toBeVisible()
+    await page.locator('#adultTitleRentBuyToggle').click()
     await page.locator('#adultTitleCastRail .adult-cast-card').first().click()
     await expect(page.locator('#adultPersonSheet')).toBeVisible()
     await expect(page.locator('#adultPersonName')).toHaveText('Albert Brooks')
     await expect(page.locator('#adultPersonContext')).toHaveText('As Marlin in Finding Nemo')
     await expect(page.locator('#adultPersonBiography')).toContainText('actor, writer and filmmaker')
+    await expect(page.locator('#adultPersonBiographyExpand')).toBeVisible()
+    await expect(page.locator('#adultPersonBiographyExpand')).toHaveText('More')
+    await expect(page.locator('#adultPersonBiographyExpand')).toHaveAttribute('aria-expanded', 'false')
     await expect(page.locator('#adultPersonCredits .adult-franchise-card')).toHaveCount(2)
     await page.screenshot({ path: testInfo.outputPath('cast-detail.png') })
+    await page.locator('#adultPersonBiographyExpand').click()
+    await expect(page.locator('#adultPersonBiographyExpand')).toHaveText('Less')
+    await expect(page.locator('#adultPersonBiography')).toHaveClass(/is-expanded/)
     await page.locator('#adultPersonClose').click()
     await expect(page.locator('#adultTitleSheet')).toBeVisible()
     const geometry = await page.locator('#adultTitleSheet').evaluate(sheet => {

@@ -52,7 +52,7 @@ const adultProviderBrands = [
     hosts: ['disneyplus.com'], fallback: () => 'https://www.disneyplus.com/en-gb/home',
   },
   {
-    id: 'now', label: 'NOW', asset: 'https://cdn.watchmode.com/provider_logos/406_generic_v4.png',
+    id: 'now', label: 'NOW', asset: 'now-app.jpg',
     match: /(?:now\s*tv|^now$)/i, tmdbIds: [39, 591], watchmodeIds: [406],
     hosts: ['nowtv.com'], fallback: title => `https://www.nowtv.com/search?q=${encodeURIComponent(title)}`,
   },
@@ -188,15 +188,24 @@ function adultPurchaseProviderAsset(group, detail) {
 function renderAdultPurchaseOffersInto(section, root, detail, result) {
   if (!section || !root) return
   root.replaceChildren()
+  root.hidden = true
+  section.classList.remove('is-expanded')
+  const toggle = section.querySelector('.adult-rent-toggle')
+  const summary = section.querySelector('.adult-rent-summary')
+  if (toggle) {
+    toggle.setAttribute('aria-expanded', 'false')
+    toggle.onclick = null
+  }
+  if (summary) summary.textContent = ''
   const groups = new Map()
   const add = source => {
     const type = String(source?.type || '').toLowerCase()
-    if (!['rent', 'buy'].includes(type)) return
+    if (type !== 'rent') return
     const name = String(source?.name || 'Store').trim()
-    if (/(?:rakuten|google\s*play|youtube)/i.test(name)) return
-    const marker = `${adultPurchaseProviderKey(name)}|${type}`
+    if (/(?:rakuten|google\s*play|youtube|chili)/i.test(name)) return
+    const marker = adultPurchaseProviderKey(name)
     const group = groups.get(marker) || {
-      name, type, sources: [], prices: new Set(),
+      name, sources: [], prices: new Set(),
     }
     group.sources.push(source)
     const price = source?.price === null || source?.price === undefined || source?.price === ''
@@ -205,15 +214,9 @@ function renderAdultPurchaseOffersInto(section, root, detail, result) {
     groups.set(marker, group)
   }
   ;(result.sources || []).forEach(add)
-  for (const type of ['rent', 'buy']) {
-    const offers = [...groups.values()].filter(group => group.type === type
-      && group.prices.size).sort((a, b) => a.name.localeCompare(b.name))
-    if (!offers.length) continue
-    const row = document.createElement('div')
-    row.className = 'adult-purchase-row'
-    const kind = document.createElement('strong')
-    kind.className = 'adult-purchase-kind'
-    kind.textContent = type === 'rent' ? 'Rent' : 'Buy'
+  const offers = [...groups.values()].filter(group => group.prices.size)
+    .sort((a, b) => a.name.localeCompare(b.name))
+  if (offers.length) {
     const providers = document.createElement('div')
     providers.className = 'adult-purchase-providers'
     offers.forEach(group => {
@@ -244,12 +247,25 @@ function renderAdultPurchaseOffersInto(section, root, detail, result) {
       const priceLabel = document.createElement('strong')
       priceLabel.textContent = `${prices.length > 1 ? 'From ' : ''}${price}`
       offer.append(logo, priceLabel)
-      offer.setAttribute('aria-label', `${kind.textContent} ${group.name} for ${priceLabel.textContent}`)
+      offer.setAttribute('aria-label', `Rent ${group.name} for ${priceLabel.textContent}`)
       if (destination) offer.onclick = () => window.location.assign(destination)
       providers.append(offer)
     })
-    row.append(kind, providers)
-    root.append(row)
+    root.append(providers)
+    const lowest = Math.min(...offers.flatMap(group => [...group.prices]))
+    if (summary && Number.isFinite(lowest)) {
+      summary.textContent = `From ${new Intl.NumberFormat('en-GB', {
+        style: 'currency', currency: 'GBP', minimumFractionDigits: 2,
+      }).format(lowest)}`
+    }
+    if (toggle) {
+      toggle.onclick = () => {
+        const expanded = toggle.getAttribute('aria-expanded') !== 'true'
+        toggle.setAttribute('aria-expanded', String(expanded))
+        section.classList.toggle('is-expanded', expanded)
+        root.hidden = !expanded
+      }
+    }
   }
   section.classList.toggle('hidden', !root.children.length)
 }

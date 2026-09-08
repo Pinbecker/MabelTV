@@ -7,6 +7,7 @@ The square provider icons in this directory are the current UK App Store artwork
 | `netflix-app.jpg` | Netflix, Inc. | 363590051 |
 | `prime-video-app.jpg` | AMZN Mobile LLC | 545519333 |
 | `disney-plus-app.jpg` | Disney Electronic Content, Inc. | 1446075923 |
+| `now-app.jpg` | Sky UK Limited | 512266300 |
 | `sky-go-app.jpg` | Sky UK Limited | 446086440 |
 | `bbc-iplayer-app.jpg` | BBC Media Applications Technologies Limited | 416580485 |
 | `channel-4-app.jpg` | Channel 4 | 432494037 |
