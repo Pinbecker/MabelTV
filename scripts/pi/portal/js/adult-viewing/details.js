@@ -275,7 +275,8 @@ async function openAdultTitle(title) {
 
 function adultViewingItems() {
   const items = adultViewingData.items || []
-  return items.filter(item => {
+  const query = adultViewingSearch.trim().toLocaleLowerCase()
+  const values = items.filter(item => {
     const status = adultTitleViewingStatus(item, {
       media_type: item.media_type, local: item.local_progress || item.local,
     })
@@ -287,12 +288,27 @@ function adultViewingItems() {
     }
     if (adultViewingTab === 'part-watched' && !status.partWatched) return false
     if (adultViewingTab === 'history' && !status.completed) return false
-    if (adultViewingFilter === 'movie' || adultViewingFilter === 'tv') return item.media_type === adultViewingFilter
-    if (adultViewingFilter === 'local') return item.on_mabeltv
-    return true
-  }).sort((a, b) => adultViewingTab === 'up-next'
-    ? Number(a.up_next_rank || 999999) - Number(b.up_next_rank || 999999)
-    : Number(b.viewing_updated || b.updated || 0) - Number(a.viewing_updated || a.updated || 0))
+    if (adultViewingFilter === 'movie' || adultViewingFilter === 'tv') {
+      if (item.media_type !== adultViewingFilter) return false
+    } else if (adultViewingFilter === 'local' && !item.on_mabeltv) return false
+    if (!query) return true
+    return [item.title, item.year].some(value => String(value || '').toLocaleLowerCase().includes(query))
+  })
+  const titleCompare = (a, b) => String(a.title || '').localeCompare(String(b.title || ''), undefined, { sensitivity: 'base' })
+  const year = item => Number.parseInt(item.year, 10) || 0
+  const recent = item => Number(adultViewingTab === 'watchlist'
+    ? item.watchlist_updated || item.viewing_updated || item.updated || 0
+    : adultViewingTab === 'watching'
+      ? item.series_watching_updated || item.viewing_updated || item.updated || 0
+      : item.viewing_updated || item.updated || 0)
+  return values.sort((a, b) => {
+    if (adultViewingSort === 'az') return titleCompare(a, b)
+    if (adultViewingSort === 'za') return titleCompare(b, a)
+    if (adultViewingSort === 'newest') return year(b) - year(a) || titleCompare(a, b)
+    if (adultViewingSort === 'oldest') return year(a) - year(b) || titleCompare(a, b)
+    if (adultViewingTab === 'up-next') return Number(a.up_next_rank || 999999) - Number(b.up_next_rank || 999999)
+    return recent(b) - recent(a)
+  })
 }
 
 function renderAdultViewing() {
@@ -310,16 +326,28 @@ function renderAdultViewingList() {
   const [kicker, heading] = labels[adultViewingTab]
   $('#adultViewingKicker').textContent = kicker
   $('#adultViewingHeading').textContent = heading
+  const recentOption = $('#adultViewingSort')?.querySelector('option[value="recent"]')
+  if (recentOption) recentOption.textContent = adultViewingTab === 'up-next' ? 'Queue order' : 'Recently added'
   const values = adultViewingItems()
   $('#adultViewingCount').textContent = `${values.length} title${values.length === 1 ? '' : 's'}`
   const target = $('#adultViewingGrid')
+  target.classList.toggle('is-grid', adultViewingLayout === 'grid')
+  target.classList.toggle('is-list', adultViewingLayout === 'list')
+  $$('[data-viewing-layout]').forEach(button => {
+    const active = button.dataset.viewingLayout === adultViewingLayout
+    button.classList.toggle('active', active)
+    button.setAttribute('aria-pressed', String(active))
+  })
   const root = document.createElement('div')
   values.forEach((item, index) => {
     const row = document.createElement('article'); row.className = 'adult-viewing-row'
     row.dataset.viewingKey = `${item.media_type}:${item.tmdb_id}`
     const posterUrl = adultViewingPosterUrl(item)
     const art = posterUrl ? document.createElement('img') : document.createElement('span')
-    if (posterUrl) { art.src = posterUrl; art.alt = '' } else art.className = 'adult-viewing-placeholder'
+    if (posterUrl) { art.src = posterUrl; art.alt = '' } else {
+      art.className = 'adult-viewing-placeholder'
+      art.append(librarySignalIcon(item.media_type === 'tv' ? 'signal-tv' : 'signal-film'))
+    }
     const copy = document.createElement('span'); copy.className = 'adult-viewing-copy'
     const title = document.createElement('strong'); title.textContent = item.title || 'Untitled'
     const watchedEpisodes = Object.values(item.episodes || {})
@@ -346,8 +374,8 @@ function renderAdultViewingList() {
     } else {
       const open = document.createElement('button'); open.type = 'button'; open.className = 'adult-viewing-row-open'; open.setAttribute('aria-label', `Open ${item.title}`); open.append(librarySignalIcon('signal-chevron-right')); open.onclick = () => openAdultTitle(item); actions.append(open)
     }
-    const opener = document.createElement('button'); opener.type = 'button'; opener.className = 'adult-viewing-copy-button'; opener.append(copy); opener.onclick = () => openAdultTitle(item)
-    row.append(art, opener, actions); root.append(row)
+    const opener = document.createElement('button'); opener.type = 'button'; opener.className = 'adult-viewing-card-open'; opener.setAttribute('aria-label', `Open ${item.title}`); opener.append(art, copy); opener.onclick = () => openAdultTitle(item)
+    row.append(opener, actions); root.append(row)
   })
   if (!values.length) root.innerHTML = `<div class="watch-empty"><strong>Nothing in ${heading} yet</strong><br>Add titles from search and they will appear here.</div>`
   target.replaceChildren(...root.childNodes)
@@ -416,7 +444,24 @@ $('#adultEpisodeLaunchSheet')?.addEventListener('click', event => {
   if (event.target === $('#adultEpisodeLaunchSheet')) closeAdultEpisodeLaunchSheet()
 })
 $$('[data-viewing-tab]').forEach(button => button.onclick = () => { adultViewingTab = button.dataset.viewingTab; $$('[data-viewing-tab]').forEach(value => value.classList.toggle('active', value === button)); renderAdultViewing() })
-$$('[data-viewing-filter]').forEach(button => button.onclick = () => { adultViewingFilter = button.dataset.viewingFilter; $$('[data-viewing-filter]').forEach(value => value.classList.toggle('active', value === button)); renderAdultViewing() })
+$('#adultViewingFilter')?.addEventListener('change', event => { adultViewingFilter = event.currentTarget.value; renderAdultViewing() })
+$('#adultViewingSort')?.addEventListener('change', event => { adultViewingSort = event.currentTarget.value; renderAdultViewing() })
+$('#adultViewingSearch')?.addEventListener('input', event => {
+  adultViewingSearch = event.currentTarget.value
+  $('#adultViewingSearchClear')?.classList.toggle('hidden', !adultViewingSearch)
+  renderAdultViewing()
+})
+$('#adultViewingSearchClear')?.addEventListener('click', () => {
+  const search = $('#adultViewingSearch')
+  search.value = ''
+  search.dispatchEvent(new Event('input', { bubbles: true }))
+  search.focus()
+})
+$$('[data-viewing-layout]').forEach(button => button.onclick = () => {
+  adultViewingLayout = button.dataset.viewingLayout
+  try { localStorage.setItem('mabeltv-adult-viewing-layout', adultViewingLayout) } catch (_) {}
+  renderAdultViewing()
+})
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && location.hash === '#adult-viewing') loadAdultViewing().catch(() => {})
 })

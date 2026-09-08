@@ -301,7 +301,7 @@ test('download progress refresh and My Viewing filters retain position', async (
   await settled(page)
   await page.evaluate(() => window.scrollTo(0, 1200))
   const viewing = await scrollY(page)
-  await page.locator('[data-viewing-filter="movie"]').dispatchEvent('click')
+  await page.locator('#adultViewingFilter').selectOption('movie')
   expect(await scrollY(page)).toBeCloseTo(viewing, 0)
 })
 

@@ -153,48 +153,81 @@ for (const theme of ['light', 'dark']) {
     else expect(state.webkitScrollbarDisplay).toBe('none')
   })
 
-  test(`${theme} My Viewing uses compact tabs and segmented filters`, async ({ page }, testInfo) => {
+  test(`${theme} My Viewing search, compact controls and responsive grid fit`, async ({ page }, testInfo) => {
     await openPortal(page, theme)
     await page.evaluate(async () => {
       openView('adult-viewing')
       await new Promise(resolve => setTimeout(resolve, 100))
-      adultViewingData = { items: [{
-        key: 'tv:6001', media_type: 'tv', tmdb_id: 6001,
-        title: 'Severance', year: '2022', series_watching: true,
-        viewing_updated: 2_000_000_000,
-      }] }
+      adultViewingData = { items: Array.from({ length: 11 }, (_, index) => ({
+        key: `tv:${6001 + index}`, media_type: 'tv', tmdb_id: 6001 + index,
+        title: `Series ${String(index + 1).padStart(2, '0')}`, year: String(2022 - index),
+        series_watching: true, viewing_updated: 2_000_000_000 - index,
+      })) }
       adultViewingLoaded = true
       adultViewingTab = 'watching'
       adultViewingFilter = 'all'
+      adultViewingLayout = 'grid'
       document.querySelectorAll('[data-viewing-tab]').forEach(button =>
         button.classList.toggle('active', button.dataset.viewingTab === 'watching'))
-      document.querySelectorAll('[data-viewing-filter]').forEach(button =>
-        button.classList.toggle('active', button.dataset.viewingFilter === 'all'))
       renderAdultViewing()
     })
     await expect(page.locator('#view-adult-viewing')).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath('my-viewing.png'), animations: 'disabled' })
     const layout = await page.evaluate(() => {
       const tabs = document.querySelector('#adultViewingTabs')
-      const filters = document.querySelector('.adult-viewing-filters')
+      const search = document.querySelector('#adultViewingSearch')
+      const tools = document.querySelector('.adult-viewing-tools')
+      const toolGroups = [...tools.children]
+      const selects = [...tools.querySelectorAll('select')]
+      const layoutButtons = [...tools.querySelectorAll('[data-viewing-layout]')]
+      const cards = [...document.querySelectorAll('.adult-viewing-row')]
+      const mobileHead = document.querySelector('.mobile-head')
+      const back = document.querySelector('#adultViewingBack')
       const tabButtons = [...tabs.querySelectorAll('button')]
-      const filterButtons = [...filters.querySelectorAll('button')]
       return {
         pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+        isPhone: document.documentElement.clientWidth <= 640,
+        headerGap: back.getBoundingClientRect().top - mobileHead.getBoundingClientRect().bottom,
         tabRows: new Set(tabButtons.map(button => Math.round(button.getBoundingClientRect().top))).size,
         maxTabRadius: Math.max(...tabButtons.map(button =>
           parseFloat(getComputedStyle(button).borderRadius))),
-        maxFilterRadius: Math.max(...filterButtons.map(button =>
-          parseFloat(getComputedStyle(button).borderRadius))),
         tabHeight: tabs.getBoundingClientRect().height,
-        filterHeight: filters.getBoundingClientRect().height,
+        searchHeight: search.closest('label').getBoundingClientRect().height,
+        toolRows: new Set(toolGroups.map(control =>
+          Math.round(control.getBoundingClientRect().top))).size,
+        minControlHeight: Math.min(...toolGroups.map(control =>
+          control.getBoundingClientRect().height)),
+        firstRowCards: cards.filter(card =>
+          Math.round(card.getBoundingClientRect().top) === Math.round(cards[0].getBoundingClientRect().top)).length,
+        rightEdge: Math.max(...cards.map(card => card.getBoundingClientRect().right)),
+        viewport: document.documentElement.clientWidth,
       }
     })
     expect(layout.pageOverflow).toBe(false)
+    if (layout.isPhone) expect(layout.headerGap).toBeLessThanOrEqual(20)
     expect(layout.tabRows).toBe(1)
     expect(layout.maxTabRadius).toBe(0)
-    expect(layout.maxFilterRadius).toBeLessThan(12)
-    expect(layout.tabHeight).toBeLessThanOrEqual(44)
-    expect(layout.filterHeight).toBeLessThanOrEqual(44)
+    expect(layout.tabHeight).toBeLessThanOrEqual(38)
+    expect(layout.searchHeight).toBeGreaterThanOrEqual(40)
+    expect(layout.searchHeight).toBeLessThanOrEqual(44)
+    expect(layout.toolRows).toBe(1)
+    expect(layout.minControlHeight).toBeGreaterThanOrEqual(34)
+    expect(layout.minControlHeight).toBeLessThanOrEqual(38)
+    if (layout.isPhone) expect(layout.firstRowCards).toBe(5)
+    else expect(layout.firstRowCards).toBeGreaterThanOrEqual(5)
+    expect(layout.rightEdge).toBeLessThanOrEqual(layout.viewport)
+    await page.locator('#adultViewingSearch').fill('Series 10')
+    await expect(page.locator('.adult-viewing-row')).toHaveCount(1)
+    await page.locator('#adultViewingSearchClear').click()
+    await expect(page.locator('.adult-viewing-row')).toHaveCount(11)
+    await page.locator('#adultViewingSort').selectOption('za')
+    await expect(page.locator('.adult-viewing-copy strong').first()).toHaveText('Series 11')
+    await page.locator('#adultViewingFilter').selectOption('movie')
+    await expect(page.locator('.adult-viewing-row')).toHaveCount(0)
+    await page.locator('#adultViewingFilter').selectOption('tv')
+    await expect(page.locator('.adult-viewing-row')).toHaveCount(11)
+    await page.locator('[data-viewing-layout="list"]').click()
+    await expect(page.locator('#adultViewingGrid')).toHaveClass(/is-list/)
+    expect(await page.evaluate(() => localStorage.getItem('mabeltv-adult-viewing-layout'))).toBe('list')
   })
 }

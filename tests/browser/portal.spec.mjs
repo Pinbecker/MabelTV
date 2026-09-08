@@ -200,12 +200,17 @@ test('shared portal component contracts stay canonical', async ({ page }, testIn
     }
   })
 
-  expect(contract.searchCount).toBe(4)
-  contract.searchStyles.forEach(style => expect(style).toMatchObject({
+  expect(contract.searchCount).toBe(5)
+  contract.searchStyles.slice(0, 4).forEach(style => expect(style).toMatchObject({
       display: 'grid',
       minHeight: '48px',
       radius: '8px',
     }))
+  expect(contract.searchStyles[4]).toMatchObject({
+    display: 'grid',
+    minHeight: '42px',
+    radius: '8px',
+  })
   expect(contract.iconClass).toBe('icon')
   expect(contract.iconHref).toBe('/portal/icons.svg#signal-play')
   expect(contract.emptyMarkup).toBe('<strong>Empty title</strong><span>Empty message</span>')

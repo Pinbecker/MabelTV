@@ -6,6 +6,12 @@ let adultViewingData = { items: [] }
 let adultViewingLoaded = false
 let adultViewingTab = 'watchlist'
 let adultViewingFilter = 'all'
+let adultViewingSearch = ''
+let adultViewingSort = 'recent'
+let adultViewingLayout = (() => {
+  try { return localStorage.getItem('mabeltv-adult-viewing-layout') === 'list' ? 'list' : 'grid' }
+  catch (_) { return 'grid' }
+})()
 let selectedAdultTitle = null
 let pendingNetflixLaunch = null
 let adultTitleOpenRevision = 0
