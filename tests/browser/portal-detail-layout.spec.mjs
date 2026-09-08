@@ -95,7 +95,7 @@ for (const theme of ['light', 'dark']) {
     await page.screenshot({ path: testInfo.outputPath('season.png') })
     await expectHeaderClear(page, '#adultSeasonSheet', '#adultSeasonClose')
     await expect(page.locator('#adultSeasonMeta')).toHaveText('0 episodes · 0 watched')
-    const rows = await page.locator('.adult-season-tools button').evaluateAll(buttons => buttons.map(button => {
+    const rows = await page.locator('#adultSeasonSheet .adult-season-tools button').evaluateAll(buttons => buttons.map(button => {
       const box = button.getBoundingClientRect()
       const icon = button.querySelector('.icon').getBoundingClientRect()
       const text = button.querySelector('span').getBoundingClientRect()

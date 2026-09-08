@@ -54,10 +54,9 @@
   }
 
   const viewingIntentDefinitions = [
-    ['watchlist', 'signal-plus', 'Add to Watchlist', 'Keep unseen titles saved for later'],
-    ['rewatch', 'signal-restart', 'Add to Rewatch', 'Save a favourite you have already seen'],
+    ['watchlist', 'signal-plus', 'Add to Watchlist', 'Keep this title in your manual Watchlist'],
     ['up_next', 'signal-list-filter', 'Add to Up Next', 'Place it in your ordered queue'],
-    ['watching', 'signal-eye', 'Start watching series', 'Keep its next episode in Up Next'],
+    ['watching', 'signal-eye', 'Add to Watching', 'Keep this show in your manual Watching list'],
     ['watched', 'signal-check', 'Mark watched', 'Move it into your watched history'],
   ]
 

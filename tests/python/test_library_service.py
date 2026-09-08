@@ -833,23 +833,13 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertEqual(saved["viewing"]["manual_state"], "part_watched")
         saved = self.fixture.library.adult_viewing_update(
             title | {"action": "watched"})
-        self.assertFalse(saved["viewing"]["watchlisted"])
-        self.assertFalse(saved["viewing"]["up_next"])
-        self.assertEqual(len(saved["viewing"]["history"]), 1)
-        with self.assertRaisesRegex(ValueError, "already seen"):
-            self.fixture.library.adult_viewing_update(
-                title | {"action": "watchlist", "enabled": True})
-        saved = self.fixture.library.adult_viewing_update(
-            title | {"action": "rewatch", "enabled": True})
-        self.assertTrue(saved["viewing"]["rewatch"])
-        saved = self.fixture.library.adult_viewing_update(
-            title | {"action": "up_next", "enabled": True})
+        self.assertTrue(saved["viewing"]["watchlisted"])
         self.assertTrue(saved["viewing"]["up_next"])
+        self.assertEqual(len(saved["viewing"]["history"]), 1)
         saved = self.fixture.library.adult_viewing_update(
             title | {"action": "not_watched"})
-        self.assertFalse(saved["viewing"]["watchlisted"])
+        self.assertTrue(saved["viewing"]["watchlisted"])
         self.assertTrue(saved["viewing"]["up_next"])
-        self.assertFalse(saved["viewing"]["rewatch"])
         self.assertEqual(len(saved["viewing"]["history"]), 0)
 
     def test_watchmode_links_are_validated_cached_and_expire_before_thirty_days(self) -> None:
@@ -905,16 +895,11 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertEqual(season["episodes"][0]["air_date"], "2000-01-01")
         self.assertEqual(season["episodes"][0]["overview"],
                          "Rory starts a new school.")
-        with self.assertRaisesRegex(ValueError, "already in progress"):
-            self.fixture.library.adult_viewing_update({
-                "media_type": "tv", "tmdb_id": 4586, "title": "Gilmore Girls",
-                "action": "watchlist", "enabled": True,
-            })
-        with self.assertRaisesRegex(ValueError, "Mark this watched"):
-            self.fixture.library.adult_viewing_update({
-                "media_type": "tv", "tmdb_id": 4586, "title": "Gilmore Girls",
-                "action": "rewatch", "enabled": True,
-            })
+        saved = self.fixture.library.adult_viewing_update({
+            "media_type": "tv", "tmdb_id": 4586, "title": "Gilmore Girls",
+            "action": "watchlist", "enabled": True,
+        })
+        self.assertTrue(saved["viewing"]["watchlisted"])
 
         saved = self.fixture.library.adult_viewing_update({
             "media_type": "tv", "tmdb_id": 4586, "title": "Gilmore Girls",
@@ -925,34 +910,32 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertTrue(saved["viewing"]["episodes"]["1:2"]["watched"])
         saved = self.fixture.library.adult_viewing_update({
             "media_type": "tv", "tmdb_id": 4586, "title": "Gilmore Girls",
-            "action": "watching", "enabled": True, "mode": "rewatch",
+            "action": "watching", "enabled": True,
         })
         self.assertTrue(saved["viewing"]["series_watching"])
-        self.assertTrue(saved["viewing"]["up_next"])
-        self.assertEqual(saved["viewing"]["series_watching_mode"], "rewatch")
+        self.assertFalse(saved["viewing"].get("up_next", False))
+        self.assertNotIn("series_watching_mode", saved["viewing"])
         saved = self.fixture.library.adult_viewing_update({
             "media_type": "tv", "tmdb_id": 4586, "title": "Gilmore Girls",
             "action": "episode_watched", "season": 1, "episode": 1,
-            "watched": True, "rewatch": True,
+            "watched": False,
         })
-        self.assertTrue(saved["viewing"]["rewatch_episodes"]["1:1"]["watched"])
-        self.assertTrue(saved["viewing"]["episodes"]["1:1"]["watched"])
+        self.assertFalse(saved["viewing"]["episodes"]["1:1"]["watched"])
         season = self.fixture.library.adult_title_season(4586, 1)
-        self.assertTrue(season["episodes"][0]["rewatch_watched"])
-        self.assertFalse(season["episodes"][1]["rewatch_watched"])
+        self.assertFalse(season["episodes"][0]["watched"])
+        self.assertNotIn("rewatch_watched", season["episodes"][1])
 
         saved = self.fixture.library.adult_viewing_update({
             "media_type": "tv", "tmdb_id": 4586, "title": "Gilmore Girls",
             "action": "watched",
         })
-        self.assertFalse(saved["viewing"]["series_watching"])
-        self.assertIn("rewatch_completed", saved["viewing"])
+        self.assertTrue(saved["viewing"]["series_watching"])
+        self.assertTrue(saved["viewing"]["watchlisted"])
         saved = self.fixture.library.adult_viewing_update({
             "media_type": "tv", "tmdb_id": 4586, "title": "Gilmore Girls",
-            "action": "watching", "enabled": True, "mode": "rewatch",
+            "action": "watching", "enabled": False,
         })
-        self.assertEqual(saved["viewing"]["rewatch_episodes"], {})
-        self.assertNotIn("rewatch_completed", saved["viewing"])
+        self.assertFalse(saved["viewing"]["series_watching"])
 
     def test_combined_series_view_merges_and_syncs_local_episode_history(self) -> None:
         series_id = self.fixture.library.create_adult_series("Severance")
@@ -1053,6 +1036,7 @@ class LibraryUnitTests(unittest.TestCase):
         store = self.fixture.library.adult_viewing_store()
         store["titles"]["tv:4586"] = {
             "episodes": {"1:2": {"watched": True}},
+            "rewatch": True,
             "rewatch_episodes": {"1:1": {"watched": True}},
             "series_watching": True,
             "series_watching_mode": "rewatch",
@@ -1078,8 +1062,10 @@ class LibraryUnitTests(unittest.TestCase):
         detail = self.fixture.library.adult_title_detail("tv", 4586)
         self.assertEqual(detail["seasons"][0]["poster_path"], "/season-one.jpg")
         self.assertEqual(detail["seasons"][0]["watched_count"], 1)
-        self.assertEqual(detail["next_episode"]["episode"], 2)
-        self.assertTrue(detail["next_episode"]["rewatch"])
+        self.assertEqual(detail["next_episode"]["episode"], 3)
+        self.assertNotIn("rewatch", detail["next_episode"])
+        self.assertNotIn("rewatch", detail["viewing"])
+        self.assertNotIn("rewatch_episodes", detail["viewing"])
 
     def test_adult_viewing_portal_is_modular_private_and_mobile_safe(self) -> None:
         self.assertIn('id="adultMyViewing"', PORTAL_SOURCE)
@@ -1089,8 +1075,8 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn('class="adult-series-seasons"', PORTAL_SOURCE)
         self.assertIn("Search your library and beyond", PORTAL_SOURCE)
         self.assertIn("adult-search-mode", PORTAL_SOURCE)
-        self.assertIn('data-viewing-tab="rewatch"', PORTAL_SOURCE)
-        self.assertIn("Use Rewatch for something you have seen", PORTAL_SOURCE)
+        self.assertNotIn('data-viewing-tab="rewatch"', PORTAL_SOURCE)
+        self.assertNotIn("Add to Rewatch", PORTAL_SOURCE)
         self.assertIn("Moves it out of Watchlist and Up Next", PORTAL_SOURCE)
         self.assertIn("adultTitleOpenRevision", PORTAL_SOURCE)
         self.assertIn("wireAdultSeasonBulkButton", PORTAL_SOURCE)
@@ -1112,7 +1098,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn('id="adultEpisodeLaunchSheet"', PORTAL_SOURCE)
         self.assertIn("openAdultEpisodeDestination", PORTAL_SOURCE)
         self.assertIn("findLocalAdultEpisode", PORTAL_SOURCE)
-        self.assertIn("Series in progress", PORTAL_SOURCE)
+        self.assertIn("Keep this title in your manual Watchlist", PORTAL_SOURCE)
         self.assertIn("nextLocalEpisodeAfterProgress", PORTAL_SOURCE)
         self.assertIn("adultEpisodeAirDate", PORTAL_SOURCE)
         self.assertIn("localEpisodeAirDate", PORTAL_SOURCE)

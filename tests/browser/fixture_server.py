@@ -275,12 +275,36 @@ class FixtureLibrary:
 
     def adult_title_detail(self, media_type: str, tmdb_id: Any) -> dict[str, Any]:
         identifier = int(tmdb_id)
+        local = identifier == 6001
         return {
             "key": f"{media_type}:{identifier}", "media_type": media_type,
-            "tmdb_id": identifier, "title": "Fixture Series",
-            "overview": "Series details opened successfully.", "seasons": [],
-            "providers": [], "on_mabeltv": True, "viewing": {},
-            "local": {"kind": "series", "series": "fixture-series"},
+            "tmdb_id": identifier,
+            "title": "Fixture Series" if local else "Foundation",
+            "overview": "Series details opened successfully.",
+            "seasons": [
+                {"number": 1, "name": "Series 1", "episodes": 3,
+                 "watched_count": 0, "poster_path": ""},
+                {"number": 2, "name": "Series 2", "episodes": 2,
+                 "watched_count": 0, "poster_path": ""},
+            ],
+            "providers": [], "on_mabeltv": local, "viewing": {},
+            "local": {"kind": "series", "series": "fixture-series"}
+            if local else None,
+        }
+
+    def adult_title_season(self, tmdb_id: Any, season_number: Any) -> dict[str, Any]:
+        identifier = int(tmdb_id)
+        season = int(season_number)
+        count = 3 if season == 1 else 2
+        return {
+            "key": f"tv:{identifier}", "season": season,
+            "name": f"Series {season}", "overview": "Official fixture episodes.",
+            "poster_path": "", "episodes": [{
+                "number": episode_number,
+                "name": f"Official episode {episode_number}",
+                "air_date": f"2026-01-0{episode_number}", "runtime": 48,
+                "overview": "", "still_path": "", "watched": False,
+            } for episode_number in range(1, count + 1)],
         }
 
     def adult_streaming_links(self, media_type: str, tmdb_id: Any,
@@ -296,13 +320,14 @@ class FixtureLibrary:
         action = payload.get("action")
         if action == "watchlist":
             current["watchlisted"] = bool(payload.get("enabled", True))
-        elif action == "rewatch":
-            current["rewatch"] = bool(payload.get("enabled", True))
         elif action == "up_next":
             current["up_next"] = bool(payload.get("enabled", True))
+        elif action == "watching":
+            current["series_watching"] = bool(payload.get("enabled", True))
         elif action == "watched":
-            current.update({"manual_state": "watched", "watchlisted": False,
-                            "up_next": False, "history": [2_000_000_000]})
+            current.update({"manual_state": "watched", "history": [2_000_000_000]})
+        elif action == "part_watched":
+            current.update({"manual_state": "part_watched", "history": []})
         elif action == "not_watched":
             current.update({"manual_state": "not_watched", "history": []})
         return {"ok": True, "key": key, "viewing": copy.deepcopy(current)}

@@ -272,19 +272,18 @@ class ProviderMetadataMixin:
             if not isinstance(value.get(field), dict):
                 value[field] = {}
         value["schema_version"] = 1
-        # Provider launches used to leave a prompt behind for the next visit.
-        # Prompts are no longer part of the viewing model, and watched titles
-        # belong in history rather than the unseen Watchlist.
+        # Provider launches and the former rewatch tracker used to leave
+        # transient workflow state behind. Lists are now independent manual
+        # choices; episode watched state is the only TV progress ledger.
         for item in value["titles"].values():
             if not isinstance(item, dict):
                 continue
             item.pop("pending_confirmation", None)
-            episode_states = item.get("episodes", {})
-            has_watched_episode = isinstance(episode_states, dict) and any(
-                isinstance(saved, dict) and saved.get("watched") is True
-                for saved in episode_states.values())
-            if item.get("manual_state") == "watched" or has_watched_episode:
-                item["watchlisted"] = False
+            item.pop("series_watching_mode", None)
+            item.pop("rewatch", None)
+            item.pop("rewatch_updated", None)
+            item.pop("rewatch_episodes", None)
+            item.pop("rewatch_completed", None)
         # Watchmode's free-data terms require old cached provider data to be
         # removed, rather than retained forever as ordinary application state.
         cutoff = time.time() - ADULT_PROVIDER_MAX_CACHE_SECONDS
@@ -297,6 +296,60 @@ class ProviderMetadataMixin:
     def write_adult_viewing_store(self, value: dict[str, Any]) -> None:
         value["updated"] = time.time()
         self.write_json(self.adult_viewing_path, value)
+
+    def reset_adult_series_viewing_progress(
+            self, series_id: str, season: int | None,
+            local_episode_keys: set[str]) -> int:
+        """Clear TV progress while preserving every manual viewing list."""
+        with self.config_lock:
+            states = self.adult_series_states()
+            series_state = states["series"].get(series_id, {})
+            if not isinstance(series_state, dict):
+                return len(local_episode_keys)
+            metadata = series_state.get("metadata", {})
+            if not isinstance(metadata, dict):
+                return len(local_episode_keys)
+            try:
+                key = self.adult_title_key("tv", metadata.get("tmdb_id"))
+            except ValueError:
+                return len(local_episode_keys)
+            store = self.adult_viewing_store()
+            current = store["titles"].get(key, {})
+            if not isinstance(current, dict):
+                current = {}
+            episodes = current.get("episodes", {})
+            if not isinstance(episodes, dict):
+                episodes = {}
+            prefix = f"{season}:" if season is not None else None
+            reset_keys = set(local_episode_keys)
+            reset_keys.update(str(episode_key) for episode_key in episodes
+                              if prefix is None or str(episode_key).startswith(prefix))
+            now = time.time()
+            for episode_key in reset_keys:
+                saved = episodes.get(episode_key, {})
+                if not isinstance(saved, dict):
+                    saved = {}
+                saved.update({"watched": False, "updated": now})
+                episodes[episode_key] = saved
+            current["episodes"] = episodes
+            current["manual_state"] = "part_watched" if any(
+                isinstance(saved, dict) and saved.get("watched") is True
+                for saved in episodes.values()) else "not_watched"
+            current["history"] = []
+            current["viewing_updated"] = now
+            current.update({
+                "media_type": "tv", "tmdb_id": int(key.split(":", 1)[1]),
+                "title": str(metadata.get("title") or series_state.get("title") or "Series"),
+                "year": str(metadata.get("year") or ""), "updated": now,
+            })
+            current.pop("series_watching_mode", None)
+            current.pop("rewatch", None)
+            current.pop("rewatch_updated", None)
+            current.pop("rewatch_episodes", None)
+            current.pop("rewatch_completed", None)
+            store["titles"][key] = current
+            self.write_adult_viewing_store(store)
+            return len(reset_keys)
 
     @staticmethod
     def adult_title_summary(value: dict[str, Any], media_type: str) -> dict[str, Any]:
@@ -380,11 +433,13 @@ class ProviderMetadataMixin:
                 })
         for series in self.adult_series_library():
             metadata = series.get("metadata", {})
+            episodes = series.get("episodes", [])
+            if not episodes:
+                continue
             try:
                 key = self.adult_title_key("tv", metadata.get("tmdb_id"))
             except ValueError:
                 continue
-            episodes = series.get("episodes", [])
             next_episode = self.adult_next_episode_after_progress(episodes)
             index[key] = {
                 "kind": "series", "series": series["id"],
@@ -501,10 +556,6 @@ class ProviderMetadataMixin:
             if isinstance(detail["viewing"], dict) else {}
         if not isinstance(episode_states, dict):
             episode_states = {}
-        rewatch_episode_states = detail["viewing"].get("rewatch_episodes", {}) \
-            if isinstance(detail["viewing"], dict) else {}
-        if not isinstance(rewatch_episode_states, dict):
-            rewatch_episode_states = {}
         for season in detail["seasons"]:
             season["watched_count"] = sum(
                 (isinstance(episode_states.get(f"{season['number']}:{episode}"), dict)
@@ -512,15 +563,12 @@ class ProviderMetadataMixin:
                 or local_episode_states.get(
                     f"{season['number']}:{episode}", {}).get("watched") is True
                 for episode in range(1, int(season.get("episodes", 0) or 0) + 1))
-        rewatching = bool(detail["viewing"].get("series_watching")) and \
-            detail["viewing"].get("series_watching_mode") == "rewatch"
-        states = rewatch_episode_states if rewatching else episode_states
         available = []
         for season in detail["seasons"]:
             for episode in range(1, int(season.get("episodes", 0) or 0) + 1):
                 episode_key = f"{season['number']}:{episode}"
-                saved = states.get(episode_key, {})
-                locally_watched = not rewatching and local_episode_states.get(
+                saved = episode_states.get(episode_key, {})
+                locally_watched = local_episode_states.get(
                     episode_key, {}).get("watched") is True
                 available.append({
                     "season": season["number"], "episode": episode,
@@ -532,7 +580,7 @@ class ProviderMetadataMixin:
         if candidate:
             next_episode = {
                 "season": candidate["season"], "episode": candidate["episode"],
-                "title": "", "source": "streaming", "rewatch": rewatching,
+                "title": "", "source": "streaming",
             }
         detail["next_episode"] = next_episode
         return detail
@@ -555,10 +603,6 @@ class ProviderMetadataMixin:
             episode_states = state.get("episodes", {}) if isinstance(state, dict) else {}
             if not isinstance(episode_states, dict):
                 episode_states = {}
-            rewatch_episode_states = state.get("rewatch_episodes", {}) \
-                if isinstance(state, dict) else {}
-            if not isinstance(rewatch_episode_states, dict):
-                rewatch_episode_states = {}
         local_title = self.adult_local_title_index().get(key, {})
         local_episode_states: dict[str, dict[str, Any]] = {}
         if isinstance(local_title, dict) and local_title.get("kind") == "series":
@@ -591,9 +635,6 @@ class ProviderMetadataMixin:
                 "watched": (bool(saved.get("watched"))
                             if isinstance(saved, dict) else False)
                            or local_saved.get("watched") is True,
-                "rewatch_watched": bool(rewatch_episode_states.get(
-                    episode_key, {}).get("watched"))
-                if isinstance(rewatch_episode_states.get(episode_key), dict) else False,
             })
         return {"key": key, "season": number,
                 "name": str(value.get("name") or f"Season {number}"),
@@ -678,7 +719,7 @@ class ProviderMetadataMixin:
     def adult_viewing_update(self, payload: dict[str, Any]) -> dict[str, Any]:
         key = self.adult_title_key(payload.get("media_type"), payload.get("tmdb_id"))
         action = str(payload.get("action", ""))
-        allowed = {"watchlist", "rewatch", "up_next", "move_up", "move_down",
+        allowed = {"watchlist", "up_next", "move_up", "move_down",
                    "part_watched", "watched", "not_watched", "dropped",
                    "watching", "launched", "remove", "episode_watched",
                    "season_watched"}
@@ -699,33 +740,11 @@ class ProviderMetadataMixin:
                 current["runtime"] = 0
             current.update({"media_type": key.split(":", 1)[0],
                             "tmdb_id": int(key.split(":", 1)[1]), "updated": now})
-            episodes = current.get("episodes", {})
-            if not isinstance(episodes, dict):
-                episodes = {}
-            has_completed = current.get("manual_state") == "watched" or \
-                bool(current.get("history"))
-            has_progress = any(
-                    isinstance(saved, dict) and saved.get("watched") is True
-                    for saved in episodes.values())
             local_title = self.adult_local_title_index().get(key, {})
-            has_progress = has_progress or (
-                isinstance(local_title, dict)
-                and int(local_title.get("watched_count", 0) or 0) > 0)
             if action == "watchlist":
                 enabled = bool(payload.get("enabled", True))
-                if enabled and has_completed:
-                    raise ValueError("You've already seen this. Add it to Rewatch instead.")
-                if enabled and has_progress:
-                    raise ValueError(
-                        "This series is already in progress. Continue it from Watching or Up Next.")
                 current["watchlisted"] = enabled
                 current["watchlist_updated"] = now
-            elif action == "rewatch":
-                enabled = bool(payload.get("enabled", True))
-                if enabled and not has_completed:
-                    raise ValueError("Mark this watched before adding it to Rewatch")
-                current["rewatch"] = enabled
-                current["rewatch_updated"] = now
             elif action == "up_next":
                 enabled = bool(payload.get("enabled", True))
                 current["up_next"] = enabled
@@ -740,18 +759,11 @@ class ProviderMetadataMixin:
                 current["viewing_updated"] = now
                 if action == "watched":
                     current.setdefault("history", []).append(now)
-                    current["watchlisted"] = False
-                    current["up_next"] = False
-                    if current.get("series_watching") and \
-                            current.get("series_watching_mode") == "rewatch":
-                        current["rewatch_completed"] = now
-                    current["series_watching"] = False
-                elif action == "not_watched" and previous_manual_state == "watched":
+                elif action in {"not_watched", "part_watched"} and \
+                        previous_manual_state == "watched":
                     history = current.get("history", [])
                     if isinstance(history, list) and history:
                         history.pop()
-                    current["rewatch"] = False
-                    current["rewatch_updated"] = now
             elif action in {"move_up", "move_down"}:
                 queued = sorted(
                     ((stored_key, stored) for stored_key, stored in store["titles"].items()
@@ -772,21 +784,7 @@ class ProviderMetadataMixin:
                 enabled = bool(payload.get("enabled", True))
                 current["series_watching"] = enabled
                 current["series_watching_updated"] = now
-                if enabled:
-                    requested_mode = str(payload.get("mode") or "").strip()
-                    if requested_mode not in {"first_watch", "rewatch"}:
-                        requested_mode = "rewatch" \
-                            if current.get("manual_state") == "watched" else "first_watch"
-                    current["series_watching_mode"] = requested_mode
-                    if requested_mode == "rewatch" and current.get("rewatch_completed"):
-                        current["rewatch_episodes"] = {}
-                        current.pop("rewatch_completed", None)
-                    if not current.get("up_next"):
-                        ranks = [int(value.get("up_next_rank", 0) or 0)
-                                 for value in store["titles"].values()
-                                 if isinstance(value, dict) and value.get("up_next")]
-                        current["up_next_rank"] = max(ranks, default=0) + 1
-                    current["up_next"] = True
+                current.pop("series_watching_mode", None)
             elif action == "launched":
                 current["last_launched"] = now
                 current["last_provider"] = str(
@@ -801,18 +799,11 @@ class ProviderMetadataMixin:
                     raise ValueError("Choose a valid episode") from None
                 if season < 1 or episode < 1 or not isinstance(payload.get("watched"), bool):
                     raise ValueError("Choose a valid episode status")
-                rewatch = payload.get("rewatch") is True
-                if rewatch and (not current.get("series_watching") or
-                                current.get("series_watching_mode") != "rewatch"):
-                    raise ValueError("Start watching this series again before tracking a rewatch")
-                state_field = "rewatch_episodes" if rewatch else "episodes"
-                episodes = current.setdefault(state_field, {})
+                episodes = current.setdefault("episodes", {})
                 if not isinstance(episodes, dict):
                     episodes = {}
-                    current[state_field] = episodes
+                    current["episodes"] = episodes
                 episodes[f"{season}:{episode}"] = {"watched": payload["watched"], "updated": now}
-                if payload["watched"] and not rewatch:
-                    current["watchlisted"] = False
             elif action == "season_watched":
                 if key.split(":", 1)[0] != "tv":
                     raise ValueError("Series are only available for TV titles")
@@ -825,22 +816,14 @@ class ProviderMetadataMixin:
                 if season < 1 or episode_count < 1 or episode_count > 1000 or \
                         not isinstance(watched, bool):
                     raise ValueError("Choose a valid series status")
-                rewatch = payload.get("rewatch") is True
-                if rewatch and (not current.get("series_watching") or
-                                current.get("series_watching_mode") != "rewatch"):
-                    raise ValueError("Start watching this series again before tracking a rewatch")
-                state_field = "rewatch_episodes" if rewatch else "episodes"
-                episodes = current.setdefault(state_field, {})
+                episodes = current.setdefault("episodes", {})
                 if not isinstance(episodes, dict):
                     episodes = {}
-                    current[state_field] = episodes
+                    current["episodes"] = episodes
                 for episode in range(1, episode_count + 1):
                     episodes[f"{season}:{episode}"] = {"watched": watched, "updated": now}
-                if watched and not rewatch:
-                    current["watchlisted"] = False
             elif action == "remove":
                 current["watchlisted"] = False
-                current["rewatch"] = False
                 current["up_next"] = False
                 current["series_watching"] = False
                 current["manual_state"] = "not_watched"
@@ -848,7 +831,6 @@ class ProviderMetadataMixin:
             store["titles"][key] = current
             self.write_adult_viewing_store(store)
         if action in {"episode_watched", "season_watched"} and \
-                payload.get("rewatch") is not True and \
                 isinstance(local_title, dict) and local_title.get("kind") == "series":
             series_id = str(local_title.get("series") or "")
             local_series = next(

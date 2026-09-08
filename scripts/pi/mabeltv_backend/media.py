@@ -591,8 +591,6 @@ class MediaCatalogueMixin:
                 "title": str(metadata.get("title") or series_state.get("title") or "Series"),
                 "year": str(metadata.get("year") or ""), "updated": now,
             })
-            if any(updates.values()):
-                current["watchlisted"] = False
             store["titles"][key] = current
             self.write_adult_viewing_store(store)
 
@@ -681,7 +679,7 @@ class MediaCatalogueMixin:
 
     def restart_adult_series_progress(self, series_id: str, scope: str,
                                       season: int | None = None) -> dict[str, Any]:
-        """Clear watched and resume history for one season or complete show."""
+        """Clear watched state and resume points for one season or show."""
         root = self.adult_series_path(series_id)
         if not root.is_dir():
             raise ValueError("That TV series no longer exists")
@@ -699,7 +697,7 @@ class MediaCatalogueMixin:
 
         prefix = f"{series_id}/"
         changed = 0
-        viewing_updates: dict[str, bool] = {}
+        viewing_episode_keys: set[str] = set()
         with self.config_lock:
             states = self.adult_series_states()
             for key, raw_value in list(states["episodes"].items()):
@@ -727,15 +725,17 @@ class MediaCatalogueMixin:
                 states["episodes"][key] = value
                 episode_number = int(
                     metadata.get("episode_number") or parsed["episode"])
-                viewing_updates[f"{episode_season}:{episode_number}"] = False
+                viewing_episode_keys.add(f"{episode_season}:{episode_number}")
                 changed += 1
             self.write_adult_series_states(states)
-        self.sync_adult_series_viewing_episodes(series_id, viewing_updates)
+        changed = max(changed, self.reset_adult_series_viewing_progress(
+            series_id, season_number, viewing_episode_keys))
         return {
             "ok": True,
             "series": series_id,
             "scope": scope,
             "season": season_number,
+            "preserved_watched": False,
             "episodes_reset": changed,
         }
 

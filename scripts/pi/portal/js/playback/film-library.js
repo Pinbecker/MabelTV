@@ -393,7 +393,16 @@
     }
 
     function openAdultSeriesViewing(series) {
-      openAdultSeriesSheet(series)
+      const tmdbId = Number(series?.metadata?.tmdb_id || 0)
+      if (!tmdbId) {
+        openAdultSeriesSheet(series)
+        return
+      }
+      openAdultTitle({
+        media_type: 'tv', tmdb_id: tmdbId,
+        title: series.metadata?.title || series.title,
+        local: { kind: 'series', series: series.id },
+      })
     }
 
     function renderHomeLibrary() {

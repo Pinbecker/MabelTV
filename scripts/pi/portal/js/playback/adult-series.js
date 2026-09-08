@@ -1,6 +1,8 @@
 'use strict'
 
-    function adultSeriesArtwork(series, className = 'adult-series-card-art') {
+    let adultSeriesViewingLoadStarted = false
+
+    function adultSeriesArtwork(series, className = 'adult-series-card-art', viewing = null) {
       const art = document.createElement('span')
       art.className = className
       const name = series.metadata?.poster
@@ -10,10 +12,16 @@
         image.alt = ''
         image.loading = 'lazy'
         art.append(image)
+      } else if (viewing?.poster_path) {
+        const image = document.createElement('img')
+        image.src = adultPosterUrl(viewing.poster_path)
+        image.alt = ''
+        image.loading = 'lazy'
+        art.append(image)
       } else {
         const placeholder = document.createElement('span')
         placeholder.className = 'watch-card-placeholder'
-        placeholder.textContent = series.title.slice(0, 1).toUpperCase()
+        placeholder.textContent = (series.title || viewing?.title || '?').slice(0, 1).toUpperCase()
         art.append(placeholder)
       }
       return art
@@ -39,19 +47,20 @@
       return art
     }
 
-    function openAdultSeriesUpload(series, season, isNew = false) {
+    function openAdultSeriesUpload(series, season, isNew = false, navigation = null) {
       const number = Number(season)
       const seasonParent = selectedAdultSeason?.returnTo || null
       const seriesParent = selectedAdultSeries?.returnTo || null
-      const returnTo = selectedAdultSeason
+      const returnTo = navigation?.returnTo || (selectedAdultSeason
         ? () => openAdultSeasonSheet(series, number, seasonParent)
-        : () => openAdultSeriesSheet(series, seriesParent)
+        : () => openAdultSeriesSheet(series, seriesParent))
       const seasonReturnTo = selectedAdultSeason
         ? seasonParent
         : () => openAdultSeriesSheet(series, seriesParent)
       adultSeriesUploadTarget = {
         id: series.id, title: series.title, season: number, isNew, returnTo,
-        successReturn: () => openAdultSeasonSheet(series, number, seasonReturnTo),
+        successReturn: navigation?.successReturn
+          || (() => openAdultSeasonSheet(series, number, seasonReturnTo)),
       }
       $('#adultSeriesUploadEyebrow').textContent = `${series.title} · Series ${number}`
       $('#adultSeriesUploadTitle').textContent = isNew
@@ -67,6 +76,7 @@
       renderSelectedAdultSeriesFiles()
       closeAdultSeasonSheet(false)
       closeAdultSeriesSheet(false)
+      portalSheets.dismiss($('#adultTitleSeasonSheet'))
       openLibrarySheet($('#adultSeriesUploadSheet'), $('#adultSeriesFile'), returnTo)
     }
 
@@ -112,39 +122,65 @@
     function renderAdultSeries(query = '') {
       if (!$('#adultSeriesSection') || !$('#adultSeriesRail')) return
       const allSeries = library?.adult_series || []
+      if (remoteKind === 'adult' && !adultViewingLoaded && !adultSeriesViewingLoadStarted) {
+        adultSeriesViewingLoadStarted = true
+        void loadAdultViewing().catch(() => {}).finally(() => {
+          adultSeriesViewingLoadStarted = false
+        })
+      }
+      const upNext = (adultViewingData.items || [])
+        .filter(item => item.media_type === 'tv' && item.up_next === true)
+      const upNextById = new Map(upNext.map(item => [Number(item.tmdb_id || 0), item]))
+      const represented = new Set()
+      const available = allSeries.flatMap(value => {
+        const tmdbId = Number(value.metadata?.tmdb_id || 0)
+        const viewing = tmdbId ? upNextById.get(tmdbId) || null : null
+        if (Number(value.episode_count || 0) < 1 && !viewing) return []
+        if (tmdbId) represented.add(tmdbId)
+        return [{ local: value, viewing, title: value.title }]
+      })
+      upNext.forEach(viewing => {
+        const tmdbId = Number(viewing.tmdb_id || 0)
+        if (tmdbId && !represented.has(tmdbId)) {
+          available.push({ local: null, viewing, title: viewing.title || 'Untitled series' })
+        }
+      })
       const search = query.trim().toLocaleLowerCase()
-      const series = allSeries.filter(value => !search || [
-        value.title, value.stored_title,
-        ...(value.episodes || []).map(episode => episode.display_name),
+      const series = available.filter(value => !search || [
+        value.title, value.local?.stored_title, value.viewing?.overview,
+        ...(value.local?.episodes || []).map(episode => episode.display_name),
       ].join(' ').toLocaleLowerCase().includes(search))
       $('#adultSeriesSection').classList.toggle('hidden', Boolean(search) && !series.length)
       const rail = $('#adultSeriesRail')
       rail.innerHTML = ''
       series.forEach(value => {
+        const local = value.local
         const card = document.createElement('button')
         card.type = 'button'
         card.className = 'adult-series-card'
-        const art = adultSeriesArtwork(value)
+        const art = adultSeriesArtwork(local || value, 'adult-series-card-art', value.viewing)
         const progress = document.createElement('span')
         progress.className = 'adult-series-card-progress'
-        progress.style.setProperty('--series-progress', `${value.episode_count
-          ? value.watched_count / value.episode_count * 100 : 0}%`)
+        progress.style.setProperty('--series-progress', `${local?.episode_count
+          ? local.watched_count / local.episode_count * 100 : 0}%`)
         art.append(progress)
         const copy = document.createElement('span')
         const title = document.createElement('strong')
         title.textContent = value.title
         const meta = document.createElement('small')
-        meta.textContent = `${value.season_count} series · ${value.episode_count} episode${value.episode_count === 1 ? '' : 's'} · ${value.watched_count} watched`
+        meta.textContent = local?.episode_count
+          ? `${local.season_count} series · ${local.episode_count} episode${local.episode_count === 1 ? '' : 's'} · ${local.watched_count} watched`
+          : 'Up Next · No episodes on MabelTV'
         copy.append(title, meta)
         card.append(art, copy)
-        card.onclick = () => openAdultSeriesViewing(value)
+        card.onclick = () => local ? openAdultSeriesViewing(local) : openAdultTitle(value.viewing)
         rail.append(card)
       })
-      if (!allSeries.length) {
+      if (!available.length) {
         rail.append(portalEmptyState({
           className: 'adult-series-empty',
           title: 'No TV series yet',
-          message: 'Create one here, then upload episodes directly from this device.',
+          message: 'Add a series to Up Next, or add episodes to MabelTV.',
           messageTag: 'span',
         }))
       }
@@ -189,8 +225,8 @@
       $('#adultSeriesRestartTitle').textContent = scope === 'season'
         ? `Restart Series ${seasonNumber}?` : `Restart all of ${current.title}?`
       $('#adultSeriesRestartDescription').textContent = scope === 'season'
-        ? 'Every episode in this series will be marked unwatched and lose its resume point.'
-        : 'Every episode in every series will be marked unwatched and lose its resume point.'
+        ? 'This clears every watched mark and resume point in this series.'
+        : 'This clears every watched mark and resume point across the complete show.'
       $('#adultSeriesRestartTarget').textContent = scope === 'season'
         ? `${current.title} · Series ${seasonNumber}` : current.title
       const seasonReturn = selectedAdultSeason?.returnTo || null
@@ -198,26 +234,27 @@
       const parentReturn = returnToOverride || (selectedAdultSeason
         ? () => openAdultSeasonSheet(current, seasonNumber, seasonReturn)
         : () => openAdultSeriesSheet(current, seriesReturn))
+      adultSeriesRestartTarget.returnTo = parentReturn
       closeAdultSeasonSheet(false)
       closeAdultSeriesSheet(false)
       const dialog = $('#adultSeriesRestartSheet')
       portalSheets.open(dialog, { returnTo: parentReturn })
     }
 
-    function openAdultSeriesMoreSheet(series, returnTo = null) {
+    function openAdultSeriesMoreSheet(series, returnTo = null, parentReturn = null) {
       const current = library?.adult_series?.find(value => value.id === series.id) || series
       $('#adultSeriesMoreTitle').textContent = current.title
       $('#adultSeriesMoreMeta').textContent = `${current.season_count} series · ${current.episode_count} episodes · More show options`
       $('#adultSeriesRestart').onclick = () => {
         closeAdultSeriesMoreSheet(false)
         openAdultSeriesRestartSheet(current, null,
-          () => openAdultSeriesMoreSheet(current, returnTo))
+          parentReturn || (() => openAdultSeriesSheet(current, returnTo)))
       }
       const metadata = $('#adultSeriesMetadata')
       metadata.disabled = !tmdbConfigured
       metadata.onclick = tmdbConfigured ? () => {
         closeAdultSeriesMoreSheet(false)
-        scanAdultSeriesTmdb(current, () => openAdultSeriesMoreSheet(current, returnTo))
+        scanAdultSeriesTmdb(current, () => openAdultSeriesMoreSheet(current, returnTo, parentReturn))
       } : null
       $('#adultSeriesDelete').onclick = async () => {
         if (!confirm(`Move the complete “${current.title}” show and every series and episode to the recycle bin?`)) return
@@ -228,7 +265,7 @@
         } catch (error) { showError(error) }
       }
       portalSheets.open($('#adultSeriesMoreSheet'), {
-        returnTo: () => openAdultSeriesSheet(current, returnTo),
+        returnTo: parentReturn || (() => openAdultSeriesSheet(current, returnTo)),
       })
     }
 
@@ -250,10 +287,10 @@
         adultSeriesRestartTarget = null
         await reloadLibraryWithoutLosingPlace()
         const series = library?.adult_series?.find(value => value.id === target.seriesId)
-        if (series) setTimeout(() => target.scope === 'season'
-          ? openAdultSeasonSheet(series, target.season)
-          : openAdultSeriesSheet(series), 0)
-        notice(`${result.episodes_reset} episode${result.episodes_reset === 1 ? '' : 's'} ready to watch from the beginning.`)
+        if (series) setTimeout(() => target.returnTo ? target.returnTo()
+          : target.scope === 'season' ? openAdultSeasonSheet(series, target.season)
+            : openAdultSeriesSheet(series), 0)
+        notice(`${result.episodes_reset} episode${result.episodes_reset === 1 ? '' : 's'} reset to not watched.`)
       } catch (error) {
         showError(error)
       } finally {
@@ -360,39 +397,6 @@
       }
       const dialog = $('#adultEpisodeSheet')
       portalSheets.open(dialog, { returnTo })
-      const tmdbId = Number(current.metadata?.tmdb_id || 0)
-      if (tmdbId) api('/api/adult/viewing').then(result => {
-        if (selectedAdultEpisode?.episode?.path !== episode.path) return
-        const saved = (result.items || []).find(item => item.key === `tv:${tmdbId}`) || {}
-        const rewatching = saved.series_watching === true
-          && saved.series_watching_mode === 'rewatch'
-        if (!rewatching) return
-        const episodeKey = `${episode.season}:${episode.episode}`
-        const rewatched = saved.rewatch_episodes?.[episodeKey]?.watched === true
-        $('#adultEpisodeMeta').textContent = `S${String(episode.season).padStart(2, '0')} E${String(episode.episode).padStart(2, '0')} · ${rewatched ? 'Watched again' : 'Active rewatch'}`
-        watched.querySelector('strong').textContent = rewatched
-          ? 'Remove from this rewatch' : 'Mark watched again'
-        watched.querySelector('small').textContent = rewatched
-          ? 'Moves the rewatch position back to this episode'
-          : 'Advances the separate rewatch position'
-        watched.onclick = async () => {
-          watched.disabled = true
-          try {
-            const trackingTitle = {
-              media_type: 'tv', tmdb_id: tmdbId, title: current.title,
-              year: current.metadata?.year || '', overview: current.metadata?.overview || '',
-              viewing: saved,
-            }
-            await updateAdultViewing(trackingTitle, 'episode_watched', {
-              season: episode.season, episode: episode.episode,
-              watched: !rewatched, rewatch: true,
-            })
-            closeAdultEpisodeSheet(false)
-            if (returnTo) returnTo()
-            notice(rewatched ? 'Removed from this rewatch.' : 'Episode marked watched again.')
-          } catch (error) { showError(error) } finally { watched.disabled = false }
-        }
-      }).catch(() => {})
     }
 
     async function finishLocalSeriesIfComplete(series) {
@@ -606,21 +610,15 @@
     function openAdultSeriesSheet(series, returnTo = null) {
       const current = library?.adult_series?.find(value => value.id === series.id) || series
       selectedAdultSeries = { series: current, returnTo }
-      let localViewingState = {}
       const syncSeriesHeader = () => {
         current.watched_count = (current.episodes || []).filter(episode => episode.watched).length
         $('#adultSeriesSheetMeta').textContent = `${current.season_count} series · ${current.episode_count} episodes · ${current.watched_count} watched`
-        const rewatching = localViewingState.series_watching === true
-          && localViewingState.series_watching_mode === 'rewatch'
-        const states = localViewingState.rewatch_episodes || {}
-        const next = nextLocalEpisodeAfterProgress(current.episodes, episode => rewatching
-          ? states[`${episode.season}:${episode.episode}`]?.watched === true
-          : episode.watched === true)
+        const next = nextLocalEpisodeAfterProgress(current.episodes,
+          episode => episode.watched === true)
         const nextButton = $('#adultSeriesNextEpisode')
         nextButton.classList.toggle('hidden', !next)
         if (next) {
-          nextButton.querySelector('small').textContent = rewatching
-            ? 'Next episode in this rewatch' : 'Next episode'
+          nextButton.querySelector('small').textContent = 'Next episode'
           nextButton.querySelector('strong').textContent = `Series ${next.season}, Episode ${next.episode} · ${next.display_name}`
           nextButton.onclick = () => {
             closeAdultSeriesSheet(false)
@@ -647,10 +645,7 @@
         }).catch(showError)
       const tmdbId = Number(current.metadata?.tmdb_id || 0)
       if (tmdbId) {
-        const syncWatching = state => {
-          localViewingState = state || {}
-          syncSeriesHeader()
-        }
+        const syncWatching = () => syncSeriesHeader()
         void wireLocalSeriesViewingActions($('#adultSeriesIntents'), current, syncWatching)
           .catch(showError)
       } else {

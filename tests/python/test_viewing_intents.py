@@ -71,6 +71,72 @@ class ViewingIntentTests(unittest.TestCase):
         self.assertIn("wireLocalFilmViewingActions(viewingActions, programme)",
                       PORTAL_SCRIPT)
 
+    def test_part_watched_series_is_a_progress_fact_not_a_list_intent(self) -> None:
+        title = {"media_type": "tv", "tmdb_id": 243360, "title": "Ludwig"}
+        self.fixture.library.adult_viewing_update(
+            title | {"action": "watched"})
+        saved = self.fixture.library.adult_viewing_update(
+            title | {"action": "part_watched"})["viewing"]
+
+        self.assertEqual(saved["manual_state"], "part_watched")
+        self.assertFalse(saved.get("watchlisted", False))
+        self.assertFalse(saved.get("up_next", False))
+        self.assertFalse(saved.get("series_watching", False))
+        self.assertEqual(saved.get("history"), [])
+
+    def test_empty_series_container_is_not_on_mabeltv(self) -> None:
+        series_id = self.fixture.library.create_adult_series("Ludwig")
+        states = self.fixture.library.adult_series_states()
+        states["series"][series_id]["metadata"] = {
+            "tmdb_id": 243360, "title": "Ludwig",
+        }
+        self.fixture.library.write_adult_series_states(states)
+
+        self.assertNotIn("tv:243360", self.fixture.library.adult_local_title_index())
+
+    def test_series_restart_clears_all_progress_but_preserves_manual_lists(self) -> None:
+        series_id = self.fixture.library.create_adult_series("Ludwig")
+        root = self.fixture.library.adult_series_root / series_id / "Season 1"
+        root.mkdir()
+        episode = root / "Ludwig.S01E01.mp4"
+        episode.write_bytes(b"episode")
+        self.fixture.library.adult_series_library()
+        states = self.fixture.library.adult_series_states()
+        states["series"][series_id]["metadata"] = {
+            "tmdb_id": 243360, "title": "Ludwig",
+        }
+        saved_episode = next(iter(states["episodes"].values()))
+        saved_episode.update({"watched": True, "remote_position": 420.0,
+                              "remote_last_watched": 1234.0})
+        self.fixture.library.write_adult_series_states(states)
+        store = self.fixture.library.adult_viewing_store()
+        store["titles"]["tv:243360"] = {
+            "media_type": "tv", "tmdb_id": 243360, "title": "Ludwig",
+            "manual_state": "watched", "history": [1234.0],
+            "episodes": {
+                "1:1": {"watched": True}, "2:1": {"watched": True},
+            },
+            "watchlisted": True, "up_next": True, "series_watching": True,
+        }
+        self.fixture.library.write_adult_viewing_store(store)
+
+        result = self.fixture.library.restart_adult_series_progress(series_id, "series")
+        refreshed = self.fixture.library.adult_series_library()[0]["episodes"][0]
+        viewing = self.fixture.library.adult_viewing_store()["titles"]["tv:243360"]
+
+        self.assertFalse(result["preserved_watched"])
+        self.assertEqual(result["episodes_reset"], 2)
+        self.assertFalse(refreshed["watched"])
+        self.assertEqual(refreshed["remote_position"], 0)
+        self.assertEqual(refreshed["remote_last_watched"], 0)
+        self.assertTrue(all(not episode["watched"]
+                            for episode in viewing["episodes"].values()))
+        self.assertEqual(viewing["manual_state"], "not_watched")
+        self.assertEqual(viewing["history"], [])
+        self.assertTrue(viewing["watchlisted"])
+        self.assertTrue(viewing["up_next"])
+        self.assertTrue(viewing["series_watching"])
+
 
 if __name__ == "__main__":
     unittest.main()

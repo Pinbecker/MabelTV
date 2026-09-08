@@ -250,7 +250,7 @@ for (const theme of ['light', 'dark']) {
     expect(initial).toEqual({
       compact: true,
       visible: [
-        { action: 'rewatch', label: 'Rewatch', active: false },
+        { action: 'watchlist', label: 'Watchlist', active: false },
         { action: 'up_next', label: 'Up Next', active: false },
         { action: 'watched', label: 'Watched', active: true },
       ],

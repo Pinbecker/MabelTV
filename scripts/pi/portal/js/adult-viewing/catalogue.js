@@ -383,22 +383,35 @@ async function loadAdultProviders(detail, refresh = false, revision = adultTitle
 }
 
 function adultTitleViewingStatus(state = {}, detail = {}) {
-  const completed = state.manual_state === 'watched' || Boolean((state.history || []).length)
+  const corrected = state.manual_state === 'not_watched' || state.manual_state === 'part_watched'
   const watchedEpisodes = Object.values(state.episodes || {})
     .filter(episode => episode?.watched === true).length
-  const progress = Math.max(watchedEpisodes, Number(detail.local?.watched_count || 0))
-  return { completed, inProgress: !completed && progress > 0, progress }
+  const catalogueEpisodes = (detail.seasons || [])
+    .reduce((total, season) => total + Number(season.episodes || 0), 0)
+  const catalogueWatched = (detail.seasons || [])
+    .reduce((total, season) => total + Number(season.watched_count || 0), 0)
+  const progress = Math.max(watchedEpisodes, catalogueWatched,
+    Number(detail.local?.watched_count || 0))
+  const catalogueComplete = detail.media_type === 'tv' && catalogueEpisodes > 0
+    && catalogueWatched >= catalogueEpisodes
+  const completed = catalogueComplete || state.manual_state === 'watched'
+    || (!corrected && Boolean((state.history || []).length))
+  const inProgress = !completed && progress > 0
+  return {
+    completed, inProgress, progress,
+    partWatched: detail.media_type === 'tv' && inProgress,
+  }
 }
 
 function adultViewingActionButtons(root) {
-  return Object.fromEntries(['watchlist', 'rewatch', 'up_next', 'watching', 'watched']
+  return Object.fromEntries(['watchlist', 'up_next', 'watching', 'watched']
     .map(action => [action, root?.querySelector(`[data-viewing-action="${action}"]`)]))
 }
 
 function syncAdultTitleButtons(detail, root = $('#adultTitleIntents')) {
   const state = detail.viewing || {}
-  const { watchlist, rewatch, up_next: upNext, watching, watched } = adultViewingActionButtons(root)
-  if (!watchlist || !rewatch || !upNext || !watched) return
+  const { watchlist, up_next: upNext, watching, watched } = adultViewingActionButtons(root)
+  if (!watchlist || !upNext || !watched) return
   const compactFilm = detail.media_type !== 'tv'
   const compactSeries = detail.media_type === 'tv'
   const sync = (button, active, title, description) => {
@@ -408,40 +421,37 @@ function syncAdultTitleButtons(detail, root = $('#adultTitleIntents')) {
     button.querySelector('small').textContent = description
   }
   const status = adultTitleViewingStatus(state, detail)
-  const showRewatch = status.completed || state.rewatch === true
   root.classList.toggle('compact-film-intents', compactFilm)
   root.classList.toggle('compact-series-intents', compactSeries)
   sync(watchlist, state.watchlisted === true,
-    compactFilm || compactSeries ? 'Watchlist' : state.watchlisted ? 'In your Watchlist'
-      : status.inProgress ? 'Series in progress' : status.completed ? 'Already watched' : 'Add to Watchlist',
-    state.watchlisted ? 'Unseen and saved for later'
-      : status.inProgress ? 'Continue it from Watching or Up Next'
-        : status.completed ? 'Use Rewatch for something you have seen' : 'Keep this unseen title saved for later')
-  watchlist.classList.toggle('hidden', showRewatch)
-  watchlist.classList.toggle('is-unavailable', status.inProgress && !state.watchlisted)
-  watchlist.classList.toggle('is-progress', status.inProgress && !state.watchlisted)
-  sync(rewatch, state.rewatch === true,
-    compactFilm || compactSeries ? 'Rewatch' : state.rewatch ? 'In your Rewatch list' : 'Add to Rewatch',
-    state.rewatch ? 'Saved to enjoy again' : status.completed
-      ? 'Remember this for another watch' : 'Available once you mark it watched')
-  rewatch.classList.toggle('hidden', !showRewatch)
-  rewatch.classList.toggle('is-unavailable', false)
+    compactFilm || compactSeries ? 'Watchlist'
+      : state.watchlisted ? 'In your Watchlist' : 'Add to Watchlist',
+    state.watchlisted ? 'Saved in your manual Watchlist'
+      : 'Keep this title in your manual Watchlist')
+  watchlist.classList.remove('hidden', 'is-unavailable')
   sync(upNext, state.up_next === true,
     compactFilm || compactSeries ? 'Up Next' : state.up_next ? 'In Up Next' : 'Add to Up Next',
     state.up_next ? 'Queued as a priority' : 'Place it in your ordered queue')
   const titleWatched = state.manual_state === 'watched'
+  const titlePartWatched = compactSeries && status.partWatched
   watching?.classList.toggle('hidden', detail.media_type !== 'tv')
   if (detail.media_type === 'tv' && watching) {
-    const rewatching = state.series_watching === true
-      && state.series_watching_mode === 'rewatch'
     sync(watching, state.series_watching === true,
       compactSeries ? 'Watching' : state.series_watching
-        ? rewatching ? 'Rewatching this series' : 'Watching this series'
-        : state.rewatch ? 'Start rewatching series' : 'Start watching series',
-      state.series_watching ? 'Its next episode stays in Up Next' : 'Keep the show and its next episode in Up Next')
+        ? 'In your Watching list' : 'Add to Watching',
+      state.series_watching ? 'Saved in your manual Watching list'
+        : 'Keep this show in your manual Watching list')
   }
   watched.classList.remove('hidden')
-  sync(watched, titleWatched,
-    compactFilm || compactSeries ? 'Watched' : titleWatched ? 'Watched' : 'Mark watched',
-    titleWatched ? 'In your watched history' : 'Moves it out of Watchlist and Up Next')
+  watched.classList.toggle('is-status', compactSeries)
+  watched.disabled = compactSeries
+  watched.tabIndex = compactSeries ? -1 : 0
+  sync(watched, titleWatched || titlePartWatched,
+    titlePartWatched ? 'Part Watched'
+      : compactFilm || compactSeries ? 'Watched' : titleWatched ? 'Watched' : 'Mark watched',
+    titlePartWatched ? `${status.progress} episode${status.progress === 1 ? '' : 's'} watched`
+      : titleWatched ? 'In your watched history' : 'Moves it out of Watchlist and Up Next')
+  if (compactSeries) watched.setAttribute('aria-label', titlePartWatched
+    ? `${status.progress} episodes watched; series is part watched`
+    : titleWatched ? 'Every episode is watched' : 'No episodes are watched')
 }
