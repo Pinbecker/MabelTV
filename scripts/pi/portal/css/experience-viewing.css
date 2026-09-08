@@ -271,7 +271,7 @@ body.portal-v2 .adult-title-sheet.is-series .watch-film-summary {
   grid-template-columns: 76px minmax(0, 1fr);
   align-items: center;
   gap: 14px;
-  margin: 0 calc(var(--experience-sheet-padding) * -1);
+  margin: 0;
   border-bottom: 1px solid var(--experience-line);
   padding: 16px 58px 16px var(--experience-sheet-padding);
 }
@@ -281,7 +281,7 @@ body.portal-v2 .adult-title-sheet.is-series .watch-film-poster {
   box-shadow: none;
 }
 body.portal-v2 .adult-title-sheet.is-series .watch-film-heading { padding: 0; }
-body.portal-v2 .adult-title-sheet.is-series .watch-film-body h2 { font-size: 28px; }
+body.portal-v2 .adult-title-sheet.is-series .watch-film-summary h2 { font-size: 28px; }
 body.portal-v2 .adult-title-sheet.is-series .watch-film-overview { margin-top: 20px; font-size: 11px; line-height: 1.55; }
 body.portal-v2 .adult-title-local {
   display: flex;
@@ -369,8 +369,8 @@ body.portal-v2 .adult-season-status.is-confirming span {
   white-space: nowrap;
 }
 body.portal-v2 .adult-streaming-season-sheet .adult-series-overview { margin: 0 0 16px; }
-body.portal-v2 .adult-streaming-season-sheet .library-sheet-panel { scrollbar-width: none; }
-body.portal-v2 .adult-streaming-season-sheet .library-sheet-panel::-webkit-scrollbar { display: none; }
+body.portal-v2 .adult-streaming-season-sheet .library-sheet-body { scrollbar-width: none; }
+body.portal-v2 .adult-streaming-season-sheet .library-sheet-body::-webkit-scrollbar { display: none; }
 body.portal-v2 .adult-streaming-episode {
   grid-template-columns: 76px minmax(0, 1fr) auto;
 }

@@ -12,7 +12,9 @@ function titleDetail(identifier, local = false) {
   return {
     key: `tv:${identifier}`, media_type: 'tv', tmdb_id: identifier,
     title: identifier === 6001 ? 'Fixture Series' : 'Foundation', year: '2026',
+    first_air_date: '2026-01-02', last_air_date: '2026-09-08',
     overview: 'A complete metadata-first series catalogue.',
+    genres: ['Drama'], directors: ['Jane Creator'], rating: 8.2,
     poster_path: '', backdrop_path: '', providers: [{
       provider_id: 8, name: 'Netflix', type: 'flatrate', label: 'Stream', logo_path: '',
     }],
@@ -68,6 +70,15 @@ test('series sheets use the full metadata catalogue with local availability over
   await expect(page.locator('#adultTitleSheet .watch-film-summary')).toHaveCSS('border-bottom-width', '1px')
   await expect(page.locator('#adultSeriesSheet')).toBeHidden()
   await expect(page.locator('#adultTitleName')).toHaveText('Fixture Series')
+  await expect(page.locator('#adultTitleMeta .adult-title-fact').first().locator('small'))
+    .toHaveText('Aired from')
+  await expect(page.locator('#adultTitleMeta .adult-title-fact').first().locator('strong'))
+    .toHaveText('2 Jan 2026')
+  await expect(page.locator('#adultTitleMeta')).not.toContainText('8 Sep 2026')
+  await expect(page.locator('#adultTitleMeta .adult-title-fact small'))
+    .toHaveText(['Aired from', 'Series', 'Episodes', 'Genre', 'Created by', 'TMDB'])
+  await expect(page.locator('#adultTitleMeta')).not.toContainText('Watched')
+  await expect(page.locator('#adultTitleMeta')).not.toContainText('MabelTV')
   await expect(page.locator('#adultTitleOverview + #adultTitleIntents')).toBeVisible()
   await expect(page.locator('#adultTitleSeasons .adult-season-card')).toHaveCount(2)
   await expect(page.locator('#adultTitleSeasons [data-season="1"] .adult-season-card-copy small'))
@@ -114,10 +125,7 @@ test('series sheets use the full metadata catalogue with local availability over
   await expect(page.locator('#adultTitleSheet')).toBeVisible()
   await expect(page.locator('#adultTitleName')).toHaveText('Foundation')
   await expect(page.locator('#adultTitleSeasons .adult-season-card')).toHaveCount(2)
-  const mabelTvFact = page.locator('#adultTitleMeta .adult-title-fact')
-    .filter({ has: page.locator('small', { hasText: /^MabelTV$/ }) })
-  await expect(mabelTvFact).toHaveCount(1)
-  await expect(mabelTvFact.locator('strong')).toHaveText('Not available')
+  await expect(page.locator('#adultTitleMeta')).not.toContainText('MabelTV')
   await expect(page.locator('#adultProviderList .provider-mabeltv')).toHaveCount(0)
   await expect(page.locator('#adultTitleMore')).toBeHidden()
   await page.locator('#adultTitleSeasons [data-season="1"]').click()

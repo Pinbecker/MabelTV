@@ -193,6 +193,14 @@
       $('#tvGuideState').textContent = enabled ? 'On · ready on the television' : 'Off'
     }
 
+    function renderWatchmodeAvailabilitySetting() {
+      const enabled = library?.adult_settings?.watchmode_availability_enabled !== false
+      $('#watchmodeAvailabilityToggle').setAttribute('aria-pressed', String(enabled))
+      $('#watchmodeAvailabilityToggle').textContent = enabled ? 'On' : 'Off'
+      $('#watchmodeAvailabilityState').textContent = enabled
+        ? 'On · direct links and rental prices' : 'Off · TMDB details still available'
+    }
+
     function renderPortalPinSetting() {
       const required = library?.owner?.portal_pin_required !== false
       $('#portalPinState').textContent = required
@@ -203,6 +211,9 @@
 
     $('#tvGuideToggle').onclick = () => manage('set-tv-guide-enabled', {
       enabled: !(library?.appearance?.tv_guide_enabled === true)
+    })
+    $('#watchmodeAvailabilityToggle').onclick = () => manage('set-watchmode-availability', {
+      enabled: !adultAvailabilityEnabled(),
     })
 
     ;[['#tvCrtGlass', '#tvCrtGlassValue'], ['#tvDistortion', '#tvDistortionValue'], ['#tvMaximumVolume', '#tvMaximumVolumeValue']]

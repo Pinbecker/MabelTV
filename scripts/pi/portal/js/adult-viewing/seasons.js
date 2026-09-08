@@ -124,6 +124,10 @@ async function openAdultEpisodeDestination(detail, season, episode, seasonCard =
   root.innerHTML = '<p>Checking streaming destinations…</p>'
   portalSheets.open(sheet)
   const closeBeforeLaunch = () => portalSheets.dismiss(sheet)
+  if (!adultAvailabilityEnabled()) {
+    renderAdultAvailabilityDisabled(root, detail, { localAction: null })
+    return
+  }
   if (detail.provider_result) {
     renderAdultProviderLinksInto(root, detail, detail.provider_result, {
       localAction: null, beforeLaunch: closeBeforeLaunch,

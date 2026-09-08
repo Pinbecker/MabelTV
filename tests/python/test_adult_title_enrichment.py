@@ -12,6 +12,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "pi"))
 
 from mabeltv_backend.providers import ProviderMetadataMixin  # noqa: E402
 from mabeltv_backend.http import Handler  # noqa: E402
+from mabeltv_backend.media import MediaCatalogueMixin  # noqa: E402
 
 
 class CatalogueFixture(ProviderMetadataMixin):
@@ -77,6 +78,12 @@ class CatalogueFixture(ProviderMetadataMixin):
                 "birthday": "1947-07-22", "place_of_birth": "Beverly Hills, California",
                 "profile_path": "/albert.jpg", "biography": "An actor and filmmaker.",
                 "combined_credits": {"cast": [
+                    {"id": 200, "media_type": "tv", "name": "Late Night Fixture",
+                     "first_air_date": "2015-01-01", "character": "Self - Guest",
+                     "genre_ids": [10767], "popularity": 300, "vote_count": 500},
+                    {"id": 201, "media_type": "movie", "title": "Archive Fixture",
+                     "release_date": "2025-01-01", "character": "Self (archive footage)",
+                     "genre_ids": [99], "popularity": 100, "vote_count": 30000},
                     {"id": 12, "media_type": "movie", "title": "Finding Nemo",
                      "release_date": "2003-05-30", "character": "Marlin",
                      "popularity": 30, "vote_count": 19000},
@@ -95,8 +102,33 @@ class CatalogueFixture(ProviderMetadataMixin):
     def adult_viewing_store() -> dict[str, Any]:
         return {"schema_version": 1, "titles": {}, "availability": {}}
 
+    @staticmethod
+    def settings() -> dict[str, Any]:
+        return {"schema_version": 1}
+
+
+class AvailabilitySettingsFixture(MediaCatalogueMixin):
+    def __init__(self) -> None:
+        self.config_lock = threading.RLock()
+        self.settings_path = Path("settings.json")
+        self.values: dict[str, Any] = {"schema_version": 1}
+
+    def settings(self) -> dict[str, Any]:
+        return dict(self.values)
+
+    def write_json(self, _path: Path, value: dict[str, Any]) -> None:
+        self.values = dict(value)
+
 
 class AdultTitleEnrichmentTests(unittest.TestCase):
+    def test_watchmode_availability_setting_defaults_on_and_persists_off(self) -> None:
+        library = AvailabilitySettingsFixture()
+
+        self.assertNotEqual(library.settings().get("watchmode_availability_enabled"), False)
+        self.assertTrue(library.manage({"action": "set-watchmode-availability",
+                                        "enabled": False}))
+        self.assertFalse(library.settings()["watchmode_availability_enabled"])
+
     def test_movie_detail_normalises_and_caches_franchise_cast_and_director(self) -> None:
         library = CatalogueFixture()
 
@@ -157,6 +189,34 @@ class AdultTitleEnrichmentTests(unittest.TestCase):
         self.assertEqual(repeated, detail)
         self.assertEqual([endpoint for endpoint, _ in library.requests].count(
             "person/1"), 1)
+
+    def test_person_credit_ranking_rejects_guest_and_archive_appearances(self) -> None:
+        meaningful = {"media_type": "movie", "character": "Alfred", "genre_ids": [18],
+                      "vote_count": 20000, "popularity": 30, "order": 2}
+        guest = {"media_type": "tv", "character": "Self - Guest",
+                 "genre_ids": [10767], "vote_count": 500, "popularity": 300}
+        archive = {"media_type": "movie", "character": "Self (archive footage)",
+                   "genre_ids": [99], "vote_count": 30000, "popularity": 90}
+
+        self.assertIsNotNone(CatalogueFixture.adult_person_credit_score(meaningful))
+        self.assertIsNone(CatalogueFixture.adult_person_credit_score(guest))
+        self.assertIsNone(CatalogueFixture.adult_person_credit_score(archive))
+
+    def test_disabled_availability_skips_tmdb_providers_and_watchmode(self) -> None:
+        class DisabledCatalogue(CatalogueFixture):
+            @staticmethod
+            def settings() -> dict[str, Any]:
+                return {"watchmode_availability_enabled": False}
+
+        library = DisabledCatalogue()
+        detail = library.adult_title_detail("movie", 12)
+        links = library.adult_streaming_links("movie", 12)
+
+        self.assertFalse(detail["availability_enabled"])
+        self.assertEqual(detail["providers"], [])
+        self.assertNotIn("movie/12/watch/providers",
+                         [endpoint for endpoint, _ in library.requests])
+        self.assertTrue(links["disabled"])
 
     def test_security_policy_allows_only_the_two_metadata_image_hosts(self) -> None:
         class HeaderRecorder:

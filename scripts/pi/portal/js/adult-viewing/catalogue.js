@@ -100,8 +100,12 @@ const adultProviderBrands = [
 
 function adultProviderBrandFor(record, idField, brandIds) {
   const identifier = Number(record?.[idField] || 0)
-  return adultProviderBrands.find(brand =>
-    (identifier && brand[brandIds].includes(identifier)) || brand.match.test(String(record?.name || '')))
+  return (identifier && adultProviderBrands.find(brand => brand[brandIds].includes(identifier)))
+    || adultProviderBrands.find(brand => brand.match.test(String(record?.name || '')))
+}
+
+function adultAvailabilityEnabled() {
+  return library?.adult_settings?.watchmode_availability_enabled !== false
 }
 
 function adultProviderPlatform(client = navigator) {
@@ -524,8 +528,21 @@ function renderAdultProviderLinks(detail, result) {
   })
 }
 
+function renderAdultAvailabilityDisabled(root, detail, options = {}) {
+  renderAdultProviderLinksInto(root, { ...detail, providers: [] }, { sources: [] }, options)
+  const message = root.querySelector('p') || document.createElement('p')
+  message.textContent = 'Where to watch and rent lookups are turned off in Settings.'
+  if (!message.isConnected) root.append(message)
+}
+
 async function loadAdultProviders(detail, refresh = false, revision = adultTitleOpenRevision) {
   const root = $('#adultProviderList')
+  if (!adultAvailabilityEnabled()) {
+    renderAdultAvailabilityDisabled(root, detail, {
+      purchaseSection: $('#adultTitleRentBuy'), purchaseRoot: $('#adultTitleRentBuyList'),
+    })
+    return
+  }
   root.innerHTML = '<p>Checking streaming destinations…</p>'
   $('#adultTitleRentBuy')?.classList.add('hidden')
   $('#adultTitleRentBuyList')?.replaceChildren()

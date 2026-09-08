@@ -12,9 +12,13 @@ function adultExactDateLabel(value) {
   }).format(date)
 }
 
-function renderAdultTitleMetadata(root, detail, { facts = [], creditLabel = '', credits = [] } = {}) {
+function renderAdultTitleMetadata(root, detail, {
+  facts = [], creditLabel = '', credits = [], seriesLayout = false,
+} = {}) {
   root.replaceChildren()
   root.classList.add('is-title-facts')
+  root.classList.toggle('is-series-title-facts', seriesLayout)
+  let ratingFact = null
   facts.filter(fact => fact?.value).forEach(fact => {
     const span = document.createElement('span')
     span.className = 'adult-title-fact'
@@ -39,7 +43,8 @@ function renderAdultTitleMetadata(root, detail, { facts = [], creditLabel = '', 
     fact.title = detail.rating_count
       ? `${Number(detail.rating_count).toLocaleString('en-GB')} TMDB ratings` : 'TMDB user score'
     fact.append(mark, score)
-    root.append(fact)
+    if (!seriesLayout) root.append(fact)
+    else ratingFact = fact
   }
   if (creditLabel && credits.length) {
     const credit = document.createElement('span')
@@ -51,6 +56,7 @@ function renderAdultTitleMetadata(root, detail, { facts = [], creditLabel = '', 
     credit.append(label, names)
     root.append(credit)
   }
+  if (ratingFact) root.append(ratingFact)
 }
 
 function clearAdultTitleEnrichment(prefix) {
@@ -336,7 +342,8 @@ async function loadLocalFilmProviders(film, refresh = false) {
   $('#watchFilmRentBuyList')?.replaceChildren()
   section.classList.remove('hidden')
   const refreshButton = $('#watchFilmProviderRefresh')
-  refreshButton.classList.toggle('hidden', !detail)
+  const availabilityEnabled = adultAvailabilityEnabled()
+  refreshButton.classList.toggle('hidden', !detail || !availabilityEnabled)
   if (!detail) {
     root.innerHTML = '<p>Match this film’s metadata to see where it is available in Great Britain.</p>'
     return
@@ -349,7 +356,9 @@ async function loadLocalFilmProviders(film, refresh = false) {
   try {
     const [title, sources] = await Promise.all([
       api(`/api/adult/title?media_type=movie&tmdb_id=${detail.tmdb_id}`),
-      api(`/api/adult/providers?media_type=movie&tmdb_id=${detail.tmdb_id}${refresh ? '&refresh=1' : ''}`),
+      availabilityEnabled
+        ? api(`/api/adult/providers?media_type=movie&tmdb_id=${detail.tmdb_id}${refresh ? '&refresh=1' : ''}`)
+        : Promise.resolve({ sources: [], disabled: true }),
     ])
     if (revision !== localFilmProviderRevision || root.dataset.providerKey !== detail.key) return
     const fullDetail = {
@@ -371,10 +380,10 @@ async function loadLocalFilmProviders(film, refresh = false) {
       portalSheets.dismiss($('#watchFilmSheet'))
       openAdultTitle(part)
     })
-    renderAdultProviderLinksInto(root, fullDetail, sources, {
-      localAction: null, purchaseSection: $('#watchFilmRentBuy'),
-      purchaseRoot: $('#watchFilmRentBuyList'),
-    })
+    const options = { localAction: null, purchaseSection: $('#watchFilmRentBuy'),
+      purchaseRoot: $('#watchFilmRentBuyList') }
+    if (availabilityEnabled) renderAdultProviderLinksInto(root, fullDetail, sources, options)
+    else renderAdultAvailabilityDisabled(root, fullDetail, options)
   } catch (error) {
     if (revision !== localFilmProviderRevision || root.dataset.providerKey !== detail.key) return
     renderAdultProviderLinksInto(root, { ...detail, on_mabeltv: true }, { sources: [] }, {
@@ -469,22 +478,16 @@ function renderAdultTitleDetail(detail, refreshProviders = true,
   $('#adultTitleOverview').textContent = detail.overview || 'No description is available.'
   renderAdultTitleSeasons(detail)
   const date = isSeries
-    ? [adultExactDateLabel(detail.first_air_date), adultExactDateLabel(detail.last_air_date)]
-      .filter((value, index, values) => value && (index === 0 || value !== values[0])).join(' – ')
+    ? adultExactDateLabel(detail.first_air_date)
     : adultExactDateLabel(detail.release_date)
   const seasons = detail.seasons || []
   const episodeCount = seasons.reduce((total, season) =>
     total + Number(season.episodes || 0), 0)
-  const watchedCount = seasons.reduce((total, season) =>
-    total + Number(season.watched_count || 0), 0)
   const credits = detail.directors || []
   const facts = isSeries ? [
-    { label: 'Aired', value: date || detail.year },
+    { label: 'Aired from', value: date || detail.year },
     { label: 'Series', value: String(seasons.length) },
     { label: 'Episodes', value: String(episodeCount) },
-    { label: 'MabelTV', value: detail.on_mabeltv
-      ? `${(localSeries?.episodes || []).length} episodes` : 'Not available' },
-    { label: 'Watched', value: String(watchedCount) },
     { label: 'Genre', value: (detail.genres || [])[0] || '' },
   ] : [
     { label: 'Release', value: date || detail.year },
@@ -495,6 +498,7 @@ function renderAdultTitleDetail(detail, refreshProviders = true,
     facts,
     creditLabel: isSeries ? 'Created by' : credits.length > 1 ? 'Directors' : 'Director',
     credits,
+    seriesLayout: isSeries,
   })
   const poster = $('#adultTitlePoster')
   poster.replaceChildren()
@@ -522,6 +526,7 @@ function renderAdultTitleDetail(detail, refreshProviders = true,
     openAdultSeriesMoreSheet(localSeries, null, () => restoreAdultTitleSheet(detail))
   } : null
   renderAdultTitleEnrichment(detail, 'adultTitle', part => openAdultTitle(part))
+  $('#adultProviderRefresh').classList.toggle('hidden', !adultAvailabilityEnabled())
   $('#adultProviderRefresh').onclick = () => loadAdultProviders(detail, true, revision)
   if (refreshProviders) {
     $('#adultProviderList').innerHTML = '<p>Checking streaming destinations…</p>'
@@ -532,10 +537,13 @@ function renderAdultTitleDetail(detail, refreshProviders = true,
 function prepareAdultTitleSheet(title) {
   const sheet = $('#adultTitleSheet')
   const panel = sheet.querySelector('.watch-film-panel')
+  const body = sheet.querySelector('.watch-film-body')
   selectedAdultTitle = title
   sheet.classList.add('is-loading-title')
   panel.scrollTop = 0
   panel.scrollLeft = 0
+  body.scrollTop = 0
+  body.scrollLeft = 0
   sheet.classList.toggle('is-series', title.media_type === 'tv')
   $('#adultTitleName').textContent = title.title || 'Loading title…'
   $('#adultTitleEyebrow').textContent = title.media_type === 'tv'

@@ -44,6 +44,29 @@ body.portal-experience .library-sheet-panel.wide {
   transform: translateX(calc((720px - min(920px, calc(100vw - 32px))) / 2));
 }
 
+body.portal-experience .library-sheet-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+body.portal-experience .library-sheet-panel > :is(
+  .library-sheet-head,
+  .adult-series-sheet-head,
+  .adult-season-sheet-head
+) {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+body.portal-experience .library-sheet-panel > .library-sheet-body {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 body.portal-experience :is(
   .library-sheet-head,
   .remote-sheet-panel > header,

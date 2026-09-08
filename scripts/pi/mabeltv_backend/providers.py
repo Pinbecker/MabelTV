@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import subprocess
@@ -519,8 +520,10 @@ class ProviderMetadataMixin:
                               for release in choices)
                 summary["release_date"] = uk_date
                 summary["year"] = uk_date[:4]
+        availability_enabled = self.settings().get(
+            "watchmode_availability_enabled") is not False
         providers = self.adult_cached_tmdb_request(
-            f"{media_type}/{raw_id}/watch/providers")
+            f"{media_type}/{raw_id}/watch/providers") if availability_enabled else {}
         region = providers.get("results", {}).get("GB", {}) \
             if isinstance(providers, dict) else {}
         groups = []
@@ -619,7 +622,8 @@ class ProviderMetadataMixin:
                          "air_date": str(item.get("air_date") or "")}
                         for item in value.get("seasons", []) if isinstance(item, dict)
                         and int(item.get("season_number", 0) or 0) > 0],
-            "providers": groups, "provider_link": str(region.get("link", ""))
+            "providers": groups, "availability_enabled": availability_enabled,
+            "provider_link": str(region.get("link", ""))
             if isinstance(region, dict) else "", "region": "GB",
             "on_mabeltv": key in local_titles,
             "local": local_title,
@@ -677,11 +681,10 @@ class ProviderMetadataMixin:
         credits = value.get("combined_credits", {})
         cast_credits = credits.get("cast", []) if isinstance(credits, dict) else []
         ranked = sorted(
-            (item for item in cast_credits if isinstance(item, dict)),
-            key=lambda item: (
-                float(item.get("popularity", 0) or 0),
-                int(item.get("vote_count", 0) or 0),
-            ), reverse=True,
+            (item for item in cast_credits if isinstance(item, dict)
+             and self.adult_person_credit_score(item) is not None),
+            key=lambda item: self.adult_person_credit_score(item) or (),
+            reverse=True,
         )
         known_for: list[dict[str, Any]] = []
         seen: set[str] = set()
@@ -714,6 +717,35 @@ class ProviderMetadataMixin:
             "profile_path": str(value.get("profile_path") or ""),
             "known_for": known_for,
         }
+
+    @staticmethod
+    def adult_person_credit_score(item: dict[str, Any]) -> tuple[float, int, float] | None:
+        """Rank substantive performances instead of high-traffic guest appearances."""
+        media_type = str(item.get("media_type") or "")
+        if media_type not in {"movie", "tv"} or item.get("adult") is True:
+            return None
+        character = str(item.get("character") or "").strip()
+        role = character.casefold()
+        genres = {int(value) for value in item.get("genre_ids", [])
+                  if isinstance(value, int)}
+        if not character or re.search(
+                r"\b(self|himself|herself|archive footage|uncredited)\b", role):
+            return None
+        if media_type == "tv" and genres.intersection({10763, 10764, 10767}):
+            return None
+        votes = max(0, int(item.get("vote_count", 0) or 0))
+        popularity = max(0.0, float(item.get("popularity", 0) or 0))
+        score = math.log1p(votes) * 12 + min(popularity, 100) * 0.2
+        if media_type == "movie":
+            order = item.get("order")
+            billing = int(order) if isinstance(order, int) and not isinstance(order, bool) else 20
+            score += 8 + max(0, 12 - billing) * 2
+        else:
+            episodes = max(0, int(item.get("episode_count", 0) or 0))
+            score += min(episodes, 12) * 1.5
+            if episodes <= 2:
+                score -= 12
+        return score, votes, popularity
 
     def adult_title_season(self, tmdb_id: Any, season_number: Any) -> dict[str, Any]:
         key = self.adult_title_key("tv", tmdb_id)
@@ -835,6 +867,9 @@ class ProviderMetadataMixin:
     def adult_streaming_links(self, media_type: str, tmdb_id: Any,
                               refresh: bool = False) -> dict[str, Any]:
         key = self.adult_title_key(media_type, tmdb_id)
+        if self.settings().get("watchmode_availability_enabled") is False:
+            return {"key": key, "region": "GB", "sources": [],
+                    "provider": "Watchmode", "disabled": True}
         now = time.time()
         with self.config_lock:
             store = self.adult_viewing_store()

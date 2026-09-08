@@ -979,6 +979,8 @@ class MediaCatalogueMixin:
             },
             "tv_settings": self.tv_settings(settings),
             "remote_viewing": self.remote_settings(),
+            "adult_settings": {"watchmode_availability_enabled":
+                               settings.get("watchmode_availability_enabled") is not False},
             "adult_library": self.adult_library(),
             "adult_folders": self.adult_folders(),
             "adult_series": self.adult_series_library(),
@@ -1077,6 +1079,7 @@ class MediaCatalogueMixin:
         if payload.get("action") in {
                 "optimise-adult", "set-portal-design", "set-portal-palette",
                 "set-portal-theme", "set-remote-simultaneous",
+                "set-watchmode-availability",
                 "create-adult-series", "create-adult-season",
                 "trash-adult-series", "optimisation-action"}:
             # These settings belong to the portal/library service.  In
@@ -1148,6 +1151,14 @@ class MediaCatalogueMixin:
                 raise ValueError("Choose whether simultaneous viewing is allowed")
             settings = self.settings()
             settings["remote_allow_simultaneous"] = enabled
+            self.write_json(self.settings_path, settings)
+            return
+        if action == "set-watchmode-availability":
+            enabled = payload.get("enabled")
+            if not isinstance(enabled, bool):
+                raise ValueError("Choose whether Watchmode availability is on or off")
+            settings = self.settings()
+            settings["watchmode_availability_enabled"] = enabled
             self.write_json(self.settings_path, settings)
             return
         if action == "set-tv-settings":

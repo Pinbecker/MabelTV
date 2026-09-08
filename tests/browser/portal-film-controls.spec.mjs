@@ -136,7 +136,7 @@ for (const theme of ['light', 'dark']) {
     await expect(page.locator('#remoteAdult .watch-card')).toHaveCount(5)
   })
 
-  test(`${theme} film title card keeps its divider over scrolling detail content`, async ({ page }) => {
+  test(`${theme} film title card keeps its header fixed over scrolling detail content`, async ({ page }) => {
     await openPortal(page, theme)
     await filmFixture(page)
     await page.evaluate(() => {
@@ -149,8 +149,9 @@ for (const theme of ['light', 'dark']) {
     await page.locator('#watchFilmViewingActions').scrollIntoViewIfNeeded()
     const result = await page.locator('#watchFilmSheet').evaluate(sheet => {
       const panel = sheet.querySelector('.watch-film-panel')
+      const body = sheet.querySelector('.watch-film-body')
       const summary = sheet.querySelector('.watch-film-summary')
-      panel.scrollTop = 480
+      body.scrollTop = 480
       const panelBox = panel.getBoundingClientRect()
       const summaryBox = summary.getBoundingClientRect()
       const visibleElement = document.elementFromPoint(
@@ -166,6 +167,10 @@ for (const theme of ['light', 'dark']) {
         position: getComputedStyle(summary).position,
         surface: getComputedStyle(summary).backgroundColor,
         pinned: Math.abs(summaryBox.top - panelBox.top) <= 1,
+        fixedHeight: Math.abs(panelBox.height - (matchMedia('(max-width: 640px)').matches
+          ? innerHeight - 19 : Math.min(innerHeight * 0.9, 860))) <= 2,
+        bodyScrolled: body.scrollTop > 0,
+        bodySpringAllowed: getComputedStyle(body).overscrollBehaviorY !== 'none',
         covered: summary.contains(visibleElement),
       }
     })
@@ -174,9 +179,12 @@ for (const theme of ['light', 'dark']) {
       fullBleed: true,
       dividerGap: 16,
       shadow: 'none',
-      position: 'sticky',
+      position: 'relative',
       surface: theme === 'light' ? 'rgb(255, 255, 255)' : 'rgba(10, 10, 14, 0.96)',
       pinned: true,
+      fixedHeight: true,
+      bodyScrolled: true,
+      bodySpringAllowed: true,
       covered: true,
     })
   })

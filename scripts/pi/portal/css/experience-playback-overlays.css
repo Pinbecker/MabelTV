@@ -70,7 +70,10 @@ body.portal-experience .portal-sheet-close:focus-visible {
 }
 
 body.portal-experience .watch-film-panel {
-  overflow: auto;
+  height: min(90dvh, 860px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: #0a0a0e;
   scrollbar-width: none;
 }
@@ -81,19 +84,27 @@ body.portal-experience .watch-film-backdrop { display: none; }
 body.portal-experience .watch-film-body {
   position: relative;
   z-index: 2;
+  min-height: 0;
   display: flow-root;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
   padding: 0 var(--experience-sheet-padding) var(--experience-sheet-padding);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+body.portal-experience .watch-film-body::-webkit-scrollbar { display: none; }
 
 body.portal-experience .watch-film-summary {
-  position: sticky;
+  position: relative;
   z-index: 5;
   top: 0;
+  flex: 0 0 auto;
   display: grid;
   grid-template-columns: 116px minmax(0, 1fr);
   align-items: start;
   gap: 18px;
-  margin: 0 calc(var(--experience-sheet-padding) * -1);
+  margin: 0;
   border-bottom: 1px solid var(--experience-line);
   background: rgba(10, 10, 14, 0.96);
   box-shadow: none;
@@ -134,7 +145,7 @@ body.portal-experience .watch-film-eyebrow {
   font-weight: 700;
 }
 
-body.portal-experience .watch-film-body h2 {
+body.portal-experience .watch-film-summary h2 {
   overflow-wrap: normal;
   word-break: normal;
   margin: 0 0 4px;
@@ -492,6 +503,10 @@ body.portal-experience .adult-film-danger .watch-action-icon {
     padding-bottom: 0;
   }
 
+  body.portal-experience .watch-film-panel {
+    height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 19px);
+  }
+
   body.portal-experience .library-sheet-panel.wide {
     width: 100%;
     transform: none;
@@ -599,7 +614,7 @@ body.portal-experience .adult-film-danger .watch-action-icon {
     padding-bottom: 5px;
   }
 
-  body.portal-experience .watch-film-body h2 {
+  body.portal-experience .watch-film-summary h2 {
     font-size: clamp(25px, 7.8vw, 32px);
   }
 

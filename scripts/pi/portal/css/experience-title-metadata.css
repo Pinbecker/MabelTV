@@ -30,6 +30,17 @@ body.portal-v2 .adult-title-credit > strong {
   text-overflow: clip;
   white-space: normal;
 }
+body.portal-v2 .is-series-title-facts .adult-title-credit {
+  grid-column: 1;
+}
+body.portal-v2 .is-series-title-facts .adult-title-rating {
+  grid-column: 2;
+}
+body.portal-v2 .is-series-title-facts .adult-title-credit > strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 body.portal-v2 .adult-title-rating-mark {
   width: fit-content;
   background: linear-gradient(90deg, #90cea1, #01b4e4);

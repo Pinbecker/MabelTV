@@ -69,7 +69,8 @@ function capturePortalPosition({ anchor = true } = {}) {
     anchor: nearest ? { attribute, value: nearest.getAttribute(attribute), top: portalAnchorTop(nearest) } : null,
     rails: [...(view?.querySelectorAll(portalRailSelector) || [])].map(element => ({ key: portalElementKey(element), left: element.scrollLeft })),
     locked: document.body.classList.contains('portal-player-open'),
-    panels: [...document.querySelectorAll('dialog[open] .library-sheet-panel,dialog[open] .watch-film-panel')]
+    panels: [...document.querySelectorAll(
+      'dialog[open] .library-sheet-panel,dialog[open] .watch-film-panel,dialog[open] .library-sheet-body,dialog[open] .watch-film-body')]
       .map(element => ({ element, top: element.scrollTop, left: element.scrollLeft })),
   }
 }

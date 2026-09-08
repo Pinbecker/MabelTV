@@ -512,7 +512,7 @@
       padding: var(--space-4) var(--space-4) var(--space-5);
     }
 
-    .watch-film-body h2 {
+    .watch-film-summary h2 {
       font-size: clamp(1.35rem, 7vw, 1.75rem);
     }
 

@@ -141,7 +141,7 @@ test('returning from a numbered series restores the show sheet position', async 
     library.adult_series = [series]
     openAdultSeriesSheet(series)
   })
-  const panel = page.locator('#adultSeriesSheet .library-sheet-panel')
+  const panel = page.locator('#adultSeriesSheet .library-sheet-body')
   const season = page.locator('#adultSeriesEpisodes .adult-season-card').nth(12)
   await season.scrollIntoViewIfNeeded()
   const before = await panel.evaluate(element => element.scrollTop)
@@ -213,7 +213,7 @@ test('episode back and collection selection keep the sheet position', async ({ p
     library.adult_series = [series]
     openAdultSeasonSheet(series, 1)
   })
-  const panel = page.locator('#adultSeasonSheet .library-sheet-panel')
+  const panel = page.locator('#adultSeasonSheet .library-sheet-body')
   const episode = page.locator('#adultSeasonEpisodes button').nth(25)
   await episode.scrollIntoViewIfNeeded()
   const before = await panel.evaluate(element => element.scrollTop)
@@ -231,7 +231,7 @@ test('episode back and collection selection keep the sheet position', async ({ p
   })
   const collection = page.locator('#adultFolderTabs button').nth(22)
   await collection.scrollIntoViewIfNeeded()
-  const collectionPanel = page.locator('#adultCollectionSheet .library-sheet-panel')
+  const collectionPanel = page.locator('#adultCollectionSheet .library-sheet-body')
   const collectionTop = await collectionPanel.evaluate(element => element.scrollTop)
   await collection.click()
   await settled(page)

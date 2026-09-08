@@ -137,6 +137,7 @@ LIBRARY_PAYLOAD: dict[str, Any] = {
         "scrubbing_enabled": False,
     },
     "remote_viewing": {"allow_simultaneous": False},
+    "adult_settings": {"watchmode_availability_enabled": True},
     "adult_library": [],
     "adult_folders": [],
     "adult_series": [],

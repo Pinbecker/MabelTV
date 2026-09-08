@@ -9,7 +9,8 @@
   let returningToDialog = false
 
   function dialogScrollers(dialog) {
-    return [dialog, ...dialog.querySelectorAll('.library-sheet-panel,.watch-film-panel,.portal-sheet-panel')]
+    return [dialog, ...dialog.querySelectorAll(
+      '.library-sheet-panel,.watch-film-panel,.portal-sheet-panel,.library-sheet-body,.watch-film-body')]
   }
 
   function restoreDialogPosition(dialog) {

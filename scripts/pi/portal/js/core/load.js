@@ -111,6 +111,7 @@
       renderTvSettings()
       renderParentOverlayStyle()
       renderTvGuideSetting()
+      renderWatchmodeAvailabilitySetting()
       renderRemoteViewing()
       renderPortalPinSetting()
       restorePortalPosition(position)

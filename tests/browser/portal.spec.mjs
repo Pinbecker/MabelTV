@@ -311,7 +311,7 @@ test('Experience icon controls and sheet headers keep their mobile contracts', a
 
   const stickyClose = await page.evaluate(() => {
     const dialog = document.querySelector('#adultSeasonSheet')
-    const panel = dialog.querySelector('.library-sheet-panel')
+    const panel = dialog.querySelector('.library-sheet-body')
     const close = dialog.querySelector('.portal-sheet-close')
     dialog.showModal()
     const before = close.getBoundingClientRect().top

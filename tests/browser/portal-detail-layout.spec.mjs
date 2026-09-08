@@ -22,6 +22,33 @@ async function expectHeaderClear(page, sheet, closeId) {
   })).toBe(true)
 }
 
+test('Watchmode can be disabled while TMDB title exploration remains available', async ({ page }) => {
+  let providerRequests = 0
+  await page.route(url => new URL(url).pathname === '/api/adult/providers', route => {
+    providerRequests += 1
+    return route.abort()
+  })
+  await openPortal(page, 'dark')
+  await page.evaluate(() => {
+    library.adult_settings.watchmode_availability_enabled = false
+    renderWatchmodeAvailabilitySetting()
+    openAdultTitle({ key: 'movie:12', media_type: 'movie', tmdb_id: 12,
+      title: 'Finding Nemo' })
+  })
+  await expect(page.locator('#watchmodeAvailabilityToggle')).toHaveText('Off')
+  await expect(page.locator('#watchmodeAvailabilityState')).toContainText('TMDB details still available')
+  await expect(page.locator('#adultTitleSheet')).toBeVisible()
+  await expect(page.locator('#adultProviderList')).toContainText('turned off in Settings')
+  expect(providerRequests).toBe(0)
+})
+
+test('exact provider identifiers beat marketplace wording', async ({ page }) => {
+  await openPortal(page, 'dark')
+  expect(await page.evaluate(() => adultProviderBrandFor(
+    { source_id: 490, name: 'MAX (Via Amazon Prime)' }, 'source_id', 'watchmodeIds')?.id
+  )).toBe('hbo-max')
+})
+
 for (const theme of ['light', 'dark']) {
   test(`${theme} Finding Nemo remains selectable after changing cabinets`, async ({ page }) => {
     await openPortal(page, theme)
@@ -74,7 +101,7 @@ for (const theme of ['light', 'dark']) {
     await page.screenshot({ path: testInfo.outputPath('series.png') })
     await expectHeaderClear(page, '#adultSeriesSheet', '#adultSeriesClose')
     await page.locator('#adultSeriesSheet').evaluate(dialog => {
-      const panel = dialog.querySelector('.library-sheet-panel')
+      const panel = dialog.querySelector('.library-sheet-body')
       const h = dialog.querySelector('header').getBoundingClientRect()
       const s = dialog.querySelector('.adult-season-status').getBoundingClientRect()
       panel.scrollTop += s.y - h.y - 30
@@ -123,10 +150,10 @@ for (const theme of ['light', 'dark']) {
 
   test(`${theme} streaming season sheets hide their scrollbar without blocking scrolling`, async ({ page }) => {
     await openPortal(page, theme)
-    const panel = page.locator('#adultTitleSeasonSheet .library-sheet-panel')
+    const panel = page.locator('#adultTitleSeasonSheet .library-sheet-body')
     await page.evaluate(() => {
       const sheet = document.querySelector('#adultTitleSeasonSheet')
-      const sheetPanel = sheet?.querySelector('.library-sheet-panel')
+      const sheetPanel = sheet?.querySelector('.library-sheet-body')
       if (!(sheet instanceof HTMLDialogElement) || !(sheetPanel instanceof HTMLElement)) {
         throw new Error('Streaming season sheet is unavailable')
       }
