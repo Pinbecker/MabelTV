@@ -13,36 +13,23 @@
       return position < duration - completionWindow
     }
 
-    async function clearWatchFilmProgress(film, playAfter = false, actionOverride = null) {
-      const source = { kind: 'adult', file: film.path }
-      const action = actionOverride
+    async function clearContinueProgress({ source, title, action = null,
+      onCleared = null }) {
       const actionLabel = action?.querySelector('strong') || action?.querySelector('span:last-child')
       const originalLabel = actionLabel?.textContent || ''
       if (action) {
         action.disabled = true
         action.setAttribute('aria-busy', 'true')
       }
-      if (actionLabel) actionLabel.textContent = playAfter ? 'Starting from beginning…' : 'Removing…'
+      if (actionLabel) actionLabel.textContent = 'Removing…'
       try {
         await api('/api/remote/clear-position', {
           method: 'POST', body: JSON.stringify(source),
         })
-        film.remote_position = 0
-        film.remote_last_watched = 0
-        const storedFilm = (library?.adult_library || []).find(item => item.path === film.path)
-        if (storedFilm) {
-          storedFilm.remote_position = 0
-          storedFilm.remote_last_watched = 0
-        }
-        const startFilm = { ...film }
-        if (playAfter) {
-          playWatchFilm(startFilm, 0)
-          return
-        }
-        closeWatchFilmSheet()
+        if (onCleared) onCleared()
         renderAdultWatch()
         renderHomeLibrary()
-        notice(`${watchFilmTitle(film)} was removed from Continue Watching.`)
+        notice(`${title} was removed from Continue Watching.`)
       } finally {
         if (action) {
           action.disabled = false
@@ -50,6 +37,23 @@
         }
         if (actionLabel) actionLabel.textContent = originalLabel
       }
+    }
+
+    async function clearWatchFilmProgress(film, actionOverride = null) {
+      const source = { kind: 'adult', file: film.path }
+      await clearContinueProgress({
+        source, title: watchFilmTitle(film), action: actionOverride,
+        onCleared: () => {
+          film.remote_position = 0
+          film.remote_last_watched = 0
+          const storedFilm = (library?.adult_library || []).find(item => item.path === film.path)
+          if (storedFilm) {
+            storedFilm.remote_position = 0
+            storedFilm.remote_last_watched = 0
+          }
+          closeWatchFilmSheet()
+        },
+      })
     }
 
     function watchTimeLabel(value) {

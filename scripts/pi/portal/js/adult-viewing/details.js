@@ -61,7 +61,9 @@ function renderAdultTitleMetadata(root, detail, {
 
 function clearAdultTitleEnrichment(prefix) {
   for (const suffix of ['Franchise', 'Cast']) {
-    $(`#${prefix}${suffix}`)?.classList.add('hidden')
+    const section = $(`#${prefix}${suffix}`)
+    section?.classList.add('hidden')
+    section?.classList.remove('is-loading-placeholder')
     $(`#${prefix}${suffix}Rail`)?.replaceChildren()
   }
 }
@@ -484,6 +486,9 @@ function renderAdultTitleDetail(detail, refreshProviders = true,
   if (detail.media_type === 'tv') detail.on_mabeltv = Boolean((localSeries?.episodes || []).length)
   selectedAdultTitle = detail
   sheet.classList.remove('is-loading-title')
+  sheet.removeAttribute('aria-busy')
+  $('#adultTitleMeta').classList.remove('is-loading-placeholder')
+  $('#adultTitleIntents').classList.remove('is-loading-placeholder')
   const isSeries = detail.media_type === 'tv'
   sheet.classList.toggle('is-series', isSeries)
   $('#adultTitleName').textContent = detail.title
@@ -529,7 +534,9 @@ function renderAdultTitleDetail(detail, refreshProviders = true,
   $('#adultTitleLocalCopy').textContent = detail.on_mabeltv && !localFilm
     ? 'Available locally on MabelTV. Stored episodes offer Play on TV and Watch on this device.' : ''
   const filmActions = $('#adultTitleFilmActions')
+  filmActions.classList.remove('is-loading-placeholder')
   filmActions.classList.toggle('hidden', !localFilm)
+  filmActions.querySelectorAll('button').forEach(button => { button.disabled = false })
   if (localFilm) configureFilmPlaybackActions(localFilm, detail.local_context || 'library', {
     tvPlay: $('#adultTitleFilmTv'), herePlay: $('#adultTitleFilmHere'),
     close: closeAdultTitleSheet,
@@ -556,12 +563,86 @@ function renderAdultTitleDetail(detail, refreshProviders = true,
   }
 }
 
+function adultTitleLoadingBlock(className = '') {
+  const block = document.createElement('span')
+  block.className = `adult-title-loading-block${className ? ` ${className}` : ''}`
+  block.setAttribute('aria-hidden', 'true')
+  return block
+}
+
+function renderAdultTitleLoadingRail(root, kind, count) {
+  root.replaceChildren()
+  for (let index = 0; index < count; index += 1) {
+    root.append(adultTitleLoadingBlock(`adult-title-loading-${kind}`))
+  }
+}
+
+function renderAdultTitleLoadingMetadata(root, isSeries) {
+  root.replaceChildren()
+  root.classList.add('is-title-facts', 'is-loading-placeholder')
+  root.classList.toggle('is-series-title-facts', isSeries)
+  const labels = isSeries
+    ? ['Aired from', 'Series', 'Episodes', 'Genre', 'Created by', 'TMDB']
+    : ['Release', 'Runtime', 'Genre', 'TMDB', 'Director']
+  labels.forEach((text, index) => {
+    const fact = document.createElement('span')
+    fact.className = `adult-title-fact${index === labels.length - (isSeries ? 2 : 1)
+      ? ' adult-title-credit' : ''}`
+    const label = document.createElement('small')
+    label.textContent = text
+    fact.append(label, adultTitleLoadingBlock('adult-title-loading-value'))
+    root.append(fact)
+  })
+}
+
+function renderAdultTitleLoadingShell(title) {
+  const isSeries = title.media_type === 'tv'
+  renderAdultTitleLoadingMetadata($('#adultTitleMeta'), isSeries)
+  $('#adultTitlePoster').replaceChildren(
+    adultTitleLoadingBlock('adult-title-loading-cover'))
+
+  const overview = $('#adultTitleOverview')
+  overview.replaceChildren()
+  ;['wide', 'wide', 'medium', 'short'].forEach(width =>
+    overview.append(adultTitleLoadingBlock(`adult-title-loading-copy is-${width}`)))
+
+  $('#adultTitleIntents').classList.add('is-loading-placeholder')
+
+  const seriesLibrary = $('#adultTitleSeriesLibrary')
+  seriesLibrary.classList.toggle('hidden', !isSeries)
+  seriesLibrary.classList.toggle('is-loading-placeholder', isSeries)
+  $('#adultTitleNextEpisode').classList.add('hidden')
+  $('#adultTitleSeasonCount').textContent = isSeries ? 'Loading…' : ''
+  renderAdultTitleLoadingRail($('#adultTitleSeasons'), 'season', 2)
+
+  const franchise = $('#adultTitleFranchise')
+  franchise.classList.toggle('hidden', isSeries)
+  franchise.classList.toggle('is-loading-placeholder', !isSeries)
+  $('#adultTitleFranchiseName').textContent = 'Film collection'
+  renderAdultTitleLoadingRail($('#adultTitleFranchiseRail'), 'poster', 5)
+
+  const cast = $('#adultTitleCast')
+  cast.classList.remove('hidden')
+  cast.classList.add('is-loading-placeholder')
+  renderAdultTitleLoadingRail($('#adultTitleCastRail'), 'person', 6)
+
+  const providers = $('#adultProviderList')
+  providers.replaceChildren()
+  const providerRow = document.createElement('div')
+  providerRow.className = 'adult-title-loading-providers'
+  for (let index = 0; index < 5; index += 1) {
+    providerRow.append(adultTitleLoadingBlock('adult-title-loading-provider'))
+  }
+  providers.append(providerRow)
+}
+
 function prepareAdultTitleSheet(title) {
   const sheet = $('#adultTitleSheet')
   const panel = sheet.querySelector('.watch-film-panel')
   const body = sheet.querySelector('.watch-film-body')
   selectedAdultTitle = title
   sheet.classList.add('is-loading-title')
+  sheet.setAttribute('aria-busy', 'true')
   panel.scrollTop = 0
   panel.scrollLeft = 0
   body.scrollTop = 0
@@ -570,25 +651,22 @@ function prepareAdultTitleSheet(title) {
   $('#adultTitleName').textContent = title.title || 'Loading title…'
   $('#adultTitleEyebrow').textContent = title.media_type === 'tv'
     ? 'Streaming TV series' : 'Film'
-  $('#adultTitleOverview').textContent = 'Loading title details…'
-  $('#adultTitleMeta').replaceChildren()
-  $('#adultTitlePoster').replaceChildren()
+  renderAdultTitleLoadingShell(title)
   $('#adultTitleBackdrop').style.setProperty('--watch-film-art',
     'linear-gradient(135deg,#27252c,#101014)')
-  $('#adultTitleSeriesLibrary').classList.add('hidden')
-  $('#adultTitleSeasons').replaceChildren()
-  $('#adultTitleNextEpisode').classList.add('hidden')
   $('#adultTitleLocal').classList.add('hidden')
   $('#adultTitleLocalCopy').textContent = ''
-  $('#adultTitleFilmActions').classList.add('hidden')
+  const filmActions = $('#adultTitleFilmActions')
+  const localFilm = localAdultFilmForTitle(title)
+  filmActions.classList.toggle('hidden', !localFilm)
+  filmActions.classList.toggle('is-loading-placeholder', Boolean(localFilm))
+  filmActions.querySelectorAll('button').forEach(button => { button.disabled = true })
   $('#adultTitleFilmTv').onclick = null
   $('#adultTitleFilmHere').onclick = null
   $('#adultTitleMore').classList.add('hidden')
   $('#adultTitleMore').onclick = null
-  clearAdultTitleEnrichment('adultTitle')
   $('#adultTitleRentBuy').classList.add('hidden')
   $('#adultTitleRentBuyList').replaceChildren()
-  $('#adultProviderList').innerHTML = '<p>Loading…</p>'
   $('#adultTitleIntents').querySelectorAll('[data-viewing-action]').forEach(button => {
     button.classList.remove('active', 'is-unavailable')
     button.setAttribute('aria-pressed', 'false')
@@ -607,7 +685,14 @@ async function openAdultTitle(title) {
     renderAdultTitleDetail({ ...detail, local_context: localContext }, true, revision)
   } catch (error) {
     if (revision !== adultTitleOpenRevision) return
+    sheet.classList.remove('is-loading-title')
+    sheet.removeAttribute('aria-busy')
     $('#adultTitleOverview').textContent = error.message
+    $('#adultTitleMeta').classList.remove('is-loading-placeholder')
+    $('#adultTitleIntents').classList.remove('is-loading-placeholder')
+    $('#adultTitleSeriesLibrary').classList.add('hidden')
+    clearAdultTitleEnrichment('adultTitle')
+    $('#adultProviderList').innerHTML = '<p>Title availability could not be loaded.</p>'
   }
 }
 

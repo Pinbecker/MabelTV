@@ -246,6 +246,7 @@ body.portal-experience .watch-destination-actions {
   gap: 9px;
   margin-top: 22px;
 }
+body.portal-experience .watch-film-actions.hidden { display: none; }
 
 /* The experience theme does not load the classic spacing tokens. Give the
    lower action groups their own explicit rhythm so adjacent cards never

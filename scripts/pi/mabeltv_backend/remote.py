@@ -689,7 +689,7 @@ class RemotePlaybackMixin:
         return {"ok": True}
 
     def remote_clear_position(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """Explicitly remove a film from Continue Watching.
+        """Explicitly remove a local item from Continue Watching.
 
         This does not depend on a browser player having opened or managed to
         send its final time update.  The current on-TV bookmark is remembered
@@ -697,8 +697,48 @@ class RemotePlaybackMixin:
         put the film back into Continue Watching.
         """
         kind, source, _title, library_id, _resume = self.remote_source(payload)
+        if kind == "channel":
+            try:
+                channel_number = int(payload.get("channel", 0))
+            except (TypeError, ValueError):
+                raise ValueError("Choose a valid Mabel TV film") from None
+            channel = self.channel(channel_number)
+            if self.channel_content_type(channel) != "films":
+                raise ValueError("Choose a Mabel TV film to clear")
+            command = {
+                "command": "save-channel-film-position",
+                "channel": channel_number,
+                "file": source.name,
+                "position": 0.0,
+                "duration": 0.0,
+            }
+            try:
+                with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+                    client.settimeout(2)
+                    client.connect("/run/mabeltv/portal-control.sock")
+                    client.sendall((json.dumps(command, separators=(",", ":"))
+                                    + "\n").encode())
+                    reply = client.recv(32).decode(errors="replace").strip()
+            except OSError as error:
+                raise ValueError("Mabel TV could not clear that film position") from error
+            if reply != "ok":
+                raise ValueError("Mabel TV could not clear that film position")
+            return {"ok": True, "kind": kind}
+        if kind == "adult-series":
+            with self.config_lock:
+                states = self.adult_series_states()
+                relative = source.relative_to(self.adult_series_root).as_posix()
+                state = states["episodes"].get(relative, {})
+                if not isinstance(state, dict):
+                    state = {}
+                state["remote_position"] = 0.0
+                state["remote_last_watched"] = 0.0
+                state.pop("pre_watched_resume", None)
+                states["episodes"][relative] = state
+                self.write_adult_series_states(states)
+            return {"ok": True, "kind": kind}
         if kind != "adult" or not library_id:
-            raise ValueError("Choose an Adult film to clear")
+            raise ValueError("Choose a local film or episode to clear")
         with self.config_lock:
             states = self.adult_media_states()
             relative = self.adult_relative_path(source)
@@ -717,7 +757,7 @@ class RemotePlaybackMixin:
                 state["ignored_player_position"] = 0.0
             states[relative] = state
             self.write_adult_media_states(states)
-        return {"ok": True}
+        return {"ok": True, "kind": kind}
 
     def set_favourite(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Persist a portal-only film or series-channel favourite."""

@@ -171,6 +171,19 @@
         closeWatchProgrammeMoreSheet(false)
         downloadToDevice(source, title)
       }
+      const removeProgress = $('#watchProgrammeRemoveProgress')
+      removeProgress.classList.toggle('hidden', !filmChannel || !watchFilmResumable(programme))
+      removeProgress.onclick = filmChannel && watchFilmResumable(programme) ? () => {
+        clearContinueProgress({
+          source: { kind: 'channel', channel: channel.number, file: programme.name },
+          title, action: removeProgress,
+          onCleared: () => {
+            programme.remote_position = 0
+            programme.remote_last_watched = 0
+            closeWatchProgrammeMoreSheet(false)
+          },
+        }).catch(showError)
+      } : null
       const filmTools = $('#watchProgrammeFilmTools')
       filmTools.classList.toggle('hidden', !filmChannel)
       const viewingActions = $('#watchProgrammeViewingActions')
@@ -190,6 +203,18 @@
           closeWatchProgrammeEpisodeMoreSheet(false)
           downloadToDevice(source, title)
         }
+        const episodeRemoveProgress = $('#watchProgrammeEpisodeRemoveProgress')
+        episodeRemoveProgress.classList.toggle('hidden', !watchFilmResumable(programme))
+        episodeRemoveProgress.onclick = watchFilmResumable(programme) ? () => {
+          clearContinueProgress({
+            source, title, action: episodeRemoveProgress,
+            onCleared: () => {
+              programme.remote_position = 0
+              programme.remote_last_watched = 0
+              closeWatchProgrammeEpisodeMoreSheet(false)
+            },
+          }).catch(showError)
+        } : null
         const toggleButton = $('#watchProgrammeEpisodeToggle')
         toggleButton.querySelector('strong').textContent = programme.enabled ? 'Hide from TV' : 'Show on TV'
         toggleButton.querySelector('small').textContent = programme.enabled

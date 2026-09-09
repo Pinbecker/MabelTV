@@ -423,7 +423,7 @@ function renderAdultLibraryContents() {
       if (!film) return
       const action = $('#adultFilmRemoveProgress')
       closeLibrarySheet($('#adultFilmSheet'), false)
-      clearWatchFilmProgress(film, false, action).catch(showError)
+      clearWatchFilmProgress(film, action).catch(showError)
     }
     $('#adultFilmRemove').onclick = () => { const film = selectedAdultFilm; if (film && confirm(`Move “${film.display_name}” to the recycle bin?`)) { closeLibrarySheet($('#adultFilmSheet'), false); manage('trash-adult', { file: film.path }) } }
 

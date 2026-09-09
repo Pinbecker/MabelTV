@@ -4,6 +4,7 @@ import argparse
 import copy
 import importlib.util
 import secrets
+from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from typing import Any
 
@@ -359,6 +360,23 @@ class FixtureLibrary:
 
 
 class FixtureHandler(mabeltv_library.Handler):
+    def handle(self) -> None:
+        try:
+            super().handle()
+        except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
+            # Browser contexts routinely discard their pooled keep-alive
+            # sockets when each isolated test closes.
+            pass
+
+    def end_headers(self) -> None:
+        # The production service deliberately closes ordinary asset requests
+        # because it sits behind a small upstream connection pool. The browser
+        # contract loads the portal afresh hundreds of times on one Windows
+        # runner; closing every asset connection exhausts its ephemeral client
+        # ports late in the suite. Keep fixture connections persistent so the
+        # test transport models a browser-facing HTTP/1.1 server.
+        BaseHTTPRequestHandler.end_headers(self)
+
     def do_GET(self) -> None:
         if self.path in ("/api/adult/series/artwork/bright.svg",
                          "/api/adult/series/artwork/dark.svg"):

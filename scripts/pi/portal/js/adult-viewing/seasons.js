@@ -464,6 +464,7 @@ async function openAdultTitleSeason(detail, season, card, targetEpisode = 0) {
 
 function renderAdultTitleSeasons(detail) {
   const wrapper = $('#adultTitleSeriesLibrary')
+  wrapper.classList.remove('is-loading-placeholder')
   const seasons = $('#adultTitleSeasons')
   seasons.replaceChildren()
   const visible = detail.media_type === 'tv' && (detail.seasons || []).length

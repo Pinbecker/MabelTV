@@ -239,7 +239,9 @@ body.portal-v2 .adult-title-sheet :is(.watch-film-body, .watch-film-summary,
   box-sizing: border-box;
 }
 body.portal-v2 .adult-title-sheet .watch-film-summary { max-width: none; }
-body.portal-v2 .adult-title-sheet.is-loading-title .adult-intent-actions { display: none; }
+body.portal-v2 .adult-title-sheet.is-loading-title .adult-intent-actions {
+  pointer-events: none;
+}
 body.portal-v2 .adult-intent-actions.hidden { display: none; }
 body.portal-v2 .adult-title-sheet.is-series .watch-film-backdrop { display: none; }
 body.portal-v2 .adult-title-sheet.is-series .watch-film-body { padding-top: 0; }
@@ -259,6 +261,59 @@ body.portal-v2 .adult-title-sheet.is-series .watch-film-poster {
 body.portal-v2 .adult-title-sheet.is-series .watch-film-heading { padding: 0; }
 body.portal-v2 .adult-title-sheet.is-series .watch-film-summary h2 { font-size: 28px; }
 body.portal-v2 .adult-title-sheet.is-series .watch-film-overview { margin-top: 20px; font-size: 11px; line-height: 1.55; }
+body.portal-v2 .adult-title-sheet.is-loading-title .adult-title-loading-block {
+  display: block;
+  overflow: hidden;
+  border-radius: 5px;
+  background: linear-gradient(100deg,
+    var(--experience-soft) 20%,
+    color-mix(in srgb, var(--experience-muted) 22%, var(--experience-soft)) 45%,
+    var(--experience-soft) 70%);
+  background-size: 220% 100%;
+  animation: adult-title-loading-pulse 1.25s ease-in-out infinite;
+}
+body.portal-v2 .adult-title-loading-cover { width: 100%; height: 100%; border-radius: inherit; }
+body.portal-v2 .adult-title-loading-value { width: min(100%, 92px); height: 12px; margin-top: 1px; }
+body.portal-v2 .adult-title-loading-copy { height: 13px; margin-top: 8px; }
+body.portal-v2 .adult-title-loading-copy:first-child { margin-top: 0; }
+body.portal-v2 .adult-title-loading-copy.is-wide { width: 100%; }
+body.portal-v2 .adult-title-loading-copy.is-medium { width: 78%; }
+body.portal-v2 .adult-title-loading-copy.is-short { width: 46%; }
+body.portal-v2 .adult-title-sheet.is-loading-title .adult-intent-actions button,
+body.portal-v2 .adult-title-sheet.is-loading-title .watch-film-actions button {
+  pointer-events: none;
+  opacity: .42;
+}
+body.portal-v2 .adult-title-sheet.is-loading-title .adult-title-enrichment { display: block; }
+body.portal-v2 .adult-title-loading-poster {
+  flex: 0 0 clamp(58px, calc((100% - 28px) / 5), 92px);
+  aspect-ratio: 2 / 3;
+  border-radius: 7px;
+}
+body.portal-v2 .adult-title-loading-person {
+  flex: 0 0 60px;
+  width: 60px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+}
+body.portal-v2 .adult-title-loading-season {
+  width: 100%;
+  min-height: 118px;
+  border-radius: 10px;
+}
+body.portal-v2 .adult-title-loading-providers {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 9px;
+}
+body.portal-v2 .adult-title-loading-provider { width: 100%; aspect-ratio: 1; border-radius: 11px; }
+@keyframes adult-title-loading-pulse {
+  from { background-position: 100% 0; }
+  to { background-position: -120% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.portal-v2 .adult-title-sheet.is-loading-title .adult-title-loading-block { animation: none; }
+}
 body.portal-v2 .adult-title-local {
   display: flex;
   align-items: center;

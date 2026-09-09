@@ -421,6 +421,10 @@
             : 'Episode marked unwatched.')
         } catch (error) { showError(error) } finally { watched.disabled = false }
       }
+      $('#adultEpisodeViewSeries').onclick = () => {
+        closeAdultEpisodeSheet(false)
+        openAdultSeriesViewing(current)
+      }
       $('#adultEpisodeMore').onclick = () => {
         $('#adultEpisodeMoreEyebrow').textContent = `${series.title} · Series ${episode.season}`
         $('#adultEpisodeMoreTitle').textContent = episode.display_name
@@ -435,6 +439,19 @@
         closeAdultEpisodeMoreSheet(false)
         downloadToDevice(source, `${series.title} - ${episode.display_name}`)
       }
+      const removeProgress = $('#adultEpisodeRemoveProgress')
+      removeProgress.classList.toggle('hidden', !watchFilmResumable(episode))
+      removeProgress.onclick = watchFilmResumable(episode) ? () => {
+        clearContinueProgress({
+          source, title: `${series.title} · ${episode.display_name}`,
+          action: removeProgress,
+          onCleared: () => {
+            episode.remote_position = 0
+            episode.remote_last_watched = 0
+            closeAdultEpisodeMoreSheet(false)
+          },
+        }).catch(showError)
+      } : null
       $('#adultEpisodeDelete').onclick = async () => {
         if (!confirm(`Move “${episode.display_name}” to the recycle bin?`)) return
         closeAdultEpisodeMoreSheet(false)

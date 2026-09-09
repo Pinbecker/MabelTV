@@ -49,6 +49,44 @@ test('exact provider identifiers beat marketplace wording', async ({ page }) => 
   )).toBe('hbo-max')
 })
 
+test('title cards show their complete structured shell while details load', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'iphone-chromium', 'One phone covers the loading-state contract')
+  await openPortal(page, 'dark')
+  await page.evaluate(() => {
+    library.adult_library = [{
+      path: 'Films/Die Hard.mp4', display_name: 'Die Hard', browser_ready: true,
+      metadata: { tmdb_id: 12, title: 'Die Hard' },
+    }]
+    window.__finishTitleLoad = null
+    window.api = () => new Promise(resolve => { window.__finishTitleLoad = resolve })
+    openAdultTitle({ key: 'movie:12', media_type: 'movie', tmdb_id: 12,
+      title: 'Die Hard', local: { kind: 'film', path: 'Films/Die Hard.mp4' } })
+  })
+
+  const sheet = page.locator('#adultTitleSheet')
+  await expect(sheet).toHaveAttribute('aria-busy', 'true')
+  await expect(page.locator('#adultTitlePoster .adult-title-loading-cover')).toBeVisible()
+  await expect(page.locator('#adultTitleMeta .adult-title-fact')).toHaveCount(5)
+  await expect(page.locator('#adultTitleOverview .adult-title-loading-copy')).toHaveCount(4)
+  await expect(page.locator('#adultTitleFilmActions')).toBeVisible()
+  await expect(page.locator('#adultTitleFranchise')).toBeVisible()
+  await expect(page.locator('#adultTitleCast')).toBeVisible()
+  await expect(page.locator('#adultProviderList .adult-title-loading-provider')).toHaveCount(5)
+  await page.screenshot({ path: testInfo.outputPath('title-loading.png') })
+
+  await page.evaluate(() => window.__finishTitleLoad({
+    key: 'movie:12', media_type: 'movie', tmdb_id: 12, title: 'Die Hard',
+    release_date: '1988-07-15', runtime: 132, rating: 7.8,
+    genres: ['Action'], directors: ['John McTiernan'],
+    overview: 'A New York police officer faces a hostage crisis.',
+    viewing: {}, providers: [], cast: [], collection: null,
+  }))
+  await expect(sheet).not.toHaveAttribute('aria-busy', 'true')
+  await expect(page.locator('#adultTitleMeta')).toContainText('15 Jul 1988')
+  await expect(page.locator('#adultTitleOverview')).toContainText('hostage crisis')
+  await expect(page.locator('#adultTitlePoster .adult-title-loading-cover')).toHaveCount(0)
+})
+
 test('mobile global search stays directly below the fixed app header', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone search layout contract')
   await openPortal(page, 'dark')
