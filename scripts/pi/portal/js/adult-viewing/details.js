@@ -101,6 +101,7 @@ function renderAdultTitleEnrichment(detail, prefix, openTitle) {
         local.textContent = 'MabelTV'
         art.append(local)
       }
+      appendAdultArtworkStatus(art, part)
       const title = document.createElement('strong')
       title.textContent = part.title
       const year = document.createElement('small')
@@ -208,6 +209,7 @@ function renderAdultPersonDetail(person) {
       placeholder.textContent = String(title.title || '?').slice(0, 1).toUpperCase()
       art.append(placeholder)
     }
+    appendAdultArtworkStatus(art, title)
     const name = document.createElement('strong')
     name.textContent = title.title
     const role = document.createElement('small')
@@ -554,10 +556,12 @@ function renderAdultTitleDetail(detail, refreshProviders = true,
     portalSheets.dismiss(sheet)
     openAdultSeriesMoreSheet(localSeries, null, () => restoreAdultTitleSheet(detail))
   } : null
-  renderAdultTitleEnrichment(detail, 'adultTitle', part => openAdultTitle(part))
+  renderAdultTitleEnrichment(detail, 'adultTitle', part => openAdultTitle({
+    ...part, catalogue_only: detail.catalogue_only === true,
+  }))
   $('#adultProviderRefresh').classList.toggle('hidden', !adultAvailabilityEnabled())
   $('#adultProviderRefresh').onclick = () => loadAdultProviders(detail, true, revision)
-  if (refreshProviders) {
+  if (refreshProviders && !detail.catalogue_only) {
     $('#adultProviderList').innerHTML = '<p>Checking streaming destinations…</p>'
     loadAdultProviders(detail, false, revision)
   }
@@ -642,6 +646,7 @@ function prepareAdultTitleSheet(title) {
   const body = sheet.querySelector('.watch-film-body')
   selectedAdultTitle = title
   sheet.classList.add('is-loading-title')
+  sheet.classList.toggle('is-catalogue-only', title.catalogue_only === true)
   sheet.setAttribute('aria-busy', 'true')
   panel.scrollTop = 0
   panel.scrollLeft = 0
@@ -682,7 +687,8 @@ async function openAdultTitle(title) {
   try {
     const detail = await api(`/api/adult/title?media_type=${title.media_type}&tmdb_id=${title.tmdb_id}`)
     if (revision !== adultTitleOpenRevision) return
-    renderAdultTitleDetail({ ...detail, local_context: localContext }, true, revision)
+    renderAdultTitleDetail({ ...detail, local_context: localContext,
+      catalogue_only: title.catalogue_only === true }, true, revision)
   } catch (error) {
     if (revision !== adultTitleOpenRevision) return
     sheet.classList.remove('is-loading-title')
@@ -779,18 +785,24 @@ function renderAdultViewingList() {
     } else {
       const open = document.createElement('button'); open.type = 'button'; open.className = 'adult-viewing-row-open'; open.setAttribute('aria-label', `Open ${item.title}`); open.append(librarySignalIcon('signal-chevron-right')); open.onclick = () => openAdultTitle(item); actions.append(open)
     }
-    const opener = document.createElement('button'); opener.type = 'button'; opener.className = 'adult-viewing-card-open'; opener.setAttribute('aria-label', `Open ${item.title}`); opener.append(art, copy); opener.onclick = () => openAdultTitle(item)
+    const artWrap = document.createElement('span'); artWrap.className = 'adult-viewing-art'; artWrap.append(art)
+    appendAdultArtworkStatus(artWrap, item, { media_type: item.media_type,
+      local: item.local_progress || item.local })
+    const opener = document.createElement('button'); opener.type = 'button'; opener.className = 'adult-viewing-card-open'; opener.setAttribute('aria-label', `Open ${item.title}`); opener.append(artWrap, copy); opener.onclick = () => openAdultTitle(item)
     row.append(opener, actions); root.append(row)
   })
   if (!values.length) root.innerHTML = `<div class="watch-empty"><strong>Nothing in ${heading} yet</strong><br>Add titles from search and they will appear here.</div>`
   target.replaceChildren(...root.childNodes)
 }
 
-async function loadAdultViewing() {
+async function loadAdultViewing({ render = true } = {}) {
   adultViewingData = await api('/api/adult/viewing')
   adultViewingLoaded = true
-  renderAdultViewing()
-  renderAdultSeries(watchSearchText)
+  refreshAdultArtworkStatuses()
+  if (render) {
+    renderAdultViewing()
+    renderAdultSeries(watchSearchText)
+  }
 }
 
 $('#watchSearch')?.addEventListener('input', scheduleAdultDiscovery)

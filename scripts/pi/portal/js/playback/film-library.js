@@ -203,6 +203,13 @@
       art.className = 'watch-card-art'
       art.append(filmPoster(film))
       art.append(adultOptimisationBadge(film))
+      const tmdbId = Number(metadata.tmdb_id || 0)
+      if (tmdbId && typeof appendAdultArtworkStatus === 'function') {
+        appendAdultArtworkStatus(art, {
+          key: `movie:${tmdbId}`, media_type: 'movie', tmdb_id: tmdbId,
+          title: watchFilmTitle(film), local: { kind: 'film', path: film.path },
+        })
+      }
       if (film.browser_ready === false) {
         const format = document.createElement('span')
         format.className = 'watch-format'
@@ -248,6 +255,7 @@
         card.dataset.adultPath = film.path
         art.append(adultOptimisationBadge(film))
       }
+      appendAdultLocalArtworkStatus(art, 'movie', film)
       const copy = document.createElement('span')
       copy.className = 'watch-continue-copy'
       const label = document.createElement('small')
@@ -302,6 +310,7 @@
         placeholder.textContent = series.title.slice(0, 1).toUpperCase()
         art.append(placeholder)
       }
+      appendAdultLocalArtworkStatus(art, 'tv', series)
       const copy = document.createElement('span')
       copy.className = 'watch-continue-copy'
       const label = document.createElement('small')
@@ -329,6 +338,7 @@
       const art = document.createElement('span')
       art.className = 'home-poster-art'
       art.append(filmEntryPoster(entry))
+      appendAdultLocalArtworkStatus(art, 'movie', entry.film)
       if (entry.film.favourite) {
         const favourite = document.createElement('span')
         favourite.className = 'home-favourite-mark'
@@ -367,6 +377,7 @@
         placeholder.textContent = channel.name.slice(0, 1).toUpperCase()
         art.append(placeholder)
       }
+      appendAdultLocalArtworkStatus(art, 'tv', channel)
       const favourite = document.createElement('span')
       favourite.className = 'home-favourite-mark'
       favourite.append(portalIcon('signal-heart'))
@@ -395,6 +406,7 @@
       const art = document.createElement('span')
       art.className = 'home-poster-art home-channel-art'
       art.append(adultSeriesArtwork(series))
+      appendAdultLocalArtworkStatus(art, 'tv', series)
       const favourite = document.createElement('span')
       favourite.className = 'home-favourite-mark'
       favourite.append(portalIcon('signal-heart'))

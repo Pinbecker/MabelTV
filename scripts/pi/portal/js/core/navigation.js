@@ -22,7 +22,7 @@
         return
       }
       const view = requested === 'home' ? 'overview' : requested
-      const allowed = new Set(['overview', 'live', 'lg-tv', 'channels', 'adult', 'watch', 'adult-viewing', 'usb', 'system', 'appearance', 'insights'])
+      const allowed = new Set(['overview', 'live', 'lg-tv', 'channels', 'adult', 'watch', 'adult-viewing', 'adult-explore', 'usb', 'system', 'appearance', 'insights'])
       if (allowed.has(view)) {
         if (view === 'channels' || view === 'adult') {
           remoteKind = view === 'channels' ? 'channel' : 'adult'
@@ -254,18 +254,25 @@
 
     function openView(name, options = {}) {
       cancelPortalScrollSettlement()
-      if (offlineMode && name !== 'watch') name = 'watch'
-      rememberPortalView()
       // A status belongs to the action that created it, not every page the
       // parent subsequently visits. Clear it whenever navigation begins.
       notice('')
+      if (offlineMode && name !== 'watch') name = 'watch'
+      const leavingExplore = $('#view-adult-explore')?.classList.contains('active')
+        && name !== 'adult-explore'
+      if (leavingExplore && typeof endAdultExploreVisit === 'function') endAdultExploreVisit()
+      const resetExplore = name === 'adult-explore'
+        && typeof beginAdultExploreVisit === 'function' && beginAdultExploreVisit()
+      rememberPortalView()
       const channelFromWatch = name === 'channels' && selectedManageChannel !== null && channelWorkspaceReturnToWatch
       const consolidatedWatchView = name === 'channels' || name === 'adult'
-      const activeNavigation = channelFromWatch || consolidatedWatchView || name === 'adult-viewing' ? 'watch'
+      const activeNavigation = channelFromWatch || consolidatedWatchView
+        || name === 'adult-viewing' || name === 'adult-explore' ? 'watch'
         : name === 'lg-tv' ? 'live'
           : (name === 'insights' || name === 'activity' || name === 'appearance') ? 'system' : name
       $$('.view').forEach(view => view.classList.toggle('active', view.id === `view-${name}`))
-      document.body.classList.toggle('watch-mode', name === 'watch' || name === 'adult-viewing' || channelFromWatch || consolidatedWatchView)
+      document.body.classList.toggle('watch-mode', name === 'watch' || name === 'adult-viewing'
+        || name === 'adult-explore' || channelFromWatch || consolidatedWatchView)
       document.body.classList.toggle('tv-remote-mode', name === 'live' || name === 'lg-tv')
       document.body.classList.toggle('lg-tv-mode', name === 'lg-tv')
       $$('[data-remote-switch]').forEach(button => {
@@ -284,7 +291,7 @@
         ? restoreViewScroll(options.restoreScroll) : false
       if (!restoredScroll) {
         const saved = portalViewPositions.get(`view-${name}`)
-        if (saved && !options.resetScroll) restorePortalPosition(saved)
+        if (saved && !options.resetScroll && !resetExplore) restorePortalPosition(saved)
         else resetViewScroll()
       }
       if (name === 'live') startLiveTv()
@@ -298,6 +305,10 @@
       if (name === 'insights') loadViewingInsights().catch(() => {})
       if (name === 'activity') loadActivity().catch(error => notice(error.message, true))
       if (name === 'adult-viewing') loadAdultViewing().catch(showError)
+      if (name === 'adult-explore') {
+        if (resetExplore || adultExplorePage === 0) loadAdultExplore({ reset: true }).catch(showError)
+        else renderAdultExploreGrid()
+      }
       const savedPosition = portalViewPositions.get(`view-${name}`)
       if (!options.restoreScroll && !options.resetScroll && savedPosition) settlePortalPosition(savedPosition)
     }

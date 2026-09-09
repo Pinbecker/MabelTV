@@ -23,10 +23,12 @@ class; callers do not need to know which module implements a method.
   publication, playback inspection, and conversion/optimisation workers.
 - `viewing.py`: private viewing samples, session compaction, retention, and
   insights.
-- `providers.py`: TMDB, Watchmode, OpenSubtitles, artwork, Adult discovery, and
+- `providers.py`: TMDB, Watchmode, OpenSubtitles, artwork, title search, and
   provider-backed viewing metadata.
   Explicit film matches retain TMDB genre names in `metadata.genres` for the
   local film filter; films without a match remain visible in All genres.
+- `discovery.py`: curated, paginated TMDB Explore lists. It enriches catalogue
+  results with current local/viewing state but never performs Watchmode calls.
 - `usb.py`: removable-volume discovery, browsing, power state, playback, and
   imports. USB imports feed the shared upload queue so they retain progress,
   survive restarts, and use the same validation and publication path.

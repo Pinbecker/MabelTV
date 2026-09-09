@@ -35,6 +35,7 @@ from mabeltv_backend.constants import (
     USB_POWER_POLL_SECONDS,
     VIEWING_SAMPLE_SECONDS,
 )
+from mabeltv_backend.discovery import AdultExploreMixin
 from mabeltv_backend.http import Handler, LibraryServer
 from mabeltv_backend.lg import LgWebOsError, LgWebOsSocket, RemoteTvActiveError
 from mabeltv_backend.media import MediaCatalogueMixin
@@ -384,7 +385,7 @@ class LiveStream:
 
 class Library(ViewingMixin, UploadConversionMixin, AuthenticationMixin,
               MediaCatalogueMixin, RemotePlaybackMixin, UsbMixin,
-              ProviderMetadataMixin, SystemStatusMixin):
+              ProviderMetadataMixin, AdultExploreMixin, SystemStatusMixin):
     def __init__(self, args: argparse.Namespace) -> None:
         self.media_root = Path(args.media_root).resolve()
         self.channels_path = Path(args.channels).resolve()

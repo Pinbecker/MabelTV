@@ -1,0 +1,19 @@
+      <section id="view-adult-explore" class="view"><div class="page adult-explore-page">
+        <header class="screen-title adult-explore-title">
+          <button id="adultExploreBack" type="button" class="view-back"><svg class="icon"><use href="/portal/icons.svg#signal-arrow-left"/></svg><span>My Viewing</span></button>
+          <p class="eyebrow">Build your viewing history</p>
+          <h1>Explore</h1>
+          <p>Move quickly through familiar films and series. Save a title, mark a film watched, or open a series to choose the seasons you saw.</p>
+        </header>
+        <div class="adult-explore-controls">
+          <label class="adult-viewing-select"><span class="sr-only">Choose title type</span><select id="adultExploreType" aria-label="Choose title type"><option value="all">All titles</option><option value="movie">Films</option><option value="tv">Series</option></select></label>
+          <label class="adult-viewing-select"><span class="sr-only">Choose an Explore list</span><select id="adultExploreList" aria-label="Choose an Explore list"><option value="for-you">Best guesses for you</option></select></label>
+        </div>
+        <section class="adult-explore-results" aria-labelledby="adultExploreHeading">
+          <header class="watch-library-head"><div><p id="adultExploreKicker" class="watch-section-kicker">Your history, balanced with a few wildcards</p><h2 id="adultExploreHeading">Best guesses for you</h2></div><span id="adultExploreCount" class="watch-library-count"></span></header>
+          <div id="adultExploreGrid" class="adult-explore-grid" aria-live="polite"></div>
+          <button id="adultExploreMore" type="button" class="adult-explore-more hidden">Show me more</button>
+          <p class="provider-attribution">Catalogue metadata from TMDB. Explore does not use your Watchmode allowance.</p>
+        </section>
+        <footer>Adult TV · Viewing activity stays private on this MabelTV</footer>
+      </div></section>

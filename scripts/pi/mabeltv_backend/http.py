@@ -69,6 +69,7 @@ POST_JSON_ROUTES = {
     "/api/tmdb/adult-series/search": ("adult_series_search", 200),
     "/api/tmdb/adult-series/apply": ("adult_series_apply", 200),
     "/api/adult/viewing": ("adult_viewing_update", 200),
+    "/api/adult/explore/feedback": ("adult_explore_feedback", 200),
     "/api/adult/netflix/play-tv": ("play_netflix_on_tv", 200),
     "/api/tmdb/channel": ("refresh_channel_show_metadata", 200),
     "/api/tmdb/programme": ("refresh_channel_programme_metadata", 200),
@@ -481,6 +482,10 @@ class Handler(BaseHTTPRequestHandler):
                     str(query.get("volume", [""])[0]), str(query.get("path", [""])[0])),
                 "/api/adult/discovery": lambda: self.server.library.adult_discovery(
                     str(query.get("q", [""])[0])),
+                "/api/adult/explore": lambda: self.server.library.adult_explore(
+                    str(query.get("list", ["for-you"])[0]),
+                    str(query.get("media_type", ["all"])[0]),
+                    str(query.get("page", ["1"])[0])),
                 "/api/adult/title": lambda: self.server.library.adult_title_detail(
                     str(query.get("media_type", [""])[0]), str(query.get("tmdb_id", [""])[0])),
                 "/api/adult/person": lambda: self.server.library.adult_person_detail(

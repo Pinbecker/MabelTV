@@ -176,6 +176,7 @@ function renderAdultLibraryContents() {
         more.append(librarySignalIcon('signal-chevron-right'))
         copy.append(title, meta)
         row.append(poster, copy, more, adultOptimisationBadge(film))
+        appendAdultLocalArtworkStatus(row, 'movie', film)
         row.setAttribute('aria-label', `Open details for ${title.textContent}`)
         row.onclick = () => openAdultFilmSheet(film)
         root.append(row)

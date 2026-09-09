@@ -29,6 +29,59 @@ function adultViewingPosterUrl(item) {
     : `/api/adult/artwork/${encodeURIComponent(localPoster)}`
 }
 
+function adultViewingRecord(title = {}) {
+  const key = title.key || (title.media_type && title.tmdb_id
+    ? `${title.media_type}:${Number(title.tmdb_id)}` : '')
+  const stored = (adultViewingData.items || []).find(item => item.key === key)
+  return stored || (title.viewing && Object.keys(title.viewing).length ? title.viewing : {})
+}
+
+function cacheAdultViewingRecord(viewing = {}) {
+  if (!viewing.key) return
+  const items = adultViewingData.items || (adultViewingData.items = [])
+  const index = items.findIndex(item => item.key === viewing.key)
+  if (index < 0) items.push(viewing)
+  else items[index] = { ...items[index], ...viewing }
+}
+
+function adultArtworkStatusKind(title = {}, detail = title) {
+  const state = adultViewingRecord(title)
+  const status = adultTitleViewingStatus(state, {
+    ...detail, media_type: title.media_type || detail.media_type,
+    local: detail.local_progress || detail.local,
+  })
+  if (status.completed) return 'watched'
+  if (status.partWatched) return 'part-watched'
+  return ''
+}
+
+function appendAdultArtworkStatus(root, title = {}, detail = title) {
+  root.classList.add('adult-artwork-status-host')
+  root._adultArtworkTitle = title
+  root._adultArtworkDetail = detail
+  root.querySelector(':scope > .adult-artwork-status')?.remove()
+  const kind = adultArtworkStatusKind(title, detail)
+  const badge = MabelPortalUI.artworkStatus(kind,
+    kind === 'watched' ? `${title.title || 'Title'} watched` : `${title.title || 'Series'} part watched`)
+  if (badge) root.append(badge)
+  return badge
+}
+
+function refreshAdultArtworkStatuses() {
+  $$('.adult-artwork-status-host').forEach(root => appendAdultArtworkStatus(
+    root, root._adultArtworkTitle || {}, root._adultArtworkDetail || {}))
+}
+
+function appendAdultLocalArtworkStatus(root, mediaType, value = {}) {
+  const metadata = value?.metadata || {}
+  const tmdbId = Number(metadata.tmdb_id || value?.tmdb_id || 0)
+  if (!root || !tmdbId) return null
+  const title = metadata.title || value.title || value.display_name || value.name || 'Untitled'
+  return appendAdultArtworkStatus(root, {
+    key: `${mediaType}:${tmdbId}`, media_type: mediaType, tmdb_id: tmdbId, title,
+  }, { media_type: mediaType, local: value })
+}
+
 const adultProviderBrands = [
   {
     id: 'netflix', label: 'Netflix', asset: 'netflix-app.jpg', match: /netflix/i,
@@ -330,9 +383,11 @@ async function updateAdultViewing(title, action, extra = {}) {
   const result = await api('/api/adult/viewing', {
     method: 'POST', body: JSON.stringify(adultTitlePayload(title, action, extra)),
   })
-  title.viewing = result.viewing
+  title.viewing = { ...result.viewing, key: result.key }
+  cacheAdultViewingRecord(title.viewing)
+  refreshAdultArtworkStatuses()
   void loadAdultViewing().catch(() => {})
-  return result.viewing
+  return title.viewing
 }
 
 function adultDiscoveryCard(title) {
@@ -353,6 +408,7 @@ function adultDiscoveryCard(title) {
     badge.textContent = 'On MabelTV'
     art.append(badge)
   }
+  appendAdultArtworkStatus(art, title)
   const copy = document.createElement('span')
   copy.className = 'watch-card-copy'
   const name = document.createElement('strong')

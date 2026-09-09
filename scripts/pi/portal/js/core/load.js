@@ -60,6 +60,8 @@
       const position = capturePortalPosition()
       library = data
       window.MabelPortalLibrary = library
+      try { await loadAdultViewing({ render: false }) }
+      catch (_) { adultViewingLoaded = false }
       offlineMode = false
       document.body.classList.remove('offline-mode')
       applyTvName()

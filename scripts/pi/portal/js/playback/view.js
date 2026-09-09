@@ -93,6 +93,7 @@
                 placeholder.textContent = watchFilmTitle(programme).slice(0, 1).toUpperCase()
                 art.append(placeholder)
               }
+              appendAdultLocalArtworkStatus(art, 'movie', programme)
               if (programme.browser_ready === false) {
                 const format = document.createElement('span')
                 format.className = 'watch-format'

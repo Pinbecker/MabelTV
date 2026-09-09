@@ -47,10 +47,13 @@ order unless a change explicitly redefines the cascade.
 
 - `experience-foundation.css`: Experience tokens and element-level defaults.
 - `experience-components.css`: reusable Experience controls, including the
-  canonical `.portal-search` contract and shared MabelTV/LG remote chassis.
+  canonical `.portal-search` contract, viewing-state artwork marks and shared
+  MabelTV/LG remote chassis.
 - `experience-shell.css`: fixed header, page frame, and bottom navigation.
 - `experience-home.css`, `experience-remote.css`, `experience-watch.css`,
   `experience-library.css`, and `experience-viewing.css`: route ownership.
+- `experience-explore.css`: the continuous Adult TV suggestion catalogue,
+  its compact quick actions and catalogue-only title route.
 - `experience-appearance.css`: the device-local colour page, its live preview,
   appearance slider, accent presets and semantic-colour reference.
 - `experience-settings.css`: settings, device, and activity surfaces.
@@ -101,8 +104,10 @@ initialisation even when each file is syntactically valid.
 19. `portal/js/adult-viewing/catalogue.js`: Adult viewing catalogue.
 20. `portal/js/adult-viewing/seasons.js`: series and season navigation.
 21. `portal/js/adult-viewing/details.js`: Adult viewing details and startup.
-22. `portal/js/actions.js`: application event bindings and remote commands.
-23. `portal/js/lg-tv-remote.js`: the separate LG webOS remote.
+22. `portal/js/adult-viewing/explore.js`: continuous TMDB discovery, quick
+    viewing actions, weak impression feedback and visit freshness.
+23. `portal/js/actions.js`: application event bindings and remote commands.
+24. `portal/js/lg-tv-remote.js`: the separate LG webOS remote.
 
 Classic intentionally omits Experience-only Adult-viewing and LG-remote scripts.
 
@@ -120,6 +125,8 @@ management selection is separate from the Watch film filters.
   icon, label, class, accessible name, disabled state, and click handler.
 - `emptyState(options)` creates the canonical empty-state structure without
   interpolating untrusted text into HTML.
+- `artworkStatus(kind, title)` creates the shared watched or part-watched mark
+  reused by every film and series artwork catalogue.
 - `powerStatus(kind, overrides)` owns the canonical power labels, explanatory
   wording and state classes for On, Standby, transitions and unavailable state.
 - `setPowerStatus(indicator, label, status)` applies that contract to an
@@ -184,6 +191,8 @@ that final correction; browser scrolling and entrance animations remain intact.
 
 `core/navigation.js` remembers each top-level view; first entry begins at the
 top, returning restores its position, and revisiting the active view stays put.
+Explore deliberately keeps its feed and position for returns within one minute;
+after that it rebuilds from the latest viewing history and starts at the top.
 `playback/view.js` separately remembers Watch tabs. My Viewing and channel
 history return through the same navigation boundary. Insights retains a position
 and search per subroute. USB retains positions per drive and folder and discards

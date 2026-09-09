@@ -275,6 +275,36 @@ class FixtureLibrary:
         return {"items": [copy.deepcopy(value) for value in self.viewing_titles.values()],
                 "watchmode_configured": False, "region": "GB"}
 
+    def adult_explore(self, list_id: str, media_type: str, page: Any) -> dict[str, Any]:
+        page_number = int(page)
+        kinds = ["movie", "tv"] if media_type == "all" else [media_type]
+        results = []
+        for index in range(24):
+            kind = kinds[index % len(kinds)]
+            identifier = page_number * 1000 + index + 1
+            results.append({
+                "key": f"{kind}:{identifier}", "media_type": kind,
+                "tmdb_id": identifier, "title": f"Explore title {identifier}",
+                "year": str(2026 - index % 20),
+                "poster_path": f"/explore-{identifier}.jpg",
+                "overview": "A deterministic Explore suggestion.",
+                "on_mabeltv": False, "local": None,
+                "viewing": copy.deepcopy(self.viewing_titles.get(f"{kind}:{identifier}", {})),
+            })
+        lists = [{"id": "for-you", "label": "Best guesses for you",
+                  "kicker": "Your history, balanced with a few wildcards"},
+                 {"id": "popular", "label": "Popular right now",
+                  "kicker": "A broad place to start"}]
+        selected = next((value for value in lists if value["id"] == list_id), lists[0])
+        results = [value for value in results if self.viewing_titles.get(
+            value["key"], {}).get("manual_state") != "watched"]
+        return {"list": selected, "lists": lists, "media_type": media_type,
+                "page": page_number, "has_more": page_number < 3,
+                "results": results, "region": "GB"}
+
+    def adult_explore_feedback(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return {"ok": True, "recorded": len(payload.get("items", []))}
+
     def adult_title_detail(self, media_type: str, tmdb_id: Any) -> dict[str, Any]:
         identifier = int(tmdb_id)
         local = identifier == 6001

@@ -206,6 +206,13 @@
         card.type = 'button'
         card.className = 'adult-series-card'
         const art = adultSeriesArtwork(local || value, 'adult-series-card-art', value.viewing)
+        const tmdbId = Number(local?.metadata?.tmdb_id || value.viewing?.tmdb_id || 0)
+        if (tmdbId && typeof appendAdultArtworkStatus === 'function') {
+          appendAdultArtworkStatus(art, {
+            key: `tv:${tmdbId}`, media_type: 'tv', tmdb_id: tmdbId,
+            title: value.title, viewing: value.viewing || {},
+          }, { media_type: 'tv', local: local || null })
+        }
         const counts = adultSeriesRailCounts(local, value.viewing)
         const progress = document.createElement('span')
         progress.className = 'adult-series-card-progress'

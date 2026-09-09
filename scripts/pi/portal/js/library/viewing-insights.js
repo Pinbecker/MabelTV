@@ -37,6 +37,7 @@
               title: programme.metadata?.title || programme.display_name || programme.name,
               source: channel.name,
               artwork: viewingArtworkUrl(programme.metadata?.poster),
+              media: programme,
             })
           })
         } else {
@@ -46,6 +47,7 @@
             item_key: itemKey, kind: 'channel', channel_number: channelNumber,
             title: channel.name, source: 'MabelTV series channel',
             artwork: viewingArtworkUrl(channel.metadata?.artwork),
+            media: channel,
           })
         }
       })
@@ -256,6 +258,7 @@
         art.className = 'viewing-catalog-art'
         if (item.artwork) art.style.backgroundImage = `url("${item.artwork}")`
         else art.append(librarySignalIcon(item.kind === 'film' ? 'signal-film' : 'signal-tv'))
+        appendAdultLocalArtworkStatus(art, item.kind === 'film' ? 'movie' : 'tv', item.media)
         const copy = document.createElement('span')
         copy.className = 'viewing-catalog-copy'
         const label = document.createElement('small')

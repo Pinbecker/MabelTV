@@ -187,15 +187,16 @@ function adultStreamingEpisodeRow(detail, season, result, episode, card) {
   const row = document.createElement('article')
   row.className = `adult-series-episode adult-streaming-episode${isComplete() ? ' is-watched' : ''}`
   row.dataset.episode = String(episode.number)
-  row.tabIndex = 0
-  row.setAttribute('role', 'button')
-  row.setAttribute('aria-label', `Open ${episode.name || `episode ${episode.number}`}`)
-  row.onclick = () => { void openAdultEpisodeDestination(detail, season, episode, card) }
-  row.onkeydown = event => {
-    if (event.target !== row) return
-    if (event.key !== 'Enter' && event.key !== ' ') return
-    event.preventDefault()
-    void openAdultEpisodeDestination(detail, season, episode, card)
+  if (!detail.catalogue_only) {
+    row.tabIndex = 0
+    row.setAttribute('role', 'button')
+    row.setAttribute('aria-label', `Open ${episode.name || `episode ${episode.number}`}`)
+    row.onclick = () => { void openAdultEpisodeDestination(detail, season, episode, card) }
+    row.onkeydown = event => {
+      if (event.target !== row || !['Enter', ' '].includes(event.key)) return
+      event.preventDefault()
+      void openAdultEpisodeDestination(detail, season, episode, card)
+    }
   }
   const artwork = document.createElement('span')
   artwork.className = 'adult-series-episode-art'
@@ -373,6 +374,7 @@ async function openAdultTitleSeason(detail, season, card, targetEpisode = 0) {
   const revision = ++adultSeasonOpenRevision
   const titleSheet = $('#adultTitleSheet')
   const seasonSheet = $('#adultTitleSeasonSheet')
+  seasonSheet.classList.toggle('is-catalogue-only', detail.catalogue_only === true)
   portalSheets.dismiss(titleSheet)
   $('#adultTitleSeasonEyebrow').textContent = detail.title
   $('#adultTitleSeasonName').textContent = `Series ${season.number}`
