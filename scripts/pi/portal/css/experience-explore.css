@@ -126,11 +126,11 @@ body.portal-v2 .adult-explore-actions [data-explore-action="watchlist"].active::
 }
 body.portal-v2 .adult-explore-actions [data-explore-action="watchlist"].active { color: white; }
 body.portal-v2 .adult-explore-actions [data-status="watched"]::before {
-  border-color: rgba(98,220,168,.72);
-  background: rgba(13,76,56,.88);
-  color: #7be8b9;
+  border-color: color-mix(in srgb, var(--experience-good) 72%, transparent);
+  background: color-mix(in srgb, var(--experience-good-base) 72%, rgba(7,7,11,.9));
+  color: color-mix(in srgb, var(--experience-good) 82%, white);
 }
-body.portal-v2 .adult-explore-actions [data-status="watched"] { color: #7be8b9; }
+body.portal-v2 .adult-explore-actions [data-status="watched"] { color: var(--experience-good); }
 body.portal-v2 .adult-explore-actions [data-status="part-watched"]::before {
   border-color: color-mix(in srgb, var(--experience-accent) 75%, white 10%);
   color: var(--experience-orange);

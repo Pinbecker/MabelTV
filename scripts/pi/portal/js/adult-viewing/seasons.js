@@ -227,9 +227,9 @@ function adultStreamingEpisodeRow(detail, season, result, episode, card) {
   toggle.className = 'adult-streaming-episode-toggle'
   const sync = () => {
     const complete = isComplete()
-    const facts = [complete ? 'Watched' : '', adultEpisodeAirDate(episode.air_date),
+    const facts = [adultEpisodeAirDate(episode.air_date),
       episode.runtime ? `${episode.runtime} min` : ''].filter(Boolean)
-    meta.textContent = facts.join(' · ') || (complete ? 'Watched' : 'Not watched')
+    meta.textContent = facts.join(' · ')
     row.classList.toggle('is-watched', complete)
     toggle.classList.toggle('active', complete)
     toggle.setAttribute('aria-pressed', String(complete))

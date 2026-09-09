@@ -285,7 +285,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("localStorage.setItem(ACCENT_STORAGE_KEY", theme_script)
         self.assertIn("mabeltv-experience-accent-strength", theme_script)
         self.assertIn('html[data-experience-theme="dim"]', styles)
-        self.assertIn("--experience-favourite: #ff5b9d", styles)
+        self.assertIn("--experience-favourite-base: #c82f71", styles)
         self.assertIn("--accent: var(--experience-orange)", styles)
         self.assertNotRegex(
             styles,
@@ -1143,7 +1143,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("@media (max-width: 640px)", viewing_css)
         self.assertIn("min-height: 0", viewing_css)
         self.assertIn("overflow-x: hidden", viewing_css)
-        self.assertIn("grid-template-columns: 70px minmax(0, 1fr) 76px", viewing_css)
+        self.assertIn("grid-template-columns: 77px minmax(0, 1fr) 76px", viewing_css)
         self.assertNotIn("!important", viewing_css)
 
     def test_lg_remote_is_additional_mobile_control_surface(self) -> None:

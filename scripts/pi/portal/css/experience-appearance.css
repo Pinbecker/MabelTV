@@ -319,9 +319,14 @@ body.portal-v2 .appearance-fixed-grid {
   gap: 7px;
 }
 
-body.portal-v2 .appearance-fixed-grid > span {
+body.portal-v2 .appearance-fixed > header > small {
+  color: var(--experience-dim);
+  font-size: 9px;
+}
+
+body.portal-v2 .appearance-fixed-grid > label {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-columns: 34px minmax(0, 1fr);
   align-items: center;
   column-gap: 8px;
   min-width: 0;
@@ -329,23 +334,35 @@ body.portal-v2 .appearance-fixed-grid > span {
   border-radius: 10px;
   background: var(--experience-elevated);
   padding: 9px;
+  cursor: pointer;
 }
 
-body.portal-v2 .appearance-fixed-grid i {
-  grid-row: 1 / 3;
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
+body.portal-v2 .appearance-fixed-grid input[type="color"] {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  max-width: 34px;
+  max-height: 34px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 2px solid var(--experience-raised);
   border-radius: 50%;
-  background: currentColor;
+  background: transparent;
+  box-shadow: 0 0 0 1px var(--experience-line-strong);
+  padding: 0;
+  cursor: pointer;
 }
 
-body.portal-v2 .appearance-fixed-grid .icon {
-  width: 15px;
-  height: 15px;
-  fill: #fff;
-  color: #fff;
+body.portal-v2 .appearance-fixed-grid input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+body.portal-v2 .appearance-fixed-grid input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 50%; }
+body.portal-v2 .appearance-fixed-grid input[type="color"]::-moz-color-swatch { border: 0; border-radius: 50%; }
+
+body.portal-v2 .appearance-fixed-grid label > span {
+  display: grid;
+  min-width: 0;
 }
 
 body.portal-v2 .appearance-fixed-grid strong {
@@ -359,11 +376,6 @@ body.portal-v2 .appearance-fixed-grid small {
   color: var(--experience-dim);
   font-size: 9px;
 }
-
-body.portal-v2 .appearance-fixed-grid .favourite { color: var(--experience-favourite); }
-body.portal-v2 .appearance-fixed-grid .success { color: var(--experience-good); }
-body.portal-v2 .appearance-fixed-grid .warning { color: var(--experience-warning); }
-body.portal-v2 .appearance-fixed-grid .danger { color: var(--experience-danger); }
 
 @media (max-width: 620px) {
   body.portal-v2 .appearance-presets {

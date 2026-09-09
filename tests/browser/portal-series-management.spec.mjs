@@ -97,6 +97,29 @@ test('series sheets use the full metadata catalogue with local availability over
   await expect(page.locator('#adultTitleSeasonEpisodes .adult-series-episode')).toHaveCount(3)
   await expect(page.locator('#adultTitleSeasonEpisodes [data-episode="1"] .adult-episode-availability'))
     .toHaveText('On MabelTV')
+  await expect(page.locator('#adultTitleSeasonEpisodes [data-episode="1"] .adult-series-episode-copy small'))
+    .toHaveText('1 Jan 2026 · 48 min')
+  await expect(page.locator('#adultTitleSeasonEpisodes [data-episode="1"] .adult-series-episode-copy small'))
+    .not.toContainText('Watched')
+  await page.locator('#adultTitleSeasonEpisodes [data-episode="1"] .adult-streaming-episode-toggle')
+    .evaluate(element => element.classList.add('active'))
+  const episodeColours = await page.locator('#adultTitleSeasonEpisodes [data-episode="1"]').evaluate(row => ({
+    availability: getComputedStyle(row.querySelector('.adult-episode-availability')).color,
+    accent: getComputedStyle(document.documentElement).getPropertyValue('--experience-orange').trim(),
+    metadata: getComputedStyle(row.querySelector('.adult-series-episode-copy small')).color,
+    watched: getComputedStyle(row.querySelector('.adult-streaming-episode-toggle')).color,
+  }))
+  expect(episodeColours.availability).toBe(episodeColours.accent)
+  expect(episodeColours.metadata).not.toBe(episodeColours.watched)
+  const episodeAlignment = await page.locator('#adultTitleSeasonSheet').evaluate(sheet => ({
+    artwork: sheet.querySelector('.adult-streaming-episode .adult-series-episode-art')
+      .getBoundingClientRect().left,
+    bulk: sheet.querySelector('.adult-season-bulk-action').getBoundingClientRect().left,
+    copy: sheet.querySelector('.adult-streaming-episode .adult-series-episode-copy')
+      .getBoundingClientRect().left,
+  }))
+  expect(Math.abs(episodeAlignment.artwork - episodeAlignment.bulk)).toBeLessThanOrEqual(1)
+  expect(episodeAlignment.copy - episodeAlignment.artwork).toBeGreaterThanOrEqual(84)
   await expect(page.locator('#adultTitleSeasonEpisodes [data-episode="2"] .adult-episode-availability'))
     .toBeHidden()
   await expect(page.locator('#adultTitleSeasonManagementTitle')).toHaveText('Series settings')

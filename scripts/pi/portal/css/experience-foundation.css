@@ -26,10 +26,14 @@
   --accent-hover: var(--experience-orange-hot);
   --accent-soft: color-mix(in srgb, var(--experience-accent) 12%, transparent);
   --accent-contrast: var(--experience-on-orange);
-  --experience-good: #4fdda0;
-  --experience-warning: #f2b84b;
-  --experience-danger: #ff5d6c;
-  --experience-favourite: #ff5b9d;
+  --experience-good-base: #168a5b;
+  --experience-warning-base: #a96f00;
+  --experience-danger-base: #c9364e;
+  --experience-favourite-base: #c82f71;
+  --experience-good: color-mix(in srgb, var(--experience-good-base) 68%, white);
+  --experience-warning: color-mix(in srgb, var(--experience-warning-base) 68%, white);
+  --experience-danger: color-mix(in srgb, var(--experience-danger-base) 72%, white);
+  --experience-favourite: color-mix(in srgb, var(--experience-favourite-base) 72%, white);
   --experience-shadow: rgba(0, 0, 0, 0.42);
   --experience-page: 1180px;
   --experience-gutter: clamp(18px, 4vw, 48px);

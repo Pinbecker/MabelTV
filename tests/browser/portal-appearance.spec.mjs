@@ -40,7 +40,7 @@ test('Colour page previews and persists all three appearance depths', async ({ p
 })
 
 
-test('Accent presets, strength and semantic colours remain clear', async ({ page }, testInfo) => {
+test('Accent presets, strength and semantic colours remain clear and editable', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One engine covers saved accent controls')
   await openAppearance(page)
 
@@ -58,11 +58,49 @@ test('Accent presets, strength and semantic colours remain clear', async ({ page
   expect(await page.evaluate(() => localStorage.getItem('mabeltv-experience-accent-strength'))).toBe('vivid')
   await expect(page.locator('#appearanceSettingsSummary')).toHaveText('True black · Blue · Vivid')
 
-  const semanticColours = await page.locator('.appearance-fixed-grid > span').evaluateAll(elements =>
-    elements.map(element => getComputedStyle(element).color))
+  const semanticColours = await page.locator('[data-semantic-colour]').evaluateAll(elements =>
+    elements.map(element => element.value))
+  expect(semanticColours).toHaveLength(4)
   expect(new Set(semanticColours).size).toBe(4)
+  const semanticSwatches = await page.locator('[data-semantic-colour]').evaluateAll(elements =>
+    elements.map(element => {
+      const box = element.getBoundingClientRect()
+      return { width: box.width, height: box.height }
+    }))
+  for (const swatch of semanticSwatches) {
+    expect(Math.abs(swatch.width - swatch.height)).toBeLessThanOrEqual(1)
+    expect(swatch.width).toBeLessThanOrEqual(34)
+  }
+
+  const watchedColour = page.locator('#experienceGoodColour')
+  await watchedColour.fill('#245f42')
+  await expect(page.locator('[data-semantic-value="good"]')).toHaveText('#245F42')
+  expect(await page.evaluate(() => localStorage.getItem('mabeltv-experience-good-colour')))
+    .toBe('#245f42')
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement)
+    .getPropertyValue('--experience-good-base').trim())).toBe('#245f42')
+
+  await page.reload()
+  await expect(page.locator('#experienceGoodColour')).toHaveValue('#245f42')
 
   await page.locator('#appearanceBack').click()
   await expect(page.locator('#view-system')).toBeVisible()
   await expect(page.locator('#appearanceSettingsSummary')).toHaveText('True black · Blue · Vivid')
+})
+
+
+test('Meaningful colour controls stay circular and compact on phones', async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone control geometry')
+  await openAppearance(page)
+
+  const semanticSwatches = await page.locator('[data-semantic-colour]').evaluateAll(elements =>
+    elements.map(element => {
+      const box = element.getBoundingClientRect()
+      return { width: box.width, height: box.height }
+    }))
+  expect(semanticSwatches).toHaveLength(4)
+  for (const swatch of semanticSwatches) {
+    expect(Math.abs(swatch.width - swatch.height)).toBeLessThanOrEqual(1)
+    expect(swatch.width).toBeLessThanOrEqual(34)
+  }
 })

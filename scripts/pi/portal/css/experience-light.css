@@ -11,10 +11,10 @@ html[data-experience-theme="light"] {
   --experience-orange: var(--experience-accent-ink);
   --experience-orange-hot: var(--experience-accent);
   --experience-on-orange: #1b0c03;
-  --experience-good: #08765a;
-  --experience-warning: #956200;
-  --experience-danger: #c7354b;
-  --experience-favourite: #c82468;
+  --experience-good: var(--experience-good-base);
+  --experience-warning: var(--experience-warning-base);
+  --experience-danger: var(--experience-danger-base);
+  --experience-favourite: var(--experience-favourite-base);
   --experience-shadow: rgba(20, 27, 39, 0.12);
   color-scheme: light;
 }
@@ -265,8 +265,8 @@ html[data-experience-theme="light"] body.portal-experience :is(
   --experience-orange: var(--experience-accent);
   --experience-orange-hot: var(--experience-accent-hot);
   --experience-on-orange: #160a02;
-  --experience-good: #4fdda0;
-  --experience-danger: #ff5d6c;
+  --experience-good: color-mix(in srgb, var(--experience-good-base) 68%, white);
+  --experience-danger: color-mix(in srgb, var(--experience-danger-base) 72%, white);
   --experience-shadow: rgba(0, 0, 0, 0.42);
   color: var(--experience-ink);
 }

@@ -57,12 +57,12 @@
           </section>
 
           <section class="appearance-card appearance-fixed" aria-labelledby="appearanceFixedTitle">
-            <header><div><p class="section-kicker">Always consistent</p><h2 id="appearanceFixedTitle">Meaningful colours</h2></div></header>
+            <header><div><p class="section-kicker">Meaningful colours</p><h2 id="appearanceFixedTitle">Choose the signals</h2></div><small>Tap a colour to change it</small></header>
             <div class="appearance-fixed-grid">
-              <span class="favourite"><i><svg class="icon"><use href="/portal/icons.svg#signal-heart"/></svg></i><strong>Favourite</strong><small>Pink</small></span>
-              <span class="success"><i></i><strong>Connected</strong><small>Green</small></span>
-              <span class="warning"><i></i><strong>Standby</strong><small>Amber</small></span>
-              <span class="danger"><i></i><strong>Problem</strong><small>Red</small></span>
+              <label class="favourite" for="experienceFavouriteColour"><input id="experienceFavouriteColour" type="color" value="#c82f71" data-semantic-colour="favourite" aria-label="Favourite colour"><span><strong>Favourite</strong><small data-semantic-value="favourite">#C82F71</small></span></label>
+              <label class="success" for="experienceGoodColour"><input id="experienceGoodColour" type="color" value="#168a5b" data-semantic-colour="good" aria-label="Watched and connected colour"><span><strong>Watched</strong><small data-semantic-value="good">#168A5B</small></span></label>
+              <label class="warning" for="experienceWarningColour"><input id="experienceWarningColour" type="color" value="#a96f00" data-semantic-colour="warning" aria-label="Standby colour"><span><strong>Standby</strong><small data-semantic-value="warning">#A96F00</small></span></label>
+              <label class="danger" for="experienceDangerColour"><input id="experienceDangerColour" type="color" value="#c9364e" data-semantic-colour="danger" aria-label="Problem colour"><span><strong>Problem</strong><small data-semantic-value="danger">#C9364E</small></span></label>
             </div>
           </section>
         </div>

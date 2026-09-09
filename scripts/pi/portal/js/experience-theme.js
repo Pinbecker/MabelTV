@@ -11,6 +11,12 @@
   const THEME_COLOURS = Object.freeze({ light: '#f4f6f9', dim: '#151820', dark: '#0b0a0d' })
   const STRENGTHS = Object.freeze(['subtle', 'balanced', 'vivid'])
   const STRENGTH_NAMES = Object.freeze({ subtle: 'Subtle', balanced: 'Balanced', vivid: 'Vivid' })
+  const SEMANTIC_COLOURS = Object.freeze({
+    favourite: { storage: 'mabeltv-experience-favourite-colour', css: '--experience-favourite-base', fallback: '#c82f71' },
+    good: { storage: 'mabeltv-experience-good-colour', css: '--experience-good-base', fallback: '#168a5b' },
+    warning: { storage: 'mabeltv-experience-warning-colour', css: '--experience-warning-base', fallback: '#a96f00' },
+    danger: { storage: 'mabeltv-experience-danger-colour', css: '--experience-danger-base', fallback: '#c9364e' },
+  })
   // Match the original installed PWA contract. iOS fixes this choice when the
   // Home Screen app is created, so themes must not switch viewport modes.
   const STATUS_BAR_STYLES = Object.freeze({ light: 'default', dim: 'default', dark: 'default' })
@@ -50,6 +56,38 @@
     } catch (_) {
       return 'balanced'
     }
+  }
+
+  function normaliseColour(value, fallback) {
+    return /^#[0-9a-f]{6}$/i.test(String(value || '')) ? String(value).toLowerCase() : fallback
+  }
+
+  function savedSemanticColour(name) {
+    const definition = SEMANTIC_COLOURS[name]
+    if (!definition) return ''
+    try {
+      return normaliseColour(localStorage.getItem(definition.storage), definition.fallback)
+    } catch (_) {
+      return definition.fallback
+    }
+  }
+
+  function applySemanticColour(name, value, persist, notify = false) {
+    const definition = SEMANTIC_COLOURS[name]
+    if (!definition) return ''
+    const colour = normaliseColour(value, definition.fallback)
+    document.documentElement.style.setProperty(definition.css, colour)
+    if (persist) {
+      try { localStorage.setItem(definition.storage, colour) } catch (_) { /* optional */ }
+    }
+    const input = document.querySelector(`[data-semantic-colour="${name}"]`)
+    const output = document.querySelector(`[data-semantic-value="${name}"]`)
+    if (input) input.value = colour
+    if (output) output.textContent = colour.toUpperCase()
+    if (notify) document.dispatchEvent(new CustomEvent('mabeltv:semantic-colour-change', {
+      detail: { name, colour },
+    }))
+    return colour
   }
 
   function accentName(hue) {
@@ -154,8 +192,15 @@
     document.querySelectorAll('[data-accent-strength]').forEach(button => {
       button.addEventListener('click', () => applyAccentStrength(button.dataset.accentStrength, true, true))
     })
+    document.querySelectorAll('[data-semantic-colour]').forEach(input => {
+      applySemanticColour(input.dataset.semanticColour, savedSemanticColour(input.dataset.semanticColour), false)
+      input.addEventListener('input', () => {
+        applySemanticColour(input.dataset.semanticColour, input.value, true, true)
+      })
+    })
   }
 
+  Object.keys(SEMANTIC_COLOURS).forEach(name => applySemanticColour(name, savedSemanticColour(name), false))
   applyAccentStrength(savedAccentStrength(), false)
   applyAccentHue(savedAccentHue(), false)
   applyTheme(savedTheme(), false)
@@ -169,5 +214,7 @@
     setAccentHue: hue => applyAccentHue(hue, true, true),
     getAccentStrength: savedAccentStrength,
     setAccentStrength: strength => applyAccentStrength(strength, true, true),
+    getSemanticColour: savedSemanticColour,
+    setSemanticColour: (name, colour) => applySemanticColour(name, colour, true, true),
   })
 })()

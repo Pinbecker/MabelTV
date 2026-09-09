@@ -382,9 +382,9 @@ body.portal-v2 .adult-season-status.is-partial {
   color: var(--experience-orange);
 }
 body.portal-v2 .adult-season-status.is-complete {
-  border-color: rgba(98,220,168,.58);
-  background: rgba(12,50,38,.8);
-  color: #62dca8;
+  border-color: color-mix(in srgb, var(--experience-good) 58%, transparent);
+  background: color-mix(in srgb, var(--experience-good-base) 20%, var(--experience-raised));
+  color: var(--experience-good);
 }
 body.portal-v2 .adult-season-status.is-confirming {
   width: auto;
@@ -403,7 +403,8 @@ body.portal-v2 .adult-streaming-season-sheet .adult-series-overview { margin: 0 
 body.portal-v2 .adult-streaming-season-sheet .library-sheet-body { scrollbar-width: none; }
 body.portal-v2 .adult-streaming-season-sheet .library-sheet-body::-webkit-scrollbar { display: none; }
 body.portal-v2 .adult-streaming-episode {
-  grid-template-columns: 76px minmax(0, 1fr) auto;
+  grid-template-columns: 83px minmax(0, 1fr) auto;
+  padding-left: 0;
 }
 body.portal-v2 .adult-streaming-episode .adult-series-episode-copy strong {
   display: block;
@@ -424,9 +425,9 @@ body.portal-v2 .adult-streaming-episode-toggle {
   white-space: nowrap;
 }
 body.portal-v2 .adult-streaming-episode-toggle.active {
-  border-color: rgba(98, 220, 168, .38);
-  background: rgba(98, 220, 168, .1);
-  color: #62dca8;
+  border-color: color-mix(in srgb, var(--experience-good) 42%, transparent);
+  background: color-mix(in srgb, var(--experience-good-base) 12%, transparent);
+  color: var(--experience-good);
 }
 body.portal-v2 .adult-streaming-episode-toggle:disabled { cursor: wait; opacity: .55; }
 
@@ -522,10 +523,10 @@ body.portal-v2 .adult-episode-availability {
   width: fit-content;
   align-items: center;
   margin-top: 4px;
-  border: 1px solid rgba(98, 220, 168, .38);
+  border: 1px solid var(--experience-accent-line);
   border-radius: 999px;
-  background: rgba(98, 220, 168, .1);
-  color: #62dca8;
+  background: var(--experience-accent-wash);
+  color: var(--experience-orange);
   padding: 2px 7px;
   font-size: 8px;
   font-weight: 820;
@@ -604,7 +605,7 @@ body.portal-v2 .adult-netflix-launch-status { min-height: 15px; margin: -5px var
   body.portal-v2 .adult-intent-actions.compact-series-intents button { gap: 4px; padding-inline: 4px; }
   body.portal-v2 .adult-intent-actions.compact-series-intents strong { font-size: 10px; }
   body.portal-v2 .adult-streaming-episode {
-    grid-template-columns: 70px minmax(0, 1fr) 76px;
+    grid-template-columns: 77px minmax(0, 1fr) 76px;
     gap: 9px;
   }
   body.portal-v2 .adult-streaming-episode-toggle {

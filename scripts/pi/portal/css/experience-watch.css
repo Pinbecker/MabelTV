@@ -794,7 +794,7 @@ body.portal-v2 .adult-series-episode small { color: var(--experience-dim); font-
 body.portal-v2 .adult-series-episode > svg { width: 16px; height: 16px; color: var(--experience-dim); }
 body.portal-v2 .adult-series-episode.is-watched { background: rgba(255, 255, 255, .012); }
 body.portal-v2 .adult-series-episode.is-watched .adult-series-episode-art { filter: saturate(.3); opacity: .62; }
-body.portal-v2 .adult-series-episode.is-watched small { color: #62dca8; }
+body.portal-v2 .adult-series-episode.is-watched small { color: var(--experience-dim); }
 
 body.portal-v2 .watch-downloads-layout { display: grid; gap: 18px; }
 body.portal-v2 .watch-downloads-layout.hidden { display: none; }

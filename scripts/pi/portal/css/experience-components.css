@@ -765,9 +765,9 @@ body.portal-v2 .adult-artwork-status {
 
 body.portal-v2 .adult-artwork-status .icon { width: 12px; height: 12px; }
 body.portal-v2 .adult-artwork-status.is-watched {
-  border-color: rgba(98,220,168,.7);
-  background: rgba(13,76,56,.86);
-  color: #7be8b9;
+  border-color: color-mix(in srgb, var(--experience-good) 70%, transparent);
+  background: color-mix(in srgb, var(--experience-good-base) 72%, rgba(8,9,12,.88));
+  color: color-mix(in srgb, var(--experience-good) 82%, white);
 }
 body.portal-v2 .adult-artwork-status.is-part-watched {
   border-color: color-mix(in srgb, var(--experience-accent) 75%, white 10%);
