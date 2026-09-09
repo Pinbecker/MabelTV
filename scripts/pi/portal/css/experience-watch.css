@@ -594,6 +594,17 @@ body.portal-v2 .adult-series-card strong,
 body.portal-v2 .adult-series-card small { overflow: hidden; text-overflow: ellipsis; }
 body.portal-v2 .adult-series-card strong { font-size: 15px; line-height: 1.15; }
 body.portal-v2 .adult-series-card small { color: var(--experience-dim); font-size: 10px; line-height: 1.45; }
+body.portal-v2 .adult-series-card .adult-series-card-facts {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 0;
+}
+body.portal-v2 .adult-series-card .adult-series-card-facts .adult-title-fact > small {
+  font-size: 6px;
+}
+body.portal-v2 .adult-series-card .adult-series-card-facts .adult-title-fact > strong {
+  font-size: 9px;
+}
 body.portal-v2 .adult-series-card-progress { position: absolute; inset: auto 0 0; height: 3px; background: rgba(255,255,255,.15); }
 body.portal-v2 .adult-series-card-progress::after { display: block; width: var(--series-progress); height: 100%; background: var(--experience-orange); content: ""; }
 body.portal-v2 .adult-series-empty { min-width: min(360px, 100%); display: grid; gap: 4px; border: 1px dashed var(--experience-line); border-radius: 12px; color: var(--experience-dim); padding: 18px; }

@@ -220,8 +220,10 @@ test('TV series rail includes local episodes and Up Next, without tinting a fals
     adultViewingTab = 'part-watched'
     renderAdultViewing()
     return {
-      titles: [...document.querySelectorAll('#adultSeriesRail .adult-series-card strong')]
+      titles: [...document.querySelectorAll('#adultSeriesRail .adult-series-card > span:last-child > strong')]
         .map(node => node.textContent),
+      localFacts: [...document.querySelectorAll('#adultSeriesRail .adult-series-card:first-child .adult-title-fact')]
+        .map(node => [node.querySelector('small').textContent, node.querySelector('strong').textContent]),
       watchlistPressed: watchlist.getAttribute('aria-pressed'),
       watchlistClasses: [...watchlist.classList],
       watchedLabel: watched.querySelector('strong').textContent,
@@ -235,6 +237,7 @@ test('TV series rail includes local episodes and Up Next, without tinting a fals
     }
   })
   expect(state.titles).toEqual(['Local Show', 'Queued Show', 'Streaming Show'])
+  expect(state.localFacts).toEqual([['Series', '1'], ['Episodes', '1'], ['Watched', '0']])
   expect(state.watchlistPressed).toBe('false')
   expect(state.watchlistClasses).not.toContain('active')
   expect(state.watchlistClasses).not.toContain('is-progress')
@@ -245,7 +248,7 @@ test('TV series rail includes local episodes and Up Next, without tinting a fals
   expect(state.watchedWhiteSpace).toBe('normal')
   expect(state.statusFits).toBe(true)
   expect(state.partWatchedTitles).toEqual(['Ludwig'])
-  await expect(page.getByText('Up Next · No episodes on MabelTV')).toHaveCount(2)
+  await expect(page.locator('#adultSeriesRail .adult-series-card-facts').filter({ hasText: 'Up Next' })).toHaveCount(2)
 })
 
 test('series progress automatically moves between the read-only Part Watched and Watched states', async ({ page }, testInfo) => {

@@ -167,10 +167,16 @@
         const copy = document.createElement('span')
         const title = document.createElement('strong')
         title.textContent = value.title
-        const meta = document.createElement('small')
-        meta.textContent = local?.episode_count
-          ? `${local.season_count} series · ${local.episode_count} episode${local.episode_count === 1 ? '' : 's'} · ${local.watched_count} watched`
-          : 'Up Next · No episodes on MabelTV'
+        const meta = document.createElement('span')
+        meta.className = 'watch-film-meta adult-series-card-facts'
+        renderAdultTitleMetadata(meta, {}, { facts: local?.episode_count ? [
+          { label: 'Series', value: String(local.season_count) },
+          { label: 'Episodes', value: String(local.episode_count) },
+          { label: 'Watched', value: String(local.watched_count) },
+        ] : [
+          { label: 'Status', value: 'Up Next' },
+          { label: 'MabelTV', value: 'No episodes' },
+        ] })
         copy.append(title, meta)
         card.append(art, copy)
         card.onclick = () => local ? openAdultSeriesViewing(local) : openAdultTitle(value.viewing)

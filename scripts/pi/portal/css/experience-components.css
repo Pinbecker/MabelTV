@@ -153,20 +153,33 @@ body.portal-v2 .portal-search input:focus-visible {
   box-shadow: none;
 }
 
+body.portal-v2 .portal-search input::-webkit-search-cancel-button {
+  display: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 body.portal-v2 .portal-search button {
-  width: 44px;
-  min-width: 44px;
-  height: 44px;
-  min-height: 44px;
+  position: relative;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
   padding: 0;
   border-radius: 50%;
   background: var(--experience-soft);
   color: var(--experience-muted);
 }
 
+body.portal-v2 .portal-search button::before {
+  position: absolute;
+  inset: -7px;
+  content: "";
+}
+
 body.portal-v2 .portal-search button .icon {
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
 }
 
 body.portal-v2 .portal-power-status-dot {

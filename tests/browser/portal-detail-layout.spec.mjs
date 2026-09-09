@@ -49,6 +49,33 @@ test('exact provider identifiers beat marketplace wording', async ({ page }) => 
   )).toBe('hbo-max')
 })
 
+test('mobile global search stays directly below the fixed app header', async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone search layout contract')
+  await openPortal(page, 'dark')
+  await page.getByRole('button', { name: 'Watch', exact: true }).click()
+  await page.locator('#watchAdultTab').click()
+  await page.locator('#watchSearch').focus()
+  await expect(page.locator('#view-watch')).toHaveClass(/adult-search-mode/)
+  const layout = await page.evaluate(() => {
+    const header = document.querySelector('.mobile-head').getBoundingClientRect()
+    const searchSurface = document.querySelector('#view-watch .watch-discovery').getBoundingClientRect()
+    const search = document.querySelector('#watchSearch').getBoundingClientRect()
+    return {
+      headerVisible: header.top === 0 && header.bottom > 0,
+      attached: Math.abs(searchSurface.top - header.bottom) <= 1,
+      fieldBelowHeader: search.top >= header.bottom,
+      fullWidth: searchSurface.left <= header.left + 1
+        && searchSurface.right >= header.right - 1,
+    }
+  })
+  expect(layout).toEqual({
+    headerVisible: true,
+    attached: true,
+    fieldBelowHeader: true,
+    fullWidth: true,
+  })
+})
+
 for (const theme of ['light', 'dark']) {
   test(`${theme} Finding Nemo remains selectable after changing cabinets`, async ({ page }) => {
     await openPortal(page, theme)
@@ -193,7 +220,6 @@ for (const theme of ['light', 'dark']) {
       adultViewingLoaded = true
       adultViewingTab = 'watching'
       adultViewingFilter = 'all'
-      adultViewingLayout = 'grid'
       document.querySelectorAll('[data-viewing-tab]').forEach(button =>
         button.classList.toggle('active', button.dataset.viewingTab === 'watching'))
       renderAdultViewing()
@@ -206,7 +232,6 @@ for (const theme of ['light', 'dark']) {
       const tools = document.querySelector('.adult-viewing-tools')
       const toolGroups = [...tools.children]
       const selects = [...tools.querySelectorAll('select')]
-      const layoutButtons = [...tools.querySelectorAll('[data-viewing-layout]')]
       const cards = [...document.querySelectorAll('.adult-viewing-row')]
       const mobileHead = document.querySelector('.mobile-head')
       const back = document.querySelector('#adultViewingBack')
@@ -224,8 +249,11 @@ for (const theme of ['light', 'dark']) {
           Math.round(control.getBoundingClientRect().top))).size,
         minControlHeight: Math.min(...toolGroups.map(control =>
           control.getBoundingClientRect().height)),
+        selectAppearances: selects.map(select => getComputedStyle(select).appearance),
+        layoutSwitcherCount: tools.querySelectorAll('[data-viewing-layout]').length,
         firstRowCards: cards.filter(card =>
           Math.round(card.getBoundingClientRect().top) === Math.round(cards[0].getBoundingClientRect().top)).length,
+        firstCardMeta: cards[0].querySelector('.adult-viewing-copy span').textContent,
         rightEdge: Math.max(...cards.map(card => card.getBoundingClientRect().right)),
         viewport: document.documentElement.clientWidth,
       }
@@ -240,8 +268,11 @@ for (const theme of ['light', 'dark']) {
     expect(layout.toolRows).toBe(1)
     expect(layout.minControlHeight).toBeGreaterThanOrEqual(34)
     expect(layout.minControlHeight).toBeLessThanOrEqual(38)
-    if (layout.isPhone) expect(layout.firstRowCards).toBe(5)
+    expect(layout.selectAppearances).toEqual(['auto', 'auto'])
+    expect(layout.layoutSwitcherCount).toBe(0)
+    if (layout.isPhone) expect(layout.firstRowCards).toBe(4)
     else expect(layout.firstRowCards).toBeGreaterThanOrEqual(5)
+    expect(layout.firstCardMeta).toBe('2022 · TV series')
     expect(layout.rightEdge).toBeLessThanOrEqual(layout.viewport)
     await page.locator('#adultViewingSearch').fill('Series 10')
     await expect(page.locator('.adult-viewing-row')).toHaveCount(1)
@@ -253,8 +284,5 @@ for (const theme of ['light', 'dark']) {
     await expect(page.locator('.adult-viewing-row')).toHaveCount(0)
     await page.locator('#adultViewingFilter').selectOption('tv')
     await expect(page.locator('.adult-viewing-row')).toHaveCount(11)
-    await page.locator('[data-viewing-layout="list"]').click()
-    await expect(page.locator('#adultViewingGrid')).toHaveClass(/is-list/)
-    expect(await page.evaluate(() => localStorage.getItem('mabeltv-adult-viewing-layout'))).toBe('list')
   })
 }

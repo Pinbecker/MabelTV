@@ -8,10 +8,6 @@ let adultViewingTab = 'watchlist'
 let adultViewingFilter = 'all'
 let adultViewingSearch = ''
 let adultViewingSort = 'recent'
-let adultViewingLayout = (() => {
-  try { return localStorage.getItem('mabeltv-adult-viewing-layout') === 'list' ? 'list' : 'grid' }
-  catch (_) { return 'grid' }
-})()
 let selectedAdultTitle = null
 let pendingNetflixLaunch = null
 let adultTitleOpenRevision = 0
@@ -369,7 +365,7 @@ function adultDiscoveryCard(title) {
   return card
 }
 
-function syncAdultSearchMode(scrollToSearch = false) {
+function syncAdultSearchMode() {
   const input = $('#watchSearch')
   const view = $('#view-watch')
   if (!input || !view) return
@@ -384,7 +380,6 @@ function syncAdultSearchMode(scrollToSearch = false) {
   } else if (!active) {
     $('#adultDiscoverySection').classList.add('hidden')
   }
-  if (scrollToSearch) setTimeout(() => input.scrollIntoView({ block: 'start' }), 80)
 }
 
 function syncAdultSearchKeyboard() {
@@ -524,6 +519,7 @@ function renderAdultProviderLinksInto(root, detail, result, options = {}) {
 
 function renderAdultProviderLinks(detail, result) {
   renderAdultProviderLinksInto($('#adultProviderList'), detail, result, {
+    localAction: null,
     purchaseSection: $('#adultTitleRentBuy'), purchaseRoot: $('#adultTitleRentBuyList'),
   })
 }
@@ -539,6 +535,7 @@ async function loadAdultProviders(detail, refresh = false, revision = adultTitle
   const root = $('#adultProviderList')
   if (!adultAvailabilityEnabled()) {
     renderAdultAvailabilityDisabled(root, detail, {
+      localAction: null,
       purchaseSection: $('#adultTitleRentBuy'), purchaseRoot: $('#adultTitleRentBuyList'),
     })
     return

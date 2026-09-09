@@ -218,6 +218,8 @@ function renderAdultPersonDetail(person) {
     credits.append(card)
   })
   section.classList.toggle('hidden', !credits.children.length)
+  credits.scrollLeft = 0
+  requestAnimationFrame(() => { credits.scrollLeft = 0 })
 }
 
 function configureAdultPersonBiography(value) {
@@ -254,7 +256,9 @@ async function openAdultPerson(person, title) {
   $('#adultPersonBiographyExpand').classList.add('hidden')
   $('#adultPersonBiographyExpand').setAttribute('aria-expanded', 'false')
   $('#adultPersonKnownFor').classList.add('hidden')
-  $('#adultPersonCredits').replaceChildren()
+  const credits = $('#adultPersonCredits')
+  credits.replaceChildren()
+  credits.scrollLeft = 0
   renderAdultPersonPhoto(person)
   portalSheets.open(sheet, { focus: sheet.querySelector('.library-sheet-panel') })
   try {
@@ -417,6 +421,15 @@ function localAdultSeriesForTitle(title = {}) {
       Number(series.metadata?.tmdb_id || 0) === tmdbId) : null)
 }
 
+function localAdultFilmForTitle(title = {}) {
+  if (title.media_type !== 'movie') return null
+  const localPath = title.local?.kind === 'film' ? title.local.path : ''
+  const tmdbId = Number(title.tmdb_id || 0)
+  return (library?.adult_library || []).find(film => film.path === localPath)
+    || (tmdbId ? (library?.adult_library || []).find(film =>
+      Number(film.metadata?.tmdb_id || 0) === tmdbId) : null)
+}
+
 function localSeriesViewingDetail(series) {
   const metadata = series?.metadata || {}
   const tmdbId = Number(metadata.tmdb_id || 0)
@@ -463,6 +476,7 @@ function renderAdultTitleDetail(detail, refreshProviders = true,
                                 revision = adultTitleOpenRevision) {
   const sheet = $('#adultTitleSheet')
   const localSeries = detail.media_type === 'tv' ? localAdultSeriesForTitle(detail) : null
+  const localFilm = localAdultFilmForTitle(detail)
   if (localSeries) {
     detail.local = { kind: 'series', series: localSeries.id,
       watched_count: Number(localSeries.watched_count || 0) }
@@ -511,17 +525,25 @@ function renderAdultTitleDetail(detail, refreshProviders = true,
   $('#adultTitleBackdrop').style.setProperty('--watch-film-art', detail.backdrop_path
     ? `url("${adultPosterUrl(detail.backdrop_path, 'w1280')}")`
     : 'linear-gradient(135deg,#2e3a34,#101513)')
-  $('#adultTitleLocal').classList.toggle('hidden', !detail.on_mabeltv)
-  $('#adultTitleLocalCopy').textContent = detail.on_mabeltv
-    ? detail.media_type === 'tv'
-      ? 'Available locally on MabelTV. Stored episodes offer Play on TV and Watch on this device.'
-      : 'Available locally on MabelTV — this option is always shown first.'
-    : ''
+  $('#adultTitleLocal').classList.toggle('hidden', !detail.on_mabeltv || Boolean(localFilm))
+  $('#adultTitleLocalCopy').textContent = detail.on_mabeltv && !localFilm
+    ? 'Available locally on MabelTV. Stored episodes offer Play on TV and Watch on this device.' : ''
+  const filmActions = $('#adultTitleFilmActions')
+  filmActions.classList.toggle('hidden', !localFilm)
+  if (localFilm) configureFilmPlaybackActions(localFilm, detail.local_context || 'library', {
+    tvPlay: $('#adultTitleFilmTv'), herePlay: $('#adultTitleFilmHere'),
+    close: closeAdultTitleSheet,
+    reopen: () => restoreAdultTitleSheet(detail),
+  })
   wireAdultTitleIntentActions(detail)
   if (isSeries) void syncAdultTitleEpisodeStatus(detail).catch(showError)
   const more = $('#adultTitleMore')
-  more.classList.toggle('hidden', !localSeries || !(localSeries.episodes || []).length)
-  more.onclick = localSeries && (localSeries.episodes || []).length ? () => {
+  const localSeriesActions = localSeries && (localSeries.episodes || []).length
+  more.classList.toggle('hidden', !localFilm && !localSeriesActions)
+  more.onclick = localFilm ? () => {
+    portalSheets.dismiss(sheet)
+    openAdultFilmSheet(localFilm, () => restoreAdultTitleSheet(detail))
+  } : localSeriesActions ? () => {
     portalSheets.dismiss(sheet)
     openAdultSeriesMoreSheet(localSeries, null, () => restoreAdultTitleSheet(detail))
   } : null
@@ -558,6 +580,9 @@ function prepareAdultTitleSheet(title) {
   $('#adultTitleNextEpisode').classList.add('hidden')
   $('#adultTitleLocal').classList.add('hidden')
   $('#adultTitleLocalCopy').textContent = ''
+  $('#adultTitleFilmActions').classList.add('hidden')
+  $('#adultTitleFilmTv').onclick = null
+  $('#adultTitleFilmHere').onclick = null
   $('#adultTitleMore').classList.add('hidden')
   $('#adultTitleMore').onclick = null
   clearAdultTitleEnrichment('adultTitle')
@@ -573,12 +598,13 @@ function prepareAdultTitleSheet(title) {
 
 async function openAdultTitle(title) {
   const revision = ++adultTitleOpenRevision
+  const localContext = title.local_context || 'library'
   const sheet = prepareAdultTitleSheet(title)
   portalSheets.open(sheet, { focus: sheet.querySelector('.watch-film-panel') })
   try {
     const detail = await api(`/api/adult/title?media_type=${title.media_type}&tmdb_id=${title.tmdb_id}`)
     if (revision !== adultTitleOpenRevision) return
-    renderAdultTitleDetail(detail, true, revision)
+    renderAdultTitleDetail({ ...detail, local_context: localContext }, true, revision)
   } catch (error) {
     if (revision !== adultTitleOpenRevision) return
     $('#adultTitleOverview').textContent = error.message
@@ -643,13 +669,6 @@ function renderAdultViewingList() {
   const values = adultViewingItems()
   $('#adultViewingCount').textContent = `${values.length} title${values.length === 1 ? '' : 's'}`
   const target = $('#adultViewingGrid')
-  target.classList.toggle('is-grid', adultViewingLayout === 'grid')
-  target.classList.toggle('is-list', adultViewingLayout === 'list')
-  $$('[data-viewing-layout]').forEach(button => {
-    const active = button.dataset.viewingLayout === adultViewingLayout
-    button.classList.toggle('active', active)
-    button.setAttribute('aria-pressed', String(active))
-  })
   const root = document.createElement('div')
   values.forEach((item, index) => {
     const row = document.createElement('article'); row.className = 'adult-viewing-row'
@@ -662,19 +681,8 @@ function renderAdultViewingList() {
     }
     const copy = document.createElement('span'); copy.className = 'adult-viewing-copy'
     const title = document.createElement('strong'); title.textContent = item.title || 'Untitled'
-    const watchedEpisodes = Object.values(item.episodes || {})
-      .filter(episode => episode?.watched === true).length
-    const localNext = item.local?.next_episode
-    const filmProgress = item.media_type === 'movie'
-      ? Number(item.local_progress?.position || 0) : 0
-    const seriesStatus = item.media_type === 'tv' && item.series_watching && localNext
-      ? `Next · S${String(localNext.season).padStart(2, '0')} E${String(localNext.episode).padStart(2, '0')}`
-      : item.media_type === 'tv' ? watchedEpisodes
-        ? `${watchedEpisodes} episode${watchedEpisodes === 1 ? '' : 's'} watched` : 'TV series'
-        : filmProgress > 0 ? `Continue · ${watchTimeLabel(filmProgress)}` : 'Film'
     const meta = document.createElement('span'); meta.textContent = [item.year,
-      seriesStatus,
-      item.on_mabeltv ? 'On MabelTV' : 'Streaming'].filter(Boolean).join(' · ')
+      item.media_type === 'tv' ? 'TV series' : 'Film'].filter(Boolean).join(' · ')
     copy.append(title, meta)
     const actions = document.createElement('span'); actions.className = 'adult-viewing-row-actions'
     if (adultViewingTab === 'up-next') {
@@ -701,7 +709,7 @@ async function loadAdultViewing() {
 }
 
 $('#watchSearch')?.addEventListener('input', scheduleAdultDiscovery)
-$('#watchSearch')?.addEventListener('focus', () => { syncAdultSearchMode(true); scheduleAdultDiscovery() })
+$('#watchSearch')?.addEventListener('focus', () => { syncAdultSearchMode(); scheduleAdultDiscovery() })
 $('#watchSearch')?.addEventListener('blur', () => setTimeout(() => syncAdultSearchMode(), 0))
 $('#watchSearch')?.addEventListener('change', () => setTimeout(syncAdultSearchKeyboard, 60))
 $('#watchSearch')?.addEventListener('search', () => setTimeout(syncAdultSearchKeyboard, 60))
@@ -711,7 +719,7 @@ $('#watchSearch')?.addEventListener('keydown', event => {
   event.currentTarget.dispatchEvent(new Event('input', { bubbles: true }))
   event.currentTarget.blur()
 })
-$('#watchSearchClear')?.addEventListener('click', () => setTimeout(() => { searchAdultDiscovery(''); syncAdultSearchMode(true) }, 0))
+$('#watchSearchClear')?.addEventListener('click', () => setTimeout(() => { searchAdultDiscovery(''); syncAdultSearchMode() }, 0))
 window.visualViewport?.addEventListener('resize', () =>
   setTimeout(syncAdultSearchKeyboard, 60))
 window.addEventListener('orientationchange', () => setTimeout(() => {
@@ -780,11 +788,6 @@ $('#adultViewingSearchClear')?.addEventListener('click', () => {
   search.value = ''
   search.dispatchEvent(new Event('input', { bubbles: true }))
   search.focus()
-})
-$$('[data-viewing-layout]').forEach(button => button.onclick = () => {
-  adultViewingLayout = button.dataset.viewingLayout
-  try { localStorage.setItem('mabeltv-adult-viewing-layout', adultViewingLayout) } catch (_) {}
-  renderAdultViewing()
 })
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && location.hash === '#adult-viewing') loadAdultViewing().catch(() => {})

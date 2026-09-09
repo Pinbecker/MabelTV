@@ -129,8 +129,23 @@
     }
 
     function openFilmEntry(entry, context = 'library') {
-      if (entry.kind === 'adult') openWatchFilmSheet(entry.film, context)
+      if (entry.kind === 'adult') openAdultFilmDetail(entry.film, context)
       else openWatchProgrammeSheet(entry.channel, entry.film, context)
+    }
+
+    function openAdultFilmDetail(film, context = 'library') {
+      const metadata = film?.metadata || {}
+      const tmdbId = Number(metadata.tmdb_id || 0)
+      if (!tmdbId || typeof openAdultTitle !== 'function') {
+        openWatchFilmSheet(film, context)
+        return
+      }
+      openAdultTitle({
+        key: `movie:${tmdbId}`, media_type: 'movie', tmdb_id: tmdbId,
+        title: watchFilmTitle(film), year: metadata.year || '',
+        local: { kind: 'film', path: film.path }, on_mabeltv: true,
+        local_context: context,
+      })
     }
 
     function closeFilmResumeChoiceSheet(restoreParent = true) {
@@ -207,7 +222,7 @@
       detail.textContent = resumable ? `Resume · ${watchTimeLabel(film.remote_position)}` : [metadata.year, film.folder].filter(Boolean).join(' · ') || 'Film'
       copy.append(title, detail)
       card.append(art, copy)
-      card.onclick = () => openWatchFilmSheet(film)
+      card.onclick = () => openAdultFilmDetail(film)
       return card
     }
 
@@ -542,6 +557,61 @@
       })
     }
 
+    function configureFilmPlaybackActions(film, context, controls) {
+      const title = watchFilmTitle(film)
+      const resumable = watchFilmResumable(film)
+      const streamable = film.browser_ready !== false
+      const favouriteResumeChoice = context === 'favourite' && resumable
+      const playHere = position => {
+        controls.close()
+        openRemotePlayer({ kind: 'adult', file: film.path }, position)
+      }
+      const playOnTvNow = (position = null) => {
+        controls.close()
+        playOnTv({
+          kind: 'adult', file: film.path,
+          position: position === null
+            ? Number(film.remote_position || 0) : Math.max(0, Number(position) || 0),
+        }, title)
+      }
+      const tvPlay = controls.tvPlay
+      tvPlay.querySelector('strong').textContent = favouriteResumeChoice
+        ? 'Play on TV' : resumable ? 'Continue on TV' : 'Play on TV'
+      tvPlay.querySelector('small').textContent = favouriteResumeChoice
+        ? 'Choose continue or start from beginning'
+        : resumable ? `Continue from ${watchTimeLabel(film.remote_position)}`
+          : 'Replaces what is playing there'
+      tvPlay.onclick = favouriteResumeChoice ? () => {
+        controls.close()
+        openFilmResumeChoice({
+          title, destination: 'Play on TV', position: film.remote_position,
+          returnTo: controls.reopen,
+          continueAction: () => playOnTvNow(), restartAction: () => playOnTvNow(0),
+        })
+      } : () => playOnTvNow()
+      const herePlay = controls.herePlay
+      herePlay.disabled = false
+      herePlay.querySelector('strong').textContent = streamable
+        ? favouriteResumeChoice ? 'Play on this device'
+          : resumable ? 'Continue on this device' : 'Play on this device'
+        : 'Play in VLC'
+      herePlay.querySelector('small').textContent = streamable
+        ? favouriteResumeChoice ? 'Choose continue or start from beginning'
+          : resumable ? `Continue from ${watchTimeLabel(film.remote_position)}`
+            : 'Starts an independent stream'
+        : 'Opens the original without conversion'
+      herePlay.onclick = streamable ? favouriteResumeChoice ? () => {
+        controls.close()
+        openFilmResumeChoice({
+          title, destination: 'Play on this device', position: film.remote_position,
+          returnTo: controls.reopen,
+          continueAction: () => playHere(Number(film.remote_position || 0)),
+          restartAction: () => playHere(0),
+        })
+      } : () => playHere(resumable ? Number(film.remote_position || 0) : 0)
+        : () => { controls.close(); openInVlc({ kind: 'adult', file: film.path }, title) }
+    }
+
     function openWatchFilmSheet(film, context = 'library', returnTo = null) {
       selectedWatchFilm = film
       const metadata = film.metadata || {}
@@ -573,44 +643,12 @@
       const availability = $('#watchFilmAvailability')
       availability.classList.toggle('hidden', streamable)
       availability.textContent = streamable ? '' : 'This original can open directly in VLC. Downloading prepares a separate browser-compatible copy for offline MabelTV playback.'
-      const favouriteResumeChoice = context === 'favourite' && resumable
       const tvPlay = $('#watchFilmTv')
-      tvPlay.querySelector('strong').textContent = favouriteResumeChoice
-        ? 'Play on TV' : resumable ? 'Continue on TV' : 'Play on TV'
-      tvPlay.querySelector('small').textContent = favouriteResumeChoice
-        ? 'Choose continue or start from beginning'
-        : resumable ? `Continue from ${watchTimeLabel(film.remote_position)}`
-          : 'Replaces what is playing there'
-      tvPlay.onclick = favouriteResumeChoice ? () => {
-        closeWatchFilmSheet(false)
-        openFilmResumeChoice({
-          title, destination: 'Play on TV', position: film.remote_position,
-          returnTo: () => openWatchFilmSheet(film, context, returnTo),
-          continueAction: () => playWatchFilmOnTv(film),
-          restartAction: () => playWatchFilmOnTv(film, 0),
-        })
-      } : () => playWatchFilmOnTv(film)
       const herePlay = $('#watchFilmHere')
-      herePlay.disabled = false
-      herePlay.querySelector('strong').textContent = streamable
-        ? favouriteResumeChoice ? 'Play on this device'
-          : resumable ? 'Continue on this device' : 'Play on this device'
-        : 'Play in VLC'
-      herePlay.querySelector('small').textContent = streamable
-        ? favouriteResumeChoice ? 'Choose continue or start from beginning'
-          : resumable ? `Continue from ${watchTimeLabel(film.remote_position)}`
-            : 'Starts an independent stream'
-        : 'Opens the original without conversion'
-      herePlay.onclick = streamable ? favouriteResumeChoice ? () => {
-        closeWatchFilmSheet(false)
-        openFilmResumeChoice({
-          title, destination: 'Play on this device', position: film.remote_position,
-          returnTo: () => openWatchFilmSheet(film, context, returnTo),
-          continueAction: () => playWatchFilm(film, Number(film.remote_position || 0)),
-          restartAction: () => playWatchFilm(film, 0),
-        })
-      } : () => playWatchFilm(film, resumable ? Number(film.remote_position || 0) : 0)
-        : () => { closeWatchFilmSheet(false); openInVlc({ kind: 'adult', file: film.path }, title) }
+      configureFilmPlaybackActions(film, context, {
+        tvPlay, herePlay, close: () => closeWatchFilmSheet(false),
+        reopen: () => openWatchFilmSheet(film, context, returnTo),
+      })
       const favouriteButton = $('#watchFilmFavourite')
       favouriteButton.classList.toggle('active', film.favourite === true)
       favouriteButton.setAttribute('aria-label', film.favourite
