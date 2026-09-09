@@ -91,7 +91,7 @@ test('series sheets use the full metadata catalogue with local availability over
   await expect(mabelProvider).toHaveJSProperty('tagName', 'SPAN')
   await expect(page.locator('#adultProviderList .provider-netflix')).toHaveJSProperty('tagName', 'BUTTON')
   await expect(page.locator('#adultTitleMore')).toBeVisible()
-  await expect(page.locator('#adultTitleMore use')).toHaveAttribute('href', '/portal/icons.svg#settings')
+  await expect(page.locator('#adultTitleMore use')).toHaveAttribute('href', '/portal/icons.svg#signal-cog')
   await page.screenshot({ path: testInfo.outputPath('series-card-header-gear.png') })
 
   await page.locator('#adultTitleSeasons [data-season="1"]').click()
@@ -130,6 +130,16 @@ test('series sheets use the full metadata catalogue with local availability over
   await expect(page.locator('#adultTitleSeasonEpisodes [data-episode="2"] .adult-episode-availability'))
     .toBeHidden()
   await expect(page.locator('#adultTitleSeasonSettings')).toBeVisible()
+  await expect(page.locator('#adultTitleSeasonSettings use'))
+    .toHaveAttribute('href', '/portal/icons.svg#signal-cog')
+  const gearTreatment = await page.locator('#adultTitleSeasonSettings').evaluate(control => {
+    control.focus()
+    const style = getComputedStyle(control)
+    return { border: style.borderTopWidth, background: style.backgroundColor,
+      outline: style.outlineStyle }
+  })
+  expect(gearTreatment).toEqual({ border: '0px', background: 'rgba(0, 0, 0, 0)',
+    outline: 'none' })
   await page.locator('#adultTitleSeasonSettings').click()
   const settings = page.locator('#adultTitleSeasonSettingsSheet')
   await expect(settings).toBeVisible()

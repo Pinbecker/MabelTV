@@ -223,6 +223,19 @@
     gap: 22px 11px;
   }
 
+  body.portal-v2 #remoteAdult > .watch-poster-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px 7px;
+  }
+
+  body.portal-v2 #remoteAdult > .watch-poster-grid .watch-card-copy strong {
+    font-size: 9px;
+  }
+
+  body.portal-v2 #remoteAdult > .watch-poster-grid .watch-card-copy small {
+    font-size: 8px;
+  }
+
   body.portal-v2 .watch-continue-rail {
     grid-auto-columns: minmax(270px, 84%);
   }

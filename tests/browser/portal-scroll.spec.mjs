@@ -142,7 +142,7 @@ test('returning from a numbered series restores the show sheet position', async 
     openAdultSeriesSheet(series)
   })
   await expect(page.locator('#adultSeriesMore')).toBeVisible()
-  await expect(page.locator('#adultSeriesMore use')).toHaveAttribute('href', '/portal/icons.svg#settings')
+  await expect(page.locator('#adultSeriesMore use')).toHaveAttribute('href', '/portal/icons.svg#signal-cog')
   await page.screenshot({ path: testInfo.outputPath('local-series-card-header-gear.png') })
   await page.locator('#adultSeriesMore').click()
   await expect(page.locator('#adultSeriesMoreSheet')).toBeVisible()
@@ -241,6 +241,16 @@ test('episode back and collection selection keep the sheet position', async ({ p
   const episodePanelHeight = await page.locator('#adultEpisodeSheet > article')
     .evaluate(element => element.getBoundingClientRect().height)
   expect(episodePanelHeight).toBeLessThan(await page.evaluate(() => window.innerHeight * 0.9))
+  await page.evaluate(() => {
+    playOnTv = () => { window.episodePlayedOnTv = true }
+    openRemotePlayer = () => { window.episodePlayedHere = true }
+  })
+  await page.locator('#adultEpisodeTv').click()
+  await expect(page.locator('#adultEpisodeSheet')).toBeVisible()
+  expect(await page.evaluate(() => window.episodePlayedOnTv)).toBe(true)
+  await page.locator('#adultEpisodeHere').click()
+  await expect(page.locator('#adultEpisodeSheet')).toBeVisible()
+  expect(await page.evaluate(() => window.episodePlayedHere)).toBe(true)
   await page.locator('#adultEpisodeClose').click()
   await expect(page.locator('#adultSeasonSheet')).toBeVisible()
   await settled(page)
@@ -375,6 +385,39 @@ test('download progress refresh and My Viewing filters retain position', async (
   const viewing = await scrollY(page)
   await page.locator('#adultViewingFilter').selectOption('movie')
   expect(await scrollY(page)).toBeCloseTo(viewing, 0)
+})
+
+test('My Viewing tabs retain their exact viewport instead of following a reordered title', async ({ page }) => {
+  await openPortal(page)
+  await page.evaluate(() => {
+    openView('adult-viewing')
+    adultViewingData = { items: Array.from({ length: 60 }, (_, index) => ({
+      tmdb_id: 2000 + index, media_type: 'movie', title: `Film ${index}`,
+      watchlisted: true, watchlist_updated: 1000 - index,
+      up_next: true, up_next_rank: 60 - index,
+    })) }
+    adultViewingTab = 'watchlist'
+    adultViewingFilter = 'all'
+    adultViewingSort = 'recent'
+    renderAdultViewing()
+    window.scrollTo(0, 520)
+  })
+  const before = await scrollY(page)
+  await page.locator('[data-viewing-tab="up-next"]').dispatchEvent('click')
+  await settled(page)
+  expect(await scrollY(page)).toBeCloseTo(before, 0)
+})
+
+test('Adult TV main film library is four artwork cards wide on phones', async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone grid contract')
+  await openPortal(page)
+  await longFilms(page)
+  const grid = await page.locator('#remoteAdult > .watch-poster-grid').evaluate(element => ({
+    columns: getComputedStyle(element).gridTemplateColumns.split(' ').length,
+    contained: element.scrollWidth <= element.clientWidth + 1,
+  }))
+  expect(grid).toEqual({ columns: 4, contained: true })
+  await page.screenshot({ path: testInfo.outputPath('adult-main-film-grid.png') })
 })
 
 test('returning from the player keeps the film catalogue position', async ({ page }) => {

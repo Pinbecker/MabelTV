@@ -48,7 +48,8 @@ test('a local global-search film opens one rich card with playback controls', as
     route.fulfill({ json: { key: titleDetail.key, sources: [] } }))
   await page.goto('/')
   await expect.poll(() => page.evaluate(() => Boolean(library))).toBe(true)
-  await page.evaluate(film => { library.adult_library = [film] }, localFilm)
+  await page.evaluate(film => { library.adult_library = [{ ...film,
+    remote_position: 600, remote_duration: 7200 }] }, localFilm)
   await page.getByRole('button', { name: 'Watch', exact: true }).click()
   await page.locator('#watchAdultTab').click()
   await page.locator('#watchSearch').fill('Harry Potter')
@@ -66,8 +67,8 @@ test('a local global-search film opens one rich card with playback controls', as
   await expect(page.locator('#adultTitleSheet')).toBeVisible()
   await expect(page.locator('#watchFilmSheet')).toBeHidden()
   await expect(page.locator('#adultTitleFilmActions')).toBeVisible()
-  await expect(page.locator('#adultTitleFilmTv')).toContainText('Play on TV')
-  await expect(page.locator('#adultTitleFilmHere')).toContainText('Play on this device')
+  await expect(page.locator('#adultTitleFilmTv')).toContainText('Continue on TV')
+  await expect(page.locator('#adultTitleFilmHere')).toContainText('Continue on this device')
   await expect(page.locator('#adultTitleLocal')).toBeHidden()
   await expect(page.locator('#adultTitleMore')).toBeVisible()
   const treatment = await page.locator('#adultTitleSheet').evaluate(sheet => {
@@ -90,6 +91,8 @@ test('a local global-search film opens one rich card with playback controls', as
       playbackSameHeight: Math.abs(tv.height - here.height) <= 1,
       playbackHeight: tv.height,
       playbackSubtextHidden: getComputedStyle(sheet.querySelector('#adultTitleFilmTv small')).display === 'none',
+      deviceLabelFits: sheet.querySelector('#adultTitleFilmHere strong').scrollWidth
+        <= sheet.querySelector('#adultTitleFilmHere strong').clientWidth + 1,
     }
   })
   expect(treatment).toEqual({
@@ -97,12 +100,23 @@ test('a local global-search film opens one rich card with playback controls', as
     eyebrowUsesAccentInk: true,
     settingsUsesAccentInk: true,
     settingsInHeader: true,
-    settingsIcon: '/portal/icons.svg#settings',
+    settingsIcon: '/portal/icons.svg#signal-cog',
     playbackSameRow: true,
     playbackSameHeight: true,
     playbackHeight: 44,
     playbackSubtextHidden: true,
+    deviceLabelFits: true,
   })
+  await page.evaluate(() => {
+    playOnTv = () => { window.filmPlayedOnTv = true }
+    openRemotePlayer = () => { window.filmPlayedHere = true }
+  })
+  await page.locator('#adultTitleFilmTv').click()
+  await expect(page.locator('#adultTitleSheet')).toBeVisible()
+  expect(await page.evaluate(() => window.filmPlayedOnTv)).toBe(true)
+  await page.locator('#adultTitleFilmHere').click()
+  await expect(page.locator('#adultTitleSheet')).toBeVisible()
+  expect(await page.evaluate(() => window.filmPlayedHere)).toBe(true)
   await expect(page.locator('#adultProviderList .provider-mabeltv')).toHaveCount(1)
   await expect(page.locator('#adultProviderList .provider-mabeltv')).toHaveJSProperty('tagName', 'SPAN')
 })
@@ -129,6 +143,23 @@ test('local film settings keep structured facts and compact collection controls'
   expect(controls.selectWidth).toBeLessThanOrEqual(170)
   expect(controls.buttonWidth).toBeLessThan(90)
   expect(controls.height).toBeLessThanOrEqual(36)
+  const settingsMaxHeight = await page.locator('#adultFilmSheet .watch-film-panel')
+    .evaluate(panel => Number.parseFloat(getComputedStyle(panel).maxHeight))
+  expect(settingsMaxHeight).toBeGreaterThan(await page.evaluate(() => innerHeight * 0.85))
+})
+
+test('VLC launch leaves its film card ready underneath', async ({ page }) => {
+  await page.goto('/')
+  await expect.poll(() => page.evaluate(() => Boolean(library))).toBe(true)
+  await page.evaluate(film => {
+    const local = { ...film, browser_ready: false }
+    library.adult_library = [local]
+    openInVlc = () => { window.filmOpenedInVlc = true }
+    openWatchFilmSheet(local)
+  }, localFilm)
+  await page.locator('#watchFilmHere').click()
+  await expect(page.locator('#watchFilmSheet')).toBeVisible()
+  expect(await page.evaluate(() => window.filmOpenedInVlc)).toBe(true)
 })
 
 test('a matched local-library film uses the same rich card', async ({ page }) => {

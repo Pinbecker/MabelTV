@@ -135,7 +135,6 @@
             file: programme.name, position: 0 }, title),
         })
       } : () => {
-        closeWatchProgrammeSheet(false)
         playOnTv({ kind: 'channel', channel: channel.number, file: programme.name,
           position: filmChannel ? Number(programme.remote_position || 0) : undefined }, title)
       }
@@ -163,7 +162,6 @@
             channel: channel.number, file: programme.name, position: 0 }, 0),
         })
       } : () => {
-        closeWatchProgrammeSheet(false)
         if (programme.browser_ready === false) openInVlc(source, title)
         else openRemotePlayer(source, filmChannel ? Number(programme.remote_position || 0) : 0)
       }

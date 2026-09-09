@@ -625,8 +625,8 @@ function adultViewingItems() {
   })
 }
 
-function renderAdultViewing() {
-  return preservePortalPosition(renderAdultViewingList)
+function renderAdultViewing({ anchor = true } = {}) {
+  return preservePortalPosition(renderAdultViewingList, { anchor })
 }
 
 function renderAdultViewingList() {
@@ -752,7 +752,7 @@ $('#adultEpisodeLaunchClose')?.addEventListener('click', closeAdultEpisodeLaunch
 $('#adultEpisodeLaunchSheet')?.addEventListener('click', event => {
   if (event.target === $('#adultEpisodeLaunchSheet')) closeAdultEpisodeLaunchSheet()
 })
-$$('[data-viewing-tab]').forEach(button => button.onclick = () => { adultViewingTab = button.dataset.viewingTab; $$('[data-viewing-tab]').forEach(value => value.classList.toggle('active', value === button)); renderAdultViewing() })
+$$('[data-viewing-tab]').forEach(button => button.onclick = () => { adultViewingTab = button.dataset.viewingTab; $$('[data-viewing-tab]').forEach(value => value.classList.toggle('active', value === button)); renderAdultViewing({ anchor: false }) })
 $('#adultViewingFilter')?.addEventListener('change', event => { adultViewingFilter = event.currentTarget.value; renderAdultViewing() })
 $('#adultViewingSort')?.addEventListener('change', event => { adultViewingSort = event.currentTarget.value; renderAdultViewing() })
 $('#adultViewingSearch')?.addEventListener('input', event => {

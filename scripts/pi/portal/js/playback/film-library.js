@@ -163,11 +163,11 @@
       $('#filmResumeChoiceMeta').textContent = `Continue from ${watchTimeLabel(position)}, or start this film from the beginning?`
       $('#filmResumeContinue').querySelector('small').textContent = `Resume from ${watchTimeLabel(position)}`
       $('#filmResumeContinue').onclick = () => {
-        closeFilmResumeChoiceSheet(false)
+        closeFilmResumeChoiceSheet()
         continueAction()
       }
       $('#filmResumeRestart').onclick = () => {
-        closeFilmResumeChoiceSheet(false)
+        closeFilmResumeChoiceSheet()
         restartAction()
       }
       const dialog = $('#filmResumeChoiceSheet')
@@ -574,11 +574,9 @@
       const streamable = film.browser_ready !== false
       const favouriteResumeChoice = context === 'favourite' && resumable
       const playHere = position => {
-        controls.close()
         openRemotePlayer({ kind: 'adult', file: film.path }, position)
       }
       const playOnTvNow = (position = null) => {
-        controls.close()
         playOnTv({
           kind: 'adult', file: film.path,
           position: position === null
@@ -620,7 +618,7 @@
           restartAction: () => playHere(0),
         })
       } : () => playHere(resumable ? Number(film.remote_position || 0) : 0)
-        : () => { controls.close(); openInVlc({ kind: 'adult', file: film.path }, title) }
+        : () => openInVlc({ kind: 'adult', file: film.path }, title)
     }
 
     function openWatchFilmSheet(film, context = 'library', returnTo = null) {

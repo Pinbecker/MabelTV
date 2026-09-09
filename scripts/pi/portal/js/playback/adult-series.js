@@ -381,7 +381,6 @@
       const source = { kind: 'adult-series', series: series.id,
         file: episode.path, position: Number(episode.remote_position || 0) }
       $('#adultEpisodeTv').onclick = () => {
-        closeAdultEpisodeSheet(false)
         playOnTv(source, episode.display_name)
       }
       const here = $('#adultEpisodeHere')
@@ -392,7 +391,6 @@
         ? episode.remote_position > 10 ? `Continue from ${watchTimeLabel(episode.remote_position)}` : 'Starts an independent stream'
         : 'Open the original file without conversion'
       here.onclick = () => {
-        closeAdultEpisodeSheet(false)
         if (episode.browser_ready) openRemotePlayer(source, episode.remote_position)
         else openInVlc(source, episode.display_name)
       }

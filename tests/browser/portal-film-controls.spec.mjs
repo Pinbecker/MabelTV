@@ -425,7 +425,7 @@ for (const theme of ['light', 'dark']) {
       settings: {
         inHeader: true,
         label: 'Film settings',
-        icon: '/portal/icons.svg#settings',
+        icon: '/portal/icons.svg#signal-cog',
         border: '0px',
         background: 'rgba(0, 0, 0, 0)',
       },
