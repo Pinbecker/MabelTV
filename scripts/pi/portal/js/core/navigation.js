@@ -22,7 +22,7 @@
         return
       }
       const view = requested === 'home' ? 'overview' : requested
-      const allowed = new Set(['overview', 'live', 'lg-tv', 'channels', 'adult', 'watch', 'adult-viewing', 'usb', 'system', 'insights'])
+      const allowed = new Set(['overview', 'live', 'lg-tv', 'channels', 'adult', 'watch', 'adult-viewing', 'usb', 'system', 'appearance', 'insights'])
       if (allowed.has(view)) {
         if (view === 'channels' || view === 'adult') {
           remoteKind = view === 'channels' ? 'channel' : 'adult'
@@ -263,7 +263,7 @@
       const consolidatedWatchView = name === 'channels' || name === 'adult'
       const activeNavigation = channelFromWatch || consolidatedWatchView || name === 'adult-viewing' ? 'watch'
         : name === 'lg-tv' ? 'live'
-          : (name === 'insights' || name === 'activity') ? 'system' : name
+          : (name === 'insights' || name === 'activity' || name === 'appearance') ? 'system' : name
       $$('.view').forEach(view => view.classList.toggle('active', view.id === `view-${name}`))
       document.body.classList.toggle('watch-mode', name === 'watch' || name === 'adult-viewing' || channelFromWatch || consolidatedWatchView)
       document.body.classList.toggle('tv-remote-mode', name === 'live' || name === 'lg-tv')

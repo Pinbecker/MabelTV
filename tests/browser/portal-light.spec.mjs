@@ -250,10 +250,9 @@ test('light utility, Settings and insight routes stay neutral and legible', asyn
   await page.locator('[data-view-button="system"]').click()
   await expect(page.locator('#view-system')).toBeVisible()
   const settingsOrder = await page.locator('#tvSettingsForm').evaluate(form =>
-    [...form.children].slice(0, 3).map(element => element.className))
-  expect(settingsOrder[0]).toContain('settings-theme-row')
-  expect(settingsOrder[1]).toContain('settings-accent-row')
-  expect(settingsOrder[2]).toContain('settings-disclosure')
+    [...form.children].slice(0, 2).map(element => element.className))
+  expect(settingsOrder[0]).toContain('settings-appearance-row')
+  expect(settingsOrder[1]).toContain('settings-disclosure')
   await expect(page.locator('[data-portal-design]')).toHaveCount(0)
   await expect(page).toHaveScreenshot('light-settings.png')
 
@@ -275,6 +274,7 @@ test('portal accent slider recolours and persists the whole Experience', async (
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One engine covers saved accent state')
   await openLightPortal(page)
   await page.locator('[data-view-button="system"]').click()
+  await page.locator('[data-go="appearance"]').click()
   const slider = page.locator('#experienceAccentHue')
   const before = await page.locator('.portal-nav button.active').evaluate(element => getComputedStyle(element).color)
   await slider.fill('255')
@@ -285,6 +285,7 @@ test('portal accent slider recolours and persists the whole Experience', async (
   await expect(page).toHaveScreenshot('light-settings-blue-accent.png')
 
   await page.reload()
+  await expect(page.locator('#view-appearance')).toBeVisible()
   await expect(page.locator('#experienceAccentHue')).toHaveValue('255')
   await expect(page.locator('#experienceAccentName')).toHaveText('Blue')
 })

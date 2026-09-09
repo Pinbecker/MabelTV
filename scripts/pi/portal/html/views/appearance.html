@@ -1,0 +1,69 @@
+      <section id="view-appearance" class="view"><div class="page appearance-page">
+        <button id="appearanceBack" type="button" class="appearance-back" data-go="system">
+          <svg class="icon"><use href="/portal/icons.svg#signal-arrow-left"/></svg><span>Settings</span>
+        </button>
+        <header class="appearance-hero">
+          <p class="eyebrow">Look and feel</p>
+          <h1>Colour</h1>
+          <p>Make the portal feel right on this device. Every change appears instantly.</p>
+        </header>
+
+        <div class="appearance-sections">
+          <section class="appearance-card" aria-labelledby="appearanceModeTitle">
+            <header><div><p class="section-kicker">Appearance</p><h2 id="appearanceModeTitle">Light to true black</h2></div><strong id="experienceThemeName">True black</strong></header>
+            <label class="appearance-theme-control" for="experienceThemeLevel">
+              <span class="sr-only">Portal appearance</span>
+              <input id="experienceThemeLevel" type="range" min="0" max="2" step="1" value="2" list="experienceThemeLevels">
+              <datalist id="experienceThemeLevels"><option value="0" label="Light"></option><option value="1" label="Dark"></option><option value="2" label="True black"></option></datalist>
+              <span class="appearance-theme-labels" aria-hidden="true"><span>Light</span><span>Dark</span><span>True black</span></span>
+            </label>
+          </section>
+
+          <section class="appearance-card" aria-labelledby="appearanceAccentTitle">
+            <header><div><p class="section-kicker">Accent</p><h2 id="appearanceAccentTitle">Portal colour</h2></div><strong id="experienceAccentName">Orange</strong></header>
+            <div class="appearance-presets" role="group" aria-label="Accent colour presets">
+              <button type="button" data-accent-preset="8" aria-label="Red accent"></button>
+              <button type="button" data-accent-preset="48" aria-label="Orange accent"></button>
+              <button type="button" data-accent-preset="92" aria-label="Gold accent"></button>
+              <button type="button" data-accent-preset="145" aria-label="Green accent"></button>
+              <button type="button" data-accent-preset="190" aria-label="Teal accent"></button>
+              <button type="button" data-accent-preset="255" aria-label="Blue accent"></button>
+              <button type="button" data-accent-preset="285" aria-label="Purple accent"></button>
+              <button type="button" data-accent-preset="330" aria-label="Pink accent"></button>
+            </div>
+            <label class="appearance-hue-control" for="experienceAccentHue">
+              <span><strong>Fine tune</strong><output id="experienceAccentHueValue" for="experienceAccentHue">48°</output></span>
+              <input id="experienceAccentHue" type="range" min="0" max="359" step="1" value="48" aria-describedby="experienceAccentName">
+            </label>
+            <fieldset class="appearance-strength">
+              <legend>Colour strength</legend>
+              <div role="group" aria-label="Accent colour strength">
+                <button type="button" data-accent-strength="subtle" aria-pressed="false">Subtle</button>
+                <button type="button" data-accent-strength="balanced" aria-pressed="true">Balanced</button>
+                <button type="button" data-accent-strength="vivid" aria-pressed="false">Vivid</button>
+              </div>
+            </fieldset>
+          </section>
+
+          <section class="appearance-card" aria-labelledby="appearancePreviewTitle">
+            <header><div><p class="section-kicker">Live preview</p><h2 id="appearancePreviewTitle">How it works together</h2></div></header>
+            <div class="appearance-preview">
+              <p class="appearance-preview-kicker">Section heading</p>
+              <h3>Your portal</h3>
+              <p>Strong colour draws attention. Softer shades organise the surrounding information.</p>
+              <div><button type="button" class="appearance-preview-primary">Primary action</button><button type="button" class="appearance-preview-selected">Selected</button></div>
+              <span class="appearance-preview-progress"><i></i></span>
+            </div>
+          </section>
+
+          <section class="appearance-card appearance-fixed" aria-labelledby="appearanceFixedTitle">
+            <header><div><p class="section-kicker">Always consistent</p><h2 id="appearanceFixedTitle">Meaningful colours</h2></div></header>
+            <div class="appearance-fixed-grid">
+              <span class="favourite"><i><svg class="icon"><use href="/portal/icons.svg#signal-heart"/></svg></i><strong>Favourite</strong><small>Pink</small></span>
+              <span class="success"><i></i><strong>Connected</strong><small>Green</small></span>
+              <span class="warning"><i></i><strong>Standby</strong><small>Amber</small></span>
+              <span class="danger"><i></i><strong>Problem</strong><small>Red</small></span>
+            </div>
+          </section>
+        </div>
+      </div></section>

@@ -391,9 +391,9 @@ body.portal-v2 .watch-mabel-search-results.hidden { display: none; }
 
 body.portal-v2 .favourite-action.active,
 body.portal-v2 #adultFilmFavourite.active {
-  border-color: color-mix(in srgb, var(--experience-accent) 70%, transparent);
-  background: color-mix(in srgb, var(--experience-accent) 12%, transparent);
-  color: var(--experience-orange);
+  border-color: color-mix(in srgb, var(--experience-favourite) 70%, transparent);
+  background: color-mix(in srgb, var(--experience-favourite) 12%, transparent);
+  color: var(--experience-favourite);
 }
 
 body.portal-v2 .mabel-channel-section {

@@ -10,16 +10,11 @@
           <section class="settings-group" aria-labelledby="settingsPlaybackGroup">
             <h2 id="settingsPlaybackGroup">Television experience</h2>
             <form id="tvSettingsForm" class="settings-form">
-              <div class="settings-toggle-row settings-theme-row">
+              <button id="openAppearanceSettings" type="button" class="settings-link-row settings-appearance-row" data-go="appearance">
                 <span class="settings-row-icon appearance"><svg><use href="/portal/icons.svg#signal-image"/></svg></span>
-                <div><strong id="experienceThemeTitle">Light mode</strong><small id="experienceThemeState">Off</small><p>Use the bright portal on this device.</p></div>
-                <button id="experienceThemeToggle" type="button" class="feature-toggle settings-switch" role="switch" aria-checked="false" aria-labelledby="experienceThemeTitle experienceThemeState">Off</button>
-              </div>
-              <div class="settings-accent-row">
-                <span class="settings-row-icon accent"><svg><use href="/portal/icons.svg#signal-edit"/></svg></span>
-                <label for="experienceAccentHue"><strong>Portal colour</strong><small id="experienceAccentName">Orange</small><span>Change the accent everywhere in the portal.</span></label>
-                <input id="experienceAccentHue" type="range" min="0" max="359" step="1" value="48" aria-describedby="experienceAccentName">
-              </div>
+                <span><strong>Colour and appearance</strong><small id="appearanceSettingsSummary">True black · Orange · Balanced</small></span>
+                <svg class="settings-chevron"><use href="/portal/icons.svg#signal-chevron-right"/></svg>
+              </button>
               <details class="settings-disclosure">
                 <summary><span class="settings-row-icon picture"><svg><use href="/portal/icons.svg#signal-image"/></svg></span><span><strong>Picture and display</strong><small>Framing, cabinet and CRT effects</small></span><svg class="settings-chevron"><use href="/portal/icons.svg#signal-chevron-right"/></svg></summary>
                 <div class="settings-panel"><div class="settings-fields">

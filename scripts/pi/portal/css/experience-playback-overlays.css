@@ -30,7 +30,7 @@ body.portal-experience .sheet-favourite {
 
 body.portal-experience .sheet-favourite .icon { width: 18px; height: 18px; }
 body.portal-experience .sheet-favourite.active {
-  color: var(--experience-orange);
+  color: var(--experience-favourite);
 }
 body.portal-experience .sheet-favourite.active .icon { fill: currentColor; }
 body.portal-experience .sheet-favourite.hidden { display: none; }

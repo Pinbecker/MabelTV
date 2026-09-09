@@ -51,6 +51,8 @@ order unless a change explicitly redefines the cascade.
 - `experience-shell.css`: fixed header, page frame, and bottom navigation.
 - `experience-home.css`, `experience-remote.css`, `experience-watch.css`,
   `experience-library.css`, and `experience-viewing.css`: route ownership.
+- `experience-appearance.css`: the device-local colour page, its live preview,
+  appearance slider, accent presets and semantic-colour reference.
 - `experience-settings.css`: settings, device, and activity surfaces.
 - `experience-insights.css`: viewing-insight dashboards and detail surfaces.
 - `experience-responsive.css`: Experience phone/tablet adaptations.
@@ -61,8 +63,10 @@ order unless a change explicitly redefines the cascade.
   adaptation layer, intentionally last.
 
 Experience is the only portal presentation. Theme and accent are device-local
-preferences owned by `experience-theme.js`; the accent hue feeds the shared
-Experience colour tokens so route modules do not own fixed accent colours.
+preferences owned by `experience-theme.js`; Light, Dark and True black map to
+shared neutral tokens, while accent hue and strength feed derived colour roles
+so route modules do not own fixed accent colours. Favourite, success, warning
+and danger remain semantic tokens rather than user-selected accent colours.
 
 ## JavaScript ownership and execution order
 

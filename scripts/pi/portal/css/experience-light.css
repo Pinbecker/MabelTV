@@ -12,7 +12,9 @@ html[data-experience-theme="light"] {
   --experience-orange-hot: var(--experience-accent);
   --experience-on-orange: #1b0c03;
   --experience-good: #08765a;
+  --experience-warning: #956200;
   --experience-danger: #c7354b;
+  --experience-favourite: #c82468;
   --experience-shadow: rgba(20, 27, 39, 0.12);
   color-scheme: light;
 }

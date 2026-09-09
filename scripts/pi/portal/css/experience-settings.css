@@ -145,44 +145,13 @@ body.portal-v2 .settings-row-icon.system { background: #65717d; }
 body.portal-v2 .settings-row-icon.help { background: #3f95a1; }
 body.portal-v2 .settings-row-icon.insights { background: linear-gradient(135deg, var(--experience-accent), #a94ee8); }
 
-body.portal-v2 .settings-form > .settings-theme-row {
+body.portal-v2 .settings-form > .settings-appearance-row {
   border-radius: 12px 12px 0 0;
-}
-
-body.portal-v2 .settings-accent-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) minmax(110px, 180px);
-  align-items: center;
-  gap: 12px;
-  min-height: 72px;
-  border: 1px solid var(--experience-line);
   border-bottom: 0;
-  background: var(--experience-raised);
-  padding: 10px 14px;
 }
 
-body.portal-v2 .settings-accent-row label {
-  display: grid;
-  min-width: 0;
-}
-
-body.portal-v2 .settings-accent-row strong { font-size: 13px; }
-body.portal-v2 .settings-accent-row small { color: var(--experience-orange); font-size: 10px; font-weight: 800; }
-body.portal-v2 .settings-accent-row label > span { color: var(--experience-dim); font-size: 10px; }
-body.portal-v2 .settings-accent-row input { width: 100%; accent-color: var(--experience-accent); }
-
-body.portal-v2 .settings-form > .settings-accent-row + .settings-disclosure {
+body.portal-v2 .settings-form > .settings-appearance-row + .settings-disclosure {
   border-radius: 0;
-}
-
-@media (max-width: 520px) {
-  body.portal-v2 .settings-accent-row {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  body.portal-v2 .settings-accent-row input {
-    grid-column: 2;
-  }
 }
 
 body.portal-v2 .settings-link-row {

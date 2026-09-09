@@ -1,8 +1,15 @@
 :root {
   --experience-accent-hue: 48;
-  --experience-accent: oklch(0.72 0.19 var(--experience-accent-hue));
-  --experience-accent-hot: oklch(0.78 0.17 var(--experience-accent-hue));
-  --experience-accent-ink: oklch(0.5 0.16 var(--experience-accent-hue));
+  --experience-accent-chroma: 0.19;
+  --experience-accent-hot-chroma: 0.17;
+  --experience-accent-ink-chroma: 0.16;
+  --experience-accent: oklch(0.72 var(--experience-accent-chroma) var(--experience-accent-hue));
+  --experience-accent-hot: oklch(0.78 var(--experience-accent-hot-chroma) var(--experience-accent-hue));
+  --experience-accent-ink: oklch(0.5 var(--experience-accent-ink-chroma) var(--experience-accent-hue));
+  --experience-accent-wash: color-mix(in srgb, var(--experience-accent) 8%, transparent);
+  --experience-accent-soft: color-mix(in srgb, var(--experience-accent) 14%, transparent);
+  --experience-accent-line: color-mix(in srgb, var(--experience-accent) 48%, transparent);
+  --experience-accent-strong: var(--experience-accent-hot);
   --experience-canvas: #08080b;
   --experience-raised: #111116;
   --experience-elevated: #18181e;
@@ -20,7 +27,9 @@
   --accent-soft: color-mix(in srgb, var(--experience-accent) 12%, transparent);
   --accent-contrast: var(--experience-on-orange);
   --experience-good: #4fdda0;
+  --experience-warning: #f2b84b;
   --experience-danger: #ff5d6c;
+  --experience-favourite: #ff5b9d;
   --experience-shadow: rgba(0, 0, 0, 0.42);
   --experience-page: 1180px;
   --experience-gutter: clamp(18px, 4vw, 48px);
@@ -35,6 +44,31 @@
   --experience-focus-outline: 3px solid color-mix(in srgb, var(--experience-accent) 58%, transparent);
   --experience-focus-shadow: 0 0 0 3px color-mix(in srgb, var(--experience-accent) 32%, transparent);
   --experience-font: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+}
+
+html[data-experience-accent-strength="subtle"] {
+  --experience-accent-chroma: 0.11;
+  --experience-accent-hot-chroma: 0.1;
+  --experience-accent-ink-chroma: 0.1;
+}
+
+html[data-experience-accent-strength="vivid"] {
+  --experience-accent-chroma: 0.23;
+  --experience-accent-hot-chroma: 0.21;
+  --experience-accent-ink-chroma: 0.2;
+}
+
+html[data-experience-theme="dim"] {
+  --experience-canvas: #151820;
+  --experience-raised: #1d212b;
+  --experience-elevated: #252a35;
+  --experience-soft: #303642;
+  --experience-line: rgba(255, 255, 255, 0.11);
+  --experience-line-strong: rgba(255, 255, 255, 0.2);
+  --experience-ink: #f4f5f8;
+  --experience-muted: #adb3bf;
+  --experience-dim: #7f8795;
+  --experience-shadow: rgba(0, 0, 0, 0.3);
 }
 
 html {

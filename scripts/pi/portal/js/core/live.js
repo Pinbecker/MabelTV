@@ -426,6 +426,16 @@
       if (button.dataset.viewButton === 'adult') refreshTmdbStatus().catch(() => {})
     })
     $$('[data-go]').forEach(button => button.onclick = () => {
+      if (button.dataset.go === 'appearance') {
+        history.replaceState({ settings: true }, '', '#system')
+        history.pushState({ appearance: true }, '', '#appearance')
+        openView('appearance')
+        return
+      }
+      if (button.id === 'appearanceBack' && location.hash === '#appearance') {
+        history.back()
+        return
+      }
       if (button.dataset.go === 'insights') {
         history.replaceState({ settings: true }, '', '#system')
         history.pushState({ viewingInsights: true }, '', '#insights')

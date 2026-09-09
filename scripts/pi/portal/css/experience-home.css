@@ -238,7 +238,7 @@ body.portal-v2 .home-favourite-mark {
   height: 22px;
   border-radius: 50%;
   background: rgba(8, 8, 11, 0.78);
-  color: var(--experience-orange);
+  color: var(--experience-favourite);
   font-size: 12px;
 }
 
