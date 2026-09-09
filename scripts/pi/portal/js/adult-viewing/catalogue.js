@@ -557,16 +557,25 @@ function scheduleAdultDiscovery() {
 
 function localAdultAction(detail) {
   if (!detail.local) return null
+  const titleSheet = $('#adultTitleSheet')
+  const titleReturnTo = portalSheets.returnTo(titleSheet)
+  const restoreTitle = () => restoreAdultTitleSheet(detail, titleReturnTo)
   if (detail.local.kind === 'film') {
     const film = (library?.adult_library || []).find(item => item.path === detail.local.path)
-    return film ? () => { portalSheets.dismiss($('#adultTitleSheet')); openWatchFilmSheet(film) } : null
+    return film ? () => {
+      portalSheets.suspend(titleSheet)
+      openWatchFilmSheet(film, 'library', restoreTitle)
+    } : null
   }
   if (detail.local.kind === 'channel-film') {
     const channel = (library?.channels || []).find(value =>
       Number(value.number) === Number(detail.local.channel))
     const programme = channel?.programmes?.find(value => value.name === detail.local.file)
     return channel && programme
-      ? () => { portalSheets.dismiss($('#adultTitleSheet')); openWatchProgrammeSheet(channel, programme) }
+      ? () => {
+        portalSheets.suspend(titleSheet)
+        openWatchProgrammeSheet(channel, programme, 'library', restoreTitle)
+      }
       : null
   }
   return null

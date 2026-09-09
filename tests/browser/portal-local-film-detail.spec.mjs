@@ -70,8 +70,65 @@ test('a local global-search film opens one rich card with playback controls', as
   await expect(page.locator('#adultTitleFilmHere')).toContainText('Play on this device')
   await expect(page.locator('#adultTitleLocal')).toBeHidden()
   await expect(page.locator('#adultTitleMore')).toBeVisible()
+  const treatment = await page.locator('#adultTitleSheet').evaluate(sheet => {
+    const eyebrow = sheet.querySelector('#adultTitleEyebrow')
+    const settings = sheet.querySelector('#adultTitleMore')
+    const probe = document.createElement('span')
+    probe.style.color = 'var(--experience-accent-ink)'
+    document.body.append(probe)
+    const accentInk = getComputedStyle(probe).color
+    probe.remove()
+    const tv = sheet.querySelector('#adultTitleFilmTv').getBoundingClientRect()
+    const here = sheet.querySelector('#adultTitleFilmHere').getBoundingClientRect()
+    return {
+      eyebrowLocal: eyebrow.classList.contains('is-mabeltv'),
+      eyebrowUsesAccentInk: getComputedStyle(eyebrow).color === accentInk,
+      settingsUsesAccentInk: getComputedStyle(settings).color === accentInk,
+      settingsInHeader: settings.parentElement.classList.contains('watch-film-summary'),
+      settingsIcon: settings.querySelector('use').getAttribute('href'),
+      playbackSameRow: Math.abs(tv.y - here.y) <= 1,
+      playbackSameHeight: Math.abs(tv.height - here.height) <= 1,
+      playbackHeight: tv.height,
+      playbackSubtextHidden: getComputedStyle(sheet.querySelector('#adultTitleFilmTv small')).display === 'none',
+    }
+  })
+  expect(treatment).toEqual({
+    eyebrowLocal: true,
+    eyebrowUsesAccentInk: true,
+    settingsUsesAccentInk: true,
+    settingsInHeader: true,
+    settingsIcon: '/portal/icons.svg#settings',
+    playbackSameRow: true,
+    playbackSameHeight: true,
+    playbackHeight: 44,
+    playbackSubtextHidden: true,
+  })
   await expect(page.locator('#adultProviderList .provider-mabeltv')).toHaveCount(1)
   await expect(page.locator('#adultProviderList .provider-mabeltv')).toHaveJSProperty('tagName', 'SPAN')
+})
+
+test('local film settings keep structured facts and compact collection controls', async ({ page }) => {
+  await page.goto('/')
+  await expect.poll(() => page.evaluate(() => Boolean(library))).toBe(true)
+  await page.evaluate(film => {
+    library.adult_folders = ['Thrillers', 'Drama']
+    library.adult_library = [{ ...film, folder: 'Thrillers', size: 2300000000 }]
+    openAdultFilmSheet(library.adult_library[0])
+  }, localFilm)
+  await expect(page.locator('#adultFilmSheet')).toBeVisible()
+  await expect(page.locator('#adultFilmSheetMeta')).toHaveClass(/is-title-facts/)
+  await expect(page.locator('#adultFilmSheetMeta .adult-title-fact > small'))
+    .toHaveText(['Year', 'Collection', 'Size', 'Quality'])
+  const controls = await page.locator('.adult-film-collection-controls').evaluate(root => {
+    const select = root.querySelector('select').getBoundingClientRect()
+    const button = root.querySelector('button').getBoundingClientRect()
+    return { sameRow: Math.abs(select.y - button.y) <= 1, selectWidth: select.width,
+      buttonWidth: button.width, height: Math.max(select.height, button.height) }
+  })
+  expect(controls.sameRow).toBe(true)
+  expect(controls.selectWidth).toBeLessThanOrEqual(170)
+  expect(controls.buttonWidth).toBeLessThan(90)
+  expect(controls.height).toBeLessThanOrEqual(36)
 })
 
 test('a matched local-library film uses the same rich card', async ({ page }) => {

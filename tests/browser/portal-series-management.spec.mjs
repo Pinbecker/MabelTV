@@ -70,6 +70,7 @@ test('series sheets use the full metadata catalogue with local availability over
   await expect(page.locator('#adultTitleSheet .watch-film-summary')).toHaveCSS('border-bottom-width', '1px')
   await expect(page.locator('#adultSeriesSheet')).toBeHidden()
   await expect(page.locator('#adultTitleName')).toHaveText('Fixture Series')
+  await expect(page.locator('#adultTitleSeasons .adult-season-card')).toHaveCount(2)
   await expect(page.locator('#adultTitleMeta .adult-title-fact').first().locator('small'))
     .toHaveText('Aired from')
   await expect(page.locator('#adultTitleMeta .adult-title-fact').first().locator('strong'))
@@ -80,7 +81,6 @@ test('series sheets use the full metadata catalogue with local availability over
   await expect(page.locator('#adultTitleMeta')).not.toContainText('Watched')
   await expect(page.locator('#adultTitleMeta')).not.toContainText('MabelTV')
   await expect(page.locator('#adultTitleOverview + #adultTitleIntents')).toBeVisible()
-  await expect(page.locator('#adultTitleSeasons .adult-season-card')).toHaveCount(2)
   await expect(page.locator('#adultTitleSeasons [data-season="1"] .adult-season-card-copy small'))
     .toContainText('1 of 3 on MabelTV')
   await expect(page.locator('#adultTitleSeasons [data-season="2"] .adult-season-card-copy small'))
@@ -91,10 +91,17 @@ test('series sheets use the full metadata catalogue with local availability over
   await expect(mabelProvider).toHaveJSProperty('tagName', 'SPAN')
   await expect(page.locator('#adultProviderList .provider-netflix')).toHaveJSProperty('tagName', 'BUTTON')
   await expect(page.locator('#adultTitleMore')).toBeVisible()
+  await expect(page.locator('#adultTitleMore use')).toHaveAttribute('href', '/portal/icons.svg#settings')
+  await page.screenshot({ path: testInfo.outputPath('series-card-header-gear.png') })
 
   await page.locator('#adultTitleSeasons [data-season="1"]').click()
   await expect(page.locator('#adultTitleSeasonSheet')).toBeVisible()
+  await expect(page.locator('#adultTitleSeasonSheet .portal-card-back')).toBeVisible()
   await expect(page.locator('#adultTitleSeasonEpisodes .adult-series-episode')).toHaveCount(3)
+  await expect(page.locator('#adultTitleSeasonMeta .adult-title-fact small'))
+    .toHaveText(['Episodes', 'On MabelTV', 'Watched'])
+  await expect(page.locator('#adultTitleSeasonMeta .adult-title-fact strong'))
+    .toHaveText(['3', '1', '0'])
   await expect(page.locator('#adultTitleSeasonEpisodes [data-episode="1"] .adult-episode-availability'))
     .toHaveText('On MabelTV')
   await expect(page.locator('#adultTitleSeasonEpisodes [data-episode="1"] .adult-series-episode-copy small'))
@@ -122,11 +129,21 @@ test('series sheets use the full metadata catalogue with local availability over
   expect(episodeAlignment.copy - episodeAlignment.artwork).toBeGreaterThanOrEqual(84)
   await expect(page.locator('#adultTitleSeasonEpisodes [data-episode="2"] .adult-episode-availability'))
     .toBeHidden()
-  await expect(page.locator('#adultTitleSeasonManagementTitle')).toHaveText('Series settings')
+  await expect(page.locator('#adultTitleSeasonSettings')).toBeVisible()
+  await page.locator('#adultTitleSeasonSettings').click()
+  const settings = page.locator('#adultTitleSeasonSettingsSheet')
+  await expect(settings).toBeVisible()
   await expect(page.locator('#adultTitleSeasonUpload')).toBeVisible()
   await expect(page.locator('#adultTitleSeasonDelete')).toHaveText(/Remove series from MabelTV/)
+  const settingsHeight = await settings.locator('article').evaluate(panel =>
+    panel.getBoundingClientRect().height)
+  const cardHeight = await page.evaluate(() => window.innerHeight)
+  expect(settingsHeight).toBeLessThan(cardHeight * 0.8)
+  await page.screenshot({ path: testInfo.outputPath('streaming-series-settings.png') })
+  await page.locator('#adultTitleSeasonSettingsClose').click()
+  await expect(page.locator('#adultTitleSeasonSheet')).toBeVisible()
 
-  await page.locator('#adultTitleSeasonClose').click()
+  await page.locator('#adultTitleSeasonSheet .portal-card-back').click()
   await expect(page.locator('#adultTitleSheet')).toBeVisible()
   await page.locator('#adultTitleClose').click()
   await expect(page.locator('#adultTitleSheet')).toBeHidden()
@@ -153,6 +170,11 @@ test('series sheets use the full metadata catalogue with local availability over
   await expect(page.locator('#adultTitleMore')).toBeHidden()
   await page.locator('#adultTitleSeasons [data-season="1"]').click()
   await expect(page.locator('#adultTitleSeasonEpisodes .adult-series-episode')).toHaveCount(3)
+  await expect(page.locator('#adultTitleSeasonMeta .adult-title-fact strong'))
+    .toHaveText(['3', '0', '0'])
+  await expect(page.locator('#adultTitleSeasonSettings')).toBeVisible()
+  await page.locator('#adultTitleSeasonSettings').click()
+  await expect(page.locator('#adultTitleSeasonSettingsSheet')).toBeVisible()
   await expect(page.locator('#adultTitleSeasonUpload')).toBeVisible()
   await expect(page.locator('#adultTitleSeasonMetadata')).toBeHidden()
   await expect(page.locator('#adultTitleSeasonRestart')).toBeHidden()
@@ -284,6 +306,20 @@ test('TV series rail includes local episodes and Up Next, without tinting a fals
   expect(state.watchedWhiteSpace).toBe('normal')
   expect(state.statusFits).toBe(true)
   expect(state.partWatchedTitles).toEqual(['Ludwig'])
+  await page.getByRole('button', { name: 'Watch', exact: true }).click()
+  await page.locator('#watchAdultTab').click()
+  await page.evaluate(() => renderAdultSeries())
+  const longTitle = page.locator('#adultSeriesRail .adult-series-card:first-child > span:last-child > strong')
+  await expect(longTitle).toBeVisible()
+  await longTitle.evaluate(element => {
+    element.textContent = 'The Lord of the Rings: The Rings of Power and the Longest Possible Subtitle'
+  })
+  const titleTreatment = await longTitle.evaluate(element => ({
+    clamp: getComputedStyle(element).webkitLineClamp,
+    lines: Math.round(element.getBoundingClientRect().height
+      / Number.parseFloat(getComputedStyle(element).lineHeight)),
+  }))
+  expect(titleTreatment).toEqual({ clamp: '2', lines: 2 })
   const queuedFacts = page.locator('#adultSeriesRail .adult-series-card')
     .filter({ hasText: 'Queued Show' }).locator('.adult-title-fact')
   await expect(queuedFacts).toHaveText(['Series2', 'Episodes14', 'Watched1'])
@@ -319,7 +355,45 @@ test('series progress automatically moves between the read-only Part Watched and
   expect(actions).toEqual(['part_watched', 'watched'])
 })
 
-test('Restart Watching clears the show once and returns past the More menu', async ({ page }, testInfo) => {
+test('episode actions stay compact and long streaming titles clear the close control', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'iphone-chromium', 'One phone engine covers compact menu geometry')
+  await openPortal(page)
+  await page.evaluate(() => {
+    $('#adultEpisodeLaunchEyebrow').textContent = 'The Miniature Wife · Series 1, Episode 1'
+    $('#adultEpisodeLaunchTitle').textContent = 'Lady Tomato and Mr F. Tomato Have Extremely Long Names'
+    portalSheets.open($('#adultEpisodeLaunchSheet'))
+  })
+  const launchGeometry = await page.locator('#adultEpisodeLaunchSheet').evaluate(sheet => {
+    const titleNode = sheet.querySelector('h2')
+    const title = titleNode.getBoundingClientRect()
+    const close = sheet.querySelector('.portal-sheet-close').getBoundingClientRect()
+    return { titleRight: title.right, closeLeft: close.left, titleLines: Math.round(
+      title.height / Number.parseFloat(getComputedStyle(titleNode).lineHeight)) }
+  })
+  expect(launchGeometry.titleRight).toBeLessThanOrEqual(launchGeometry.closeLeft)
+  expect(launchGeometry.titleLines).toBeGreaterThan(1)
+  await page.locator('#adultEpisodeLaunchClose').click()
+  await page.evaluate(() => {
+    const episode = { season: 1, episode: 1, path: 'Series 1/Episode 1.mp4',
+      display_name: 'Lady Tomato and Mr F. Tomato Have Extremely Long Names', browser_ready: true }
+    const series = { id: 'miniature-wife', title: 'The Miniature Wife', episodes: [episode],
+      season_count: 1, episode_count: 1, watched_count: 0, metadata: {} }
+    library.adult_series = [series]
+    openAdultEpisodeSheet(series, episode)
+  })
+  const episodeSheet = page.locator('#adultEpisodeSheet')
+  await expect(episodeSheet).toBeVisible()
+  await expect(episodeSheet.locator('.portal-card-back')).toHaveCount(0)
+  await expect(episodeSheet.locator('#adultEpisodeMore')).toHaveCount(0)
+  await expect(episodeSheet.locator('#adultEpisodeDownload')).toBeVisible()
+  await expect(episodeSheet.locator('#adultEpisodeDelete')).toBeVisible()
+  const panelHeight = await episodeSheet.locator('article').evaluate(panel =>
+    panel.getBoundingClientRect().height)
+  expect(panelHeight).toBeLessThan(await page.evaluate(() => window.innerHeight * 0.9))
+  await page.screenshot({ path: testInfo.outputPath('compact-episode-actions.png') })
+})
+
+test('Restart Watching clears the show once and returns past the settings menu', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One browser covers the restart sheet flow')
   await openPortal(page)
   await page.evaluate(() => {

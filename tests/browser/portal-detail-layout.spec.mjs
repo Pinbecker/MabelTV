@@ -186,7 +186,10 @@ for (const theme of ['light', 'dark']) {
     await page.evaluate(() => openAdultSeasonSheet(library.adult_series[0], 3))
     await page.screenshot({ path: testInfo.outputPath('season.png') })
     await expectHeaderClear(page, '#adultSeasonSheet', '#adultSeasonClose')
-    await expect(page.locator('#adultSeasonMeta')).toHaveText('0 episodes · 0 watched')
+    await expect(page.locator('#adultSeasonMeta .adult-title-fact')).toHaveCount(3)
+    await expect(page.locator('#adultSeasonMeta')).toContainText('Episodes0')
+    await expect(page.locator('#adultSeasonMeta')).toContainText('On MabelTV0')
+    await expect(page.locator('#adultSeasonMeta')).toContainText('Watched0')
     const rows = await page.locator('#adultSeasonSheet .adult-season-tools button').evaluateAll(buttons => buttons.map(button => {
       const box = button.getBoundingClientRect()
       const icon = button.querySelector('.icon').getBoundingClientRect()
@@ -287,6 +290,7 @@ for (const theme of ['light', 'dark']) {
           Math.round(control.getBoundingClientRect().top))).size,
         minControlHeight: Math.min(...toolGroups.map(control =>
           control.getBoundingClientRect().height)),
+        controlHeights: toolGroups.map(control => control.getBoundingClientRect().height),
         selectAppearances: selects.map(select => getComputedStyle(select).appearance),
         layoutSwitcherCount: tools.querySelectorAll('[data-viewing-layout]').length,
         firstRowCards: cards.filter(card =>
@@ -312,6 +316,19 @@ for (const theme of ['light', 'dark']) {
     else expect(layout.firstRowCards).toBeGreaterThanOrEqual(5)
     expect(layout.firstCardMeta).toBe('2022 · TV series')
     expect(layout.rightEdge).toBeLessThanOrEqual(layout.viewport)
+    const filmFilterHeights = await page.evaluate(() => {
+      const filters = document.querySelector('.watch-film-filters').cloneNode(true)
+      filters.style.position = 'fixed'
+      filters.style.inset = '0 auto auto 0'
+      filters.style.width = '360px'
+      filters.style.visibility = 'hidden'
+      document.body.append(filters)
+      const heights = [...filters.querySelectorAll('.adult-viewing-select')]
+        .map(control => control.getBoundingClientRect().height)
+      filters.remove()
+      return heights
+    })
+    expect(filmFilterHeights).toEqual(layout.controlHeights)
     await page.locator('#adultViewingSearch').fill('Series 10')
     await expect(page.locator('.adult-viewing-row')).toHaveCount(1)
     await page.locator('#adultViewingSearchClear').click()

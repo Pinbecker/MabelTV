@@ -519,18 +519,8 @@ body.portal-v2 .adult-series-section { margin: 0 0 10px; }
 body.portal-v2 .watch-film-filters {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 6px;
   margin: 0 0 14px;
-}
-body.portal-v2 .watch-film-filters select {
-  min-width: 0;
-  min-height: 44px;
-  margin: 0;
-  height: 44px;
-  background-color: var(--experience-raised);
-  padding: 8px 28px 8px 12px;
-  font-size: 13px;
-  text-overflow: ellipsis;
 }
 body.portal-v2 .adult-series-section .watch-library-head { justify-content: flex-start; }
 body.portal-v2 .adult-series-title-row { display: flex; align-items: center; gap: 8px; }
@@ -592,7 +582,15 @@ body.portal-v2 .adult-series-sheet-art img { width: 100%; height: 100%; object-f
 body.portal-v2 .adult-series-card > span:last-child { min-width: 0; display: grid; gap: 5px; }
 body.portal-v2 .adult-series-card strong,
 body.portal-v2 .adult-series-card small { overflow: hidden; text-overflow: ellipsis; }
-body.portal-v2 .adult-series-card strong { font-size: 15px; line-height: 1.15; }
+body.portal-v2 .adult-series-card > span:last-child > strong {
+  min-height: 2.3em;
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 1.15;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
 body.portal-v2 .adult-series-card small { color: var(--experience-dim); font-size: 10px; line-height: 1.45; }
 body.portal-v2 .adult-series-card .adult-series-card-facts {
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -627,6 +625,15 @@ body.portal-v2 .adult-series-sheet-head {
 body.portal-v2 :is(.adult-series-sheet-head, .adult-season-sheet-head) > div { min-width: 0; overflow-wrap: anywhere; }
 body.portal-v2 .adult-series-sheet-head h2 { margin: 2px 0 3px; font-size: 28px; letter-spacing: -.04em; }
 body.portal-v2 .adult-series-sheet-head p:last-child { margin: 0; color: var(--experience-dim); font-size: 10px; }
+body.portal-v2 .adult-series-header-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px 9px;
+  margin-top: 6px;
+}
+body.portal-v2 .section-kicker.is-mabeltv { color: var(--experience-accent-ink); }
+body.portal-v2 .adult-series-header-facts .adult-title-fact > small { font-size: 6px; }
+body.portal-v2 .adult-series-header-facts .adult-title-fact > strong { font-size: 9px; }
 body.portal-v2 .adult-series-sheet-poster,
 body.portal-v2 .adult-series-sheet-art { display: block; width: 76px; aspect-ratio: 2 / 3; overflow: hidden; border-radius: 8px; background: var(--experience-elevated); }
 body.portal-v2 .adult-series-overview { margin: 0; color: var(--experience-muted); font-size: 11px; line-height: 1.55; }

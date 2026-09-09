@@ -198,11 +198,13 @@ function renderAdultLibraryContents() {
       $('#adultFilmSheetTitle').textContent = title
       $('#adultFilmSheetEyebrow').textContent = 'Film settings'
       const metaRoot = $('#adultFilmSheetMeta')
-      metaRoot.innerHTML = ''
-      ;[metadata.year, film.folder || 'Unfiled', `${(Number(film.size || 0) / 1073741824).toFixed(2)} GB`, film.playback_state === 'optimised' ? 'Optimised for Pi' : 'Original quality'].filter(Boolean).forEach(value => {
-        const span = document.createElement('span')
-        span.textContent = value
-        metaRoot.append(span)
+      renderAdultTitleMetadata(metaRoot, {}, {
+        facts: [
+          { label: 'Year', value: metadata.year },
+          { label: 'Collection', value: film.folder || 'Unfiled' },
+          { label: 'Size', value: `${(Number(film.size || 0) / 1073741824).toFixed(2)} GB` },
+          { label: 'Quality', value: film.playback_state === 'optimised' ? 'Optimised for Pi' : 'Original' },
+        ],
       })
       $('#adultFilmSheetOverview').textContent = metadata.overview || 'Manage this film without changing where you left off.'
       const artwork = metadata.poster ? artworkUrl(metadata.poster) : ''

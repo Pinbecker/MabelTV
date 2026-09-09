@@ -101,7 +101,7 @@ test('Explore series opens a catalogue-only season checklist', async ({ page }, 
   await expect(page.locator('#adultTitleFilmActions')).toBeHidden()
   await page.locator('#adultTitleSeasons .adult-season-card').first().click()
   await expect(page.locator('#adultTitleSeasonSheet')).toBeVisible()
-  await expect(page.locator('#adultTitleSeasonManagement')).toBeHidden()
+  await expect(page.locator('#adultTitleSeasonSettings')).toBeHidden()
   const episode = page.locator('#adultTitleSeasonEpisodes .adult-streaming-episode-toggle').first()
   await expect(page.locator('#adultTitleSeasonEpisodes .adult-streaming-episode-toggle')).toHaveCount(3)
   await episode.click()
@@ -109,6 +109,31 @@ test('Explore series opens a catalogue-only season checklist', async ({ page }, 
   await episode.click()
   await expect(episode).toHaveAttribute('aria-pressed', 'false')
   await expect(page.locator('#adultTitleSeasonEpisodes article[role="button"]')).toHaveCount(0)
+})
+
+test('viewing actions update before their background refresh completes', async ({ page }) => {
+  await page.goto('/')
+  const result = await page.evaluate(async () => {
+    const originalApi = window.api
+    const originalLoad = window.loadAdultViewing
+    let refreshStarted = false
+    let releaseRefresh
+    window.api = async () => ({ viewing: { manual_state: 'watched' } })
+    window.loadAdultViewing = () => {
+      refreshStarted = true
+      return new Promise(resolve => { releaseRefresh = resolve })
+    }
+    try {
+      const detail = { media_type: 'movie', tmdb_id: 123, title: 'Fast update', viewing: {} }
+      const viewing = await updateAdultViewing(detail, 'watched')
+      return { refreshStarted, returned: viewing.manual_state, detail: detail.viewing.manual_state }
+    } finally {
+      releaseRefresh?.()
+      window.api = originalApi
+      window.loadAdultViewing = originalLoad
+    }
+  })
+  expect(result).toEqual({ refreshStarted: true, returned: 'watched', detail: 'watched' })
 })
 
 

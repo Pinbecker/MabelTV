@@ -24,6 +24,16 @@ function adultTitleSeasonAvailability(detail, season) {
   return local ? `${local} of ${total} on MabelTV` : 'Not on MabelTV'
 }
 
+function renderAdultTitleSeasonHeader(detail, season, episodeCount = Number(season.episodes || 0),
+  watchedCount = Number(season.watched_count || 0)) {
+  const localCount = adultTitleLocalSeasonEpisodes(detail, season.number).length
+  renderAdultSeriesHeaderFacts($('#adultTitleSeasonMeta'), [
+    { label: 'Episodes', value: String(episodeCount) },
+    { label: 'On MabelTV', value: String(localCount) },
+    { label: 'Watched', value: String(watchedCount) },
+  ])
+}
+
 function adultStreamingArtwork(detail, season, result = null, className = 'adult-season-card-art') {
   const art = document.createElement('span')
   art.className = className
@@ -98,21 +108,22 @@ function findLocalAdultEpisode(detail, seasonNumber, episodeNumber) {
   return episode ? { series, episode } : null
 }
 
-function restoreAdultTitleSheet(detail) {
+function restoreAdultTitleSheet(detail, returnTo = null) {
   const sheet = $('#adultTitleSheet')
-  portalSheets.open(sheet, { focus: sheet.querySelector('.watch-film-panel') })
+  portalSheets.open(sheet, { returnTo, focus: sheet.querySelector('.watch-film-panel') })
   renderAdultTitleDetail(detail, false)
 }
 
 async function openAdultEpisodeDestination(detail, season, episode, seasonCard = null) {
   const local = findLocalAdultEpisode(detail, season.number, episode.number)
   if (local) {
+    const titleSheet = $('#adultTitleSheet')
+    const titleReturnTo = portalSheets.returnTo(titleSheet)
     portalSheets.dismiss($('#adultEpisodeLaunchSheet'))
-    portalSheets.dismiss($('#adultTitleSeasonSheet'))
-    portalSheets.dismiss($('#adultTitleSheet'))
+    portalSheets.suspend(seasonCard ? $('#adultTitleSeasonSheet') : titleSheet)
     openAdultEpisodeSheet(local.series, local.episode, () => {
       if (seasonCard) openAdultTitleSeason(detail, season, seasonCard, episode.number)
-      else restoreAdultTitleSheet(detail)
+      else restoreAdultTitleSheet(detail, titleReturnTo)
     })
     return
   }
@@ -250,7 +261,7 @@ function adultStreamingEpisodeRow(detail, season, result, episode, card) {
       sync()
       syncAdultStreamingSeasonCard(card, season, detail)
       $('#adultTitleSeasonWatched').syncSeasonStatus(statusCount, result.episodes.length)
-      $('#adultTitleSeasonMeta').textContent = `${result.episodes.length} episode${result.episodes.length === 1 ? '' : 's'} · ${adultTitleSeasonAvailability(detail, season)} · ${statusCount} watched`
+      renderAdultTitleSeasonHeader(detail, season, result.episodes.length, statusCount)
       syncAdultTitleNextEpisode(detail)
     }
     applyEpisodeState(next)
@@ -304,6 +315,15 @@ function configureAdultTitleSeasonManagement(detail, season, card) {
   const localSeason = Boolean(localSeries
     && (localSeries.seasons || []).map(Number).includes(Number(season.number)))
   const upload = $('#adultTitleSeasonUpload')
+  const settingsSheet = $('#adultTitleSeasonSettingsSheet')
+  $('#adultTitleSeasonSettings').classList.toggle('hidden', detail.catalogue_only === true)
+  $('#adultTitleSeasonSettingsEyebrow').textContent = `${detail.title} · Series ${season.number}`
+  $('#adultTitleSeasonSettings').onclick = () => {
+    portalSheets.suspend($('#adultTitleSeasonSheet'))
+    portalSheets.open(settingsSheet, {
+      returnTo: () => openAdultTitleSeason(detail, season, card),
+    })
+  }
   upload.disabled = false
   $('#adultTitleSeasonUploadHint').textContent = localEpisodes.length
     ? `Add more episodes to Series ${season.number}` : `Add Series ${season.number} episodes to MabelTV`
@@ -311,6 +331,7 @@ function configureAdultTitleSeasonManagement(detail, season, card) {
     if (upload.disabled) return
     upload.disabled = true
     try {
+      portalSheets.dismiss(settingsSheet)
       const series = await ensureAdultTitleSeasonStorage(detail, season)
       const returnTo = () => openAdultTitleSeason(detail, season, card)
       openAdultSeriesUpload(series, season.number,
@@ -337,6 +358,7 @@ function configureAdultTitleSeasonManagement(detail, season, card) {
   metadata.onclick = localSeason && tmdbConfigured ? async () => {
     metadata.disabled = true
     try {
+      portalSheets.dismiss(settingsSheet)
       await api('/api/tmdb/adult-series/apply', { method: 'POST', body: JSON.stringify({
         series: localSeries.id, tmdb_id: detail.tmdb_id,
       }) })
@@ -346,6 +368,7 @@ function configureAdultTitleSeasonManagement(detail, season, card) {
     } catch (error) { showError(error) } finally { metadata.disabled = false }
   } : null
   restart.onclick = localSeason ? () => {
+    portalSheets.dismiss(settingsSheet)
     portalSheets.dismiss($('#adultTitleSeasonSheet'))
     openAdultSeriesRestartSheet(localSeries, season.number,
       () => openAdultTitleSeason(detail, season, card))
@@ -354,6 +377,7 @@ function configureAdultTitleSeasonManagement(detail, season, card) {
     if (!confirm(`Remove every local episode in Series ${season.number} of “${detail.title}” from MabelTV?`)) return
     remove.disabled = true
     try {
+      portalSheets.dismiss(settingsSheet)
       await api('/api/manage', { method: 'POST', body: JSON.stringify({
         action: 'trash-adult-series', series: localSeries.id,
         scope: 'season', season: season.number,
@@ -373,11 +397,12 @@ async function openAdultTitleSeason(detail, season, card, targetEpisode = 0) {
   const revision = ++adultSeasonOpenRevision
   const titleSheet = $('#adultTitleSheet')
   const seasonSheet = $('#adultTitleSeasonSheet')
+  const titleReturnTo = portalSheets.returnTo(titleSheet)
   seasonSheet.classList.toggle('is-catalogue-only', detail.catalogue_only === true)
-  portalSheets.dismiss(titleSheet)
+  portalSheets.suspend(titleSheet)
   $('#adultTitleSeasonEyebrow').textContent = detail.title
   $('#adultTitleSeasonName').textContent = `Series ${season.number}`
-  $('#adultTitleSeasonMeta').textContent = `${adultSeasonSummary(season)} · ${adultTitleSeasonAvailability(detail, season)}`
+  renderAdultTitleSeasonHeader(detail, season)
   $('#adultTitleSeasonEpisodeHeading').textContent = `Series ${season.number} episodes`
   $('#adultTitleSeasonEpisodeCount').textContent = `${Number(season.episodes || 0)} total`
   $('#adultTitleSeasonOverview').classList.add('hidden')
@@ -396,8 +421,7 @@ async function openAdultTitleSeason(detail, season, card, targetEpisode = 0) {
   }))
   portalSheets.open(seasonSheet, {
     returnTo: () => {
-      portalSheets.open(titleSheet, { focus: titleSheet.querySelector('.watch-film-panel') })
-      renderAdultTitleDetail(detail, false)
+      restoreAdultTitleSheet(detail, titleReturnTo)
     },
   })
   configureAdultTitleSeasonManagement(detail, season, card)
@@ -406,7 +430,7 @@ async function openAdultTitleSeason(detail, season, card, targetEpisode = 0) {
     if (revision !== adultSeasonOpenRevision) return
     season.watched_count = result.episodes.filter(episode => episode.watched).length
     const statusCount = season.watched_count
-    $('#adultTitleSeasonMeta').textContent = `${result.episodes.length} episode${result.episodes.length === 1 ? '' : 's'} · ${adultTitleSeasonAvailability(detail, season)} · ${statusCount} watched`
+    renderAdultTitleSeasonHeader(detail, season, result.episodes.length, statusCount)
     $('#adultTitleSeasonEpisodeCount').textContent = `${result.episodes.length} total`
     const overview = $('#adultTitleSeasonOverview')
     overview.textContent = result.overview || season.overview || ''

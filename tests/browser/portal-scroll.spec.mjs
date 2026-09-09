@@ -131,7 +131,7 @@ test('library refresh keeps current position even if the user moves while it loa
   expect(await scrollY(page)).toBeCloseTo(moved, 0)
 })
 
-test('returning from a numbered series restores the show sheet position', async ({ page }) => {
+test('returning from a numbered series restores the show sheet position', async ({ page }, testInfo) => {
   await openPortal(page)
   await page.evaluate(() => {
     const series = { id: 'long-show', title: 'Long show', seasons: Array.from({ length: 20 }, (_, i) => i + 1),
@@ -141,13 +141,23 @@ test('returning from a numbered series restores the show sheet position', async 
     library.adult_series = [series]
     openAdultSeriesSheet(series)
   })
+  await expect(page.locator('#adultSeriesMore')).toBeVisible()
+  await expect(page.locator('#adultSeriesMore use')).toHaveAttribute('href', '/portal/icons.svg#settings')
+  await page.screenshot({ path: testInfo.outputPath('local-series-card-header-gear.png') })
+  await page.locator('#adultSeriesMore').click()
+  await expect(page.locator('#adultSeriesMoreSheet')).toBeVisible()
+  const optionsHeight = await page.locator('#adultSeriesMoreSheet > article')
+    .evaluate(element => element.getBoundingClientRect().height)
+  expect(optionsHeight).toBeLessThan(await page.evaluate(() => window.innerHeight * 0.8))
+  await page.locator('#adultSeriesMoreClose').click()
+  await expect(page.locator('#adultSeriesSheet')).toBeVisible()
   const panel = page.locator('#adultSeriesSheet .library-sheet-body')
   const season = page.locator('#adultSeriesEpisodes .adult-season-card').nth(12)
   await season.scrollIntoViewIfNeeded()
   const before = await panel.evaluate(element => element.scrollTop)
   expect(before).toBeGreaterThan(500)
   await season.click()
-  await page.locator('#adultSeasonClose').click()
+  await page.locator('#adultSeasonSheet .portal-card-back').click()
   await expect(page.locator('#adultSeriesSheet')).toBeVisible()
   await settled(page)
   expect(await panel.evaluate(element => element.scrollTop)).toBeCloseTo(before, 0)
@@ -204,7 +214,7 @@ test('USB remembers child folders and ignores an obsolete browse response', asyn
   await expect(page.locator('#usbFolderTitle')).toHaveText('Drive root')
 })
 
-test('episode back and collection selection keep the sheet position', async ({ page }) => {
+test('episode back and collection selection keep the sheet position', async ({ page }, testInfo) => {
   await openPortal(page)
   await page.evaluate(() => {
     const series = { id: 'episodes', title: 'Many episodes', seasons: [1], season_count: 1, episode_count: 50,
@@ -213,12 +223,24 @@ test('episode back and collection selection keep the sheet position', async ({ p
     library.adult_series = [series]
     openAdultSeasonSheet(series, 1)
   })
+  await expect(page.locator('#adultSeasonSettings')).toBeVisible()
+  await expect(page.locator('#adultSeasonUpload')).toBeHidden()
+  await page.locator('#adultSeasonSettings').click()
+  await expect(page.locator('#adultSeasonSettingsSheet')).toBeVisible()
+  await expect(page.locator('#adultSeasonSettingsSheet')).not.toContainText('Manage series')
+  await expect(page.locator('#adultSeasonUpload')).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('local-series-settings.png') })
+  await page.locator('#adultSeasonSettingsClose').click()
+  await expect(page.locator('#adultSeasonSheet')).toBeVisible()
   const panel = page.locator('#adultSeasonSheet .library-sheet-body')
   const episode = page.locator('#adultSeasonEpisodes button').nth(25)
   await episode.scrollIntoViewIfNeeded()
   const before = await panel.evaluate(element => element.scrollTop)
   expect(before).toBeGreaterThan(1000)
   await episode.click()
+  const episodePanelHeight = await page.locator('#adultEpisodeSheet > article')
+    .evaluate(element => element.getBoundingClientRect().height)
+  expect(episodePanelHeight).toBeLessThan(await page.evaluate(() => window.innerHeight * 0.9))
   await page.locator('#adultEpisodeClose').click()
   await expect(page.locator('#adultSeasonSheet')).toBeVisible()
   await settled(page)

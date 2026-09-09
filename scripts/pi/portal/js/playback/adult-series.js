@@ -301,7 +301,10 @@
     function openAdultSeriesMoreSheet(series, returnTo = null, parentReturn = null) {
       const current = library?.adult_series?.find(value => value.id === series.id) || series
       $('#adultSeriesMoreTitle').textContent = current.title
-      $('#adultSeriesMoreMeta').textContent = `${current.season_count} series · ${current.episode_count} episodes · More show options`
+      renderAdultSeriesHeaderFacts($('#adultSeriesMoreMeta'), [
+        { label: 'Series', value: String(current.season_count) },
+        { label: 'Episodes', value: String(current.episode_count) },
+      ])
       $('#adultSeriesRestart').onclick = () => {
         closeAdultSeriesMoreSheet(false)
         openAdultSeriesRestartSheet(current, null,
@@ -358,11 +361,6 @@
       const dialog = $('#adultEpisodeSheet')
       portalSheets.close(dialog, { restore: restoreParent })
       selectedAdultEpisode = null
-    }
-
-    function closeAdultEpisodeMoreSheet(restoreParent = true) {
-      const dialog = $('#adultEpisodeMoreSheet')
-      portalSheets.close(dialog, { restore: restoreParent })
     }
 
     function returnToAdultSeasonSheet() {
@@ -428,18 +426,8 @@
         closeAdultEpisodeSheet(false)
         openAdultSeriesViewing(current)
       }
-      $('#adultEpisodeMore').onclick = () => {
-        $('#adultEpisodeMoreEyebrow').textContent = `${series.title} · Series ${episode.season}`
-        $('#adultEpisodeMoreTitle').textContent = episode.display_name
-        $('#adultEpisodeMoreMeta').textContent = `S${String(episode.season).padStart(2, '0')} E${String(episode.episode).padStart(2, '0')} · More episode options`
-        closeAdultEpisodeSheet(false)
-        const dialog = $('#adultEpisodeMoreSheet')
-        portalSheets.open(dialog, {
-          returnTo: () => openAdultEpisodeSheet(current, episode, returnTo),
-        })
-      }
       $('#adultEpisodeDownload').onclick = () => {
-        closeAdultEpisodeMoreSheet(false)
+        closeAdultEpisodeSheet(false)
         downloadToDevice(source, `${series.title} - ${episode.display_name}`)
       }
       const removeProgress = $('#adultEpisodeRemoveProgress')
@@ -451,13 +439,13 @@
           onCleared: () => {
             episode.remote_position = 0
             episode.remote_last_watched = 0
-            closeAdultEpisodeMoreSheet(false)
+            closeAdultEpisodeSheet(false)
           },
         }).catch(showError)
       } : null
       $('#adultEpisodeDelete').onclick = async () => {
         if (!confirm(`Move “${episode.display_name}” to the recycle bin?`)) return
-        closeAdultEpisodeMoreSheet(false)
+        closeAdultEpisodeSheet(false)
         try {
           await manage('trash-adult-series', {
             series: series.id, scope: 'episode', file: episode.path,
@@ -570,6 +558,21 @@
       return button
     }
 
+    function renderAdultSeriesHeaderFacts(root, facts) {
+      root.replaceChildren()
+      root.className = 'adult-series-header-facts'
+      facts.filter(fact => fact?.value !== undefined && fact?.value !== null).forEach(fact => {
+        const item = document.createElement('span')
+        item.className = 'adult-title-fact'
+        const label = document.createElement('small')
+        label.textContent = fact.label
+        const value = document.createElement('strong')
+        value.textContent = fact.value
+        item.append(label, value)
+        root.append(item)
+      })
+    }
+
     function openAdultSeasonSheet(series, season, returnTo = null, targetPath = '') {
       const current = library?.adult_series?.find(value => value.id === series.id) || series
       const number = Number(season)
@@ -578,10 +581,15 @@
       $('#adultSeasonEyebrow').textContent = current.title
       $('#adultSeasonTitle').textContent = `Series ${number}`
       const watched = episodes.filter(episode => episode.watched).length
-      $('#adultSeasonMeta').textContent = `${episodes.length} episode${episodes.length === 1 ? '' : 's'} · ${watched} watched`
+      renderAdultSeriesHeaderFacts($('#adultSeasonMeta'), [
+        { label: 'Episodes', value: String(episodes.length) },
+        { label: 'On MabelTV', value: String(episodes.length) },
+        { label: 'Watched', value: String(watched) },
+      ])
       $('#adultSeasonArtwork').replaceChildren(adultSeasonArtwork(
         current, episodes, 'adult-season-sheet-artwork'))
       $('#adultSeasonUploadHint').textContent = `Upload directly into Series ${number}`
+      $('#adultSeasonSettingsEyebrow').textContent = `${current.title} · Series ${number}`
       $('#adultSeasonEpisodeTitle').textContent = `Series ${number} episodes`
       $('#adultSeasonEpisodeCount').textContent = `${episodes.length} total`
       const markSeason = async targetWatched => {
@@ -656,15 +664,30 @@
           messageTag: 'span',
         }))
       }
-      $('#adultSeasonUpload').onclick = () => openAdultSeriesUpload(current, number)
+      const settingsSheet = $('#adultSeasonSettingsSheet')
+      $('#adultSeasonSettings').onclick = () => {
+        portalSheets.suspend($('#adultSeasonSheet'))
+        portalSheets.open(settingsSheet, {
+          returnTo: () => openAdultSeasonSheet(current, number, returnTo),
+        })
+      }
+      $('#adultSeasonUpload').onclick = () => {
+        portalSheets.dismiss(settingsSheet)
+        openAdultSeriesUpload(current, number)
+      }
       $('#adultSeasonMetadata').disabled = !tmdbConfigured
       $('#adultSeasonMetadata').onclick = () => {
+        portalSheets.dismiss(settingsSheet)
         closeAdultSeasonSheet(false)
         scanAdultSeriesTmdb(current, () => openAdultSeasonSheet(current, number, returnTo))
       }
-      $('#adultSeasonRestart').onclick = () => openAdultSeriesRestartSheet(current, number)
+      $('#adultSeasonRestart').onclick = () => {
+        portalSheets.dismiss(settingsSheet)
+        openAdultSeriesRestartSheet(current, number)
+      }
       $('#adultSeasonDelete').onclick = async () => {
         if (!confirm(`Move every episode in Series ${number} of “${current.title}” to the recycle bin?`)) return
+        portalSheets.dismiss(settingsSheet)
         closeAdultSeasonSheet(false)
         try {
           await manage('trash-adult-series', {
@@ -683,7 +706,11 @@
       selectedAdultSeries = { series: current, returnTo }
       const syncSeriesHeader = () => {
         current.watched_count = (current.episodes || []).filter(episode => episode.watched).length
-        $('#adultSeriesSheetMeta').textContent = `${current.season_count} series · ${current.episode_count} episodes · ${current.watched_count} watched`
+        renderAdultSeriesHeaderFacts($('#adultSeriesSheetMeta'), [
+          { label: 'Series', value: String(current.season_count) },
+          { label: 'Episodes', value: String(current.episode_count) },
+          { label: 'Watched', value: String(current.watched_count) },
+        ])
         const next = nextLocalEpisodeAfterProgress(current.episodes,
           episode => episode.watched === true)
         const nextButton = $('#adultSeriesNextEpisode')

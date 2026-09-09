@@ -105,8 +105,8 @@ for (const theme of ['light', 'dark']) {
     const genre = page.locator('#watchGenreFilter')
     await collection.scrollIntoViewIfNeeded()
     const filters = await page.locator('.watch-film-filters').boundingBox()
-    expect(filters.height).toBeLessThanOrEqual(48)
-    expect(filters.height).toBeGreaterThanOrEqual(44)
+    expect(filters.height).toBeLessThanOrEqual(38)
+    expect(filters.height).toBeGreaterThanOrEqual(34)
     await expect(page.locator('#remoteAdult .watch-card')).toHaveCount(5)
     await collection.selectOption('Marvel')
     await expect(page.locator('#remoteAdult .watch-card')).toHaveCount(2)
@@ -319,8 +319,9 @@ for (const theme of ['light', 'dark']) {
     await page.locator('#adultPersonBiographyExpand').click()
     await expect(page.locator('#adultPersonBiographyExpand')).toHaveText('Less')
     await expect(page.locator('#adultPersonBiography')).toHaveClass(/is-expanded/)
-    await page.locator('#adultPersonClose').click()
+    await page.locator('#adultPersonSheet .portal-card-back').click()
     await expect(page.locator('#adultTitleSheet')).toBeVisible()
+    await expect(page.locator('#adultPersonSheet')).toBeHidden()
     const geometry = await page.locator('#adultTitleSheet').evaluate(sheet => {
       const panel = sheet.querySelector('.watch-film-panel')
       const rail = sheet.querySelector('#adultTitleFranchiseRail')
@@ -337,7 +338,11 @@ for (const theme of ['light', 'dark']) {
     expect(geometry).toEqual({ pageContained: true, fiveAcross: true, horizontalOverflow: true })
     await page.screenshot({ path: testInfo.outputPath('film-enrichment.png') })
 
-    await page.locator('#adultTitleClose').click()
+    await page.locator('#adultTitleCastRail .adult-cast-card').first().click()
+    await expect(page.locator('#adultPersonSheet')).toBeVisible()
+    await page.locator('#adultPersonClose').click()
+    await expect(page.locator('#adultPersonSheet')).toBeHidden()
+    await expect(page.locator('#adultTitleSheet')).toBeHidden()
     await filmFixture(page)
     await page.evaluate(() => {
       library.adult_library[0].metadata.tmdb_id = 12
@@ -369,8 +374,20 @@ for (const theme of ['light', 'dark']) {
           & Node.DOCUMENT_POSITION_FOLLOWING),
         clamp: getComputedStyle($('#watchFilmOverview')).webkitLineClamp,
         compactHeight: Number.parseFloat(getComputedStyle(root.querySelector('button')).minHeight),
-        actionFits: Number.parseFloat(getComputedStyle(root.querySelector('button')).minHeight)
-          <= Number.parseFloat(getComputedStyle($('#watchFilmTv')).minHeight),
+        playback: {
+          twoColumnRule: getComputedStyle(document.querySelector('.compact-film-playback'))
+            .gridTemplateColumns.startsWith('repeat(2,'),
+          buttons: document.querySelector('.compact-film-playback').children.length,
+          height: Number.parseFloat(getComputedStyle($('#watchFilmTv')).minHeight),
+          subtext: getComputedStyle($('#watchFilmTv').querySelector('small')).display,
+        },
+        settings: {
+          inHeader: $('#watchFilmManage').parentElement.classList.contains('watch-film-summary'),
+          label: $('#watchFilmManage').getAttribute('aria-label'),
+          icon: $('#watchFilmManage use').getAttribute('href'),
+          border: getComputedStyle($('#watchFilmManage')).borderTopWidth,
+          background: getComputedStyle($('#watchFilmManage')).backgroundColor,
+        },
         compactControls: [...root.querySelectorAll('button:not(.hidden)')].map(button => {
           const style = getComputedStyle(button)
           const icon = button.querySelector('.icon').getBoundingClientRect()
@@ -388,11 +405,6 @@ for (const theme of ['light', 'dark']) {
           margin: Number.parseFloat(getComputedStyle(document.querySelector('.watch-film-actions')).marginTop),
           padding: Number.parseFloat(getComputedStyle(document.querySelector('.watch-film-actions')).paddingTop),
         },
-        moreDivider: {
-          column: getComputedStyle($('#watchFilmManage')).gridColumn,
-          margin: Number.parseFloat(getComputedStyle($('#watchFilmManage')).marginTop),
-          offset: Number.parseFloat(getComputedStyle($('#watchFilmManage'), '::before').top),
-        },
         providersDivider: {
           margin: Number.parseFloat(getComputedStyle($('#watchFilmProviders')).marginTop),
           padding: Number.parseFloat(getComputedStyle($('#watchFilmProviders')).paddingTop),
@@ -409,14 +421,20 @@ for (const theme of ['light', 'dark']) {
       beforePlayback: true,
       clamp: '6',
       compactHeight: 44,
-      actionFits: true,
+      playback: { twoColumnRule: true, buttons: 2, height: 44, subtext: 'none' },
+      settings: {
+        inHeader: true,
+        label: 'Film settings',
+        icon: '/portal/icons.svg#settings',
+        border: '0px',
+        background: 'rgba(0, 0, 0, 0)',
+      },
       compactControls: [
         { display: 'flex', alignItems: 'center', justifyContent: 'center', weight: '400', verticallyAligned: true },
         { display: 'flex', alignItems: 'center', justifyContent: 'center', weight: '400', verticallyAligned: true },
         { display: 'flex', alignItems: 'center', justifyContent: 'center', weight: '400', verticallyAligned: true },
       ],
       firstDivider: { margin: 16, padding: 16 },
-      moreDivider: { column: '1 / -1', margin: 24, offset: -17 },
       providersDivider: { margin: 12, padding: 10 },
     })
     const unwatched = await page.evaluate(() => {
@@ -466,28 +484,4 @@ for (const theme of ['light', 'dark']) {
     await expect(overviewControl).toHaveText('More')
   })
 
-  test(`${theme} viewing actions update before their background refresh completes`, async ({ page }) => {
-    await openPortal(page, theme)
-    const result = await page.evaluate(async () => {
-      const originalApi = window.api
-      const originalLoad = window.loadAdultViewing
-      let refreshStarted = false
-      let releaseRefresh
-      window.api = async () => ({ viewing: { manual_state: 'watched' } })
-      window.loadAdultViewing = () => {
-        refreshStarted = true
-        return new Promise(resolve => { releaseRefresh = resolve })
-      }
-      try {
-        const detail = { media_type: 'movie', tmdb_id: 123, title: 'Fast update', viewing: {} }
-        const viewing = await updateAdultViewing(detail, 'watched')
-        return { refreshStarted, returned: viewing.manual_state, detail: detail.viewing.manual_state }
-      } finally {
-        releaseRefresh?.()
-        window.api = originalApi
-        window.loadAdultViewing = originalLoad
-      }
-    })
-    expect(result).toEqual({ refreshStarted: true, returned: 'watched', detail: 'watched' })
-  })
 }

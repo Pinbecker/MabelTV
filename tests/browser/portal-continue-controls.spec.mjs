@@ -34,7 +34,7 @@ test('MabelTV film More offers removal from Continue Watching', async ({ page },
   })
 })
 
-test('continued episodes offer View Series and removal in More', async ({ page }, testInfo) => {
+test('continued episodes offer View Series and direct progress removal', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One browser covers the continue menu flow')
   await openPortal(page)
   await page.evaluate(() => {
@@ -63,18 +63,17 @@ test('continued episodes offer View Series and removal in More', async ({ page }
   await expect.poll(() => page.evaluate(() => window.__viewedSeries)).toBe('ludwig')
   await page.evaluate(() => openAdultEpisodeSheet(library.adult_series[0],
     library.adult_series[0].episodes[0]))
-  await page.locator('#adultEpisodeMore').click()
   await expect(page.locator('#adultEpisodeRemoveProgress')).toBeVisible()
   await page.locator('#adultEpisodeRemoveProgress').click()
   await expect.poll(() => page.evaluate(() => window.__clearRequests.length)).toBe(1)
   expect(await page.evaluate(() => ({
     request: window.__clearRequests[0],
     position: library.adult_series[0].episodes[0].remote_position,
-    moreOpen: document.querySelector('#adultEpisodeMoreSheet').open,
+    episodeOpen: document.querySelector('#adultEpisodeSheet').open,
   }))).toEqual({
     request: { kind: 'adult-series', series: 'ludwig',
       file: 'Season 1/Ludwig S01E03.mp4', position: 420 },
     position: 0,
-    moreOpen: false,
+    episodeOpen: false,
   })
 })

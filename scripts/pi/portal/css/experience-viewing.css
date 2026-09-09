@@ -329,7 +329,6 @@ body.portal-v2 .adult-title-local {
 }
 body.portal-v2 .adult-title-local.hidden { display: none; }
 body.portal-v2 #adultTitleMore.hidden { display: none; }
-body.portal-v2 #adultTitleSeasonManagement button.hidden { display: none; }
 body.portal-v2 .adult-title-local > span { line-height: 1.45; }
 body.portal-v2 .adult-title-local button {
   flex: 0 0 auto;

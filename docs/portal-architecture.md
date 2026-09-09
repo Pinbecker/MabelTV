@@ -104,10 +104,12 @@ initialisation even when each file is syntactically valid.
 19. `portal/js/adult-viewing/catalogue.js`: Adult viewing catalogue.
 20. `portal/js/adult-viewing/seasons.js`: series and season navigation.
 21. `portal/js/adult-viewing/details.js`: Adult viewing details and startup.
-22. `portal/js/adult-viewing/explore.js`: continuous TMDB discovery, quick
+22. `portal/js/adult-viewing/person.js`: cast detail cards and filmography
+    navigation.
+23. `portal/js/adult-viewing/explore.js`: continuous TMDB discovery, quick
     viewing actions, weak impression feedback and visit freshness.
-23. `portal/js/actions.js`: application event bindings and remote commands.
-24. `portal/js/lg-tv-remote.js`: the separate LG webOS remote.
+24. `portal/js/actions.js`: application event bindings and remote commands.
+25. `portal/js/lg-tv-remote.js`: the separate LG webOS remote.
 
 Classic intentionally omits Experience-only Adult-viewing and LG-remote scripts.
 
@@ -134,6 +136,14 @@ management selection is separate from the Watch film filters.
 - `dialogs.open`, `dialogs.close`, `dialogs.dismiss`, and `dialogs.wire` own the
   common modal lifecycle, optional document scroll lock, backdrop/cancel
   behaviour, and focus restoration. `wire` accepts one close button or a list.
+- Content dialogs marked with `data-card-sheet` receive the shared compact Back
+  control whenever `open` has a `returnTo` callback. `dialogs.suspend` preserves
+  a parent card while a child opens, `dialogs.returnTo` carries a deeper chain,
+  and `dialogs.dismissJourney` makes the close control exit the complete chain.
+  These content cards share one full-height canvas. Playback choices, More
+  menus and settings dialogs are deliberately not card sheets: they remain
+  content-sized and close directly. Every portal sheet uses the same compact
+  close-control size and corner inset.
 
 Use a shared component only when behaviour and structure are truly the same.
 Cards, rows, and menus with different information or interaction contracts stay

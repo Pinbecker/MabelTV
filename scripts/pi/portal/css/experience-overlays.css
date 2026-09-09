@@ -50,6 +50,14 @@ body.portal-experience .library-sheet-panel {
   overflow: hidden;
 }
 
+body.portal-experience dialog[data-card-sheet] > :is(
+  .library-sheet-panel,
+  .watch-film-panel,
+  article
+) {
+  height: min(90dvh, 860px);
+}
+
 body.portal-experience .library-sheet-panel > :is(
   .library-sheet-head,
   .adult-series-sheet-head,
@@ -305,11 +313,11 @@ body.portal-experience .portal-sheet-close {
   z-index: 12;
   top: 12px;
   right: 12px;
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  min-height: 44px;
-  flex: 0 0 44px;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  flex: 0 0 40px;
   border: 1px solid color-mix(in srgb, var(--experience-accent) 72%, transparent);
   border-radius: 50%;
   background: rgba(37, 37, 45, 0.88);
@@ -318,13 +326,59 @@ body.portal-experience .portal-sheet-close {
 }
 
 body.portal-experience .portal-sheet-close .icon {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
 body.portal-experience .portal-sheet-close::before,
 body.portal-experience .portal-sheet-close::after {
   content: none;
+}
+
+body.portal-experience .portal-card-back {
+  position: absolute;
+  z-index: 13;
+  top: 10px;
+  left: 8px;
+  width: 44px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--experience-ink);
+  padding: 0;
+  pointer-events: auto;
+}
+
+body.portal-experience .portal-card-back .icon {
+  width: 19px;
+  height: 19px;
+}
+
+body.portal-experience .portal-card-back.hidden {
+  display: none;
+}
+
+body.portal-experience .portal-card-back:focus-visible {
+  outline: 0;
+  color: var(--experience-accent-ink);
+}
+
+body.portal-experience dialog[data-card-sheet].has-card-parent .watch-film-summary {
+  padding-top: 46px;
+}
+
+body.portal-experience dialog[data-card-sheet].has-card-parent :is(
+  .library-sheet-head,
+  .adult-series-sheet-head,
+  .adult-season-sheet-head
+) {
+  padding-top: 48px;
+}
+
+body.portal-experience dialog[data-card-sheet].has-card-parent.watch-programme-sheet > article {
+  padding-top: 52px;
 }
 
 body.portal-experience .field-grid {

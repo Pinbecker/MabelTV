@@ -1,6 +1,6 @@
 'use strict'
 
-const SHELL_CACHE = 'mabeltv-shell-v175'
+const SHELL_CACHE = 'mabeltv-shell-v179'
 const SHELL_URLS = [
   '/',
   '/manifest.webmanifest',
@@ -64,6 +64,7 @@ const SHELL_URLS = [
   '/portal/js/adult-viewing/catalogue.js',
   '/portal/js/adult-viewing/seasons.js',
   '/portal/js/adult-viewing/details.js',
+  '/portal/js/adult-viewing/person.js',
   '/portal/js/adult-viewing/explore.js',
   '/portal/js/actions.js',
   '/portal/js/lg-tv-remote.js',

@@ -532,6 +532,7 @@
       const dialog = $('#watchFilmSheet')
       portalSheets.close(dialog, { restore: restoreParent })
       selectedWatchFilm = null
+      selectedWatchFilmReturnTo = null
     }
 
     function playWatchFilm(film, position) {
@@ -624,6 +625,8 @@
 
     function openWatchFilmSheet(film, context = 'library', returnTo = null) {
       selectedWatchFilm = film
+      selectedWatchFilmContext = context
+      selectedWatchFilmReturnTo = returnTo
       const metadata = film.metadata || {}
       const title = watchFilmTitle(film)
       const resumable = watchFilmResumable(film)
@@ -633,15 +636,18 @@
       $('#watchFilmBackdrop').style.setProperty('--watch-film-art', poster ? `url("${poster}")` : 'linear-gradient(135deg,#2e3a34,#101513)')
       const posterRoot = $('#watchFilmPoster')
       posterRoot.replaceChildren(filmPoster(film))
-      $('#watchFilmEyebrow').textContent = resumable ? 'Continue watching' : streamable ? 'Ready to watch' : 'VLC playback available'
+      const eyebrow = $('#watchFilmEyebrow')
+      eyebrow.textContent = 'On MabelTV'
+      eyebrow.classList.add('is-mabeltv')
       $('#watchFilmTitle').textContent = title
       const metaRoot = $('#watchFilmMeta')
-      metaRoot.innerHTML = ''
-      metaRoot.classList.remove('is-title-facts')
-      ;[metadata.year, film.folder || 'Adult library', Number(film.remote_duration || 0) > 0 ? watchTimeLabel(film.remote_duration) : 'Film'].filter(Boolean).forEach(value => {
-        const span = document.createElement('span')
-        span.textContent = value
-        metaRoot.append(span)
+      renderAdultTitleMetadata(metaRoot, {}, {
+        facts: [
+          { label: 'Release', value: metadata.year },
+          { label: 'Runtime', value: Number(film.remote_duration || 0) > 0 ? watchTimeLabel(film.remote_duration) : '' },
+          { label: 'Collection', value: film.folder || 'Adult library' },
+          { label: 'Quality', value: film.playback_state === 'optimised' ? 'Optimised for Pi' : 'Original' },
+        ],
       })
       $('#watchFilmOverview').textContent = metadata.overview || 'A film from your private MabelTV library.'
       configureWatchFilmExpansion($('#watchFilmTitle'), $('#watchFilmTitleExpand'))

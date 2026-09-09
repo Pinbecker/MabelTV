@@ -209,7 +209,7 @@
     </div>
   </article>
 </dialog>
-<dialog id="adultSeriesSheet" class="library-sheet adult-series-sheet">
+<dialog id="adultSeriesSheet" class="library-sheet adult-series-sheet" data-card-sheet>
   <section class="library-sheet-panel wide">
     <header class="adult-series-sheet-head">
       <span
@@ -217,13 +217,14 @@
         class="adult-series-sheet-poster"
       ></span>
       <div>
-        <p class="section-kicker">Adult TV series</p>
+        <p class="section-kicker is-mabeltv">On MabelTV</p>
         <div class="portal-sheet-title-row">
           <h2 id="adultSeriesSheetTitle">Series</h2>
           <button id="adultSeriesFavourite" type="button" class="sheet-favourite" aria-label="Add series to favourites"><svg class="icon"><use href="/portal/icons.svg#signal-heart" /></svg></button>
         </div>
         <p id="adultSeriesSheetMeta"></p>
       </div>
+      <button id="adultSeriesMore" type="button" class="card-settings-trigger" aria-label="Series settings" title="Series settings"><svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#settings" /></svg></button>
       <button
         id="adultSeriesClose"
         type="button"
@@ -246,9 +247,6 @@
         <span id="adultSeriesSeasonCount"></span>
       </div>
       <div id="adultSeriesEpisodes" class="adult-series-seasons"></div>
-      <button id="adultSeriesMore" type="button" class="watch-film-secondary primary-sheet-more adult-series-more">
-        <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-ellipsis" /></svg><span>More</span>
-      </button>
     </div>
   </section>
 </dialog>
@@ -265,7 +263,7 @@
     </div>
   </article>
 </dialog>
-<dialog id="adultSeasonSheet" class="library-sheet adult-season-sheet">
+<dialog id="adultSeasonSheet" class="library-sheet adult-season-sheet" data-card-sheet>
   <section class="library-sheet-panel wide">
     <header class="adult-season-sheet-head">
       <span id="adultSeasonArtwork" class="adult-season-sheet-art"></span>
@@ -274,6 +272,7 @@
         <h2 id="adultSeasonTitle">Series 1</h2>
         <p id="adultSeasonMeta"></p>
       </div>
+      <button id="adultSeasonSettings" type="button" class="card-settings-trigger" aria-label="Series settings" title="Series settings"><svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#settings" /></svg></button>
       <button
         id="adultSeasonClose"
         type="button"
@@ -292,52 +291,21 @@
       </div>
       <button id="adultSeasonWatched" type="button" class="adult-season-bulk-action"></button>
       <div id="adultSeasonEpisodes" class="adult-series-episodes"></div>
-      <section class="adult-season-management" aria-labelledby="adultSeasonManagementTitle">
-        <header class="adult-season-management-head">
-          <div>
-            <p class="section-kicker">Manage series</p>
-            <h3 id="adultSeasonManagementTitle">Series settings</h3>
-          </div>
-          <span>Uploads and library tools</span>
-        </header>
-        <div class="adult-season-tools adult-season-bottom-tools">
-          <button id="adultSeasonUpload" type="button">
-          <svg class="icon"><use href="/portal/icons.svg#signal-upload" /></svg
-          ><span
-            ><strong>Add episodes</strong
-            ><small id="adultSeasonUploadHint"
-              >Upload directly into this series</small
-            ></span
-          ></button
-          ><button id="adultSeasonMetadata" type="button">
-          <svg class="icon">
-            <use href="/portal/icons.svg#signal-panels-top-left" /></svg
-          ><span
-            ><strong>Refresh episode details</strong
-            ><small>Match titles, artwork and descriptions</small></span
-          ></button>
-          <button id="adultSeasonRestart" type="button">
-          <svg class="icon"><use href="/portal/icons.svg#signal-restart" /></svg
-          ><span
-            ><strong>Restart this series</strong
-            ><small>Clear watched and resume progress</small></span
-          >
-          </button>
-          <button
-          id="adultSeasonDelete"
-          type="button"
-          class="adult-series-danger"
-        >
-          <svg class="icon"><use href="/portal/icons.svg#signal-trash" /></svg
-          ><span
-            ><strong>Move series to bin</strong
-            ><small>Remove every episode in this series</small></span
-          >
-          </button>
-        </div>
-      </section>
     </div>
   </section>
+</dialog>
+<dialog id="adultSeasonSettingsSheet" class="watch-programme-sheet adult-season-settings-sheet">
+  <article>
+    <div class="dialog-close-bar"><button id="adultSeasonSettingsClose" type="button" class="portal-sheet-close watch-film-close dialog-close" aria-label="Close series settings"></button></div>
+    <p id="adultSeasonSettingsEyebrow" class="watch-film-eyebrow">Series options</p>
+    <h2>Series settings</h2>
+    <div class="adult-season-tools adult-season-bottom-tools">
+      <button id="adultSeasonUpload" type="button"><svg class="icon"><use href="/portal/icons.svg#signal-upload" /></svg><span><strong>Add episodes</strong><small id="adultSeasonUploadHint">Upload directly into this series</small></span></button>
+      <button id="adultSeasonMetadata" type="button"><svg class="icon"><use href="/portal/icons.svg#signal-panels-top-left" /></svg><span><strong>Refresh episode details</strong><small>Match titles, artwork and descriptions</small></span></button>
+      <button id="adultSeasonRestart" type="button"><svg class="icon"><use href="/portal/icons.svg#signal-restart" /></svg><span><strong>Restart this series</strong><small>Clear watched and resume progress</small></span></button>
+      <button id="adultSeasonDelete" type="button" class="adult-series-danger"><svg class="icon"><use href="/portal/icons.svg#signal-trash" /></svg><span><strong>Move series to bin</strong><small>Remove every episode in this series</small></span></button>
+    </div>
+  </article>
 </dialog>
 <dialog id="adultSeriesRestartSheet" class="library-sheet adult-series-restart-sheet">
   <section class="library-sheet-panel">
@@ -540,28 +508,9 @@
           ><strong>View Series</strong
           ><small>Open the complete show and its series</small></span
         ></button
-      ><button id="adultEpisodeMore" type="button" class="watch-film-play primary-sheet-more">
-        <span class="watch-action-icon"
-          ><svg class="icon">
-            <use href="/portal/icons.svg#signal-ellipsis" /></svg></span
-        ><span
-          ><strong>More</strong
-          ><small>Download and episode management</small></span
-        >
-      </button>
-    </div>
-  </article>
-</dialog>
-<dialog id="adultEpisodeMoreSheet" class="watch-programme-sheet adult-episode-more-sheet">
-  <article>
-    <div class="dialog-close-bar"><button id="adultEpisodeMoreClose" type="button" class="portal-sheet-close watch-film-close dialog-close" aria-label="Close episode options"></button></div>
-    <p id="adultEpisodeMoreEyebrow" class="watch-film-eyebrow">Episode options</p>
-    <h2 id="adultEpisodeMoreTitle">Episode</h2>
-    <p id="adultEpisodeMoreMeta"></p>
-    <div class="watch-destination-actions">
-      <button id="adultEpisodeRemoveProgress" type="button" class="watch-film-play hidden"><span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-arrow-left" /></svg></span><span><strong>Remove from Continue</strong><small>Clear this episode’s saved position</small></span></button>
-      <button id="adultEpisodeDownload" type="button" class="watch-film-play"><span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-download" /></svg></span><span><strong>Download to this device</strong><small>Save a copy for offline viewing</small></span></button>
-      <button id="adultEpisodeDelete" type="button" class="watch-film-play watch-film-danger"><span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-trash" /></svg></span><span><strong>Remove from MabelTV</strong><small>Move this local episode to the bin</small></span></button>
+      ><button id="adultEpisodeRemoveProgress" type="button" class="watch-film-play hidden"><span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-arrow-left" /></svg></span><span><strong>Remove from Continue</strong><small>Clear this episode’s saved position</small></span></button
+      ><button id="adultEpisodeDownload" type="button" class="watch-film-play"><span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-download" /></svg></span><span><strong>Download to this device</strong><small>Save a copy for offline viewing</small></span></button
+      ><button id="adultEpisodeDelete" type="button" class="watch-film-play watch-film-danger"><span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-trash" /></svg></span><span><strong>Remove from MabelTV</strong><small>Move this local episode to the bin</small></span></button>
     </div>
   </article>
 </dialog>

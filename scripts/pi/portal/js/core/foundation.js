@@ -59,6 +59,8 @@ const $ = selector => document.querySelector(selector)
     let mabelSearchText = ''
     let homeSearchText = ''
     let selectedWatchFilm = null
+    let selectedWatchFilmContext = 'library'
+    let selectedWatchFilmReturnTo = null
     let selectedWatchProgramme = null
     let iosRemoteSession = null
     let iosRemotePositionTimer = null

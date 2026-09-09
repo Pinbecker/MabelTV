@@ -1,4 +1,4 @@
-<dialog id="watchFilmSheet" class="watch-film-sheet">
+<dialog id="watchFilmSheet" class="watch-film-sheet" data-card-sheet>
   <article class="watch-film-panel">
     <div class="dialog-close-bar">
       <button
@@ -20,6 +20,9 @@
         <div id="watchFilmMeta" class="watch-film-meta"></div>
         <button id="watchFilmTitleExpand" type="button" class="watch-film-expand watch-film-title-expand hidden" aria-controls="watchFilmTitle" aria-expanded="false"><span>More</span></button>
       </div>
+      <button id="watchFilmManage" type="button" class="card-settings-trigger hidden" aria-label="Film settings" title="Film settings">
+        <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#settings" /></svg>
+      </button>
     </div>
     <div class="watch-film-body">
       <div id="watchFilmProgress" class="watch-film-progress hidden">
@@ -34,7 +37,7 @@
       <button id="watchFilmOverviewExpand" type="button" class="watch-film-expand hidden" aria-controls="watchFilmOverview" aria-expanded="false"><span>More</span></button>
       <p id="watchFilmAvailability" class="watch-film-availability hidden"></p>
       <div id="watchFilmViewingActions" class="adult-intent-actions hidden" data-viewing-intents="film"></div>
-      <div class="watch-film-actions">
+      <div class="watch-film-actions compact-film-playback">
         <button id="watchFilmTv" type="button" class="watch-film-play">
           <span class="watch-action-icon"
             ><svg class="icon">
@@ -50,16 +53,7 @@
           ><span
             ><strong>Play on this device</strong
             ><small>Uses the shared film position</small></span
-          ></button
-        ><button
-          id="watchFilmManage"
-          type="button"
-          class="watch-film-secondary primary-sheet-more hidden"
-        >
-          <svg class="icon" aria-hidden="true">
-            <use href="/portal/icons.svg#signal-ellipsis" /></svg
-          ><span>More</span>
-        </button>
+          ></button>
       </div>
       <section id="watchFilmFranchise" class="adult-title-enrichment hidden" aria-labelledby="watchFilmFranchiseHeading">
         <header><h3 id="watchFilmFranchiseHeading"><span id="watchFilmFranchiseName">Film collection</span></h3></header>

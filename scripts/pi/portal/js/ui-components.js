@@ -54,6 +54,29 @@
     })
   }
 
+  function cardBackControl(dialog) {
+    if (!dialog?.hasAttribute('data-card-sheet')) return null
+    let control = dialog.querySelector('.portal-card-back')
+    if (control) return control
+    control = button({
+      className: 'portal-card-back hidden',
+      iconName: 'signal-arrow-left',
+      ariaLabel: 'Back to previous card',
+      onClick: () => closeDialog(dialog),
+    })
+    const panel = dialog.firstElementChild
+    const host = panel?.querySelector(':scope > .dialog-close-bar, :scope > header') || panel
+    host?.append(control)
+    return control
+  }
+
+  function syncCardNavigation(dialog, hasParent = dialogParents.has(dialog)) {
+    const control = cardBackControl(dialog)
+    if (!control) return
+    control.classList.toggle('hidden', !hasParent)
+    dialog.classList.toggle('has-card-parent', hasParent)
+  }
+
   const viewingIntentDefinitions = [
     ['watchlist', 'signal-plus', 'Add to Watchlist', 'Keep this title in your manual Watchlist'],
     ['up_next', 'signal-list-filter', 'Add to Up Next', 'Place it in your ordered queue'],
@@ -152,6 +175,7 @@
     const position = capturePortalPosition()
     if (typeof returnTo === 'function') dialogParents.set(dialog, returnTo)
     else dialogParents.delete(dialog)
+    syncCardNavigation(dialog)
     dialogScrollLocks.set(dialog, lockScroll)
     if (!dialog.open) dialog.showModal()
     syncDialogScrollLock()
@@ -167,6 +191,7 @@
       .map(element => ({ element, top: element.scrollTop, left: element.scrollLeft })))
     const returnTo = dialogParents.get(dialog)
     dialogParents.delete(dialog)
+    syncCardNavigation(dialog, false)
     if (dialog.open) dialog.close()
     dialogScrollLocks.delete(dialog)
     syncDialogScrollLock()
@@ -183,6 +208,29 @@
 
   function dismissDialog(dialog) {
     closeDialog(dialog, { restore: false })
+  }
+
+  function suspendDialog(dialog) {
+    if (!dialog?.open) return
+    dialogPositions.set(dialog, dialogScrollers(dialog)
+      .map(element => ({ element, top: element.scrollTop, left: element.scrollLeft })))
+    dialog.close()
+    dialogScrollLocks.delete(dialog)
+    syncDialogScrollLock()
+  }
+
+  function dismissCardJourney() {
+    document.querySelectorAll('dialog[data-card-sheet]').forEach(dialog => {
+      if (dialog.open) dialog.close()
+      dialogParents.delete(dialog)
+      dialogScrollLocks.delete(dialog)
+      syncCardNavigation(dialog, false)
+    })
+    syncDialogScrollLock()
+  }
+
+  function dialogReturnTo(dialog) {
+    return dialogParents.get(dialog) || null
   }
 
   function wireDialog(dialog, {
@@ -220,6 +268,9 @@
       open: openDialog,
       close: closeDialog,
       dismiss: dismissDialog,
+      suspend: suspendDialog,
+      dismissJourney: dismissCardJourney,
+      returnTo: dialogReturnTo,
       wire: wireDialog,
     }),
   })

@@ -1,7 +1,5 @@
 'use strict'
 
-let adultPersonOpenRevision = 0
-
 function adultExactDateLabel(value) {
   const source = String(value || '').slice(0, 10)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(source)) return ''
@@ -68,7 +66,7 @@ function clearAdultTitleEnrichment(prefix) {
   }
 }
 
-function renderAdultTitleEnrichment(detail, prefix, openTitle) {
+function renderAdultTitleEnrichment(detail, prefix, openTitle, openPerson = openAdultPerson) {
   clearAdultTitleEnrichment(prefix)
   const franchise = $(`#${prefix}Franchise`)
   const franchiseName = $(`#${prefix}FranchiseName`)
@@ -141,138 +139,11 @@ function renderAdultTitleEnrichment(detail, prefix, openTitle) {
       card.append(portrait, name, character)
       if (interactive) {
         card.setAttribute('aria-label', `Open cast details for ${person.name}`)
-        card.onclick = () => openAdultPerson(person, detail.title)
+        card.onclick = () => openPerson(person, detail.title)
       }
       castRail.append(card)
     })
     castSection.classList.remove('hidden')
-  }
-}
-
-function adultPersonInitials(name) {
-  return String(name || '?').split(/\s+/).slice(0, 2)
-    .map(part => part.slice(0, 1)).join('').toUpperCase()
-}
-
-function renderAdultPersonPhoto(person) {
-  const root = $('#adultPersonPhoto')
-  root.replaceChildren()
-  if (person.profile_path) {
-    const image = document.createElement('img')
-    image.src = adultPosterUrl(person.profile_path, 'w342')
-    image.alt = `Portrait of ${person.name}`
-    root.append(image)
-    return
-  }
-  const initials = document.createElement('b')
-  initials.textContent = adultPersonInitials(person.name)
-  root.append(initials)
-}
-
-function renderAdultPersonDetail(person) {
-  $('#adultPersonName').textContent = person.name
-  renderAdultPersonPhoto(person)
-  const facts = $('#adultPersonFacts')
-  facts.replaceChildren()
-  const addFact = (label, value) => {
-    if (!value) return
-    const row = document.createElement('div')
-    const term = document.createElement('dt')
-    const description = document.createElement('dd')
-    term.textContent = label
-    description.textContent = value
-    row.append(term, description)
-    facts.append(row)
-  }
-  addFact('Known for', person.known_for_department)
-  addFact('Born', adultExactDateLabel(person.birthday))
-  addFact('Died', adultExactDateLabel(person.deathday))
-  addFact('From', person.place_of_birth)
-  configureAdultPersonBiography(person.biography || 'No biography is available for this cast member.')
-  const section = $('#adultPersonKnownFor')
-  const credits = $('#adultPersonCredits')
-  credits.replaceChildren()
-  ;(person.known_for || []).forEach(title => {
-    const card = document.createElement('button')
-    card.type = 'button'
-    card.className = 'adult-franchise-card'
-    card.setAttribute('aria-label', `Open ${title.title}`)
-    const art = document.createElement('span')
-    art.className = 'adult-franchise-art'
-    if (title.poster_path) {
-      const image = document.createElement('img')
-      image.src = adultPosterUrl(title.poster_path, 'w185')
-      image.alt = ''
-      art.append(image)
-    } else {
-      const placeholder = document.createElement('b')
-      placeholder.textContent = String(title.title || '?').slice(0, 1).toUpperCase()
-      art.append(placeholder)
-    }
-    appendAdultArtworkStatus(art, title)
-    const name = document.createElement('strong')
-    name.textContent = title.title
-    const role = document.createElement('small')
-    role.textContent = [title.year, title.character].filter(Boolean).join(' · ') || 'Title'
-    card.append(art, name, role)
-    card.onclick = () => {
-      closeAdultPersonSheet()
-      void openAdultTitle(title)
-    }
-    credits.append(card)
-  })
-  section.classList.toggle('hidden', !credits.children.length)
-  credits.scrollLeft = 0
-  requestAnimationFrame(() => { credits.scrollLeft = 0 })
-}
-
-function configureAdultPersonBiography(value) {
-  const biography = $('#adultPersonBiography')
-  const control = $('#adultPersonBiographyExpand')
-  const label = control.querySelector('span')
-  biography.textContent = value
-  biography.classList.remove('is-expanded')
-  control.classList.add('hidden')
-  control.setAttribute('aria-expanded', 'false')
-  label.textContent = 'More'
-  control.onclick = () => {
-    const expanded = !biography.classList.contains('is-expanded')
-    biography.classList.toggle('is-expanded', expanded)
-    control.setAttribute('aria-expanded', String(expanded))
-    label.textContent = expanded ? 'Less' : 'More'
-  }
-  requestAnimationFrame(() => {
-    control.classList.toggle('hidden', biography.scrollHeight <= biography.clientHeight + 1)
-  })
-}
-
-async function openAdultPerson(person, title) {
-  const personId = Number(person.tmdb_id || 0)
-  if (!personId) return
-  const revision = ++adultPersonOpenRevision
-  const sheet = $('#adultPersonSheet')
-  $('#adultPersonName').textContent = person.name
-  $('#adultPersonContext').textContent = person.character
-    ? `As ${person.character} in ${title}` : `Principal cast in ${title}`
-  $('#adultPersonFacts').replaceChildren()
-  $('#adultPersonBiography').textContent = 'Loading biography…'
-  $('#adultPersonBiography').classList.remove('is-expanded')
-  $('#adultPersonBiographyExpand').classList.add('hidden')
-  $('#adultPersonBiographyExpand').setAttribute('aria-expanded', 'false')
-  $('#adultPersonKnownFor').classList.add('hidden')
-  const credits = $('#adultPersonCredits')
-  credits.replaceChildren()
-  credits.scrollLeft = 0
-  renderAdultPersonPhoto(person)
-  portalSheets.open(sheet, { focus: sheet.querySelector('.library-sheet-panel') })
-  try {
-    const detail = await api(`/api/adult/person?tmdb_id=${personId}`)
-    if (revision !== adultPersonOpenRevision || !sheet.open) return
-    renderAdultPersonDetail(detail)
-  } catch (error) {
-    if (revision !== adultPersonOpenRevision || !sheet.open) return
-    $('#adultPersonBiography').textContent = error.message || 'Cast details are unavailable right now.'
-    $('#adultPersonBiographyExpand').classList.add('hidden')
   }
 }
 
@@ -378,9 +249,15 @@ async function loadLocalFilmProviders(film, refresh = false) {
       creditLabel: directors.length > 1 ? 'Directors' : 'Director',
       credits: directors,
     })
+    const filmSheet = $('#watchFilmSheet')
+    const filmReturnTo = portalSheets.returnTo(filmSheet) || selectedWatchFilmReturnTo
+    const restoreFilm = () => openWatchFilmSheet(film, selectedWatchFilmContext, filmReturnTo)
     renderAdultTitleEnrichment(fullDetail, 'watchFilm', part => {
-      portalSheets.dismiss($('#watchFilmSheet'))
-      openAdultTitle(part)
+      portalSheets.suspend(filmSheet)
+      void openAdultTitle(part, restoreFilm)
+    }, (person, title) => {
+      portalSheets.suspend(filmSheet)
+      void openAdultPerson(person, title, restoreFilm)
     })
     const options = { localAction: null, purchaseSection: $('#watchFilmRentBuy'),
       purchaseRoot: $('#watchFilmRentBuyList') }
@@ -488,8 +365,10 @@ function renderAdultTitleDetail(detail, refreshProviders = true,
   const isSeries = detail.media_type === 'tv'
   sheet.classList.toggle('is-series', isSeries)
   $('#adultTitleName').textContent = detail.title
-  $('#adultTitleEyebrow').textContent = detail.on_mabeltv
+  const eyebrow = $('#adultTitleEyebrow')
+  eyebrow.textContent = detail.on_mabeltv
     ? 'On MabelTV' : isSeries ? 'Streaming TV series' : 'Film'
+  eyebrow.classList.toggle('is-mabeltv', detail.on_mabeltv === true)
   $('#adultTitleOverview').textContent = detail.overview || 'No description is available.'
   renderAdultTitleSeasons(detail)
   const date = isSeries
@@ -540,19 +419,29 @@ function renderAdultTitleDetail(detail, refreshProviders = true,
   })
   wireAdultTitleIntentActions(detail)
   if (isSeries) void syncAdultTitleEpisodeStatus(detail).catch(showError)
-  const more = $('#adultTitleMore')
+  const settings = $('#adultTitleMore')
   const localSeriesActions = localSeries && (localSeries.episodes || []).length
-  more.classList.toggle('hidden', !localFilm && !localSeriesActions)
-  more.onclick = localFilm ? () => {
+  settings.classList.toggle('hidden', !localFilm && !localSeriesActions)
+  settings.setAttribute('aria-label', localFilm ? 'Film settings' : 'Series settings')
+  settings.title = localFilm ? 'Film settings' : 'Series settings'
+  settings.onclick = localFilm ? () => {
     portalSheets.dismiss(sheet)
     openAdultFilmSheet(localFilm, () => restoreAdultTitleSheet(detail))
   } : localSeriesActions ? () => {
     portalSheets.dismiss(sheet)
     openAdultSeriesMoreSheet(localSeries, null, () => restoreAdultTitleSheet(detail))
   } : null
-  renderAdultTitleEnrichment(detail, 'adultTitle', part => openAdultTitle({
-    ...part, catalogue_only: detail.catalogue_only === true,
-  }))
+  const returnTo = portalSheets.returnTo(sheet)
+  const restoreTitle = () => restoreAdultTitleSheet(detail, returnTo)
+  renderAdultTitleEnrichment(detail, 'adultTitle', part => {
+    portalSheets.suspend(sheet)
+    void openAdultTitle({
+      ...part, catalogue_only: detail.catalogue_only === true,
+    }, restoreTitle)
+  }, (person, title) => {
+    portalSheets.suspend(sheet)
+    void openAdultPerson(person, title, restoreTitle)
+  })
   $('#adultProviderRefresh').classList.toggle('hidden', !adultAvailabilityEnabled())
   $('#adultProviderRefresh').onclick = () => loadAdultProviders(detail, true, revision)
   if (refreshProviders && !detail.catalogue_only) {
@@ -648,15 +537,17 @@ function prepareAdultTitleSheet(title) {
   body.scrollLeft = 0
   sheet.classList.toggle('is-series', title.media_type === 'tv')
   $('#adultTitleName').textContent = title.title || 'Loading title…'
-  $('#adultTitleEyebrow').textContent = title.media_type === 'tv'
+  const localFilm = localAdultFilmForTitle(title)
+  const eyebrow = $('#adultTitleEyebrow')
+  eyebrow.textContent = localFilm ? 'On MabelTV' : title.media_type === 'tv'
     ? 'Streaming TV series' : 'Film'
+  eyebrow.classList.toggle('is-mabeltv', Boolean(localFilm || title.on_mabeltv))
   renderAdultTitleLoadingShell(title)
   $('#adultTitleBackdrop').style.setProperty('--watch-film-art',
     'linear-gradient(135deg,#27252c,#101014)')
   $('#adultTitleLocal').classList.add('hidden')
   $('#adultTitleLocalCopy').textContent = ''
   const filmActions = $('#adultTitleFilmActions')
-  const localFilm = localAdultFilmForTitle(title)
   filmActions.classList.toggle('hidden', !localFilm)
   filmActions.classList.toggle('is-loading-placeholder', Boolean(localFilm))
   filmActions.querySelectorAll('button').forEach(button => { button.disabled = true })
@@ -673,11 +564,11 @@ function prepareAdultTitleSheet(title) {
   return sheet
 }
 
-async function openAdultTitle(title) {
+async function openAdultTitle(title, returnTo = null) {
   const revision = ++adultTitleOpenRevision
   const localContext = title.local_context || 'library'
   const sheet = prepareAdultTitleSheet(title)
-  portalSheets.open(sheet, { focus: sheet.querySelector('.watch-film-panel') })
+  portalSheets.open(sheet, { returnTo, focus: sheet.querySelector('.watch-film-panel') })
   try {
     const detail = await api(`/api/adult/title?media_type=${title.media_type}&tmdb_id=${title.tmdb_id}`)
     if (revision !== adultTitleOpenRevision) return
@@ -832,29 +723,24 @@ $('#adultViewingBack')?.addEventListener('click', () => {
 function closeAdultTitleSheet() {
   adultTitleOpenRevision += 1
   selectedAdultTitle = null
-  portalSheets.dismiss($('#adultTitleSheet'))
+  portalSheets.dismissJourney()
 }
 $('#adultTitleClose')?.addEventListener('click', closeAdultTitleSheet)
 $('#adultTitleSheet')?.addEventListener('click', event => { if (event.target === $('#adultTitleSheet')) closeAdultTitleSheet() })
-function closeAdultPersonSheet() {
-  adultPersonOpenRevision += 1
-  portalSheets.dismiss($('#adultPersonSheet'))
-}
-$('#adultPersonClose')?.addEventListener('click', closeAdultPersonSheet)
-$('#adultPersonSheet')?.addEventListener('click', event => {
-  if (event.target === $('#adultPersonSheet')) closeAdultPersonSheet()
-})
-$('#adultPersonSheet')?.addEventListener('cancel', event => {
+$('#adultTitleSheet')?.addEventListener('cancel', event => {
   event.preventDefault()
-  closeAdultPersonSheet()
+  closeAdultTitleSheet()
 })
 function closeAdultTitleSeasonSheet() {
   adultSeasonOpenRevision += 1
-  portalSheets.close($('#adultTitleSeasonSheet'))
+  portalSheets.dismissJourney()
 }
 $('#adultTitleSeasonClose')?.addEventListener('click', closeAdultTitleSeasonSheet)
 $('#adultTitleSeasonSheet')?.addEventListener('click', event => { if (event.target === $('#adultTitleSeasonSheet')) closeAdultTitleSeasonSheet() })
 $('#adultTitleSeasonSheet')?.addEventListener('cancel', event => { event.preventDefault(); closeAdultTitleSeasonSheet() })
+portalSheets.wire($('#adultTitleSeasonSettingsSheet'), {
+  closeButton: $('#adultTitleSeasonSettingsClose'),
+})
 $('#adultNetflixLaunchClose')?.addEventListener('click', closeNetflixLaunchChoice)
 $('#adultNetflixLaunchSheet')?.addEventListener('click', event => { if (event.target === $('#adultNetflixLaunchSheet')) closeNetflixLaunchChoice() })
 $('#adultNetflixLaunchDevice')?.addEventListener('click', launchNetflixOnDevice)

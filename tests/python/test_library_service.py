@@ -441,14 +441,17 @@ class LibraryUnitTests(unittest.TestCase):
                 rf'id="{favourite_id}".*?</div>', markup, re.DOTALL)
             self.assertIsNotNone(title_row)
 
-        episode_sheet = markup[
-            markup.index('id="adultEpisodeSheet"'):
-            markup.index('id="adultEpisodeMoreSheet"')]
+        episode_sheet_match = re.search(
+            r'<dialog\s+id="adultEpisodeSheet".*?</dialog>', markup, re.DOTALL)
+        self.assertIsNotNone(episode_sheet_match)
+        episode_sheet = episode_sheet_match.group(0)
         self.assertNotIn("sheet-favourite", episode_sheet)
+        self.assertNotIn('id="adultEpisodeMore"', episode_sheet)
+        self.assertIn('id="adultEpisodeDownload"', episode_sheet)
+        self.assertIn('id="adultEpisodeDelete"', episode_sheet)
         self.assertNotIn("watchProgrammeMoreReturn", playback)
         self.assertNotIn("adultEpisodeMoreReturn", playback)
         self.assertIn("openWatchProgrammeMoreSheet(channel, programme, context, parentReturn)", playback)
-        self.assertIn("returnTo: () => openAdultEpisodeSheet(current, episode, returnTo)", playback)
         self.assertIn("card.onclick = () => openAdultEpisodeSheet(series, episode)", playback)
 
     def test_channel_detail_is_modular_watch_oriented_and_deep_linkable(self) -> None:
@@ -652,7 +655,7 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("restartAction: () => playOnTvNow(0)", index)
         self.assertIn('id="watchProgrammeSheet"', index)
         self.assertIn('id="watchManageAdult"', index)
-        self.assertRegex(index, r'id="watchFilmManage"\s+type="button"\s+class="watch-film-secondary primary-sheet-more hidden"')
+        self.assertRegex(index, r'id="watchFilmManage"\s+type="button"\s+class="card-settings-trigger hidden"')
         self.assertIn("openAdultFilmSheet(film)", index)
         self.assertIn("openLibrarySheet($('#adultCollectionSheet'))", index)
         self.assertNotIn('id="watchManageMabel"', index)

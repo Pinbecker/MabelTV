@@ -203,9 +203,10 @@
     }
     const adultSeriesClose = $('#adultSeriesClose')
     const adultSeriesSheet = $('#adultSeriesSheet')
+    const dismissContentCardJourney = () => portalSheets.dismissJourney()
     portalSheets.wire(adultSeriesSheet, {
       closeButton: adultSeriesClose,
-      close: closeAdultSeriesSheet,
+      close: dismissContentCardJourney,
       onClose: () => { selectedAdultSeries = null },
     })
     const adultSeriesMoreSheet = $('#adultSeriesMoreSheet')
@@ -217,8 +218,11 @@
     const adultSeasonSheet = $('#adultSeasonSheet')
     portalSheets.wire(adultSeasonSheet, {
       closeButton: adultSeasonClose,
-      close: returnToAdultSeriesSheet,
+      close: dismissContentCardJourney,
       onClose: () => { selectedAdultSeason = null },
+    })
+    portalSheets.wire($('#adultSeasonSettingsSheet'), {
+      closeButton: $('#adultSeasonSettingsClose'),
     })
     const adultSeriesRestartClose = $('#adultSeriesRestartClose')
     const adultSeriesRestartCancel = $('#adultSeriesRestartCancel')
@@ -261,14 +265,8 @@
     const adultEpisodeSheet = $('#adultEpisodeSheet')
     portalSheets.wire(adultEpisodeSheet, {
       closeButton: adultEpisodeClose,
-      close: returnToAdultSeasonSheet,
+      close: closeAdultEpisodeSheet,
       onClose: () => { selectedAdultEpisode = null },
-    })
-    const adultEpisodeMoreClose = $('#adultEpisodeMoreClose')
-    const adultEpisodeMoreSheet = $('#adultEpisodeMoreSheet')
-    portalSheets.wire(adultEpisodeMoreSheet, {
-      closeButton: adultEpisodeMoreClose,
-      close: closeAdultEpisodeMoreSheet,
     })
     const homeFilmSearch = $('#homeFilmSearch')
     const homeFilmSearchClear = $('#homeFilmSearchClear')
@@ -286,7 +284,7 @@
         closeWatchProgrammeEpisodeMoreSheet],
     ].forEach(([dialog, closeButton, close, onClose]) => portalSheets.wire(dialog, {
       closeButton,
-      close,
+      close: dialog?.hasAttribute('data-card-sheet') ? dismissContentCardJourney : close,
       onClose,
     }))
     $('#watchAddAdult').onclick = () => $('#adultAddFilms').click()
