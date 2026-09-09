@@ -16,21 +16,6 @@
     body: JSON.stringify({ action, ...extra }),
   })
 
-  function commandMessage(action, label = '') {
-    const messages = {
-      'power-on': 'Turning on connected TV…',
-      'power-off': 'Turning off connected TV…',
-      input: 'Opening TV inputs…',
-      apps: 'Opening TV apps…',
-      home: 'Opening TV home…',
-      back: 'Going back on connected TV…',
-      play: 'Sending play…',
-      pause: 'Sending pause…',
-      mute: state.muted ? 'Restoring TV sound…' : 'Muting connected TV…',
-    }
-    return messages[action] || (label ? `Opening ${label} on TV…` : 'Sending command to connected TV…')
-  }
-
   function setInteractiveState(on) {
     $$('[data-lg-requires-tv]').forEach(control => {
       if (control.id === 'lgTrackpad') {
@@ -109,10 +94,8 @@
     }
     if (name === 'power') name = state.connected ? 'power-off' : 'power-on'
     button?.classList.add('is-sending')
-    notice(commandMessage(name))
     try {
-      const result = await send(name, name === 'mute' ? { mute: !state.muted } : {})
-      notice(result.message || 'Command sent to connected TV')
+      await send(name, name === 'mute' ? { mute: !state.muted } : {})
       if (name === 'mute') renderStatus({ ...state, muted: !state.muted })
       window.setTimeout(() => refresh(), name === 'power-on' ? 2500 : 450)
       if (name === 'power-on') window.setTimeout(() => refresh(), 6500)
@@ -127,10 +110,8 @@
     if (button.classList.contains('is-sending') || button.disabled) return
     const label = button.textContent.trim()
     button.classList.add('is-sending')
-    notice(commandMessage('launch', label))
     try {
-      const result = await send('launch', { app: button.dataset.lgLaunch })
-      notice(result.message || `Opening ${label} on TV…`)
+      await send('launch', { app: button.dataset.lgLaunch })
       window.setTimeout(() => refresh(), 650)
     } catch (error) {
       notice(error.message || `${label} could not open on the TV`, true)

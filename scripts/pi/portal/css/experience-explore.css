@@ -87,40 +87,55 @@ body.portal-v2 .adult-explore-actions {
 body.portal-v2 .adult-explore-actions button {
   position: absolute;
   display: grid;
-  right: 4px;
-  width: 17px;
-  height: 17px;
+  right: -2px;
+  width: 29px;
+  height: 29px;
   min-width: 0;
   min-height: 0;
   box-sizing: border-box;
   place-items: center;
-  border: 1px solid rgba(255,255,255,.38);
+  border: 0;
   border-radius: 50%;
-  background: rgba(7,7,11,.74);
+  background: transparent;
   color: rgba(255,255,255,.9);
   padding: 0;
   pointer-events: auto;
-  backdrop-filter: blur(7px);
 }
 
-body.portal-v2 .adult-explore-actions [data-explore-action="watched"] { top: 4px; }
-body.portal-v2 .adult-explore-actions [data-explore-action="watchlist"] { bottom: 4px; }
-body.portal-v2 .adult-explore-actions button .icon { width: 8px; height: 8px; }
-body.portal-v2 .adult-explore-actions [data-explore-action="watchlist"].active {
+body.portal-v2 .adult-explore-actions button::before {
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(255,255,255,.38);
+  border-radius: 50%;
+  background: rgba(7,7,11,.74);
+  content: '';
+  backdrop-filter: blur(7px);
+}
+body.portal-v2 .adult-explore-actions [data-explore-action="watched"] { top: -2px; }
+body.portal-v2 .adult-explore-actions [data-explore-action="watchlist"] { bottom: -2px; }
+body.portal-v2 .adult-explore-actions button .icon {
+  position: relative;
+  z-index: 1;
+  width: 8px;
+  height: 8px;
+}
+body.portal-v2 .adult-explore-actions [data-explore-action="watchlist"].active::before {
   border-color: color-mix(in srgb, var(--experience-accent) 70%, white 12%);
   background: color-mix(in srgb, var(--experience-accent) 72%, rgba(7,7,11,.9));
   color: white;
 }
-body.portal-v2 .adult-explore-actions [data-status="watched"] {
+body.portal-v2 .adult-explore-actions [data-explore-action="watchlist"].active { color: white; }
+body.portal-v2 .adult-explore-actions [data-status="watched"]::before {
   border-color: rgba(98,220,168,.72);
   background: rgba(13,76,56,.88);
   color: #7be8b9;
 }
-body.portal-v2 .adult-explore-actions [data-status="part-watched"] {
+body.portal-v2 .adult-explore-actions [data-status="watched"] { color: #7be8b9; }
+body.portal-v2 .adult-explore-actions [data-status="part-watched"]::before {
   border-color: color-mix(in srgb, var(--experience-accent) 75%, white 10%);
   color: var(--experience-orange);
 }
-body.portal-v2 .adult-explore-actions button:disabled { cursor: wait; opacity: .5; }
+body.portal-v2 .adult-explore-actions [data-status="part-watched"] { color: var(--experience-orange); }
 body.portal-v2 .adult-explore-art > .adult-artwork-status { display: none; }
 
 body.portal-v2 .adult-explore-open-copy {

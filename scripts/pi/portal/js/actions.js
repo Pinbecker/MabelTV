@@ -26,13 +26,15 @@ let managementBusy = false
       managementBusy = true
       const navigationRevision = channelNavigationRevision
       try {
-        notice('Working…')
         const result = await api('/api/manage', { method: 'POST', body: JSON.stringify({ action, ...extra }) })
         if (preferredChannel !== null && channelNavigationRevision === navigationRevision) {
           selectedManageChannel = Number(preferredChannel)
         }
         await reloadLibraryWithoutLosingPlace(preferredChannel)
-        notice(result.message || 'Done.', result.refreshed === false)
+        if (result.refreshed === false || action === 'optimise-adult') {
+          notice(result.message || 'The change was saved, but the TV could not refresh.',
+            result.refreshed === false)
+        }
       } catch (error) { notice(error.message, true) }
       finally { managementBusy = false }
     }
@@ -40,11 +42,9 @@ let managementBusy = false
     async function playOnTv(payload, title) {
       if (!confirm(`Play “${title}” on Mabel TV now? This will replace what is currently playing.`)) return
       try {
-        notice(`Starting ${title} on Mabel TV…`)
-        const result = await api('/api/play-on-tv', {
+        await api('/api/play-on-tv', {
           method: 'POST', body: JSON.stringify(payload)
         })
-        notice(result.message || `Playing ${title} on Mabel TV.`)
       } catch (error) { notice(error.message, true) }
     }
 
@@ -238,7 +238,6 @@ let managementBusy = false
       $('#channel').disabled = true
       $('#file').disabled = true
       $('#uploadState').classList.remove('hidden')
-      notice(files.length === 1 ? 'Preparing upload…' : `Uploading ${files.length} videos one at a time…`)
       const queued = []
       for (const file of files) {
         try {
@@ -266,13 +265,8 @@ let managementBusy = false
         $('#uploadText').textContent = 'Failed or interrupted files remain selected. Tap Upload selected to resume them safely.'
       } else {
         $('#uploadState').classList.add('hidden')
-        if (files.length > 1) {
-          notice(`${accepted} videos published to CH ${channel} and available now.`)
-        } else {
-          notice(singleResult?.refreshed
-            ? `Published on CH ${channel} and available now.`
-            : `The video is safely stored on CH ${channel}, but the TV could not refresh. Use Retry TV refresh below.`,
-            !singleResult?.refreshed)
+        if (files.length === 1 && !singleResult?.refreshed) {
+          notice(`The video is safely stored on CH ${channel}, but the TV could not refresh. Use Retry TV refresh below.`, true)
         }
       }
       $('#channel').disabled = false
@@ -359,7 +353,6 @@ let managementBusy = false
       $('#adultUploadButton').disabled = true
       $('#adultFile').disabled = true
       $('#adultUploadState').classList.remove('hidden')
-      notice(files.length === 1 ? 'Uploading film…' : `Uploading ${files.length} films one at a time…`)
       const queued = await Promise.all(files.map(async file => ({ file, created: await api('/api/adult/uploads', {
         method: 'POST', body: JSON.stringify({ file_name: file.name, size: file.size,
           folder: $('#adultUploadFolder').value, source_id: uploadSourceId })
@@ -377,7 +370,6 @@ let managementBusy = false
         $('#adultUploadText').textContent = 'Interrupted films remain selected so you can resume them.'
         notice(`${files.length - failures.length} of ${files.length} films were added.\n${failures.map(failure => `${failure.file.name}: ${failure.message}`).join('\n')}`, true)
       } else {
-        notice(`${files.length} film${files.length === 1 ? '' : 's'} added to Adult mode in original quality. Test them on TV first.`)
         closeLibrarySheet($('#adultUploadSheet'))
       }
       $('#adultFile').disabled = false
@@ -473,7 +465,6 @@ let managementBusy = false
       $('#adultSeriesUploadButton').disabled = true
       $('#adultSeriesFile').disabled = true
       $('#adultSeriesUploadState').classList.remove('hidden')
-      notice(files.length === 1 ? 'Uploading episode…' : `Uploading ${files.length} episodes one at a time…`)
       const queued = await Promise.all(files.map(async file => ({ file, created: await api('/api/adult/series/uploads', {
         method: 'POST', body: JSON.stringify({ series: target.id, season, file_name: file.name,
           size: file.size, source_id: uploadSourceId }),
@@ -493,7 +484,6 @@ let managementBusy = false
       } else {
         closeLibrarySheet($('#adultSeriesUploadSheet'), false)
         adultSeriesUploadTarget = null
-        notice(`${files.length} episode${files.length === 1 ? '' : 's'} added to Series ${season}.`)
         target.successReturn?.()
       }
       $('#adultSeriesFile').disabled = false
@@ -508,7 +498,7 @@ let managementBusy = false
         if (action === 'restart-player') setTimeout(() => refreshLiveStatus().catch(() => {}), 2500)
       } catch (error) { notice(error.message, true) }
     }
-    $('#checkAgain').onclick = async () => { try { notice('Checking…'); await refreshLiveStatus(); notice('Checks updated.') } catch (error) { notice(error.message, true) } }
+    $('#checkAgain').onclick = async () => { try { await refreshLiveStatus() } catch (error) { notice(error.message, true) } }
     $('#restartPlayer').onclick = () => { if (confirm('Restart the TV player now? The picture will disappear briefly.')) systemAction('restart-player', 'Restarting the TV player…') }
     $('#rebootPi').onclick = () => { if (confirm(`Restart the Raspberry Pi now? ${tvName()} will be unavailable for about a minute.`)) systemAction('reboot', 'Restarting the Raspberry Pi…') }
     $('#poweroffPi').onclick = () => { if (confirm('Shut down the Raspberry Pi now? You will need to switch its power back on afterwards.')) systemAction('poweroff', 'Shutting down safely…') }
@@ -645,7 +635,6 @@ let managementBusy = false
       button.disabled = true
       try {
         await api('/api/live/control', { method: 'POST', body: JSON.stringify({ command: 'enter-adult-mode' }) })
-        notice('Adult mode is open on MabelTV.')
       } catch (error) { notice(error.message, true) }
       finally { setTimeout(() => { button.disabled = false }, 450) }
     }

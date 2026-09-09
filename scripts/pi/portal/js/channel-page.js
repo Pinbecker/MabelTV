@@ -176,7 +176,6 @@ const ChannelPageComponents = (() => {
     card.className = `watch-card channel-page-film-card${programme.enabled ? '' : ' is-hidden'}`
     card.setAttribute('aria-label', `${title}${resume.resumable ? `, resume at ${filmTimeLabel(resume.position)}` : ''}`)
     const visual = createPoster(programme)
-    appendAdultLocalArtworkStatus(visual, 'movie', programme)
     if (programme.browser_ready === false) {
       const format = document.createElement('span')
       format.className = 'watch-format'

@@ -93,7 +93,6 @@
                 placeholder.textContent = watchFilmTitle(programme).slice(0, 1).toUpperCase()
                 art.append(placeholder)
               }
-              appendAdultLocalArtworkStatus(art, 'movie', programme)
               if (programme.browser_ready === false) {
                 const format = document.createElement('span')
                 format.className = 'watch-format'
@@ -200,7 +199,6 @@
           || series.title?.toLocaleLowerCase() === name.trim().toLocaleLowerCase())
         if (!created) throw new Error('The series was created, but could not be reopened')
         openAdultSeriesSheet(created)
-        notice(`${created.title} is ready. Create Series 1 when you are ready to add episodes.`)
       } catch (error) { showError(error) }
     }
     const adultSeriesClose = $('#adultSeriesClose')

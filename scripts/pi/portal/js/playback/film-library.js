@@ -29,7 +29,6 @@
         if (onCleared) onCleared()
         renderAdultWatch()
         renderHomeLibrary()
-        notice(`${title} was removed from Continue Watching.`)
       } finally {
         if (action) {
           action.disabled = false
@@ -255,7 +254,7 @@
         card.dataset.adultPath = film.path
         art.append(adultOptimisationBadge(film))
       }
-      appendAdultLocalArtworkStatus(art, 'movie', film)
+      if (entry.kind === 'adult') appendAdultLocalArtworkStatus(art, 'movie', film)
       const copy = document.createElement('span')
       copy.className = 'watch-continue-copy'
       const label = document.createElement('small')
@@ -338,8 +337,9 @@
       const art = document.createElement('span')
       art.className = 'home-poster-art'
       art.append(filmEntryPoster(entry))
-      appendAdultLocalArtworkStatus(art, 'movie', entry.film)
+      if (entry.kind === 'adult') appendAdultLocalArtworkStatus(art, 'movie', entry.film)
       if (entry.film.favourite) {
+        art.classList.add('has-favourite')
         const favourite = document.createElement('span')
         favourite.className = 'home-favourite-mark'
         favourite.append(portalIcon('signal-heart'))
@@ -377,7 +377,6 @@
         placeholder.textContent = channel.name.slice(0, 1).toUpperCase()
         art.append(placeholder)
       }
-      appendAdultLocalArtworkStatus(art, 'tv', channel)
       const favourite = document.createElement('span')
       favourite.className = 'home-favourite-mark'
       favourite.append(portalIcon('signal-heart'))
@@ -407,6 +406,7 @@
       art.className = 'home-poster-art home-channel-art'
       art.append(adultSeriesArtwork(series))
       appendAdultLocalArtworkStatus(art, 'tv', series)
+      art.classList.add('has-favourite')
       const favourite = document.createElement('span')
       favourite.className = 'home-favourite-mark'
       favourite.append(portalIcon('signal-heart'))
@@ -507,8 +507,6 @@
       entry.film.favourite = enabled
       renderHomeLibrary()
       renderAdultWatch()
-      notice(enabled ? `${watchFilmTitle(entry.film)} was added to Favourites.`
-        : `${watchFilmTitle(entry.film)} was removed from Favourites.`)
     }
 
     async function setChannelFavourite(channel, enabled) {
@@ -519,8 +517,6 @@
       })
       channel.favourite = enabled
       renderHomeLibrary()
-      notice(enabled ? `${channel.name} was added to Favourites.`
-        : `${channel.name} was removed from Favourites.`)
     }
 
     async function setAdultSeriesFavourite(series, enabled) {
@@ -530,8 +526,6 @@
       series.favourite = enabled
       renderHomeLibrary()
       renderAdultSeries(adultSearchText)
-      notice(enabled ? `${series.title} was added to Favourites.`
-        : `${series.title} was removed from Favourites.`)
     }
 
     function closeWatchFilmSheet(restoreParent = true) {

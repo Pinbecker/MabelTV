@@ -41,6 +41,16 @@ test('Explore is a polished four-wide continuous catalogue with direct actions',
   await expect(page).toHaveScreenshot('explore-for-you.png')
 
   const first = page.locator('.adult-explore-card[data-media-type="movie"]').first()
+  const actionSize = await first.locator('[data-explore-action="watched"]')
+    .evaluate(button => button.getBoundingClientRect().width)
+  expect(actionSize).toBeGreaterThanOrEqual(29)
+  const iconStable = await first.evaluate(card => {
+    const button = card.querySelector('[data-explore-action="watchlist"]')
+    window.__exploreActionIcon = button.querySelector('svg')
+    refreshAdultArtworkStatuses()
+    return window.__exploreActionIcon === button.querySelector('svg')
+  })
+  expect(iconStable).toBe(true)
   await first.locator('[data-explore-action="watchlist"]').click()
   await expect(first.locator('[data-explore-action="watchlist"]')).toHaveClass(/active/)
   await first.locator('[data-explore-action="watchlist"]').click()
@@ -52,6 +62,30 @@ test('Explore is a polished four-wide continuous catalogue with direct actions',
   await first.locator('[data-explore-action="watched"]').click()
   await expect(first.locator('[data-explore-action="watched"]')).toHaveAttribute('data-status', 'watched')
   await expect(first).toBeVisible()
+  await expect(page.locator('#notice')).toHaveText('')
+})
+
+
+test('Explore updates a film card instantly when its detail state changes', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'iphone-chromium', 'One phone engine covers optimistic detail state')
+  await openExplore(page)
+  await page.route('**/api/adult/viewing', async route => {
+    if (route.request().method() === 'POST') {
+      await new Promise(resolve => setTimeout(resolve, 600))
+    }
+    await route.continue()
+  })
+
+  const first = page.locator('.adult-explore-card[data-media-type="movie"]').first()
+  await first.locator('.adult-explore-open-art').click()
+  await expect(page.locator('#adultTitleSheet')).toBeVisible()
+  const watched = page.locator('#adultTitleIntents [data-viewing-action="watched"]')
+  await watched.click()
+  await expect(watched).toHaveClass(/active/, { timeout: 150 })
+  await page.locator('#adultTitleClose').click()
+  await expect(first.locator('[data-explore-action="watched"]'))
+    .toHaveAttribute('data-status', 'watched', { timeout: 150 })
+  await expect(page.locator('#notice')).toHaveText('')
 })
 
 

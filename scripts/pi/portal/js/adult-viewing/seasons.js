@@ -240,27 +240,28 @@ function adultStreamingEpisodeRow(detail, season, result, episode, card) {
   toggle.onclick = async event => {
     event.stopPropagation()
     const next = !isComplete()
-    toggle.disabled = true
-    try {
-      detail.viewing = await updateAdultViewing(detail, 'episode_watched', {
-        season: season.number, episode: episode.number, watched: next,
-      })
+    const previous = episode.watched
+    const applyEpisodeState = watched => {
+      episode.watched = watched
       const local = findLocalAdultEpisode(detail, season.number, episode.number)
-      if (local) local.episode.watched = next
-      episode.watched = next
+      if (local) local.episode.watched = watched
       const statusCount = result.episodes.filter(value => value.watched).length
       season.watched_count = statusCount
       sync()
       syncAdultStreamingSeasonCard(card, season, detail)
       $('#adultTitleSeasonWatched').syncSeasonStatus(statusCount, result.episodes.length)
       $('#adultTitleSeasonMeta').textContent = `${result.episodes.length} episode${result.episodes.length === 1 ? '' : 's'} · ${adultTitleSeasonAvailability(detail, season)} · ${statusCount} watched`
-      await syncAdultTitleEpisodeStatus(detail)
       syncAdultTitleNextEpisode(detail)
-      notice(next ? 'Episode marked watched.' : 'Episode marked unwatched.')
+    }
+    applyEpisodeState(next)
+    try {
+      detail.viewing = await updateAdultViewing(detail, 'episode_watched', {
+        season: season.number, episode: episode.number, watched: next,
+      })
+      await syncAdultTitleEpisodeStatus(detail)
     } catch (error) {
+      applyEpisodeState(previous)
       showError(error)
-    } finally {
-      toggle.disabled = false
     }
   }
   row.append(artwork, copy, toggle)
@@ -342,7 +343,6 @@ function configureAdultTitleSeasonManagement(detail, season, card) {
       await reloadLibraryWithoutLosingPlace()
       portalSheets.dismiss($('#adultTitleSeasonSheet'))
       openAdultTitleSeason(detail, season, card)
-      notice('Episode details refreshed from TMDB.')
     } catch (error) { showError(error) } finally { metadata.disabled = false }
   } : null
   restart.onclick = localSeason ? () => {
@@ -365,7 +365,6 @@ function configureAdultTitleSeasonManagement(detail, season, card) {
       detail.on_mabeltv = Boolean((refreshed?.episodes || []).length)
       portalSheets.dismiss($('#adultTitleSeasonSheet'))
       openAdultTitleSeason(detail, season, card)
-      notice(`Series ${season.number} removed from MabelTV. Its catalogue episodes are still here.`)
     } catch (error) { showError(error) } finally { remove.disabled = false }
   } : null
 }
@@ -424,27 +423,34 @@ async function openAdultTitleSeason(detail, season, card, targetEpisode = 0) {
     }))
     wireAdultSeasonBulkButton($('#adultTitleSeasonWatched'), `Series ${season.number}`,
       statusCount, result.episodes.length, async targetWatched => {
-        detail.viewing = await updateAdultViewing(detail, 'season_watched', {
-          season: season.number, episode_count: result.episodes.length,
-          watched: targetWatched,
-        })
+        const previous = result.episodes.map(episode => episode.watched)
         result.episodes.forEach(episode => { episode.watched = targetWatched })
-        if (detail.local?.kind === 'series') {
-          const localSeries = (library?.adult_series || []).find(value =>
-            value.id === detail.local.series)
-          ;(localSeries?.episodes || []).filter(episode =>
-            Number(episode.season) === Number(season.number))
-            .forEach(episode => { episode.watched = targetWatched })
-        }
         season.watched_count = targetWatched ? result.episodes.length : 0
-        await syncAdultTitleEpisodeStatus(detail)
         syncAdultStreamingSeasonCard(card, season, detail)
         syncAdultTitleNextEpisode(detail)
-        portalSheets.close(seasonSheet, { restore: false })
-        openAdultTitleSeason(detail, season, card, targetEpisode)
-        notice(targetWatched ? `Series ${season.number} marked watched.`
-          : `Series ${season.number} marked unwatched.`)
-        return targetWatched ? result.episodes.length : 0
+        try {
+          detail.viewing = await updateAdultViewing(detail, 'season_watched', {
+            season: season.number, episode_count: result.episodes.length,
+            watched: targetWatched,
+          })
+          if (detail.local?.kind === 'series') {
+            const localSeries = (library?.adult_series || []).find(value =>
+              value.id === detail.local.series)
+            ;(localSeries?.episodes || []).filter(episode =>
+              Number(episode.season) === Number(season.number))
+              .forEach(episode => { episode.watched = targetWatched })
+          }
+          await syncAdultTitleEpisodeStatus(detail)
+          portalSheets.close(seasonSheet, { restore: false })
+          openAdultTitleSeason(detail, season, card, targetEpisode)
+          return targetWatched ? result.episodes.length : 0
+        } catch (error) {
+          result.episodes.forEach((episode, index) => { episode.watched = previous[index] })
+          season.watched_count = previous.filter(Boolean).length
+          syncAdultStreamingSeasonCard(card, season, detail)
+          syncAdultTitleNextEpisode(detail)
+          throw error
+        }
       })
     bulk.disabled = false
     syncAdultStreamingSeasonCard(card, season, detail)
@@ -501,17 +507,23 @@ function renderAdultTitleSeasons(detail) {
     status.type = 'button'
     wireAdultSeasonBulkButton(status, `Series ${season.number}`,
       season.watched_count, season.episodes, async targetWatched => {
-        detail.viewing = await updateAdultViewing(detail, 'season_watched', {
-          season: season.number, episode_count: season.episodes, watched: targetWatched,
-        })
+        const previous = season.watched_count
         season.watched_count = targetWatched ? Number(season.episodes || 0) : 0
-        await syncAdultTitleEpisodeStatus(detail)
         syncAdultStreamingSeasonCard(card, season, detail)
         syncAdultTitleNextEpisode(detail)
-        renderAdultTitleDetail(detail, false)
-        notice(targetWatched ? `Series ${season.number} marked watched.`
-          : `Series ${season.number} marked unwatched.`)
-        return season.watched_count
+        try {
+          detail.viewing = await updateAdultViewing(detail, 'season_watched', {
+            season: season.number, episode_count: season.episodes, watched: targetWatched,
+          })
+          await syncAdultTitleEpisodeStatus(detail)
+          renderAdultTitleDetail(detail, false)
+          return season.watched_count
+        } catch (error) {
+          season.watched_count = previous
+          syncAdultStreamingSeasonCard(card, season, detail)
+          syncAdultTitleNextEpisode(detail)
+          throw error
+        }
       }, true)
     card.append(art, shade, copy, progress,
       librarySignalIcon('signal-chevron-right', 'icon adult-season-card-chevron'), status)

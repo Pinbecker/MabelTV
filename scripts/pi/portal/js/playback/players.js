@@ -382,7 +382,6 @@ function remoteTime(value) {
 
     async function openInVlc(payload, title) {
       try {
-        notice(`Opening ${title} in VLC…`)
         const result = await api('/api/external/start', {
           method: 'POST', body: JSON.stringify(payload),
         })
@@ -415,18 +414,17 @@ function remoteTime(value) {
       openView('watch')
       await renderDownloads()
       try {
-        const manifest = await window.MabelOffline.startDownload(payload, title, update => {
+        await window.MabelOffline.startDownload(payload, title, update => {
           pendingDownloads.set(pendingId, { title, ...update })
           renderDownloads().catch(() => {})
         })
         pendingDownloads.delete(pendingId)
         await renderDownloads()
-        notice(`${manifest.title} is ready offline.`)
       } catch (error) {
         const current = pendingDownloads.get(pendingId)
         pendingDownloads.set(pendingId, { ...current, phase: 'error', message: error.message })
         await renderDownloads()
-        notice(error.name === 'AbortError' ? 'Download paused.' : error.message, error.name !== 'AbortError')
+        if (error.name !== 'AbortError') notice(error.message, true)
       }
     }
 
@@ -493,4 +491,3 @@ function remoteTime(value) {
       beaconMabelRemotePosition()
       if (mabelRemoteSession) navigator.sendBeacon('/api/remote/release', JSON.stringify({ stream: mabelRemoteSession }))
     })
-

@@ -318,7 +318,6 @@
         closeAdultSeriesMoreSheet(false)
         try {
           await manage('trash-adult-series', { series: current.id, scope: 'series' })
-          notice(`${current.title} moved to the recycle bin.`)
         } catch (error) { showError(error) }
       }
       portalSheets.open($('#adultSeriesMoreSheet'), {
@@ -423,9 +422,6 @@
           if (returnTo) returnTo()
           renderAdultWatch()
           renderHomeLibrary()
-          notice(episode.watched ? 'Episode marked watched.' : episode.remote_position > 10
-            ? `Marked unwatched. Resume point restored at ${watchTimeLabel(episode.remote_position)}.`
-            : 'Episode marked unwatched.')
         } catch (error) { showError(error) } finally { watched.disabled = false }
       }
       $('#adultEpisodeViewSeries').onclick = () => {
@@ -466,7 +462,6 @@
           await manage('trash-adult-series', {
             series: series.id, scope: 'episode', file: episode.path,
           })
-          notice('Episode moved to the recycle bin.')
         } catch (error) { showError(error) }
       }
       const dialog = $('#adultEpisodeSheet')
@@ -551,6 +546,10 @@
           return
         }
         const targetWatched = watchedCount < episodeCount
+        const previousWatched = watchedCount
+        watchedCount = targetWatched ? episodeCount : 0
+        confirming = false
+        render()
         button.disabled = true
         try {
           const result = await onConfirm(targetWatched)
@@ -559,6 +558,7 @@
           confirming = false
           render()
         } catch (error) {
+          watchedCount = previousWatched
           confirming = false
           render()
           showError(error)
@@ -599,8 +599,6 @@
         if (targetWatched) await finishLocalSeriesIfComplete(current)
         renderAdultWatch()
         renderHomeLibrary()
-        notice(targetWatched ? `Series ${number} marked watched.`
-          : `Series ${number} marked unwatched. Saved resume points were restored.`)
         closeAdultSeasonSheet(false)
         openAdultSeasonSheet(current, number, returnTo)
         return targetWatched ? episodes.length : 0
@@ -672,7 +670,6 @@
           await manage('trash-adult-series', {
             series: current.id, scope: 'season', season: number,
           })
-          notice(`Series ${number} moved to the recycle bin.`)
         } catch (error) { showError(error) }
       }
       const dialog = $('#adultSeasonSheet')
@@ -784,8 +781,6 @@
             if (targetWatched) await finishLocalSeriesIfComplete(current)
             renderAdultWatch()
             renderHomeLibrary()
-            notice(targetWatched ? `Series ${season} marked watched.`
-              : `Series ${season} marked unwatched. Saved resume points were restored.`)
             return count
           }, true)
         card.append(art, shade, copy, progress,
@@ -810,7 +805,6 @@
           if (!refreshed) throw new Error('The series was created, but the show could not be reopened')
           openAdultSeasonSheet(refreshed, nextSeries,
             () => openAdultSeriesSheet(refreshed, returnTo))
-          notice(`${refreshed.title} · Series ${nextSeries} is ready for uploads and USB.`)
         } catch (error) {
           showError(error)
           addCard.disabled = false
@@ -827,7 +821,6 @@
 
     async function scanAdultSeriesTmdb(series, returnTo = null) {
       try {
-        notice(`Searching TMDB for ${series.title}…`)
         const result = await api('/api/tmdb/adult-series/search', {
           method: 'POST', body: JSON.stringify({ series: series.id })
         })
@@ -852,13 +845,11 @@
           choose.onclick = async () => {
             choose.disabled = true
             try {
-              notice('Matching seasons and episodes…')
               await api('/api/tmdb/adult-series/apply', { method: 'POST', body: JSON.stringify({
                 series: series.id, tmdb_id: match.id,
               }) })
               portalSheets.dismiss($('#tmdbDialog'))
               await reloadLibraryWithoutLosingPlace()
-              notice('Series, season and episode metadata was saved locally.')
             } catch (error) { showError(error); choose.disabled = false }
           }
           row.append(poster, copy, choose)

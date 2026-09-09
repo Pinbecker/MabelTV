@@ -44,6 +44,51 @@ function cacheAdultViewingRecord(viewing = {}) {
   else items[index] = { ...items[index], ...viewing }
 }
 
+function optimisticAdultViewingRecord(title, action, extra = {}) {
+  const current = adultViewingRecord(title)
+  const key = title.key || `${title.media_type}:${Number(title.tmdb_id)}`
+  const next = {
+    ...current, key, media_type: title.media_type, tmdb_id: Number(title.tmdb_id),
+    title: title.title || current.title || '', year: title.year || current.year || '',
+    poster_path: title.poster_path || current.poster_path || '',
+    overview: title.overview || current.overview || '',
+    runtime: Number(title.runtime || current.runtime || 0), updated: Date.now() / 1000,
+    episodes: { ...(current.episodes || {}) },
+    history: [...(current.history || [])],
+  }
+  if (action === 'watchlist') next.watchlisted = extra.enabled === true
+  else if (action === 'up_next') next.up_next = extra.enabled === true
+  else if (action === 'watching') next.series_watching = extra.enabled === true
+  else if (['part_watched', 'watched', 'not_watched', 'dropped'].includes(action)) {
+    if (action === 'watched') next.history.push(next.updated)
+    else if (next.manual_state === 'watched' && next.history.length) next.history.pop()
+    next.manual_state = action
+  } else if (action === 'episode_watched') {
+    next.episodes[`${Number(extra.season)}:${Number(extra.episode)}`] = {
+      watched: extra.watched === true, updated: next.updated,
+    }
+  } else if (action === 'season_watched') {
+    for (let episode = 1; episode <= Number(extra.episode_count || 0); episode += 1) {
+      next.episodes[`${Number(extra.season)}:${episode}`] = {
+        watched: extra.watched === true, updated: next.updated,
+      }
+    }
+  } else if (action === 'remove') {
+    next.watchlisted = false
+    next.up_next = false
+    next.series_watching = false
+    next.manual_state = 'not_watched'
+  }
+  if (['episode_watched', 'season_watched'].includes(action)) {
+    const total = (title.seasons || []).reduce(
+      (sum, season) => sum + Number(season.episodes || 0), 0)
+    const watched = Object.values(next.episodes).filter(value => value?.watched === true).length
+    if (total) next.manual_state = watched >= total ? 'watched'
+      : watched ? 'part_watched' : 'not_watched'
+  }
+  return next
+}
+
 function adultArtworkStatusKind(title = {}, detail = title) {
   const state = adultViewingRecord(title)
   const status = adultTitleViewingStatus(state, {
@@ -70,6 +115,7 @@ function appendAdultArtworkStatus(root, title = {}, detail = title) {
 function refreshAdultArtworkStatuses() {
   $$('.adult-artwork-status-host').forEach(root => appendAdultArtworkStatus(
     root, root._adultArtworkTitle || {}, root._adultArtworkDetail || {}))
+  if (typeof refreshAdultExploreCards === 'function') refreshAdultExploreCards()
 }
 
 function appendAdultLocalArtworkStatus(root, mediaType, value = {}) {
@@ -362,7 +408,6 @@ async function launchNetflixOnTv() {
       }),
     })
     void updateAdultViewing(pending.detail, 'launched', { provider: pending.provider.name }).catch(() => {})
-    notice(result.message || 'Opening Netflix on the connected TV')
     closeNetflixLaunchChoice()
   } catch (error) {
     $('#adultNetflixLaunchStatus').textContent = error.message || 'Netflix could not open on the TV.'
@@ -379,15 +424,37 @@ function adultTitlePayload(title, action, extra = {}) {
   }
 }
 
-async function updateAdultViewing(title, action, extra = {}) {
-  const result = await api('/api/adult/viewing', {
-    method: 'POST', body: JSON.stringify(adultTitlePayload(title, action, extra)),
-  })
-  title.viewing = { ...result.viewing, key: result.key }
-  cacheAdultViewingRecord(title.viewing)
-  refreshAdultArtworkStatuses()
-  void loadAdultViewing().catch(() => {})
-  return title.viewing
+async function updateAdultViewing(title, action, extra = {}, onChange = null) {
+  const key = title.key || `${title.media_type}:${Number(title.tmdb_id)}`
+  const items = adultViewingData.items || (adultViewingData.items = [])
+  const storedIndex = items.findIndex(item => item.key === key)
+  const previousStored = storedIndex >= 0 ? items[storedIndex] : null
+  const previousTitle = title.viewing || null
+  const apply = viewing => {
+    title.viewing = viewing
+    cacheAdultViewingRecord(viewing)
+    refreshAdultArtworkStatuses()
+    onChange?.(viewing)
+  }
+  apply(optimisticAdultViewingRecord(title, action, extra))
+  try {
+    const result = await api('/api/adult/viewing', {
+      method: 'POST', body: JSON.stringify(adultTitlePayload(title, action, extra)),
+    })
+    apply({ ...result.viewing, key: result.key })
+    void loadAdultViewing().catch(() => {})
+    return title.viewing
+  } catch (error) {
+    title.viewing = previousTitle || {}
+    if (previousStored) items[storedIndex] = previousStored
+    else {
+      const optimisticIndex = items.findIndex(item => item.key === key)
+      if (optimisticIndex >= 0) items.splice(optimisticIndex, 1)
+    }
+    refreshAdultArtworkStatuses()
+    onChange?.(title.viewing)
+    throw error
+  }
 }
 
 function adultDiscoveryCard(title) {

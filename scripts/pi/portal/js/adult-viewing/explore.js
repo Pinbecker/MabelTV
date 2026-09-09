@@ -89,7 +89,10 @@ function syncAdultExploreCard(card, title) {
   watchlist.classList.toggle('active', state.watchlisted === true)
   watchlist.setAttribute('aria-pressed', String(state.watchlisted === true))
   watchlist.setAttribute('aria-label', `${state.watchlisted ? 'Remove from' : 'Add to'} Watchlist: ${title.title}`)
-  watchlist.replaceChildren(librarySignalIcon(state.watchlisted ? 'signal-minus' : 'signal-plus'))
+  const watchlistIcon = state.watchlisted ? 'signal-minus' : 'signal-plus'
+  if (watchlist.querySelector('use')?.getAttribute('href') !== `/portal/icons.svg#${watchlistIcon}`) {
+    watchlist.replaceChildren(librarySignalIcon(watchlistIcon))
+  }
   const watched = card.querySelector('[data-explore-action="watched"]')
   watched.classList.toggle('active', Boolean(status))
   watched.dataset.status = status
@@ -97,8 +100,19 @@ function syncAdultExploreCard(card, title) {
   watched.setAttribute('aria-label', title.media_type === 'tv'
     ? `Choose the watched series for ${title.title}`
     : `${status === 'watched' ? 'Mark unwatched' : 'Mark watched'}: ${title.title}`)
-  watched.replaceChildren(...(status ? [librarySignalIcon(
-    status === 'part-watched' ? 'signal-minus' : 'signal-check')] : []))
+  const watchedIcon = status === 'part-watched' ? 'signal-minus'
+    : status === 'watched' ? 'signal-check' : ''
+  if (watched.querySelector('use')?.getAttribute('href') !==
+      (watchedIcon ? `/portal/icons.svg#${watchedIcon}` : undefined)) {
+    watched.replaceChildren(...(watchedIcon ? [librarySignalIcon(watchedIcon)] : []))
+  }
+}
+
+function refreshAdultExploreCards() {
+  $('#adultExploreGrid')?.querySelectorAll('.adult-explore-card').forEach(card => {
+    const title = adultExploreItems.find(item => item.key === card.dataset.exploreKey)
+    if (title) syncAdultExploreCard(card, title)
+  })
 }
 
 function adultExploreCard(title) {
@@ -139,15 +153,14 @@ function adultExploreCard(title) {
   watchlist.dataset.exploreAction = 'watchlist'
   watchlist.onclick = async () => {
     card.dataset.exploreActed = 'true'
-    watchlist.disabled = true
+    if (watchlist.dataset.saving === 'true') return
+    watchlist.dataset.saving = 'true'
     try {
       const state = adultViewingRecord(title)
       title.viewing = await updateAdultViewing(title, 'watchlist', {
         enabled: state.watchlisted !== true,
-      })
-      syncAdultExploreCard(card, title)
-      notice(title.viewing.watchlisted ? 'Added to Watchlist.' : 'Removed from Watchlist.')
-    } catch (error) { showError(error) } finally { watchlist.disabled = false }
+      }, () => syncAdultExploreCard(card, title))
+    } catch (error) { showError(error) } finally { delete watchlist.dataset.saving }
   }
   const watched = MabelPortalUI.button({ iconName: 'signal-check' })
   watched.dataset.exploreAction = 'watched'
@@ -157,13 +170,14 @@ function adultExploreCard(title) {
       openAdultTitle(adultExploreTitle(title))
       return
     }
-    watched.disabled = true
+    if (watched.dataset.saving === 'true') return
+    watched.dataset.saving = 'true'
     try {
       const complete = adultArtworkStatusKind(title) === 'watched'
-      title.viewing = await updateAdultViewing(title, complete ? 'not_watched' : 'watched')
-      syncAdultExploreCard(card, title)
-      notice(complete ? 'Marked unwatched.' : 'Marked watched. It will leave Explore next time you visit.')
-    } catch (error) { showError(error) } finally { watched.disabled = false }
+      title.viewing = await updateAdultViewing(title,
+        complete ? 'not_watched' : 'watched', {},
+        () => syncAdultExploreCard(card, title))
+    } catch (error) { showError(error) } finally { delete watched.dataset.saving }
   }
   actions.append(watchlist, watched)
   visual.append(openArt, actions)

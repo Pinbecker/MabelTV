@@ -99,11 +99,10 @@
       const button = $('#usbPlayTv')
       button.disabled = true
       try {
-        const result = await api('/api/usb', {
+        await api('/api/usb', {
           method: 'POST', body: JSON.stringify({ action: 'play', volume: usbVolume, path: entry.path }),
         })
         closeUsbFileActionsSheet()
-        notice(result.message)
       } catch (error) { notice(error.message, true) }
       finally { button.disabled = false }
     }
@@ -121,8 +120,8 @@
       button.disabled = true
       try {
         closeLibrarySheet($('#usbEjectSheet'))
-        const result = await api('/api/usb', { method: 'POST', body: JSON.stringify({ action: 'eject', volume: usbVolume }) })
-        usbVolume = ''; usbPath = ''; usbEntries = []; usbSelection.clear(); renderUsbFiles(); await refreshUsb(); notice(result.message)
+        await api('/api/usb', { method: 'POST', body: JSON.stringify({ action: 'eject', volume: usbVolume }) })
+        usbVolume = ''; usbPath = ''; usbEntries = []; usbSelection.clear(); renderUsbFiles(); await refreshUsb()
       } catch (error) { notice(error.message, true) }
       finally { button.disabled = false }
     }
@@ -267,11 +266,10 @@
     async function uploadQueueAction(id, action) {
       if (action === 'cancel' && !confirm('Remove this upload and free the space it is using?')) return
       try {
-        const result = await api('/api/uploads/' + id, {
+        await api('/api/uploads/' + id, {
           method: 'POST', body: JSON.stringify({ action })
         })
         await refreshLiveStatus()
-        notice(result.message || 'Done.')
       } catch (error) { notice(error.message, true) }
     }
 

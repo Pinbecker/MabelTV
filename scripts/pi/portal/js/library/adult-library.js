@@ -232,7 +232,6 @@ function renderAdultLibraryContents() {
 
     async function scanTmdb(film, returnTo = null) {
       try {
-        notice(`Searching TMDB for ${film.display_name}…`)
         const result = await api('/api/tmdb/search', {
           method: 'POST', body: JSON.stringify({ file: film.path })
         })
@@ -260,7 +259,7 @@ function renderAdultLibraryContents() {
             choose.disabled = true
             try {
               await api('/api/tmdb/apply', { method: 'POST', body: JSON.stringify({ file: film.path, tmdb_id: match.id }) })
-              portalSheets.dismiss($('#tmdbDialog')); await reloadLibraryWithoutLosingPlace(); notice('Film metadata, artwork, and available subtitles were saved locally.')
+              portalSheets.dismiss($('#tmdbDialog')); await reloadLibraryWithoutLosingPlace()
             } catch (error) { notice(error.message, true); choose.disabled = false }
           }
           row.append(poster, copy, choose); root.append(row)
@@ -272,7 +271,6 @@ function renderAdultLibraryContents() {
     async function scanProgrammeTmdb(channel, programme, returnTo = null) {
       const title = programme.metadata?.title || programme.display_name
       try {
-        notice(`Searching TMDB for ${programme.display_name}…`)
         const result = await api('/api/tmdb/programme', {
           method: 'POST',
           body: JSON.stringify({ channel: channel.number, file: programme.name })
@@ -312,7 +310,6 @@ function renderAdultLibraryContents() {
               })
               portalSheets.dismiss($('#tmdbDialog'))
               await reloadLibraryWithoutLosingPlace(channel.number)
-              notice('The selected film metadata and artwork were saved locally.')
             } catch (error) {
               notice(error.message, true)
               choose.disabled = false
@@ -329,7 +326,6 @@ function renderAdultLibraryContents() {
     async function scanChannelTmdb(channel, returnTo = null) {
       const title = channel.metadata?.title || channel.name
       try {
-        notice(`Searching TMDB for ${channel.name}…`)
         const result = await api('/api/tmdb/channel', {
           method: 'POST',
           body: JSON.stringify({ channel: channel.number })
@@ -365,7 +361,6 @@ function renderAdultLibraryContents() {
               })
               portalSheets.dismiss($('#tmdbDialog'))
               await reloadLibraryWithoutLosingPlace(channel.number)
-              notice('The selected show metadata and channel artwork were saved locally.')
             } catch (error) {
               notice(error.message, true)
               choose.disabled = false

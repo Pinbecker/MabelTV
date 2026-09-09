@@ -258,7 +258,6 @@
         art.className = 'viewing-catalog-art'
         if (item.artwork) art.style.backgroundImage = `url("${item.artwork}")`
         else art.append(librarySignalIcon(item.kind === 'film' ? 'signal-film' : 'signal-tv'))
-        appendAdultLocalArtworkStatus(art, item.kind === 'film' ? 'movie' : 'tv', item.media)
         const copy = document.createElement('span')
         copy.className = 'viewing-catalog-copy'
         const label = document.createElement('small')
@@ -644,7 +643,6 @@
               method: 'POST', body: JSON.stringify({ ids: [item.id] }),
             })
             await loadViewingInsights(true)
-            notice('Viewing session deleted.')
           } catch (error) {
             wrapper.classList.remove('deleting')
             remove.disabled = false

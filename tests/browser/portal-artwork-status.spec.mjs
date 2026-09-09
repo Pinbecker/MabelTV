@@ -29,15 +29,23 @@ test('watched and part-watched marks follow titles across every artwork catalogu
     renderViewingBrowse('films')
   })
 
-  await expect(page.locator('#homeFavouritesRail .adult-artwork-status.is-watched').first()).toBeAttached()
+  const adultFavourite = page.locator('#homeFavouritesRail .home-poster-card[aria-label*="from Adult TV"]')
+  await expect(adultFavourite.locator('.adult-artwork-status.is-watched')).toHaveCount(1)
+  await expect(adultFavourite.locator('.home-favourite-mark')).toHaveCount(1)
+  const marks = await adultFavourite.evaluate(card => ({
+    heart: card.querySelector('.home-favourite-mark').getBoundingClientRect().bottom,
+    watched: card.querySelector('.adult-artwork-status').getBoundingClientRect().top,
+  }))
+  expect(marks.watched).toBeGreaterThan(marks.heart)
   await expect(page.locator('#homeFavouritesRail .adult-artwork-status.is-part-watched')).toHaveCount(1)
-  await expect(page.locator('#remoteMabel .adult-artwork-status.is-watched')).toHaveCount(1)
+  await expect(page.locator('#homeFavouritesRail .home-poster-card[aria-label*="from Family Films"] .adult-artwork-status')).toHaveCount(0)
+  await expect(page.locator('#remoteMabel .adult-artwork-status')).toHaveCount(0)
   await expect(page.locator('#adultFilmList .adult-artwork-status.is-watched')).toHaveCount(1)
   await expect(page.locator('#adultSeriesRail .adult-artwork-status.is-part-watched')).toHaveCount(1)
-  await expect(page.locator('#viewingBrowseGrid .adult-artwork-status.is-watched')).toHaveCount(1)
+  await expect(page.locator('#viewingBrowseGrid .adult-artwork-status')).toHaveCount(0)
 
   await page.evaluate(() => openChannel(1, false))
-  await expect(page.locator('#channels .adult-artwork-status.is-watched')).toHaveCount(1)
+  await expect(page.locator('#channels .adult-artwork-status')).toHaveCount(0)
 
   await page.evaluate(() => {
     renderAdultTitleEnrichment({

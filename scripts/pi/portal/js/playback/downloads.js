@@ -146,7 +146,6 @@
       const art = document.createElement('span')
       art.className = 'watch-card-art'
       art.append(filmEntryPoster(entry))
-      appendAdultLocalArtworkStatus(art, 'movie', film)
       const progressValue = watchFilmProgress(film)
       if (resumable && progressValue) {
         const progress = document.createElement('span')

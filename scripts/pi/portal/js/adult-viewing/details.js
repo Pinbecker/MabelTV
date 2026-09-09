@@ -278,26 +278,20 @@ async function openAdultPerson(person, title) {
 
 function adultTitleIntentAction(detail, button, request, root = $('#adultTitleIntents'), onUpdate = null) {
   return async () => {
-    if (button.disabled) return
-    button.disabled = true
+    if (button.disabled || button.dataset.saving === 'true') return
+    button.dataset.saving = 'true'
     try {
       const { action, extra = {} } = request()
-      detail.viewing = await updateAdultViewing(detail, action, extra)
-      syncAdultTitleButtons(detail, root)
-      if (onUpdate) onUpdate(detail.viewing)
-      if (root?.id === 'adultTitleIntents') syncAdultTitleNextEpisode(detail)
-      if (action === 'watchlist') notice(detail.viewing.watchlisted
-        ? 'Added to Watchlist.' : 'Removed from Watchlist.')
-      else if (action === 'up_next') notice(detail.viewing.up_next
-        ? 'Added to Up Next.' : 'Removed from Up Next.')
-      else if (action === 'watching') notice(detail.viewing.series_watching
-        ? 'Series added to Watching.' : 'Series removed from Watching.')
-      else if (action === 'watched') notice('Marked watched and removed from Watchlist and Up Next.')
-      else if (action === 'not_watched') notice('Corrected. Its watched-history record is retained.')
+      detail.viewing = await updateAdultViewing(detail, action, extra, viewing => {
+        detail.viewing = viewing
+        syncAdultTitleButtons(detail, root)
+        if (onUpdate) onUpdate(viewing)
+        if (root?.id === 'adultTitleIntents') syncAdultTitleNextEpisode(detail)
+      })
     } catch (error) {
       showError(error)
     } finally {
-      button.disabled = false
+      delete button.dataset.saving
     }
   }
 }

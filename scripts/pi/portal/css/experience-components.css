@@ -774,7 +774,10 @@ body.portal-v2 .adult-artwork-status.is-part-watched {
   color: var(--experience-orange);
 }
 
+body.portal-v2 .has-favourite > .adult-artwork-status { top: 34px; }
+
 @media (max-width: 640px) {
   body.portal-v2 .adult-artwork-status { top: 4px; right: 4px; width: 17px; height: 17px; }
+  body.portal-v2 .has-favourite > .adult-artwork-status { top: 30px; }
   body.portal-v2 .adult-artwork-status .icon { width: 9px; height: 9px; }
 }
