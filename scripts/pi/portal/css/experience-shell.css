@@ -262,6 +262,26 @@ body.portal-v2 .mobile-head {
     min-width: 0;
   }
 
+  body.portal-v2 .mobile-header-adult {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 40px;
+    border: 1px solid var(--experience-line);
+    border-radius: 999px;
+    background: var(--experience-raised);
+    color: var(--experience-ink);
+    padding: 0 10px;
+    font-size: 10px;
+    font-weight: 750;
+  }
+
+  body.portal-v2 .mobile-header-adult .icon {
+    width: 16px;
+    height: 16px;
+    color: var(--experience-orange);
+  }
+
   body.portal-v2 .mobile-header-power {
     display: inline-grid;
     place-items: center;
@@ -297,7 +317,7 @@ body.portal-v2 .mobile-head {
     display: grid;
   }
 
-  body.portal-v2.tv-remote-mode .mobile-header-power { display: none; }
+  body.portal-v2.tv-remote-mode :is(.mobile-header-adult, .mobile-header-power) { display: none; }
 
   body.portal-v2 .mobile-health {
     display: inline-flex;

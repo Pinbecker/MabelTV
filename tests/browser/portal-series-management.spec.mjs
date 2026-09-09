@@ -177,6 +177,19 @@ test('adding a catalogue season prepares its local destination without a create-
 
 test('TV series rail includes local episodes and Up Next, without tinting a false Watchlist state', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One browser covers the rail state contract')
+  await page.route(url => new URL(url).pathname === '/api/adult/title', route => {
+    const identifier = Number(new URL(route.request().url()).searchParams.get('tmdb_id'))
+    const detail = titleDetail(identifier)
+    if (identifier === 7002) {
+      detail.seasons = [
+        { number: 1, episodes: 6, watched_count: 1 },
+        { number: 2, episodes: 8, watched_count: 0 },
+      ]
+    } else if (identifier === 7003) {
+      detail.seasons = [{ number: 1, episodes: 10, watched_count: 0 }]
+    }
+    return route.fulfill({ json: detail })
+  })
   await openPortal(page)
   const state = await page.evaluate(() => {
     library.adult_series = [{
@@ -248,7 +261,12 @@ test('TV series rail includes local episodes and Up Next, without tinting a fals
   expect(state.watchedWhiteSpace).toBe('normal')
   expect(state.statusFits).toBe(true)
   expect(state.partWatchedTitles).toEqual(['Ludwig'])
-  await expect(page.locator('#adultSeriesRail .adult-series-card-facts').filter({ hasText: 'Up Next' })).toHaveCount(2)
+  const queuedFacts = page.locator('#adultSeriesRail .adult-series-card')
+    .filter({ hasText: 'Queued Show' }).locator('.adult-title-fact')
+  await expect(queuedFacts).toHaveText(['Series2', 'Episodes14', 'Watched1'])
+  const streamingFacts = page.locator('#adultSeriesRail .adult-series-card')
+    .filter({ hasText: 'Streaming Show' }).locator('.adult-title-fact')
+  await expect(streamingFacts).toHaveText(['Series1', 'Episodes10', 'Watched0'])
 })
 
 test('series progress automatically moves between the read-only Part Watched and Watched states', async ({ page }, testInfo) => {

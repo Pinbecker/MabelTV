@@ -164,7 +164,17 @@
       openInsightsRoute(path)
     }
 
+    function storedInsightsParentRoute() {
+      const parent = String(history.state?.insightsParent || '')
+      if (['insights', 'insights/channels', 'insights/films', 'insights/diary'].includes(parent)) {
+        return parent
+      }
+      return /^insights\/period\/\d{4}-\d{2}-\d{2}\/[0-3]$/.test(parent) ? parent : ''
+    }
+
     function insightsParentRoute() {
+      const stored = storedInsightsParentRoute()
+      if (stored) return stored
       if (viewingInsightsRoute.screen === 'item') {
         return viewingItem(viewingInsightsRoute.itemKey)?.kind === 'film' ? 'insights/films' : 'insights/channels'
       }
@@ -268,7 +278,10 @@
     function renderViewingItem(item, tab = 'summary') {
       if (!item) { pushInsightsRoute('insights'); return }
       selectedViewingItemKey = item.item_key
-      $('#viewingItemBackLabel').textContent = item.kind === 'film' ? 'All films' : 'All channels'
+      const parent = insightsParentRoute()
+      $('#viewingItemBackLabel').textContent = parent.startsWith('insights/period/')
+        ? 'What happened' : parent === 'insights' ? 'Insights'
+          : item.kind === 'film' ? 'All films' : 'All channels'
       $('#viewingItemKicker').textContent = item.kind === 'film' ? 'Film insight' : 'Channel insight'
       $('#viewingItemTitle').textContent = item.title
       $('#viewingItemSource').textContent = item.kind === 'channel'
@@ -409,7 +422,7 @@
       const move = delta => {
         const next = flatIndex + delta
         if (next < 0 || next >= allKeys.length * 4) return
-        pushInsightsRoute(`insights/period/${allKeys[Math.floor(next / 4)]}/${next % 4}`)
+        replaceInsightsRoute(`insights/period/${allKeys[Math.floor(next / 4)]}/${next % 4}`)
       }
       $('#viewingPeriodPrevious').disabled = flatIndex <= 0
       $('#viewingPeriodNext').disabled = flatIndex >= allKeys.length * 4 - 1

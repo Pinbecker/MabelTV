@@ -129,6 +129,21 @@ test('representative film menu fits the phone viewport', async ({ page }, testIn
   await page.getByRole('button', { name: 'Close programme details' }).click()
 })
 
+test('Home Continue contains MabelTV films only', async ({ page }) => {
+  await openPortal(page)
+  await page.evaluate(() => {
+    library.adult_library = [{
+      path: 'adult-progress.mp4', display_name: 'Adult progress', browser_ready: true,
+      remote_position: 180, remote_duration: 1800, remote_last_watched: Date.now() / 1000,
+      metadata: { title: 'Adult progress' },
+    }]
+    renderHomeLibrary()
+  })
+  await expect(page.locator('#homeContinueRail [data-adult-path]')).toHaveCount(0)
+  await expect(page.locator('#homeContinueRail .watch-continue-card')).toHaveCount(8)
+  await expect(page.locator('#homeContinueRail')).not.toContainText('Adult progress')
+})
+
 
 test('PIN gate never reveals the application shell before authentication', async ({ page }) => {
   await page.request.get('/__fixture/pin-required?value=1')

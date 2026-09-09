@@ -152,6 +152,12 @@
     $('#watchMabelTab').onclick = () => chooseWatchLibrary('channel', true)
     $('#watchAdultTab').onclick = () => chooseWatchLibrary('adult', true)
     $('#watchDownloadsTab').onclick = () => chooseWatchLibrary('downloads')
+    $('#openHeaderAdultTv').onclick = () => {
+      remoteKind = 'adult'
+      renderRemoteViewing()
+      openView('watch')
+      scrollPortalToTop()
+    }
     const watchTitle = $('#view-watch .watch-title > div:first-child')
     watchTitle.onclick = () => scrollPortalToTop()
     watchTitle.onkeydown = event => {

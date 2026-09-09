@@ -255,6 +255,56 @@ test('viewing insights returns to the dashboard position', async ({ page }) => {
   expect(await scrollY(page)).toBeCloseTo(before, 0)
 })
 
+test('insights Back returns to the exact browse, highlight or Follow the day parent', async ({ page }) => {
+  await openPortal(page)
+  await page.locator('[data-view-button="system"]').click()
+  await page.locator('[data-go="insights"]').click()
+  await page.evaluate(() => {
+    const started = new Date()
+    started.setHours(14, 0, 0, 0)
+    viewingInsightsData = {
+      items: [{
+        item_key: 'channel:3', kind: 'channel', title: 'Little Explorers',
+        seconds: 300, sessions: 1, active_days: 1, average_session_seconds: 300,
+        longest_session_seconds: 300, share: 1, busiest_period: 'Afternoon',
+        first_watched: started.toISOString(), last_watched: started.toISOString(),
+      }],
+      sessions: [{
+        id: 'diary-session', item_key: 'channel:3', title: 'The Garden',
+        channel_number: 3, source: 'Little Explorers', kind: 'channel',
+        surface: 'tv', started: started.toISOString(), when: started.toISOString(),
+        seconds: 300, duration: '5m',
+      }],
+    }
+    viewingInsightsLoadedRange = 1
+    renderInsightsRoute()
+  })
+
+  await page.locator('[data-insights-destination="channels"]').click()
+  await page.locator('#viewingBrowseGrid .viewing-catalog-card').filter({ hasText: 'Little Explorers' }).click()
+  await expect(page.locator('#viewingItemBackLabel')).toHaveText('All channels')
+  await page.locator('#viewingItemDetail [data-insights-back]').click()
+  await expect(page.locator('#viewingBrowse')).toBeVisible()
+  await page.locator('#viewingBrowse [data-insights-back]').click()
+  await expect(page.locator('#viewingDashboard')).toBeVisible()
+
+  await page.locator('#viewingHighlights .viewing-highlight').filter({ hasText: 'Little Explorers' }).click()
+  await expect(page.locator('#viewingItemBackLabel')).toHaveText('Insights')
+  await page.locator('#viewingItemDetail [data-insights-back]').click()
+  await expect(page.locator('#viewingDashboard')).toBeVisible()
+
+  await page.locator('[data-insights-destination="diary"]').click()
+  await page.locator('#viewingDiaryDays button').filter({ hasText: 'Afternoon' }).first().click()
+  await page.locator('#viewingPeriodEntries .viewing-period-entry').click()
+  await expect(page.locator('#viewingItemBackLabel')).toHaveText('What happened')
+  await page.locator('#viewingItemDetail [data-insights-back]').click()
+  await expect(page.locator('#viewingPeriod')).toBeVisible()
+  await page.locator('#viewingPeriod [data-insights-back]').click()
+  await expect(page.locator('#viewingDiary')).toBeVisible()
+  await page.locator('#viewingDiary [data-insights-back]').click()
+  await expect(page.locator('#viewingDashboard')).toBeVisible()
+})
+
 test('a library refresh preserves replaced horizontal programme rails', async ({ page }) => {
   await openPortal(page)
   await page.locator('[data-view-button="watch"]').click()

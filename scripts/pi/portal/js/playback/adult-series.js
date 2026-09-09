@@ -1,6 +1,53 @@
 'use strict'
 
     let adultSeriesViewingLoadStarted = false
+    const adultSeriesRailCatalogue = new Map()
+
+    function adultSeriesRailCounts(local, viewing) {
+      if (Number(local?.episode_count || 0) > 0) {
+        return {
+          series: Number(local.season_count || 0),
+          episodes: Number(local.episode_count || 0),
+          watched: Number(local.watched_count || 0),
+        }
+      }
+      const cached = adultSeriesRailCatalogue.get(Number(viewing?.tmdb_id || 0))
+      const savedWatched = Object.values(viewing?.episodes || {})
+        .filter(episode => episode?.watched === true).length
+      return {
+        series: cached?.series ?? '—',
+        episodes: cached?.episodes ?? '—',
+        watched: Math.max(Number(cached?.watched || 0), savedWatched),
+      }
+    }
+
+    function renderAdultSeriesRailFacts(root, counts) {
+      renderAdultTitleMetadata(root, {}, { facts: [
+        { label: 'Series', value: String(counts.series) },
+        { label: 'Episodes', value: String(counts.episodes) },
+        { label: 'Watched', value: String(counts.watched) },
+      ] })
+    }
+
+    async function hydrateAdultSeriesRailCard(card, progress, viewing) {
+      const tmdbId = Number(viewing?.tmdb_id || 0)
+      if (!tmdbId) return
+      let counts = adultSeriesRailCatalogue.get(tmdbId)
+      if (!counts) {
+        const detail = await api(`/api/adult/title?media_type=tv&tmdb_id=${tmdbId}`)
+        const seasons = detail.seasons || []
+        counts = {
+          series: seasons.length,
+          episodes: seasons.reduce((total, season) => total + Number(season.episodes || 0), 0),
+          watched: seasons.reduce((total, season) => total + Number(season.watched_count || 0), 0),
+        }
+        adultSeriesRailCatalogue.set(tmdbId, counts)
+      }
+      if (!card.isConnected) return
+      renderAdultSeriesRailFacts(card.querySelector('.adult-series-card-facts'), counts)
+      progress.style.setProperty('--series-progress', `${counts.episodes
+        ? counts.watched / counts.episodes * 100 : 0}%`)
+    }
 
     function adultSeriesArtwork(series, className = 'adult-series-card-art', viewing = null) {
       const art = document.createElement('span')
@@ -159,28 +206,25 @@
         card.type = 'button'
         card.className = 'adult-series-card'
         const art = adultSeriesArtwork(local || value, 'adult-series-card-art', value.viewing)
+        const counts = adultSeriesRailCounts(local, value.viewing)
         const progress = document.createElement('span')
         progress.className = 'adult-series-card-progress'
-        progress.style.setProperty('--series-progress', `${local?.episode_count
-          ? local.watched_count / local.episode_count * 100 : 0}%`)
+        progress.style.setProperty('--series-progress', `${Number(counts.episodes) > 0
+          ? Number(counts.watched) / Number(counts.episodes) * 100 : 0}%`)
         art.append(progress)
         const copy = document.createElement('span')
         const title = document.createElement('strong')
         title.textContent = value.title
         const meta = document.createElement('span')
         meta.className = 'watch-film-meta adult-series-card-facts'
-        renderAdultTitleMetadata(meta, {}, { facts: local?.episode_count ? [
-          { label: 'Series', value: String(local.season_count) },
-          { label: 'Episodes', value: String(local.episode_count) },
-          { label: 'Watched', value: String(local.watched_count) },
-        ] : [
-          { label: 'Status', value: 'Up Next' },
-          { label: 'MabelTV', value: 'No episodes' },
-        ] })
+        renderAdultSeriesRailFacts(meta, counts)
         copy.append(title, meta)
         card.append(art, copy)
         card.onclick = () => local ? openAdultSeriesViewing(local) : openAdultTitle(value.viewing)
         rail.append(card)
+        if (!Number(local?.episode_count || 0)) {
+          void hydrateAdultSeriesRailCard(card, progress, value.viewing).catch(() => {})
+        }
       })
       if (!available.length) {
         rail.append(portalEmptyState({

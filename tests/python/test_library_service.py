@@ -2068,7 +2068,9 @@ class LibraryUnitTests(unittest.TestCase):
         self.fixture.channels.write_text(json.dumps({
             "schema_version": 1, "channels": mabeltv_library.DEFAULT_CHANNELS,
         }), encoding="utf-8")
-        now = time.time()
+        local_now = time.localtime()
+        now = time.mktime((local_now.tm_year, local_now.tm_mon, local_now.tm_mday,
+                           12, 0, 0, 0, 0, -1))
         item_key = "channel:3:the film.mp4"
         self.fixture.library.viewing_store["sessions"] = [
             {
