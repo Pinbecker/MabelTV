@@ -46,7 +46,15 @@ function renderAdultPersonDetail(person, context = '', returnTo = null) {
   const section = $('#adultPersonKnownFor')
   const credits = $('#adultPersonCredits')
   credits.replaceChildren()
-  ;(person.known_for || []).forEach(title => {
+  const knownFor = person.known_for || []
+  const pages = []
+  knownFor.forEach((title, index) => {
+    if (index % 10 === 0) {
+      const page = document.createElement('div')
+      page.className = 'adult-person-credit-page'
+      credits.append(page)
+      pages.push(page)
+    }
     const card = document.createElement('button')
     card.type = 'button'
     card.className = 'adult-franchise-card'
@@ -70,10 +78,10 @@ function renderAdultPersonDetail(person, context = '', returnTo = null) {
     role.textContent = [title.year, title.character].filter(Boolean).join(' · ') || 'Title'
     card.append(art, name, role)
     card.onclick = () => {
-      portalSheets.suspend($('#adultPersonSheet'))
+      portalSheets.suspend($('#adultPersonSheet'), { card: true })
       void openAdultTitle(title, () => restoreAdultPersonSheet(person, context, returnTo))
     }
-    credits.append(card)
+    pages[pages.length - 1].append(card)
   })
   section.classList.toggle('hidden', !credits.children.length)
   credits.scrollLeft = 0
@@ -113,7 +121,8 @@ async function openAdultPerson(person, title, returnTo = null) {
   const sheet = $('#adultPersonSheet')
   $('#adultPersonName').textContent = person.name
   const context = person.character
-    ? `As ${person.character} in ${title}` : `Principal cast in ${title}`
+    ? `As ${person.character} in ${title}`
+    : person.role ? `${person.role} of ${title}` : `Principal cast in ${title}`
   $('#adultPersonContext').textContent = context
   $('#adultPersonFacts').replaceChildren()
   $('#adultPersonBiography').textContent = 'Loading biography…'

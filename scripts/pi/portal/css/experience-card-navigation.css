@@ -1,0 +1,86 @@
+body.portal-experience .portal-card-swipe-underlay {
+  position: fixed;
+  z-index: 0;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: var(--portal-card-underlay-opacity, .76);
+}
+
+body.portal-experience .portal-card-swipe-underlay > :is(
+  .library-sheet-panel,
+  .watch-film-panel,
+  article
+) {
+  width: min(720px, calc(100vw - 32px));
+  height: min(90dvh, 860px);
+  overflow: hidden;
+  transform: translate3d(var(--portal-card-underlay-x, -18px), 0, 0)
+    scale(var(--portal-card-underlay-scale, .985));
+  transform-origin: center;
+}
+
+body.portal-experience .portal-card-swipe-underlay > .library-sheet-panel.wide {
+  width: min(920px, calc(100vw - 32px));
+}
+
+body.portal-experience dialog[data-card-sheet] > :is(
+  .library-sheet-panel,
+  .watch-film-panel,
+  article
+) {
+  z-index: 1;
+  translate: var(--portal-card-swipe-x, 0) 0;
+}
+
+body.portal-experience dialog[data-card-sheet].is-card-back-settling > :is(
+  .library-sheet-panel,
+  .watch-film-panel,
+  article
+) { transition: translate 260ms cubic-bezier(.22, 1, .36, 1); }
+
+body.portal-experience dialog[data-card-sheet].is-card-back-settling .portal-card-swipe-underlay {
+  transition: opacity 260ms ease;
+}
+
+body.portal-experience dialog[data-card-sheet].is-card-back-settling .portal-card-swipe-underlay > :is(
+  .library-sheet-panel,
+  .watch-film-panel,
+  article
+) { transition: transform 260ms cubic-bezier(.22, 1, .36, 1); }
+
+@media (max-width: 620px) {
+  body.portal-experience .portal-card-swipe-underlay {
+    align-items: flex-end;
+    padding:
+      calc(env(safe-area-inset-top) + 10px)
+      var(--experience-sheet-gutter)
+      calc(env(safe-area-inset-bottom) + 9px);
+  }
+
+  body.portal-experience .portal-card-swipe-underlay > :is(
+    .library-sheet-panel,
+    .watch-film-panel,
+    article,
+    .library-sheet-panel.wide
+  ) {
+    width: 100%;
+    height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 19px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.portal-experience dialog[data-card-sheet].is-card-back-settling > :is(
+    .library-sheet-panel,
+    .watch-film-panel,
+    article
+  ),
+  body.portal-experience dialog[data-card-sheet].is-card-back-settling .portal-card-swipe-underlay,
+  body.portal-experience dialog[data-card-sheet].is-card-back-settling .portal-card-swipe-underlay > :is(
+    .library-sheet-panel,
+    .watch-film-panel,
+    article
+  ) { transition-duration: 1ms; }
+}

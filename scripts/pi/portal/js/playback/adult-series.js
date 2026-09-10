@@ -717,7 +717,7 @@
           nextButton.querySelector('small').textContent = 'Next episode'
           nextButton.querySelector('strong').textContent = `Series ${next.season}, Episode ${next.episode} · ${next.display_name}`
           nextButton.onclick = () => {
-            closeAdultSeriesSheet(false)
+            portalSheets.suspend($('#adultSeriesSheet'), { card: true })
             openAdultSeasonSheet(current, next.season,
               () => openAdultSeriesSheet(current, returnTo), next.path)
           }
@@ -778,7 +778,7 @@
         progress.className = 'adult-season-card-progress'
         progress.style.setProperty('--season-progress', `${episodes.length ? watched / episodes.length * 100 : 0}%`)
         const openSeason = () => {
-          closeAdultSeriesSheet(false)
+          portalSheets.suspend($('#adultSeriesSheet'), { card: true })
           openAdultSeasonSheet(current, season, () => openAdultSeriesSheet(current, returnTo))
         }
         card.onclick = openSeason
@@ -824,10 +824,10 @@
           await api('/api/manage', { method: 'POST', body: JSON.stringify({
             action: 'create-adult-season', series: current.id, season: nextSeries,
           }) })
-          closeAdultSeriesSheet(false)
           await reloadLibraryWithoutLosingPlace()
           const refreshed = library?.adult_series?.find(value => value.id === current.id)
           if (!refreshed) throw new Error('The series was created, but the show could not be reopened')
+          portalSheets.suspend($('#adultSeriesSheet'), { card: true })
           openAdultSeasonSheet(refreshed, nextSeries,
             () => openAdultSeriesSheet(refreshed, returnTo))
         } catch (error) {

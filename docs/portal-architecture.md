@@ -60,6 +60,9 @@ order unless a change explicitly redefines the cascade.
 - `experience-insights.css`: viewing-insight dashboards and detail surfaces.
 - `experience-responsive.css`: Experience phone/tablet adaptations.
 - `experience-overlays.css`: common Experience dialog and management shells.
+- `experience-card-navigation.css`: stacked full-height card presentation and
+  the animated Back-button transition. Native iOS edge Back is owned by browser
+  history rather than a competing page-level touch target.
 - `experience-playback-overlays.css`: playback-specific dialog presentation.
 - `lg-tv-remote.css`: the separate LG TV remote surface.
 - `experience-light.css`: the complete light-theme token and component
@@ -138,8 +141,10 @@ management selection is separate from the Watch film filters.
   behaviour, and focus restoration. `wire` accepts one close button or a list.
 - Content dialogs marked with `data-card-sheet` receive the shared compact Back
   control whenever `open` has a `returnTo` callback. `dialogs.suspend` preserves
-  a parent card while a child opens, `dialogs.returnTo` carries a deeper chain,
-  and `dialogs.dismissJourney` makes the close control exit the complete chain.
+  a parent card while a child opens; `{ card: true }` creates a browser-history
+  entry before hiding that parent so native iOS edge Back traverses the same
+  hierarchy. `dialogs.returnTo` carries a deeper chain, and
+  `dialogs.dismissJourney` makes the close control exit the complete chain.
   These content cards share one full-height canvas. Playback choices, More
   menus and settings dialogs are deliberately not card sheets: they remain
   content-sized and close directly. Every portal sheet uses the same compact

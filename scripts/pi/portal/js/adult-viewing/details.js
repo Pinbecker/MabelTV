@@ -66,6 +66,51 @@ function clearAdultTitleEnrichment(prefix) {
   }
 }
 
+function adultCreditCard(person, detail, openPerson, fallbackRole) {
+  const interactive = Number(person.tmdb_id || 0) > 0
+  const card = document.createElement(interactive ? 'button' : 'article')
+  if (interactive) card.type = 'button'
+  card.className = 'adult-cast-card'
+  const portrait = document.createElement('span')
+  portrait.className = 'adult-cast-photo'
+  if (person.profile_path) {
+    const image = document.createElement('img')
+    image.src = adultPosterUrl(person.profile_path, 'w185')
+    image.alt = ''
+    portrait.append(image)
+  } else {
+    const initials = document.createElement('b')
+    initials.textContent = String(person.name || '?').split(/\s+/).slice(0, 2)
+      .map(part => part.slice(0, 1)).join('').toUpperCase()
+    portrait.append(initials)
+  }
+  const name = document.createElement('strong')
+  name.textContent = person.name
+  const role = document.createElement('small')
+  role.textContent = person.character || person.role || fallbackRole
+  card.append(portrait, name, role)
+  if (interactive) {
+    card.setAttribute('aria-label', `Open details for ${person.name}`)
+    card.onclick = () => openPerson(person, detail.title)
+  }
+  return card
+}
+
+function appendAdultCreditGroup(rail, label, people, detail, openPerson, role) {
+  if (!people.length) return
+  const group = document.createElement('div')
+  group.className = 'adult-credit-group'
+  const heading = document.createElement('span')
+  heading.className = 'adult-credit-group-label'
+  heading.textContent = label
+  const cards = document.createElement('div')
+  cards.className = 'adult-credit-group-cards'
+  people.forEach(person => cards.append(adultCreditCard(
+    person, detail, openPerson, role)))
+  group.append(heading, cards)
+  rail.append(group)
+}
+
 function renderAdultTitleEnrichment(detail, prefix, openTitle, openPerson = openAdultPerson) {
   clearAdultTitleEnrichment(prefix)
   const franchise = $(`#${prefix}Franchise`)
@@ -112,37 +157,21 @@ function renderAdultTitleEnrichment(detail, prefix, openTitle, openPerson = open
   }
   const castSection = $(`#${prefix}Cast`)
   const castRail = $(`#${prefix}CastRail`)
+  const leads = Array.isArray(detail.creative_leads) ? detail.creative_leads : []
   const cast = Array.isArray(detail.cast) ? detail.cast.slice(0, 15) : []
-  if (castSection && castRail && cast.length) {
-    cast.forEach(person => {
-      const interactive = Number(person.tmdb_id || 0) > 0
-      const card = document.createElement(interactive ? 'button' : 'article')
-      if (interactive) card.type = 'button'
-      card.className = 'adult-cast-card'
-      const portrait = document.createElement('span')
-      portrait.className = 'adult-cast-photo'
-      if (person.profile_path) {
-        const image = document.createElement('img')
-        image.src = adultPosterUrl(person.profile_path, 'w185')
-        image.alt = ''
-        portrait.append(image)
-      } else {
-        const initials = document.createElement('b')
-        initials.textContent = String(person.name || '?').split(/\s+/).slice(0, 2)
-          .map(part => part.slice(0, 1)).join('').toUpperCase()
-        portrait.append(initials)
-      }
-      const name = document.createElement('strong')
-      name.textContent = person.name
-      const character = document.createElement('small')
-      character.textContent = person.character || 'Cast'
-      card.append(portrait, name, character)
-      if (interactive) {
-        card.setAttribute('aria-label', `Open cast details for ${person.name}`)
-        card.onclick = () => openPerson(person, detail.title)
-      }
-      castRail.append(card)
-    })
+  if (castSection && castRail && (leads.length || cast.length)) {
+    const leadLabel = detail.media_type === 'tv'
+      ? leads.length > 1 ? 'Creators' : 'Creator'
+      : leads.length > 1 ? 'Directors' : 'Director'
+    appendAdultCreditGroup(castRail, leadLabel, leads, detail, openPerson,
+      detail.media_type === 'tv' ? 'Creator' : 'Director')
+    if (leads.length && cast.length) {
+      const divider = document.createElement('span')
+      divider.className = 'adult-credit-divider'
+      divider.setAttribute('aria-hidden', 'true')
+      castRail.append(divider)
+    }
+    appendAdultCreditGroup(castRail, 'Cast', cast, detail, openPerson, 'Cast')
     castSection.classList.remove('hidden')
   }
 }
@@ -253,10 +282,10 @@ async function loadLocalFilmProviders(film, refresh = false) {
     const filmReturnTo = portalSheets.returnTo(filmSheet) || selectedWatchFilmReturnTo
     const restoreFilm = () => openWatchFilmSheet(film, selectedWatchFilmContext, filmReturnTo)
     renderAdultTitleEnrichment(fullDetail, 'watchFilm', part => {
-      portalSheets.suspend(filmSheet)
+      portalSheets.suspend(filmSheet, { card: true })
       void openAdultTitle(part, restoreFilm)
     }, (person, title) => {
-      portalSheets.suspend(filmSheet)
+      portalSheets.suspend(filmSheet, { card: true })
       void openAdultPerson(person, title, restoreFilm)
     })
     const options = { localAction: null, purchaseSection: $('#watchFilmRentBuy'),
@@ -434,12 +463,12 @@ function renderAdultTitleDetail(detail, refreshProviders = true,
   const returnTo = portalSheets.returnTo(sheet)
   const restoreTitle = () => restoreAdultTitleSheet(detail, returnTo)
   renderAdultTitleEnrichment(detail, 'adultTitle', part => {
-    portalSheets.suspend(sheet)
+    portalSheets.suspend(sheet, { card: true })
     void openAdultTitle({
       ...part, catalogue_only: detail.catalogue_only === true,
     }, restoreTitle)
   }, (person, title) => {
-    portalSheets.suspend(sheet)
+    portalSheets.suspend(sheet, { card: true })
     void openAdultPerson(person, title, restoreTitle)
   })
   $('#adultProviderRefresh').classList.toggle('hidden', !adultAvailabilityEnabled())

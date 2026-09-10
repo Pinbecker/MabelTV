@@ -157,7 +157,7 @@ test('returning from a numbered series restores the show sheet position', async 
   const before = await panel.evaluate(element => element.scrollTop)
   expect(before).toBeGreaterThan(500)
   await season.click()
-  await page.locator('#adultSeasonSheet .portal-card-back').click()
+  await page.locator('#adultSeasonSheet > .library-sheet-panel .portal-card-back').click()
   await expect(page.locator('#adultSeriesSheet')).toBeVisible()
   await settled(page)
   expect(await panel.evaluate(element => element.scrollTop)).toBeCloseTo(before, 0)

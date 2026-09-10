@@ -1,6 +1,6 @@
 'use strict'
 
-const SHELL_CACHE = 'mabeltv-shell-v180'
+const SHELL_CACHE = 'mabeltv-shell-v182'
 const SHELL_URLS = [
   '/',
   '/manifest.webmanifest',
@@ -37,6 +37,7 @@ const SHELL_URLS = [
   '/portal/css/experience-insights.css',
   '/portal/css/experience-responsive.css',
   '/portal/css/experience-overlays.css',
+  '/portal/css/experience-card-navigation.css',
   '/portal/css/experience-playback-overlays.css',
   '/portal/css/lg-tv-remote.css',
   '/portal/css/experience-light.css',

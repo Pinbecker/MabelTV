@@ -282,7 +282,7 @@ for (const theme of ['light', 'dark']) {
     await expect(page.locator('#adultTitleMeta .adult-title-rating > strong')).toHaveText('7.8')
     await expect(page.locator('#adultTitleFranchise')).toBeVisible()
     await expect(page.locator('#adultTitleFranchiseHeading')).toHaveText('Finding Nemo Collection')
-    await expect(page.locator('#adultTitleCastHeading')).toHaveText('Principal Cast')
+    await expect(page.locator('#adultTitleCastHeading')).toHaveText('Credits')
     await expect(page.locator('#adultTitleFranchiseRail .adult-franchise-card')).toHaveCount(8)
     await expect(page.locator('#adultTitleFranchiseRail .adult-franchise-card').first()).toBeDisabled()
     await expect(page.locator('#adultTitleCastRail .adult-cast-card')).toHaveCount(2)
@@ -319,7 +319,7 @@ for (const theme of ['light', 'dark']) {
     await page.locator('#adultPersonBiographyExpand').click()
     await expect(page.locator('#adultPersonBiographyExpand')).toHaveText('Less')
     await expect(page.locator('#adultPersonBiography')).toHaveClass(/is-expanded/)
-    await page.locator('#adultPersonSheet .portal-card-back').click()
+    await page.locator('#adultPersonSheet > .library-sheet-panel .portal-card-back').click()
     await expect(page.locator('#adultTitleSheet')).toBeVisible()
     await expect(page.locator('#adultPersonSheet')).toBeHidden()
     const geometry = await page.locator('#adultTitleSheet').evaluate(sheet => {
@@ -351,7 +351,7 @@ for (const theme of ['light', 'dark']) {
     await expect(page.locator('#watchFilmFranchise')).toBeVisible()
     await expect(page.locator('#watchFilmCast')).toBeVisible()
     await expect(page.locator('#watchFilmFranchiseHeading')).toHaveText('Finding Nemo Collection')
-    await expect(page.locator('#watchFilmCastHeading')).toHaveText('Principal Cast')
+    await expect(page.locator('#watchFilmCastHeading')).toHaveText('Credits')
     await expect(page.locator('#watchFilmRentBuy')).toBeVisible()
   })
 

@@ -158,6 +158,28 @@ body.portal-v2 .adult-cast-card > strong { font-size: 9px; }
 body.portal-v2 .adult-cast-card > small { color: var(--experience-dim); font-size: 7px; }
 body.portal-v2 .adult-cast-card:focus-visible,
 body.portal-v2 .adult-franchise-card:focus-visible { outline: 2px solid var(--experience-orange); outline-offset: 2px; }
+body.portal-v2 .adult-credit-rail { align-items: stretch; gap: 10px; }
+body.portal-v2 .adult-credit-group {
+  display: grid;
+  flex: 0 0 auto;
+  align-content: start;
+  gap: 5px;
+}
+body.portal-v2 .adult-credit-group-label {
+  color: var(--experience-dim);
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: .1em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+body.portal-v2 .adult-credit-group-cards { display: flex; gap: 7px; }
+body.portal-v2 .adult-credit-divider {
+  width: 1px;
+  flex: 0 0 1px;
+  align-self: stretch;
+  background: var(--experience-line);
+}
 
 body.portal-v2 .adult-provider-section { margin-top: 12px; border-top: 1px solid var(--experience-line); padding-top: 10px; }
 body.portal-v2 .adult-provider-section > header { display: flex; align-items: end; justify-content: space-between; gap: 12px; }
@@ -220,3 +242,16 @@ body.portal-v2 .adult-person-biography.is-expanded { display: block; overflow: v
 body.portal-v2 .adult-person-biography-expand { margin-top: 4px; }
 body.portal-v2 .adult-person-known-for { margin-top: 14px; border-top: 1px solid var(--experience-line); padding-top: 10px; }
 body.portal-v2 .adult-person-known-for h3 { margin: 0; font-size: 18px; }
+body.portal-v2 .adult-person-credits { gap: 12px; scroll-snap-type: x mandatory; }
+body.portal-v2 .adult-person-credit-page {
+  display: grid;
+  flex: 0 0 100%;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: start;
+  gap: 10px 7px;
+  scroll-snap-align: start;
+}
+body.portal-v2 .adult-person-credit-page .adult-franchise-card {
+  width: 100%;
+  min-width: 0;
+}

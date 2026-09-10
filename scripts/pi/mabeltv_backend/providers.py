@@ -542,15 +542,25 @@ class ProviderMetadataMixin:
         runtime = value.get("runtime") if media_type == "movie" else (
             value.get("episode_run_time", [None]) or [None])[0]
         credits = value.get("credits", {}) if isinstance(value.get("credits"), dict) else {}
-        directors = []
+        creative_leads = []
         if media_type == "movie":
-            directors = [str(member.get("name") or "") for member in
-                         credits.get("crew", []) if isinstance(member, dict)
-                         and member.get("job") == "Director" and member.get("name")][:3]
+            lead_values = [member for member in credits.get("crew", [])
+                           if isinstance(member, dict)
+                           and member.get("job") == "Director"
+                           and member.get("name")][:3]
+            lead_role = "Director"
         else:
-            directors = [str(member.get("name") or "") for member in
-                         value.get("created_by", []) if isinstance(member, dict)
-                         and member.get("name")][:3]
+            lead_values = [member for member in value.get("created_by", [])
+                           if isinstance(member, dict) and member.get("name")][:3]
+            lead_role = "Creator"
+        for member in lead_values:
+            creative_leads.append({
+                "tmdb_id": int(member.get("id", 0) or 0),
+                "name": str(member.get("name") or ""),
+                "role": lead_role,
+                "profile_path": str(member.get("profile_path") or ""),
+            })
+        directors = [member["name"] for member in creative_leads]
         cast = []
         for member in credits.get("cast", []) if isinstance(credits, dict) else []:
             if not isinstance(member, dict) or not member.get("name"):
@@ -611,7 +621,7 @@ class ProviderMetadataMixin:
             "last_air_date": str(value.get("last_air_date") or "")[:10]
             if media_type == "tv" else "",
             "cast": cast, "collection": collection,
-            "directors": directors,
+            "directors": directors, "creative_leads": creative_leads,
             "genres": [str(item.get("name", "")) for item in value.get("genres", [])
                        if isinstance(item, dict) and item.get("name")],
             "seasons": [{"number": int(item.get("season_number", 0) or 0),

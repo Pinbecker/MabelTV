@@ -399,7 +399,7 @@ async function openAdultTitleSeason(detail, season, card, targetEpisode = 0) {
   const seasonSheet = $('#adultTitleSeasonSheet')
   const titleReturnTo = portalSheets.returnTo(titleSheet)
   seasonSheet.classList.toggle('is-catalogue-only', detail.catalogue_only === true)
-  portalSheets.suspend(titleSheet)
+  portalSheets.suspend(titleSheet, { card: true })
   $('#adultTitleSeasonEyebrow').textContent = detail.title
   $('#adultTitleSeasonName').textContent = `Series ${season.number}`
   renderAdultTitleSeasonHeader(detail, season)

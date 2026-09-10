@@ -563,7 +563,7 @@ function localAdultAction(detail) {
   if (detail.local.kind === 'film') {
     const film = (library?.adult_library || []).find(item => item.path === detail.local.path)
     return film ? () => {
-      portalSheets.suspend(titleSheet)
+      portalSheets.suspend(titleSheet, { card: true })
       openWatchFilmSheet(film, 'library', restoreTitle)
     } : null
   }

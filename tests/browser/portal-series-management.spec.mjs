@@ -96,7 +96,7 @@ test('series sheets use the full metadata catalogue with local availability over
 
   await page.locator('#adultTitleSeasons [data-season="1"]').click()
   await expect(page.locator('#adultTitleSeasonSheet')).toBeVisible()
-  await expect(page.locator('#adultTitleSeasonSheet .portal-card-back')).toBeVisible()
+  await expect(page.locator('#adultTitleSeasonSheet > .library-sheet-panel .portal-card-back')).toBeVisible()
   await expect(page.locator('#adultTitleSeasonEpisodes .adult-series-episode')).toHaveCount(3)
   await expect(page.locator('#adultTitleSeasonMeta .adult-title-fact small'))
     .toHaveText(['Episodes', 'On MabelTV', 'Watched'])
@@ -153,7 +153,7 @@ test('series sheets use the full metadata catalogue with local availability over
   await page.locator('#adultTitleSeasonSettingsClose').click()
   await expect(page.locator('#adultTitleSeasonSheet')).toBeVisible()
 
-  await page.locator('#adultTitleSeasonSheet .portal-card-back').click()
+  await page.locator('#adultTitleSeasonSheet > .library-sheet-panel .portal-card-back').click()
   await expect(page.locator('#adultTitleSheet')).toBeVisible()
   await page.locator('#adultTitleClose').click()
   await expect(page.locator('#adultTitleSheet')).toBeHidden()

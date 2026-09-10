@@ -6,7 +6,19 @@
   const dialogParents = new WeakMap()
   const dialogScrollLocks = new WeakMap()
   const dialogPositions = new WeakMap()
+  const dialogUnderlays = new WeakMap()
+  const cardBackTimers = new WeakMap()
+  const CARD_HISTORY_STATE = 'mabelCardJourney'
   let returningToDialog = false
+  let pendingCardSnapshot = null
+  let pendingCardHistory = null
+  let cardHistoryJourney = null
+  let cardHistorySerial = 0
+  let dismissedCardHistory = false
+
+  function cardPanel(dialog) {
+    return dialog?.querySelector(':scope > .library-sheet-panel, :scope > .watch-film-panel, :scope > article') || null
+  }
 
   function dialogScrollers(dialog) {
     return [dialog, ...dialog.querySelectorAll(
@@ -56,15 +68,15 @@
 
   function cardBackControl(dialog) {
     if (!dialog?.hasAttribute('data-card-sheet')) return null
-    let control = dialog.querySelector('.portal-card-back')
+    const panel = cardPanel(dialog)
+    let control = panel?.querySelector('.portal-card-back')
     if (control) return control
     control = button({
       className: 'portal-card-back hidden',
       iconName: 'signal-arrow-left',
       ariaLabel: 'Back to previous card',
-      onClick: () => closeDialog(dialog),
+      onClick: () => animateCardBack(dialog),
     })
-    const panel = dialog.firstElementChild
     const host = panel?.querySelector(':scope > .dialog-close-bar, :scope > header') || panel
     host?.append(control)
     return control
@@ -73,8 +85,214 @@
   function syncCardNavigation(dialog, hasParent = dialogParents.has(dialog)) {
     const control = cardBackControl(dialog)
     if (!control) return
+    const hasUnderlay = dialogUnderlays.has(dialog)
     control.classList.toggle('hidden', !hasParent)
     dialog.classList.toggle('has-card-parent', hasParent)
+    dialog.classList.toggle('has-card-underlay', hasUnderlay)
+  }
+
+  function captureCardSnapshot(dialog) {
+    const source = cardPanel(dialog)
+    if (!source) return null
+    const panel = source.cloneNode(true)
+    panel.querySelectorAll('[id]').forEach(element => element.removeAttribute('id'))
+    const sourceScrollers = [source, ...source.querySelectorAll(
+      '.library-sheet-body,.watch-film-body')]
+    const scrollOffsets = sourceScrollers.map(element => ({
+      top: element.scrollTop, left: element.scrollLeft,
+    }))
+    return { panel, scrollOffsets }
+  }
+
+  function removeCardUnderlay(dialog) {
+    const underlay = dialogUnderlays.get(dialog)
+    underlay?.remove()
+    dialogUnderlays.delete(dialog)
+    dialog.classList.remove('has-card-underlay')
+  }
+
+  function attachCardUnderlay(dialog, snapshot) {
+    removeCardUnderlay(dialog)
+    if (!snapshot?.panel) return
+    const underlay = document.createElement('div')
+    underlay.className = 'portal-card-swipe-underlay'
+    underlay.setAttribute('aria-hidden', 'true')
+    underlay.inert = true
+    underlay.append(snapshot.panel)
+    dialog.append(underlay)
+    dialogUnderlays.set(dialog, underlay)
+    requestAnimationFrame(() => {
+      const scrollers = [snapshot.panel, ...snapshot.panel.querySelectorAll(
+        '.library-sheet-body,.watch-film-body')]
+      scrollers.forEach((element, index) => {
+        element.scrollTop = snapshot.scrollOffsets[index]?.top || 0
+        element.scrollLeft = snapshot.scrollOffsets[index]?.left || 0
+      })
+    })
+  }
+
+  function setCardBackPosition(dialog, distance) {
+    const panel = cardPanel(dialog)
+    const underlay = dialogUnderlays.get(dialog)
+    if (!panel || !underlay) return
+    const width = Math.max(1, window.innerWidth)
+    const offset = Math.max(0, Math.min(distance, width + 40))
+    const progress = Math.min(1, offset / width)
+    panel.style.setProperty('--portal-card-swipe-x', `${offset}px`)
+    underlay.style.setProperty('--portal-card-underlay-x', `${-18 * (1 - progress)}px`)
+    underlay.style.setProperty('--portal-card-underlay-scale', String(.985 + (.015 * progress)))
+    underlay.style.setProperty('--portal-card-underlay-opacity', String(.76 + (.24 * progress)))
+  }
+
+  function resetCardBack(dialog) {
+    clearTimeout(cardBackTimers.get(dialog))
+    cardBackTimers.delete(dialog)
+    const panel = cardPanel(dialog)
+    panel?.style.removeProperty('--portal-card-swipe-x')
+    const underlay = dialogUnderlays.get(dialog)
+    underlay?.style.removeProperty('--portal-card-underlay-x')
+    underlay?.style.removeProperty('--portal-card-underlay-scale')
+    underlay?.style.removeProperty('--portal-card-underlay-opacity')
+    dialog.classList.remove('is-card-back-settling')
+  }
+
+  function cardHistoryMarker(state = history.state) {
+    const marker = state?.[CARD_HISTORY_STATE]
+    const depth = Number(marker?.depth || 0)
+    return marker?.id && depth > 0 ? { id: String(marker.id), depth } : null
+  }
+
+  function cardHistoryState(id, depth) {
+    const state = history.state && typeof history.state === 'object'
+      ? { ...history.state } : {}
+    delete state[CARD_HISTORY_STATE]
+    if (id && depth > 0) state[CARD_HISTORY_STATE] = { id, depth }
+    return state
+  }
+
+  function pushCardHistory(id, depth) {
+    history.pushState(cardHistoryState(id, depth), '', location.href)
+  }
+
+  function beginCardHistory(dialog, returnTo) {
+    const id = `${Date.now().toString(36)}-${++cardHistorySerial}`
+    cardHistoryJourney = { id, depth: 1, entries: [{ dialog, returnTo }] }
+    pushCardHistory(id, 1)
+  }
+
+  function prepareCardHistory(dialog) {
+    if (!dialog?.hasAttribute('data-card-sheet')) return
+    const marker = cardHistoryMarker()
+    const journey = cardHistoryJourney
+    if (!journey || marker?.id !== journey.id || marker.depth !== journey.depth) return
+    journey.entries.length = journey.depth
+    const depth = journey.depth + 1
+    pushCardHistory(journey.id, depth)
+    journey.depth = depth
+    pendingCardHistory = { id: journey.id, depth }
+  }
+
+  function registerCardHistory(dialog, returnTo) {
+    if (!dialog?.hasAttribute('data-card-sheet') || returningToDialog) return
+    const marker = cardHistoryMarker()
+    const journey = cardHistoryJourney
+    if (pendingCardHistory && journey
+        && pendingCardHistory.id === journey.id
+        && pendingCardHistory.depth === journey.depth
+        && marker?.id === journey.id && marker.depth === journey.depth) {
+      journey.entries[journey.depth - 1] = { dialog, returnTo }
+      pendingCardHistory = null
+      return
+    }
+    pendingCardHistory = null
+    const current = journey?.entries[journey.depth - 1]
+    if (journey && marker?.id === journey.id && marker.depth === journey.depth
+        && current?.dialog === dialog) {
+      current.returnTo = returnTo
+      return
+    }
+    if (journey && marker?.id === journey.id && marker.depth === journey.depth
+        && typeof returnTo === 'function') {
+      journey.entries.length = journey.depth
+      const depth = journey.depth + 1
+      pushCardHistory(journey.id, depth)
+      journey.depth = depth
+      journey.entries[depth - 1] = { dialog, returnTo }
+      return
+    }
+    beginCardHistory(dialog, returnTo)
+  }
+
+  function showCardHistoryEntry(entry) {
+    if (!entry?.dialog) return
+    returningToDialog = true
+    try {
+      openDialog(entry.dialog, { returnTo: entry.returnTo })
+      restoreDialogPosition(entry.dialog)
+    } finally { returningToDialog = false }
+  }
+
+  function restorePreviousCard(entry, targetDepth) {
+    document.querySelectorAll('dialog[open]:not([data-card-sheet])')
+      .forEach(dialog => dismissDialog(dialog))
+    if (entry?.dialog?.open) {
+      closeDialog(entry.dialog, { restore: targetDepth > 0 })
+      return
+    }
+    if (targetDepth > 0 && typeof entry?.returnTo === 'function') {
+      returningToDialog = true
+      try {
+        entry.returnTo()
+        document.querySelectorAll('dialog[open]').forEach(restoreDialogPosition)
+      } finally { returningToDialog = false }
+    }
+  }
+
+  function restoreForwardCard(journey, targetDepth) {
+    const current = journey.entries[journey.depth - 1]
+    if (current?.dialog?.open) suspendDialog(current.dialog)
+    journey.depth = targetDepth
+    showCardHistoryEntry(journey.entries[targetDepth - 1])
+  }
+
+  function handleCardHistoryPop(event) {
+    if (dismissedCardHistory) {
+      dismissedCardHistory = false
+      event.stopImmediatePropagation()
+      return
+    }
+    const journey = cardHistoryJourney
+    if (!journey) return
+    const marker = cardHistoryMarker(event.state)
+    const targetDepth = marker?.id === journey.id ? marker.depth : 0
+    if (targetDepth === journey.depth) return
+    if (targetDepth < journey.depth) {
+      event.stopImmediatePropagation()
+      const entry = journey.entries[journey.depth - 1]
+      journey.depth = targetDepth
+      pendingCardHistory = null
+      restorePreviousCard(entry, targetDepth)
+      return
+    }
+    if (marker?.id === journey.id && targetDepth <= journey.entries.length) {
+      event.stopImmediatePropagation()
+      restoreForwardCard(journey, targetDepth)
+    }
+  }
+
+  function animateCardBack(dialog) {
+    if (cardBackTimers.has(dialog)) return
+    const marker = cardHistoryMarker()
+    const journey = cardHistoryJourney
+    if (!journey || marker?.id !== journey.id || marker.depth !== journey.depth) {
+      closeDialog(dialog)
+      return
+    }
+    if (!dialogUnderlays.has(dialog)) { history.back(); return }
+    dialog.classList.add('is-card-back-settling')
+    setCardBackPosition(dialog, window.innerWidth + 40)
+    const duration = matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 260
+    cardBackTimers.set(dialog, setTimeout(() => history.back(), duration))
   }
 
   const viewingIntentDefinitions = [
@@ -173,10 +391,16 @@
   function openDialog(dialog, { returnTo = null, focus = null, lockScroll = true } = {}) {
     if (!dialog) return
     const position = capturePortalPosition()
+    const snapshot = pendingCardSnapshot
+    pendingCardSnapshot = null
     if (typeof returnTo === 'function') dialogParents.set(dialog, returnTo)
     else dialogParents.delete(dialog)
+    if (snapshot && dialog.hasAttribute('data-card-sheet') && returnTo) {
+      attachCardUnderlay(dialog, snapshot)
+    } else if (!returnTo) removeCardUnderlay(dialog)
     syncCardNavigation(dialog)
     dialogScrollLocks.set(dialog, lockScroll)
+    registerCardHistory(dialog, returnTo)
     if (!dialog.open) dialog.showModal()
     syncDialogScrollLock()
     restorePortalPosition(position)
@@ -193,6 +417,8 @@
     dialogParents.delete(dialog)
     syncCardNavigation(dialog, false)
     if (dialog.open) dialog.close()
+    resetCardBack(dialog)
+    removeCardUnderlay(dialog)
     dialogScrollLocks.delete(dialog)
     syncDialogScrollLock()
     restorePortalPosition(position)
@@ -210,8 +436,11 @@
     closeDialog(dialog, { restore: false })
   }
 
-  function suspendDialog(dialog) {
+  function suspendDialog(dialog, { card = false } = {}) {
     if (!dialog?.open) return
+    pendingCardSnapshot = dialog.hasAttribute('data-card-sheet')
+      ? captureCardSnapshot(dialog) : null
+    if (card) prepareCardHistory(dialog)
     dialogPositions.set(dialog, dialogScrollers(dialog)
       .map(element => ({ element, top: element.scrollTop, left: element.scrollLeft })))
     dialog.close()
@@ -220,13 +449,25 @@
   }
 
   function dismissCardJourney() {
+    const marker = cardHistoryMarker()
+    const depth = cardHistoryJourney && marker?.id === cardHistoryJourney.id
+      ? marker.depth : 0
+    pendingCardSnapshot = null
+    pendingCardHistory = null
     document.querySelectorAll('dialog[data-card-sheet]').forEach(dialog => {
       if (dialog.open) dialog.close()
+      resetCardBack(dialog)
+      removeCardUnderlay(dialog)
       dialogParents.delete(dialog)
       dialogScrollLocks.delete(dialog)
       syncCardNavigation(dialog, false)
     })
     syncDialogScrollLock()
+    cardHistoryJourney = null
+    if (depth > 0) {
+      dismissedCardHistory = true
+      history.go(-depth)
+    }
   }
 
   function dialogReturnTo(dialog) {
@@ -275,6 +516,8 @@
     }),
   })
 
+  if (cardHistoryMarker()) history.replaceState(cardHistoryState('', 0), '', location.href)
+  window.addEventListener('popstate', handleCardHistoryPop, true)
   decorateExperienceCloseButtons()
   decorateViewingIntentActions()
 })()

@@ -42,7 +42,8 @@ class CatalogueFixture(ProviderMetadataMixin):
                         {"id": 2, "name": "Ellen DeGeneres", "character": "Dory",
                          "profile_path": "/ellen.jpg", "order": 1},
                     ],
-                    "crew": [{"id": 3, "name": "Andrew Stanton", "job": "Director"}],
+                    "crew": [{"id": 3, "name": "Andrew Stanton", "job": "Director",
+                              "profile_path": "/stanton.jpg"}],
                 },
             }
         if endpoint == "movie/12/watch/providers":
@@ -62,7 +63,8 @@ class CatalogueFixture(ProviderMetadataMixin):
                 "id": 77, "name": "Fixture Show", "first_air_date": "2020-01-02",
                 "last_air_date": "2022-03-04", "vote_average": 8.2,
                 "vote_count": 400, "episode_run_time": [48],
-                "created_by": [{"id": 8, "name": "Example Creator"}],
+                "created_by": [{"id": 8, "name": "Example Creator",
+                                "profile_path": "/creator.jpg"}],
                 "credits": {"cast": [{
                     "id": 9, "name": "Example Actor", "character": "Lead",
                     "profile_path": "/actor.jpg", "order": 0,
@@ -138,6 +140,10 @@ class AdultTitleEnrichmentTests(unittest.TestCase):
         self.assertEqual(detail["release_date"], "2003-10-10")
         self.assertEqual(detail["rating"], 7.8)
         self.assertEqual(detail["directors"], ["Andrew Stanton"])
+        self.assertEqual(detail["creative_leads"], [{
+            "tmdb_id": 3, "name": "Andrew Stanton", "role": "Director",
+            "profile_path": "/stanton.jpg",
+        }])
         self.assertEqual(detail["cast"][0]["character"], "Marlin")
         self.assertEqual(detail["collection"]["name"], "Finding Nemo Collection")
         self.assertEqual([part["title"] for part in detail["collection"]["parts"]],
@@ -156,6 +162,8 @@ class AdultTitleEnrichmentTests(unittest.TestCase):
         self.assertEqual(detail["first_air_date"], "2020-01-02")
         self.assertEqual(detail["last_air_date"], "2022-03-04")
         self.assertEqual(detail["directors"], ["Example Creator"])
+        self.assertEqual(detail["creative_leads"][0]["role"], "Creator")
+        self.assertEqual(detail["creative_leads"][0]["profile_path"], "/creator.jpg")
         self.assertEqual(detail["rating"], 8.2)
         self.assertEqual(detail["cast"][0]["name"], "Example Actor")
         self.assertIsNone(detail["collection"])
