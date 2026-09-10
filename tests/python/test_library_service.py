@@ -101,6 +101,9 @@ class LibraryFixture:
             config=str(self.config),
         )
         self.library = mabeltv_library.Library(args)
+        self.library.player_state_path = self.root / "player-state.json"
+        self.library.player_state_path.write_text(
+            '{"standby": false}\n', encoding="utf-8")
         self.library.admin_action = lambda action: "ok"
 
     def close(self) -> None:

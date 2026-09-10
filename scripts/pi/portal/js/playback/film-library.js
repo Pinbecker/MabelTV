@@ -574,7 +574,10 @@
       const streamable = film.browser_ready !== false
       const favouriteResumeChoice = context === 'favourite' && resumable
       const playHere = position => {
-        openRemotePlayer({ kind: 'adult', file: film.path }, position)
+        const mobile = isAppleMobilePlayer()
+        if (mobile) controls.close()
+        openRemotePlayer({ kind: 'adult', file: film.path }, position,
+          mobile ? controls.reopen : null)
       }
       const playOnTvNow = (position = null) => {
         playOnTv({
@@ -677,6 +680,9 @@
       if (typeof wireLocalFilmViewingActions === 'function') {
         void wireLocalFilmViewingActions(viewingActions, film).catch(showError)
       } else viewingActions.classList.add('hidden')
+      if (typeof renderAdultPersonalRating === 'function') {
+        renderAdultPersonalRating($('#watchFilmPersonalRating'), localFilmViewingDetail(film) || {})
+      }
       if (typeof loadLocalFilmProviders === 'function') {
         void loadLocalFilmProviders(film).catch(showError)
       } else $('#watchFilmProviders').classList.add('hidden')

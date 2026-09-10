@@ -86,38 +86,44 @@ function syncAdultExploreCard(card, title) {
   const status = adultArtworkStatusKind(title)
   appendAdultArtworkStatus(card.querySelector('.adult-explore-art'), title)
   const watchlist = card.querySelector('[data-explore-action="watchlist"]')
-  watchlist.classList.toggle('active', state.watchlisted === true)
-  watchlist.setAttribute('aria-pressed', String(state.watchlisted === true))
-  watchlist.setAttribute('aria-label', `${state.watchlisted ? 'Remove from' : 'Add to'} Watchlist: ${title.title}`)
-  const watchlistIcon = state.watchlisted ? 'signal-minus' : 'signal-plus'
-  if (watchlist.querySelector('use')?.getAttribute('href') !== `/portal/icons.svg#${watchlistIcon}`) {
-    watchlist.replaceChildren(librarySignalIcon(watchlistIcon))
+  if (watchlist) {
+    watchlist.classList.toggle('active', state.watchlisted === true)
+    watchlist.setAttribute('aria-pressed', String(state.watchlisted === true))
+    watchlist.setAttribute('aria-label', `${state.watchlisted ? 'Remove from' : 'Add to'} Watchlist: ${title.title}`)
+    const watchlistIcon = state.watchlisted ? 'signal-minus' : 'signal-plus'
+    if (watchlist.querySelector('use')?.getAttribute('href') !== `/portal/icons.svg#${watchlistIcon}`) {
+      watchlist.replaceChildren(librarySignalIcon(watchlistIcon))
+    }
   }
   const watched = card.querySelector('[data-explore-action="watched"]')
-  watched.classList.toggle('active', Boolean(status))
-  watched.dataset.status = status
-  watched.setAttribute('aria-pressed', String(status === 'watched'))
-  watched.setAttribute('aria-label', title.media_type === 'tv'
-    ? `Choose the watched series for ${title.title}`
-    : `${status === 'watched' ? 'Mark unwatched' : 'Mark watched'}: ${title.title}`)
-  const watchedIcon = status === 'part-watched' ? 'signal-minus'
-    : status === 'watched' ? 'signal-check' : ''
-  if (watched.querySelector('use')?.getAttribute('href') !==
-      (watchedIcon ? `/portal/icons.svg#${watchedIcon}` : undefined)) {
-    watched.replaceChildren(...(watchedIcon ? [librarySignalIcon(watchedIcon)] : []))
+  if (watched) {
+    watched.classList.toggle('active', Boolean(status))
+    watched.dataset.status = status
+    watched.setAttribute('aria-pressed', String(status === 'watched'))
+    watched.setAttribute('aria-label', title.media_type === 'tv'
+      ? `Choose the watched series for ${title.title}`
+      : `${status === 'watched' ? 'Mark unwatched' : 'Mark watched'}: ${title.title}`)
+    const watchedIcon = status === 'part-watched' ? 'signal-minus'
+      : status === 'watched' ? 'signal-check' : ''
+    if (watched.querySelector('use')?.getAttribute('href') !==
+        (watchedIcon ? `/portal/icons.svg#${watchedIcon}` : undefined)) {
+      watched.replaceChildren(...(watchedIcon ? [librarySignalIcon(watchedIcon)] : []))
+    }
   }
 }
 
 function refreshAdultExploreCards() {
-  $('#adultExploreGrid')?.querySelectorAll('.adult-explore-card').forEach(card => {
-    const title = adultExploreItems.find(item => item.key === card.dataset.exploreKey)
+  document.querySelectorAll('.adult-explore-card').forEach(card => {
+    const title = card._adultExploreTitle
+      || adultExploreItems.find(item => item.key === card.dataset.exploreKey)
     if (title) syncAdultExploreCard(card, title)
   })
 }
 
-function adultExploreCard(title) {
+function adultExploreCard(title, { directActions = true, context = 'explore' } = {}) {
   const card = document.createElement('article')
   card.className = 'adult-explore-card'
+  card._adultExploreTitle = title
   card.dataset.exploreKey = title.key
   card.dataset.mediaType = title.media_type
   const visual = document.createElement('div')
@@ -144,7 +150,7 @@ function adultExploreCard(title) {
   openArt.append(art)
   openArt.onclick = () => {
     card.dataset.exploreActed = 'true'
-    openAdultTitle(adultExploreTitle(title))
+    openAdultTitle({ ...adultExploreTitle(title), local_context: context })
   }
 
   const actions = document.createElement('span')
@@ -180,7 +186,8 @@ function adultExploreCard(title) {
     } catch (error) { showError(error) } finally { delete watched.dataset.saving }
   }
   actions.append(watchlist, watched)
-  visual.append(openArt, actions)
+  visual.append(openArt)
+  if (directActions) visual.append(actions)
 
   const openCopy = document.createElement('button')
   openCopy.type = 'button'
@@ -194,7 +201,7 @@ function adultExploreCard(title) {
   openCopy.setAttribute('aria-label', `Open details for ${title.title}`)
   openCopy.onclick = () => {
     card.dataset.exploreActed = 'true'
-    openAdultTitle(adultExploreTitle(title))
+    openAdultTitle({ ...adultExploreTitle(title), local_context: context })
   }
   card.append(visual, openCopy)
   syncAdultExploreCard(card, title)

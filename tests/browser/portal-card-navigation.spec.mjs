@@ -227,7 +227,7 @@ test('title credits lead with directors or creators and actor cards use two rows
     portalSheets.open($('#adultPersonSheet'))
   })
   const knownFor = page.locator('#adultPersonCredits')
-  await expect(knownFor.locator('.adult-person-credit-page')).toHaveCount(2)
+  await expect(knownFor.locator('.adult-person-credit-page')).toHaveCount(1)
   await expect(knownFor.locator('.adult-person-credit-page').first()
     .locator('.adult-franchise-card')).toHaveCount(10)
   const rows = await knownFor.locator('.adult-person-credit-page').first()

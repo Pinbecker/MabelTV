@@ -362,6 +362,19 @@ class FixtureLibrary:
             current.update({"manual_state": "part_watched", "history": []})
         elif action == "not_watched":
             current.update({"manual_state": "not_watched", "history": []})
+        elif action == "rating":
+            rating = int(payload.get("rating", 0) or 0)
+            corrected = current.get("manual_state") in {
+                "not_watched", "part_watched", "dropped"}
+            watched = current.get("manual_state") == "watched" or (
+                not corrected and bool(current.get("history")))
+            if rating and not watched:
+                raise ValueError("Mark this title as watched before rating it")
+            if rating:
+                current["personal_rating"] = rating
+            else:
+                current.pop("personal_rating", None)
+            current["rating_updated"] = 2_000_000_000
         return {"ok": True, "key": key, "viewing": copy.deepcopy(current)}
 
     def login_allowed(self, address: str) -> bool:

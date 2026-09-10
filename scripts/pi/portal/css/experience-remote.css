@@ -278,6 +278,23 @@ body.portal-v2 .remote-transport-context button {
   text-align: center;
 }
 
+body.portal-v2 #view-live .remote-transport-context button {
+  border-color: rgba(255, 255, 255, .1);
+  background: #141419;
+  color: #f4f4f7;
+}
+
+body.portal-v2 #view-live .remote-transport-context button:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, .18);
+  background: #1b1b21;
+  color: #fff;
+}
+
+body.portal-v2 #view-live .remote-transport-context button:disabled {
+  background: #141419;
+  color: #8f8f98;
+}
+
 body.portal-v2 .remote-transport-context button span {
   white-space: nowrap;
 }

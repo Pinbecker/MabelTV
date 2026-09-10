@@ -94,6 +94,19 @@ class CatalogueFixture(ProviderMetadataMixin):
                      "popularity": 20, "vote_count": 200},
                 ]},
             }
+        if endpoint == "person/3":
+            return {
+                "id": 3, "name": "Andrew Stanton",
+                "known_for_department": "Directing",
+                "combined_credits": {"cast": [], "crew": [
+                    {"id": 12, "media_type": "movie", "title": "Finding Nemo",
+                     "release_date": "2003-05-30", "job": "Director",
+                     "department": "Directing", "vote_count": 19000},
+                    {"id": 13, "media_type": "movie", "title": "Writing Only",
+                     "release_date": "2008-01-01", "job": "Screenplay",
+                     "department": "Writing", "vote_count": 5000},
+                ]},
+            }
         raise AssertionError(endpoint)
 
     @staticmethod
@@ -194,9 +207,20 @@ class AdultTitleEnrichmentTests(unittest.TestCase):
         self.assertEqual([item["title"] for item in detail["known_for"]],
                          ["Finding Nemo", "A Series"])
         self.assertEqual(detail["known_for"][0]["character"], "Marlin")
+        self.assertEqual([item["title"] for item in detail["filmography"]],
+                         ["A Series", "Finding Nemo"])
         self.assertEqual(repeated, detail)
         self.assertEqual([endpoint for endpoint, _ in library.requests].count(
             "person/1"), 1)
+
+    def test_person_detail_uses_the_creative_department_for_directors(self) -> None:
+        detail = CatalogueFixture().adult_person_detail(3)
+
+        self.assertEqual([item["title"] for item in detail["filmography"]],
+                         ["Finding Nemo"])
+        self.assertEqual(detail["filmography"][0]["character"], "Director")
+        self.assertEqual([item["title"] for item in detail["known_for"]],
+                         ["Finding Nemo"])
 
     def test_person_credit_ranking_rejects_guest_and_archive_appearances(self) -> None:
         meaningful = {"media_type": "movie", "character": "Alfred", "genre_ids": [18],

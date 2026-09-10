@@ -631,6 +631,10 @@ body.portal-v2 .adult-series-header-facts {
   gap: 5px 9px;
   margin-top: 6px;
 }
+body.portal-v2 #adultSeriesMoreMeta.adult-series-header-facts {
+  grid-template-columns: repeat(2, minmax(0, 66px));
+  gap: 16px;
+}
 body.portal-v2 .section-kicker.is-mabeltv { color: var(--experience-accent-ink); }
 body.portal-v2 .adult-series-header-facts .adult-title-fact > small { font-size: 6px; }
 body.portal-v2 .adult-series-header-facts .adult-title-fact > strong { font-size: 9px; }

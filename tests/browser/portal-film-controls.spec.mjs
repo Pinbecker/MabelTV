@@ -45,8 +45,8 @@ for (const theme of ['light', 'dark']) {
         return { color: s.color, background: s.backgroundColor, opacity: s.opacity, disabled: element.disabled }
       })
       expect(style.opacity).toBe('1')
-      expect(style.background).not.toBe('rgba(0, 0, 0, 0)')
-      if (style.disabled) expect(style.color).toBe(theme === 'light' ? 'rgb(83, 91, 104)' : 'rgb(167, 167, 176)')
+      expect(style.background).toBe('rgb(20, 20, 25)')
+      if (style.disabled) expect(style.color).toBe('rgb(143, 143, 152)')
     }
     await expect(page.locator('#remoteSubtitles')).toBeDisabled()
     await page.screenshot({ path: testInfo.outputPath('remote.png') })

@@ -690,9 +690,42 @@ class ProviderMetadataMixin:
             raise ValueError("That cast member could not be loaded")
         credits = value.get("combined_credits", {})
         cast_credits = credits.get("cast", []) if isinstance(credits, dict) else []
+        crew_credits = credits.get("crew", []) if isinstance(credits, dict) else []
+        department = str(value.get("known_for_department") or "Acting")
+        source_credits = cast_credits if department == "Acting" else [
+            item for item in crew_credits if isinstance(item, dict)
+            and str(item.get("department") or "") == department]
+        display_credits = []
+        for item in source_credits:
+            if not isinstance(item, dict):
+                continue
+            normalised = dict(item)
+            normalised["character"] = str(
+                item.get("character") or item.get("job") or department).strip()
+            display_credits.append(normalised)
+        filmography_by_key: dict[str, dict[str, Any]] = {}
+        for item in display_credits:
+            if not isinstance(item, dict) or item.get("adult") is True:
+                continue
+            media_type = str(item.get("media_type") or "")
+            character = str(item.get("character") or "").strip()
+            if media_type not in {"movie", "tv"} or not character or re.search(
+                    r"\b(self|himself|herself|archive footage)\b",
+                    character.casefold()):
+                continue
+            summary = self.adult_title_summary(item, media_type)
+            if not summary["tmdb_id"] or not summary["title"]:
+                continue
+            key = self.adult_title_key(media_type, summary["tmdb_id"])
+            summary.update({"key": key, "character": character})
+            filmography_by_key.setdefault(key, summary)
+        filmography = sorted(filmography_by_key.values(), key=lambda item: (
+            str(item.get("release_date") or item.get("first_air_date") or
+                f"{item.get('year', '')}-00-00"), str(item.get("title") or "").casefold()),
+            reverse=True)
         ranked = sorted(
-            (item for item in cast_credits if isinstance(item, dict)
-             and self.adult_person_credit_score(item) is not None),
+            (item for item in display_credits
+             if self.adult_person_credit_score(item) is not None),
             key=lambda item: self.adult_person_credit_score(item) or (),
             reverse=True,
         )
@@ -726,6 +759,7 @@ class ProviderMetadataMixin:
             "place_of_birth": str(value.get("place_of_birth") or ""),
             "profile_path": str(value.get("profile_path") or ""),
             "known_for": known_for,
+            "filmography": filmography,
         }
 
     @staticmethod
@@ -906,7 +940,7 @@ class ProviderMetadataMixin:
         allowed = {"watchlist", "up_next", "move_up", "move_down",
                    "part_watched", "watched", "not_watched", "dropped",
                    "watching", "launched", "remove", "episode_watched",
-                   "season_watched"}
+                   "season_watched", "rating"}
         if action not in allowed:
             raise ValueError("Choose a valid viewing action")
         now = time.time()
@@ -969,6 +1003,27 @@ class ProviderMetadataMixin:
                 current["series_watching"] = enabled
                 current["series_watching_updated"] = now
                 current.pop("series_watching_mode", None)
+            elif action == "rating":
+                rating = payload.get("rating")
+                if isinstance(rating, bool):
+                    raise ValueError("Choose a rating from 0 to 10")
+                try:
+                    rating = int(rating)
+                except (TypeError, ValueError):
+                    raise ValueError("Choose a rating from 0 to 10") from None
+                if rating < 0 or rating > 10 or float(payload.get("rating")) != rating:
+                    raise ValueError("Choose a whole-number rating from 0 to 10")
+                corrected = current.get("manual_state") in {
+                    "not_watched", "part_watched", "dropped"}
+                watched = current.get("manual_state") == "watched" or (
+                    not corrected and bool(current.get("history")))
+                if rating and not watched:
+                    raise ValueError("Mark this title as watched before rating it")
+                if rating:
+                    current["personal_rating"] = rating
+                else:
+                    current.pop("personal_rating", None)
+                current["rating_updated"] = now
             elif action == "launched":
                 current["last_launched"] = now
                 current["last_provider"] = str(

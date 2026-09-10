@@ -59,6 +59,12 @@ function optimisticAdultViewingRecord(title, action, extra = {}) {
   if (action === 'watchlist') next.watchlisted = extra.enabled === true
   else if (action === 'up_next') next.up_next = extra.enabled === true
   else if (action === 'watching') next.series_watching = extra.enabled === true
+  else if (action === 'rating') {
+    const rating = Number(extra.rating || 0)
+    if (rating > 0) next.personal_rating = rating
+    else next.personal_rating = 0
+    next.rating_updated = next.updated
+  }
   else if (['part_watched', 'watched', 'not_watched', 'dropped'].includes(action)) {
     if (action === 'watched') next.history.push(next.updated)
     else if (next.manual_state === 'watched' && next.history.length) next.history.pop()
@@ -136,7 +142,7 @@ const adultProviderBrands = [
   },
   {
     id: 'prime-video', label: 'Prime Video', asset: 'prime-video-app.jpg',
-    match: /(?:prime\s*video|amazon\s*prime|via\s*amazon\s*prime)/i,
+    match: /(?:prime\s*video|amazon\s*prime)/i,
     tmdbIds: [9], watchmodeIds: [25, 26],
     hosts: ['amazon.co.uk', 'primevideo.com'],
     fallback: title => `https://www.amazon.co.uk/gp/video/search?phrase=${encodeURIComponent(title)}`,
@@ -196,7 +202,8 @@ const adultProviderBrands = [
 function adultProviderBrandFor(record, idField, brandIds) {
   const identifier = Number(record?.[idField] || 0)
   return (identifier && adultProviderBrands.find(brand => brand[brandIds].includes(identifier)))
-    || adultProviderBrands.find(brand => brand.match.test(String(record?.name || '')))
+    || adultProviderBrands.find(brand => brand.match.test(String(record?.name || ''))
+      && !(brand.id === 'prime-video' && /\bvia\s+amazon\s+prime\b/i.test(String(record?.name || ''))))
 }
 
 function adultAvailabilityEnabled() {

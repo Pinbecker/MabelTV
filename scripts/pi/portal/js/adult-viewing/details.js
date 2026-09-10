@@ -185,6 +185,9 @@ function adultTitleIntentAction(detail, button, request, root = $('#adultTitleIn
       detail.viewing = await updateAdultViewing(detail, action, extra, viewing => {
         detail.viewing = viewing
         syncAdultTitleButtons(detail, root)
+        if (typeof syncAdultPersonalRatingForIntentRoot === 'function') {
+          syncAdultPersonalRatingForIntentRoot(root, detail)
+        }
         if (onUpdate) onUpdate(viewing)
         if (root?.id === 'adultTitleIntents') syncAdultTitleNextEpisode(detail)
       })
@@ -423,6 +426,7 @@ function renderAdultTitleDetail(detail, refreshProviders = true,
     credits,
     seriesLayout: isSeries,
   })
+  renderAdultPersonalRating($('#adultTitlePersonalRating'), detail)
   const poster = $('#adultTitlePoster')
   poster.replaceChildren()
   if (detail.poster_path) {
@@ -572,6 +576,7 @@ function prepareAdultTitleSheet(title) {
     ? 'Streaming TV series' : 'Film'
   eyebrow.classList.toggle('is-mabeltv', Boolean(localFilm || title.on_mabeltv))
   renderAdultTitleLoadingShell(title)
+  renderAdultPersonalRating($('#adultTitlePersonalRating'), title)
   $('#adultTitleBackdrop').style.setProperty('--watch-film-art',
     'linear-gradient(135deg,#27252c,#101014)')
   $('#adultTitleLocal').classList.add('hidden')

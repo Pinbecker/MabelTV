@@ -391,7 +391,12 @@
         ? episode.remote_position > 10 ? `Continue from ${watchTimeLabel(episode.remote_position)}` : 'Starts an independent stream'
         : 'Open the original file without conversion'
       here.onclick = () => {
-        if (episode.browser_ready) openRemotePlayer(source, episode.remote_position)
+        if (episode.browser_ready) {
+          const mobile = isAppleMobilePlayer()
+          if (mobile) closeAdultEpisodeSheet(false)
+          openRemotePlayer(source, episode.remote_position,
+            mobile ? () => openAdultEpisodeSheet(current, episode, returnTo) : null)
+        }
         else openInVlc(source, episode.display_name)
       }
       const watched = $('#adultEpisodeWatched')
@@ -744,8 +749,10 @@
         const syncWatching = () => syncSeriesHeader()
         void wireLocalSeriesViewingActions($('#adultSeriesIntents'), current, syncWatching)
           .catch(showError)
+        renderAdultPersonalRating($('#adultSeriesPersonalRating'), localSeriesViewingDetail(current))
       } else {
         $('#adultSeriesIntents').classList.add('hidden')
+        $('#adultSeriesPersonalRating').classList.add('hidden')
       }
       const root = $('#adultSeriesEpisodes')
       root.innerHTML = ''

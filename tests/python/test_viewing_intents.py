@@ -114,6 +114,29 @@ class ViewingIntentTests(unittest.TestCase):
         self.assertFalse(saved.get("series_watching", False))
         self.assertEqual(saved.get("history"), [])
 
+    def test_personal_rating_requires_watched_and_can_be_cleared(self) -> None:
+        title = {"media_type": "movie", "tmdb_id": 603, "title": "The Matrix"}
+        with self.assertRaises(ValueError):
+            self.fixture.library.adult_viewing_update(
+                title | {"action": "rating", "rating": 9})
+        self.fixture.library.adult_viewing_update(title | {"action": "watched"})
+        saved = self.fixture.library.adult_viewing_update(
+            title | {"action": "rating", "rating": 9})["viewing"]
+        self.assertEqual(saved["personal_rating"], 9)
+        self.assertGreater(saved["rating_updated"], 0)
+        self.assertEqual(saved["manual_state"], "watched")
+
+        cleared = self.fixture.library.adult_viewing_update(
+            title | {"action": "rating", "rating": 0})["viewing"]
+        self.assertNotIn("personal_rating", cleared)
+
+    def test_personal_rating_rejects_fractional_and_out_of_range_values(self) -> None:
+        title = {"media_type": "tv", "tmdb_id": 243360, "title": "Ludwig",
+                 "action": "rating"}
+        for rating in (-1, 11, 7.5, True, "bad"):
+            with self.subTest(rating=rating), self.assertRaises(ValueError):
+                self.fixture.library.adult_viewing_update(title | {"rating": rating})
+
     def test_empty_series_container_is_not_on_mabeltv(self) -> None:
         series_id = self.fixture.library.create_adult_series("Ludwig")
         states = self.fixture.library.adult_series_states()

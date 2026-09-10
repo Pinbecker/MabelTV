@@ -22,7 +22,7 @@
         return
       }
       const view = requested === 'home' ? 'overview' : requested
-      const allowed = new Set(['overview', 'live', 'lg-tv', 'channels', 'adult', 'watch', 'adult-viewing', 'adult-explore', 'usb', 'system', 'appearance', 'insights'])
+      const allowed = new Set(['overview', 'live', 'lg-tv', 'channels', 'adult', 'watch', 'adult-viewing', 'adult-explore', 'adult-ratings', 'adult-filmography', 'usb', 'system', 'appearance', 'insights'])
       if (allowed.has(view)) {
         if (view === 'channels' || view === 'adult') {
           remoteKind = view === 'channels' ? 'channel' : 'adult'
@@ -267,12 +267,14 @@
       const channelFromWatch = name === 'channels' && selectedManageChannel !== null && channelWorkspaceReturnToWatch
       const consolidatedWatchView = name === 'channels' || name === 'adult'
       const activeNavigation = channelFromWatch || consolidatedWatchView
-        || name === 'adult-viewing' || name === 'adult-explore' ? 'watch'
+        || name === 'adult-viewing' || name === 'adult-explore'
+        || name === 'adult-ratings' || name === 'adult-filmography' ? 'watch'
         : name === 'lg-tv' ? 'live'
           : (name === 'insights' || name === 'activity' || name === 'appearance') ? 'system' : name
       $$('.view').forEach(view => view.classList.toggle('active', view.id === `view-${name}`))
       document.body.classList.toggle('watch-mode', name === 'watch' || name === 'adult-viewing'
-        || name === 'adult-explore' || channelFromWatch || consolidatedWatchView)
+        || name === 'adult-explore' || name === 'adult-ratings' || name === 'adult-filmography'
+        || channelFromWatch || consolidatedWatchView)
       document.body.classList.toggle('tv-remote-mode', name === 'live' || name === 'lg-tv')
       document.body.classList.toggle('lg-tv-mode', name === 'lg-tv')
       $$('[data-remote-switch]').forEach(button => {
@@ -309,6 +311,8 @@
         if (resetExplore || adultExplorePage === 0) loadAdultExplore({ reset: true }).catch(showError)
         else renderAdultExploreGrid()
       }
+      if (name === 'adult-ratings') loadAdultRatings().catch(showError)
+      if (name === 'adult-filmography') renderAdultFilmography()
       const savedPosition = portalViewPositions.get(`view-${name}`)
       if (!options.restoreScroll && !options.resetScroll && savedPosition) settlePortalPosition(savedPosition)
     }

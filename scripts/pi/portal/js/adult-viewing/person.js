@@ -45,8 +45,11 @@ function renderAdultPersonDetail(person, context = '', returnTo = null) {
   configureAdultPersonBiography(person.biography || 'No biography is available for this cast member.')
   const section = $('#adultPersonKnownFor')
   const credits = $('#adultPersonCredits')
+  const filmography = $('#adultPersonFilmography')
+  filmography.classList.toggle('hidden', !(person.filmography || []).length)
+  filmography.onclick = () => openAdultFilmography(person, context, returnTo)
   credits.replaceChildren()
-  const knownFor = person.known_for || []
+  const knownFor = (person.known_for || []).slice(0, 10)
   const pages = []
   knownFor.forEach((title, index) => {
     if (index % 10 === 0) {
@@ -84,8 +87,6 @@ function renderAdultPersonDetail(person, context = '', returnTo = null) {
     pages[pages.length - 1].append(card)
   })
   section.classList.toggle('hidden', !credits.children.length)
-  credits.scrollLeft = 0
-  requestAnimationFrame(() => { credits.scrollLeft = 0 })
 }
 
 function configureAdultPersonBiography(value) {
@@ -132,7 +133,6 @@ async function openAdultPerson(person, title, returnTo = null) {
   $('#adultPersonKnownFor').classList.add('hidden')
   const credits = $('#adultPersonCredits')
   credits.replaceChildren()
-  credits.scrollLeft = 0
   renderAdultPersonPhoto(person)
   portalSheets.open(sheet, { returnTo, focus: sheet.querySelector('.library-sheet-panel') })
   try {

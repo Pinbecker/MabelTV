@@ -2,6 +2,15 @@
 
 let iosInlineControlTimer = null
 let mabelFilmArtCycleTimer = null
+let iosPlayerHistoryActive = false
+let iosPlayerReturnTo = null
+
+function openIosPlayerHistoryLayer() {
+  if (iosPlayerHistoryActive) return
+  const state = { ...(history.state || {}), mabelIosPlayer: true }
+  history.pushState(state, '', location.href)
+  iosPlayerHistoryActive = true
+}
 
 function startMabelFilmArtCycle() {
       clearInterval(mabelFilmArtCycleTimer)
@@ -82,7 +91,14 @@ function remoteTime(value) {
       ], { type: 'application/json' }))
     }
 
-    function closeIosRemotePlayer() {
+    function closeIosRemotePlayer({ fromHistory = false } = {}) {
+      if (!fromHistory && iosPlayerHistoryActive && history.state?.mabelIosPlayer) {
+        history.back()
+        return
+      }
+      iosPlayerHistoryActive = false
+      const returnTo = iosPlayerReturnTo
+      iosPlayerReturnTo = null
       const video = $('#iosWatchVideo')
       const session = iosRemoteSession
       const saved = saveIosRemotePosition(false, true)
@@ -95,6 +111,7 @@ function remoteTime(value) {
         $('#iosWatchPlayer').classList.add('hidden')
         document.documentElement.classList.remove('native-video-fullscreen')
         unlockPortalPlayerScroll()
+        if (returnTo) queueMicrotask(returnTo)
       saved.finally(() => {
         if (session) return api('/api/remote/release', { method: 'POST', body: JSON.stringify({ stream: session }) }).catch(() => {})
       }).finally(() => load().catch(() => {}))
@@ -123,6 +140,7 @@ function remoteTime(value) {
     async function startIosRemotePlayer(payload, position = 0) {
       const shell = $('#iosWatchPlayer'); const video = $('#iosWatchVideo'); const error = $('#iosWatchError')
       shell.classList.remove('hidden'); error.classList.add('hidden'); video.classList.remove('hidden')
+      openIosPlayerHistoryLayer()
       // The fixed-body scroll lock causes incorrect touch coordinates in
       // installed iOS web apps after AVKit changes the viewport. The player
       // shell is already fixed, so overflow locking is sufficient here.
@@ -200,6 +218,7 @@ function remoteTime(value) {
       iosRemoteSession = null
       iosOfflineDownloadId = manifest.id
       shell.classList.remove('hidden'); error.classList.add('hidden'); video.classList.remove('hidden')
+      openIosPlayerHistoryLayer()
       lockPortalPlayerScroll(false)
       $('#iosWatchTitle').textContent = manifest.title
       $('#iosWatchContext').textContent = 'Downloaded · ready offline'
@@ -428,7 +447,7 @@ function remoteTime(value) {
       }
     }
 
-    async function openRemotePlayer(payload, position = 0) {
+    async function openRemotePlayer(payload, position = 0, returnTo = null) {
       const desktopAdult = ['adult', 'adult-series'].includes(payload.kind) && !isAppleMobilePlayer()
       // Reserve the tab during the direct user gesture. Waiting for the
       // portal-only concurrency setting first would let some browsers mistake
@@ -440,9 +459,16 @@ function remoteTime(value) {
           await startMabelWatchPlayer({ ...payload, position: Math.max(0, Number(position) || 0) })
           return
         }
-        if (payload.kind === 'usb') { await startIosRemotePlayer(payload, 0); return }
+        if (payload.kind === 'usb') {
+          iosPlayerReturnTo = returnTo
+          await startIosRemotePlayer(payload, 0)
+          return
+        }
         const url = playerUrl(payload, position)
-        if (isAppleMobilePlayer()) await startIosRemotePlayer(payload, position)
+        if (isAppleMobilePlayer()) {
+          iosPlayerReturnTo = returnTo
+          await startIosRemotePlayer(payload, position)
+        }
         else if (playerWindow) {
           playerWindow.opener = null
           playerWindow.location.replace(url)
@@ -453,7 +479,20 @@ function remoteTime(value) {
       }
     }
 
-    $('#iosWatchBack').onclick = closeIosRemotePlayer
+    $('#iosWatchBack').onclick = () => closeIosRemotePlayer()
+    window.addEventListener('popstate', event => {
+      const hasPlayerLayer = event.state?.mabelIosPlayer === true
+      if (iosPlayerHistoryActive && !hasPlayerLayer) {
+        closeIosRemotePlayer({ fromHistory: true })
+        return
+      }
+      if (!iosPlayerHistoryActive && hasPlayerLayer
+          && $('#iosWatchPlayer').classList.contains('hidden')) {
+        const state = { ...(event.state || {}) }
+        delete state.mabelIosPlayer
+        history.replaceState(state, '', location.href)
+      }
+    })
     $('#iosWatchStartOver').onclick = () => { const video = $('#iosWatchVideo'); video.currentTime = 0; iosRemoteLastSaved = 0; video.play().catch(() => {}); $('#iosWatchStartOver').classList.add('hidden') }
     window.addEventListener('pagehide', beaconIosRemotePosition)
     document.addEventListener('visibilitychange', () => {

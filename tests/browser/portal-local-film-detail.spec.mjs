@@ -81,12 +81,17 @@ test('a local global-search film opens one rich card with playback controls', as
     probe.remove()
     const tv = sheet.querySelector('#adultTitleFilmTv').getBoundingClientRect()
     const here = sheet.querySelector('#adultTitleFilmHere').getBoundingClientRect()
+    const close = sheet.querySelector('#adultTitleClose').getBoundingClientRect()
+    const settingsBox = settings.getBoundingClientRect()
     return {
       eyebrowLocal: eyebrow.classList.contains('is-mabeltv'),
       eyebrowUsesAccentInk: getComputedStyle(eyebrow).color === accentInk,
       settingsUsesAccentInk: getComputedStyle(settings).color === accentInk,
       settingsInHeader: settings.parentElement.classList.contains('watch-film-summary'),
       settingsIcon: settings.querySelector('use').getAttribute('href'),
+      settingsAlignedUnderClose: Math.abs(
+        settingsBox.x + settingsBox.width / 2 - close.x - close.width / 2) <= 1.5,
+      settingsGap: Math.round(settingsBox.top - close.bottom),
       playbackSameRow: Math.abs(tv.y - here.y) <= 1,
       playbackSameHeight: Math.abs(tv.height - here.height) <= 1,
       playbackHeight: tv.height,
@@ -101,6 +106,8 @@ test('a local global-search film opens one rich card with playback controls', as
     settingsUsesAccentInk: true,
     settingsInHeader: true,
     settingsIcon: '/portal/icons.svg#signal-cog',
+    settingsAlignedUnderClose: true,
+    settingsGap: 6,
     playbackSameRow: true,
     playbackSameHeight: true,
     playbackHeight: 44,
@@ -178,7 +185,7 @@ test('a matched local-library film uses the same rich card', async ({ page }) =>
   await expect(page.locator('#adultTitleFilmActions')).toBeVisible()
 })
 
-test('each actor filmography opens at its beginning', async ({ page }) => {
+test('each actor Known For section stays fixed at two rows of five', async ({ page }) => {
   await page.route(url => new URL(url).pathname === '/api/adult/person', route => {
     const id = Number(new URL(route.request().url()).searchParams.get('tmdb_id'))
     route.fulfill({ json: { tmdb_id: id, name: id === 1 ? 'First actor' : 'Second actor',
@@ -188,10 +195,15 @@ test('each actor filmography opens at its beginning', async ({ page }) => {
   })
   await page.goto('/')
   await page.evaluate(() => openAdultPerson({ tmdb_id: 1, name: 'First actor' }, 'First film'))
-  await expect(page.locator('#adultPersonCredits .adult-franchise-card')).toHaveCount(12)
-  await page.locator('#adultPersonCredits').evaluate(element => { element.scrollLeft = element.scrollWidth })
-  expect(await page.locator('#adultPersonCredits').evaluate(element => element.scrollLeft)).toBeGreaterThan(0)
+  await expect(page.locator('#adultPersonCredits .adult-franchise-card')).toHaveCount(10)
+  const first = await page.locator('#adultPersonCredits').evaluate(element => ({
+    overflow: getComputedStyle(element).overflowX,
+    rows: new Set([...element.querySelectorAll('.adult-franchise-card')]
+      .map(card => Math.round(card.getBoundingClientRect().top))).size,
+    scrollable: element.scrollWidth > element.clientWidth + 1,
+  }))
+  expect(first).toMatchObject({ overflow: 'hidden', rows: 2, scrollable: false })
   await page.evaluate(() => openAdultPerson({ tmdb_id: 2, name: 'Second actor' }, 'Second film'))
   await expect(page.locator('#adultPersonName')).toHaveText('Second actor')
-  expect(await page.locator('#adultPersonCredits').evaluate(element => element.scrollLeft)).toBe(0)
+  await expect(page.locator('#adultPersonCredits .adult-franchise-card')).toHaveCount(10)
 })

@@ -242,14 +242,16 @@ body.portal-v2 .adult-person-biography.is-expanded { display: block; overflow: v
 body.portal-v2 .adult-person-biography-expand { margin-top: 4px; }
 body.portal-v2 .adult-person-known-for { margin-top: 14px; border-top: 1px solid var(--experience-line); padding-top: 10px; }
 body.portal-v2 .adult-person-known-for h3 { margin: 0; font-size: 18px; }
-body.portal-v2 .adult-person-credits { gap: 12px; scroll-snap-type: x mandatory; }
+body.portal-v2 .adult-person-credits {
+  display: block;
+  overflow-x: hidden;
+  scroll-snap-type: none;
+}
 body.portal-v2 .adult-person-credit-page {
   display: grid;
-  flex: 0 0 100%;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: start;
   gap: 10px 7px;
-  scroll-snap-align: start;
 }
 body.portal-v2 .adult-person-credit-page .adult-franchise-card {
   width: 100%;

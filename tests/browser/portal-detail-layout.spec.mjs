@@ -13,7 +13,7 @@ async function openPortal(page, theme) {
 async function expectHeaderClear(page, sheet, closeId) {
   const header = page.locator(`${sheet} header`).first()
   const close = page.locator(closeId)
-  const copy = await header.locator(':scope > div').boundingBox()
+  const copy = await header.locator(':scope > div').first().boundingBox()
   const button = await close.boundingBox()
   expect(copy.x + copy.width).toBeLessThanOrEqual(button.x - 4)
   expect(await close.evaluate(element => {
@@ -47,6 +47,9 @@ test('exact provider identifiers beat marketplace wording', async ({ page }) => 
   expect(await page.evaluate(() => adultProviderBrandFor(
     { source_id: 490, name: 'MAX (Via Amazon Prime)' }, 'source_id', 'watchmodeIds')?.id
   )).toBe('hbo-max')
+  expect(await page.evaluate(() => adultProviderBrandFor(
+    { source_id: 533, name: 'Lionsgate+ (Via Amazon Prime)' }, 'source_id', 'watchmodeIds')?.id || ''
+  )).toBe('')
 })
 
 test('title cards show their complete structured shell while details load', async ({ page }, testInfo) => {

@@ -54,6 +54,10 @@ order unless a change explicitly redefines the cascade.
   `experience-library.css`, and `experience-viewing.css`: route ownership.
 - `experience-explore.css`: the continuous Adult TV suggestion catalogue,
   its compact quick actions and catalogue-only title route.
+- `experience-personal-rating.css`: the thin reusable ten-star control and the
+  watched-but-unrated queue entered from My Viewing.
+- `experience-filmography.css`: the actor/director identity strip, compact
+  filmography controls and year-by-year four-card timeline.
 - `experience-appearance.css`: the device-local colour page, its live preview,
   appearance slider, accent presets and semantic-colour reference.
 - `experience-settings.css`: settings, device, and activity surfaces.
@@ -111,8 +115,12 @@ initialisation even when each file is syntactically valid.
     navigation.
 23. `portal/js/adult-viewing/explore.js`: continuous TMDB discovery, quick
     viewing actions, weak impression feedback and visit freshness.
-24. `portal/js/actions.js`: application event bindings and remote commands.
-25. `portal/js/lg-tv-remote.js`: the separate LG webOS remote.
+24. `portal/js/adult-viewing/filmography.js`: TMDB-only full filmography search,
+    timeline and A-Z modes.
+25. `portal/js/adult-viewing/rating.js`: personal ten-star ratings and the
+    watched-but-unrated completion queue.
+26. `portal/js/actions.js`: application event bindings and remote commands.
+27. `portal/js/lg-tv-remote.js`: the separate LG webOS remote.
 
 Classic intentionally omits Experience-only Adult-viewing and LG-remote scripts.
 

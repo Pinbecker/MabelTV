@@ -1,0 +1,103 @@
+body.portal-v2 .adult-personal-rating-host {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+  margin: -4px 0 -7px;
+}
+
+body.portal-v2 .adult-personal-rating {
+  display: flex;
+  width: 100%;
+  min-height: 24px;
+  align-items: center;
+  gap: 7px;
+  color: var(--experience-dim);
+  outline: 0;
+}
+
+body.portal-v2 .adult-rating-label {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  padding: 7px 3px;
+  margin: -7px -3px;
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+body.portal-v2 .adult-rating-label.is-clearable {
+  color: var(--experience-accent-ink);
+  cursor: pointer;
+}
+
+body.portal-v2 .adult-personal-rating.is-locked {
+  color: var(--experience-muted);
+}
+
+body.portal-v2 .adult-personal-rating.is-locked .adult-rating-label {
+  flex: 1 1 auto;
+  justify-content: flex-start;
+  font-size: 8px;
+  letter-spacing: .04em;
+  text-align: left;
+  text-transform: none;
+}
+
+body.portal-v2 .adult-rating-track {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 0;
+  align-items: center;
+  min-width: 0;
+  padding: 7px 0;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body.portal-v2 .adult-rating-star {
+  justify-self: center;
+  width: 10px;
+  height: 10px;
+  color: color-mix(in srgb, var(--experience-dim) 60%, transparent);
+  stroke-width: 1.45;
+}
+
+body.portal-v2 .adult-rating-star.is-filled {
+  fill: var(--experience-accent-ink);
+  color: var(--experience-accent-ink);
+}
+
+body.portal-v2 .adult-rating-value {
+  min-width: 25px;
+  color: var(--experience-muted);
+  font-size: 8px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  text-align: right;
+}
+
+body.portal-v2 .adult-personal-rating:focus-visible .adult-rating-track {
+  border-radius: 5px;
+  outline: 1px solid var(--experience-accent-ink);
+  outline-offset: 1px;
+}
+
+body.portal-v2 .adult-series-sheet-head > .adult-personal-rating-host {
+  margin-bottom: -8px;
+}
+
+body.portal-v2 .adult-ratings-grid .adult-explore-actions { display: none; }
+body.portal-v2 .adult-ratings-grid .watch-empty { grid-column: 1 / -1; }
+
+@media (max-width: 370px) {
+  body.portal-v2 .adult-rating-label { display: none; }
+}
