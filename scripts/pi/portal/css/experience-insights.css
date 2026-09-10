@@ -1,10 +1,13 @@
 /* Viewing insights is a small routed app within Settings. */
 body.portal-v2 .insights-page.is-child > .insights-back,
-body.portal-v2 .insights-page.is-child > .insights-hero { display: none; }
+body.portal-v2 .insights-page.is-child > .insights-hero,
+body.portal-v2 .insights-page.is-child > .my-insights-switch { display: none; }
 body.portal-v2 .insights-page.is-child { padding-top: 10px; }
 body.portal-v2 .viewing-screen { display: grid; gap: 12px; }
 body.portal-v2 .viewing-screen.hidden { display: none; }
 body.portal-v2 .viewing-stat-grid-compact { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+body.portal-v2 .insights-page .viewing-range { margin-bottom: 8px; border-radius: 10px; padding: 2px; }
+body.portal-v2 .insights-page .viewing-range button { min-height: 32px; font-size: 10px; }
 
 body.portal-v2 .viewing-chart {
   position: relative;

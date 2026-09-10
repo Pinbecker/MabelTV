@@ -51,6 +51,13 @@
       else openView('overview')
     }
 
+    function replacePrimaryViewHistory(name) {
+      const view = offlineMode && name !== 'watch' ? 'watch' : name
+      const route = view === 'overview' ? 'home' : view
+      history.replaceState({ primaryView: view }, '', `#${route}`)
+      return view
+    }
+
     window.addEventListener('popstate', event => openRequestedView(event))
 
     function startOfflineStorage() {
@@ -270,7 +277,7 @@
         || name === 'adult-viewing' || name === 'adult-explore'
         || name === 'adult-ratings' || name === 'adult-filmography' ? 'watch'
         : name === 'lg-tv' ? 'live'
-          : (name === 'insights' || name === 'activity' || name === 'appearance') ? 'system' : name
+          : (name === 'usb' || name === 'activity' || name === 'appearance') ? 'system' : name
       $$('.view').forEach(view => view.classList.toggle('active', view.id === `view-${name}`))
       document.body.classList.toggle('watch-mode', name === 'watch' || name === 'adult-viewing'
         || name === 'adult-explore' || name === 'adult-ratings' || name === 'adult-filmography'
@@ -304,7 +311,7 @@
       else stopHomeStatusRefresh()
       if (name === 'usb') refreshUsb().catch(error => notice(error.message, true))
       if (name === 'watch' && remoteKind === 'downloads') renderDownloads().catch(showError)
-      if (name === 'insights') loadViewingInsights().catch(() => {})
+      if (name === 'insights') (window.loadMyInsights || loadViewingInsights)().catch?.(() => {})
       if (name === 'activity') loadActivity().catch(error => notice(error.message, true))
       if (name === 'adult-viewing') loadAdultViewing().catch(showError)
       if (name === 'adult-explore') {

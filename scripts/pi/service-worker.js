@@ -1,6 +1,6 @@
 'use strict'
 
-const SHELL_CACHE = 'mabeltv-shell-v186'
+const SHELL_CACHE = 'mabeltv-shell-v190'
 const SHELL_URLS = [
   '/',
   '/manifest.webmanifest',
@@ -37,6 +37,7 @@ const SHELL_URLS = [
   '/portal/css/experience-appearance.css',
   '/portal/css/experience-settings.css',
   '/portal/css/experience-insights.css',
+  '/portal/css/experience-adult-insights.css',
   '/portal/css/experience-responsive.css',
   '/portal/css/experience-overlays.css',
   '/portal/css/experience-card-navigation.css',
@@ -55,6 +56,7 @@ const SHELL_URLS = [
   '/portal/js/library/adult-library.js',
   '/portal/js/library/usb-browser.js',
   '/portal/js/library/viewing-insights.js',
+  '/portal/js/library/adult-insights.js',
   '/portal/js/library/device-status.js',
   '/portal/js/library/channels.js',
   '/portal/js/playback/players.js',

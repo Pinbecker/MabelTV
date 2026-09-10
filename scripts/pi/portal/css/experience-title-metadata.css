@@ -247,11 +247,18 @@ body.portal-v2 .adult-person-credits {
   overflow-x: hidden;
   scroll-snap-type: none;
 }
+body.portal-v2 .adult-person-credits.is-complete-history {
+  display: block;
+  overflow-x: hidden;
+}
 body.portal-v2 .adult-person-credit-page {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: start;
   gap: 10px 7px;
+}
+body.portal-v2 .adult-person-credits.is-complete-history .adult-person-credit-page {
+  width: 100%;
 }
 body.portal-v2 .adult-person-credit-page .adult-franchise-card {
   width: 100%;

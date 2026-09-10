@@ -5,6 +5,16 @@ body.portal-v2 .adult-person-known-for > header {
   gap: 12px;
 }
 
+body.portal-v2 .adult-person-known-for.is-complete-history > header {
+  position: sticky;
+  z-index: 3;
+  top: calc(-1 * var(--experience-sheet-padding));
+  margin: -10px 0 0;
+  border-bottom: 1px solid var(--experience-line);
+  padding: 10px 0 8px;
+  background: var(--experience-raised);
+}
+
 body.portal-v2 #adultPersonFilmography {
   min-height: 28px;
   border: 0;
@@ -51,7 +61,17 @@ body.portal-v2 .adult-filmography-photo img { width: 100%; height: 100%; object-
 body.portal-v2 .adult-filmography-photo b { color: var(--experience-muted); font-size: 18px; }
 body.portal-v2 .adult-filmography-person .eyebrow { margin: 0 0 2px; }
 body.portal-v2 .adult-filmography-person h1 { margin: 0; font-size: clamp(25px, 6.6vw, 40px); }
-body.portal-v2 #adultFilmographyMeta { margin: 2px 0 0; color: var(--experience-muted); font-size: 10px; }
+body.portal-v2 .adult-filmography-meta {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, auto));
+  justify-content: start;
+  gap: 10px;
+  margin: 4px 0 0;
+}
+
+body.portal-v2 .adult-filmography-meta > div { display: grid; gap: 1px; min-width: 0; }
+body.portal-v2 .adult-filmography-meta dt { overflow: hidden; color: var(--experience-dim); font-size: 7px; font-weight: 850; letter-spacing: .09em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+body.portal-v2 .adult-filmography-meta dd { margin: 0; color: var(--experience-muted); font-size: 9px; font-weight: 720; white-space: nowrap; }
 
 body.portal-v2 .adult-filmography-controls {
   display: grid;
@@ -62,16 +82,21 @@ body.portal-v2 .adult-filmography-controls {
 }
 
 body.portal-v2 .adult-filmography-controls .portal-search { min-height: 34px; }
-body.portal-v2 .adult-filmography-controls .portal-search input { min-height: 40px; }
+body.portal-v2 .adult-filmography-controls .portal-search input { min-height: 32px; font-size: 11px; }
 
 body.portal-v2 .adult-filmography-controls .adult-viewing-select {
-  min-height: 30px;
-  border-radius: 7px;
+  min-height: 34px;
+  border-radius: 8px;
 }
 
 body.portal-v2 .adult-filmography-controls .adult-viewing-select select {
-  min-height: 28px;
-  font-size: 9px;
+  min-height: 32px;
+  font-size: 10px;
+}
+
+body.portal-v2 .adult-filmography-grid .adult-explore-role {
+  color: var(--experience-muted);
+  font-weight: 650;
 }
 
 body.portal-v2 .adult-filmography-timeline {

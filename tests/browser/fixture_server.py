@@ -15,6 +15,13 @@ SPEC = importlib.util.spec_from_file_location("mabeltv_browser_library", MODULE_
 assert SPEC and SPEC.loader
 mabeltv_library = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(mabeltv_library)
+FIXTURE_INSIGHTS_PATH = Path(__file__).with_name("fixture_adult_insights.py")
+FIXTURE_INSIGHTS_SPEC = importlib.util.spec_from_file_location(
+    "mabeltv_browser_adult_insights", FIXTURE_INSIGHTS_PATH)
+assert FIXTURE_INSIGHTS_SPEC and FIXTURE_INSIGHTS_SPEC.loader
+fixture_adult_insights = importlib.util.module_from_spec(FIXTURE_INSIGHTS_SPEC)
+FIXTURE_INSIGHTS_SPEC.loader.exec_module(fixture_adult_insights)
+adult_insights_fixture = fixture_adult_insights.adult_insights_fixture
 
 
 def film(title: str, index: int, favourite: bool = False) -> dict[str, Any]:
@@ -274,6 +281,19 @@ class FixtureLibrary:
     def adult_viewing(self) -> dict[str, Any]:
         return {"items": [copy.deepcopy(value) for value in self.viewing_titles.values()],
                 "watchmode_configured": False, "region": "GB"}
+
+    def adult_insights(self) -> dict[str, Any]:
+        return adult_insights_fixture()
+
+    @staticmethod
+    def adult_person_detail(tmdb_id: Any) -> dict[str, Any]:
+        return {
+            "tmdb_id": int(tmdb_id), "name": "Michael Caine", "profile_path": "",
+            "known_for_department": "Acting", "birthday": "1933-03-14",
+            "place_of_birth": "London",
+            "biography": "A fixture biography for the insight person journey.",
+            "known_for": [], "filmography": [],
+        }
 
     def adult_explore(self, list_id: str, media_type: str, page: Any) -> dict[str, Any]:
         page_number = int(page)

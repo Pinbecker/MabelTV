@@ -11,7 +11,9 @@ expands `portal-include` comments before the HTTP layer returns HTML. The
 installed `mabeltv-library` executable remains the stable entry point.
 `scripts/pi/mabeltv-library.html` is the single Experience entry document. It
 deliberately contains only document metadata, ordered CSS and JavaScript
-assets, and top-level includes. Page markup lives under
+assets, and top-level includes. `portal/html/experience-styles.html` owns the
+ordered Experience stylesheet links so that entry document stays within its
+strict size ceiling. Page markup lives under
 `scripts/pi/portal/html`:
 
 - `auth.html` owns setup and PIN-gate markup.
@@ -62,6 +64,8 @@ order unless a change explicitly redefines the cascade.
   appearance slider, accent presets and semantic-colour reference.
 - `experience-settings.css`: settings, device, and activity surfaces.
 - `experience-insights.css`: viewing-insight dashboards and detail surfaces.
+- `experience-adult-insights.css`: the Adult TV taste profile, rating charts,
+  release-era breakdowns and people/title insight grids.
 - `experience-responsive.css`: Experience phone/tablet adaptations.
 - `experience-overlays.css`: common Experience dialog and management shells.
 - `experience-card-navigation.css`: stacked full-height card presentation and
@@ -97,27 +101,31 @@ initialisation even when each file is syntactically valid.
 8. `portal/js/library/adult-library.js`: Adult film catalogue management.
 9. `portal/js/library/usb-browser.js`: USB browsing, selection, and import.
 10. `portal/js/library/viewing-insights.js`: viewing dashboards and history.
-11. `portal/js/library/device-status.js`: device, storage, and job status.
-12. `portal/js/library/channels.js`: channel-management rendering.
-13. `portal/js/playback/players.js`: local player primitives and state.
-14. `portal/js/playback/film-library.js`: film cards and film sheets.
-15. `portal/js/playback/adult-series.js`: Adult series catalogue and tools.
+11. `portal/js/library/adult-insights.js`: the top-level My Insights switch,
+    Adult TV charts, progressive TMDB enrichment state, rating shortcuts and
+    local facet drill-downs. Adult routes under `#insights/adult/...` reuse the
+    four-wide Adult title cards; people open the existing person-card journey.
+12. `portal/js/library/device-status.js`: device, storage, and job status.
+13. `portal/js/library/channels.js`: channel-management rendering.
+14. `portal/js/playback/players.js`: local player primitives and state.
+15. `portal/js/playback/film-library.js`: film cards and film sheets.
+16. `portal/js/playback/adult-series.js`: Adult series catalogue and tools.
     `portal/js/playback/film-catalogue.js` follows it and owns the Adult Watch
     film catalogue, collection and metadata-genre filters, and combined search.
     Filters apply to films; series and Continue watching keep their own scope.
-16. `portal/js/playback/programmes.js`: programme sheets and actions.
-17. `portal/js/playback/downloads.js`: device-download rendering and actions.
-18. `portal/js/playback/view.js`: Watch view composition and dialog wiring.
-19. `portal/js/adult-viewing/catalogue.js`: Adult viewing catalogue.
-20. `portal/js/adult-viewing/seasons.js`: series and season navigation.
-21. `portal/js/adult-viewing/details.js`: Adult viewing details and startup.
-22. `portal/js/adult-viewing/person.js`: cast detail cards and filmography
+17. `portal/js/playback/programmes.js`: programme sheets and actions.
+18. `portal/js/playback/downloads.js`: device-download rendering and actions.
+19. `portal/js/playback/view.js`: Watch view composition and dialog wiring.
+20. `portal/js/adult-viewing/catalogue.js`: Adult viewing catalogue.
+21. `portal/js/adult-viewing/seasons.js`: series and season navigation.
+22. `portal/js/adult-viewing/details.js`: Adult viewing details and startup.
+23. `portal/js/adult-viewing/person.js`: cast detail cards and filmography
     navigation.
-23. `portal/js/adult-viewing/explore.js`: continuous TMDB discovery, quick
+24. `portal/js/adult-viewing/explore.js`: continuous TMDB discovery, quick
     viewing actions, weak impression feedback and visit freshness.
-24. `portal/js/adult-viewing/filmography.js`: TMDB-only full filmography search,
+25. `portal/js/adult-viewing/filmography.js`: TMDB-only full filmography search,
     timeline and A-Z modes.
-25. `portal/js/adult-viewing/rating.js`: personal ten-star ratings and the
+26. `portal/js/adult-viewing/rating.js`: personal ten-star ratings and the
     watched-but-unrated completion queue.
 26. `portal/js/actions.js`: application event bindings and remote commands.
 27. `portal/js/lg-tv-remote.js`: the separate LG webOS remote.
@@ -214,6 +222,9 @@ that final correction; browser scrolling and entrance animations remain intact.
 
 `core/navigation.js` remembers each top-level view; first entry begins at the
 top, returning restores its position, and revisiting the active view stays put.
+The bottom rail exposes My Insights as a primary destination; USB remains a
+complete view but is entered through Settings and therefore keeps Settings
+selected in the rail.
 Explore deliberately keeps its feed and position for returns within one minute;
 after that it rebuilds from the latest viewing history and starts at the top.
 `playback/view.js` separately remembers Watch tabs. My Viewing and channel

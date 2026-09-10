@@ -168,7 +168,7 @@
 
     function storedInsightsParentRoute() {
       const parent = String(history.state?.insightsParent || '')
-      if (['insights', 'insights/channels', 'insights/films', 'insights/diary'].includes(parent)) {
+      if (['insights/mabeltv', 'insights/channels', 'insights/films', 'insights/diary'].includes(parent)) {
         return parent
       }
       return /^insights\/period\/\d{4}-\d{2}-\d{2}\/[0-3]$/.test(parent) ? parent : ''
@@ -181,7 +181,7 @@
         return viewingItem(viewingInsightsRoute.itemKey)?.kind === 'film' ? 'insights/films' : 'insights/channels'
       }
       if (viewingInsightsRoute.screen === 'period') return 'insights/diary'
-      return 'insights'
+      return 'insights/mabeltv'
     }
 
     function navigateInsightsBack() {
@@ -278,11 +278,11 @@
     }
 
     function renderViewingItem(item, tab = 'summary') {
-      if (!item) { pushInsightsRoute('insights'); return }
+      if (!item) { pushInsightsRoute('insights/mabeltv'); return }
       selectedViewingItemKey = item.item_key
       const parent = insightsParentRoute()
       $('#viewingItemBackLabel').textContent = parent.startsWith('insights/period/')
-        ? 'What happened' : parent === 'insights' ? 'Insights'
+        ? 'What happened' : parent === 'insights/mabeltv' ? 'Insights'
           : item.kind === 'film' ? 'All films' : 'All channels'
       $('#viewingItemKicker').textContent = item.kind === 'film' ? 'Film insight' : 'Channel insight'
       $('#viewingItemTitle').textContent = item.title
@@ -464,6 +464,16 @@
       }
       const saved = insightsPositions.get(requested)
       currentInsightsPath = requested
+      if (requested.startsWith('insights/adult/')) {
+        $('.insights-page')?.classList.add('is-child')
+        $('#viewingRangeControls')?.classList.add('hidden')
+        window.setMyInsightsMode?.('adult', { load: false })
+        window.openAdultInsightsRoute?.(requested)
+        openView('insights', { instantScroll: true, resetScroll: true })
+        resetViewScroll()
+        return
+      }
+      window.closeAdultInsightsRoute?.()
       const previousScreen = viewingInsightsRoute.screen
       const item = requested.match(/^insights\/item\/(.+)\/(summary|patterns|history)$/)
       const period = requested.match(/^insights\/period\/(\d{4}-\d{2}-\d{2})\/([0-3])$/)
@@ -479,6 +489,7 @@
       }
       $('.insights-page')?.classList.toggle('is-child', viewingInsightsRoute.screen !== 'dashboard')
       $('#viewingRangeControls')?.classList.toggle('hidden', viewingInsightsRoute.screen !== 'dashboard')
+      window.setMyInsightsMode?.(requested === 'insights' ? 'adult' : 'mabel', { load: false })
       openView('insights', { instantScroll: true, resetScroll: true })
       renderInsightsRoute()
       if (saved) {

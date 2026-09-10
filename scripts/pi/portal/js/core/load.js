@@ -117,7 +117,6 @@
       renderRemoteViewing()
       renderPortalPinSetting()
       restorePortalPosition(position)
-      loadViewingInsights().catch(() => {})
       refreshHomePowerState().catch(() => {})
       refreshTmdbStatus().catch(() => {})
       await settlePortalPosition(position)

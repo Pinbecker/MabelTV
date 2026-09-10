@@ -40,7 +40,7 @@ CORE_SCRIPTS = (
 )
 LIBRARY_SCRIPTS = (
     "adult-library.js", "usb-browser.js", "viewing-insights.js",
-    "device-status.js", "channels.js",
+    "adult-insights.js", "device-status.js", "channels.js",
 )
 PLAYBACK_SCRIPTS = (
     "players.js", "film-library.js", "adult-series.js", "film-catalogue.js",
@@ -165,7 +165,8 @@ class LibraryUnitTests(unittest.TestCase):
             "experience-shell", "experience-home",
             "experience-remote", "experience-watch", "experience-library",
             "experience-viewing", "experience-title-metadata",
-            "experience-settings", "experience-insights", "experience-responsive",
+            "experience-settings", "experience-insights", "experience-adult-insights",
+            "experience-responsive",
             "experience-overlays", "experience-playback-overlays",
             "lg-tv-remote", "experience-light",
         )
@@ -337,7 +338,9 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn(".library-main-card", styles)
         self.assertIn(".settings-disclosure", styles)
         self.assertNotIn('data-view-button="channels"', html)
-        self.assertIn('data-view-button="usb"', html)
+        self.assertNotIn('data-view-button="usb"', html)
+        self.assertIn('data-view-button="insights"', html)
+        self.assertIn('data-go="usb"', html)
         self.assertIn('<h1>USB</h1>', html)
         self.assertIn('class="library-switch"', html)
         self.assertIn('class="home-spotlight"', html)
@@ -692,7 +695,8 @@ class LibraryUnitTests(unittest.TestCase):
         self.assertIn("grid-template-columns: 50px minmax(142px, 176px) 50px", index)
         self.assertIn(".remote-mode small", index)
         self.assertNotIn('data-view-button="channels"', index)
-        self.assertIn('data-view-button="usb"', index)
+        self.assertNotIn('data-view-button="usb"', index)
+        self.assertIn('data-view-button="insights"', index)
         self.assertIn("const consolidatedWatchView", index)
 
     def test_global_notices_expire_and_do_not_follow_navigation(self) -> None:
@@ -3729,7 +3733,8 @@ class UsbAndMetadataTests(unittest.TestCase):
         self.assertIn('id="openAppearanceSettings"', system_view)
         self.assertNotIn('id="experienceAccentHue"', system_view)
         self.assertNotIn('id="viewingInsights"', system_view)
-        self.assertIn('data-go="insights"', system_view)
+        self.assertIn('data-go="usb"', system_view)
+        self.assertNotIn('data-go="insights"', system_view)
         self.assertIn('id="viewingInsights"', insights_view)
         self.assertIn('/portal/icons.svg#signal-chart-column', insights_view)
         self.assertNotIn('<svg viewBox="0 0 24 24"', system_view)

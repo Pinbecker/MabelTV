@@ -166,8 +166,10 @@ class ArchitectureGuardrailTests(unittest.TestCase):
         )
 
     def test_every_portal_css_and_javascript_module_is_loaded(self) -> None:
-        entries = (PROJECT_ROOT / "scripts/pi/mabeltv-library.html").read_text(
-            encoding="utf-8"
+        documents = [PROJECT_ROOT / "scripts/pi/mabeltv-library.html"]
+        documents.extend((PORTAL_ROOT / "html").rglob("*.html"))
+        entries = "\n".join(
+            path.read_text(encoding="utf-8") for path in documents
         )
         referenced = set(re.findall(r"/portal/((?:css|js)/[^\"']+)", entries))
         assets = {

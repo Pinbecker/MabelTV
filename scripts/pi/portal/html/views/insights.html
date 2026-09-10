@@ -1,6 +1,46 @@
       <section id="view-insights" class="view"><div class="page insights-page">
-        <button id="insightsBack" type="button" class="insights-back" data-go="system"><svg><use href="/portal/icons.svg#signal-arrow-left"/></svg><span>Settings</span></button>
-        <header class="insights-hero"><div><p class="eyebrow">MabelTV viewing activity</p><h1>Viewing insights</h1><p>A clearer picture of what Mabel watches, when she watches it, and the favourites she returns to.</p></div><svg class="viewing-insights-mark"><use href="/portal/icons.svg#signal-chart-column"/></svg></header>
+        <header class="insights-hero"><div><p class="eyebrow">Your viewing profile</p><h1>My Insights</h1><p>What you have watched, what you love, and the people and stories that shape your library.</p></div><svg class="viewing-insights-mark"><use href="/portal/icons.svg#signal-chart-column"/></svg></header>
+        <div class="my-insights-switch" role="group" aria-label="Choose insight library"><button type="button" class="active" data-insights-mode="adult" aria-pressed="true">Adult TV</button><button type="button" data-insights-mode="mabel" aria-pressed="false">MabelTV</button></div>
+        <div id="adultInsightsLoading" class="viewing-insights-loading hidden" role="status"></div>
+        <section id="adultInsightsDashboard" class="adult-insights-dashboard hidden" aria-label="Adult TV insights">
+          <article class="adult-insight-pulse">
+            <div><p class="section-kicker">Your viewing universe</p><h2 id="adultInsightHeadline">Building your profile</h2><p id="adultInsightIntro">Reading your watched history and personal ratings.</p></div>
+            <div id="adultInsightPosterMosaic" class="adult-insight-poster-mosaic" aria-hidden="true"></div>
+          </article>
+          <div class="viewing-stat-grid adult-insight-stats">
+            <button type="button" data-adult-insight-kind="all"><span>Watched</span><strong id="adultInsightWatched">0</strong></button>
+            <button type="button" data-adult-insight-kind="type" data-adult-insight-value="movie"><span>Films</span><strong id="adultInsightFilms">0</strong></button>
+            <button type="button" data-adult-insight-kind="type" data-adult-insight-value="tv"><span>Series</span><strong id="adultInsightSeries">0</strong></button>
+            <button type="button" data-adult-insight-kind="rated"><span>Your average</span><strong id="adultInsightAverage">—</strong></button>
+          </div>
+          <div class="adult-insight-chart-grid">
+            <article class="viewing-panel adult-insight-rating-panel"><header><div><p class="section-kicker">Your scores</p><h3>Rating curve</h3></div><strong id="adultInsightRatingSummary">No ratings yet</strong></header><div id="adultInsightRatingChart" class="viewing-chart" role="img" aria-label="Your ratings from one to ten"></div></article>
+            <article class="viewing-panel"><header><div><p class="section-kicker">The big split</p><h3>Films and series</h3></div><strong id="adultInsightMixSummary">—</strong></header><div id="adultInsightMixChart" class="viewing-chart viewing-chart-doughnut" role="img" aria-label="Films and series watched"></div></article>
+          </div>
+          <div class="adult-insight-chart-grid">
+            <article class="viewing-panel"><header><div><p class="section-kicker">Your taste</p><h3>Most-watched genres</h3></div><strong id="adultInsightGenreSummary">Analysing</strong></header><div id="adultInsightGenres" class="adult-insight-bars"></div></article>
+            <article class="viewing-panel"><header><div><p class="section-kicker">Release eras</p><h3>Your viewing by decade</h3></div><strong id="adultInsightDecadeSummary">—</strong></header><div id="adultInsightDecadeChart" class="viewing-chart" role="img" aria-label="Watched titles by release decade"></div></article>
+          </div>
+          <section class="adult-insight-section"><header><div><p class="section-kicker">Familiar faces</p><h2>Your most-watched actors</h2></div><span>Tap a person</span></header><div id="adultInsightActors" class="adult-insight-people"></div></section>
+          <section class="adult-insight-section"><header><div><p class="section-kicker">Behind the camera</p><h2>Directors and creators</h2></div><span>Tap a person</span></header><div id="adultInsightCreative" class="adult-insight-people"></div></section>
+          <div class="adult-insight-chart-grid">
+            <article class="viewing-panel adult-insight-personality"><header><div><p class="section-kicker">Rating personality</p><h3>How you score</h3></div></header><div id="adultInsightPersonality" class="adult-insight-facts"></div><button id="adultInsightRateLink" type="button" class="adult-insight-rate-link">Rate the rest<svg><use href="/portal/icons.svg#signal-chevron-right"/></svg></button></article>
+            <article class="viewing-panel"><header><div><p class="section-kicker">A world of stories</p><h3>Languages and countries</h3></div></header><div id="adultInsightWorld" class="adult-insight-world"></div></article>
+          </div>
+          <section id="adultInsightRatedSection" class="adult-insight-section adult-insight-rated-section hidden"><header><div><p class="section-kicker">The ones you love</p><h2>Your highest-rated titles</h2></div><span>Swipe to browse</span></header><div id="adultInsightRatedTitles" class="adult-insight-titles"></div></section>
+          <p id="adultInsightEnrichment" class="adult-insight-enrichment"><svg><use href="/portal/icons.svg#signal-star"/></svg><span>Building richer insights from TMDB.</span></p>
+          <p class="viewing-privacy-note"><svg><use href="/portal/icons.svg#signal-lock"/></svg><span>Built from your Adult TV watched list and ratings. Dates are deliberately ignored because adding something to your history does not say when you watched it.</span></p>
+        </section>
+        <section id="adultInsightBrowse" class="adult-insight-browse hidden" aria-live="polite">
+          <button id="adultInsightBrowseBack" type="button" class="viewing-page-back"><svg><use href="/portal/icons.svg#signal-arrow-left"/></svg><span>My Insights</span></button>
+          <header class="viewing-section-hero adult-insight-browse-hero"><div><p id="adultInsightBrowseKicker" class="section-kicker">Your watched history</p><h2 id="adultInsightBrowseTitle">Titles</h2><p id="adultInsightBrowseIntro">Everything in this part of your viewing profile.</p></div><strong id="adultInsightBrowseCount">0</strong></header>
+          <div class="adult-insight-browse-tools">
+            <label class="viewing-search"><svg><use href="/portal/icons.svg#signal-search"/></svg><input id="adultInsightBrowseSearch" type="search" placeholder="Search these titles" autocomplete="off" aria-label="Search insight titles"></label>
+            <label class="adult-viewing-select"><span class="sr-only">Sort insight titles</span><select id="adultInsightBrowseSort" aria-label="Sort insight titles"><option value="az">A–Z</option><option value="newest">Newest release</option><option value="oldest">Oldest release</option><option value="rating">Highest rated</option></select></label>
+          </div>
+          <div id="adultInsightBrowseGrid" class="adult-explore-grid adult-insight-browse-grid"></div>
+        </section>
+        <div id="mabelInsightsDashboard" class="mabel-insights-dashboard hidden">
         <div id="viewingRangeControls" class="viewing-range" role="group" aria-label="Viewing insights date range"><button type="button" data-viewing-range="1" class="active">Today</button><button type="button" data-viewing-range="7">7 days</button><button type="button" data-viewing-range="30">30 days</button><button type="button" data-viewing-range="365">12 months</button></div>
         <div id="viewingInsightsLoading" class="viewing-insights-loading hidden" role="status"></div>
         <div id="viewingInsights" class="viewing-insights hidden">
@@ -23,5 +63,5 @@
           <section id="viewingDiary" class="viewing-screen hidden"><button type="button" class="viewing-page-back" data-insights-back><svg><use href="/portal/icons.svg#signal-arrow-left"/></svg><span>Insights</span></button><header class="viewing-section-hero"><div><p class="section-kicker">Viewing diary</p><h2>Follow the day</h2><p>See what played through each part of the day, in the order it happened.</p></div><svg><use href="/portal/icons.svg#signal-calendar-days"/></svg></header><div id="viewingDiaryDays" class="viewing-diary-days"></div></section>
 
           <section id="viewingPeriod" class="viewing-screen hidden"><button type="button" class="viewing-page-back" data-insights-back><svg><use href="/portal/icons.svg#signal-arrow-left"/></svg><span>Viewing diary</span></button><header class="viewing-period-hero"><button id="viewingPeriodPrevious" type="button" aria-label="Previous part of day"><svg><use href="/portal/icons.svg#signal-chevron-left"/></svg></button><div><p id="viewingPeriodDate" class="section-kicker">Today</p><h2 id="viewingPeriodTitle">Afternoon</h2><p id="viewingPeriodSummary">No qualifying viewing</p></div><button id="viewingPeriodNext" type="button" aria-label="Next part of day"><svg><use href="/portal/icons.svg#signal-chevron-right"/></svg></button></header><div id="viewingPeriodStats" class="viewing-stat-grid viewing-stat-grid-compact"></div><article class="viewing-panel viewing-period-story"><header><div><p class="section-kicker">What happened</p><h3>Viewing in order</h3></div></header><div id="viewingPeriodEntries" class="viewing-period-entries"></div></article></section>
-        </div>
+        </div></div>
       </div></section>

@@ -48,6 +48,7 @@ GET_JSON_ROUTES = {
     "/api/usb": "usb_volumes",
     "/api/adult/optimisations": "adult_optimisations",
     "/api/adult/viewing": "adult_viewing",
+    "/api/adult/insights": "adult_insights",
     "/api/activity": "activity_status",
     "/api/tmdb/status": "tmdb_status",
     "/api/status": "live_status",
@@ -247,6 +248,15 @@ class Handler(BaseHTTPRequestHandler):
 
     def require_same_origin(self) -> bool:
         if not self.same_origin():
+            # Drain the small rejected POST body before closing the connection.
+            # On Windows, closing a socket with unread request bytes can turn the
+            # intended JSON 403 into a client-visible connection reset.
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                length = 0
+            if 0 < length <= 64 * 1024:
+                self.rfile.read(length)
             self.json(HTTPStatus.FORBIDDEN, {"error": "This request did not come from Mabel TV"})
             return False
         return True

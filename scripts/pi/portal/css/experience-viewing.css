@@ -649,6 +649,12 @@ body.portal-v2 .adult-netflix-launch-status { min-height: 15px; margin: -5px var
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 14px 7px;
   }
+  body.portal-v2 #view-watch.adult-search-mode #adultDiscoveryGrid > .watch-empty {
+    width: 100%;
+    min-width: 0;
+    grid-column: 1 / -1;
+    overflow-wrap: anywhere;
+  }
   body.portal-v2 #view-watch.adult-search-mode #adultDiscoveryGrid .watch-card {
     display: grid;
     min-width: 0;

@@ -77,7 +77,8 @@ async function usbFixture(page) {
       return originalApi(url, options)
     }
   })
-  await page.locator('[data-view-button="usb"]').click()
+  await page.locator('[data-view-button="system"]').click()
+  await page.locator('#view-system [data-go="usb"]').click()
   await page.locator('#usbDriveList button').click()
   await expect(page.locator('#usbFileList .usb-file')).toHaveCount(60)
 }
@@ -106,7 +107,7 @@ test('USB returns to the parent folder position and selection does not scroll', 
   await settled(page)
   expect(await scrollY(page)).toBeCloseTo(before, 0)
   await page.locator('[data-view-button="system"]').click()
-  await page.locator('[data-view-button="usb"]').click()
+  await page.locator('#view-system [data-go="usb"]').click()
   await settled(page)
   expect(await scrollY(page)).toBeCloseTo(before, 0)
 })
@@ -272,8 +273,8 @@ test('episode back and collection selection keep the sheet position', async ({ p
 
 test('viewing insights returns to the dashboard position', async ({ page }) => {
   await openPortal(page)
-  await page.locator('[data-view-button="system"]').click()
-  await page.locator('[data-go="insights"]').click()
+  await page.locator('[data-view-button="insights"]').click()
+  await page.locator('[data-insights-mode="mabel"]').click()
   await expect(page.locator('#viewingInsights')).toBeVisible()
   await settled(page)
   await page.evaluate(() => window.scrollTo(0, 200))
@@ -289,8 +290,8 @@ test('viewing insights returns to the dashboard position', async ({ page }) => {
 
 test('insights Back returns to the exact browse, highlight or Follow the day parent', async ({ page }) => {
   await openPortal(page)
-  await page.locator('[data-view-button="system"]').click()
-  await page.locator('[data-go="insights"]').click()
+  await page.locator('[data-view-button="insights"]').click()
+  await page.locator('[data-insights-mode="mabel"]').click()
   await page.evaluate(() => {
     const started = new Date()
     started.setHours(14, 0, 0, 0)

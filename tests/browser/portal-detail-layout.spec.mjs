@@ -115,6 +115,22 @@ test('mobile global search stays directly below the fixed app header', async ({ 
     fieldBelowHeader: true,
     fullWidth: true,
   })
+  await page.evaluate(() => {
+    document.querySelector('#adultDiscoverySection').classList.remove('hidden')
+    document.querySelector('#adultDiscoveryGrid').replaceChildren(portalEmptyState({
+      className: 'watch-empty', title: 'Searching Adult TV…',
+      message: 'Checking your library and streaming catalogue.',
+    }))
+  })
+  const emptyState = await page.locator('#adultDiscoveryGrid > .watch-empty').evaluate(element => {
+    const card = element.getBoundingClientRect()
+    const grid = element.parentElement.getBoundingClientRect()
+    return {
+      contained: card.left >= grid.left - 1 && card.right <= grid.right + 1,
+      fullWidth: Math.abs(card.width - grid.width) <= 1,
+    }
+  })
+  expect(emptyState).toEqual({ contained: true, fullWidth: true })
 })
 
 for (const theme of ['light', 'dark']) {

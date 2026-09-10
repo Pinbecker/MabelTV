@@ -22,6 +22,36 @@ function renderAdultPersonPhoto(person) {
   root.append(initials)
 }
 
+function adultPersonWatchedCredits(source, detail) {
+  if (!Array.isArray(source.insight_watched)) return null
+  const watchedByKey = new Map((source.insight_watched_pool || [])
+    .filter(title => title?.key).map(title => [title.key, title]))
+  const matches = new Map()
+  ;(detail.filmography || []).forEach(credit => {
+    const watched = watchedByKey.get(credit.key)
+    if (watched) matches.set(credit.key, { ...watched, ...credit })
+  })
+  source.insight_watched.forEach(title => {
+    if (!title?.key || matches.has(title.key)) return
+    matches.set(title.key, { ...title })
+  })
+  return [...matches.values()].map(title => ({ ...title, viewing: {
+    ...title, manual_state: 'watched', history: [],
+  } })).sort((left, right) => Number(right.year || 0) - Number(left.year || 0)
+    || String(left.title || '').localeCompare(String(right.title || ''), undefined,
+      { sensitivity: 'base' }))
+}
+
+function adultPersonInsightDetail(source, detail) {
+  const watched = adultPersonWatchedCredits(source, detail)
+  if (!watched) return detail
+  return {
+    ...detail,
+    insight_watched: watched,
+    insight_watched_pool: source.insight_watched_pool || [],
+  }
+}
+
 function renderAdultPersonDetail(person, context = '', returnTo = null) {
   $('#adultPersonName').textContent = person.name
   if (context) $('#adultPersonContext').textContent = context
@@ -46,13 +76,17 @@ function renderAdultPersonDetail(person, context = '', returnTo = null) {
   const section = $('#adultPersonKnownFor')
   const credits = $('#adultPersonCredits')
   const filmography = $('#adultPersonFilmography')
+  const completeHistory = Array.isArray(person.insight_watched)
+  $('#adultPersonKnownForHeading').textContent = completeHistory ? 'You Have Watched' : 'Known for'
+  section.classList.toggle('is-complete-history', completeHistory)
+  credits.classList.toggle('is-complete-history', completeHistory)
   filmography.classList.toggle('hidden', !(person.filmography || []).length)
   filmography.onclick = () => openAdultFilmography(person, context, returnTo)
   credits.replaceChildren()
-  const knownFor = (person.known_for || []).slice(0, 10)
+  const knownFor = completeHistory ? person.insight_watched : (person.known_for || []).slice(0, 10)
   const pages = []
   knownFor.forEach((title, index) => {
-    if (index % 10 === 0) {
+    if (!pages.length || (!completeHistory && index % 10 === 0)) {
       const page = document.createElement('div')
       page.className = 'adult-person-credit-page'
       credits.append(page)
@@ -121,9 +155,9 @@ async function openAdultPerson(person, title, returnTo = null) {
   const revision = ++adultPersonOpenRevision
   const sheet = $('#adultPersonSheet')
   $('#adultPersonName').textContent = person.name
-  const context = person.character
+  const context = person.context || (person.character
     ? `As ${person.character} in ${title}`
-    : person.role ? `${person.role} of ${title}` : `Principal cast in ${title}`
+    : person.role ? `${person.role} of ${title}` : `Principal cast in ${title}`)
   $('#adultPersonContext').textContent = context
   $('#adultPersonFacts').replaceChildren()
   $('#adultPersonBiography').textContent = 'Loading biography…'
@@ -138,7 +172,7 @@ async function openAdultPerson(person, title, returnTo = null) {
   try {
     const detail = await api(`/api/adult/person?tmdb_id=${personId}`)
     if (revision !== adultPersonOpenRevision || !sheet.open) return
-    renderAdultPersonDetail(detail, context, returnTo)
+    renderAdultPersonDetail(adultPersonInsightDetail(person, detail), context, returnTo)
   } catch (error) {
     if (revision !== adultPersonOpenRevision || !sheet.open) return
     $('#adultPersonBiography').textContent = error.message || 'Cast details are unavailable right now.'

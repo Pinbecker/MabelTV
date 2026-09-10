@@ -420,10 +420,11 @@
       api('/api/live/stop', { method: 'POST', body: '{}' }).catch(() => {})
     }
     $$('[data-view-button]').forEach(button => button.onclick = () => {
-      if (button.dataset.viewButton === 'watch' && !offlineMode) renderRemoteViewing()
-      if (button.dataset.viewButton === 'channels') showChannelHub()
-      openView(button.dataset.viewButton)
-      if (button.dataset.viewButton === 'adult') refreshTmdbStatus().catch(() => {})
+      const view = replacePrimaryViewHistory(button.dataset.viewButton)
+      if (view === 'watch' && !offlineMode) renderRemoteViewing()
+      if (view === 'channels') showChannelHub()
+      openView(view)
+      if (view === 'adult') refreshTmdbStatus().catch(() => {})
     })
     $$('[data-go]').forEach(button => button.onclick = () => {
       if (button.dataset.go === 'appearance') {
@@ -433,16 +434,6 @@
         return
       }
       if (button.id === 'appearanceBack' && location.hash === '#appearance') {
-        history.back()
-        return
-      }
-      if (button.dataset.go === 'insights') {
-        history.replaceState({ settings: true }, '', '#system')
-        history.pushState({ viewingInsights: true }, '', '#insights')
-        openView('insights', { instantScroll: true })
-        return
-      }
-      if (button.id === 'insightsBack' && location.hash === '#insights') {
         history.back()
         return
       }

@@ -592,9 +592,10 @@ body.portal-v2 .adult-series-card > span:last-child > strong {
   -webkit-line-clamp: 2;
 }
 body.portal-v2 .adult-series-card small { color: var(--experience-dim); font-size: 10px; line-height: 1.45; }
-body.portal-v2 .adult-series-card .adult-series-card-facts {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
+body.portal-v2 .adult-series-card .watch-film-meta.adult-series-card-facts {
+  grid-template-columns: repeat(2, max-content);
+  justify-content: start;
+  gap: 4px 24px;
   margin-top: 0;
 }
 body.portal-v2 .adult-series-card .adult-series-card-facts .adult-title-fact > small {

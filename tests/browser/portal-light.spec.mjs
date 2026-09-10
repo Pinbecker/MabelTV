@@ -73,7 +73,8 @@ test('light programme sheet keeps its global close icon visible', async ({ page 
 test('USB browser keeps compact controls and reviews the real transfer', async ({ page }, testInfo) => {
   phoneOnly(testInfo)
   await openLightPortal(page)
-  await page.locator('[data-view-button="usb"]').click()
+  await page.locator('[data-view-button="system"]').click()
+  await page.locator('#view-system [data-go="usb"]').click()
   await expect(page.locator('#usbDriveList')).toContainText('No USB drive found')
   await page.evaluate(() => {
     usbState = { volumes: [{
@@ -243,7 +244,8 @@ test('light utility, Settings and insight routes stay neutral and legible', asyn
   phoneOnly(testInfo)
   await openLightPortal(page)
 
-  await page.locator('[data-view-button="usb"]').click()
+  await page.locator('[data-view-button="system"]').click()
+  await page.locator('#view-system [data-go="usb"]').click()
   await expect(page.locator('#view-usb')).toBeVisible()
   await expect(page).toHaveScreenshot('light-usb.png')
 
@@ -256,7 +258,10 @@ test('light utility, Settings and insight routes stay neutral and legible', asyn
   await expect(page.locator('[data-portal-design]')).toHaveCount(0)
   await expect(page).toHaveScreenshot('light-settings.png')
 
-  await page.locator('[data-go="insights"]').click()
+  await page.locator('[data-view-button="insights"]').click()
+  await expect(page.locator('#adultInsightsDashboard')).toBeVisible()
+  await expect(page).toHaveScreenshot('light-my-insights.png')
+  await page.locator('[data-insights-mode="mabel"]').click()
   await expect(page.locator('#view-insights')).toBeVisible()
   const rangeBackground = await page.locator('.insights-page .viewing-range')
     .evaluate(element => getComputedStyle(element).backgroundColor)

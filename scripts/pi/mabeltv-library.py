@@ -28,6 +28,7 @@ if str(SERVICE_ROOT) not in sys.path:
     sys.path.insert(0, str(SERVICE_ROOT))
 
 from mabeltv_backend.auth import AuthenticationMixin
+from mabeltv_backend.adult_insights import AdultInsightsMixin
 from mabeltv_backend.constants import (
     DEFAULT_CHANNELS,
     LG_WEBOS_CLIENT_KEY_PATH,
@@ -385,7 +386,8 @@ class LiveStream:
 
 class Library(ViewingMixin, UploadConversionMixin, AuthenticationMixin,
               MediaCatalogueMixin, RemotePlaybackMixin, UsbMixin,
-              ProviderMetadataMixin, AdultExploreMixin, SystemStatusMixin):
+              ProviderMetadataMixin, AdultInsightsMixin, AdultExploreMixin,
+              SystemStatusMixin):
     def __init__(self, args: argparse.Namespace) -> None:
         self.media_root = Path(args.media_root).resolve()
         self.channels_path = Path(args.channels).resolve()
@@ -403,6 +405,7 @@ class Library(ViewingMixin, UploadConversionMixin, AuthenticationMixin,
         self.adult_series_state_path = self.adult_root / ".mabeltv-series.json"
         self.adult_series_artwork_root = self.adult_root / ".series-metadata"
         self.adult_viewing_path = self.adult_root / ".mabeltv-viewing.json"
+        self.adult_insights_path = self.adult_root / ".mabeltv-insights.json"
         self.channel_metadata_path = self.media_root / ".mabeltv-channels.json"
         self.channel_artwork_root = self.media_root / ".channel-metadata"
         configured_usb_root = os.environ.get("MABELTV_USB_ROOT")
@@ -451,6 +454,9 @@ class Library(ViewingMixin, UploadConversionMixin, AuthenticationMixin,
         self.viewing_dirty = False
         self.viewing_last_flush = 0.0
         self.viewing_store = self.load_viewing_store()
+        self.adult_insights_lock = threading.Lock()
+        self.adult_insights_closed = threading.Event()
+        self.adult_insights_worker: threading.Thread | None = None
         self.external_stream_lock = threading.RLock()
         self.external_streams: dict[str, dict[str, Any]] = {}
         self.offline_cache = self.media_root / ".offline-prepared"
@@ -522,12 +528,15 @@ class Library(ViewingMixin, UploadConversionMixin, AuthenticationMixin,
         self.conversion_closed.set()
         self.usb_power_closed.set()
         self.viewing_closed.set()
+        self.adult_insights_closed.set()
         self.conversion_queue.put(None)
         self.conversion_worker.join(timeout=timeout)
         if self.usb_power_worker:
             self.usb_power_worker.join(timeout=min(timeout, USB_POWER_POLL_SECONDS + 1))
         if self.viewing_worker:
             self.viewing_worker.join(timeout=min(timeout, VIEWING_SAMPLE_SECONDS + 1))
+        if self.adult_insights_worker:
+            self.adult_insights_worker.join(timeout=min(timeout, 2.0))
         self.flush_viewing_store(force=True)
         if self.conversion_worker.is_alive():
             raise RuntimeError("The media worker did not stop cleanly")

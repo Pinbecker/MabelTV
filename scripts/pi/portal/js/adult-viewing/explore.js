@@ -198,6 +198,12 @@ function adultExploreCard(title, { directActions = true, context = 'explore' } =
   meta.textContent = [title.year, title.media_type === 'tv' ? 'Series' : 'Film']
     .filter(Boolean).join(' · ')
   openCopy.append(name, meta)
+  if (context === 'filmography' && title.character) {
+    const role = document.createElement('small')
+    role.className = 'adult-explore-role'
+    role.textContent = title.character
+    openCopy.append(role)
+  }
   openCopy.setAttribute('aria-label', `Open details for ${title.title}`)
   openCopy.onclick = () => {
     card.dataset.exploreActed = 'true'

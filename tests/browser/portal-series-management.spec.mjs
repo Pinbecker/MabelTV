@@ -336,6 +336,19 @@ test('TV series rail includes local episodes and Up Next, without tinting a fals
   const streamingFacts = page.locator('#adultSeriesRail .adult-series-card')
     .filter({ hasText: 'Streaming Show' }).locator('.adult-title-fact')
   await expect(streamingFacts).toHaveText(['Series1', 'Episodes10', 'Watched0'])
+  const factLayout = await page.locator('#adultSeriesRail .adult-series-card:first-child .adult-title-fact')
+    .evaluateAll(facts => {
+      const [series, episodes, watched] = facts.map(fact => fact.getBoundingClientRect())
+      return {
+        columnGap: Math.round(episodes.left - series.right),
+        watchedAligned: Math.round(watched.left - series.left),
+        watchedBelow: watched.top > series.top,
+      }
+    })
+  expect(factLayout.columnGap).toBeGreaterThanOrEqual(20)
+  expect(factLayout.columnGap).toBeLessThanOrEqual(28)
+  expect(Math.abs(factLayout.watchedAligned)).toBeLessThanOrEqual(1)
+  expect(factLayout.watchedBelow).toBe(true)
 })
 
 test('series progress automatically moves between the read-only Part Watched and Watched states', async ({ page }, testInfo) => {

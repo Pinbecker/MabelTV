@@ -22,7 +22,12 @@ class; callers do not need to know which module implements a method.
 - `uploads.py`: the shared durable transfer queue, resumable records,
   publication, playback inspection, and conversion/optimisation workers.
 - `viewing.py`: private viewing samples, session compaction, retention, and
-  insights.
+  MabelTV playback-session insights.
+- `adult_insights.py`: timeless Adult TV watched-history and personal-rating
+  aggregates. It progressively caches TMDB genres and credits on the Pi, never
+  calls Watchmode, and deliberately does not treat backfilled watched marks as
+  viewing dates. Its response includes the cached per-title genres, countries,
+  languages and credited-person IDs used for instant client-side drill-downs.
 - `providers.py`: TMDB, Watchmode, OpenSubtitles, artwork, title search, and
   provider-backed viewing metadata.
   Explicit film matches retain TMDB genre names in `metadata.genres` for the

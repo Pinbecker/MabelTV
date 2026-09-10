@@ -6,6 +6,8 @@ let adultFilmographyReturnTo = null
 let adultFilmographySearch = ''
 let adultFilmographyMode = 'timeline'
 let adultFilmographyOpen = false
+let adultFilmographySourceView = 'adult-viewing'
+let adultFilmographySourcePosition = null
 
 function adultFilmographySortTitle(title) {
   return String(title || '').replace(/^(?:the|an?)\s+/i, '').trim()
@@ -33,10 +35,23 @@ function renderAdultFilmographyPerson(person) {
   const titles = person?.filmography || []
   const years = titles.map(adultFilmographyYear).filter(year => year !== 'Date unknown')
   const first = years.length ? Math.min(...years.map(Number)) : 0
-  $('#adultFilmographyMeta').textContent = [
-    first ? `Screen credits from ${first}` : '',
-    `${titles.length} title${titles.length === 1 ? '' : 's'}`,
-  ].filter(Boolean).join(' · ')
+  const facts = [
+    ['Screen credits', first ? `From ${first}` : 'Date unknown'],
+    ['Titles', titles.length],
+    ['Films', titles.filter(title => title.media_type === 'movie').length],
+    ['Series', titles.filter(title => title.media_type === 'tv').length],
+  ]
+  const meta = $('#adultFilmographyMeta')
+  meta.replaceChildren()
+  facts.forEach(([label, value]) => {
+    const fact = document.createElement('div')
+    const term = document.createElement('dt')
+    term.textContent = label
+    const description = document.createElement('dd')
+    description.textContent = String(value)
+    fact.append(term, description)
+    meta.append(fact)
+  })
 }
 
 function adultFilmographyGroup(label, titles) {
@@ -105,11 +120,14 @@ function openAdultFilmography(person, context = '', returnTo = null) {
   adultFilmographyPerson = person
   adultFilmographyContext = context
   adultFilmographyReturnTo = returnTo
+  const sourceView = document.querySelector('.view.active')
+  adultFilmographySourceView = sourceView?.id.replace(/^view-/, '') || 'adult-viewing'
+  adultFilmographySourcePosition = capturePortalPosition()
   adultFilmographySearch = ''
   $('#adultFilmographySearch').value = ''
   $('#adultFilmographySearchClear').classList.add('hidden')
   portalSheets.suspend($('#adultPersonSheet'))
-  history.pushState({ ...(history.state || {}), adultFilmography: true }, '', '#adult-filmography')
+  history.pushState({ ...(history.state || {}), adultFilmography: true }, '', location.href)
   adultFilmographyOpen = true
   openView('adult-filmography', { resetScroll: true })
   renderAdultFilmography()
@@ -117,6 +135,8 @@ function openAdultFilmography(person, context = '', returnTo = null) {
 
 function restoreAdultPersonAfterFilmography() {
   if (!adultFilmographyPerson) return
+  openView(adultFilmographySourceView)
+  restorePortalPosition(adultFilmographySourcePosition)
   restoreAdultPersonSheet(adultFilmographyPerson, adultFilmographyContext, adultFilmographyReturnTo)
 }
 
@@ -143,6 +163,7 @@ $('#adultFilmographyMode')?.addEventListener('change', event => {
 })
 window.addEventListener('popstate', event => {
   if (!adultFilmographyOpen || event.state?.adultFilmography) return
+  event.stopImmediatePropagation()
   adultFilmographyOpen = false
   restoreAdultPersonAfterFilmography()
-})
+}, true)
