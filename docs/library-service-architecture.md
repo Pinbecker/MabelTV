@@ -23,17 +23,22 @@ class; callers do not need to know which module implements a method.
   publication, playback inspection, and conversion/optimisation workers.
 - `viewing.py`: private viewing samples, session compaction, retention, and
   MabelTV playback-session insights.
+- `viewing_queue.py`: validation and atomic persistence of the ordered Adult TV
+  Up Next queue.
 - `adult_insights.py`: timeless Adult TV watched-history and personal-rating
   aggregates. It progressively caches TMDB genres and credits on the Pi, never
   calls Watchmode, and deliberately does not treat backfilled watched marks as
   viewing dates. Its response includes the cached per-title genres, countries,
   languages and credited-person IDs used for instant client-side drill-downs.
-- `providers.py`: TMDB, Watchmode, OpenSubtitles, artwork, title search, and
-  provider-backed viewing metadata.
+- `providers.py`: TMDB, Watchmode, OpenSubtitles, artwork, title and person
+  search, and provider-backed viewing metadata. Multi-search returns people as
+  identity-only results; local and viewing state remains exclusive to titles.
   Explicit film matches retain TMDB genre names in `metadata.genres` for the
   local film filter; films without a match remain visible in All genres.
 - `discovery.py`: curated, paginated TMDB Explore lists. It enriches catalogue
   results with current local/viewing state but never performs Watchmode calls.
+  The Adult TV home can additionally require a supported UK flatrate, free or
+  ad-supported provider; rent and purchase offers never qualify that feed.
 - `usb.py`: removable-volume discovery, browsing, power state, playback, and
   imports. USB imports feed the shared upload queue so they retain progress,
   survive restarts, and use the same validation and publication path.
@@ -66,6 +71,14 @@ together in the same release directory. `install.sh` stages and syntax-checks
 both before switching `/opt/mabeltv/current`; the Windows developer deploy also
 recognises backend-module changes and restarts only `mabeltv-library.service`.
 Backend or portal changes do not require rebuilding the native QML/C++ player.
+
+The Adult viewing store owns the durable Up Next rank. The portal persists a
+complete reordered queue in one authenticated `POST /api/adult/viewing/reorder`
+request so a drag cannot leave a partially moved queue behind. Personal
+recommendations are built from positively rated watched-title seeds and cached
+Adult-insights genre metadata; the separate broad shelf supplies deliberate
+variety. Availability checks remain TMDB-only and limited to included, free or
+ad-supported UK providers.
 
 Rollback is release-level: point `/opt/mabeltv/current` back to the previous
 complete release and restart the library service. Never combine an executable

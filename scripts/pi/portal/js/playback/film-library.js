@@ -157,17 +157,18 @@
     }
 
     function openFilmResumeChoice({ title, destination, position,
-      continueAction, restartAction, returnTo = null }) {
+      continueAction, restartAction, returnTo = null,
+      restoreParentOnAction = true }) {
       $('#filmResumeChoiceEyebrow').textContent = destination
       $('#filmResumeChoiceTitle').textContent = title
       $('#filmResumeChoiceMeta').textContent = `Continue from ${watchTimeLabel(position)}, or start this film from the beginning?`
       $('#filmResumeContinue').querySelector('small').textContent = `Resume from ${watchTimeLabel(position)}`
       $('#filmResumeContinue').onclick = () => {
-        closeFilmResumeChoiceSheet()
+        closeFilmResumeChoiceSheet(restoreParentOnAction)
         continueAction()
       }
       $('#filmResumeRestart').onclick = () => {
-        closeFilmResumeChoiceSheet()
+        closeFilmResumeChoiceSheet(restoreParentOnAction)
         restartAction()
       }
       const dialog = $('#filmResumeChoiceSheet')

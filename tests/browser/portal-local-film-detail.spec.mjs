@@ -50,8 +50,7 @@ test('a local global-search film opens one rich card with playback controls', as
   await expect.poll(() => page.evaluate(() => Boolean(library))).toBe(true)
   await page.evaluate(film => { library.adult_library = [{ ...film,
     remote_position: 600, remote_duration: 7200 }] }, localFilm)
-  await page.getByRole('button', { name: 'Watch', exact: true }).click()
-  await page.locator('#watchAdultTab').click()
+  await page.locator('[data-view-button="adult-home"]').click()
   await page.locator('#watchSearch').fill('Harry Potter')
   await expect(page.locator('#adultDiscoveryGrid .watch-card')).toHaveCount(8)
   const grid = await page.locator('#adultDiscoveryGrid').evaluate(element => ({

@@ -475,9 +475,16 @@ function renderAdultTitleDetail(detail, refreshProviders = true,
     portalSheets.suspend(sheet, { card: true })
     void openAdultPerson(person, title, restoreTitle)
   })
-  $('#adultProviderRefresh').classList.toggle('hidden', !adultAvailabilityEnabled())
+  $('#adultProviderRefresh').classList.toggle('hidden', !adultAvailabilityEnabled()
+    || detail.catalogue_only === true)
   $('#adultProviderRefresh').onclick = () => loadAdultProviders(detail, true, revision)
-  if (refreshProviders && !detail.catalogue_only) {
+  if (detail.catalogue_only) {
+    if (adultAvailabilityEnabled()) renderAdultProviderLinks(detail, { sources: [] })
+    else renderAdultAvailabilityDisabled($('#adultProviderList'), detail, {
+      localAction: null,
+      purchaseSection: $('#adultTitleRentBuy'), purchaseRoot: $('#adultTitleRentBuyList'),
+    })
+  } else if (refreshProviders) {
     $('#adultProviderList').innerHTML = '<p>Checking streaming destinations…</p>'
     loadAdultProviders(detail, false, revision)
   }
@@ -672,7 +679,9 @@ function renderAdultViewingList() {
     history: ['Everything you have seen', 'Watched'],
   }
   const [kicker, heading] = labels[adultViewingTab]
-  $('#adultViewingKicker').textContent = kicker
+  const reorderable = adultViewingTab === 'up-next' && adultViewingSort === 'recent'
+    && adultViewingFilter === 'all' && !adultViewingSearch.trim()
+  $('#adultViewingKicker').textContent = reorderable ? 'Hold and drag to reorder' : kicker
   $('#adultViewingHeading').textContent = heading
   const recentOption = $('#adultViewingSort')?.querySelector('option[value="recent"]')
   if (recentOption) recentOption.textContent = adultViewingTab === 'up-next' ? 'Queue order' : 'Recently added'
@@ -712,6 +721,7 @@ function renderAdultViewingList() {
   })
   if (!values.length) root.innerHTML = `<div class="watch-empty"><strong>Nothing in ${heading} yet</strong><br>Add titles from search and they will appear here.</div>`
   target.replaceChildren(...root.childNodes)
+  if (reorderable) window.bindUpNextReorder?.(target)
 }
 
 async function loadAdultViewing({ render = true } = {}) {
@@ -743,16 +753,14 @@ window.addEventListener('orientationchange', () => setTimeout(() => {
   adultSearchKeyboardWasOpen = false
 }, 400))
 $('#adultMyViewing')?.addEventListener('click', () => {
-  history.replaceState({ consolidatedWatch: true }, '', '#watch')
+  history.replaceState({ adultHome: true }, '', '#adult-tv')
   history.pushState({ adultViewing: true }, '', '#adult-viewing')
   openView('adult-viewing')
 })
 $('#adultViewingBack')?.addEventListener('click', () => {
   if (history.state?.adultViewing) { history.back(); return }
-  remoteKind = 'adult'
-  renderRemoteViewing()
-  history.replaceState({ consolidatedWatch: true }, '', '#watch')
-  openView('watch', { instantScroll: true })
+  history.replaceState({ adultHome: true }, '', '#adult-tv')
+  openView('adult-home', { instantScroll: true })
 })
 function closeAdultTitleSheet() {
   adultTitleOpenRevision += 1

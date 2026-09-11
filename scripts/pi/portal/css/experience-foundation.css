@@ -150,19 +150,13 @@ body.portal-v2 .view {
 
 body.portal-v2 .view.active {
   display: block;
-  animation: experience-view-in 180ms ease-out both;
-}
-
-@keyframes experience-view-in {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 body.portal-v2 .page {
   width: min(100%, var(--experience-page));
   min-width: 0;
   margin: 0 auto;
-  padding: 36px var(--experience-gutter) 64px;
+  padding: 36px var(--experience-gutter) 24px;
 }
 
 body.portal-v2 h1,

@@ -15,12 +15,19 @@ async function longFilms(page) {
     library.adult_library = Array.from({ length: 120 }, (_, i) => ({
       path: `film-${i}.mp4`, display_name: `Film ${String(i).padStart(2, '0')}`,
       folder: 'Collection', browser_ready: true,
-      metadata: { title: `Film ${String(i).padStart(2, '0')}`, genres: ['Adventure'] },
+      metadata: { tmdb_id: i + 1, title: `Film ${String(i).padStart(2, '0')}`,
+        genres: ['Adventure'] },
     }))
-    remoteKind = 'adult'
-    renderRemoteViewing()
-    openView('watch', { instantScroll: true })
+    adultHomeLoadedAt = Date.now()
+    const titles = library.adult_library.map((film, index) => ({
+      key: `movie:${index + 1}`, media_type: 'movie', tmdb_id: index + 1,
+      title: film.display_name, year: '2020', local: { kind: 'film', path: film.path },
+      viewing: {},
+    }))
+    document.querySelector('#adultHomeForYou')
+      .replaceChildren(...titles.map(title => adultExploreCard(title)))
   })
+  await page.locator('[data-view-button="adult-home"]').click()
   await settled(page)
 }
 
@@ -30,18 +37,16 @@ const settled = page => page.evaluate(async () => {
   await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
 })
 
-test('film dropdowns retain their viewport and native option nodes', async ({ page }) => {
+test('Adult TV recommendation refresh retains its viewport', async ({ page }) => {
   await openPortal(page, 'light')
   await longFilms(page)
-  await page.locator('#watchGenreFilter').evaluate(element => window.scrollTo(0, window.scrollY + element.getBoundingClientRect().top - 200))
-  await page.evaluate(() => { window.savedGenreOption = document.querySelector('#watchGenreFilter option') })
+  await page.evaluate(() => window.scrollTo(0, 1200))
   const before = await scrollY(page)
   expect(before).toBeGreaterThan(100)
-  await page.locator('#watchGenreFilter').selectOption('Adventure')
-  await settled(page)
-  expect(await scrollY(page)).toBeCloseTo(before, 0)
-  expect(await page.evaluate(() => window.savedGenreOption === document.querySelector('#watchGenreFilter option'))).toBe(true)
-  await page.locator('#watchCollectionFilter').selectOption('Collection')
+  await page.evaluate(() => {
+    const cards = [...document.querySelectorAll('#adultHomeForYou .adult-explore-card')]
+    document.querySelector('#adultHomeForYou').replaceChildren(...cards)
+  })
   await settled(page)
   expect(await scrollY(page)).toBeCloseTo(before, 0)
 })
@@ -53,13 +58,13 @@ test('bottom navigation returns to the same Adult TV tab and film position', asy
   const before = await scrollY(page)
   await page.locator('[data-view-button="system"]').click()
   await expect(page.locator('#view-system')).toBeVisible()
-  await page.locator('[data-view-button="watch"]').click()
-  await expect(page.locator('#watchAdultLayout')).toBeVisible()
+  await page.locator('[data-view-button="adult-home"]').click()
+  await expect(page.locator('#view-adult-home')).toBeVisible()
   await settled(page)
   expect(await scrollY(page)).toBeCloseTo(before, 0)
-  await page.locator('[data-view-button="watch"]').click()
+  await page.locator('[data-view-button="adult-home"]').click()
   await settled(page)
-  expect(await scrollY(page)).toBeCloseTo(before, 0)
+  expect(await scrollY(page)).toBeLessThanOrEqual(1)
 })
 
 async function usbFixture(page) {
@@ -164,28 +169,28 @@ test('returning from a numbered series restores the show sheet position', async 
   expect(await panel.evaluate(element => element.scrollTop)).toBeCloseTo(before, 0)
 })
 
-test('Watch library buttons return to the top while My Viewing Back retains position', async ({ page }) => {
+test('domain navigation and My Viewing Back retain each page position', async ({ page }) => {
   await openPortal(page)
   await longFilms(page)
   await page.evaluate(() => window.scrollTo(0, 1600))
   await page.locator('#watchMabelTab').dispatchEvent('click')
   await expect.poll(() => scrollY(page)).toBeLessThanOrEqual(1)
   await page.evaluate(() => window.scrollTo(0, 350))
-  await page.getByRole('button', { name: 'Scroll Watch to top' }).dispatchEvent('click')
+  await page.getByRole('button', { name: 'Scroll MabelTV to top' }).dispatchEvent('click')
   await expect.poll(() => scrollY(page)).toBeLessThanOrEqual(1)
   await page.evaluate(() => window.scrollTo(0, 350))
-  await page.locator('#watchAdultTab').dispatchEvent('click')
-  await expect.poll(() => scrollY(page)).toBeLessThanOrEqual(1)
+  await page.locator('[data-view-button="adult-home"]').dispatchEvent('click')
+  await expect.poll(() => scrollY(page)).toBeCloseTo(1600, 0)
   await page.evaluate(() => window.scrollTo(0, 1600))
   await page.locator('#adultMyViewing').dispatchEvent('click')
   await expect(page.locator('#view-adult-viewing')).toBeVisible()
   await page.locator('#adultViewingBack').click()
-  await expect(page.locator('#watchAdultLayout')).toBeVisible()
+  await expect(page.locator('#view-adult-home')).toBeVisible()
   await settled(page)
   expect(await scrollY(page)).toBeCloseTo(1600, 0)
   await page.locator('#adultMyViewing').dispatchEvent('click')
   await page.goBack()
-  await expect(page.locator('#watchAdultLayout')).toBeVisible()
+  await expect(page.locator('#view-adult-home')).toBeVisible()
   await settled(page)
   expect(await scrollY(page)).toBeCloseTo(1600, 0)
 })
@@ -273,8 +278,8 @@ test('episode back and collection selection keep the sheet position', async ({ p
 
 test('viewing insights returns to the dashboard position', async ({ page }) => {
   await openPortal(page)
-  await page.locator('[data-view-button="insights"]').click()
-  await page.locator('[data-insights-mode="mabel"]').click()
+  await page.locator('[data-view-button="watch"]').click()
+  await page.locator('#watchMabelInsightsTab').click()
   await expect(page.locator('#viewingInsights')).toBeVisible()
   await settled(page)
   await page.evaluate(() => window.scrollTo(0, 200))
@@ -290,8 +295,8 @@ test('viewing insights returns to the dashboard position', async ({ page }) => {
 
 test('insights Back returns to the exact browse, highlight or Follow the day parent', async ({ page }) => {
   await openPortal(page)
-  await page.locator('[data-view-button="insights"]').click()
-  await page.locator('[data-insights-mode="mabel"]').click()
+  await page.locator('[data-view-button="watch"]').click()
+  await page.locator('#watchMabelInsightsTab').click()
   await page.evaluate(() => {
     const started = new Date()
     started.setHours(14, 0, 0, 0)
@@ -341,14 +346,18 @@ test('insights Back returns to the exact browse, highlight or Follow the day par
 test('a library refresh preserves replaced horizontal programme rails', async ({ page }) => {
   await openPortal(page)
   await page.locator('[data-view-button="watch"]').click()
-  const saved = await page.evaluate(() => {
+  const saved = await page.evaluate(async () => {
     const rail = [...document.querySelectorAll('#remoteMabel .watch-channel-rail')]
       .find(element => element.scrollWidth > element.clientWidth + 100)
     if (!rail) throw new Error('Fixture needs a scrolling programme rail')
     rail.scrollLeft = 120
-    return { key: portalElementKey(rail), left: rail.scrollLeft }
+    const position = { key: portalElementKey(rail), left: rail.scrollLeft }
+    // Keep the simulated user position and refresh invocation in one task.
+    // iPad WebKit may otherwise perform a mandatory snap between evaluations,
+    // before application code has been asked to preserve anything.
+    await load()
+    return position
   })
-  await page.evaluate(() => load())
   const after = await page.evaluate(key => [...document.querySelectorAll('#remoteMabel .watch-channel-rail')]
     .find(element => portalElementKey(element) === key).scrollLeft, saved.key)
   expect(after).toBeCloseTo(saved.left, 0)
@@ -409,16 +418,46 @@ test('My Viewing tabs retain their exact viewport instead of following a reorder
   expect(await scrollY(page)).toBeCloseTo(before, 0)
 })
 
-test('Adult TV main film library is four artwork cards wide on phones', async ({ page }, testInfo) => {
+test('Adult TV What to watch is four artwork cards wide on phones', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone grid contract')
   await openPortal(page)
   await longFilms(page)
-  const grid = await page.locator('#remoteAdult > .watch-poster-grid').evaluate(element => ({
+  const grid = await page.locator('#adultHomeForYou').evaluate(element => ({
     columns: getComputedStyle(element).gridTemplateColumns.split(' ').length,
     contained: element.scrollWidth <= element.clientWidth + 1,
   }))
   expect(grid).toEqual({ columns: 4, contained: true })
   await page.screenshot({ path: testInfo.outputPath('adult-main-film-grid.png') })
+})
+
+test('long portal pages end neatly above the fixed navigation', async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone bottom-spacing contract')
+  await openPortal(page)
+  await longFilms(page)
+  const metrics = await page.evaluate(() => {
+    window.scrollTo(0, document.documentElement.scrollHeight)
+    const pageRoot = document.querySelector('.view.active > .page')
+    const visible = [...pageRoot.children].filter(element => {
+      const style = getComputedStyle(element)
+      return style.display !== 'none' && element.getBoundingClientRect().height > 0
+    })
+    const last = visible.at(-1).getBoundingClientRect()
+    const navigation = document.querySelector('#mainNav').getBoundingClientRect()
+    return {
+      gap: Math.round(navigation.top - last.bottom),
+      scrollY: Math.round(window.scrollY),
+      scrollHeight: document.documentElement.scrollHeight,
+      viewport: window.innerHeight,
+      pageBottom: Math.round(pageRoot.getBoundingClientRect().bottom),
+      lastBottom: Math.round(last.bottom),
+      navigationTop: Math.round(navigation.top),
+      appPaddingBottom: getComputedStyle(document.querySelector('.app-main')).paddingBottom,
+      appBottom: Math.round(document.querySelector('.app-main').getBoundingClientRect().bottom),
+      shellBottom: Math.round(document.querySelector('.app-shell').getBoundingClientRect().bottom),
+    }
+  })
+  expect(metrics.gap).toBeGreaterThanOrEqual(0)
+  expect(metrics.gap, JSON.stringify(metrics)).toBeLessThanOrEqual(18)
 })
 
 test('returning from the player keeps the film catalogue position', async ({ page }) => {

@@ -420,7 +420,10 @@
       api('/api/live/stop', { method: 'POST', body: '{}' }).catch(() => {})
     }
     $$('[data-view-button]').forEach(button => button.onclick = () => {
-      const view = replacePrimaryViewHistory(button.dataset.viewButton)
+      const selected = button.getAttribute('aria-current') === 'page'
+      const destination = button.dataset.viewButton
+      if (switchPrimaryNavigation(destination, { reset: selected })) return
+      const view = pushPrimaryViewHistory(button.dataset.viewButton)
       if (view === 'watch' && !offlineMode) renderRemoteViewing()
       if (view === 'channels') showChannelHub()
       openView(view)
@@ -433,10 +436,17 @@
         openView('appearance')
         return
       }
-      if (button.id === 'appearanceBack' && location.hash === '#appearance') {
+      if (button.dataset.go === 'system' && history.state?.mabelPrimarySection === 'system'
+          && Number(history.state?.mabelPrimaryIndex) > 0) {
         history.back()
         return
       }
+      if ((button.dataset.go === 'usb' || button.dataset.go === 'activity')
+          && history.state?.mabelPrimarySection === 'system') {
+        pushPrimaryChildView(button.dataset.go)
+        return
+      }
+      if (button.dataset.go === 'system' && switchPrimaryNavigation('system')) return
       if (button.dataset.go === 'watch' && !offlineMode) renderRemoteViewing()
       if (button.dataset.go === 'channels') showChannelHub()
       openView(button.dataset.go)

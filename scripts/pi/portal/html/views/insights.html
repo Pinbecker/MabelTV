@@ -1,10 +1,10 @@
-      <section id="view-insights" class="view"><div class="page insights-page">
-        <header class="insights-hero"><div><p class="eyebrow">Your viewing profile</p><h1>My Insights</h1><p>What you have watched, what you love, and the people and stories that shape your library.</p></div><svg class="viewing-insights-mark"><use href="/portal/icons.svg#signal-chart-column"/></svg></header>
-        <div class="my-insights-switch" role="group" aria-label="Choose insight library"><button type="button" class="active" data-insights-mode="adult" aria-pressed="true">Adult TV</button><button type="button" data-insights-mode="mabel" aria-pressed="false">MabelTV</button></div>
+      <section id="view-insights" class="view"><div class="page insights-page domain-page">
+        <header class="screen-title watch-title insights-domain-title"><div role="button" tabindex="0" aria-label="Scroll insights to top"><p class="eyebrow">Stream from your library</p><h1 id="insightsDomainTitle">Adult TV</h1></div></header>
+        <div class="watch-switch-wrap insights-domain-tabs"><div class="watch-tabs" role="tablist" aria-label="Viewing sections"><button id="insightsWatchTab" type="button" role="tab" aria-selected="false"><span>Watch</span></button><button id="insightsCurrentTab" type="button" class="active" role="tab" aria-selected="true"><span>Insights</span></button><button id="insightsDownloadsTab" type="button" role="tab" aria-selected="false"><span>Downloads</span></button></div></div>
         <div id="adultInsightsLoading" class="viewing-insights-loading hidden" role="status"></div>
         <section id="adultInsightsDashboard" class="adult-insights-dashboard hidden" aria-label="Adult TV insights">
           <article class="adult-insight-pulse">
-            <div><p class="section-kicker">Your viewing universe</p><h2 id="adultInsightHeadline">Building your profile</h2><p id="adultInsightIntro">Reading your watched history and personal ratings.</p></div>
+            <div><p class="section-kicker">Your viewing universe</p><h2 id="adultInsightHeadline">Your viewing</h2><p id="adultInsightIntro"></p></div>
             <div id="adultInsightPosterMosaic" class="adult-insight-poster-mosaic" aria-hidden="true"></div>
           </article>
           <div class="viewing-stat-grid adult-insight-stats">

@@ -10,13 +10,31 @@
 }
 
 @media (max-width: 860px) {
+  html:has(body.portal-v2 #view-insights.active),
+  html:has(body.portal-v2 #view-adult-home.active #adultInsightsDashboard:not(.hidden)),
+  body.portal-v2:has(#view-insights.active),
+  body.portal-v2:has(#view-adult-home.active #adultInsightsDashboard:not(.hidden)) {
+    scrollbar-width: none;
+  }
+
+  html:has(body.portal-v2 #view-insights.active)::-webkit-scrollbar,
+  html:has(body.portal-v2 #view-adult-home.active #adultInsightsDashboard:not(.hidden))::-webkit-scrollbar,
+  body.portal-v2:has(#view-insights.active)::-webkit-scrollbar,
+  body.portal-v2:has(#view-adult-home.active #adultInsightsDashboard:not(.hidden))::-webkit-scrollbar {
+    display: none;
+  }
+
   body.portal-v2 .page.live-page {
-    padding: 14px 12px 22px;
+    padding: 14px 12px 12px;
   }
 
   body.portal-v2 .activity-page { padding-top: 0; }
   body.portal-v2 .page {
-    padding: 28px 18px 46px;
+    padding: 28px 18px 12px;
+  }
+
+  body.portal-v2 .domain-page {
+    padding-top: 16px;
   }
 
   body.portal-v2 .watch-page {
@@ -45,16 +63,16 @@
     padding: 0 18px;
   }
 
-  body.portal-v2 .watch-page .watch-title {
+  body.portal-v2 .domain-page .watch-title {
     margin-bottom: 4px;
   }
 
-  body.portal-v2 .watch-page .watch-title h1 {
+  body.portal-v2 .domain-page .watch-title h1 {
     font-size: 32px;
   }
 
   body.portal-v2 .home-page {
-    padding: 0 0 42px;
+    padding: 0 0 12px;
   }
 
   body.portal-v2 .home-spotlight {
@@ -373,7 +391,6 @@
   body.portal-v2 .usb-selection-tray > button { min-width: 112px; padding: 0 11px; }
   body.portal-v2 .usb-plan-summary { grid-template-columns: 1fr; }
 
-  body.portal-v2 .insights-page { padding-top: 18px; }
   body.portal-v2 .insights-hero { padding: 15px; }
   body.portal-v2 .insights-hero .viewing-insights-mark { width: 42px; height: 42px; }
   body.portal-v2 .insights-page .viewing-range { top: calc(54px + env(safe-area-inset-top)); }
@@ -431,7 +448,7 @@
 
   body.portal-v2 .channel-page {
     gap: 8px;
-    margin-top: -16px;
+    margin-top: -22px;
   }
 
   body.portal-v2 .channel-page-nav {

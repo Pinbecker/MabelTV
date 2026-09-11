@@ -157,12 +157,10 @@ test('series sheets use the full metadata catalogue with local availability over
   await expect(page.locator('#adultTitleSheet')).toBeVisible()
   await page.locator('#adultTitleClose').click()
   await expect(page.locator('#adultTitleSheet')).toBeHidden()
-  await page.getByRole('button', { name: 'Watch', exact: true }).click()
-  await page.locator('#watchAdultTab').click()
+  await page.locator('[data-view-button="adult-home"]').click()
   await page.evaluate(() => {
     library.adult_series = []
-    document.querySelector('#watchAdultLayout').classList.remove('hidden')
-    document.querySelector('#view-watch').classList.add('adult-search-mode')
+    document.querySelector('#view-adult-home').classList.add('adult-search-mode')
     document.querySelector('#adultDiscoverySection').classList.remove('hidden')
     document.querySelector('#adultDiscoveryGrid').replaceChildren(adultDiscoveryCard({
       media_type: 'tv', tmdb_id: 6002, title: 'Foundation', year: '2026',
@@ -316,9 +314,12 @@ test('TV series rail includes local episodes and Up Next, without tinting a fals
   expect(state.watchedWhiteSpace).toBe('normal')
   expect(state.statusFits).toBe(true)
   expect(state.partWatchedTitles).toEqual(['Ludwig'])
-  await page.getByRole('button', { name: 'Watch', exact: true }).click()
-  await page.locator('#watchAdultTab').click()
-  await page.evaluate(() => renderAdultSeries())
+  await page.evaluate(() => {
+    const section = document.querySelector('#adultSeriesSection')
+    document.body.append(section)
+    section.classList.remove('hidden')
+    renderAdultSeries()
+  })
   const longTitle = page.locator('#adultSeriesRail .adult-series-card:first-child > span:last-child > strong')
   await expect(longTitle).toBeVisible()
   await longTitle.evaluate(element => {
@@ -409,6 +410,7 @@ test('episode actions stay compact and long streaming titles clear the close con
   await expect(episodeSheet.locator('.portal-card-back')).toHaveCount(0)
   await expect(episodeSheet.locator('#adultEpisodeMore')).toHaveCount(0)
   await expect(episodeSheet.locator('#adultEpisodeDownload')).toBeVisible()
+  await expect(episodeSheet.locator('#adultEpisodeDownload')).toHaveClass(/sheet-download-trigger/)
   await expect(episodeSheet.locator('#adultEpisodeDelete')).toBeVisible()
   const panelHeight = await episodeSheet.locator('article').evaluate(panel =>
     panel.getBoundingClientRect().height)

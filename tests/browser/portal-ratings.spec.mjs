@@ -83,7 +83,7 @@ test('Ratings is a four-wide watched-only queue and saves from the lightweight t
   await page.locator('#adultRatingsGrid .adult-explore-card').first()
     .locator('.adult-explore-open-art').click()
   await expect(page.locator('#adultTitleSheet')).toBeVisible()
-  await expect(page.locator('#adultTitleSheet .adult-provider-section')).toBeHidden()
+  await expect(page.locator('#adultTitleSheet .adult-provider-section')).toBeVisible()
   const rating = page.locator('#adultTitlePersonalRating .adult-personal-rating')
   await expect(rating.locator('.adult-rating-star')).toHaveCount(10)
   const track = rating.locator('.adult-rating-track')

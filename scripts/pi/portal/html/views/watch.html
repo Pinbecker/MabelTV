@@ -1,27 +1,10 @@
-      <section id="view-watch" class="view"><div class="page watch-page">
+      <section id="view-watch" class="view"><div class="page watch-page domain-page">
         <header class="screen-title watch-title">
-          <div role="button" tabindex="0" aria-label="Scroll Watch to top"><p class="eyebrow">Stream from your library</p><h1>Watch</h1></div>
-          <div id="watchLibraryAdmin" class="watch-library-admin hidden" aria-label="Adult library tools"><button id="watchAddAdult" type="button" aria-label="Add films"><svg class="icon"><use href="/portal/icons.svg#signal-upload"/></svg><span>Add</span></button><button id="watchManageAdult" type="button" aria-label="Organise collections"><svg class="icon"><use href="/portal/icons.svg#folder"/></svg><span>Collections</span></button></div>
+          <div role="button" tabindex="0" aria-label="Scroll MabelTV to top"><p class="eyebrow">Stream from your library</p><h1 id="watchDomainTitle">MabelTV</h1></div>
           <div id="watchMabelAdmin" class="watch-library-admin watch-mabel-admin" aria-label="MabelTV channel tools"><button id="watchNewChannel" type="button" aria-label="Create a new channel"><svg class="icon"><use href="/portal/icons.svg#signal-plus"/></svg><span>New channel</span></button></div>
         </header>
 
-        <div class="watch-switch-wrap"><div class="watch-tabs" role="tablist" aria-label="Choose a library"><button id="watchAdultTab" type="button" role="tab" aria-selected="false"><span>Adult TV</span></button><button id="watchMabelTab" type="button" class="active" role="tab" aria-selected="true"><span>MabelTV</span></button><button id="watchDownloadsTab" type="button" role="tab" aria-selected="false"><span>Downloads</span></button></div></div>
-
-        <div id="watchAdultLayout" class="watch-adult-layout hidden">
-          <section class="watch-discovery" aria-label="Find a film">
-            <label class="portal-search watch-search"><svg class="icon"><use href="/portal/icons.svg#signal-search"/></svg><input id="watchSearch" type="search" autocomplete="off" placeholder="Search your library and beyond" aria-label="Search Adult films and series"><button id="watchSearchClear" type="button" class="hidden" aria-label="Clear search"><svg class="icon"><use href="/portal/icons.svg#signal-x"/></svg></button></label>
-            <button id="adultMyViewing" type="button" class="adult-my-viewing"><svg class="icon"><use href="/portal/icons.svg#signal-list-filter"/></svg><span><strong>My Viewing</strong><small>Watchlist, Up Next, Watching and watched progress</small></span><svg class="icon"><use href="/portal/icons.svg#signal-chevron-right"/></svg></button>
-          </section>
-          <section id="adultDiscoverySection" class="adult-discovery-results hidden" aria-labelledby="adultDiscoveryTitle"><header class="watch-library-head"><div><p class="watch-section-kicker">From across streaming</p><h2 id="adultDiscoveryTitle">Search results</h2></div><span id="adultDiscoveryCount" class="watch-library-count"></span></header><div id="adultDiscoveryGrid" class="watch-poster-grid"></div><p class="provider-attribution">Streaming availability data from TMDB and JustWatch.</p></section>
-          <section id="watchContinueSection" class="watch-continue hidden" aria-labelledby="watchContinueTitle"><header class="watch-section-head"><div><p class="watch-section-kicker">Pick up where you left off</p><h2 id="watchContinueTitle">Continue watching</h2></div><span id="watchContinueCount"></span></header><div id="watchContinueRail" class="watch-continue-rail"></div></section>
-          <section id="adultSeriesSection" class="adult-series-section" aria-labelledby="adultSeriesTitle"><header class="watch-library-head"><div><p class="watch-section-kicker">Episodes and seasons</p><div class="adult-series-title-row"><h2 id="adultSeriesTitle">TV series</h2><button id="adultSeriesCreate" type="button" class="adult-series-create" aria-label="New series"><svg class="icon"><use href="/portal/icons.svg#signal-plus"/></svg><span>New series</span></button></div></div></header><div id="adultSeriesRail" class="adult-series-rail"></div></section>
-          <section class="watch-catalogue" aria-labelledby="watchLibraryTitle"><header class="watch-library-head"><div><p id="watchLibraryKicker" class="watch-section-kicker">Your library</p><h2 id="watchLibraryTitle">All films</h2></div><span id="watchLibraryCount" class="watch-library-count">0 films</span></header>
-            <div class="watch-film-filters" role="group" aria-label="Filter films">
-              <label class="adult-viewing-select"><span class="sr-only">Filter films by collection</span><select id="watchCollectionFilter" aria-label="Filter films by collection"><option value="*">All collections</option></select></label>
-              <label class="adult-viewing-select"><span class="sr-only">Filter films by genre</span><select id="watchGenreFilter" aria-label="Filter films by genre"><option value="">All genres</option></select></label>
-            </div>
-            <div id="remoteAdult"></div></section>
-        </div>
+        <div class="watch-switch-wrap"><div class="watch-tabs" role="tablist" aria-label="MabelTV sections"><button id="watchMabelTab" type="button" class="active" role="tab" aria-selected="true"><span>Watch</span></button><button id="watchMabelInsightsTab" type="button" role="tab" aria-selected="false"><span>Insights</span></button><button id="watchDownloadsTab" type="button" role="tab" aria-selected="false"><span>Downloads</span></button></div></div>
 
         <div id="watchMabelLayout" class="watch-mabel-layout">
           <section class="watch-discovery watch-mabel-discovery" aria-label="Find a MabelTV film">
@@ -38,6 +21,6 @@
           <section class="downloads-intro"><div><p class="watch-section-kicker">Saved to this iPhone</p><h2>Ready offline</h2><p>Open this section before travelling and make sure each title says Ready offline.</p></div><span id="downloadsStorage" class="downloads-storage">Checking storage…</span></section>
           <div id="downloadsGrid" class="downloads-grid"><div class="downloads-empty"><strong>No downloads yet</strong>Choose Download to this device on a film, programme, or USB video.</div></div>
         </div>
-        <footer><span data-tv-name>Your TV</span> · Remote viewing</footer>
+        <footer id="watchDomainFooter"><span data-tv-name>Your TV</span> · Remote viewing</footer>
       </div></section>
 

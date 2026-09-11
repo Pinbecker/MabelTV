@@ -101,9 +101,9 @@ initialisation even when each file is syntactically valid.
 8. `portal/js/library/adult-library.js`: Adult film catalogue management.
 9. `portal/js/library/usb-browser.js`: USB browsing, selection, and import.
 10. `portal/js/library/viewing-insights.js`: viewing dashboards and history.
-11. `portal/js/library/adult-insights.js`: the top-level My Insights switch,
-    Adult TV charts, progressive TMDB enrichment state, rating shortcuts and
-    local facet drill-downs. Adult routes under `#insights/adult/...` reuse the
+11. `portal/js/library/adult-insights.js`: the Adult TV and MabelTV insight
+    dashboards, progressive TMDB enrichment state, rating shortcuts and local
+    facet drill-downs. Adult routes under `#insights/adult/...` reuse the
     four-wide Adult title cards; people open the existing person-card journey.
 12. `portal/js/library/device-status.js`: device, storage, and job status.
 13. `portal/js/library/channels.js`: channel-management rendering.
@@ -119,16 +119,22 @@ initialisation even when each file is syntactically valid.
 20. `portal/js/adult-viewing/catalogue.js`: Adult viewing catalogue.
 21. `portal/js/adult-viewing/seasons.js`: series and season navigation.
 22. `portal/js/adult-viewing/details.js`: Adult viewing details and startup.
-23. `portal/js/adult-viewing/person.js`: cast detail cards and filmography
+23. `portal/js/adult-viewing/up-next-order.js`: native-feeling long-press queue
+    reordering, optimistic movement and atomic order persistence.
+24. `portal/js/adult-viewing/person.js`: cast detail cards and filmography
     navigation.
-24. `portal/js/adult-viewing/explore.js`: continuous TMDB discovery, quick
+25. `portal/js/adult-viewing/explore.js`: continuous TMDB discovery, quick
     viewing actions, weak impression feedback and visit freshness.
-25. `portal/js/adult-viewing/filmography.js`: TMDB-only full filmography search,
+26. `portal/js/adult-viewing/home.js`: the Adult TV Watch landing composition:
+    local progress, Up Next and rating-led UK-available TMDB recommendations.
+    It reuses Explore cards and requests only included/free supported-service
+    results; broad discovery remains a separate Something Different shelf.
+27. `portal/js/adult-viewing/filmography.js`: TMDB-only full filmography search,
     timeline and A-Z modes.
-26. `portal/js/adult-viewing/rating.js`: personal ten-star ratings and the
+28. `portal/js/adult-viewing/rating.js`: personal ten-star ratings and the
     watched-but-unrated completion queue.
-26. `portal/js/actions.js`: application event bindings and remote commands.
-27. `portal/js/lg-tv-remote.js`: the separate LG webOS remote.
+29. `portal/js/actions.js`: application event bindings and remote commands.
+30. `portal/js/lg-tv-remote.js`: the separate LG webOS remote.
 
 Classic intentionally omits Experience-only Adult-viewing and LG-remote scripts.
 
@@ -222,12 +228,20 @@ that final correction; browser scrolling and entrance animations remain intact.
 
 `core/navigation.js` remembers each top-level view; first entry begins at the
 top, returning restores its position, and revisiting the active view stays put.
-The bottom rail exposes My Insights as a primary destination; USB remains a
-complete view but is entered through Settings and therefore keeps Settings
-selected in the rail.
+Home, MabelTV, Remote, Adult TV and Settings keep independent in-memory route
+trails. Switching with the bottom rail first collapses the browser history to
+the current section root, then restores the destination trail. Each restored
+level is rendered before the next history entry is created because native iOS
+edge Back previews WebKit's cached pixels before dispatching `popstate`. The
+gesture therefore previews and completes into the same parent inside the
+selected section instead of exposing a different bottom-rail destination.
+The bottom rail exposes MabelTV and Adult TV as separate destinations. Each
+domain owns the same Watch, Insights and Downloads tab contract while retaining
+separate content and download filters. USB remains a complete view but is
+entered through Settings and therefore keeps Settings selected in the rail.
 Explore deliberately keeps its feed and position for returns within one minute;
 after that it rebuilds from the latest viewing history and starts at the top.
-`playback/view.js` separately remembers Watch tabs. My Viewing and channel
+`playback/view.js` separately remembers each domain tab. My Viewing and channel
 history return through the same navigation boundary. Insights retains a position
 and search per subroute. USB retains positions per drive and folder and discards
 obsolete browse responses. New folders begin at the file browser; Up and

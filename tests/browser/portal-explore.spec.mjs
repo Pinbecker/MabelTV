@@ -91,13 +91,32 @@ test('Explore updates a film card instantly when its detail state changes', asyn
 
 test('Explore series opens a catalogue-only season checklist', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One phone engine covers the catalogue-only title route')
+  let watchmodeRequests = 0
+  page.on('request', request => {
+    if (new URL(request.url()).pathname === '/api/adult/providers') watchmodeRequests += 1
+  })
+  await page.route('**/api/adult/title?*', async route => {
+    const response = await route.fetch()
+    const detail = await response.json()
+    detail.providers = [
+      { provider_id: 8, name: 'Netflix', type: 'flatrate', label: 'Stream', logo_path: '/netflix.jpg' },
+      { provider_id: 350, name: 'Apple TV', type: 'rent', label: 'Rent', logo_path: '/apple.jpg' },
+    ]
+    await route.fulfill({ response, json: detail })
+  })
   await openExplore(page)
 
   const series = page.locator('.adult-explore-card[data-media-type="tv"]').first()
   await series.locator('[data-explore-action="watched"]').click()
   await expect(page.locator('#adultTitleSheet')).toBeVisible()
   await expect(page.locator('#adultTitleSeriesLibrary')).toBeVisible()
-  await expect(page.locator('#adultTitleSheet .adult-provider-section')).toBeHidden()
+  await expect(page.locator('#adultTitleSheet .adult-provider-section')).toBeVisible()
+  await expect(page.locator('#adultProviderList .provider-netflix')).toBeVisible()
+  await expect(page.locator('#adultTitleRentBuy')).toBeVisible()
+  await expect(page.locator('#adultTitleRentBuyToggle')).toContainText('1 service')
+  await page.locator('#adultTitleRentBuyToggle').click()
+  await expect(page.locator('#adultTitleRentBuyList')).toContainText('Check price')
+  expect(watchmodeRequests).toBe(0)
   await expect(page.locator('#adultTitleFilmActions')).toBeHidden()
   await page.locator('#adultTitleSeasons .adult-season-card').first().click()
   await expect(page.locator('#adultTitleSeasonSheet')).toBeVisible()

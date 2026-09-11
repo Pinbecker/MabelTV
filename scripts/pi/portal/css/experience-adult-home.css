@@ -1,0 +1,53 @@
+body.portal-v2 .adult-home-page { width: min(100%, 1380px); margin: 0 auto; }
+body.portal-v2 .adult-home-discovery { margin-bottom: 18px; }
+body.portal-v2 .adult-home-viewing { width: min(100%, 430px); }
+body.portal-v2 .adult-home-section { display: grid; gap: 10px; margin-top: 24px; }
+body.portal-v2 .adult-home-section.hidden { display: none; }
+body.portal-v2 .adult-home-continue { margin-top: 0; }
+body.portal-v2 .adult-home-section > header > button {
+  min-height: 30px;
+  border: 0;
+  background: transparent;
+  color: var(--experience-accent-ink);
+  padding: 0;
+  font-size: 10px;
+  font-weight: 800;
+}
+body.portal-v2 .adult-home-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px 9px;
+}
+body.portal-v2 .adult-home-quiet {
+  grid-column: 1 / -1;
+  min-height: 72px;
+  color: var(--experience-dim);
+  font-size: 18px;
+  letter-spacing: .3em;
+  text-align: center;
+}
+@media (max-width: 620px) {
+  body.portal-v2 #view-adult-home.adult-search-mode .adult-home-page { margin-top: 0; }
+  body.portal-v2 .adult-home-section { margin-top: 19px; }
+  body.portal-v2 .adult-home-grid { gap: 12px 7px; }
+  body.portal-v2 .adult-home-grid .adult-explore-actions button { right: 0; }
+  body.portal-v2 .adult-home-viewing { width: 100%; }
+  body.portal-v2 #view-adult-home.adult-search-mode .watch-title,
+  body.portal-v2 #view-adult-home.adult-search-mode .watch-switch-wrap,
+  body.portal-v2 #view-adult-home.adult-search-mode .adult-my-viewing,
+  body.portal-v2 #view-adult-home.adult-search-mode .adult-home-continue,
+  body.portal-v2 #view-adult-home.adult-search-mode .adult-home-section,
+  body.portal-v2 #view-adult-home.adult-search-mode footer { display: none; }
+  body.portal-v2 #view-adult-home.adult-search-mode .watch-discovery {
+    position: sticky;
+    z-index: 40;
+    top: calc(54px + env(safe-area-inset-top));
+    margin: -16px -18px 12px;
+    background: var(--experience-canvas);
+    box-shadow: 0 8px 14px var(--experience-canvas);
+    padding: 8px 18px;
+  }
+  body.portal-v2 #view-adult-home.adult-search-mode #adultDiscoveryGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px 7px;
+  }
+}

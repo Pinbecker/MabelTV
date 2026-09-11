@@ -23,6 +23,11 @@ class CatalogueFixture(ProviderMetadataMixin):
     def tmdb_request(self, endpoint: str,
                      parameters: dict[str, Any] | None = None) -> dict[str, Any]:
         self.requests.append((endpoint, parameters or {}))
+        if endpoint == "search/multi":
+            return {"results": [{
+                "id": 1892, "media_type": "person", "name": "Jane Director",
+                "profile_path": "/jane.jpg", "known_for_department": "Directing",
+            }]}
         if endpoint == "movie/12":
             return {
                 "id": 12, "title": "Finding Nemo", "release_date": "2003-05-30",
@@ -114,6 +119,10 @@ class CatalogueFixture(ProviderMetadataMixin):
         return {"movie:127380": {"kind": "film", "path": "Finding Dory.mp4"}}
 
     @staticmethod
+    def adult_library() -> list[dict[str, Any]]:
+        return []
+
+    @staticmethod
     def adult_viewing_store() -> dict[str, Any]:
         return {"schema_version": 1, "titles": {}, "availability": {}}
 
@@ -136,6 +145,15 @@ class AvailabilitySettingsFixture(MediaCatalogueMixin):
 
 
 class AdultTitleEnrichmentTests(unittest.TestCase):
+    def test_discovery_includes_people_without_title_viewing_state(self) -> None:
+        found = CatalogueFixture().adult_discovery("Jane")
+
+        self.assertEqual(found["results"], [{
+            "key": "person:1892", "media_type": "person", "tmdb_id": 1892,
+            "title": "Jane Director", "name": "Jane Director",
+            "profile_path": "/jane.jpg", "known_for_department": "Directing",
+        }])
+
     def test_watchmode_availability_setting_defaults_on_and_persists_off(self) -> None:
         library = AvailabilitySettingsFixture()
 

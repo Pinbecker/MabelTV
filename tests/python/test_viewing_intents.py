@@ -137,6 +137,30 @@ class ViewingIntentTests(unittest.TestCase):
             with self.subTest(rating=rating), self.assertRaises(ValueError):
                 self.fixture.library.adult_viewing_update(title | {"rating": rating})
 
+    def test_up_next_order_can_be_saved_atomically(self) -> None:
+        titles = [
+            {"media_type": "movie", "tmdb_id": 601, "title": "First"},
+            {"media_type": "movie", "tmdb_id": 602, "title": "Second"},
+            {"media_type": "tv", "tmdb_id": 603, "title": "Third"},
+        ]
+        for title in titles:
+            self.fixture.library.adult_viewing_update(
+                title | {"action": "up_next", "enabled": True})
+
+        result = self.fixture.library.adult_up_next_reorder({
+            "keys": ["tv:603", "movie:601", "movie:602"],
+        })
+        self.assertEqual(result["keys"], ["tv:603", "movie:601", "movie:602"])
+        store = self.fixture.library.adult_viewing_store()["titles"]
+        self.assertEqual(store["tv:603"]["up_next_rank"], 1)
+        self.assertEqual(store["movie:601"]["up_next_rank"], 2)
+        self.assertEqual(store["movie:602"]["up_next_rank"], 3)
+
+        with self.assertRaisesRegex(ValueError, "changed"):
+            self.fixture.library.adult_up_next_reorder({
+                "keys": ["movie:601", "movie:602"],
+            })
+
     def test_empty_series_container_is_not_on_mabeltv(self) -> None:
         series_id = self.fixture.library.create_adult_series("Ludwig")
         states = self.fixture.library.adult_series_states()

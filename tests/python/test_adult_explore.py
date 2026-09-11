@@ -27,10 +27,18 @@ class ExploreFixture(AdultExploreMixin, ProviderMetadataMixin):
                       "history": [1]},
         }, "availability": {}}
         self.requests: list[tuple[str, dict[str, Any]]] = []
+        self.availability_enabled = True
+        self.available_ids = {11, 101, 201}
 
     def adult_cached_tmdb_request(self, endpoint: str,
                                   parameters: dict[str, Any] | None = None) -> dict[str, Any]:
         self.requests.append((endpoint, dict(parameters or {})))
+        if endpoint.endswith("/watch/providers"):
+            identifier = int(endpoint.split("/")[1])
+            provider_id = 8 if identifier in self.available_ids else 2
+            return {"results": {"GB": {"flatrate": [{
+                "provider_id": provider_id, "provider_name": "Included service",
+            }]}}}
         if endpoint.endswith("/recommendations"):
             kind = endpoint.split("/", 1)[0]
             watched_id = 1 if kind == "movie" else 2
@@ -57,6 +65,13 @@ class ExploreFixture(AdultExploreMixin, ProviderMetadataMixin):
 
     def write_adult_viewing_store(self, value: dict[str, Any]) -> None:
         self.store = deepcopy(value)
+
+    def settings(self) -> dict[str, Any]:
+        return {"watchmode_availability_enabled": self.availability_enabled}
+
+    @staticmethod
+    def adult_insights_cache() -> dict[str, Any]:
+        return {"titles": {}}
 
     @staticmethod
     def adult_local_title_index() -> dict[str, dict[str, Any]]:
@@ -107,6 +122,36 @@ class AdultExploreTests(unittest.TestCase):
         self.assertEqual(result["page"], 50)
         with self.assertRaisesRegex(ValueError, "valid Explore list"):
             library.adult_explore("made-up", "all", 1)
+
+    def test_home_feed_requires_included_supported_streaming_availability(self) -> None:
+        library = ExploreFixture()
+
+        result = library.adult_explore("for-you", "all", 1, True, 8)
+        keys = {value["key"] for value in result["results"]}
+
+        self.assertEqual(keys, {"movie:11"})
+        discover_parameters = [parameters for endpoint, parameters in library.requests
+                               if endpoint.startswith("discover/")]
+        self.assertFalse(discover_parameters)
+
+        library.availability_enabled = False
+        disabled = library.adult_explore("for-you", "all", 1, True, 8)
+        self.assertEqual(disabled["results"], [])
+        self.assertTrue(disabled["availability_disabled"])
+
+    def test_personal_feed_is_steered_by_positive_ratings_not_random_history(self) -> None:
+        library = ExploreFixture()
+        library.store["titles"]["movie:1"]["personal_rating"] = 3
+        library.store["titles"]["tv:2"]["personal_rating"] = 9
+
+        library.adult_explore("for-you", "all", 1)
+        recommendation_endpoints = [endpoint for endpoint, _ in library.requests
+                                    if endpoint.endswith("/recommendations")]
+
+        self.assertIn("tv/2/recommendations", recommendation_endpoints)
+        self.assertNotIn("movie/1/recommendations", recommendation_endpoints)
+        self.assertFalse(any(endpoint.startswith("discover/")
+                             for endpoint, _ in library.requests))
 
 
 if __name__ == "__main__":

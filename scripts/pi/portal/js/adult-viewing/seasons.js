@@ -202,7 +202,10 @@ function adultStreamingEpisodeRow(detail, season, result, episode, card) {
     row.tabIndex = 0
     row.setAttribute('role', 'button')
     row.setAttribute('aria-label', `Open ${episode.name || `episode ${episode.number}`}`)
-    row.onclick = () => { void openAdultEpisodeDestination(detail, season, episode, card) }
+    row.onclick = event => {
+      if (event.detail > 0) row.blur()
+      void openAdultEpisodeDestination(detail, season, episode, card)
+    }
     row.onkeydown = event => {
       if (event.target !== row || !['Enter', ' '].includes(event.key)) return
       event.preventDefault()

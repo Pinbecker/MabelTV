@@ -10,7 +10,7 @@ test('full filmography provides a four-wide timeline, search and A-Z mode', asyn
     history.replaceState({ staleRoute: true }, '', '#insights')
     openView('insights')
   })
-  await page.getByRole('button', { name: 'Watch', exact: true }).click()
+  await page.locator('[data-view-button="watch"]').click()
   await expect(page).toHaveURL(/#watch$/)
   await page.evaluate(() => {
     const filmography = Array.from({ length: 13 }, (_, index) => ({

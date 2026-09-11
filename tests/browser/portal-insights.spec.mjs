@@ -35,9 +35,11 @@ test('Insights is a top-level Adult TV profile with MabelTV activity alongside i
   await openPortal(page)
 
   await expect(page.locator('[data-view-button="usb"]')).toHaveCount(0)
-  await page.locator('[data-view-button="insights"]').click()
+  await page.locator('[data-view-button="adult-home"]').click()
+  await page.locator('#adultHomeInsightsTab').click()
   await expect(page.locator('#view-insights')).toBeVisible()
-  await expect(page.locator('[data-view-button="insights"]')).toHaveAttribute('aria-current', 'page')
+  await expect(page.locator('[data-view-button="adult-home"]')).toHaveAttribute('aria-current', 'page')
+  await expect(page.locator('#insightsDomainTitle')).toHaveText('Adult TV')
   await expect(page.locator('#adultInsightWatched')).toHaveText('146')
   await expect(page.locator('#adultInsightActors .adult-insight-person')).toHaveCount(8)
   await expect(page.locator('#adultInsightActors .adult-insight-person-image img').first()).toBeVisible()
@@ -58,15 +60,19 @@ test('Insights is a top-level Adult TV profile with MabelTV activity alongside i
   await expect(page.locator('.adult-insight-stats > button svg')).toHaveCount(0)
   await expect(page.locator('#adultInsightsDashboard')).toBeVisible()
   await expect(page.locator('#mabelInsightsDashboard')).toBeHidden()
+  await page.waitForTimeout(250)
+  await page.evaluate(() => window.scrollTo(0, 0))
   await expect(page).toHaveScreenshot('my-insights.png')
   await page.locator('#adultInsightActors').scrollIntoViewIfNeeded()
   await expect(page).toHaveScreenshot('my-insights-people.png')
   await page.locator('#adultInsightRatedSection').scrollIntoViewIfNeeded()
   await expect(page).toHaveScreenshot('my-insights-rated.png')
 
-  await page.locator('[data-insights-mode="mabel"]').click()
+  await page.locator('[data-view-button="watch"]').click()
+  await page.locator('#watchMabelInsightsTab').click()
   await expect(page.locator('#mabelInsightsDashboard')).toBeVisible()
   await expect(page.locator('#adultInsightsDashboard')).toBeHidden()
+  await expect(page.locator('#insightsDomainTitle')).toHaveText('MabelTV')
   await expect(page.locator('#viewingRangeControls')).toBeVisible()
   const range = await page.locator('#viewingRangeControls').evaluate(root => ({
     height: root.getBoundingClientRect().height,
@@ -99,7 +105,8 @@ test('Adult TV insight facets and people open their useful next level', async ({
     ...title, rating: 0, genres: [], countries: [], language: 'EN', cast_ids: [1],
     creative_ids: [], on_mabeltv: false, watchlisted: false,
   })) })
-  await page.locator('[data-view-button="insights"]').click()
+  await page.locator('[data-view-button="adult-home"]').click()
+  await page.locator('#adultHomeInsightsTab').click()
 
   await page.locator('#adultInsightActors .adult-insight-person').first().click()
   await expect(page.locator('#adultPersonSheet')).toBeVisible()

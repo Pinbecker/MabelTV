@@ -295,13 +295,15 @@ class FixtureLibrary:
             "known_for": [], "filmography": [],
         }
 
-    def adult_explore(self, list_id: str, media_type: str, page: Any) -> dict[str, Any]:
+    def adult_explore(self, list_id: str, media_type: str, page: Any,
+                      available_only: bool = False, limit: Any = None) -> dict[str, Any]:
         page_number = int(page)
         kinds = ["movie", "tv"] if media_type == "all" else [media_type]
         results = []
+        list_offset = 0 if list_id == "for-you" else 5000
         for index in range(24):
             kind = kinds[index % len(kinds)]
-            identifier = page_number * 1000 + index + 1
+            identifier = list_offset + page_number * 1000 + index + 1
             results.append({
                 "key": f"{kind}:{identifier}", "media_type": kind,
                 "tmdb_id": identifier, "title": f"Explore title {identifier}",
@@ -318,9 +320,11 @@ class FixtureLibrary:
         selected = next((value for value in lists if value["id"] == list_id), lists[0])
         results = [value for value in results if self.viewing_titles.get(
             value["key"], {}).get("manual_state") != "watched"]
+        result_limit = max(1, min(24, int(limit or 24)))
         return {"list": selected, "lists": lists, "media_type": media_type,
                 "page": page_number, "has_more": page_number < 3,
-                "results": results, "region": "GB"}
+                "results": results[:result_limit], "region": "GB",
+                "available_only": available_only}
 
     def adult_explore_feedback(self, payload: dict[str, Any]) -> dict[str, Any]:
         return {"ok": True, "recorded": len(payload.get("items", []))}
@@ -396,6 +400,13 @@ class FixtureLibrary:
                 current.pop("personal_rating", None)
             current["rating_updated"] = 2_000_000_000
         return {"ok": True, "key": key, "viewing": copy.deepcopy(current)}
+
+    def adult_up_next_reorder(self, payload: dict[str, Any]) -> dict[str, Any]:
+        keys = [str(value) for value in payload.get("keys", [])]
+        for index, key in enumerate(keys, start=1):
+            if key in self.viewing_titles:
+                self.viewing_titles[key]["up_next_rank"] = index
+        return {"ok": True, "keys": keys}
 
     def login_allowed(self, address: str) -> bool:
         return True

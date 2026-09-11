@@ -18,6 +18,13 @@
       return head
     }
 
+    function downloadBelongsHere(value) {
+      const source = value?.source || value?.manifest?.source || {}
+      const adult = ['adult', 'adult-series'].includes(source.kind)
+        || value?.protected === true || value?.manifest?.protected === true
+      return downloadDomain === 'adult' ? adult : !adult
+    }
+
     async function renderDownloads() {
       const target = $('#downloadsGrid')
       const root = document.createElement('div')
@@ -47,15 +54,19 @@
         preservePortalPosition(() => target.replaceChildren(...root.childNodes))
         return
       }
+      downloads = downloads.filter(downloadBelongsHere)
       if (navigator.storage?.estimate) {
         try {
           const estimate = await navigator.storage.estimate()
-          $('#downloadsStorage').textContent = `${window.MabelOffline.formatBytes(estimate.usage || 0)} used on this device`
+          $('#downloadsStorage').textContent = downloads.length
+            ? `${downloads.length} saved · ${window.MabelOffline.formatBytes(estimate.usage || 0)} total storage`
+            : 'Nothing saved here'
         } catch (_) { $('#downloadsStorage').textContent = `${downloads.length} saved` }
       } else $('#downloadsStorage').textContent = `${downloads.length} saved`
       root.innerHTML = ''
       const completedIds = new Set(downloads.map(item => item.id))
       pendingDownloads.forEach((pending, key) => {
+        if (!downloadBelongsHere(pending)) return
         if (pending.manifest?.id && completedIds.has(pending.manifest.id)) return
         const card = document.createElement('article')
         card.className = 'download-card'
@@ -130,7 +141,9 @@
       if (!root.children.length) root.append(portalEmptyState({
         className: 'downloads-empty',
         title: 'No downloads yet',
-        message: 'Choose Download to this device on a film, programme, or USB video.',
+        message: downloadDomain === 'adult'
+          ? 'Download an Adult TV film or episode to see it here.'
+          : 'Download a MabelTV programme or USB video to see it here.',
       }))
       preservePortalPosition(() => target.replaceChildren(...root.childNodes))
     }

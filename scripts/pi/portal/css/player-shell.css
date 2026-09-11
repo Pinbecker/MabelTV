@@ -163,6 +163,7 @@
     background: #000;
     box-shadow: inset 0 0 0 1px #ffffff13, 0 0 0 1px #0008;
     cursor: none;
+    touch-action: manipulation;
   }
 
   .mabel-watch-player.controls-visible .mabel-watch-screen {
@@ -179,6 +180,9 @@
     filter:
       contrast(calc(1 + var(--distortion) * 0.04))
       saturate(calc(1 + var(--distortion) * 0.08));
+    /* The CRT player owns playback controls. Prevent iOS's promoted video
+       layer from swallowing taps intended for that control surface. */
+    pointer-events: none;
   }
 
   .mabel-watch-screen::after {

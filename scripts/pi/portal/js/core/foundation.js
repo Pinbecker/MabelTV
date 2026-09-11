@@ -54,6 +54,8 @@ const $ = selector => document.querySelector(selector)
     // Watch opens on the family MabelTV library. Adult TV and downloads remain
     // explicit choices rather than carrying over from an earlier visit.
     let remoteKind = 'channel'
+    let watchDomain = 'mabel'
+    let downloadDomain = 'mabel'
     let watchFolder = '*'
     let watchSearchText = ''
     let mabelSearchText = ''
@@ -153,6 +155,22 @@ const $ = selector => document.querySelector(selector)
         throw error
       }
       return body
+    }
+
+    function readPortalDataCache(key) {
+      try {
+        const cached = JSON.parse(localStorage.getItem(`mabeltv-data-${key}`) || 'null')
+        return cached && Number.isFinite(Number(cached.saved_at)) && cached.data
+          ? cached : null
+      } catch (_) { return null }
+    }
+
+    function writePortalDataCache(key, data) {
+      try {
+        localStorage.setItem(`mabeltv-data-${key}`, JSON.stringify({
+          saved_at: Date.now(), data,
+        }))
+      } catch (_) { /* The live in-memory view remains available when storage is full. */ }
     }
 
     function showOnly(id) {

@@ -3,15 +3,17 @@
     const watchTabPositions = new Map()
     let renderedWatchKind = null
 
-    function renderRemoteViewing() {
+    function renderRemoteViewing({ force = false } = {}) {
       const position = capturePortalPosition()
       const visible = position.view?.id === 'view-watch'
+      const renderedKey = `${watchDomain}:${remoteKind}`
       if (visible && renderedWatchKind && !position.locked) watchTabPositions.set(renderedWatchKind, position)
-      const changed = renderedWatchKind !== remoteKind
+      const changed = renderedWatchKind !== renderedKey
+      if (!changed && !force) return
       if (changed) cancelPortalScrollSettlement()
       renderWatchSections()
-      renderedWatchKind = remoteKind
-      restorePortalPosition(visible && changed ? watchTabPositions.get(remoteKind) || position : position)
+      renderedWatchKind = renderedKey
+      restorePortalPosition(visible && changed ? watchTabPositions.get(renderedKey) || position : position)
     }
 
     function renderWatchSections() {
@@ -20,16 +22,16 @@
       $('#remoteConcurrentState').textContent = simultaneous
         ? 'On · TV and browser can play together' : 'Off · one player at a time'
       $('#remoteConcurrentToggle').setAttribute('aria-pressed', String(simultaneous))
+      $('#watchDomainTitle').textContent = watchDomain === 'adult' ? 'Adult TV' : 'MabelTV'
+      $('#watchDomainFooter').innerHTML = watchDomain === 'adult'
+        ? 'Adult TV · Downloads' : `<span data-tv-name>${escapeHtml(tvName())}</span> · Remote viewing`
       $('#watchMabelTab').classList.toggle('active', remoteKind === 'channel'); $('#watchMabelTab').setAttribute('aria-selected', String(remoteKind === 'channel'))
-      $('#watchAdultTab').classList.toggle('active', remoteKind === 'adult'); $('#watchAdultTab').setAttribute('aria-selected', String(remoteKind === 'adult'))
+      $('#watchMabelInsightsTab').classList.remove('active'); $('#watchMabelInsightsTab').setAttribute('aria-selected', 'false')
       $('#watchDownloadsTab').classList.toggle('active', remoteKind === 'downloads'); $('#watchDownloadsTab').setAttribute('aria-selected', String(remoteKind === 'downloads'))
-      $('#watchMabelLayout').classList.toggle('hidden', remoteKind !== 'channel'); $('#watchAdultLayout').classList.toggle('hidden', remoteKind !== 'adult')
+      $('#watchMabelLayout').classList.toggle('hidden', remoteKind !== 'channel')
       $('#watchDownloadsLayout').classList.toggle('hidden', remoteKind !== 'downloads')
-      $('#watchLibraryAdmin').classList.toggle('hidden', remoteKind !== 'adult')
       const mabelAdmin = $('#watchMabelAdmin')
       if (mabelAdmin) mabelAdmin.classList.toggle('hidden', remoteKind !== 'channel')
-      $('#watchAddAdult').classList.toggle('hidden', remoteKind !== 'adult')
-      $('#watchManageAdult').classList.toggle('hidden', remoteKind !== 'adult')
       if (remoteKind === 'downloads') {
         renderDownloads().catch(showError)
         return
@@ -143,21 +145,12 @@
       renderHomeLibrary()
     }
 
-    function chooseWatchLibrary(kind, returnToTop = false) {
-      remoteKind = kind
-      renderRemoteViewing()
-      if (returnToTop) scrollPortalToTop()
-    }
-
-    $('#watchMabelTab').onclick = () => chooseWatchLibrary('channel', true)
-    $('#watchAdultTab').onclick = () => chooseWatchLibrary('adult', true)
-    $('#watchDownloadsTab').onclick = () => chooseWatchLibrary('downloads')
-    $('#openHeaderAdultTv').onclick = () => {
-      remoteKind = 'adult'
-      renderRemoteViewing()
-      openView('watch')
-      scrollPortalToTop()
-    }
+    $('#watchMabelTab').onclick = () => navigateDomainRoute(watchDomain, 'watch')
+    $('#watchMabelInsightsTab').onclick = () => navigateDomainRoute(watchDomain, 'insights')
+    $('#watchDownloadsTab').onclick = () => navigateDomainRoute(watchDomain, 'downloads')
+    $('#adultHomeWatchTab').onclick = () => navigateDomainRoute('adult', 'watch')
+    $('#adultHomeInsightsTab').onclick = () => navigateDomainRoute('adult', 'insights')
+    $('#adultHomeDownloadsTab').onclick = () => navigateDomainRoute('adult', 'downloads')
     const watchTitle = $('#view-watch .watch-title > div:first-child')
     watchTitle.onclick = () => scrollPortalToTop()
     watchTitle.onkeydown = event => {
@@ -173,6 +166,8 @@
       document.body.classList.add('offline-mode')
       offlineMode = true
       remoteKind = 'downloads'
+      watchDomain = 'mabel'
+      downloadDomain = 'mabel'
       openView('watch')
       renderRemoteViewing()
     })

@@ -1,7 +1,14 @@
 import { test, expect } from '@playwright/test'
 
+test.use({ serviceWorkers: 'block' })
+
 
 async function openLightPortal(page) {
+  await page.route('https://image.tmdb.org/**', route => route.fulfill({
+    status: 200,
+    contentType: 'image/svg+xml',
+    body: '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450"><defs><linearGradient id="g" x2="1" y2="1"><stop stop-color="#b5d9d3"/><stop offset="1" stop-color="#537a86"/></linearGradient></defs><rect width="300" height="450" fill="url(#g)"/><circle cx="210" cy="110" r="76" fill="rgba(255,255,255,.2)"/><path d="M0 360L300 180v270H0z" fill="rgba(0,0,0,.24)"/></svg>',
+  }))
   await page.addInitScript(() => {
     localStorage.setItem('mabeltv-experience-theme', 'light')
     if (localStorage.getItem('mabeltv-experience-accent-hue') === null) {
@@ -43,16 +50,16 @@ test('light Home and Watch use the dark design language on neutral surfaces', as
   await expect(page).toHaveScreenshot('light-home.png')
 
   await page.locator('[data-view-button="watch"]').click()
-  const activeTab = page.locator('.watch-tabs button.active')
+  const activeTab = page.locator('#view-watch .watch-tabs button.active')
   await expect(activeTab).toHaveCSS('box-shadow', 'none')
   await expect(activeTab).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
   await expect(page).toHaveScreenshot('light-watch-mabeltv.png')
 
-  await page.locator('#watchAdultTab').click()
-  await expect(page.locator('#watchAdultLayout')).toBeVisible()
+  await page.locator('[data-view-button="adult-home"]').click()
+  await expect(page.locator('#view-adult-home')).toBeVisible()
   await expect(page).toHaveScreenshot('light-watch-adult.png')
 
-  await page.locator('#watchDownloadsTab').click()
+  await page.locator('#adultHomeDownloadsTab').click()
   await expect(page.locator('#watchDownloadsLayout')).toBeVisible()
   await expect(page).toHaveScreenshot('light-watch-downloads.png')
 })
@@ -256,12 +263,16 @@ test('light utility, Settings and insight routes stay neutral and legible', asyn
   expect(settingsOrder[0]).toContain('settings-appearance-row')
   expect(settingsOrder[1]).toContain('settings-disclosure')
   await expect(page.locator('[data-portal-design]')).toHaveCount(0)
+  await page.waitForTimeout(250)
+  await page.evaluate(() => window.scrollTo(0, 0))
   await expect(page).toHaveScreenshot('light-settings.png')
 
-  await page.locator('[data-view-button="insights"]').click()
+  await page.locator('[data-view-button="adult-home"]').click()
+  await page.locator('#adultHomeInsightsTab').click()
   await expect(page.locator('#adultInsightsDashboard')).toBeVisible()
   await expect(page).toHaveScreenshot('light-my-insights.png')
-  await page.locator('[data-insights-mode="mabel"]').click()
+  await page.locator('[data-view-button="watch"]').click()
+  await page.locator('#watchMabelInsightsTab').click()
   await expect(page.locator('#view-insights')).toBeVisible()
   const rangeBackground = await page.locator('.insights-page .viewing-range')
     .evaluate(element => getComputedStyle(element).backgroundColor)

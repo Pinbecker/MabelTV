@@ -139,12 +139,12 @@
         usbSelection.clear()
         renderUsbFiles()
         await refreshUsb()
-        openView('activity')
+        pushPrimaryChildView('activity')
         await loadActivity()
         notice('USB transfer added to Activity. You can leave this page while it copies.')
       } catch (error) { notice(error.message, true); button.disabled = false }
     }
-    $('#usbViewActivity').onclick = () => { openView('activity'); loadActivity().catch(() => {}) }
+    $('#usbViewActivity').onclick = () => { pushPrimaryChildView('activity'); loadActivity().catch(() => {}) }
 
 
     function renderTvSettings() {

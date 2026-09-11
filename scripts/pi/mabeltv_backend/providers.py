@@ -466,7 +466,23 @@ class ProviderMetadataMixin:
         results: list[dict[str, Any]] = []
         seen: set[str] = set()
         for value in response.get("results", []) if isinstance(response, dict) else []:
-            if not isinstance(value, dict) or value.get("media_type") not in {"movie", "tv"}:
+            if not isinstance(value, dict) or value.get("media_type") not in {"movie", "tv", "person"}:
+                continue
+            if value.get("media_type") == "person":
+                person_id = int(value.get("id", 0) or 0)
+                name = str(value.get("name") or "").strip()
+                if not person_id or not name:
+                    continue
+                key = f"person:{person_id}"
+                results.append({
+                    "key": key, "media_type": "person", "tmdb_id": person_id,
+                    "title": name, "name": name,
+                    "profile_path": str(value.get("profile_path") or ""),
+                    "known_for_department": str(value.get("known_for_department") or ""),
+                })
+                seen.add(key)
+                if len(results) >= 20:
+                    break
                 continue
             item = self.adult_title_summary(value, str(value["media_type"]))
             if not item["tmdb_id"] or not item["title"]:

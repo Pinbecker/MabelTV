@@ -13,16 +13,20 @@ for (const event of ['pointerdown', 'touchstart', 'wheel', 'keydown', 'click', '
   document.addEventListener(event, cancelPortalScrollSettlement, { passive: true, capture: true })
 }
 
-function settlePortalPosition(position) {
+async function settlePortalPosition(position) {
   // WebKit can apply a final scroll correction after a large library repaint.
   // A newer refresh, navigation or user gesture always cancels this correction.
   const revision = ++portalScrollSettlement
   const animations = position.view?.getAnimations() || []
-  return Promise.allSettled(animations.map(animation => animation.finished)).then(() =>
-    new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => {
-    if (revision === portalScrollSettlement) restorePortalPosition(position)
-    resolve()
-  }))))
+  await Promise.allSettled(animations.map(animation => animation.finished))
+  // A replaced snapping rail can acquire its final scroll width a frame later
+  // than the surrounding page. Repeat only across the immediate paint window;
+  // any real input or newer navigation invalidates the revision first.
+  for (let frame = 0; frame < 4; frame += 1) {
+    await new Promise(resolve => requestAnimationFrame(resolve))
+    if (revision !== portalScrollSettlement) return
+    restorePortalPosition(position)
+  }
 }
 
 function portalScrollTop() {
@@ -38,6 +42,16 @@ function setPortalScrollTop(value) {
 }
 
 function resetViewScroll() { setPortalScrollTop(0) }
+
+function settlePortalReset() {
+  const view = document.querySelector('.view.active')
+  const revision = ++portalScrollSettlement
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (revision === portalScrollSettlement && view === document.querySelector('.view.active')) {
+      resetViewScroll()
+    }
+  }))
+}
 
 function scrollPortalToTop() {
   cancelPortalScrollSettlement()

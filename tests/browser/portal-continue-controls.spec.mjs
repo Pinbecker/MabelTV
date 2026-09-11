@@ -34,6 +34,35 @@ test('MabelTV film More offers removal from Continue Watching', async ({ page },
   })
 })
 
+test('multi-line MabelTV film titles keep the heart beside their first line', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'iphone-chromium', 'One phone covers title wrapping geometry')
+  await openPortal(page)
+  await page.evaluate(() => {
+    const channel = library.channels.find(value => value.content_type === 'films')
+    channel.programmes[0].metadata.title = "The Scarecrows' Wedding"
+    openWatchProgrammeSheet(channel, channel.programmes[0])
+  })
+  await page.waitForTimeout(50)
+  const geometry = await page.locator('#watchProgrammeSheet .portal-sheet-title-row')
+    .evaluate(row => {
+      const title = row.querySelector('#watchProgrammeTitle')
+      const range = document.createRange()
+      range.selectNodeContents(title)
+      const firstLine = range.getClientRects()[0]
+      const icon = row.querySelector('#watchProgrammeFavourite .icon').getBoundingClientRect()
+      return {
+        lines: range.getClientRects().length,
+        gap: icon.left - firstLine.right,
+        centreOffset: Math.abs((icon.top + icon.height / 2)
+          - (firstLine.top + firstLine.height / 2)),
+      }
+    })
+  expect(geometry.lines).toBe(2)
+  expect(geometry.gap).toBeGreaterThanOrEqual(6)
+  expect(geometry.gap).toBeLessThanOrEqual(12)
+  expect(geometry.centreOffset).toBeLessThanOrEqual(1)
+})
+
 test('continued episodes offer View Series and direct progress removal', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One browser covers the continue menu flow')
   await openPortal(page)
@@ -59,6 +88,8 @@ test('continued episodes offer View Series and direct progress removal', async (
     openAdultEpisodeSheet(series, episode)
   })
 
+  await expect(page.locator('#adultEpisodeViewSeries')).toBeVisible()
+  await expect(page.locator('#adultEpisodeWatched')).toHaveCount(0)
   await page.locator('#adultEpisodeViewSeries').click()
   await expect.poll(() => page.evaluate(() => window.__viewedSeries)).toBe('ludwig')
   await page.evaluate(() => openAdultEpisodeSheet(library.adult_series[0],

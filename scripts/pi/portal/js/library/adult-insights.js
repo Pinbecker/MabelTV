@@ -1,6 +1,10 @@
 'use strict'
 
-let adultInsightsData = null
+const adultInsightsCache = readPortalDataCache('adult-insights-v1')
+let adultInsightsData = adultInsightsCache?.data || null
+let adultInsightsLoadedAt = Number(adultInsightsCache?.saved_at || 0)
+let adultInsightsRendered = false
+let adultInsightsRequest = null
 let myInsightsMode = 'adult'
 let adultInsightsPoll = null
 let adultInsightBrowseRoute = null
@@ -287,6 +291,7 @@ function renderAdultInsights() {
     : 'Add a TMDB key to build genre, actor and director insights.'
   $('#adultInsightsDashboard').classList.toggle('hidden', Boolean(adultInsightBrowseRoute))
   if (adultInsightBrowseRoute) renderAdultInsightBrowse()
+  adultInsightsRendered = true
 }
 
 function adultInsightLanguageName(code) {
@@ -453,28 +458,35 @@ function scheduleAdultInsightsPoll() {
 async function loadAdultInsights(force = false) {
   const loading = $('#adultInsightsLoading')
   if (!loading || offlineMode) return
-  if (adultInsightsData && !force) {
-    renderAdultInsights()
+  loading.classList.add('hidden')
+  if (adultInsightsData) {
+    if (!adultInsightsRendered) renderAdultInsights()
     scheduleAdultInsightsPoll()
-    return
+    const fresh = adultInsightsLoadedAt
+      && Date.now() - adultInsightsLoadedAt < 5 * 60 * 1000
+    if (!force && fresh) return
   }
-  if (!adultInsightsData) {
-    loading.textContent = 'Building your viewing profile…'
-    loading.classList.remove('hidden')
-  }
-  try {
-    adultInsightsData = await api('/api/adult/insights')
-    loading.classList.add('hidden')
-    renderAdultInsights()
-    scheduleAdultInsightsPoll()
-  } catch (error) {
-    loading.textContent = 'Your Adult TV insights are temporarily unavailable.'
-    loading.classList.remove('hidden')
-  }
+  if (adultInsightsRequest) return adultInsightsRequest
+  adultInsightsRequest = (async () => {
+    try {
+      adultInsightsData = await api('/api/adult/insights')
+      adultInsightsLoadedAt = Date.now()
+      writePortalDataCache('adult-insights-v1', adultInsightsData)
+      adultInsightsRendered = false
+      renderAdultInsights()
+      scheduleAdultInsightsPoll()
+    } catch (error) {
+      if (!adultInsightsData) $('#adultInsightsDashboard')?.classList.remove('hidden')
+    } finally {
+      adultInsightsRequest = null
+    }
+  })()
+  return adultInsightsRequest
 }
 
 function setMyInsightsMode(mode, options = {}) {
   myInsightsMode = mode === 'mabel' ? 'mabel' : 'adult'
+  $('#insightsDomainTitle').textContent = myInsightsMode === 'mabel' ? 'MabelTV' : 'Adult TV'
   $$('[data-insights-mode]').forEach(button => {
     const active = button.dataset.insightsMode === myInsightsMode
     button.classList.toggle('active', active)
@@ -484,7 +496,7 @@ function setMyInsightsMode(mode, options = {}) {
     myInsightsMode !== 'adult' || Boolean(adultInsightBrowseRoute))
   $('#adultInsightBrowse').classList.toggle('hidden',
     myInsightsMode !== 'adult' || !adultInsightBrowseRoute)
-  $('#adultInsightsLoading').classList.toggle('hidden', myInsightsMode !== 'adult')
+  $('#adultInsightsLoading').classList.add('hidden')
   $('#mabelInsightsDashboard').classList.toggle('hidden', myInsightsMode !== 'mabel')
   if (options.updateHistory) {
     const path = myInsightsMode === 'mabel' ? 'insights/mabeltv' : 'insights'
@@ -493,7 +505,7 @@ function setMyInsightsMode(mode, options = {}) {
   }
   if (options.load === false) return Promise.resolve()
   if (myInsightsMode === 'mabel') return loadViewingInsights().catch(() => {})
-  return loadAdultInsights(true).catch(() => {})
+  return loadAdultInsights().catch(() => {})
 }
 
 function loadMyInsights() {
@@ -505,6 +517,12 @@ window.loadMyInsights = loadMyInsights
 
 $$('[data-insights-mode]').forEach(button => button.addEventListener('click', () =>
   setMyInsightsMode(button.dataset.insightsMode, { updateHistory: true })))
+
+$('#insightsWatchTab')?.addEventListener('click', () =>
+  navigateDomainRoute(myInsightsMode, 'watch'))
+$('#insightsDownloadsTab')?.addEventListener('click', () =>
+  navigateDomainRoute(myInsightsMode, 'downloads'))
+$('#insightsDomainTitle')?.closest('[role="button"]')?.addEventListener('click', scrollPortalToTop)
 
 $$('[data-adult-insight-kind]').forEach(button => button.addEventListener('click', () =>
   openAdultInsightBrowse(button.dataset.adultInsightKind, button.dataset.adultInsightValue || '')))
@@ -533,5 +551,8 @@ $('#adultInsightRateLink')?.addEventListener('click', () => {
 })
 
 document.addEventListener('mabeltv:accent-change', () => {
-  if (adultInsightsData && myInsightsMode === 'adult') renderAdultInsights()
+  if (adultInsightsData && myInsightsMode === 'adult') {
+    adultInsightsRendered = false
+    renderAdultInsights()
+  }
 })

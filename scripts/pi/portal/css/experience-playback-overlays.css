@@ -137,6 +137,23 @@ body.portal-experience .watch-film-heading .portal-sheet-title-row {
   padding-right: 0;
 }
 
+body.portal-experience #watchProgrammeSheet .portal-sheet-title-row {
+  position: relative;
+  display: block;
+  padding-right: 44px;
+}
+
+body.portal-experience #watchProgrammeTitle {
+  width: fit-content;
+  max-width: calc(100% - 36px);
+}
+
+body.portal-experience #watchProgrammeSheet .sheet-favourite {
+  position: absolute;
+  top: var(--programme-favourite-top, 0);
+  left: var(--programme-favourite-left, calc(100% - 44px));
+}
+
 body.portal-experience .watch-film-eyebrow {
   margin: 0 0 3px;
   color: rgba(255, 255, 255, 0.68);
@@ -457,6 +474,7 @@ body.portal-experience .watch-programme-sheet:not([data-card-sheet]) > article >
 
 body.portal-experience .adult-film-sheet .watch-film-summary {
   grid-template-columns: minmax(0, 1fr);
+  min-height: 104px;
   padding: 20px 62px 16px 24px;
 }
 

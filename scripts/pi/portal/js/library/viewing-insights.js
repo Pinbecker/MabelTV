@@ -2,6 +2,21 @@
 
     const insightsPositions = new Map()
     let currentInsightsPath = 'insights'
+    let viewingInsightsLoadedAt = 0
+    let viewingInsightsRenderedKey = ''
+    let viewingInsightsRequest = null
+    let viewingInsightsRequestRange = null
+
+    function restoreViewingInsightsCache(range) {
+      const cached = readPortalDataCache(`mabel-insights-v1-${range}`)
+      if (!cached) return false
+      viewingInsightsData = cached.data
+      viewingInsightsLoadedRange = range
+      viewingInsightsLoadedAt = Number(cached.saved_at) || 0
+      return true
+    }
+
+    restoreViewingInsightsCache(viewingInsightsRange)
 
     function viewingDuration(seconds) {
       const minutes = Math.max(0, Math.round(Number(seconds || 0) / 60))
@@ -142,7 +157,7 @@
     }
 
     document.addEventListener('mabeltv:accent-change', () => {
-      if (viewingInsightsData) renderInsightsRoute()
+      if (viewingInsightsData) renderInsightsRoute(true)
     })
 
     function setViewingArtwork(root, url) {
@@ -433,8 +448,14 @@
       showViewingScreen($('#viewingPeriod'))
     }
 
-    function renderInsightsRoute() {
-      return preservePortalPosition(renderInsightsScreen)
+    function renderInsightsRoute(force = false) {
+      const route = viewingInsightsRoute
+      const key = [viewingInsightsRange, route.screen, route.itemKey || '', route.tab || '',
+        route.date || '', route.period ?? ''].join(':')
+      if (!force && viewingInsightsRenderedKey === key) return
+      const rendered = preservePortalPosition(renderInsightsScreen)
+      viewingInsightsRenderedKey = key
+      return rendered
     }
 
     function renderInsightsScreen() {
@@ -456,13 +477,13 @@
       }
     }
 
-    function openInsightsRoute(requested) {
+    function openInsightsRoute(requested, event = null, options = {}) {
       if ($('#view-insights').classList.contains('active')) {
         insightsPositions.set(currentInsightsPath, {
           position: capturePortalPosition(), search: $('#viewingBrowseSearch').value,
         })
       }
-      const saved = insightsPositions.get(requested)
+      const saved = options.reset ? null : insightsPositions.get(requested)
       currentInsightsPath = requested
       if (requested.startsWith('insights/adult/')) {
         $('.insights-page')?.classList.add('is-child')
@@ -670,18 +691,35 @@
       const root = $('#viewingInsights')
       if (!loading || !root || offlineMode) return
       loading.classList.add('hidden')
-      if (!force && viewingInsightsData && viewingInsightsLoadedRange === viewingInsightsRange) {
+      if (viewingInsightsLoadedRange !== viewingInsightsRange) {
+        restoreViewingInsightsCache(viewingInsightsRange)
+      }
+      if (viewingInsightsData && viewingInsightsLoadedRange === viewingInsightsRange) {
         renderInsightsRoute()
         root.classList.remove('hidden')
-        return
+        const fresh = viewingInsightsLoadedAt
+          && Date.now() - viewingInsightsLoadedAt < 5 * 60 * 1000
+        if (!force && fresh) return
       }
-      try {
-        const data = await api(`/api/viewing-insights?days=${viewingInsightsRange}&timezone_offset=${new Date().getTimezoneOffset()}`)
+      root.classList.remove('hidden')
+      if (viewingInsightsRequest) {
+        if (viewingInsightsRequestRange === viewingInsightsRange) return viewingInsightsRequest
+        const pending = viewingInsightsRequest
+        return pending.finally(() => loadViewingInsights(force))
+      }
+      const requestedRange = viewingInsightsRange
+      viewingInsightsRequestRange = requestedRange
+      viewingInsightsRequest = (async () => {
+        try {
+        const data = await api(`/api/viewing-insights?days=${requestedRange}&timezone_offset=${new Date().getTimezoneOffset()}`)
+        writePortalDataCache(`mabel-insights-v1-${requestedRange}`, data)
+        if (requestedRange !== viewingInsightsRange) return
         const position = capturePortalPosition()
         viewingInsightsData = data
-        viewingInsightsLoadedRange = viewingInsightsRange
+        viewingInsightsLoadedRange = requestedRange
+        viewingInsightsLoadedAt = Date.now()
         const rangeLabels = { 1: 'Today', 7: 'Last 7 days', 30: 'Last 30 days', 365: 'Last 12 months' }
-        const rangeLabel = rangeLabels[viewingInsightsRange] || 'Viewing activity'
+        const rangeLabel = rangeLabels[requestedRange] || 'Viewing activity'
         $('#viewingOverviewTitle').textContent = rangeLabel
         $('#viewingActiveDays').textContent = String(data.summary.active_days)
         $('#viewingRangeTotal').textContent = viewingDuration(data.summary.range_seconds)
@@ -700,8 +738,8 @@
             : `${Math.abs(change)}% ${change > 0 ? 'more' : 'less'} than the previous period`
           comparison.classList.add(change >= 0 ? 'up' : 'down')
         }
-        $('#viewingTimelineTitle').textContent = viewingInsightsRange === 1
-          ? 'Today by time of day' : viewingInsightsRange === 365
+        $('#viewingTimelineTitle').textContent = requestedRange === 1
+          ? 'Today by time of day' : requestedRange === 365
             ? 'Month by month' : 'Day by day'
         const sessions = Number(data.summary.sessions) || 0
         $('#viewingSessionSummary').textContent = sessions
@@ -709,14 +747,18 @@
           : 'No activity'
         renderViewingChart($('#viewingTimelineChart'), data.timeline || [], 'line')
         renderViewingChart($('#viewingTimeChart'), data.time_of_day || [], 'bar')
-        renderInsightsRoute()
+        renderInsightsRoute(true)
         root.classList.remove('hidden')
         loading.classList.add('hidden')
         restorePortalPosition(position)
       } catch (error) {
-        loading.textContent = 'Viewing insights are temporarily unavailable.'
-        loading.classList.remove('hidden')
+        root.classList.remove('hidden')
+      } finally {
+        viewingInsightsRequest = null
+        viewingInsightsRequestRange = null
       }
+      })()
+      return viewingInsightsRequest
     }
 
     $$('[data-viewing-range]').forEach(button => button.onclick = () => {

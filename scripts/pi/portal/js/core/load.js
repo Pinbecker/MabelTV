@@ -56,12 +56,23 @@
     }
 
     async function load(preferredUploadChannel = null) {
-      const data = await api('/api/library')
       const position = capturePortalPosition()
+      const interactionRevision = portalScrollSettlement
+      const data = await api('/api/library')
       library = data
       window.MabelPortalLibrary = library
       try { await loadAdultViewing({ render: false }) }
       catch (_) { adultViewingLoaded = false }
+      const latestPosition = capturePortalPosition()
+      if (!position.locked && latestPosition.view === position.view) {
+        // A person can keep scrolling while either request is in flight. Their
+        // latest vertical position wins, while untouched snapping rails retain
+        // the exact offset captured when the refresh began.
+        position.scrollY = latestPosition.scrollY
+        position.anchor = latestPosition.anchor
+        position.panels = latestPosition.panels
+        if (interactionRevision !== portalScrollSettlement) position.rails = latestPosition.rails
+      }
       offlineMode = false
       document.body.classList.remove('offline-mode')
       applyTvName()
@@ -114,7 +125,7 @@
       renderParentOverlayStyle()
       renderTvGuideSetting()
       renderWatchmodeAvailabilitySetting()
-      renderRemoteViewing()
+      renderRemoteViewing({ force: true })
       renderPortalPinSetting()
       restorePortalPosition(position)
       refreshHomePowerState().catch(() => {})

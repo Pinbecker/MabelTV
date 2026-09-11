@@ -149,6 +149,12 @@ test('content cards share compact Back and journey-closing X controls', async ({
   expect(settingsGeometry.height).toBeLessThan(personHeight - 20)
   expect(settingsGeometry.closeTop).toBeCloseTo(geometry.closeTop, 0)
   expect(settingsGeometry.closeRight).toBeCloseTo(geometry.closeRight, 0)
+  const downloadSpacing = await filmSettings.evaluate(sheet => {
+    const download = sheet.querySelector('#adultFilmDownload').getBoundingClientRect()
+    const divider = sheet.querySelector('.watch-film-summary').getBoundingClientRect()
+    return divider.bottom - download.bottom
+  })
+  expect(downloadSpacing).toBeGreaterThanOrEqual(10)
   await expect(filmSettings.locator('.watch-film-panel')).toHaveScreenshot('film-settings-menu.png')
 })
 

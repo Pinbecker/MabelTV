@@ -54,6 +54,7 @@ from mabeltv_backend.system import SystemStatusMixin
 from mabeltv_backend.uploads import UploadConversionMixin
 from mabeltv_backend.usb import UsbMixin
 from mabeltv_backend.viewing import ViewingMixin
+from mabeltv_backend.viewing_queue import ViewingQueueMixin
 
 __all__ = [
     "DEFAULT_CHANNELS",
@@ -386,7 +387,8 @@ class LiveStream:
 
 class Library(ViewingMixin, UploadConversionMixin, AuthenticationMixin,
               MediaCatalogueMixin, RemotePlaybackMixin, UsbMixin,
-              ProviderMetadataMixin, AdultInsightsMixin, AdultExploreMixin,
+              ProviderMetadataMixin, ViewingQueueMixin,
+              AdultInsightsMixin, AdultExploreMixin,
               SystemStatusMixin):
     def __init__(self, args: argparse.Namespace) -> None:
         self.media_root = Path(args.media_root).resolve()

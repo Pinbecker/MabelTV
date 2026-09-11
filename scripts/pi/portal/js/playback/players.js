@@ -4,6 +4,7 @@ let iosInlineControlTimer = null
 let mabelFilmArtCycleTimer = null
 let iosPlayerHistoryActive = false
 let iosPlayerReturnTo = null
+let mabelPlayerReturnTo = null
 
 function openIosPlayerHistoryLayer() {
   if (iosPlayerHistoryActive) return
@@ -283,6 +284,8 @@ function remoteTime(value) {
     function closeMabelWatchPlayer() {
       const video = $('#mabelWatchVideo')
       const session = mabelRemoteSession
+      const returnTo = mabelPlayerReturnTo
+      mabelPlayerReturnTo = null
       const saved = saveMabelRemotePosition(false, true)
       clearInterval(mabelRemoteHeartbeatTimer)
       clearInterval(mabelRemotePositionTimer)
@@ -296,6 +299,7 @@ function remoteTime(value) {
       $('#mabelWatchPlayer').classList.add('hidden')
       $('#mabelWatchPlayer').classList.remove('controls-visible')
       unlockPortalPlayerScroll()
+      if (returnTo) queueMicrotask(returnTo)
       saved.finally(() => {
         if (session) return api('/api/remote/release', {
           method: 'POST', body: JSON.stringify({ stream: session }),
@@ -321,7 +325,10 @@ function remoteTime(value) {
     async function startMabelWatchPlayer(payload) {
       const shell = $('#mabelWatchPlayer'); const video = $('#mabelWatchVideo'); const error = $('#mabelWatchError')
       shell.classList.remove('hidden'); error.classList.add('hidden')
-      lockPortalPlayerScroll()
+      // The player shell is already fixed to the viewport. Fixing the body as
+      // well shifts iOS PWA touch coordinates whenever the launch page has a
+      // retained scroll position, leaving visible controls impossible to tap.
+      lockPortalPlayerScroll(false)
       showMabelWatchControls(true)
       try {
         let result
@@ -391,7 +398,7 @@ function remoteTime(value) {
         body: JSON.stringify({ action: 'set-remote-simultaneous', enabled: true }),
       })
       remote.allow_simultaneous = true
-      renderRemoteViewing()
+      renderRemoteViewing({ force: true })
     }
 
     async function startRemoteStream(payload) {
@@ -421,20 +428,20 @@ function remoteTime(value) {
     async function downloadToDevice(payload, title) {
       if (!offlineStorageReady || !window.MabelOffline) {
         notice(offlineStorageError || 'Set up the secure MabelTV app from the Downloads tab first.', true)
-        remoteKind = 'downloads'
-        renderRemoteViewing()
-        openView('watch')
+        const domain = ['adult', 'adult-series'].includes(payload?.kind) ? 'adult' : 'mabel'
+        navigateDomainRoute(domain, 'downloads')
         return
       }
       const pendingId = JSON.stringify(payload)
-      pendingDownloads.set(pendingId, { title, phase: 'preparing', message: 'Preparing download…' })
-      remoteKind = 'downloads'
-      renderRemoteViewing()
-      openView('watch')
+      pendingDownloads.set(pendingId, { title, source: payload,
+        phase: 'preparing', message: 'Preparing download…' })
+      downloadDomain = ['adult', 'adult-series'].includes(payload?.kind) ? 'adult' : 'mabel'
+      watchDomain = downloadDomain
+      navigateDomainRoute(downloadDomain, 'downloads')
       await renderDownloads()
       try {
         await window.MabelOffline.startDownload(payload, title, update => {
-          pendingDownloads.set(pendingId, { title, ...update })
+          pendingDownloads.set(pendingId, { title, source: payload, ...update })
           renderDownloads().catch(() => {})
         })
         pendingDownloads.delete(pendingId)
@@ -456,6 +463,7 @@ function remoteTime(value) {
       try {
         await allowIndependentViewing()
         if (payload.kind === 'channel') {
+          mabelPlayerReturnTo = returnTo
           await startMabelWatchPlayer({ ...payload, position: Math.max(0, Number(position) || 0) })
           return
         }
@@ -514,7 +522,7 @@ function remoteTime(value) {
     $('#mabelWatchSeek').onchange = () => showMabelWatchControls()
     $('#mabelWatchScreen').onpointermove = () => showMabelWatchControls()
     $('#mabelWatchScreen').onpointerdown = event => {
-      if (event.target === $('#mabelWatchVideo')) showMabelWatchControls()
+      if (!event.target.closest?.('button, input')) showMabelWatchControls()
     }
     document.addEventListener('keydown', event => {
       if ($('#mabelWatchPlayer').classList.contains('hidden')) return

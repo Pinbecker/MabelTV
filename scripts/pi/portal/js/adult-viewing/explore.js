@@ -77,8 +77,12 @@ const adultExploreImpressionObserver = 'IntersectionObserver' in window
     adultExploreImpressionStarts.delete(card)
   }), { threshold: [0, .65] }) : null
 
-function adultExploreTitle(title) {
-  return { ...title, local_context: 'explore', catalogue_only: true }
+function adultExploreTitle(title, context = 'explore') {
+  return {
+    ...title,
+    local_context: context,
+    catalogue_only: context !== 'adult-home',
+  }
 }
 
 function syncAdultExploreCard(card, title) {
@@ -150,7 +154,7 @@ function adultExploreCard(title, { directActions = true, context = 'explore' } =
   openArt.append(art)
   openArt.onclick = () => {
     card.dataset.exploreActed = 'true'
-    openAdultTitle({ ...adultExploreTitle(title), local_context: context })
+    openAdultTitle(adultExploreTitle(title, context))
   }
 
   const actions = document.createElement('span')
@@ -173,7 +177,7 @@ function adultExploreCard(title, { directActions = true, context = 'explore' } =
   watched.onclick = async () => {
     card.dataset.exploreActed = 'true'
     if (title.media_type === 'tv') {
-      openAdultTitle(adultExploreTitle(title))
+      openAdultTitle(adultExploreTitle(title, context))
       return
     }
     if (watched.dataset.saving === 'true') return
@@ -207,7 +211,7 @@ function adultExploreCard(title, { directActions = true, context = 'explore' } =
   openCopy.setAttribute('aria-label', `Open details for ${title.title}`)
   openCopy.onclick = () => {
     card.dataset.exploreActed = 'true'
-    openAdultTitle({ ...adultExploreTitle(title), local_context: context })
+    openAdultTitle(adultExploreTitle(title, context))
   }
   card.append(visual, openCopy)
   syncAdultExploreCard(card, title)

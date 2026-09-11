@@ -26,9 +26,7 @@ async function filmFixture(page) {
     ].map(([title, folder, genres]) => ({ path: title + '.mkv', display_name: title, folder,
       browser_ready: false, size: 1000, metadata: { title, genres, year: '2014' } }))
     renderAdultLibrary()
-    remoteKind = 'adult'
-    openView('watch')
-    renderRemoteViewing()
+    openView('adult-home')
   })
 }
 
@@ -98,42 +96,22 @@ for (const theme of ['light', 'dark']) {
     await expect(page.locator('#adultCollectionSheet')).toBeHidden()
   })
 
-  test(`${theme} compact film filters combine metadata genres and collections`, async ({ page }, testInfo) => {
+  test(`${theme} Adult TV keeps compact search and library controls`, async ({ page }, testInfo) => {
     await openPortal(page, theme)
     await filmFixture(page)
-    const collection = page.locator('#watchCollectionFilter')
-    const genre = page.locator('#watchGenreFilter')
-    await collection.scrollIntoViewIfNeeded()
-    const filters = await page.locator('.watch-film-filters').boundingBox()
-    expect(filters.height).toBeLessThanOrEqual(38)
-    expect(filters.height).toBeGreaterThanOrEqual(34)
-    await expect(page.locator('#remoteAdult .watch-card')).toHaveCount(5)
-    await collection.selectOption('Marvel')
-    await expect(page.locator('#remoteAdult .watch-card')).toHaveCount(2)
-    await genre.selectOption('Adventure')
-    await expect(page.locator('#remoteAdult .watch-card')).toHaveCount(1)
-    await expect(page.locator('#remoteAdult')).toContainText('Captain America')
-    await page.screenshot({ path: testInfo.outputPath('filters.png') })
-    await genre.selectOption('Horror')
-    await expect(page.locator('#remoteAdult')).toContainText('No matching films')
-    await collection.selectOption('')
-    await expect(page.locator('#remoteAdult .watch-card')).toHaveCount(1)
-    await genre.selectOption('')
-    await expect(page.locator('#remoteAdult .watch-card')).toHaveCount(2)
-    await expect(page.locator('#remoteAdult')).toContainText('Unmatched film')
-    await collection.selectOption('*')
-    await genre.selectOption('Fantasy')
-    await page.locator('#watchSearch').fill('Thor')
-    await expect(page.locator('#remoteAdult .watch-card')).toHaveCount(1)
-    await expect(genre).toHaveValue('Fantasy')
-    await page.locator('#watchSearchClear').click()
-    // On phones, search remains open while the empty search field has focus.
-    await page.locator('#watchSearch').press('Tab')
-    await genre.selectOption('')
-    await collection.selectOption('Empty')
-    await page.evaluate(() => { library.adult_folders = library.adult_folders.filter(value => value !== 'Empty'); renderAdultWatch() })
-    await expect(collection).toHaveValue('*')
-    await expect(page.locator('#remoteAdult .watch-card')).toHaveCount(5)
+    const geometry = await page.locator('#view-adult-home').evaluate(view => {
+      const search = view.querySelector('.watch-search').getBoundingClientRect()
+      const viewing = view.querySelector('#adultMyViewing').getBoundingClientRect()
+      const tools = [...view.querySelectorAll('#watchLibraryAdmin button')]
+        .map(button => button.getBoundingClientRect())
+      return { search: search.height, viewing: viewing.height,
+        toolMax: Math.max(...tools.map(tool => tool.height)) }
+    })
+    expect(geometry.search).toBeLessThanOrEqual(50)
+    expect(geometry.viewing).toBeLessThanOrEqual(56)
+    expect(geometry.toolMax).toBeLessThanOrEqual(48)
+    await expect(page.locator('#watchManageAdult')).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath('adult-home-controls.png') })
   })
 
   test(`${theme} film title card keeps its header fixed over scrolling detail content`, async ({ page }) => {

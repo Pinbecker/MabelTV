@@ -28,13 +28,14 @@ body.portal-v2 .adult-viewing-explore {
 }
 
 body.portal-v2 .adult-viewing-explore .icon { width: 15px; height: 15px; }
-body.portal-v2 .adult-explore-page { max-width: 1280px; }
+body.portal-v2 .adult-explore-page { max-width: 1280px; padding-top: 12px; }
 body.portal-v2 .adult-explore-title {
   display: block;
   max-width: 620px;
   margin-bottom: 14px;
 }
 body.portal-v2 .adult-explore-title .view-back { margin-bottom: 3px; }
+
 body.portal-v2 .adult-explore-title > p:last-child {
   max-width: 560px;
   margin: 5px 0 0;
@@ -209,7 +210,7 @@ body.portal-v2 .adult-explore-loading small { width: 48%; height: 7px; }
 }
 
 body.portal-v2 .adult-title-sheet.is-catalogue-only :is(.adult-title-local,
-  .watch-film-actions, .primary-sheet-more, .adult-provider-section,
+  .watch-film-actions, .primary-sheet-more,
   .adult-next-episode) { display: none; }
 body.portal-v2 .adult-streaming-season-sheet.is-catalogue-only .adult-season-management {
   display: none;
@@ -218,7 +219,7 @@ body.portal-v2 .adult-streaming-season-sheet.is-catalogue-only .adult-season-man
 @media (max-width: 640px) {
   body.portal-v2 .adult-viewing-title { align-items: flex-start; }
   body.portal-v2 .adult-viewing-explore { margin-bottom: 0; }
-  body.portal-v2 .adult-explore-page { margin-top: -12px; padding-top: 0; }
+  body.portal-v2 .adult-explore-page { margin-top: -20px; }
   body.portal-v2 .adult-explore-title { margin-bottom: 10px; }
   body.portal-v2 .adult-explore-title > p:last-child { font-size: 10px; line-height: 1.4; }
   body.portal-v2 .adult-explore-controls { gap: 5px; }

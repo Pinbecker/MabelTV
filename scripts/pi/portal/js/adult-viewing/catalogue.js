@@ -311,7 +311,7 @@ function renderAdultPurchaseOffersInto(section, root, detail, result) {
     if (/(?:rakuten|google\s*play|youtube|chili)/i.test(name)) return
     const marker = adultPurchaseProviderKey(name)
     const group = groups.get(marker) || {
-      name, sources: [], prices: new Set(),
+      name, sources: [], prices: new Set(), provider: null,
     }
     group.sources.push(source)
     const price = source?.price === null || source?.price === undefined || source?.price === ''
@@ -320,14 +320,28 @@ function renderAdultPurchaseOffersInto(section, root, detail, result) {
     groups.set(marker, group)
   }
   ;(result.sources || []).forEach(add)
-  const offers = [...groups.values()].filter(group => group.prices.size)
+  ;(detail.providers || []).forEach(provider => {
+    if (String(provider?.type || '').toLowerCase() !== 'rent') return
+    const name = String(provider.name || 'Store').trim()
+    if (/(?:rakuten|google\s*play|youtube|chili)/i.test(name)) return
+    const marker = adultPurchaseProviderKey(name)
+    const group = groups.get(marker) || {
+      name, sources: [], prices: new Set(), provider: null,
+    }
+    group.provider = provider
+    groups.set(marker, group)
+  })
+  const offers = [...groups.values()]
     .sort((a, b) => a.name.localeCompare(b.name))
   if (offers.length) {
     const providers = document.createElement('div')
     providers.className = 'adult-purchase-providers'
     offers.forEach(group => {
       const destinationSource = group.sources.find(source => adultSourceDestination(source))
+      const brand = adultProviderBrandFor(group.provider, 'provider_id', 'tmdbIds')
+        || adultProviderBrandFor(destinationSource, 'source_id', 'watchmodeIds')
       const destination = adultSourceDestination(destinationSource)
+        || (brand ? adultProviderDestination(brand, null, detail.title) : '')
       const offer = document.createElement(destination ? 'button' : 'div')
       if (destination) offer.type = 'button'
       offer.className = 'adult-purchase-provider'
@@ -347,13 +361,13 @@ function renderAdultPurchaseOffersInto(section, root, detail, result) {
         logo.append(initials)
       }
       const prices = [...group.prices].sort((a, b) => a - b)
-      const price = new Intl.NumberFormat('en-GB', {
-        style: 'currency', currency: 'GBP', minimumFractionDigits: 2,
-      }).format(prices[0])
       const priceLabel = document.createElement('strong')
-      priceLabel.textContent = `${prices.length > 1 ? 'From ' : ''}${price}`
+      priceLabel.textContent = prices.length ? `${prices.length > 1 ? 'From ' : ''}${new Intl.NumberFormat('en-GB', {
+        style: 'currency', currency: 'GBP', minimumFractionDigits: 2,
+      }).format(prices[0])}` : 'Check price'
       offer.append(logo, priceLabel)
-      offer.setAttribute('aria-label', `Rent ${group.name} for ${priceLabel.textContent}`)
+      offer.setAttribute('aria-label', prices.length
+        ? `Rent ${group.name} for ${priceLabel.textContent}` : `Check rental on ${group.name}`)
       if (destination) offer.onclick = () => window.location.assign(destination)
       providers.append(offer)
     })
@@ -363,6 +377,8 @@ function renderAdultPurchaseOffersInto(section, root, detail, result) {
       summary.textContent = `From ${new Intl.NumberFormat('en-GB', {
         style: 'currency', currency: 'GBP', minimumFractionDigits: 2,
       }).format(lowest)}`
+    } else if (summary) {
+      summary.textContent = `${offers.length} service${offers.length === 1 ? '' : 's'}`
     }
     if (toggle) {
       toggle.onclick = () => {
@@ -470,46 +486,66 @@ function adultDiscoveryCard(title) {
   card.className = 'watch-card'
   const art = document.createElement('span')
   art.className = 'watch-card-art'
-  if (title.poster_path) {
+  const person = title.media_type === 'person'
+  const artwork = person ? title.profile_path : title.poster_path
+  if (artwork) {
     const image = document.createElement('img')
-    image.src = adultPosterUrl(title.poster_path)
+    image.src = adultPosterUrl(artwork, person ? 'w342' : 'w342')
     image.alt = ''
     art.append(image)
-  } else art.append(librarySignalIcon(title.media_type === 'tv' ? 'signal-tv' : 'signal-film'))
-  if (title.on_mabeltv) {
+  } else art.append(librarySignalIcon(person ? 'signal-user'
+    : title.media_type === 'tv' ? 'signal-tv' : 'signal-film'))
+  if (!person && title.on_mabeltv) {
     const badge = document.createElement('span')
     badge.className = 'watch-format adult-local-badge'
     badge.textContent = 'On MabelTV'
     art.append(badge)
   }
-  appendAdultArtworkStatus(art, title)
+  if (!person) appendAdultArtworkStatus(art, title)
   const copy = document.createElement('span')
   copy.className = 'watch-card-copy'
   const name = document.createElement('strong')
   name.textContent = title.title
   const meta = document.createElement('small')
-  meta.textContent = [title.year, title.media_type === 'tv' ? 'TV series' : 'Film'].filter(Boolean).join(' · ')
+  meta.textContent = person ? (title.known_for_department || 'Person')
+    : [title.year, title.media_type === 'tv' ? 'TV series' : 'Film'].filter(Boolean).join(' · ')
   copy.append(name, meta)
   card.append(art, copy)
-  card.onclick = () => title.tmdb_id ? openAdultTitle(title) : notice('Match this local film to TMDB from Library settings first.', true)
+  card.onclick = () => {
+    if (!title.tmdb_id) {
+      notice('Match this local film to TMDB from Library settings first.', true)
+      return
+    }
+    if (person) openAdultPerson(title, '')
+    else openAdultTitle(title)
+  }
   return card
 }
 
 function syncAdultSearchMode() {
   const input = $('#watchSearch')
-  const view = $('#view-watch')
+  const view = $('#view-adult-home')
   if (!input || !view) return
   const focused = document.activeElement === input
   const query = input.value.trim()
   const active = focused || Boolean(query)
   view.classList.toggle('adult-search-mode', active)
   if (active && query.length < 2) {
-    $('#adultDiscoverySection').classList.remove('hidden')
+    $('#adultDiscoverySection').classList.add('hidden')
     $('#adultDiscoveryCount').textContent = ''
-    $('#adultDiscoveryGrid').innerHTML = '<div class="watch-empty adult-search-prompt"><strong>Search Adult TV</strong><br>Type at least two letters to search your library and streaming catalogue.</div>'
   } else if (!active) {
     $('#adultDiscoverySection').classList.add('hidden')
   }
+}
+
+function renderAdultDiscoveryLoading(root) {
+  root.replaceChildren(...Array.from({ length: 4 }, () => {
+    const card = document.createElement('span')
+    card.className = 'adult-explore-loading'
+    card.append(document.createElement('i'), document.createElement('b'),
+      document.createElement('small'))
+    return card
+  }))
 }
 
 function syncAdultSearchKeyboard() {
@@ -540,7 +576,7 @@ async function searchAdultDiscovery(query) {
   }
   syncAdultSearchMode()
   section.classList.remove('hidden')
-  root.innerHTML = '<div class="watch-empty"><strong>Searching Adult TV…</strong><br>Checking your library and streaming catalogue.</div>'
+  renderAdultDiscoveryLoading(root)
   try {
     const result = await api(`/api/adult/discovery?q=${encodeURIComponent(query.trim())}`)
     if (revision !== adultDiscoveryRevision) return

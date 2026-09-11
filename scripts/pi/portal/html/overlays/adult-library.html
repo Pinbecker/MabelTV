@@ -107,6 +107,7 @@
 >
   <article class="watch-film-panel" tabindex="-1">
     <div class="dialog-close-bar">
+      <button id="adultFilmDownload" type="button" class="sheet-download-trigger" aria-label="Download film to this device" title="Download to this device"><svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-download" /></svg></button>
       <button
         id="adultFilmClose"
         type="button"
@@ -130,10 +131,6 @@
         Manage this film.
       </p>
       <div class="watch-film-actions adult-film-settings-actions">
-        <button id="adultFilmDownload" type="button" class="watch-film-play">
-          <span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-download" /></svg></span>
-          <span><strong>Download to this device</strong><small>Save a copy for offline viewing</small></span>
-        </button>
         <div class="watch-film-play adult-film-collection-action">
           <span class="watch-action-icon"
             ><svg class="icon" aria-hidden="true">
@@ -466,6 +463,7 @@
 >
   <article>
     <div class="dialog-close-bar">
+      <button id="adultEpisodeDownload" type="button" class="sheet-download-trigger" aria-label="Download episode to this device" title="Download to this device"><svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-download" /></svg></button>
       <button
         id="adultEpisodeClose"
         type="button"
@@ -493,15 +491,8 @@
           ><strong>Watch on this device</strong
           ><small>Stream in MabelTV or open VLC</small></span
         ></button
-      ><button id="adultEpisodeWatched" type="button" class="watch-film-play">
-        <span class="watch-action-icon"
-          ><svg class="icon">
-            <use href="/portal/icons.svg#signal-check" /></svg></span
-        ><span
-          ><strong>Mark watched</strong
-          ><small>Useful after watching this episode in VLC</small></span
-        ></button
-      ><button id="adultEpisodeViewSeries" type="button" class="watch-film-play">
+      ><span class="sheet-action-divider" aria-hidden="true"></span
+      ><button id="adultEpisodeViewSeries" type="button" class="watch-film-play hidden">
         <span class="watch-action-icon"
           ><svg class="icon">
             <use href="/portal/icons.svg#signal-panels-top-left" /></svg></span
@@ -510,7 +501,6 @@
           ><small>Open the complete show and its series</small></span
         ></button
       ><button id="adultEpisodeRemoveProgress" type="button" class="watch-film-play hidden"><span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-arrow-left" /></svg></span><span><strong>Remove from Continue</strong><small>Clear this episode’s saved position</small></span></button
-      ><button id="adultEpisodeDownload" type="button" class="watch-film-play"><span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-download" /></svg></span><span><strong>Download to this device</strong><small>Save a copy for offline viewing</small></span></button
       ><button id="adultEpisodeDelete" type="button" class="watch-film-play watch-film-danger"><span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-trash" /></svg></span><span><strong>Remove from MabelTV</strong><small>Move this local episode to the bin</small></span></button>
     </div>
   </article>

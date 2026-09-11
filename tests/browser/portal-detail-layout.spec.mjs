@@ -93,13 +93,15 @@ test('title cards show their complete structured shell while details load', asyn
 test('mobile global search stays directly below the fixed app header', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone search layout contract')
   await openPortal(page, 'dark')
-  await page.getByRole('button', { name: 'Watch', exact: true }).click()
-  await page.locator('#watchAdultTab').click()
+  await page.locator('[data-view-button="adult-home"]').click()
   await page.locator('#watchSearch').focus()
-  await expect(page.locator('#view-watch')).toHaveClass(/adult-search-mode/)
+  await expect(page.locator('#view-adult-home')).toHaveClass(/adult-search-mode/)
+  await page.evaluate(async () => Promise.allSettled(
+    document.querySelector('#view-adult-home').getAnimations()
+      .map(animation => animation.finished)))
   const layout = await page.evaluate(() => {
     const header = document.querySelector('.mobile-head').getBoundingClientRect()
-    const searchSurface = document.querySelector('#view-watch .watch-discovery').getBoundingClientRect()
+    const searchSurface = document.querySelector('#view-adult-home .watch-discovery').getBoundingClientRect()
     const search = document.querySelector('#watchSearch').getBoundingClientRect()
     return {
       headerVisible: header.top === 0 && header.bottom > 0,
@@ -335,19 +337,6 @@ for (const theme of ['light', 'dark']) {
     else expect(layout.firstRowCards).toBeGreaterThanOrEqual(5)
     expect(layout.firstCardMeta).toBe('2022 · TV series')
     expect(layout.rightEdge).toBeLessThanOrEqual(layout.viewport)
-    const filmFilterHeights = await page.evaluate(() => {
-      const filters = document.querySelector('.watch-film-filters').cloneNode(true)
-      filters.style.position = 'fixed'
-      filters.style.inset = '0 auto auto 0'
-      filters.style.width = '360px'
-      filters.style.visibility = 'hidden'
-      document.body.append(filters)
-      const heights = [...filters.querySelectorAll('.adult-viewing-select')]
-        .map(control => control.getBoundingClientRect().height)
-      filters.remove()
-      return heights
-    })
-    expect(filmFilterHeights).toEqual(layout.controlHeights)
     await page.locator('#adultViewingSearch').fill('Series 10')
     await expect(page.locator('.adult-viewing-row')).toHaveCount(1)
     await page.locator('#adultViewingSearchClear').click()

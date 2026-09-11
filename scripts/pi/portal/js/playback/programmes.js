@@ -108,6 +108,26 @@
       })
     }
 
+    function alignWatchProgrammeFavourite() {
+      const row = $('#watchProgrammeSheet .portal-sheet-title-row')
+      const title = $('#watchProgrammeTitle')
+      const favourite = $('#watchProgrammeFavourite')
+      const text = title?.firstChild
+      if (!row || !text || favourite?.classList.contains('hidden')) return
+      requestAnimationFrame(() => {
+        const range = document.createRange()
+        range.selectNodeContents(title)
+        const firstLine = range.getClientRects()[0]
+        const bounds = row.getBoundingClientRect()
+        if (!firstLine || !bounds.width) return
+        const left = Math.max(0, Math.min(bounds.width - 44,
+          firstLine.right - bounds.left - 4))
+        const top = firstLine.top - bounds.top - (44 - firstLine.height) / 2
+        row.style.setProperty('--programme-favourite-left', `${left}px`)
+        row.style.setProperty('--programme-favourite-top', `${top}px`)
+      })
+    }
+
     function openWatchProgrammeSheet(channel, programme, context = 'library', returnTo = null) {
       selectedWatchProgramme = { channel, programme, context, returnTo }
       const metadata = programme.metadata || {}
@@ -150,20 +170,33 @@
             : 'Starts an independent stream'
       const source = { kind: 'channel', channel: channel.number, file: programme.name }
       if (filmChannel) source.position = Number(programme.remote_position || 0)
+      const reopenProgramme = () => openWatchProgrammeSheet(
+        channel, programme, context, returnTo)
       here.onclick = favouriteResumeChoice && programme.browser_ready !== false ? () => {
         closeWatchProgrammeSheet(false)
         openFilmResumeChoice({
           title, destination: 'Play on this device', position: programme.remote_position,
           returnTo: () => openWatchProgrammeSheet(channel, programme, context, returnTo),
+          restoreParentOnAction: false,
           continueAction: () => openRemotePlayer({ kind: 'channel',
             channel: channel.number, file: programme.name,
-            position: Number(programme.remote_position || 0) }, Number(programme.remote_position || 0)),
+            position: Number(programme.remote_position || 0) },
+          Number(programme.remote_position || 0), reopenProgramme),
           restartAction: () => openRemotePlayer({ kind: 'channel',
-            channel: channel.number, file: programme.name, position: 0 }, 0),
+            channel: channel.number, file: programme.name, position: 0 },
+          0, reopenProgramme),
         })
       } : () => {
         if (programme.browser_ready === false) openInVlc(source, title)
-        else openRemotePlayer(source, filmChannel ? Number(programme.remote_position || 0) : 0)
+        else {
+          // A modal dialog remains in the browser top layer even when the
+          // fixed player is visible. Close it before playback so its invisible
+          // backdrop cannot consume every touch, then restore it on Back.
+          closeWatchProgrammeSheet(false)
+          openRemotePlayer(source,
+            filmChannel ? Number(programme.remote_position || 0) : 0,
+            reopenProgramme)
+        }
       }
       $('#watchProgrammeDownload').onclick = () => {
         closeWatchProgrammeMoreSheet(false)
@@ -261,6 +294,7 @@
         favouriteButton.setAttribute('aria-label', programme.favourite
           ? 'Remove film from favourites' : 'Add film to favourites')
       }).catch(showError) : null
+      alignWatchProgrammeFavourite()
 
       const toggleButton = $('#watchProgrammeToggle')
       toggleButton.querySelector('strong').textContent = programme.enabled ? 'Hide from TV' : 'Show on TV'
@@ -336,3 +370,7 @@
       const dialog = $('#watchProgrammeSheet')
       portalSheets.open(dialog, { returnTo })
     }
+
+    window.addEventListener('resize', () => {
+      if ($('#watchProgrammeSheet')?.open) alignWatchProgrammeFavourite()
+    }, { passive: true })

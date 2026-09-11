@@ -22,14 +22,14 @@ body.portal-v2 .adult-my-viewing > .icon:first-child { color: var(--experience-o
 body.portal-v2 .adult-discovery-results { margin-bottom: 28px; }
 body.portal-v2 .provider-attribution { margin: 6px 0 0; color: var(--experience-dim); font-size: 9px; }
 
-body.portal-v2 .adult-viewing-page { max-width: 1280px; }
+body.portal-v2 .adult-viewing-page { max-width: 1280px; padding-top: 12px; }
 body.portal-v2 .adult-viewing-title { margin-bottom: 5px; }
 body.portal-v2 .view-back {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   min-height: 44px;
-  margin: 0 0 9px;
+  margin: 0 0 3px;
   background: transparent;
   color: var(--experience-orange);
   padding: 0;
@@ -224,6 +224,36 @@ body.portal-v2 .adult-viewing-grid.is-grid .adult-viewing-copy span {
 }
 body.portal-v2 .adult-viewing-grid.is-grid .adult-viewing-row-actions { display: none; }
 body.portal-v2 .adult-viewing-grid.is-grid .watch-empty { grid-column: 1 / -1; }
+
+body.portal-v2 .adult-viewing-grid.is-reorderable .adult-viewing-card-open {
+  cursor: grab;
+  -webkit-touch-callout: none;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+body.portal-v2 .adult-viewing-row.is-dragging { pointer-events: none; opacity: .16; }
+body.portal-v2 .adult-viewing-drag-proxy {
+  position: fixed;
+  z-index: 240;
+  top: 0;
+  left: 0;
+  margin: 0;
+  pointer-events: none;
+  opacity: .98;
+  filter: saturate(1.08);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, .34);
+  transform: translate(var(--queue-drag-x), var(--queue-drag-y)) scale(1.035);
+  transform-origin: center;
+}
+body.portal-v2 .adult-viewing-grid.is-actively-reordering .adult-viewing-row:not(.is-dragging) {
+  transition: filter 120ms ease;
+}
+body.portal-v2 .adult-viewing-drag-proxy .adult-viewing-row-actions { display: none; }
+body.portal-v2.up-next-reordering {
+  cursor: grabbing;
+  overscroll-behavior: none;
+}
 
 body.portal-v2 .adult-title-sheet { overflow-x: hidden; }
 body.portal-v2 .adult-title-sheet .watch-film-panel {
@@ -586,7 +616,7 @@ body.portal-v2 .adult-netflix-launch-status { min-height: 15px; margin: -5px var
   body.portal-v2 .adult-title-local button { width: 100%; }
   body.portal-v2 .watch-discovery { grid-template-columns: minmax(0, 1fr); }
   body.portal-v2 .adult-my-viewing { width: 100%; min-width: 0; }
-  body.portal-v2 .adult-viewing-page { margin-top: -12px; padding-top: 0; }
+  body.portal-v2 .adult-viewing-page { margin-top: -20px; }
   body.portal-v2 .adult-viewing-title { margin-bottom: 1px; }
   body.portal-v2 .adult-viewing-tabs { gap: 2px; }
   body.portal-v2 .adult-viewing-tabs { display: flex; overflow-x: auto; margin-top: -8px; }
@@ -624,14 +654,13 @@ body.portal-v2 .adult-netflix-launch-status { min-height: 15px; margin: -5px var
   body.portal-v2 .adult-viewing-grid.is-grid .adult-viewing-copy strong { font-size: 9px; }
   body.portal-v2 .adult-viewing-grid.is-grid .adult-viewing-copy span { font-size: 8px; }
 
-  body.portal-v2 #view-watch.adult-search-mode .watch-title,
-  body.portal-v2 #view-watch.adult-search-mode .watch-switch-wrap,
-  body.portal-v2 #view-watch.adult-search-mode .adult-my-viewing,
-  body.portal-v2 #view-watch.adult-search-mode #watchContinueSection,
-  body.portal-v2 #view-watch.adult-search-mode #adultSeriesSection,
-  body.portal-v2 #view-watch.adult-search-mode .watch-catalogue,
-  body.portal-v2 #view-watch.adult-search-mode footer { display: none; }
-  body.portal-v2 #view-watch.adult-search-mode .watch-discovery {
+  body.portal-v2 #view-adult-home.adult-search-mode .watch-title,
+  body.portal-v2 #view-adult-home.adult-search-mode .watch-switch-wrap,
+  body.portal-v2 #view-adult-home.adult-search-mode .adult-my-viewing,
+  body.portal-v2 #view-adult-home.adult-search-mode .adult-home-continue,
+  body.portal-v2 #view-adult-home.adult-search-mode .adult-home-section,
+  body.portal-v2 #view-adult-home.adult-search-mode footer { display: none; }
+  body.portal-v2 #view-adult-home.adult-search-mode .watch-discovery {
     position: sticky;
     z-index: 40;
     top: calc(54px + env(safe-area-inset-top));
@@ -641,37 +670,37 @@ body.portal-v2 .adult-netflix-launch-status { min-height: 15px; margin: -5px var
     box-shadow: 0 8px 14px var(--experience-canvas);
     padding: 8px 18px;
   }
-  body.portal-v2 #view-watch.adult-search-mode .watch-search {
+  body.portal-v2 #view-adult-home.adult-search-mode .watch-search {
     scroll-margin-top: calc(62px + env(safe-area-inset-top));
   }
-  body.portal-v2 #view-watch.adult-search-mode .adult-discovery-results { margin-bottom: 0; }
-  body.portal-v2 #view-watch.adult-search-mode #adultDiscoveryGrid {
+  body.portal-v2 #view-adult-home.adult-search-mode .adult-discovery-results { margin-bottom: 0; }
+  body.portal-v2 #view-adult-home.adult-search-mode #adultDiscoveryGrid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 14px 7px;
   }
-  body.portal-v2 #view-watch.adult-search-mode #adultDiscoveryGrid > .watch-empty {
+  body.portal-v2 #view-adult-home.adult-search-mode #adultDiscoveryGrid > .watch-empty {
     width: 100%;
     min-width: 0;
     grid-column: 1 / -1;
     overflow-wrap: anywhere;
   }
-  body.portal-v2 #view-watch.adult-search-mode #adultDiscoveryGrid .watch-card {
+  body.portal-v2 #view-adult-home.adult-search-mode #adultDiscoveryGrid .watch-card {
     display: grid;
     min-width: 0;
     border: 0;
     background: transparent;
     padding: 0;
   }
-  body.portal-v2 #view-watch.adult-search-mode #adultDiscoveryGrid .watch-card-art {
+  body.portal-v2 #view-adult-home.adult-search-mode #adultDiscoveryGrid .watch-card-art {
     width: 100%;
     border-radius: 7px;
   }
-  body.portal-v2 #view-watch.adult-search-mode #adultDiscoveryGrid .watch-card-copy {
+  body.portal-v2 #view-adult-home.adult-search-mode #adultDiscoveryGrid .watch-card-copy {
     width: 100%;
     overflow: hidden;
     padding-top: 5px;
   }
-  body.portal-v2 #view-watch.adult-search-mode #adultDiscoveryGrid .watch-card-copy strong {
+  body.portal-v2 #view-adult-home.adult-search-mode #adultDiscoveryGrid .watch-card-copy strong {
     display: -webkit-box;
     min-height: 2.35em;
     overflow: hidden;
@@ -681,21 +710,21 @@ body.portal-v2 .adult-netflix-launch-status { min-height: 15px; margin: -5px var
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
   }
-  body.portal-v2 #view-watch.adult-search-mode #adultDiscoveryGrid .watch-card-copy small {
+  body.portal-v2 #view-adult-home.adult-search-mode #adultDiscoveryGrid .watch-card-copy small {
     font-size: 8px;
   }
-  body.portal-v2 #view-watch.adult-search-mode #adultDiscoveryGrid .adult-local-badge {
+  body.portal-v2 #view-adult-home.adult-search-mode #adultDiscoveryGrid .adult-local-badge {
     top: 4px;
     left: 4px;
     max-width: calc(100% - 8px);
     padding: 2px 3px;
     font-size: 6px;
   }
-  body.portal-v2 #view-watch.adult-search-mode .adult-search-prompt { grid-column: 1 / -1; }
+  body.portal-v2 #view-adult-home.adult-search-mode .adult-search-prompt { grid-column: 1 / -1; }
 }
 
 @media (max-width: 390px) {
-  body.portal-v2 #view-watch.adult-search-mode .watch-discovery {
+  body.portal-v2 #view-adult-home.adult-search-mode .watch-discovery {
     margin-right: -15px;
     margin-left: -15px;
     padding-right: 15px;

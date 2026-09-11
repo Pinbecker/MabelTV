@@ -162,7 +162,7 @@
       $('#usbTarget').value = 'series'
       renderUsbSeriesDestinations(target.id, target.season)
       $('#usbTarget').dispatchEvent(new Event('change'))
-      openView('usb')
+      openPrimarySectionChild('system', 'usb')
       refreshUsb().catch(showError)
     }
 
@@ -399,33 +399,9 @@
         }
         else openInVlc(source, episode.display_name)
       }
-      const watched = $('#adultEpisodeWatched')
-      watched.disabled = false
-      watched.querySelector('strong').textContent = episode.watched
-        ? 'Mark as unwatched' : 'Mark watched'
-      watched.querySelector('small').textContent = episode.watched
-        ? 'Put this episode back in your unwatched list'
-        : 'Useful after watching this episode in VLC'
-      watched.onclick = async () => {
-        watched.disabled = true
-        try {
-          const result = await api('/api/adult/series/watched', { method: 'POST', body: JSON.stringify({
-            series: series.id, file: episode.path, watched: !episode.watched,
-          }) })
-          episode.watched = result.watched === true
-          episode.remote_position = Number(result.remote_position || 0)
-          episode.remote_duration = Number(result.remote_duration || episode.remote_duration || 0)
-          episode.remote_last_watched = Number(result.remote_last_watched || 0)
-          series.watched_count = Math.max(0, Number(series.watched_count || 0)
-            + (episode.watched ? 1 : -1))
-          if (episode.watched) await finishLocalSeriesIfComplete(series)
-          closeAdultEpisodeSheet(false)
-          if (returnTo) returnTo()
-          renderAdultWatch()
-          renderHomeLibrary()
-        } catch (error) { showError(error) } finally { watched.disabled = false }
-      }
-      $('#adultEpisodeViewSeries').onclick = () => {
+      const viewSeries = $('#adultEpisodeViewSeries')
+      viewSeries.classList.toggle('hidden', typeof returnTo === 'function')
+      viewSeries.onclick = () => {
         closeAdultEpisodeSheet(false)
         openAdultSeriesViewing(current)
       }
@@ -652,7 +628,8 @@
         row.append(artwork, copy, librarySignalIcon('signal-chevron-right'))
         row.dataset.episodePath = episode.path
         if (episode.path === targetPath) row.classList.add('is-next')
-        row.onclick = () => {
+        row.onclick = event => {
+          if (event.detail > 0) row.blur()
           closeAdultSeasonSheet(false)
           openAdultEpisodeSheet(current, episode, () =>
             openAdultSeasonSheet(current, number, returnTo))
