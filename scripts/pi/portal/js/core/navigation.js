@@ -133,6 +133,10 @@
       return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
     }
 
+    function waitForPrimaryNavigationFrame() {
+      return new Promise(resolve => requestAnimationFrame(resolve))
+    }
+
     async function finishPrimaryNavigationSwitch() {
       const pending = primaryNavigationPendingSwitch
       if (!pending) return
@@ -150,14 +154,19 @@
         for (const [entryIndex, entry] of trail.slice(0, index + 1).entries()) {
           const state = tagPrimaryNavigationState(entry, section, entryIndex, trail)
           entry.state = state
-          if (entryIndex === 0) nativeHistoryReplaceState(state, '', entry.route)
-          else nativeHistoryPushState(state, '', entry.route)
-          // Safari records the pixels for a same-document history entry only
-          // after it has painted. Give every restored parent one real frame
-          // before pushing its child; otherwise an iOS edge-Back preview can
-          // show the section we just left even though Back lands correctly.
+          // Safari associates the visible pixels with a same-document entry
+          // when that entry is created. Paint the matching view first, then
+          // create/tag its history entry; doing this the other way around
+          // makes an edge-Back preview show the preceding restored view.
           openView(entry.view, { materialiseHistory: true })
           if (entryIndex < index) await waitForPrimaryNavigationPaint()
+          if (entryIndex === 0) nativeHistoryReplaceState(state, '', entry.route)
+          else nativeHistoryPushState(state, '', entry.route)
+          // Keep the newly-created entry on screen for a completed frame too.
+          // WebKit may take its interactive Back snapshot immediately before
+          // or immediately after the History API mutation, depending on which
+          // primary section was previously active.
+          if (entryIndex < index) await waitForPrimaryNavigationFrame()
         }
         primaryNavigationActive = section
         openRequestedView({ type: 'sectionrestore' })
