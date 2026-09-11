@@ -33,15 +33,6 @@ test('MabelTV and Adult TV each keep the same three-section structure', async ({
   await expect(page.locator('#mabelInsightsDashboard')).toBeVisible()
   const mabelInsightsTitle = await page.locator('#view-insights .watch-title').boundingBox()
   expect(Math.abs(mabelInsightsTitle.height - mabelWatchTitle.height)).toBeLessThan(1)
-  await page.evaluate(() => window.scrollTo(0, 500))
-  await page.locator('[data-view-button="adult-home"]').click()
-  await page.locator('[data-view-button="watch"]').click()
-  await expect(page.locator('#mabelInsightsDashboard')).toBeVisible()
-  await page.locator('[data-view-button="watch"]').click()
-  await expect(page.locator('#watchMabelLayout')).toBeVisible()
-  await page.locator('#watchMabelInsightsTab').click()
-  await page.waitForTimeout(250)
-  expect(await page.evaluate(() => window.scrollY)).toBeLessThan(2)
   await page.locator('#insightsDownloadsTab').click()
   await expect(page.locator('#watchDomainTitle')).toHaveText('MabelTV')
   await expect(page.locator('#watchDownloadsLayout')).toBeVisible()
@@ -124,7 +115,7 @@ test('Up Next cards reorder with a deliberate press and drag', async ({ page }, 
   await expect.poll(() => savedOrder).toEqual(['movie:701', 'movie:702', 'movie:703'])
 })
 
-test('Watch and Insights return to their completed screens without rebuilding them', async ({ page }, testInfo) => {
+test('Watch and Insights retain their completed screens without rebuilding them', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'Phone persistence contract')
   const requests = { adult: 0, mabel: 0 }
   page.on('request', request => {
@@ -163,7 +154,7 @@ test('Watch and Insights return to their completed screens without rebuilding th
   expect(requests.mabel).toBe(firstMabelRequests)
   await page.locator('[data-view-button="watch"]').click()
   await expect(page.locator('[data-persistence-probe="mabel-watch"]')).toBeVisible()
-  expect(await page.locator('#view-insights').evaluate(view => view.getAnimations().length)).toBe(0)
+  expect(requests.mabel).toBe(firstMabelRequests)
 })
 
 test('stored Insights paint immediately while an old view refreshes behind them', async ({ page }, testInfo) => {

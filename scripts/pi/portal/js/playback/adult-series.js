@@ -162,7 +162,7 @@
       $('#usbTarget').value = 'series'
       renderUsbSeriesDestinations(target.id, target.season)
       $('#usbTarget').dispatchEvent(new Event('change'))
-      openPrimarySectionChild('system', 'usb')
+      openView('usb')
       refreshUsb().catch(showError)
     }
 

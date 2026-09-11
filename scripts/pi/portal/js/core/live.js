@@ -421,13 +421,7 @@
     }
     $$('[data-view-button]').forEach(button => button.onclick = () => {
       const selected = button.getAttribute('aria-current') === 'page'
-      const destination = button.dataset.viewButton
-      if (switchPrimaryNavigation(destination, { reset: selected })) return
-      const view = pushPrimaryViewHistory(button.dataset.viewButton)
-      if (view === 'watch' && !offlineMode) renderRemoteViewing()
-      if (view === 'channels') showChannelHub()
-      openView(view)
-      if (view === 'adult') refreshTmdbStatus().catch(() => {})
+      openPrimarySection(button.dataset.viewButton, { reset: selected })
     })
     $$('[data-go]').forEach(button => button.onclick = () => {
       if (button.dataset.go === 'appearance') {
@@ -436,17 +430,10 @@
         openView('appearance')
         return
       }
-      if (button.dataset.go === 'system' && history.state?.mabelPrimarySection === 'system'
-          && Number(history.state?.mabelPrimaryIndex) > 0) {
+      if (button.id === 'appearanceBack' && location.hash === '#appearance') {
         history.back()
         return
       }
-      if ((button.dataset.go === 'usb' || button.dataset.go === 'activity')
-          && history.state?.mabelPrimarySection === 'system') {
-        pushPrimaryChildView(button.dataset.go)
-        return
-      }
-      if (button.dataset.go === 'system' && switchPrimaryNavigation('system')) return
       if (button.dataset.go === 'watch' && !offlineMode) renderRemoteViewing()
       if (button.dataset.go === 'channels') showChannelHub()
       openView(button.dataset.go)

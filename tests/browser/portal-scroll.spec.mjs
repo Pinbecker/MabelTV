@@ -51,7 +51,7 @@ test('Adult TV recommendation refresh retains its viewport', async ({ page }) =>
   expect(await scrollY(page)).toBeCloseTo(before, 0)
 })
 
-test('bottom navigation returns to the same Adult TV tab and film position', async ({ page }) => {
+test('bottom navigation preserves the Adult TV film position', async ({ page }) => {
   await openPortal(page)
   await longFilms(page)
   await page.evaluate(() => window.scrollTo(0, 1800))

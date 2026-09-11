@@ -1,218 +1,50 @@
 'use strict'
 
-    const primaryNavigationRoots = {
+    const primarySectionRoots = {
       overview: { view: 'overview', route: '#home', state: { primaryView: 'overview' } },
       watch: { view: 'watch', route: '#watch', state: { primaryView: 'watch', watchDomain: 'mabel' } },
       live: { view: 'live', route: '#live', state: { primaryView: 'live' } },
       'adult-home': { view: 'adult-home', route: '#adult-tv', state: { primaryView: 'adult-home', adultHome: true } },
       system: { view: 'system', route: '#system', state: { primaryView: 'system', settings: true } },
     }
-    const primaryNavigationTrails = Object.fromEntries(Object.entries(primaryNavigationRoots)
-      .map(([section, root]) => [section, [{ ...root, key: `${root.view}:${root.route}` }]]))
-    const primaryNavigationIndexes = Object.fromEntries(Object.keys(primaryNavigationRoots)
-      .map(section => [section, 0]))
-    const nativeHistoryPushState = history.pushState.bind(history)
-    const nativeHistoryReplaceState = history.replaceState.bind(history)
-    let primaryNavigationActive = null
-    let primaryNavigationMutation = null
-    let primaryNavigationMutationRevision = 0
-    let primaryNavigationPendingSwitch = null
-    let primaryNavigationRestoring = false
+    const primarySectionLocations = new Map()
 
-    function notePrimaryHistoryMutation(kind) {
-      primaryNavigationMutation = kind
-      const revision = ++primaryNavigationMutationRevision
-      queueMicrotask(() => {
-        if (primaryNavigationMutationRevision === revision) primaryNavigationMutation = null
+    function rememberPrimarySectionLocation(name, section) {
+      if (!primarySectionRoots[section]) return
+      primarySectionLocations.set(section, {
+        view: name,
+        route: location.hash || primarySectionRoots[section].route,
+        state: history.state && typeof history.state === 'object' ? { ...history.state } : {},
+        watchDomain,
+        downloadDomain,
+        remoteKind,
+        myInsightsMode,
       })
     }
 
-    history.pushState = function (...args) {
-      notePrimaryHistoryMutation('push')
-      return nativeHistoryPushState(...args)
-    }
-    history.replaceState = function (...args) {
-      notePrimaryHistoryMutation('replace')
-      return nativeHistoryReplaceState(...args)
-    }
-
-    function cleanPrimaryNavigationState(state = history.state) {
-      const value = state && typeof state === 'object' ? { ...state } : {}
-      delete value.mabelPrimarySection
-      delete value.mabelPrimaryIndex
-      delete value.mabelPrimaryRoute
-      delete value.mabelPrimaryTrail
-      return value
-    }
-
-    function serialisePrimaryNavigationTrail(trail, index) {
-      return trail.slice(0, index + 1).map(entry => ({
-        view: entry.view,
-        route: entry.route,
-        state: cleanPrimaryNavigationState(entry.state),
-        key: entry.key,
-      }))
-    }
-
-    function savedPrimaryNavigationTrail(section) {
-      const saved = history.state?.mabelPrimaryTrail
-      if (history.state?.mabelPrimarySection !== section || !Array.isArray(saved) || !saved.length) return null
-      if (!saved.every(entry => entry && typeof entry.view === 'string'
-          && typeof entry.route === 'string' && typeof entry.key === 'string')) return null
-      return saved.map(entry => ({ ...entry, state: cleanPrimaryNavigationState(entry.state) }))
-    }
-
-    function tagPrimaryNavigationState(entry, section, index, trail = primaryNavigationTrails[section]) {
-      return {
-        ...cleanPrimaryNavigationState(entry.state),
-        mabelPrimarySection: section,
-        mabelPrimaryIndex: index,
-        mabelPrimaryRoute: entry.key,
-        mabelPrimaryTrail: serialisePrimaryNavigationTrail(trail, index),
+    function openPrimarySection(section, { reset = false } = {}) {
+      const root = primarySectionRoots[section]
+      if (!root) return false
+      const saved = !reset && primarySectionLocations.get(section)
+      const destination = saved || { ...root, watchDomain: root.state.watchDomain }
+      if (destination.watchDomain) watchDomain = destination.watchDomain
+      if (destination.downloadDomain) downloadDomain = destination.downloadDomain
+      if (destination.remoteKind) remoteKind = destination.remoteKind
+      if (destination.myInsightsMode) myInsightsMode = destination.myInsightsMode
+      if (reset && section === 'watch') {
+        watchDomain = 'mabel'
+        remoteKind = 'channel'
       }
-    }
-
-    function currentPrimaryNavigationEntry(name) {
-      const route = location.hash || primaryNavigationRoots.overview.route
-      return { view: name, route, state: cleanPrimaryNavigationState(), key: `${name}:${route}` }
-    }
-
-    function primaryNavigationTrailIndex(trail, key) {
-      for (let index = trail.length - 1; index >= 0; index -= 1) {
-        if (trail[index].key === key) return index
-      }
-      return -1
-    }
-
-    function rememberPrimaryNavigationLocation(name, section) {
-      if (!primaryNavigationRoots[section] || primaryNavigationRestoring) return
-      const entry = currentPrimaryNavigationEntry(name)
-      let trail = savedPrimaryNavigationTrail(section) || primaryNavigationTrails[section]
-      let index = primaryNavigationIndexes[section]
-      const stateIndex = Number(history.state?.mabelPrimaryIndex)
-      const taggedEntry = history.state?.mabelPrimarySection === section
-        && history.state?.mabelPrimaryRoute === entry.key
-        && Number.isInteger(stateIndex) && stateIndex >= 0
-      if (taggedEntry) {
-        if (stateIndex >= trail.length) {
-          const root = primaryNavigationRoots[section]
-          trail = stateIndex > 0
-            ? [{ ...root, key: `${root.view}:${root.route}` }, entry] : [entry]
-        }
-        index = Math.min(stateIndex, trail.length - 1)
-        trail[index] = entry
-      } else if (primaryNavigationActive === section && trail[index]?.key === entry.key) {
-        trail[index] = entry
-      } else if (primaryNavigationActive === section && primaryNavigationMutation === 'push') {
-        trail = trail.slice(0, index + 1)
-        trail.push(entry)
-        index = trail.length - 1
-      } else if (primaryNavigationActive === section) {
-        trail[index] = entry
+      history.replaceState(destination.state, '', destination.route)
+      if (destination.view === 'insights' && window.openInsightsRoute) {
+        window.openInsightsRoute(destination.route.replace(/^#/, ''), null, { reset })
       } else {
-        const existing = primaryNavigationTrailIndex(trail, entry.key)
-        if (existing >= 0) index = existing
-        else if (primaryNavigationMutation === 'replace') {
-          trail = [entry]
-          index = 0
-        }
-        else {
-          trail = entry.key === trail[0].key ? [entry] : [trail[0], entry]
-          index = trail.length - 1
-        }
+        if (destination.view === 'watch' && !offlineMode) renderRemoteViewing()
+        openView(destination.view, { resetScroll: reset })
       }
-      primaryNavigationTrails[section] = trail
-      primaryNavigationIndexes[section] = index
-      primaryNavigationActive = section
-      entry.state = tagPrimaryNavigationState(entry, section, index, trail)
-      trail[index] = entry
-      nativeHistoryReplaceState(entry.state, '', entry.route)
-    }
-
-    function waitForPrimaryNavigationPaint() {
-      return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
-    }
-
-    function waitForPrimaryNavigationFrame() {
-      return new Promise(resolve => requestAnimationFrame(resolve))
-    }
-
-    async function finishPrimaryNavigationSwitch() {
-      const pending = primaryNavigationPendingSwitch
-      if (!pending) return
-      const section = pending.destination
-      const trail = primaryNavigationTrails[section]
-      const index = primaryNavigationIndexes[section]
-      // Preserve the real outgoing viewport before the temporary history-frame
-      // activations below change which view is marked active.
-      rememberPortalView()
-      const leavingExplore = $('#view-adult-explore')?.classList.contains('active')
-        && trail[index]?.view !== 'adult-explore'
-      if (leavingExplore && typeof endAdultExploreVisit === 'function') endAdultExploreVisit()
-      primaryNavigationRestoring = true
-      try {
-        for (const [entryIndex, entry] of trail.slice(0, index + 1).entries()) {
-          const state = tagPrimaryNavigationState(entry, section, entryIndex, trail)
-          entry.state = state
-          // Safari associates the visible pixels with a same-document entry
-          // when that entry is created. Paint the matching view first, then
-          // create/tag its history entry; doing this the other way around
-          // makes an edge-Back preview show the preceding restored view.
-          openView(entry.view, { materialiseHistory: true })
-          if (entryIndex < index) await waitForPrimaryNavigationPaint()
-          if (entryIndex === 0) nativeHistoryReplaceState(state, '', entry.route)
-          else nativeHistoryPushState(state, '', entry.route)
-          // Keep the newly-created entry on screen for a completed frame too.
-          // WebKit may take its interactive Back snapshot immediately before
-          // or immediately after the History API mutation, depending on which
-          // primary section was previously active.
-          if (entryIndex < index) await waitForPrimaryNavigationFrame()
-        }
-        primaryNavigationActive = section
-        openRequestedView({ type: 'sectionrestore' })
-        if (pending.resetScroll) {
-          resetViewScroll()
-          settlePortalReset()
-        }
-      } finally {
-        primaryNavigationRestoring = false
-        if (primaryNavigationPendingSwitch === pending) primaryNavigationPendingSwitch = null
-      }
-    }
-
-    function switchPrimaryNavigation(destination, { reset = false } = {}) {
-      if (!primaryNavigationRoots[destination] || primaryNavigationPendingSwitch) return false
-      if (reset) {
-        const root = primaryNavigationRoots[destination]
-        primaryNavigationTrails[destination] = [{ ...root, key: `${root.view}:${root.route}` }]
-        primaryNavigationIndexes[destination] = 0
-      }
-      const stateIndex = Number(history.state?.mabelPrimaryIndex)
-      const collapseIndex = history.state?.mabelPrimarySection === primaryNavigationActive
-        && Number.isInteger(stateIndex) && stateIndex > 0 ? stateIndex : 0
-      primaryNavigationPendingSwitch = { destination, resetScroll: reset }
-      if (collapseIndex > 0) history.go(-collapseIndex)
-      else void finishPrimaryNavigationSwitch()
       return true
     }
-
-    window.switchPrimaryNavigation = switchPrimaryNavigation
-
-    function pushPrimaryChildView(name, state = { primaryView: name }, route = `#${name}`) {
-      history.pushState(state, '', route)
-      openView(name)
-    }
-    window.pushPrimaryChildView = pushPrimaryChildView
-
-    function openPrimarySectionChild(section, name, state = { primaryView: name }, route = `#${name}`) {
-      const root = primaryNavigationRoots[section]
-      if (!root) return false
-      const entry = { view: name, route, state, key: `${name}:${route}` }
-      primaryNavigationTrails[section] = [{ ...root, key: `${root.view}:${root.route}` }, entry]
-      primaryNavigationIndexes[section] = 1
-      return switchPrimaryNavigation(section)
-    }
-    window.openPrimarySectionChild = openPrimarySectionChild
+    window.openPrimarySection = openPrimarySection
 
     function escapeHtml(value) {
       const span = document.createElement('span')
@@ -284,22 +116,6 @@
       else openView('overview')
     }
 
-    function updatePrimaryViewHistory(name, method = 'replaceState') {
-      const view = offlineMode && name !== 'watch' ? 'watch' : name
-      if (view === 'watch') {
-        watchDomain = 'mabel'
-        remoteKind = 'channel'
-      }
-      const route = view === 'overview' ? 'home'
-        : view === 'adult-home' ? 'adult-tv' : view
-      history[method]({ primaryView: view }, '', `#${route}`)
-      return view
-    }
-
-    function pushPrimaryViewHistory(name) {
-      return updatePrimaryViewHistory(name, 'pushState')
-    }
-
     function navigateDomainRoute(domain, section, { replace = false, resetScroll = true } = {}) {
       const adult = domain === 'adult'
       let route = adult ? 'adult-tv' : 'watch'
@@ -328,14 +144,7 @@
     }
     window.navigateDomainRoute = navigateDomainRoute
 
-    window.addEventListener('popstate', event => {
-      if (primaryNavigationPendingSwitch) {
-        event.stopImmediatePropagation()
-        void finishPrimaryNavigationSwitch()
-        return
-      }
-      openRequestedView(event)
-    })
+    window.addEventListener('popstate', event => openRequestedView(event))
 
     function startOfflineStorage() {
       return Promise.resolve(window.MabelOffline?.initialise())
@@ -538,17 +347,16 @@
 
     function openView(name, options = {}) {
       cancelPortalScrollSettlement()
-      const materialiseHistory = options.materialiseHistory === true
       // A status belongs to the action that created it, not every page the
       // parent subsequently visits. Clear it whenever navigation begins.
-      if (!materialiseHistory) notice('')
+      notice('')
       if (offlineMode && name !== 'watch') name = 'watch'
-      const leavingExplore = !materialiseHistory && $('#view-adult-explore')?.classList.contains('active')
+      const leavingExplore = $('#view-adult-explore')?.classList.contains('active')
         && name !== 'adult-explore'
       if (leavingExplore && typeof endAdultExploreVisit === 'function') endAdultExploreVisit()
-      const resetExplore = !materialiseHistory && name === 'adult-explore'
+      const resetExplore = name === 'adult-explore'
         && typeof beginAdultExploreVisit === 'function' && beginAdultExploreVisit()
-      if (!materialiseHistory) rememberPortalView()
+      rememberPortalView()
       const channelFromWatch = name === 'channels' && selectedManageChannel !== null && channelWorkspaceReturnToWatch
       const consolidatedWatchView = name === 'channels' || name === 'adult'
       const adultNavigation = name === 'adult-home' || name === 'adult-viewing'
@@ -561,7 +369,7 @@
         || (name === 'insights' && myInsightsMode === 'mabel') ? 'watch'
         : name === 'lg-tv' ? 'live'
           : (name === 'usb' || name === 'activity' || name === 'appearance') ? 'system' : name
-      rememberPrimaryNavigationLocation(name, activeNavigation)
+      rememberPrimarySectionLocation(name, activeNavigation)
       $$('.view').forEach(view => view.classList.toggle('active', view.id === `view-${name}`))
       document.body.classList.toggle('watch-mode', name === 'watch' || name === 'adult-home' || name === 'adult-viewing'
         || name === 'adult-explore' || name === 'adult-ratings' || name === 'adult-filmography'
@@ -590,7 +398,6 @@
           if (options.resetScroll) settlePortalReset()
         }
       }
-      if (materialiseHistory) return
       if (name === 'live') startLiveTv()
       else stopLiveTv()
       if (name === 'lg-tv') window.startLgTvRemote?.()

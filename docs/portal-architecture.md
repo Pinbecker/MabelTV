@@ -228,13 +228,13 @@ that final correction; browser scrolling and entrance animations remain intact.
 
 `core/navigation.js` remembers each top-level view; first entry begins at the
 top, returning restores its position, and revisiting the active view stays put.
-Home, MabelTV, Remote, Adult TV and Settings keep independent in-memory route
-trails. Switching with the bottom rail first collapses the browser history to
-the current section root, then restores the destination trail. Each restored
-level is rendered before the next history entry is created because native iOS
-edge Back previews WebKit's cached pixels before dispatching `popstate`. The
-gesture therefore previews and completes into the same parent inside the
-selected section instead of exposing a different bottom-rail destination.
+Bottom-rail destinations replace the current browser-history entry. They do not
+create, collapse or reconstruct independent section trails. Child routes and
+content cards create ordinary browser-history entries, leaving native iOS
+WebKit responsible for the interactive edge-Back gesture and its preview. Each
+bottom-rail section separately remembers its last open view, internal tab and
+scroll position. The first tap after leaving restores that location; tapping
+the already-selected destination resets its root view to the top.
 The bottom rail exposes MabelTV and Adult TV as separate destinations. Each
 domain owns the same Watch, Insights and Downloads tab contract while retaining
 separate content and download filters. USB remains a complete view but is
