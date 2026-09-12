@@ -29,6 +29,7 @@ if str(SERVICE_ROOT) not in sys.path:
 
 from mabeltv_backend.auth import AuthenticationMixin
 from mabeltv_backend.adult_insights import AdultInsightsMixin
+from mabeltv_backend.artwork import ArtworkProxyMixin
 from mabeltv_backend.constants import (
     DEFAULT_CHANNELS,
     LG_WEBOS_CLIENT_KEY_PATH,
@@ -386,7 +387,7 @@ class LiveStream:
         return {key: value for key, value in info.items() if key != "source"} | {"streaming": running}
 
 
-class Library(ViewingMixin, UploadConversionMixin, AuthenticationMixin,
+class Library(ViewingMixin, UploadConversionMixin, AuthenticationMixin, ArtworkProxyMixin,
               MediaCatalogueMixin, RemotePlaybackMixin, UsbMixin,
               ProviderMetadataMixin, ViewingQueueMixin,
               AdultInsightsMixin, AdultExploreMixin,
@@ -448,6 +449,10 @@ class Library(ViewingMixin, UploadConversionMixin, AuthenticationMixin,
         self.lg_tv_pointer_socket: LgWebOsSocket | None = None
         self.lg_tv_catalog_cache: dict[str, Any] = {}
         self.lg_tv_catalog_updated = 0.0
+        self.tmdb_artwork_cache_root = Path(os.environ.get(
+            "MABELTV_TMDB_ARTWORK_CACHE", "/var/cache/mabeltv/tmdb-artwork")).resolve()
+        self.tmdb_artwork_prune_lock = threading.Lock()
+        self.tmdb_artwork_last_prune = 0.0
         self.bin = self.media_root / ".recycle-bin"
         self.sessions: dict[str, float] = {}
         self.login_failures: dict[str, list[float]] = {}
@@ -503,6 +508,7 @@ class Library(ViewingMixin, UploadConversionMixin, AuthenticationMixin,
         self.adult_series_root.mkdir(mode=0o750, exist_ok=True)
         self.adult_series_artwork_root.mkdir(mode=0o750, exist_ok=True)
         self.channel_artwork_root.mkdir(mode=0o750, exist_ok=True)
+        self.tmdb_artwork_cache_root.mkdir(mode=0o750, parents=True, exist_ok=True)
         self.offline_cache.mkdir(mode=0o750, exist_ok=True)
         self.usb_import_root.mkdir(mode=0o750, exist_ok=True)
         self.bin.mkdir(mode=0o750, exist_ok=True)

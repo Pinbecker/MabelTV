@@ -55,26 +55,9 @@
       $('#usbSeriesName').value = selected?.title || ''
     }
 
-    async function load(preferredUploadChannel = null) {
-      const position = capturePortalPosition()
-      const interactionRevision = portalScrollSettlement
-      const data = await api('/api/library')
+    function applyLibraryData(data, preferredUploadChannel = null) {
       library = data
       window.MabelPortalLibrary = library
-      try { await loadAdultViewing({ render: false }) }
-      catch (_) { adultViewingLoaded = false }
-      const latestPosition = capturePortalPosition()
-      if (!position.locked && latestPosition.view === position.view) {
-        // A person can keep scrolling while either request is in flight. Their
-        // latest vertical position wins, while untouched snapping rails retain
-        // the exact offset captured when the refresh began.
-        position.scrollY = latestPosition.scrollY
-        position.anchor = latestPosition.anchor
-        position.panels = latestPosition.panels
-        if (interactionRevision !== portalScrollSettlement) position.rails = latestPosition.rails
-      }
-      offlineMode = false
-      document.body.classList.remove('offline-mode')
       applyTvName()
       const channels = library.channels || []
       const upload = $('#channel')
@@ -116,21 +99,110 @@
         selectedManageChannel = null
         selectedManageChannelFolder = ''
       }
-      renderStatus()
-      renderUploads()
-      renderAdultLibrary()
-      renderChannels()
-      renderLiveChannelOptions()
-      renderTvSettings()
-      renderParentOverlayStyle()
-      renderTvGuideSetting()
-      renderWatchmodeAvailabilitySetting()
-      renderRemoteViewing({ force: true })
-      renderPortalPinSetting()
+    }
+
+    function renderLibraryView(name, { force = false } = {}) {
+      if (!library || offlineMode) return
+      if (name === 'overview') {
+        renderStatus()
+        renderHomeLibrary()
+      } else if (name === 'watch') {
+        renderRemoteViewing({ force })
+      } else if (name === 'live') {
+        renderLiveChannelOptions()
+      } else if (name === 'channels') {
+        renderChannels()
+      } else if (name === 'adult') {
+        renderAdultLibrary()
+      } else if (name === 'usb') {
+        renderUsbSeriesDestinations()
+      } else if (name === 'system') {
+        renderStatus()
+        renderTvSettings()
+        renderParentOverlayStyle()
+        renderTvGuideSetting()
+        renderWatchmodeAvailabilitySetting()
+        renderPortalPinSetting()
+        refreshTmdbStatus().catch(() => {})
+      }
+    }
+
+    async function refreshPortalDomains(options = {}) {
+      const refreshLibrary = options.library !== false
+      const refreshAdultViewing = options.adultViewing !== false
+      const adultMutationRevision = adultViewingMutationRevision
+      const position = capturePortalPosition()
+      const interactionRevision = portalScrollSettlement
+      const requests = []
+      if (refreshLibrary) requests.push(api('/api/library'))
+      if (refreshAdultViewing) requests.push(api('/api/adult/viewing'))
+      const values = await Promise.all(requests)
+      applyPortalBootstrap(await api('/api/bootstrap'))
+      let index = 0
+      if (refreshLibrary) {
+        const data = values[index++]
+        applyLibraryData(data, options.preferredUploadChannel)
+        await writePortalDataCache('library-v1', data, 'library')
+      }
+      let adultViewingApplied = false
+      if (refreshAdultViewing) {
+        const data = values[index]
+        adultViewingApplied = await loadAdultViewing({ render: false, data,
+          expectedMutationRevision: adultMutationRevision })
+        if (adultViewingApplied) {
+          await writePortalDataCache('adult-viewing-v1', data, 'adult_viewing')
+        }
+      }
+      const latestPosition = capturePortalPosition()
+      if (!position.locked && latestPosition.view === position.view) {
+        position.scrollY = latestPosition.scrollY
+        position.anchor = latestPosition.anchor
+        position.panels = latestPosition.panels
+        if (interactionRevision !== portalScrollSettlement) position.rails = latestPosition.rails
+      }
+      const active = document.querySelector('.view.active')?.id.replace(/^view-/, '')
+      if (active) renderLibraryView(active, { force: true })
+      if (active === 'adult-viewing' && adultViewingApplied) {
+        renderAdultViewing({ anchor: false })
+        renderAdultSeries(watchSearchText)
+      }
       restorePortalPosition(position)
-      refreshHomePowerState().catch(() => {})
-      refreshTmdbStatus().catch(() => {})
       await settlePortalPosition(position)
+    }
+
+    async function load(preferredUploadChannel = null) {
+      const bootstrap = applyPortalBootstrap(await api('/api/bootstrap'))
+      portalConnectionState = 'connected'
+      offlineMode = false
+      document.body.classList.remove('offline-mode')
+      await refreshPortalDomains({ preferredUploadChannel, bootstrap })
+      refreshHomePowerState().catch(() => {})
+    }
+
+    async function loadInitialPortalData(bootstrap) {
+      applyPortalBootstrap(bootstrap)
+      const [cachedLibrary, cachedAdultViewing] = await Promise.all([
+        readPortalDataCache('library-v1'),
+        readPortalDataCache('adult-viewing-v1'),
+      ])
+      if (cachedLibrary) applyLibraryData(cachedLibrary.data)
+      if (cachedAdultViewing) {
+        await loadAdultViewing({ render: false, data: cachedAdultViewing.data })
+      }
+      const libraryChanged = !cachedLibrary
+        || Number(cachedLibrary.revision) !== portalRevision('library')
+      const adultChanged = !cachedAdultViewing
+        || Number(cachedAdultViewing.revision) !== portalRevision('adult_viewing')
+      if (!cachedLibrary) {
+        await refreshPortalDomains()
+        return { refresh: null, source: 'network' }
+      }
+      return {
+        source: 'cache',
+        refresh: libraryChanged || adultChanged
+          ? refreshPortalDomains({ library: libraryChanged, adultViewing: adultChanged })
+          : null,
+      }
     }
 
     async function refreshTmdbStatus() {

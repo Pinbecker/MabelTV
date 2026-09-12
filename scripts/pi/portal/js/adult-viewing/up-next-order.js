@@ -37,6 +37,7 @@ async function saveUpNextOrder(keys, previous) {
       || `${value.media_type}:${value.tmdb_id}` === key)
     if (item) item.up_next_rank = index + 1
   })
+  adultViewingDataRevision += 1
   adultHomeLoadedAt = 0
   try {
     await api('/api/adult/viewing/reorder', {
@@ -48,6 +49,7 @@ async function saveUpNextOrder(keys, previous) {
         || `${value.media_type}:${value.tmdb_id}` === key)
       if (item) item.up_next_rank = index + 1
     })
+    adultViewingDataRevision += 1
     renderAdultViewing({ anchor: false })
   }
 }

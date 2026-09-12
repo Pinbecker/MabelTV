@@ -1,8 +1,8 @@
 'use strict'
 
-const adultInsightsCache = readPortalDataCache('adult-insights-v1')
-let adultInsightsData = adultInsightsCache?.data || null
-let adultInsightsLoadedAt = Number(adultInsightsCache?.saved_at || 0)
+let adultInsightsData = null
+let adultInsightsLoadedAt = 0
+let adultInsightsCacheRestored = false
 let adultInsightsRendered = false
 let adultInsightsRequest = null
 let myInsightsMode = 'adult'
@@ -141,6 +141,7 @@ function adultInsightPeople(root, values) {
     image.className = 'adult-insight-person-image'
     if (person.profile_path) {
       const portrait = document.createElement('img')
+      portrait.decoding = 'async'
       portrait.src = adultPosterUrl(person.profile_path, 'w342')
       portrait.alt = ''
       portrait.loading = 'lazy'
@@ -459,6 +460,15 @@ async function loadAdultInsights(force = false) {
   const loading = $('#adultInsightsLoading')
   if (!loading || offlineMode) return
   loading.classList.add('hidden')
+  if (!adultInsightsCacheRestored) {
+    adultInsightsCacheRestored = true
+    const cached = await readPortalDataCache('adult-insights-v1', 'adult_insights')
+    if (cached) {
+      adultInsightsData = cached.data
+      adultInsightsLoadedAt = cached.stale ? 0 : Number(cached.saved_at || 0)
+    }
+  }
+  await window.MabelAssets?.chart().catch(() => {})
   if (adultInsightsData) {
     if (!adultInsightsRendered) renderAdultInsights()
     scheduleAdultInsightsPoll()
@@ -471,7 +481,7 @@ async function loadAdultInsights(force = false) {
     try {
       adultInsightsData = await api('/api/adult/insights')
       adultInsightsLoadedAt = Date.now()
-      writePortalDataCache('adult-insights-v1', adultInsightsData)
+      await writePortalDataCache('adult-insights-v1', adultInsightsData, 'adult_insights')
       adultInsightsRendered = false
       renderAdultInsights()
       scheduleAdultInsightsPoll()

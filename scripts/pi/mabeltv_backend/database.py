@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 SCHEMA = r"""
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -277,7 +277,23 @@ CREATE TABLE IF NOT EXISTS adult_insights_state (
     value_json TEXT NOT NULL CHECK(json_valid(value_json))
 );
 """
-SCHEMA_CHECKSUM = hashlib.sha256(SCHEMA.encode("utf-8")).hexdigest()
+REVISION_SCHEMA = r"""
+CREATE TABLE state_revisions (
+    domain TEXT PRIMARY KEY CHECK(domain IN (
+        'library','adult_viewing','viewing_insights','adult_insights'
+    )),
+    revision INTEGER NOT NULL DEFAULT 0 CHECK(revision >= 0),
+    updated_at REAL NOT NULL
+)
+"""
+MIGRATIONS = (
+    (1, "initial relational state", SCHEMA),
+    (2, "portal cache revision ledger", REVISION_SCHEMA),
+)
+MIGRATION_CHECKSUMS = {
+    version: hashlib.sha256(sql.encode("utf-8")).hexdigest()
+    for version, _, sql in MIGRATIONS
+}
 
 
 def _dump(value: Any) -> str:
@@ -301,6 +317,8 @@ def _number(value: Any, default: float = 0.0) -> float:
 class StateDatabase:
     """Translate established state documents to one relational SQLite store."""
 
+    schema_version = SCHEMA_VERSION
+
     def __init__(self, path: Path, managed_paths: dict[str, Path]) -> None:
         self.path = Path(path)
         self.managed_paths = {Path(value).resolve(): key for key, value in managed_paths.items()}
@@ -322,12 +340,66 @@ class StateDatabase:
             connection.executescript(SCHEMA)
             connection.execute(
                 "INSERT OR IGNORE INTO schema_migrations VALUES(?,?,?,?)",
-                (SCHEMA_VERSION, "initial relational state", SCHEMA_CHECKSUM, time.time()),
+                (1, "initial relational state", MIGRATION_CHECKSUMS[1], time.time()),
             )
-            connection.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
+            connection.execute("PRAGMA user_version=1")
             connection.commit()
+            self._upgrade_connection(connection)
         finally:
             connection.close()
+
+    @staticmethod
+    def _verify_migration_history(connection: sqlite3.Connection,
+                                  version: int) -> None:
+        for expected_version, _, _ in MIGRATIONS:
+            if expected_version > version:
+                break
+            row = connection.execute(
+                "SELECT checksum FROM schema_migrations WHERE version=?",
+                (expected_version,),
+            ).fetchone()
+            if row is None or row[0] != MIGRATION_CHECKSUMS[expected_version]:
+                raise RuntimeError(
+                    f"MabelTV database migration {expected_version} checksum does not match")
+
+    def _upgrade_connection(self, connection: sqlite3.Connection) -> int:
+        current = int(connection.execute("PRAGMA user_version").fetchone()[0])
+        if current > SCHEMA_VERSION:
+            raise RuntimeError(
+                f"MabelTV database schema {current} is newer than supported {SCHEMA_VERSION}")
+        self._verify_migration_history(connection, current)
+        for version, name, sql in MIGRATIONS:
+            if version <= current:
+                continue
+            connection.execute("BEGIN IMMEDIATE")
+            try:
+                connection.execute(sql)
+                connection.execute(
+                    "INSERT INTO schema_migrations VALUES(?,?,?,?)",
+                    (version, name, MIGRATION_CHECKSUMS[version], time.time()),
+                )
+                connection.execute(f"PRAGMA user_version={version}")
+                connection.commit()
+            except Exception:
+                connection.rollback()
+                raise
+            current = version
+        return current
+
+    def upgrade(self) -> dict[str, Any]:
+        """Apply reviewed additive migrations to an existing database."""
+        if not self.path.is_file():
+            raise RuntimeError(f"MabelTV database does not exist: {self.path}")
+        with self._write_lock:
+            connection = self.connect()
+            try:
+                previous = int(connection.execute("PRAGMA user_version").fetchone()[0])
+                current = self._upgrade_connection(connection)
+            finally:
+                connection.close()
+        self.verify_ready()
+        return {"ok": True, "previous_schema_version": previous,
+                "schema_version": current, "upgraded": current != previous}
 
     def verify_ready(self) -> None:
         if not self.path.is_file():
@@ -337,10 +409,7 @@ class StateDatabase:
             version = int(connection.execute("PRAGMA user_version").fetchone()[0])
             integrity = connection.execute("PRAGMA quick_check").fetchone()[0]
             foreign_keys = list(connection.execute("PRAGMA foreign_key_check"))
-            migration = connection.execute(
-                "SELECT checksum FROM schema_migrations WHERE version=?",
-                (SCHEMA_VERSION,),
-            ).fetchone()
+            self._verify_migration_history(connection, version)
         finally:
             connection.close()
         if version != SCHEMA_VERSION:
@@ -351,8 +420,6 @@ class StateDatabase:
         if foreign_keys:
             raise RuntimeError(
                 f"MabelTV database has {len(foreign_keys)} foreign-key violation(s)")
-        if migration is None or migration[0] != SCHEMA_CHECKSUM:
-            raise RuntimeError("MabelTV database schema checksum does not match this release")
 
     @contextmanager
     def transaction(self) -> Iterator[sqlite3.Connection]:
@@ -381,6 +448,55 @@ class StateDatabase:
     def write(self, kind: str, value: Any) -> None:
         with self.transaction() as db:
             getattr(self, f"_write_{kind}")(db, value)
+            self._bump_revisions(db, kind)
+
+    @staticmethod
+    def _revision_domains(kind: str) -> tuple[str, ...]:
+        domains = {
+            "channels": ("library",),
+            "settings": ("library",),
+            "owner": ("library",),
+            "player": ("library",),
+            "channel_metadata": ("library",),
+            "adult_media": ("library",),
+            "adult_series": ("library",),
+            "adult_viewing": ("adult_viewing", "adult_insights"),
+            "viewing": ("viewing_insights",),
+            "adult_insights": ("adult_insights",),
+        }
+        return domains.get(kind, ())
+
+    def _bump_revisions(self, db: sqlite3.Connection, kind: str) -> None:
+        now = time.time()
+        for domain in self._revision_domains(kind):
+            db.execute(
+                "INSERT INTO state_revisions(domain,revision,updated_at) VALUES(?,1,?) "
+                "ON CONFLICT(domain) DO UPDATE SET "
+                "revision=revision+1,updated_at=excluded.updated_at",
+                (domain, now),
+            )
+
+    def bump_revision(self, domain: str) -> None:
+        if domain not in {"library", "adult_viewing", "viewing_insights",
+                          "adult_insights"}:
+            raise ValueError(f"Unknown portal revision domain: {domain}")
+        with self.transaction() as db:
+            self._bump_revisions(db, {
+                "library": "channels",
+                "adult_viewing": "adult_viewing",
+                "viewing_insights": "viewing",
+                "adult_insights": "adult_insights",
+            }[domain])
+
+    def revisions(self) -> dict[str, int]:
+        domains = ("library", "adult_viewing", "viewing_insights", "adult_insights")
+        db = self.connect()
+        try:
+            rows = {row["domain"]: int(row["revision"])
+                    for row in db.execute("SELECT domain,revision FROM state_revisions")}
+        finally:
+            db.close()
+        return {domain: rows.get(domain, 0) for domain in domains}
 
     @staticmethod
     def _replace_kv(db: sqlite3.Connection, table: str, value: dict[str, Any]) -> None:

@@ -30,6 +30,16 @@
 
     <main class="app-main">
       <p id="notice" class="notice" role="status" aria-live="polite"></p>
+      <section id="offlineUnavailable" class="offline-unavailable hidden" aria-live="polite">
+        <span class="offline-unavailable-icon"><svg class="icon"><use href="/portal/icons.svg#signal-radio"/></svg></span>
+        <p id="offlineUnavailableEyebrow" class="eyebrow">MabelTV is offline</p>
+        <h1 id="offlineUnavailableTitle">Connect to open this section</h1>
+        <p id="offlineUnavailableMessage">Reconnect this iPhone to MabelTV, then try again.</p>
+        <div class="offline-unavailable-actions">
+          <button id="offlineOpenDownloads" class="primary" type="button"><svg class="icon"><use href="/portal/icons.svg#signal-download"/></svg><span>Open Downloads</span></button>
+          <button id="offlineRetry" type="button"><svg class="icon"><use href="/portal/icons.svg#signal-restart"/></svg><span>Try again</span></button>
+        </div>
+      </section>
       <!-- portal-include:html/views/overview.html -->
       <!-- portal-include:html/views/live.html -->
       <!-- portal-include:html/views/lg-tv.html -->

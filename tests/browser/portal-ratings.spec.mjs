@@ -25,7 +25,7 @@ test('Ratings is a four-wide watched-only queue and saves from the lightweight t
     title: `Seen Film ${identifier}`, year: '2018', poster_path: `/rated-${identifier}.jpg`,
     manual_state: 'watched', history: [identifier],
   }))]
-  await page.route('https://image.tmdb.org/**', route => route.fulfill({
+  await page.route('**/api/adult/tmdb-artwork/**', route => route.fulfill({
     status: 200, contentType: 'image/svg+xml',
     body: '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300"><rect width="200" height="300" fill="#193b45"/></svg>',
   }))

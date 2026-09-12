@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 test.use({ serviceWorkers: 'block' })
 
 async function openPortal(page) {
-  await page.route('https://image.tmdb.org/**', route => route.fulfill({
+  await page.route('**/api/adult/tmdb-artwork/**', route => route.fulfill({
     status: 200,
     contentType: 'image/svg+xml',
     body: '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450"><defs><linearGradient id="g" x2="1" y2="1"><stop stop-color="#217f76"/><stop offset="1" stop-color="#17263b"/></linearGradient></defs><rect width="300" height="450" fill="url(#g)"/><circle cx="210" cy="110" r="76" fill="rgba(255,255,255,.16)"/><path d="M0 360L300 180v270H0z" fill="rgba(0,0,0,.28)"/></svg>',
@@ -168,12 +168,29 @@ test('stored Insights paint immediately while an old view refreshes behind them'
   await page.locator('#adultHomeInsightsTab').click()
   await expect(page.locator('#adultInsightWatched')).not.toHaveText('0')
   const adultTotal = await page.locator('#adultInsightWatched').textContent()
-  await page.evaluate(() => {
-    for (const key of ['mabeltv-data-mabel-insights-v1-1', 'mabeltv-data-adult-insights-v1']) {
-      const cached = JSON.parse(localStorage.getItem(key))
-      cached.saved_at = 1
-      localStorage.setItem(key, JSON.stringify(cached))
+  await page.evaluate(async () => {
+    const database = await new Promise((resolve, reject) => {
+      const request = indexedDB.open(window.MabelAppCache.databaseName)
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+    const transaction = database.transaction('snapshots', 'readwrite')
+    const store = transaction.objectStore('snapshots')
+    for (const key of ['mabel-insights-v1-1', 'adult-insights-v1']) {
+      const cached = await new Promise((resolve, reject) => {
+        const request = store.get(key)
+        request.onsuccess = () => resolve(request.result)
+        request.onerror = () => reject(request.error)
+      })
+      cached.savedAt = 1
+      store.put(cached)
     }
+    await new Promise((resolve, reject) => {
+      transaction.oncomplete = resolve
+      transaction.onerror = () => reject(transaction.error)
+      transaction.onabort = () => reject(transaction.error)
+    })
+    database.close()
   })
   await page.route('**/api/viewing-insights?*', async route => {
     await new Promise(resolve => setTimeout(resolve, 1200))

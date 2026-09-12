@@ -10,6 +10,9 @@
 
 namespace
 {
+constexpr int minimumSupportedSchemaVersion = 1;
+constexpr int maximumSupportedSchemaVersion = 2;
+
 class Connection
 {
 public:
@@ -67,9 +70,11 @@ bool ready(Connection &connection, QString *error)
         setError(error, version.lastError().text());
         return false;
     }
-    if (version.value(0).toInt() != 1) {
+    const int schemaVersion = version.value(0).toInt();
+    if (schemaVersion < minimumSupportedSchemaVersion
+        || schemaVersion > maximumSupportedSchemaVersion) {
         setError(error, QStringLiteral("Unsupported MabelTV database schema %1")
-                            .arg(version.value(0).toInt()));
+                            .arg(schemaVersion));
         return false;
     }
     return true;

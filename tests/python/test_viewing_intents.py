@@ -171,6 +171,29 @@ class ViewingIntentTests(unittest.TestCase):
 
         self.assertNotIn("tv:243360", self.fixture.library.adult_local_title_index())
 
+    def test_reading_adult_viewing_does_not_rewrite_unchanged_local_progress(self) -> None:
+        self.fixture.library.adult_local_title_index = lambda: {"movie:603": {
+            "kind": "film", "path": "Films/The Matrix.mkv", "position": 420,
+            "duration": 8100, "title": "The Matrix",
+        }}
+        writes = 0
+        original_write = self.fixture.library.write_adult_viewing_store
+
+        def count_write(value):
+            nonlocal writes
+            writes += 1
+            original_write(value)
+
+        self.fixture.library.write_adult_viewing_store = count_write
+
+        self.fixture.library.adult_viewing()
+        first = writes
+        self.fixture.library.adult_viewing()
+        second = writes
+
+        self.assertEqual(first, 1)
+        self.assertEqual(first, second)
+
     def test_series_restart_clears_all_progress_but_preserves_manual_lists(self) -> None:
         series_id = self.fixture.library.create_adult_series("Ludwig")
         root = self.fixture.library.adult_series_root / series_id / "Season 1"

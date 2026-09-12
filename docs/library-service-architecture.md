@@ -35,6 +35,10 @@ class; callers do not need to know which module implements a method.
   identity-only results; local and viewing state remains exclusive to titles.
   Explicit film matches retain TMDB genre names in `metadata.genres` for the
   local film filter; films without a match remain visible in All genres.
+- `artwork.py`: the authenticated same-origin TMDB image proxy and its bounded,
+  rebuildable Pi cache under `/var/cache/mabeltv/tmdb-artwork`. It keeps
+  provider latency away from repeat device loads without turning artwork into
+  authoritative application state.
 - `discovery.py`: curated, paginated TMDB Explore lists. It enriches catalogue
   results with current local/viewing state but never performs Watchmode calls.
   The Adult TV home can additionally require a supported UK flatrate, free or

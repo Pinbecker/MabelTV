@@ -133,3 +133,83 @@ test('the real worker serves family media and PIN-locks Adult media', async ({ p
   expect(unlocked.stored.digest).toHaveLength(32)
   await expect.poll(() => page.evaluate(async () => (await fetch('/offline-media/adult-film')).status)).toBe(200)
 })
+
+
+test('warm startup uses the authorised snapshot and loads charts only on demand', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'ipad-webkit', 'Phone startup contract')
+  await page.goto('/')
+  await expect(page.locator('.app-shell')).toBeVisible()
+  await page.waitForFunction(async () => Boolean(
+    (await window.MabelAppCache?.read('library-v1'))?.data,
+  ))
+  let libraryRequests = 0
+  page.on('request', request => {
+    if (new URL(request.url()).pathname === '/api/library') libraryRequests += 1
+  })
+  await page.reload({ waitUntil: 'load' })
+  await expect(page.locator('.app-shell')).toBeVisible()
+  await page.waitForTimeout(300)
+  expect(libraryRequests).toBe(0)
+  expect(await page.evaluate(() => typeof window.Chart)).toBe('undefined')
+
+  if (testInfo.project.name === 'iphone-chromium') {
+    let releaseRefresh
+    const refreshGate = new Promise(resolve => { releaseRefresh = resolve })
+    await page.route('**/api/bootstrap', async route => {
+      const response = await route.fetch()
+      const body = await response.json()
+      body.revisions.library += 1
+      await route.fulfill({ response, json: body })
+    })
+    await page.route('**/api/library', async route => {
+      await refreshGate
+      await route.continue()
+    })
+    await page.reload({ waitUntil: 'load' })
+    await expect(page.locator('.app-shell')).toBeVisible()
+    await expect(page.locator('#homeContinueRail')).toContainText('Snowy Adventure')
+    await expect.poll(() => libraryRequests).toBe(1)
+    const refreshResponse = page.waitForResponse(response =>
+      new URL(response.url()).pathname === '/api/library')
+    releaseRefresh()
+    await refreshResponse
+    await page.unroute('**/api/library')
+    await page.unroute('**/api/bootstrap')
+  }
+
+  await page.locator('[data-view-button="adult-home"]').click()
+  await page.locator('#adultHomeInsightsTab').click()
+  await expect.poll(() => page.evaluate(() => typeof window.Chart)).toBe('function')
+})
+
+
+test('cached shell keeps every section reachable offline and Downloads functional', async ({ page, context }, testInfo) => {
+  test.skip(testInfo.project.name === 'ipad-webkit', 'Phone offline-shell contract')
+  await page.goto('/')
+  await expect(page.locator('.app-shell')).toBeVisible()
+  await ensureControlledOfflinePage(page)
+
+  await context.setOffline(true)
+  if (testInfo.project.name === 'iphone-webkit') {
+    // Playwright WebKit cannot reload an emulated offline page, but it can
+    // verify the installed-iOS UI transition against the same worker-backed
+    // storage. Chromium additionally proves the cold cached navigation.
+    await page.evaluate(() => window.dispatchEvent(new Event('offline')))
+  } else {
+    await page.reload({ waitUntil: 'domcontentloaded' })
+  }
+  await expect(page.locator('.app-shell')).toBeVisible()
+  await expect(page.locator('#offlineUnavailable')).toBeVisible()
+  await expect(page.locator('#offlineUnavailableTitle')).toContainText('Home')
+
+  await page.locator('[data-view-button="adult-home"]').click()
+  await expect(page.locator('#offlineUnavailableTitle')).toContainText('Adult TV')
+  await expect(page.locator('#offlineOpenDownloads span')).toHaveText('Open Adult Downloads')
+  await page.locator('#offlineOpenDownloads').click()
+  await expect(page.locator('#offlineUnavailable')).toBeHidden()
+  await expect(page.locator('#watchDownloadsLayout')).toBeVisible()
+  await expect(page).toHaveURL(/#adult-downloads$/)
+
+  await page.locator('[data-view-button="system"]').click()
+  await expect(page.locator('#offlineUnavailableTitle')).toContainText('Settings')
+})

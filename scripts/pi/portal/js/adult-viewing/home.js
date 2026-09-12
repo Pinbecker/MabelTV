@@ -5,13 +5,17 @@ let adultHomeLoading = false
 let adultHomeLoadedAt = 0
 let adultHomePersonal = []
 let adultHomeDifferent = []
+let adultHomeCacheRestored = false
 
-const adultHomeCache = readPortalDataCache('adult-home-v1')
-if (adultHomeCache) {
-  adultHomeLoadedAt = Number(adultHomeCache.saved_at) || 0
-  adultHomePage = Number(adultHomeCache.data.page) || 1
-  adultHomePersonal = adultHomeCache.data.personal || []
-  adultHomeDifferent = adultHomeCache.data.different || []
+async function restoreAdultHomeCache() {
+  if (adultHomeCacheRestored) return
+  adultHomeCacheRestored = true
+  const cached = await readPortalDataCache('adult-home-v1', 'adult_viewing')
+  if (!cached) return
+  adultHomeLoadedAt = cached.stale ? 0 : Number(cached.saved_at) || 0
+  adultHomePage = Number(cached.data.page) || 1
+  adultHomePersonal = cached.data.personal || []
+  adultHomeDifferent = cached.data.different || []
 }
 
 function adultHomeIsWatched(title) {
@@ -112,6 +116,7 @@ function renderAdultHomeKnownContent() {
 }
 
 async function loadAdultHome({ refresh = false } = {}) {
+  await restoreAdultHomeCache()
   renderAdultHomeKnownContent()
   if (adultHomeLoading) return
   const fresh = adultHomeLoadedAt && Date.now() - adultHomeLoadedAt < 60000
@@ -133,9 +138,9 @@ async function loadAdultHome({ refresh = false } = {}) {
     adultHomePersonal = personal.results || []
     adultHomeDifferent = different.results || []
     adultHomeLoadedAt = Date.now()
-    writePortalDataCache('adult-home-v1', {
+    await writePortalDataCache('adult-home-v1', {
       page: adultHomePage, personal: adultHomePersonal, different: adultHomeDifferent,
-    })
+    }, 'adult_viewing')
     renderAdultHomeKnownContent()
   } catch (error) {
     renderAdultHomeKnownContent()

@@ -580,12 +580,4 @@
     text-align: center;
   }
 
-  body.offline-mode [data-view-button]:not([data-view-button="watch"]) {
-    opacity: 0.42;
-    pointer-events: none;
-  }
-
-  body.offline-mode :is(#watchMabelTab, #watchAdultTab) {
-    display: none;
-  }
 }

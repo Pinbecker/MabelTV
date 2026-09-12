@@ -297,6 +297,9 @@ test('insights Back returns to the exact browse, highlight or Follow the day par
   await openPortal(page)
   await page.locator('[data-view-button="watch"]').click()
   await page.locator('#watchMabelInsightsTab').click()
+  await expect.poll(() => page.evaluate(() => Boolean(viewingInsightsData)
+    && viewingInsightsLoadedRange === viewingInsightsRange
+    && viewingInsightsRequest === null)).toBe(true)
   await page.evaluate(() => {
     const started = new Date()
     started.setHours(14, 0, 0, 0)

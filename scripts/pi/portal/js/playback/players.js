@@ -48,6 +48,8 @@ function remoteTime(value) {
 
     function posterImage(name, fallback) {
       const image = document.createElement('img')
+      image.loading = 'lazy'
+      image.decoding = 'async'
       let retried = false
       image.src = artworkUrl(name)
       image.alt = ''

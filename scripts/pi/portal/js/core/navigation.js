@@ -8,6 +8,79 @@
       system: { view: 'system', route: '#system', state: { primaryView: 'system', settings: true } },
     }
     const primarySectionLocations = new Map()
+    let portalReconnectPromise = null
+    let portalAppCacheStartup = Promise.resolve(false)
+
+    function offlineSectionName(name, activeNavigation) {
+      if (activeNavigation === 'adult-home') return 'Adult TV'
+      if (activeNavigation === 'watch') return 'MabelTV'
+      if (activeNavigation === 'live') return 'Remote'
+      if (activeNavigation === 'system') return 'Settings'
+      if (name === 'overview') return 'Home'
+      return 'This section'
+    }
+
+    function showOfflineUnavailable(name, activeNavigation) {
+      const downloads = name === 'watch' && remoteKind === 'downloads'
+      const root = $('#offlineUnavailable')
+      root.classList.toggle('hidden', !offlineMode || downloads)
+      document.body.classList.toggle('offline-section-unavailable',
+        offlineMode && !downloads)
+      if (!offlineMode || downloads) return false
+      const section = offlineSectionName(name, activeNavigation)
+      const disconnected = portalConnectionState === 'offline'
+      $('#offlineUnavailableEyebrow').textContent = disconnected
+        ? 'This iPhone is offline' : `${tvName()} cannot be reached`
+      $('#offlineUnavailableTitle').textContent = `${section} needs a connection`
+      $('#offlineUnavailableMessage').textContent = disconnected
+        ? `Reconnect this iPhone to the network that can reach ${tvName()}, then try again.`
+        : `${tvName()} may be starting up or this iPhone may be on another network. Your saved Downloads still work here.`
+      const adult = activeNavigation === 'adult-home'
+      $('#offlineOpenDownloads').dataset.domain = adult ? 'adult' : 'mabel'
+      $('#offlineOpenDownloads span').textContent = adult
+        ? 'Open Adult Downloads' : 'Open Downloads'
+      return true
+    }
+
+    async function attemptPortalReconnect() {
+      if (portalReconnectPromise) return portalReconnectPromise
+      portalReconnectPromise = (async () => {
+        try {
+          const setup = await api('/api/setup')
+          configuredTvName = typeof setup.tv_name === 'string' && setup.tv_name.trim()
+            ? setup.tv_name.trim() : configuredTvName
+          applyTvName()
+          if (!setup.configured) {
+            location.reload()
+            return
+          }
+          await window.MabelAppCache?.initialise()
+          const bootstrap = await api('/api/bootstrap')
+          const startup = await loadInitialPortalData(bootstrap)
+          portalConnectionState = 'connected'
+          offlineMode = false
+          document.body.classList.remove('offline-mode', 'offline-section-unavailable')
+          showOnly('app')
+          openRequestedView()
+          startup.refresh?.catch(error => console.warn('Background portal refresh failed', error))
+        } catch (error) {
+          if (error.status === 401) {
+            offlineMode = false
+            document.body.classList.remove('offline-mode', 'offline-section-unavailable')
+            return
+          }
+          portalConnectionState = navigator.onLine ? 'unreachable' : 'offline'
+          offlineMode = true
+          document.body.classList.add('offline-mode')
+          const active = document.querySelector('.view.active')?.id.replace(/^view-/, '') || 'overview'
+          openView(active)
+        } finally {
+          portalReconnectPromise = null
+        }
+      })()
+      return portalReconnectPromise
+    }
+    window.attemptPortalReconnect = attemptPortalReconnect
 
     function rememberPrimarySectionLocation(name, section) {
       if (!primarySectionRoots[section]) return
@@ -61,6 +134,10 @@
       }
       const channelRoute = requested.match(/^channel\/(\d+)\/(watch|library)$/)
       if (channelRoute) {
+        if (offlineMode) {
+          openView('watch')
+          return
+        }
         openChannel(Number(channelRoute[1]), channelRoute[2] === 'watch', {
           updateHistory: false,
           returnPosition: history.state?.mabelWatchReturn || null,
@@ -161,6 +238,11 @@
 
     async function initialise() {
       const offlineStartup = startOfflineStorage()
+      portalAppCacheStartup = Promise.resolve(window.MabelAppCache?.initialise())
+        .catch(error => {
+          console.warn('App snapshots could not start', error)
+          return false
+        })
       let offlineRequired = true
       const syncOfflineState = () => offlineStartup.then(ready => {
         if (!ready) return false
@@ -191,19 +273,27 @@
           setupMarker()
           showOnly('setup')
         } else if (state.portal_pin_required === false) {
-          await load()
+          await portalAppCacheStartup
+          const bootstrap = await api('/api/bootstrap')
+          const startup = await loadInitialPortalData(bootstrap)
+          portalConnectionState = 'connected'
           setOfflineProtectedAccess(true)
           showOnly('app')
           openRequestedView()
+          startup.refresh?.catch(error => console.warn('Background portal refresh failed', error))
         } else {
           // A valid HttpOnly session cookie survives an iPad page reload.  Ask
           // the protected library before showing the PIN screen so closing a
           // native player never looks like a logout.
           try {
-            await load()
+            await portalAppCacheStartup
+            const bootstrap = await api('/api/bootstrap')
+            const startup = await loadInitialPortalData(bootstrap)
+            portalConnectionState = 'connected'
             setOfflineProtectedAccess(true)
             showOnly('app')
             openRequestedView()
+            startup.refresh?.catch(error => console.warn('Background portal refresh failed', error))
           } catch (error) {
             showOnly('login')
             if (error.status !== 401) {
@@ -217,15 +307,13 @@
         await offlineStartup
         if (offlineStorageReady) {
           offlineMode = true
+          portalConnectionState = navigator.onLine ? 'unreachable' : 'offline'
           setOfflineProtectedAccess(false)
           document.body.classList.add('offline-mode')
           try { configuredTvName = localStorage.getItem('mabeltv-tv-name') || configuredTvName } catch (_) { /* optional */ }
           applyTvName()
           showOnly('app')
-          remoteKind = 'downloads'
-          renderRemoteViewing()
-          openView('watch')
-          await renderDownloads()
+          openRequestedView()
           return
         }
         showOnly('login')
@@ -297,15 +385,19 @@
       event.preventDefault()
       const button = event.submitter
       button.disabled = true
-      try {
-        const pin = $('#pin').value
-        await api('/api/login', { method: 'POST', body: JSON.stringify({ pin }) })
-        await syncOfflineSecurity(true, pin)
-        setOfflineProtectedAccess(true)
-        $('#pin').value = ''
-        await load()
-        showOnly('app')
-        openRequestedView()
+        try {
+          const pin = $('#pin').value
+          await api('/api/login', { method: 'POST', body: JSON.stringify({ pin }) })
+          await syncOfflineSecurity(true, pin)
+          setOfflineProtectedAccess(true)
+          $('#pin').value = ''
+          await portalAppCacheStartup
+          const bootstrap = await api('/api/bootstrap')
+          const startup = await loadInitialPortalData(bootstrap)
+          portalConnectionState = 'connected'
+          showOnly('app')
+          openRequestedView()
+          startup.refresh?.catch(error => console.warn('Background portal refresh failed', error))
       } catch (error) {
         $('#loginError').classList.add('bad')
         $('#loginError').textContent = error.message
@@ -350,7 +442,6 @@
       // A status belongs to the action that created it, not every page the
       // parent subsequently visits. Clear it whenever navigation begins.
       notice('')
-      if (offlineMode && name !== 'watch') name = 'watch'
       const leavingExplore = $('#view-adult-explore')?.classList.contains('active')
         && name !== 'adult-explore'
       if (leavingExplore && typeof endAdultExploreVisit === 'function') endAdultExploreVisit()
@@ -388,6 +479,15 @@
         if (active) button.setAttribute('aria-current', 'page')
         else button.removeAttribute('aria-current')
       })
+      const unavailableOffline = showOfflineUnavailable(name, activeNavigation)
+      if (unavailableOffline) {
+        stopLiveTv()
+        window.stopLgTvRemote?.()
+        stopHomeStatusRefresh()
+        resetViewScroll()
+        return
+      }
+      renderLibraryView(name)
       const restoredScroll = options.restoreScroll
         ? restoreViewScroll(options.restoreScroll) : false
       if (!restoredScroll) {
@@ -419,3 +519,10 @@
       const savedPosition = portalViewPositions.get(`view-${name}`)
       if (!options.restoreScroll && !options.resetScroll && savedPosition) settlePortalPosition(savedPosition)
     }
+
+    $('#offlineOpenDownloads').onclick = () => {
+      navigateDomainRoute($('#offlineOpenDownloads').dataset.domain || 'mabel', 'downloads', {
+        replace: true,
+      })
+    }
+    $('#offlineRetry').onclick = () => { void attemptPortalReconnect() }

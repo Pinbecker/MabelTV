@@ -1,12 +1,19 @@
 'use strict'
 
-const SHELL_CACHE = 'mabeltv-shell-v209'
+const SHELL_RELEASE = '215'
+const SHELL_CACHE = `mabeltv-shell-v${SHELL_RELEASE}`
+const PREVIOUS_SHELL_CACHE = 'mabeltv-shell-v214'
+const SHELL_CACHE_PREFIX = 'mabeltv-shell-v'
+const FAMILY_ARTWORK_CACHE = 'mabeltv-artwork-family-v1'
+const PROTECTED_ARTWORK_CACHE = 'mabeltv-artwork-protected-v1'
+const ARTWORK_LIMIT = 1000
 const SHELL_URLS = [
   '/',
   '/manifest.webmanifest',
-  '/hls.min.js',
-  '/portal/vendor/chart.umd.min.js',
+  '/mabeltv-icon.png',
   '/mabeltv-offline.js',
+  '/portal/js/core/app-cache.js',
+  '/portal/js/core/assets.js',
   '/portal/css/tokens.css',
   '/portal/css/base.css',
   '/portal/css/components.css',
@@ -74,11 +81,19 @@ const SHELL_URLS = [
   '/portal/js/adult-viewing/up-next-order.js',
   '/portal/js/adult-viewing/person.js',
   '/portal/js/adult-viewing/explore.js',
+  '/portal/js/adult-viewing/grid.js',
   '/portal/js/adult-viewing/home.js',
   '/portal/js/adult-viewing/filmography.js',
   '/portal/js/adult-viewing/rating.js',
   '/portal/js/actions.js',
   '/portal/js/lg-tv-remote.js',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  '/apple-touch-icon.png',
+]
+const LAZY_SHELL_URLS = [
+  '/hls.min.js',
+  '/portal/vendor/chart.umd.min.js',
   '/portal/assets/providers/netflix-app.jpg',
   '/portal/assets/providers/prime-video-app.jpg',
   '/portal/assets/providers/disney-plus-app.jpg',
@@ -89,9 +104,6 @@ const SHELL_URLS = [
   '/portal/assets/providers/itvx-app.jpg',
   '/portal/assets/providers/paramount-plus-app.jpg',
   '/portal/assets/providers/apple-tv-app.jpg',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  '/apple-touch-icon.png',
 ]
 const DB_NAME = 'mabeltv-offline-v1'
 const DB_VERSION = 2
@@ -225,17 +237,26 @@ async function precacheShell() {
 }
 
 self.addEventListener('install', event => {
-  event.waitUntil(precacheShell().then(() => self.skipWaiting()))
+  // A complete new shell waits until the existing app closes. That prevents a
+  // live PWA from switching JavaScript generations halfway through a session.
+  event.waitUntil(precacheShell())
 })
 
 self.addEventListener('activate', event => {
   event.waitUntil(Promise.all([
-    caches.keys().then(keys => Promise.all(keys.filter(key => key !== SHELL_CACHE).map(key => caches.delete(key)))),
+    caches.keys().then(keys => Promise.all(keys.filter(key =>
+      key.startsWith(SHELL_CACHE_PREFIX)
+        && key !== SHELL_CACHE
+        && key !== PREVIOUS_SHELL_CACHE).map(key => caches.delete(key)))),
     self.clients.claim(),
   ]))
 })
 
 self.addEventListener('message', event => {
+  if (event.data?.type === 'mabeltv-activate-update') {
+    event.waitUntil(self.skipWaiting())
+    return
+  }
   if (event.data?.type !== 'mabeltv-offline-access') return
   if (event.data.unlocked === true && event.source?.id) unlockedClients.add(event.source.id)
   else unlockedClients.clear()
@@ -244,6 +265,46 @@ self.addEventListener('message', event => {
 
 function offlineClientAuthorised(event) {
   return Boolean(event.clientId) && unlockedClients.has(event.clientId)
+}
+
+async function cacheFirst(request, cacheName = SHELL_CACHE) {
+  const cache = await caches.open(cacheName)
+  const cached = await cache.match(request)
+  if (cached) return cached
+  const response = await fetch(request)
+  if (response.ok) await cache.put(request, response.clone())
+  return response
+}
+
+async function trimCache(cache, maximum) {
+  const keys = await cache.keys()
+  const excess = keys.length - maximum
+  if (excess > 0) await Promise.all(keys.slice(0, excess).map(key => cache.delete(key)))
+}
+
+async function artworkResponse(request, cacheName, authorised = true) {
+  const cache = await caches.open(cacheName)
+  if (authorised) {
+    const cached = await cache.match(request)
+    if (cached) return cached
+  }
+  let response
+  try {
+    response = await fetch(request)
+  } catch (_) {
+    if (authorised) return (await cache.match(request))
+      || new Response('Artwork unavailable offline', { status: 503 })
+    return new Response('Parent PIN required', { status: 401 })
+  }
+  if (authorised && response.ok) {
+    try {
+      await cache.put(request, response.clone())
+      await trimCache(cache, ARTWORK_LIMIT)
+    } catch (_) {
+      // A full or unavailable cache must never hide a valid network image.
+    }
+  }
+  return response
 }
 
 self.addEventListener('fetch', event => {
@@ -272,25 +333,33 @@ self.addEventListener('fetch', event => {
     }))
     return
   }
+  if (url.pathname.startsWith('/api/channel/artwork/')) {
+    event.respondWith(artworkResponse(event.request, FAMILY_ARTWORK_CACHE))
+    return
+  }
+  if (url.pathname.startsWith('/api/adult/artwork/')
+      || url.pathname.startsWith('/api/adult/series/artwork/')
+      || url.pathname.startsWith('/api/adult/tmdb-artwork/')) {
+    event.respondWith(artworkResponse(event.request, PROTECTED_ARTWORK_CACHE,
+      offlineClientAuthorised(event)))
+    return
+  }
   if (event.request.mode === 'navigate') {
-    const response = fetch(event.request).then(async response => {
-      if (response.ok) {
-        await caches.open(SHELL_CACHE).then(cache => cache.put('/', response.clone()))
-      }
-      return response
-    }).catch(async () => (await caches.match('/')) || new Response('MabelTV is not available offline yet', {
-      status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-    }))
+    const response = caches.open(SHELL_CACHE).then(cache => cache.match('/'))
+      .then(cached => cached || fetch(event.request))
+      .catch(() => new Response('MabelTV is not available offline yet', {
+        status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      }))
     event.respondWith(response)
     return
   }
   if (SHELL_URLS.includes(url.pathname)) {
-    const response = fetch(event.request).then(async response => {
-      if (response.ok) {
-        await caches.open(SHELL_CACHE).then(cache => cache.put(event.request, response.clone()))
-      }
-      return response
-    }).catch(async () => (await caches.match(event.request)) || new Response('Offline asset unavailable', { status: 503 }))
-    event.respondWith(response)
+    event.respondWith(cacheFirst(event.request).catch(() =>
+      new Response('Offline asset unavailable', { status: 503 })))
+    return
+  }
+  if (LAZY_SHELL_URLS.includes(url.pathname)) {
+    event.respondWith(cacheFirst(event.request).catch(() =>
+      new Response('Optional app feature unavailable', { status: 503 })))
   }
 })

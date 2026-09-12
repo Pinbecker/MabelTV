@@ -46,7 +46,20 @@ The ownership and loading rules for future portal changes are recorded in
 - Family downloads remain available when the Pi is offline.
 - Adult downloads require a locally verified parent PIN after a cold offline
   launch; the PIN itself must never be stored.
+- The cached application shell opens without the Pi. Every bottom destination
+  remains selectable and shows a clear reconnect panel; each domain's
+  Downloads tab remains functional.
+- Authorised library snapshots can paint a warm launch before a changed domain
+  refresh completes. A public setup check and authenticated revision bootstrap
+  always run before a snapshot is shown, so cached Adult data cannot bypass the
+  PIN gate.
 - Service-worker upgrades must retain existing downloads.
+- Shell, disposable response snapshots, artwork, and downloaded media use
+  separate versioned stores. Clearing or upgrading a shell/snapshot store must
+  never delete `mabeltv-offline-v1`.
+- Previously displayed TMDB posters use the protected Adult artwork cache, so
+  returning to an artwork grid does not depend on downloading those images
+  again. Locked clients cannot read the protected cache.
 - Safe-area padding, touch scrolling, fixed navigation, and video playback are
   checked on a real installed iOS PWA after each explicitly approved checkpoint.
 

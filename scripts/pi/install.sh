@@ -141,8 +141,13 @@ install -d -o root -g mabeltv -m 0750 /etc/mabeltv
 backup_dir=/var/backups/mabeltv
 install -d -o root -g root -m 0700 "$backup_dir"
 preinstall_backup="$backup_dir/preinstall-$(date +%Y%m%d-%H%M%S).tar.gz"
+database_existed_before="false"
+database_created_during_install="false"
+database_restore_required="false"
+database_migration_backup=""
 backup_paths=(etc/systemd/system/mabeltv.service etc/systemd/system/mabeltv-ir.service)
 if [[ -f /var/lib/mabeltv/mabeltv.db ]]; then
+    database_existed_before="true"
     # The generic tar snapshot cannot safely copy a live WAL database. Keep a
     # separately validated SQLite online-backup beside the installer snapshot.
     bash "$source_root/scripts/pi/backup-config.sh" "$backup_dir" >/dev/null
@@ -268,6 +273,7 @@ if [[ ! -e /var/lib/mabeltv/mabeltv.db ]]; then
         --database /var/lib/mabeltv/mabeltv.db \
         --channels "$source_root/config/examples/channels.json" \
         --settings "$source_root/config/examples/settings.json"
+    database_created_during_install="true"
 fi
 chown mabeltv:mabeltv /var/lib/mabeltv/mabeltv.db
 chmod 0640 /var/lib/mabeltv/mabeltv.db
@@ -343,6 +349,24 @@ restore_failed_release() {
         [[ "$unit" == "avahi-daemon.service" ]] \
             || systemctl disable --now "$unit" 2>/dev/null || true
     done
+    if [[ "$database_restore_required" == "true" \
+        && -f "$database_migration_backup" ]]; then
+        local database_restore_dir database_restore_source database_restore_temp
+        database_restore_dir="$(mktemp -d /var/lib/mabeltv/.database-restore.XXXXXX)"
+        tar -C "$database_restore_dir" -xzf "$database_migration_backup" \
+            ./var/lib/mabeltv/mabeltv.db
+        database_restore_source="$database_restore_dir/var/lib/mabeltv/mabeltv.db"
+        database_restore_temp="/var/lib/mabeltv/.mabeltv.db.restore.$$"
+        install -o mabeltv -g mabeltv -m 0640 \
+            "$database_restore_source" "$database_restore_temp"
+        rm -f -- /var/lib/mabeltv/mabeltv.db-wal /var/lib/mabeltv/mabeltv.db-shm
+        mv -Tf "$database_restore_temp" /var/lib/mabeltv/mabeltv.db
+        rm -rf -- "$database_restore_dir"
+    elif [[ "$database_created_during_install" == "true" \
+        && "$database_existed_before" != "true" ]]; then
+        rm -f -- /var/lib/mabeltv/mabeltv.db \
+            /var/lib/mabeltv/mabeltv.db-wal /var/lib/mabeltv/mabeltv.db-shm
+    fi
     bash "$failed_release/appliance/scripts/pi/activate-assets.sh" \
         --restore "$asset_snapshot" || true
     if [[ -n "$previous_release" && -d "$previous_release" ]]; then
@@ -385,6 +409,19 @@ transaction_error() {
 
 activation_pending="true"
 trap transaction_error ERR
+
+# Stop both database users for the very short schema activation window. The
+# resulting validated snapshot is the exact rollback point if any later unit,
+# HTTP or health check rejects this release.
+if [[ "$database_existed_before" == "true" ]]; then
+    systemctl stop mabeltv.service mabeltv-library.service
+    database_migration_backup="$(
+        bash "$release_dir/appliance/scripts/pi/backup-config.sh" "$backup_dir"
+    )"
+    database_restore_required="true"
+    "$release_dir/mabeltv-state-migrate" upgrade \
+        --database /var/lib/mabeltv/mabeltv.db
+fi
 bash "$release_dir/appliance/scripts/pi/activate-assets.sh" "$release_dir"
 
 # systemd verifies Exec paths as well as unit syntax. Run this only after the
@@ -480,9 +517,13 @@ else
     printf 'Installed but not enabled. Run: sudo systemctl enable --now mabeltv.service\n'
 fi
 activation_pending="false"
+database_restore_required="false"
 trap - ERR
 printf 'Installed release %s. Current release: %s\n' "$release_id" "$(readlink -f /opt/mabeltv/current)"
 printf 'Pre-install backup: %s\n' "$preinstall_backup"
+if [[ -n "$database_migration_backup" ]]; then
+    printf 'Pre-migration database backup: %s\n' "$database_migration_backup"
+fi
 printf 'Media belongs under /srv/mabeltv/media/<channel-folder>/.\n'
 printf 'Mabel TV Library is available on this home network at http://%s.local:8080\n' "$(hostname)"
 if systemctl is-active --quiet mabeltv-matter.service 2>/dev/null; then

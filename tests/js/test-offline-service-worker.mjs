@@ -19,6 +19,7 @@ function request(value) {
 
 function workerContext(manifest, chunks, cacheOverrides = {}) {
   const listeners = {}
+  let skipWaitingCalls = 0
   const stores = {
     downloads: { get: key => request(key === manifest.id ? manifest : undefined) },
     chunks: { get: key => request(chunks.get(key)) },
@@ -42,12 +43,12 @@ function workerContext(manifest, chunks, cacheOverrides = {}) {
     self: {
       location: { origin: 'https://tv.example.test' },
       addEventListener: (name, listener) => { listeners[name] = listener },
-      skipWaiting: async () => {},
+      skipWaiting: async () => { skipWaitingCalls += 1 },
       clients: { claim: async () => {} },
     },
   })
   vm.runInContext(workerSource, context, { filename: 'service-worker.js' })
-  return { context, listeners }
+  return { context, listeners, skipWaitingCalls: () => skipWaitingCalls }
 }
 
 test('service worker precaches the shell without concurrent request fan-out', async () => {
@@ -71,8 +72,142 @@ test('service worker precaches the shell without concurrent request fan-out', as
 
   assert.equal(maximumActive, 1)
   assert.equal(added[0], '/')
-  assert.ok(added.includes('/portal/vendor/chart.umd.min.js'))
+  assert.ok(added.includes('/portal/js/core/app-cache.js'))
+  assert.ok(!added.includes('/portal/vendor/chart.umd.min.js'))
+  assert.ok(!added.includes('/hls.min.js'))
   assert.ok(added.length > 50)
+})
+
+test('service worker keeps the current rollback shell and unrelated persistent caches', async () => {
+  const deleted = []
+  const worker = workerContext({ id: 'unused' }, new Map(), {
+    keys: async () => [
+      'mabeltv-shell-v211', 'mabeltv-shell-v212', 'mabeltv-shell-v213',
+      'mabeltv-shell-v214', 'mabeltv-shell-v215',
+      'mabeltv-offline-v1', 'mabeltv-artwork-family-v1', 'another-app-cache',
+    ],
+    delete: async key => { deleted.push(key); return true },
+  })
+  let activation
+  worker.listeners.activate({ waitUntil: promise => { activation = promise } })
+  await activation
+
+  assert.deepEqual(deleted, [
+    'mabeltv-shell-v211', 'mabeltv-shell-v212', 'mabeltv-shell-v213',
+  ])
+})
+
+test('a complete shell update waits for a safe activation boundary', async () => {
+  const worker = workerContext({ id: 'unused' }, new Map())
+  let installation
+  worker.listeners.install({ waitUntil: promise => { installation = promise } })
+  await installation
+  assert.equal(worker.skipWaitingCalls(), 0)
+
+  let activation
+  worker.listeners.message({
+    data: { type: 'mabeltv-activate-update' },
+    waitUntil: promise => { activation = promise },
+  })
+  await activation
+  assert.equal(worker.skipWaitingCalls(), 1)
+})
+
+test('cached shell navigation remains available when the Pi cannot be reached', async () => {
+  const cached = new Response('<main>MabelTV shell</main>', {
+    headers: { 'Content-Type': 'text/html' },
+  })
+  const worker = workerContext({ id: 'unused' }, new Map(), {
+    open: async () => ({
+      add: async () => {},
+      match: async value => value === '/' ? cached.clone() : undefined,
+      put: async () => {},
+      keys: async () => [],
+      delete: async () => true,
+    }),
+  })
+  const response = await dispatchedResponse(worker.listeners.fetch, {
+    url: 'https://tv.example.test/adult-tv', mode: 'navigate',
+  }, 'phone')
+  assert.equal(response.status, 200)
+  assert.match(await response.text(), /MabelTV shell/)
+})
+
+test('protected artwork cache is never exposed to a locked client', async () => {
+  const protectedArtwork = new Response('private-poster', { status: 200 })
+  const worker = workerContext({ id: 'unused' }, new Map(), {
+    open: async () => ({
+      add: async () => {},
+      match: async () => protectedArtwork.clone(),
+      put: async () => {},
+      keys: async () => [],
+      delete: async () => true,
+    }),
+  })
+  worker.context.fetch = async () => { throw new Error('Pi offline') }
+  const artwork = new Request('https://tv.example.test/api/adult/artwork/private.jpg')
+
+  let response = await dispatchedResponse(worker.listeners.fetch, artwork, 'phone')
+  assert.equal(response.status, 401)
+  worker.listeners.message({
+    data: { type: 'mabeltv-offline-access', unlocked: true },
+    source: { id: 'phone' },
+  })
+  response = await dispatchedResponse(worker.listeners.fetch, artwork, 'phone')
+  assert.equal(response.status, 200)
+  assert.equal(await response.text(), 'private-poster')
+})
+
+test('same-origin TMDB artwork is retained for an unlocked offline client', async () => {
+  const stored = new Map()
+  const worker = workerContext({ id: 'unused' }, new Map(), {
+    open: async () => ({
+      add: async () => {},
+      match: async request => stored.get(request.url)?.clone(),
+      put: async (request, response) => { stored.set(request.url, response.clone()) },
+      keys: async () => [...stored.keys()].map(url => new Request(url)),
+      delete: async request => stored.delete(request.url),
+    }),
+  })
+  worker.context.fetch = async () => new Response('tmdb-poster', { status: 200 })
+  worker.listeners.message({
+    data: { type: 'mabeltv-offline-access', unlocked: true },
+    source: { id: 'phone' },
+  })
+  const artwork = new Request(
+    'https://tv.example.test/api/adult/tmdb-artwork/w342/example.jpg')
+
+  let response = await dispatchedResponse(worker.listeners.fetch, artwork, 'phone')
+  assert.equal(await response.text(), 'tmdb-poster')
+  assert.equal(stored.size, 1)
+  worker.context.fetch = async () => { throw new Error('Pi offline') }
+  response = await dispatchedResponse(worker.listeners.fetch, artwork, 'phone')
+  assert.equal(await response.text(), 'tmdb-poster')
+})
+
+test('an artwork cache failure never hides a successful network image', async () => {
+  const worker = workerContext({ id: 'unused' }, new Map(), {
+    open: async () => ({
+      add: async () => {}, match: async () => undefined,
+      put: async () => { throw new Error('device storage full') },
+      keys: async () => [], delete: async () => true,
+    }),
+  })
+  worker.context.fetch = async () => new Response('visible-poster', { status: 200 })
+  worker.listeners.message({
+    data: { type: 'mabeltv-offline-access', unlocked: true },
+    source: { id: 'phone' },
+  })
+  const response = await dispatchedResponse(worker.listeners.fetch, new Request(
+    'https://tv.example.test/api/adult/tmdb-artwork/w500/example.jpg'), 'phone')
+  assert.equal(response.status, 200)
+  assert.equal(await response.text(), 'visible-poster')
+})
+
+test('cross-origin artwork falls through to the browser network stack', async () => {
+  const worker = workerContext({ id: 'unused' }, new Map())
+  const artwork = new Request('https://image.tmdb.org/t/p/w342/example.jpg')
+  assert.equal(dispatchedResponse(worker.listeners.fetch, artwork, 'phone'), undefined)
 })
 
 function dispatchedResponse(listener, request, clientId = '') {

@@ -79,6 +79,8 @@ const $ = selector => document.querySelector(selector)
     let offlineStorageError = ''
     let offlineMode = false
     let offlineProtectedAccess = false
+    let portalConnectionState = 'connecting'
+    let portalBootstrapState = { schema_version: 1, revisions: {} }
     const pendingDownloads = new Map()
     let portalPlayerScrollY = 0
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
@@ -141,12 +143,15 @@ const $ = selector => document.querySelector(selector)
       })
       const body = await response.json().catch(() => ({}))
       if (response.status === 401) {
+        portalConnectionState = 'auth-required'
         setOfflineProtectedAccess(false)
         showOnly('login')
         $('#loginError').classList.add('bad')
         $('#loginError').textContent = 'Your session was locked. Enter the parent PIN to continue.'
         $('#pin').focus()
-        throw new Error('Your session was locked')
+        const error = new Error('Your session was locked')
+        error.status = 401
+        throw error
       }
       if (!response.ok) {
         const error = new Error(body.error || `${tvName()} could not complete that request`)
@@ -157,20 +162,34 @@ const $ = selector => document.querySelector(selector)
       return body
     }
 
-    function readPortalDataCache(key) {
+    function applyPortalBootstrap(value) {
+      portalBootstrapState = value && typeof value === 'object'
+        ? value : { schema_version: 1, revisions: {} }
+      return portalBootstrapState
+    }
+
+    function portalRevision(domain) {
+      return Number(portalBootstrapState?.revisions?.[domain] || 0)
+    }
+
+    async function readPortalDataCache(key, domain) {
       try {
-        const cached = JSON.parse(localStorage.getItem(`mabeltv-data-${key}`) || 'null')
-        return cached && Number.isFinite(Number(cached.saved_at)) && cached.data
-          ? cached : null
+        const cached = await window.MabelAppCache?.read(key)
+        if (!cached?.data || cached.schema !== 1) return null
+        const stale = Boolean(domain
+          && Number(cached.revision) !== portalRevision(domain))
+        return {
+          saved_at: Number(cached.savedAt || 0),
+          revision: Number(cached.revision || 0),
+          stale,
+          data: cached.data,
+        }
       } catch (_) { return null }
     }
 
-    function writePortalDataCache(key, data) {
-      try {
-        localStorage.setItem(`mabeltv-data-${key}`, JSON.stringify({
-          saved_at: Date.now(), data,
-        }))
-      } catch (_) { /* The live in-memory view remains available when storage is full. */ }
+    function writePortalDataCache(key, data, domain) {
+      return window.MabelAppCache?.write(key, portalRevision(domain), data)
+        .catch(() => {}) || Promise.resolve()
     }
 
     function showOnly(id) {

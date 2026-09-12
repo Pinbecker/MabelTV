@@ -223,6 +223,13 @@ class FixtureLibrary:
             "recovering_owner": False,
         }
 
+    def portal_bootstrap(self) -> dict[str, Any]:
+        return {
+            "schema_version": 1, "database_schema": 2,
+            "revisions": {domain: 1 for domain in (
+                "library", "adult_viewing", "viewing_insights", "adult_insights")},
+        }
+
     def library(self) -> dict[str, Any]:
         payload = copy.deepcopy(LIBRARY_PAYLOAD)
         payload["owner"]["portal_pin_required"] = self.pin_required
@@ -452,6 +459,11 @@ class FixtureHandler(mabeltv_library.Handler):
         BaseHTTPRequestHandler.end_headers(self)
 
     def do_GET(self) -> None:
+        if self.path.startswith("/api/adult/tmdb-artwork/"):
+            artwork = b'<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450"/>'
+            self.send_response(200); self.send_header("Content-Type", "image/svg+xml"); self.send_header("Content-Length", str(len(artwork)))
+            self.end_headers(); self.wfile.write(artwork)
+            return
         if self.path in ("/api/adult/series/artwork/bright.svg",
                          "/api/adult/series/artwork/dark.svg"):
             colour = "#101820" if self.path.endswith("dark.svg") else "#ffffff"

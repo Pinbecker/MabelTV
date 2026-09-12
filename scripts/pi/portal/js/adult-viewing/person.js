@@ -12,6 +12,8 @@ function renderAdultPersonPhoto(person) {
   root.replaceChildren()
   if (person.profile_path) {
     const image = document.createElement('img')
+    image.loading = 'lazy'
+    image.decoding = 'async'
     image.src = adultPosterUrl(person.profile_path, 'w342')
     image.alt = `Portrait of ${person.name}`
     root.append(image)
@@ -100,6 +102,8 @@ function renderAdultPersonDetail(person, context = '', returnTo = null) {
     art.className = 'adult-franchise-art'
     if (title.poster_path) {
       const image = document.createElement('img')
+      image.loading = 'lazy'
+      image.decoding = 'async'
       image.src = adultPosterUrl(title.poster_path, 'w185')
       image.alt = ''
       art.append(image)
@@ -169,10 +173,18 @@ async function openAdultPerson(person, title, returnTo = null) {
   credits.replaceChildren()
   renderAdultPersonPhoto(person)
   portalSheets.open(sheet, { returnTo, focus: sheet.querySelector('.library-sheet-panel') })
+  const cacheKey = `adult-person-v1:${personId}`
   try {
+    const cached = await readPortalDataCache(cacheKey)
+    if (cached && revision === adultPersonOpenRevision && sheet.open) {
+      renderAdultPersonDetail(adultPersonInsightDetail(person, cached.data), context, returnTo)
+    }
     const detail = await api(`/api/adult/person?tmdb_id=${personId}`)
     if (revision !== adultPersonOpenRevision || !sheet.open) return
-    renderAdultPersonDetail(adultPersonInsightDetail(person, detail), context, returnTo)
+    if (!cached) {
+      renderAdultPersonDetail(adultPersonInsightDetail(person, detail), context, returnTo)
+    }
+    void writePortalDataCache(cacheKey, detail)
   } catch (error) {
     if (revision !== adultPersonOpenRevision || !sheet.open) return
     $('#adultPersonBiography').textContent = error.message || 'Cast details are unavailable right now.'

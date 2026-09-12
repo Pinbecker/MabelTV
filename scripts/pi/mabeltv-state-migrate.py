@@ -212,6 +212,8 @@ def main() -> None:
     bootstrap.add_argument("--database", type=Path, required=True)
     bootstrap.add_argument("--channels", type=Path, required=True)
     bootstrap.add_argument("--settings", type=Path, required=True)
+    upgrade = subparsers.add_parser("upgrade")
+    upgrade.add_argument("--database", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "import":
         report = import_sources(args.source_root, args.database, args.source_id,
@@ -237,6 +239,8 @@ def main() -> None:
         report = StateDatabase(args.output, {}).integrity_report()
     elif args.command == "export-json":
         report = export_sources(args.database, args.output_root)
+    elif args.command == "upgrade":
+        report = StateDatabase(args.database, {}).upgrade()
     else:
         if args.database.exists():
             raise FileExistsError(f"Refusing to overwrite database: {args.database}")

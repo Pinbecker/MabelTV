@@ -132,6 +132,21 @@ class AuthenticationMixin:
             "recovering_owner": self.owner_recovery_path.is_file(),
         }
 
+    def portal_bootstrap(self) -> dict[str, Any]:
+        """Return the small authenticated cache-validation contract."""
+        database = getattr(self, "state_database", None)
+        revisions = database.revisions() if database is not None else {
+            "library": 0,
+            "adult_viewing": 0,
+            "viewing_insights": 0,
+            "adult_insights": 0,
+        }
+        return {
+            "schema_version": 1,
+            "database_schema": database.schema_version if database is not None else 0,
+            "revisions": revisions,
+        }
+
     def verify_setup_code(self, supplied_code: str) -> bool:
         expected_code = self.read_config(self.config_path).get("MABELTV_SETUP_CODE", "")
         return bool(expected_code and hmac.compare_digest(supplied_code.strip(), expected_code))

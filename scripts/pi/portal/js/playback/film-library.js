@@ -108,6 +108,8 @@
       if (entry.kind === 'adult') return filmPoster(film)
       if (metadata.poster) {
         const image = document.createElement('img')
+        image.loading = 'lazy'
+        image.decoding = 'async'
         image.src = `/api/channel/artwork/${encodeURIComponent(metadata.poster)}`
         image.alt = ''
         image.loading = 'lazy'
@@ -300,6 +302,8 @@
       const artworkName = episode.still || series.metadata?.poster
       if (artworkName) {
         const image = document.createElement('img')
+        image.loading = 'lazy'
+        image.decoding = 'async'
         image.src = `/api/adult/series/artwork/${encodeURIComponent(artworkName)}`
         image.alt = ''
         image.loading = 'lazy'
@@ -367,6 +371,8 @@
       art.className = 'home-poster-art home-channel-art'
       if (channel.metadata?.artwork) {
         const image = document.createElement('img')
+        image.loading = 'lazy'
+        image.decoding = 'async'
         image.src = `/api/channel/artwork/${encodeURIComponent(channel.metadata.artwork)}`
         image.alt = ''
         image.loading = 'lazy'

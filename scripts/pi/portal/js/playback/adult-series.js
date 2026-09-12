@@ -55,12 +55,16 @@
       const name = series.metadata?.poster
       if (name) {
         const image = document.createElement('img')
+        image.loading = 'lazy'
+        image.decoding = 'async'
         image.src = `/api/adult/series/artwork/${encodeURIComponent(name)}`
         image.alt = ''
         image.loading = 'lazy'
         art.append(image)
       } else if (viewing?.poster_path) {
         const image = document.createElement('img')
+        image.loading = 'lazy'
+        image.decoding = 'async'
         image.src = adultPosterUrl(viewing.poster_path)
         image.alt = ''
         image.loading = 'lazy'
@@ -81,6 +85,8 @@
       const name = still || series.metadata?.poster
       if (name) {
         const image = document.createElement('img')
+        image.loading = 'lazy'
+        image.decoding = 'async'
         image.src = `/api/adult/series/artwork/${encodeURIComponent(name)}`
         image.alt = ''
         image.loading = 'lazy'
@@ -602,6 +608,8 @@
         artwork.className = 'adult-series-episode-art'
         if (episode.still) {
           const image = document.createElement('img')
+          image.loading = 'lazy'
+          image.decoding = 'async'
           image.src = `/api/adult/series/artwork/${encodeURIComponent(episode.still)}`
           image.alt = ''
           image.loading = 'lazy'

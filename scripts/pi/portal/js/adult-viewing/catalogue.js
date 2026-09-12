@@ -8,16 +8,21 @@ let adultViewingTab = 'watchlist'
 let adultViewingFilter = 'all'
 let adultViewingSearch = ''
 let adultViewingSort = 'recent'
+let adultViewingDataRevision = 0
 let selectedAdultTitle = null
 let pendingNetflixLaunch = null
 let adultTitleOpenRevision = 0
 let adultSeasonOpenRevision = 0
+let adultViewingMutationRevision = 0
+const adultViewingTitleMutations = new Map()
 let adultSearchViewportBaseline = Math.max(
   window.innerHeight, window.visualViewport?.height || 0)
 let adultSearchKeyboardWasOpen = false
 
 function adultPosterUrl(path, size = 'w342') {
-  return path ? `https://image.tmdb.org/t/p/${size}${path}` : ''
+  if (!path) return ''
+  const name = String(path).replace(/^\/+/, '')
+  return `/api/adult/tmdb-artwork/${encodeURIComponent(size)}/${encodeURIComponent(name)}`
 }
 
 function adultViewingPosterUrl(item) {
@@ -41,7 +46,8 @@ function cacheAdultViewingRecord(viewing = {}) {
   const items = adultViewingData.items || (adultViewingData.items = [])
   const index = items.findIndex(item => item.key === viewing.key)
   if (index < 0) items.push(viewing)
-  else items[index] = { ...items[index], ...viewing }
+  else Object.assign(items[index], viewing)
+  adultViewingDataRevision += 1
 }
 
 function optimisticAdultViewingRecord(title, action, extra = {}) {
@@ -351,6 +357,8 @@ function renderAdultPurchaseOffersInto(section, root, detail, result) {
       const asset = adultPurchaseProviderAsset(group, detail)
       if (asset) {
         const image = document.createElement('img')
+        image.loading = 'lazy'
+        image.decoding = 'async'
         image.src = asset
         image.alt = group.name
         logo.append(image)
@@ -449,6 +457,9 @@ function adultTitlePayload(title, action, extra = {}) {
 
 async function updateAdultViewing(title, action, extra = {}, onChange = null) {
   const key = title.key || `${title.media_type}:${Number(title.tmdb_id)}`
+  adultViewingMutationRevision += 1
+  const titleMutation = Number(adultViewingTitleMutations.get(key) || 0) + 1
+  adultViewingTitleMutations.set(key, titleMutation)
   const items = adultViewingData.items || (adultViewingData.items = [])
   const storedIndex = items.findIndex(item => item.key === key)
   const previousStored = storedIndex >= 0 ? items[storedIndex] : null
@@ -464,8 +475,10 @@ async function updateAdultViewing(title, action, extra = {}, onChange = null) {
     const result = await api('/api/adult/viewing', {
       method: 'POST', body: JSON.stringify(adultTitlePayload(title, action, extra)),
     })
-    apply({ ...result.viewing, key: result.key })
-    void loadAdultViewing().catch(() => {})
+    if (adultViewingTitleMutations.get(key) === titleMutation) {
+      apply({ ...result.viewing, key: result.key })
+    }
+    void persistAdultViewingCache()
     return title.viewing
   } catch (error) {
     title.viewing = previousTitle || {}
@@ -490,6 +503,8 @@ function adultDiscoveryCard(title) {
   const artwork = person ? title.profile_path : title.poster_path
   if (artwork) {
     const image = document.createElement('img')
+    image.loading = 'lazy'
+    image.decoding = 'async'
     image.src = adultPosterUrl(artwork, person ? 'w342' : 'w342')
     image.alt = ''
     art.append(image)
@@ -654,6 +669,8 @@ function renderAdultProviderLinksInto(root, detail, result, options = {}) {
     local.setAttribute('aria-label', localAction ? 'Open on MabelTV' : 'Available on MabelTV')
     local.title = localAction ? 'Open on MabelTV' : 'Available on MabelTV'
     const image = document.createElement('img')
+    image.loading = 'lazy'
+    image.decoding = 'async'
     image.src = '/apple-touch-icon.png'; image.alt = 'MabelTV'
     local.append(image)
     if (localAction) local.onclick = () => { beforeLaunch(); localAction() }
@@ -668,6 +685,8 @@ function renderAdultProviderLinksInto(root, detail, result, options = {}) {
     button.setAttribute('aria-label', `Open ${brand.label}`)
     button.title = brand.label
     const image = document.createElement('img')
+    image.loading = 'lazy'
+    image.decoding = 'async'
     image.src = adultProviderAssetUrl(brand)
     image.alt = brand.label
     button.append(image)
@@ -715,20 +734,32 @@ async function loadAdultProviders(detail, refresh = false, revision = adultTitle
     })
     return
   }
-  root.innerHTML = '<p>Checking streaming destinations…</p>'
-  $('#adultTitleRentBuy')?.classList.add('hidden')
-  $('#adultTitleRentBuyList')?.replaceChildren()
+  const previousResult = detail.provider_result
+  if (previousResult) renderAdultProviderLinks(detail, previousResult)
+  else if ((detail.providers || []).length) {
+    renderAdultProviderLinks(detail, { sources: [] })
+  } else {
+    root.innerHTML = '<p>Checking streaming destinations…</p>'
+    $('#adultTitleRentBuy')?.classList.add('hidden')
+    $('#adultTitleRentBuyList')?.replaceChildren()
+  }
   try {
     const result = await api(`/api/adult/providers?media_type=${detail.media_type}&tmdb_id=${detail.tmdb_id}${refresh ? '&refresh=1' : ''}`)
     if (revision !== adultTitleOpenRevision || selectedAdultTitle?.key !== detail.key) return
     detail.provider_result = result
-    renderAdultProviderLinks(detail, result)
+    if (JSON.stringify(previousResult || null) !== JSON.stringify(result)) {
+      renderAdultProviderLinks(detail, result)
+    }
+    void writePortalDataCache(
+      `adult-title-v1:${detail.media_type}:${Number(detail.tmdb_id)}`, detail)
   } catch (error) {
     if (revision !== adultTitleOpenRevision || selectedAdultTitle?.key !== detail.key) return
-    renderAdultProviderLinks(detail, { sources: [] })
-    const message = document.createElement('p')
-    message.textContent = error.message
-    root.append(message)
+    if (!previousResult && !(detail.providers || []).length) {
+      renderAdultProviderLinks(detail, { sources: [] })
+      const message = document.createElement('p')
+      message.textContent = error.message
+      root.append(message)
+    }
   }
 }
 

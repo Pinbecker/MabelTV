@@ -6,17 +6,19 @@
     let viewingInsightsRenderedKey = ''
     let viewingInsightsRequest = null
     let viewingInsightsRequestRange = null
+    const viewingInsightsCacheRestored = new Set()
 
-    function restoreViewingInsightsCache(range) {
-      const cached = readPortalDataCache(`mabel-insights-v1-${range}`)
+    async function restoreViewingInsightsCache(range) {
+      if (viewingInsightsCacheRestored.has(range)) return false
+      viewingInsightsCacheRestored.add(range)
+      const cached = await readPortalDataCache(
+        `mabel-insights-v1-${range}`, 'viewing_insights')
       if (!cached) return false
       viewingInsightsData = cached.data
       viewingInsightsLoadedRange = range
-      viewingInsightsLoadedAt = Number(cached.saved_at) || 0
+      viewingInsightsLoadedAt = cached.stale ? 0 : Number(cached.saved_at) || 0
       return true
     }
-
-    restoreViewingInsightsCache(viewingInsightsRange)
 
     function viewingDuration(seconds) {
       const minutes = Math.max(0, Math.round(Number(seconds || 0) / 60))
@@ -691,9 +693,10 @@
       const root = $('#viewingInsights')
       if (!loading || !root || offlineMode) return
       loading.classList.add('hidden')
-      if (viewingInsightsLoadedRange !== viewingInsightsRange) {
-        restoreViewingInsightsCache(viewingInsightsRange)
+      if (!viewingInsightsCacheRestored.has(viewingInsightsRange)) {
+        await restoreViewingInsightsCache(viewingInsightsRange)
       }
+      await window.MabelAssets?.chart().catch(() => {})
       if (viewingInsightsData && viewingInsightsLoadedRange === viewingInsightsRange) {
         renderInsightsRoute()
         root.classList.remove('hidden')
@@ -712,7 +715,8 @@
       viewingInsightsRequest = (async () => {
         try {
         const data = await api(`/api/viewing-insights?days=${requestedRange}&timezone_offset=${new Date().getTimezoneOffset()}`)
-        writePortalDataCache(`mabel-insights-v1-${requestedRange}`, data)
+        await writePortalDataCache(
+          `mabel-insights-v1-${requestedRange}`, data, 'viewing_insights')
         if (requestedRange !== viewingInsightsRange) return
         const position = capturePortalPosition()
         viewingInsightsData = data

@@ -4,7 +4,7 @@ test.use({ serviceWorkers: 'block' })
 
 
 async function openLightPortal(page) {
-  await page.route('https://image.tmdb.org/**', route => route.fulfill({
+  await page.route('**/api/adult/tmdb-artwork/**', route => route.fulfill({
     status: 200,
     contentType: 'image/svg+xml',
     body: '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450"><defs><linearGradient id="g" x2="1" y2="1"><stop stop-color="#b5d9d3"/><stop offset="1" stop-color="#537a86"/></linearGradient></defs><rect width="300" height="450" fill="url(#g)"/><circle cx="210" cy="110" r="76" fill="rgba(255,255,255,.2)"/><path d="M0 360L300 180v270H0z" fill="rgba(0,0,0,.24)"/></svg>',

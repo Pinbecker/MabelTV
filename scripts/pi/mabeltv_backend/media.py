@@ -1072,6 +1072,9 @@ class MediaCatalogueMixin:
                 if subprocess.run(
                         ["sudo", "-n", "/usr/local/libexec/mabeltv-library-refresh"],
                         check=False, capture_output=True, timeout=15).returncode == 0:
+                    database = getattr(self, "state_database", None)
+                    if database is not None:
+                        database.bump_revision("library")
                     return True
             except (OSError, subprocess.TimeoutExpired):
                 pass

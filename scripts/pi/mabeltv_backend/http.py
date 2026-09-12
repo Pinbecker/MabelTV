@@ -42,6 +42,7 @@ PORTAL_ASSET_TYPES = {
 }
 
 GET_JSON_ROUTES = {
+    "/api/bootstrap": "portal_bootstrap",
     "/api/live": "live_tv_status",
     "/api/lg-tv/status": "lg_tv_status",
     "/api/library": "library",
@@ -512,6 +513,14 @@ class Handler(BaseHTTPRequestHandler):
             query_route = query_routes.get(parsed.path)
             if query_route is not None:
                 self.json(200, query_route())
+                return
+            tmdb_artwork = re.fullmatch(
+                r"/api/adult/tmdb-artwork/([^/]+)/([^/]+)", parsed.path)
+            if tmdb_artwork:
+                result = self.server.library.tmdb_artwork(*tmdb_artwork.groups())
+                content_type = mimetypes.guess_type(result.name)[0] or "image/jpeg"
+                self.stream_file(result, content_type,
+                                 "private, max-age=31536000, immutable")
                 return
             prefix_routes = (
                 ("/api/usb/imports/", self.server.library.usb_import_status, "json"),

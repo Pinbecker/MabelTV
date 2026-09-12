@@ -52,7 +52,7 @@ test('exact provider identifiers beat marketplace wording', async ({ page }) => 
   )).toBe('')
 })
 
-test('title cards show their complete structured shell while details load', async ({ page }, testInfo) => {
+test('title cards show saved summary and controls while richer details load', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One phone covers the loading-state contract')
   await openPortal(page, 'dark')
   await page.evaluate(() => {
@@ -63,19 +63,20 @@ test('title cards show their complete structured shell while details load', asyn
     window.__finishTitleLoad = null
     window.api = () => new Promise(resolve => { window.__finishTitleLoad = resolve })
     openAdultTitle({ key: 'movie:12', media_type: 'movie', tmdb_id: 12,
-      title: 'Die Hard', local: { kind: 'film', path: 'Films/Die Hard.mp4' } })
+      title: 'Die Hard', year: '1988', overview: 'Saved title summary.',
+      poster_path: '/die-hard.jpg', viewing: { watchlisted: true },
+      local: { kind: 'film', path: 'Films/Die Hard.mp4' } })
   })
 
   const sheet = page.locator('#adultTitleSheet')
-  await expect(sheet).toHaveAttribute('aria-busy', 'true')
-  await expect(page.locator('#adultTitlePoster .adult-title-loading-cover')).toBeVisible()
-  await expect(page.locator('#adultTitleMeta .adult-title-fact')).toHaveCount(5)
-  await expect(page.locator('#adultTitleOverview .adult-title-loading-copy')).toHaveCount(4)
+  await expect(sheet).not.toHaveAttribute('aria-busy', 'true')
+  await expect(page.locator('#adultTitleName')).toHaveText('Die Hard')
+  await expect(page.locator('#adultTitleOverview')).toHaveText('Saved title summary.')
+  await expect(page.locator('#adultTitlePoster img')).toHaveAttribute('src', /die-hard/)
+  await expect(page.locator('#adultTitleIntents [data-viewing-action="watchlist"]'))
+    .toHaveClass(/active/)
   await expect(page.locator('#adultTitleFilmActions')).toBeVisible()
-  await expect(page.locator('#adultTitleFranchise')).toBeVisible()
-  await expect(page.locator('#adultTitleCast')).toBeVisible()
   await expect(page.locator('#adultProviderList .adult-title-loading-provider')).toHaveCount(5)
-  await page.screenshot({ path: testInfo.outputPath('title-loading.png') })
 
   await page.evaluate(() => window.__finishTitleLoad({
     key: 'movie:12', media_type: 'movie', tmdb_id: 12, title: 'Die Hard',

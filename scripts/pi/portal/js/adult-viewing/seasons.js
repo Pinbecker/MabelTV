@@ -42,6 +42,8 @@ function adultStreamingArtwork(detail, season, result = null, className = 'adult
     || detail.backdrop_path || detail.poster_path
   if (path) {
     const image = document.createElement('img')
+    image.loading = 'lazy'
+    image.decoding = 'async'
     image.src = adultPosterUrl(path, still || path === detail.backdrop_path ? 'w780' : 'w500')
     image.alt = ''
     image.loading = 'lazy'
@@ -216,6 +218,8 @@ function adultStreamingEpisodeRow(detail, season, result, episode, card) {
   artwork.className = 'adult-series-episode-art'
   if (episode.still_path) {
     const image = document.createElement('img')
+    image.loading = 'lazy'
+    image.decoding = 'async'
     image.src = adultPosterUrl(episode.still_path, 'w500')
     image.alt = ''
     image.loading = 'lazy'

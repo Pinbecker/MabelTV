@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,6 +10,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 MODULE_PATH = PROJECT_ROOT / "scripts" / "pi" / "mabeltv_backend" / "database.py"
+NATIVE_DATABASE_PATH = PROJECT_ROOT / "src" / "core" / "StateDatabase.cpp"
 SPEC = importlib.util.spec_from_file_location("mabeltv_state_database", MODULE_PATH)
 assert SPEC and SPEC.loader
 database_module = importlib.util.module_from_spec(SPEC)
@@ -124,6 +126,63 @@ class StateDatabaseTests(unittest.TestCase):
         self.assertNotIn("7", migrated["channel_timelines"])
         self.assertEqual(player["channel_timelines"]["7"],
                          migrated["channel_timelines"]["8"])
+
+    def test_version_one_database_upgrades_without_rewriting_initial_migration(self) -> None:
+        connection = self.database.connect()
+        try:
+            initial_checksum = connection.execute(
+                "SELECT checksum FROM schema_migrations WHERE version=1").fetchone()[0]
+            connection.execute("DROP TABLE state_revisions")
+            connection.execute("DELETE FROM schema_migrations WHERE version=2")
+            connection.execute("PRAGMA user_version=1")
+            connection.commit()
+        finally:
+            connection.close()
+
+        report = self.database.upgrade()
+
+        self.assertTrue(report["ok"])
+        self.assertTrue(report["upgraded"])
+        self.assertEqual(1, report["previous_schema_version"])
+        self.assertEqual(2, report["schema_version"])
+        connection = self.database.connect()
+        try:
+            self.assertEqual(initial_checksum, connection.execute(
+                "SELECT checksum FROM schema_migrations WHERE version=1").fetchone()[0])
+            self.assertIsNotNone(connection.execute(
+                "SELECT name FROM sqlite_master WHERE name='state_revisions'").fetchone())
+        finally:
+            connection.close()
+
+    def test_state_writes_advance_only_the_related_portal_revisions(self) -> None:
+        self.assertEqual({
+            "library": 0, "adult_viewing": 0,
+            "viewing_insights": 0, "adult_insights": 0,
+        }, self.database.revisions())
+
+        self.database.write("settings", {"schema_version": 1})
+        self.database.write("adult_viewing", {
+            "schema_version": 1, "titles": {}, "availability": {}, "explore": {},
+        })
+
+        self.assertEqual({
+            "library": 1, "adult_viewing": 1,
+            "viewing_insights": 0, "adult_insights": 1,
+        }, self.database.revisions())
+
+    def test_failed_state_write_does_not_advance_a_revision(self) -> None:
+        with self.assertRaises(Exception):
+            self.database.write("channels", {"channels": [{
+                "number": 0, "name": "Invalid", "folder": "invalid",
+                "aspect": "crop", "content_type": "shows",
+            }]})
+        self.assertEqual(0, self.database.revisions()["library"])
+
+    def test_native_player_accepts_the_authoritative_schema_version(self) -> None:
+        source = NATIVE_DATABASE_PATH.read_text(encoding="utf-8")
+        match = re.search(r"maximumSupportedSchemaVersion\s*=\s*(\d+)", source)
+        self.assertIsNotNone(match)
+        self.assertEqual(database_module.SCHEMA_VERSION, int(match.group(1)))
 
 
 if __name__ == "__main__":

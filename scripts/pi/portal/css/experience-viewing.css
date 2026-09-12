@@ -233,6 +233,16 @@ body.portal-v2 .adult-viewing-grid.is-grid .adult-viewing-quick-actions {
 }
 body.portal-v2 .adult-viewing-grid.is-grid .adult-viewing-art > .adult-artwork-status { display: none; }
 body.portal-v2 .adult-viewing-grid.is-grid .watch-empty { grid-column: 1 / -1; }
+body.portal-v2 .adult-viewing-load-more {
+  grid-column: 1 / -1;
+  min-height: 44px;
+  border: 1px solid var(--experience-line);
+  border-radius: 12px;
+  background: var(--experience-soft);
+  color: var(--experience-ink);
+  font-size: 11px;
+  font-weight: 750;
+}
 
 body.portal-v2 .adult-viewing-grid.is-reorderable .adult-viewing-card-open {
   cursor: grab;

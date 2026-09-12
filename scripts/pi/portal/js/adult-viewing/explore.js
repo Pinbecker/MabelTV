@@ -157,7 +157,7 @@ function adultExploreActions(title, card, context = 'explore', onChange = null) 
     } catch (error) { showError(error) } finally { delete watched.dataset.saving }
   }
   actions.append(watchlist, watched)
-  syncAdultExploreActions(card, title)
+  syncAdultExploreActions(actions, title)
   return actions
 }
 
@@ -185,6 +185,8 @@ function adultExploreCard(title, { directActions = true, context = 'explore' } =
   art.className = 'adult-explore-art'
   if (title.poster_path) {
     const image = document.createElement('img')
+    image.loading = 'lazy'
+    image.decoding = 'async'
     image.src = adultPosterUrl(title.poster_path)
     image.alt = ''
     image.loading = 'lazy'

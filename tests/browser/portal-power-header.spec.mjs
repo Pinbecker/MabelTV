@@ -26,6 +26,10 @@ async function installLiveFixture(page, state = liveState, delayLgStatus = 0) {
         window.__liveRequests += 1
         return new Response(JSON.stringify(state), { headers: { 'Content-Type': 'application/json' } })
       }
+      if (url.pathname === '/api/live/control') {
+        window.__liveCommand = JSON.parse(String(init?.body || '{}')).command
+        return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json' } })
+      }
       if (url.pathname === '/api/lg-tv/status') {
         if (delay) await new Promise(resolve => setTimeout(resolve, delay))
         return new Response(JSON.stringify({
@@ -68,4 +72,14 @@ test('LG indicators immediately reuse the Mabel remote status without another li
   await expect(page.locator('#lgMabelTvText')).toHaveText('On')
   await expect(page.locator('#lgTvConnectionText')).toHaveText('Standby')
   expect(await page.evaluate(() => window.__liveRequests)).toBe(beforeSwitch)
+})
+
+test('power actions use local button feedback without a global status banner', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'iphone-chromium', 'One phone engine owns the feedback contract')
+  await openPortal(page)
+  await installLiveFixture(page)
+  await page.locator('#openPortalPower').click()
+  await page.locator('#mabelOnlyRemotePower').click()
+  await expect.poll(() => page.evaluate(() => window.__liveCommand)).toBe('turn-off-mabel-only')
+  await expect(page.locator('#notice')).toHaveText('')
 })

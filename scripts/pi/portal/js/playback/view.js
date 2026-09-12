@@ -85,6 +85,8 @@
               const art = document.createElement('span'); art.className = 'watch-card-art'
               if (programmeMetadata.poster) {
                 const image = document.createElement('img')
+                image.loading = 'lazy'
+                image.decoding = 'async'
                 image.src = `/api/channel/artwork/${encodeURIComponent(programmeMetadata.poster)}`
                 image.alt = ''
                 image.loading = 'lazy'
@@ -165,16 +167,13 @@
     window.addEventListener('offline', () => {
       document.body.classList.add('offline-mode')
       offlineMode = true
-      remoteKind = 'downloads'
-      watchDomain = 'mabel'
-      downloadDomain = 'mabel'
-      openView('watch')
-      renderRemoteViewing()
+      portalConnectionState = 'offline'
+      const active = document.querySelector('.view.active')?.id.replace(/^view-/, '') || 'overview'
+      openView(active)
     })
     window.addEventListener('online', () => {
-      offlineMode = false
-      document.body.classList.remove('offline-mode')
-      if (remoteKind === 'downloads') renderDownloads().catch(() => {})
+      portalConnectionState = 'connecting'
+      void window.attemptPortalReconnect?.()
     })
     $('#watchSearch').oninput = event => { watchSearchText = event.target.value; renderAdultWatch() }
     $('#watchSearchClear').onclick = event => { event.preventDefault(); watchSearchText = ''; renderAdultWatch(); $('#watchSearch').focus() }

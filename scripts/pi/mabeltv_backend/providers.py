@@ -1128,11 +1128,13 @@ class ProviderMetadataMixin:
                 if not isinstance(item, dict):
                     item = {}
                     store["titles"][key] = item
-                item.update({"media_type": key.split(":", 1)[0],
-                             "tmdb_id": int(key.split(":", 1)[1]),
-                             "title": local_value.get("title", ""),
-                             "local_progress": local_value})
-                changed = True
+                local_fields = {"media_type": key.split(":", 1)[0],
+                                "tmdb_id": int(key.split(":", 1)[1]),
+                                "title": local_value.get("title", ""),
+                                "local_progress": local_value}
+                if any(item.get(field) != saved for field, saved in local_fields.items()):
+                    item.update(local_fields)
+                    changed = True
             if changed:
                 self.write_adult_viewing_store(store)
             items = []

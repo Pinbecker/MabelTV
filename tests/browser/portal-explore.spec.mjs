@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 
 async function openExplore(page) {
-  await page.route('https://image.tmdb.org/**', async route => {
+  await page.route('**/api/adult/tmdb-artwork/**', async route => {
     const match = route.request().url().match(/explore-(\d+)/)
     const value = Number(match?.[1] || 1)
     const hue = value * 47 % 360
@@ -80,7 +80,7 @@ test('all five My Viewing grids retain the watched and Watchlist quick actions',
         title: 'Watching film', year: '2023', local_progress: { position: 120 } },
       { key: 'tv:8104', media_type: 'tv', tmdb_id: 8104,
         title: 'Part watched series', year: '2024', manual_state: 'part_watched',
-        episodes: { '1:1': { watched: true } } },
+        series_watching: true, episodes: { '1:1': { watched: true } } },
       { key: 'movie:8105', media_type: 'movie', tmdb_id: 8105,
         title: 'Watched film', year: '2025', manual_state: 'watched' },
     ]
@@ -107,12 +107,23 @@ test('all five My Viewing grids retain the watched and Watchlist quick actions',
     await page.locator(`[data-viewing-tab="${tab}"]`).click()
     const card = page.locator('#adultViewingGrid > .adult-viewing-row').first()
     await expect(card).toBeVisible()
+    if (tab === 'watching') {
+      await page.locator('[data-viewing-key="tv:8104"]')
+        .evaluate(row => { window.__retainedViewingRow = row })
+    }
     await expect(card.locator('[data-explore-action="watched"]')).toBeVisible()
     await expect(card.locator('[data-explore-action="watchlist"]')).toBeVisible()
   }
 
+  await page.locator('[data-viewing-tab="watching"]').click()
+  expect(await page.locator('[data-viewing-key="tv:8104"]')
+    .evaluate(row => window.__retainedViewingRow === row)).toBe(true)
+
   await page.locator('[data-viewing-tab="watchlist"]').click()
   const saved = page.locator('#adultViewingGrid > .adult-viewing-row').first()
+  await expect(saved.locator('[data-explore-action="watchlist"]')).toHaveClass(/active/)
+  await expect(saved.locator('[data-explore-action="watchlist"] use'))
+    .toHaveAttribute('href', '/portal/icons.svg#signal-minus')
   const placement = await saved.evaluate(card => {
     const art = card.querySelector('.adult-viewing-art').getBoundingClientRect()
     const watched = card.querySelector('[data-explore-action="watched"]').getBoundingClientRect()
@@ -135,6 +146,41 @@ test('all five My Viewing grids retain the watched and Watchlist quick actions',
   const watched = page.locator('#adultViewingGrid > .adult-viewing-row').first()
   await watched.locator('[data-explore-action="watched"]').click()
   await expect(page.locator('#adultViewingGrid > .adult-viewing-row')).toHaveCount(0)
+})
+
+
+test('large Watched libraries paint one bounded batch and extend as the user approaches the end', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'iphone-chromium', 'One phone engine owns long-list rendering')
+  await page.goto('/')
+  await expect(page.locator('.app-shell')).toBeVisible()
+  await page.evaluate(() => {
+    adultViewingData = { items: Array.from({ length: 654 }, (_, index) => ({
+      key: `movie:${9000 + index}`, media_type: 'movie', tmdb_id: 9000 + index,
+      title: `Watched film ${index + 1}`, year: '2025', manual_state: 'watched',
+    })) }
+    adultViewingLoaded = true
+    adultViewingDataRevision += 1
+    history.replaceState({ adultViewing: true }, '', '#adult-viewing')
+    openView('adult-viewing')
+  })
+
+  const initialPaintMs = await page.evaluate(() => new Promise(resolve => {
+    const started = performance.now()
+    document.querySelector('[data-viewing-tab="history"]').click()
+    requestAnimationFrame(() => resolve(performance.now() - started))
+  }))
+  expect(initialPaintMs).toBeLessThan(250)
+  await expect(page.locator('#adultViewingCount')).toHaveText('654 titles')
+  await expect(page.locator('#adultViewingGrid > .adult-viewing-row')).toHaveCount(48)
+  const first = page.locator('#adultViewingGrid > .adult-viewing-row').first()
+  await first.evaluate(row => { window.__firstLongViewingRow = row })
+  await page.locator('#adultViewingGrid > .adult-viewing-load-more')
+    .evaluate(button => button.click())
+  await expect(page.locator('#adultViewingGrid > .adult-viewing-row')).toHaveCount(96)
+  await page.locator('[data-viewing-tab="watchlist"]').click()
+  await page.locator('[data-viewing-tab="history"]').click()
+  await expect(page.locator('#adultViewingGrid > .adult-viewing-row')).toHaveCount(96)
+  expect(await first.evaluate(row => window.__firstLongViewingRow === row)).toBe(true)
 })
 
 
@@ -202,29 +248,176 @@ test('Explore series opens a catalogue-only season checklist', async ({ page }, 
   await expect(page.locator('#adultTitleSeasonEpisodes article[role="button"]')).toHaveCount(0)
 })
 
-test('viewing actions update before their background refresh completes', async ({ page }) => {
+test('viewing actions stay local and do not start a full background rebuild', async ({ page }) => {
   await page.goto('/')
+  await expect(page.locator('.app-shell')).toBeVisible()
   const result = await page.evaluate(async () => {
     const originalApi = window.api
     const originalLoad = window.loadAdultViewing
     let refreshStarted = false
-    let releaseRefresh
-    window.api = async () => ({ viewing: { manual_state: 'watched' } })
+    const requests = []
+    window.api = async (path, options = {}) => {
+      requests.push([path, options.method || 'GET'])
+      if (path === '/api/bootstrap') return { revisions: { adult_viewing: 2 } }
+      return { key: 'movie:123', viewing: { manual_state: 'watched' } }
+    }
     window.loadAdultViewing = () => {
       refreshStarted = true
-      return new Promise(resolve => { releaseRefresh = resolve })
     }
     try {
       const detail = { media_type: 'movie', tmdb_id: 123, title: 'Fast update', viewing: {} }
       const viewing = await updateAdultViewing(detail, 'watched')
-      return { refreshStarted, returned: viewing.manual_state, detail: detail.viewing.manual_state }
+      await new Promise(resolve => setTimeout(resolve, 0))
+      return { refreshStarted, requests, returned: viewing.manual_state,
+        detail: detail.viewing.manual_state }
     } finally {
-      releaseRefresh?.()
       window.api = originalApi
       window.loadAdultViewing = originalLoad
     }
   })
-  expect(result).toEqual({ refreshStarted: true, returned: 'watched', detail: 'watched' })
+  expect(result.refreshStarted).toBe(false)
+  expect(result.requests.filter(([path]) => path === '/api/adult/viewing'))
+    .toEqual([['/api/adult/viewing', 'POST']])
+  expect(result.requests).toContainEqual(['/api/bootstrap', 'GET'])
+  expect(result.returned).toBe('watched')
+  expect(result.detail).toBe('watched')
+})
+
+test('Adult title controls paint from saved state while title enrichment is delayed', async ({ page }) => {
+  await page.route('**/api/adult/title?*', async route => {
+    await new Promise(resolve => setTimeout(resolve, 1200))
+    await route.continue()
+  })
+  await page.goto('/')
+  await page.evaluate(() => {
+    adultViewingData = { items: [{
+      key: 'movie:12', media_type: 'movie', tmdb_id: 12, title: 'Finding Nemo',
+      overview: 'A saved summary.', watchlisted: true,
+    }] }
+    adultViewingLoaded = true
+    openAdultTitle(adultViewingData.items[0])
+  })
+
+  await expect(page.locator('#adultTitleName')).toHaveText('Finding Nemo', { timeout: 300 })
+  await expect(page.locator('#adultTitleOverview')).toHaveText('A saved summary.', { timeout: 300 })
+  await expect(page.locator('#adultTitleIntents [data-viewing-action="watchlist"]'))
+    .toHaveClass(/active/, { timeout: 300 })
+  await expect(page.locator('#adultTitleOverview')).toHaveText(
+    'Series details opened successfully.', { timeout: 2500 })
+})
+
+test('a saved title keeps its provider rows and DOM while background detail refreshes', async ({ page }) => {
+  const providers = [
+    { provider_id: 8, name: 'Netflix', type: 'flatrate', label: 'Stream',
+      logo_path: '/netflix.jpg' },
+    { provider_id: 350, name: 'Apple TV', type: 'rent', label: 'Rent',
+      logo_path: '/apple.jpg' },
+  ]
+  const providerResult = { sources: [
+    { source_id: 203, name: 'Netflix', type: 'sub',
+      web_url: 'https://www.netflix.com/search?q=Finding%20Nemo' },
+  ] }
+  await page.route('**/api/adult/title?*', async route => {
+    await new Promise(resolve => setTimeout(resolve, 900))
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+      key: 'movie:12', media_type: 'movie', tmdb_id: 12, title: 'Finding Nemo',
+      overview: 'Fresh detail for the next opening.', year: '2003',
+      release_date: '2003-10-10', poster_path: '/explore-12.jpg', backdrop_path: '',
+      providers, cast: [], collection: null, genres: ['Animation'], directors: [],
+      seasons: [], viewing: {}, availability_enabled: true, on_mabeltv: false,
+    }) })
+  })
+  await page.route('**/api/adult/providers?*', async route => {
+    await new Promise(resolve => setTimeout(resolve, 900))
+    await route.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify(providerResult) })
+  })
+  await page.goto('/')
+  await page.evaluate(async ({ providers, providerResult }) => {
+    const cached = {
+      key: 'movie:12', media_type: 'movie', tmdb_id: 12, title: 'Finding Nemo',
+      overview: 'Saved detail shown immediately.', year: '2003',
+      release_date: '2003-10-10', poster_path: '/explore-12.jpg', backdrop_path: '',
+      providers, provider_result: providerResult, cast: [], collection: null,
+      genres: ['Animation'], directors: [], seasons: [], viewing: {},
+      availability_enabled: true, on_mabeltv: false,
+    }
+    await window.MabelAppCache.write('adult-title-v1:movie:12', 0, cached)
+    adultViewingData = { items: [{
+      key: 'movie:12', media_type: 'movie', tmdb_id: 12, title: 'Finding Nemo',
+      poster_path: '/explore-12.jpg', watchlisted: true,
+    }] }
+    adultViewingLoaded = true
+    void openAdultTitle(adultViewingData.items[0])
+  }, { providers, providerResult })
+
+  await expect(page.locator('#adultTitleOverview'))
+    .toHaveText('Saved detail shown immediately.', { timeout: 300 })
+  await expect(page.locator('#adultProviderList .provider-netflix'))
+    .toBeVisible({ timeout: 300 })
+  await expect(page.locator('#adultTitleRentBuy')).toBeVisible({ timeout: 300 })
+  await page.evaluate(() => { window.__savedTitlePoster = $('#adultTitlePoster img') })
+  await page.waitForTimeout(2100)
+  expect(await page.evaluate(() => window.__savedTitlePoster === $('#adultTitlePoster img'))).toBe(true)
+  await expect(page.locator('#adultTitleOverview')).toHaveText('Saved detail shown immediately.')
+})
+
+test('an actor card paints its saved biography and filmography while fresh details load', async ({ page }) => {
+  let requests = 0
+  const detail = {
+    tmdb_id: 500, name: 'Saved Actor', biography: 'A saved actor biography.',
+    known_for_department: 'Acting', filmography: [{
+      key: 'movie:12', media_type: 'movie', tmdb_id: 12, title: 'Finding Nemo',
+      year: '2003', poster_path: '/explore-12.jpg',
+    }], known_for: [{
+      key: 'movie:12', media_type: 'movie', tmdb_id: 12, title: 'Finding Nemo',
+      year: '2003', poster_path: '/explore-12.jpg',
+    }],
+  }
+  await page.route('**/api/adult/person?*', async route => {
+    requests += 1
+    if (requests > 1) await new Promise(resolve => setTimeout(resolve, 1200))
+    await route.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify(detail) })
+  })
+  await page.goto('/')
+  await page.evaluate(() => openAdultPerson({ tmdb_id: 500, name: 'Saved Actor' }, ''))
+  await expect(page.locator('#adultPersonBiography')).toHaveText('A saved actor biography.')
+  await page.waitForFunction(async () => Boolean(
+    (await window.MabelAppCache?.read('adult-person-v1:500'))?.data,
+  ))
+  await page.evaluate(() => {
+    adultPersonOpenRevision += 1
+    document.querySelector('#adultPersonSheet').close()
+  })
+
+  await page.evaluate(() => openAdultPerson({ tmdb_id: 500, name: 'Saved Actor' }, ''))
+  await expect(page.locator('#adultPersonBiography'))
+    .toHaveText('A saved actor biography.', { timeout: 300 })
+  await expect(page.locator('#adultPersonFilmography')).toBeVisible({ timeout: 300 })
+})
+
+test('My Viewing paints loaded state without fetching the full catalogue again', async ({ page }) => {
+  let viewingGets = 0
+  await page.route('**/api/adult/viewing', async route => {
+    if (route.request().method() !== 'GET') return route.continue()
+    viewingGets += 1
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+      items: [{ key: 'movie:12', media_type: 'movie', tmdb_id: 12,
+        title: 'Finding Nemo', watchlisted: true }],
+    }) })
+  })
+  await page.goto('/')
+  await expect(page.locator('.app-shell')).toBeVisible()
+  const startupGets = viewingGets
+
+  await page.locator('[data-view-button="adult-home"]').click()
+  await page.locator('#adultMyViewing').click()
+  await expect(page.locator('#adultViewingGrid > .adult-viewing-row')).toHaveCount(1, {
+    timeout: 400,
+  })
+  await page.waitForTimeout(150)
+  expect(viewingGets).toBe(startupGets)
 })
 
 

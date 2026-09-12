@@ -88,7 +88,10 @@ The portal uses ordered classic scripts, not JavaScript modules. Top-level state
 is deliberately shared between the files, so changing script order can break
 initialisation even when each file is syntactically valid.
 
-1. `mabeltv-offline.js`: service-worker registration and offline storage.
+1. `mabeltv-offline.js`: service-worker registration and the durable downloaded
+   media store. `core/app-cache.js` follows it and owns disposable authorised
+   response snapshots in a separate IndexedDB database. `core/assets.js` owns
+   deferred third-party script loading.
 2. `portal/js/ui-components.js`: shared DOM components and dialog lifecycle.
 3. `portal/js/core/foundation.js`: shared state, API, escaping, auth, and base
    helpers.
@@ -125,18 +128,66 @@ initialisation even when each file is syntactically valid.
     navigation.
 25. `portal/js/adult-viewing/explore.js`: continuous TMDB discovery, quick
     viewing actions, weak impression feedback and visit freshness.
-26. `portal/js/adult-viewing/home.js`: the Adult TV Watch landing composition:
+26. `portal/js/adult-viewing/grid.js`: the retained, keyed My Viewing card
+    renderer, filters and saved-state refresh. Each tab keeps its prepared pane,
+    while long collections render in bounded batches as the user approaches the
+    end. Switching tabs therefore avoids rebuilding hundreds of hidden cards.
+27. `portal/js/adult-viewing/home.js`: the Adult TV Watch landing composition:
     local progress, Up Next and rating-led UK-available TMDB recommendations.
     It reuses Explore cards and requests only included/free supported-service
     results; broad discovery remains a separate Something Different shelf.
-27. `portal/js/adult-viewing/filmography.js`: TMDB-only full filmography search,
+28. `portal/js/adult-viewing/filmography.js`: TMDB-only full filmography search,
     timeline and A-Z modes.
-28. `portal/js/adult-viewing/rating.js`: personal ten-star ratings and the
+29. `portal/js/adult-viewing/rating.js`: personal ten-star ratings and the
     watched-but-unrated completion queue.
-29. `portal/js/actions.js`: application event bindings and remote commands.
-30. `portal/js/lg-tv-remote.js`: the separate LG webOS remote.
+30. `portal/js/actions.js`: application event bindings and remote commands.
+31. `portal/js/lg-tv-remote.js`: the separate LG webOS remote.
 
 Classic intentionally omits Experience-only Adult-viewing and LG-remote scripts.
+
+## Startup, caching, and offline ownership
+
+`service-worker.js` owns immutable shell generations. Navigations and shell
+assets are cache-first inside the current generation; installation must finish
+the complete critical shell before activation. A new worker waits for a safe
+client boundary, and activation retains the immediately previous shell as the
+rollback generation. Cache cleanup is scoped to older `mabeltv-shell-v*`
+entries and must never delete downloaded media, response snapshots, artwork,
+or caches belonging to another application.
+
+Large optional libraries are not part of initial execution. `core/assets.js`
+loads Chart.js when an Insights route first needs it and retains HLS.js as an
+on-demand fallback. Provider artwork is also outside the critical shell.
+Dynamic catalogue artwork uses native lazy loading and asynchronous decoding.
+TMDB posters, backdrops and people images use the authenticated same-origin
+artwork route rather than a cross-origin opaque response. The Pi keeps a
+bounded rebuildable copy, and the worker keeps up to 1,000 recently displayed
+family and protected Adult images in its runtime artwork caches. A cache-write
+failure never replaces a successful network response. Protected artwork is
+returned from the worker cache only to a client whose local Adult access has
+been unlocked.
+
+`core/app-cache.js` owns `mabeltv-app-cache-v1`. It contains only disposable
+API snapshots and can be rebuilt from SQLite. It never contains downloaded
+video chunks or the local PIN verifier. Startup always performs `/api/setup`
+and then the authenticated `/api/bootstrap` before reading a snapshot. The
+bootstrap exposes SQLite-backed domain revisions, letting the portal render an
+unchanged snapshot immediately and refresh only changed domains in the
+background. Legacy `mabeltv-data-*` localStorage snapshots are deleted during
+initialisation and are not a compatibility persistence path.
+
+Adult viewing state is loaded once, reused when My Viewing opens, and updated
+optimistically after an action. A late refresh that began before a newer action
+cannot replace that action, and an action never triggers a second full-catalogue
+fetch or DOM rebuild. Per-title detail snapshots provide an immediate card on a
+repeat visit; current viewing state always overrides the cached detail copy.
+Per-person snapshots do the same for biographies and complete filmographies.
+
+When the network or Pi is unavailable, the full bottom navigation remains
+operable. Non-download routes show the shared reconnect surface instead of
+stale protected content. MabelTV and Adult TV Downloads continue through the
+existing `mabeltv-offline-v1` store; Adult playback retains its local PIN check.
+Offline mutations are not queued.
 
 ## Shared UI contracts
 
@@ -185,8 +236,9 @@ as explicit variants; visual resemblance alone is not a reason to merge them.
 - Do not use inline styles or `!important` to bypass the cascade.
 - Add icons to `portal/icons.svg` and render them through the shared icon helper
   instead of embedding one-off SVG markup in JavaScript.
-- Add every new offline-shell asset to `SHELL_URLS` in `service-worker.js` and
-  increment `SHELL_CACHE` when the delivered shell changes.
+- Add every critical offline-shell asset to `SHELL_URLS` in
+  `service-worker.js` and increment `SHELL_RELEASE` when the delivered shell
+  changes. Optional on-demand assets belong in `LAZY_SHELL_URLS`.
 - Treat screenshot updates as visual changes requiring explicit review. A pure
   refactor must pass against the existing references.
 

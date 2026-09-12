@@ -15,10 +15,13 @@ async function openPortal(page, { extraTitles = [] } = {}) {
     data.recent_posters = data.titles.slice(0, 5)
     await route.fulfill({ response, json: data })
   })
-  await page.route('https://image.tmdb.org/**', route => {
-    const value = [...route.request().url()].reduce((total, letter) => total + letter.charCodeAt(0), 0)
+  await page.route('**/api/adult/tmdb-artwork/**', route => {
+    const requestUrl = new URL(route.request().url())
+    const [, size, name] = requestUrl.pathname.match(/tmdb-artwork\/([^/]+)\/([^/]+)$/) || []
+    const sourceUrl = `https://image.tmdb.org/t/p/${size}/${name}`
+    const value = [...sourceUrl].reduce((total, letter) => total + letter.charCodeAt(0), 0)
     const hue = value % 360
-    const portrait = route.request().url().includes('person') || route.request().url().includes('creative')
+    const portrait = sourceUrl.includes('person') || sourceUrl.includes('creative')
     const body = portrait
       ? `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="400"><defs><linearGradient id="g" x2="1" y2="1"><stop stop-color="hsl(${hue} 34% 68%)"/><stop offset="1" stop-color="hsl(${(hue + 60) % 360} 28% 22%)"/></linearGradient></defs><rect width="320" height="400" fill="url(#g)"/><circle cx="160" cy="126" r="72" fill="hsl(${(hue + 24) % 360} 32% 80%)"/><path d="M42 400c7-105 52-162 118-162s112 57 118 162" fill="hsl(${(hue + 180) % 360} 32% 23%)"/><circle cx="135" cy="120" r="5"/><circle cx="185" cy="120" r="5"/><path d="M137 158q23 17 46 0" fill="none" stroke="#38292d" stroke-width="5" stroke-linecap="round"/></svg>`
       : `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450"><defs><linearGradient id="g" x2="1" y2="1"><stop stop-color="hsl(${hue} 54% 42%)"/><stop offset="1" stop-color="hsl(${(hue + 70) % 360} 48% 14%)"/></linearGradient></defs><rect width="300" height="450" fill="url(#g)"/><circle cx="214" cy="105" r="80" fill="rgba(255,255,255,.15)"/><path d="M0 350L300 190v260H0z" fill="rgba(0,0,0,.28)"/></svg>`
@@ -64,6 +67,8 @@ test('Insights is a top-level Adult TV profile with MabelTV activity alongside i
   await page.evaluate(() => window.scrollTo(0, 0))
   await expect(page).toHaveScreenshot('my-insights.png')
   await page.locator('#adultInsightActors').scrollIntoViewIfNeeded()
+  await expect.poll(() => page.locator('#adultInsightCreative img').evaluateAll(images =>
+    images.every(image => image.complete))).toBe(true)
   await expect(page).toHaveScreenshot('my-insights-people.png')
   await page.locator('#adultInsightRatedSection').scrollIntoViewIfNeeded()
   await expect(page).toHaveScreenshot('my-insights-rated.png')

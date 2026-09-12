@@ -24,6 +24,8 @@ function renderAdultFilmographyPerson(person) {
   photo.replaceChildren()
   if (person?.profile_path) {
     const image = document.createElement('img')
+    image.loading = 'lazy'
+    image.decoding = 'async'
     image.src = adultPosterUrl(person.profile_path, 'w342')
     image.alt = `Portrait of ${person.name}`
     photo.append(image)

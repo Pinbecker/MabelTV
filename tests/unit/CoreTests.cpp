@@ -1401,6 +1401,25 @@ void CoreTests::sqliteStateIsReadableAndWritableByNativeController()
     QVERIFY2(mabeltv::state::replacePlayer(databasePath, player, &error), qPrintable(error));
     QCOMPARE(mabeltv::state::player(databasePath), player);
 
+    const QString versionTwoConnectionName = QStringLiteral("state-test-v2");
+    {
+        QSqlDatabase database = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"),
+                                                           versionTwoConnectionName);
+        database.setDatabaseName(databasePath);
+        QVERIFY2(database.open(), qPrintable(database.lastError().text()));
+        QSqlQuery query(database);
+        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version=2")));
+        database.close();
+    }
+    QSqlDatabase::removeDatabase(versionTwoConnectionName);
+
+    error.clear();
+    QCOMPARE(mabeltv::state::settings(databasePath, &error), settings);
+    QVERIFY2(error.isEmpty(), qPrintable(error));
+    QVERIFY2(mabeltv::state::replacePlayer(databasePath, player, &error), qPrintable(error));
+    QCOMPARE(mabeltv::state::player(databasePath, &error), player);
+    QVERIFY2(error.isEmpty(), qPrintable(error));
+
     const ChannelLibraryResult library = ChannelLibrary::load(
         QString(), directory.filePath(QStringLiteral("media")),
         [](const QString &) {

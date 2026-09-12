@@ -47,7 +47,7 @@ PLAYBACK_SCRIPTS = (
     "programmes.js", "downloads.js", "view.js",
 )
 ADULT_VIEWING_SCRIPTS = (
-    "catalogue.js", "seasons.js", "details.js",
+    "catalogue.js", "seasons.js", "details.js", "grid.js",
 )
 OVERLAY_PARTIALS = (
     "watch.html", "adult-library.html", "device-playback.html", "remote.html",

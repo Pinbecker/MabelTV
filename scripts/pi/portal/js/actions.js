@@ -606,15 +606,7 @@ let managementBusy = false
         : (includeConnectedTv ? 'turn-off' : 'turn-off-mabel-only')
       const dialog = $('#remotePowerSheet')
       portalSheets.dismiss(dialog)
-      if (await sendLiveCommand(command, button)) {
-        notice(turningOn
-          ? (includeConnectedTv
-              ? 'MabelTV is turning on and selecting its HDMI input.'
-              : 'MabelTV is turning on. The connected television is unchanged.')
-          : (includeConnectedTv
-              ? 'MabelTV and the connected television are entering standby.'
-              : 'MabelTV is entering standby. The connected television is unchanged.'))
-      }
+      await sendLiveCommand(command, button)
     }
 
     $('#openRemotePower').onclick = openPortalPowerSheet

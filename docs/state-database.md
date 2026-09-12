@@ -35,6 +35,23 @@ playback timelines follow it through `ON UPDATE CASCADE`. WAL mode permits the
 native player and library service to read while the other process commits, and
 both clients wait up to five seconds for a writer.
 
+Schema version 2 adds `state_revisions`, a small transactional ledger for the
+portal's `library`, `adult_viewing`, `viewing_insights`, and `adult_insights`
+cache domains. Each authoritative state write increments its related revision
+inside the same transaction. The authenticated `/api/bootstrap` response uses
+those counters to validate device-local response snapshots without exposing
+application data before authentication.
+
+Read-time reconciliation of local Adult playback progress writes only when the
+stored progress differs. An unchanged `GET /api/adult/viewing` is read-only, so
+opening the portal cannot invalidate the snapshot it has just validated.
+
+The native player accepts database schemas 1 and 2 because schema 2 is an
+additive portal-only extension and does not alter any native-owned table. Its
+maximum supported schema must advance with the Python schema version whenever a
+future additive migration remains compatible; the cross-language regression
+test enforces that release contract.
+
 ## Initial migration and proof
 
 `mabeltv-state-migrate import` only creates a new database. It refuses to
@@ -81,6 +98,12 @@ release refuses an unsupported version or a mismatched migration checksum.
 Future schema changes must be additive migration steps, run on a verified
 online backup in a transaction before the new application starts. They must
 never rewrite the initial migration definition.
+
+The installer stops both database users for the short upgrade window, creates
+a validated SQLite backup immediately beforehand, and keeps that backup tied
+to the release transaction. If any subsequent asset, unit, service, or health
+check fails, it restores both the prior release and the exact pre-upgrade
+database snapshot before restarting services.
 
 Backups use SQLite's online backup API and validate the resulting snapshot with
 `integrity_check` and `foreign_key_check`. Copying only a live `mabeltv.db` file

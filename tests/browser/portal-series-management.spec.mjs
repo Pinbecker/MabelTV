@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test'
 
+test.use({ serviceWorkers: 'block' })
+
 
 async function openPortal(page) {
   await page.goto('/')

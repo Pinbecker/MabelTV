@@ -139,6 +139,8 @@ const ChannelPageComponents = (() => {
       return visual
     }
     const image = document.createElement('img')
+    image.loading = 'lazy'
+    image.decoding = 'async'
     image.src = artworkPath(metadata.poster)
     image.alt = ''
     image.loading = 'lazy'
