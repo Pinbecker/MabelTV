@@ -34,19 +34,24 @@ split a coherent responsibility and update the architecture document; do not
 raise the limit merely to make the check pass. The frozen legacy Library test
 suite must be split before another test is added to it.
 
-## Required checks
+## Proportionate checks
 
-Run the portable build/test gate for every source change:
+Run focused owner tests while developing. Before handing over application
+behaviour, run the portable core gate:
 
 ```powershell
 .\scripts\windows\build.ps1
 ```
 
-Run the installed iPhone/iPad browser contract for portal, PWA, API-shape or
-shared-component changes. QML, C++, launcher, hardware and packaging changes
-also require the Raspberry Pi acceptance gate before deployment. Exact commands
-and the customer-release boundary are documented in
-[Quality gates](docs/quality-gates.md).
+Portal, PWA, API-shape or shared-component changes also run `npm run test:core`
+from `tests/browser`. The complete three-project screenshot suite is reserved
+for broad visual changes and release qualification. QML, C++, launcher,
+hardware and packaging changes require the Raspberry Pi acceptance gate before
+deployment. Exact focused commands, CI tiers and the customer-release boundary
+are documented in [Quality gates](docs/quality-gates.md).
+
+A passing command belongs to the tested tree. Do not rerun it solely because
+the same unchanged work is about to be deployed, committed or pushed.
 
 Do not update snapshots, weaken an assertion, increase a size budget or add a
 test exception as part of an unrelated change. Explain any intentional change

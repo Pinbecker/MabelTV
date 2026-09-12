@@ -2,8 +2,24 @@ name: Source quality
 
 on:
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
   push:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
   workflow_dispatch:
+    inputs:
+      suite:
+        description: Browser validation tier
+        required: true
+        default: core
+        type: choice
+        options:
+          - core
+          - comprehensive
 
 permissions:
   contents: read
@@ -107,7 +123,8 @@ jobs:
       # produce a customer artifact or replace clean-image ARM64 Pi testing.
 
   windows-pwa-contract:
-    name: Installed iPhone and iPad PWA contract
+    name: Core installed iPhone PWA contract
+    if: github.event_name != 'workflow_dispatch' || inputs.suite == 'core'
     runs-on: windows-2025
     timeout-minutes: 25
 
@@ -135,15 +152,58 @@ jobs:
         working-directory: tests/browser
         run: npx playwright install chromium webkit
 
-      - name: Run the frozen installed-PWA contract
+      - name: Run the core installed-PWA contract
         working-directory: tests/browser
-        run: npm test
+        run: npm run test:core
 
       - name: Retain screenshots and traces when the contract fails
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: pwa-contract-failure-${{ github.run_id }}
+          path: tests/browser/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+  windows-pwa-comprehensive:
+    name: Comprehensive iPhone and iPad PWA contract
+    if: github.event_name == 'workflow_dispatch' && inputs.suite == 'comprehensive'
+    runs-on: windows-2025
+    timeout-minutes: 25
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Use the browser-test Python runtime
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Use the supported Node.js runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.14.0'
+          cache: npm
+          cache-dependency-path: tests/browser/package-lock.json
+
+      - name: Install the pinned browser-test dependency
+        working-directory: tests/browser
+        run: npm ci --ignore-scripts
+
+      - name: Install the pinned browser engines
+        working-directory: tests/browser
+        run: npx playwright install chromium webkit
+
+      - name: Run every behavioural and visual PWA contract
+        working-directory: tests/browser
+        run: npm run test:full
+
+      - name: Retain screenshots and traces when the contract fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pwa-comprehensive-failure-${{ github.run_id }}
           path: tests/browser/test-results
           if-no-files-found: ignore
           retention-days: 7

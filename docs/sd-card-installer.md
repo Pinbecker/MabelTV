@@ -25,7 +25,11 @@ Both an image owner and an existing KidsTV owner update from the same newer, OS-
 sudo ./install-mabeltv
 ```
 
-That installer preserves `/var/lib/mabeltv/channels.json`, `/var/lib/mabeltv/settings.json`, `/var/lib/mabeltv/owner.json`, and `/srv/mabeltv/media`. It validates the new services and records the exact previous release for `sudo mabeltv-rollback`. Updating never requires reflashing the SD card.
+That installer preserves `/var/lib/mabeltv/mabeltv.db`, its secrets and device
+state, and `/srv/mabeltv/media`. A schema upgrade is protected by a validated
+SQLite online backup. It validates the new services and records the exact
+previous release for `sudo mabeltv-rollback`. Updating never requires reflashing
+the SD card.
 
 For each release, the release owner therefore produces one qualified bundle first and derives both delivery outputs from it:
 

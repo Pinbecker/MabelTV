@@ -20,20 +20,33 @@ class QualityGateTests(unittest.TestCase):
         ):
             self.assertIn(f"NAME {test_name}", cmake)
 
-    def test_ci_enforces_native_and_installed_pwa_contracts(self) -> None:
+    def test_ci_keeps_core_and_comprehensive_pwa_contracts(self) -> None:
         workflow = (PROJECT_ROOT / ".github/workflows/quality.yml").read_text(
             encoding="utf-8"
         )
 
         self.assertIn("ubuntu-source-quality:", workflow)
         self.assertIn("windows-pwa-contract:", workflow)
+        self.assertIn("windows-pwa-comprehensive:", workflow)
         self.assertIn("node-version: '22.14.0'", workflow)
         self.assertIn("run: ctest --test-dir build --output-on-failure", workflow)
         self.assertIn("run: npm ci --ignore-scripts", workflow)
         self.assertIn("run: npx playwright install chromium webkit", workflow)
-        self.assertIn("run: npm test", workflow)
+        self.assertIn("run: npm run test:core", workflow)
+        self.assertIn("run: npm run test:full", workflow)
+        self.assertIn("github.event_name == 'workflow_dispatch'", workflow)
         self.assertIn("uses: actions/upload-artifact@v4", workflow)
         self.assertNotIn("continue-on-error: true", workflow)
+
+    def test_browser_cases_reset_mutable_fixture_state(self) -> None:
+        shared_fixture = (PROJECT_ROOT / "tests/browser/test-fixtures.mjs").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("request.get('/__fixture/reset')", shared_fixture)
+
+        for spec in (PROJECT_ROOT / "tests/browser").glob("*.spec.mjs"):
+            self.assertIn("from './test-fixtures.mjs'", spec.read_text(encoding="utf-8"),
+                          spec.name)
 
     def test_release_bundle_is_tied_to_clean_recorded_source(self) -> None:
         builder = (PROJECT_ROOT / "scripts/pi/make-release-bundle.sh").read_text(

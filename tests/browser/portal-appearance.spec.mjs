@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './test-fixtures.mjs'
 
 
 async function openAppearance(page) {
@@ -10,7 +10,7 @@ async function openAppearance(page) {
 }
 
 
-test('Colour page previews and persists all three appearance depths', async ({ page }, testInfo) => {
+test('@visual Colour page previews and persists all three appearance depths', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One phone engine covers device-local appearance')
   await openAppearance(page)
 

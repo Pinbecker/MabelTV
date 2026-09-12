@@ -118,12 +118,18 @@ transport failure, even if following the redirect produces HTTP 200.
 ### Source changes
 
 - Preserve route paths, status codes, cookie attributes, response fields, and
-  on-disk schemas during a refactor.
+  the SQLite schema contract during a refactor. Additive schema changes go
+  through the versioned migration owner in `database.py` and must remain
+  readable by every process in the release.
 - Keep standard-library-only operation unless a deliberate packaging decision
   adds and validates a runtime dependency.
 - Put new behaviour in the module that owns it; do not grow the compatibility
   shell or add a second route ladder.
 - Preserve the patchable public names in `mabeltv-library.py` while existing
   tests and maintenance scripts depend on them.
-- Run the complete Python, JavaScript, browser, and Pi service checks before a
-  live checkpoint.
+- Give every test fixture its own temporary database, media root, artwork cache
+  and transfer directories. Reset mutable browser-fixture state before every
+  test so a failure cannot cascade into later cases.
+- Select the development, core, deployment or comprehensive checks from
+  `docs/quality-gates.md` according to the changed responsibility. A Library
+  change does not automatically require the complete visual browser matrix.

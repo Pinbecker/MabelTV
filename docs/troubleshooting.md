@@ -152,16 +152,22 @@ descriptor count remains bounded.
 
 ## A channel shows NO SIGNAL
 
-Validate the complete library:
+First validate the authoritative database:
 
 ```bash
-sudo -u mabeltv /opt/mabeltv/current/mabeltv_media_check \
-  --channels /var/lib/mabeltv/channels.json \
-  --media-root /srv/mabeltv/media \
-  --cache /var/lib/mabeltv/media-index.json
+rm -f /tmp/mabeltv-diagnostic.db
+sudo -u mabeltv /opt/mabeltv/current/mabeltv-state-migrate backup \
+  --database /var/lib/mabeltv/mabeltv.db \
+  --output /tmp/mabeltv-diagnostic.db
+rm -f /tmp/mabeltv-diagnostic.db
 ```
 
-Check that the folder spelling exactly matches `channels.json`, that the channel contains at least one supported video, and that user `mabeltv` can read every parent directory and programme. The starter channels are generic and none is intentionally reserved as an empty channel.
+The command uses SQLite's online backup API and fails if integrity or foreign
+keys are invalid. Then inspect the channel through the portal or a redacted
+support bundle. Check that its stored folder matches the directory under
+`/srv/mabeltv/media`, that it contains at least one supported video, and that
+user `mabeltv` can read every parent directory and programme. Do not repair the
+retained legacy `channels.json`; it is no longer live state.
 
 If the previous programme stalled, its unchanged file may be deliberately quarantined. The journal and support bundle record the reason. Replace/re-encode the file (which changes its modification time), or remove it through the dashboard recycle-bin flow.
 
@@ -175,8 +181,14 @@ Use `ir-keytable` to find the rc device whose Name and Driver are `gpio_ir_recv`
 sudo mabeltv-rollback
 ```
 
-If the service still fails, stop it, restore channels/settings from the latest `/var/backups/mabeltv` archive, validate media, and start it again. Boot-file backups created by `configure-boot.sh` sit beside the originals with a `.mabeltv-TIMESTAMP.bak` suffix.
+If the service still fails, stop both database users and restore the validated
+`mabeltv.db` snapshot from the latest `/var/backups/mabeltv` archive together
+with the matching previous release. Never copy only a live database file while
+WAL mode is active. Boot-file backups created by `configure-boot.sh` sit beside
+the originals with a `.mabeltv-TIMESTAMP.bak` suffix.
 
 ## Forgotten parent PIN
 
-Do not reinstall or delete `owner.json`. Use the one-time physical boot-drive marker described in [Raspberry Pi installation](raspberry-pi-setup.md#forgotten-parent-pin). It keeps videos, channels, and settings while rotating the setup code.
+Do not reinstall or delete `mabeltv.db`. Use the one-time physical boot-drive
+marker described in [Raspberry Pi installation](raspberry-pi-setup.md#forgotten-parent-pin).
+It keeps videos, channels and settings while rotating the setup code.

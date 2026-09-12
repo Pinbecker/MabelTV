@@ -3,8 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "playwright test",
-    "test:update": "playwright test --update-snapshots"
+    "test": "npm run test:core",
+    "test:smoke": "playwright test --project=iphone-webkit --project=iphone-chromium --grep-invert @visual pwa.spec.mjs portal-primary-navigation.spec.mjs",
+    "test:offline": "playwright test --project=iphone-webkit --project=iphone-chromium pwa.spec.mjs",
+    "test:core": "playwright test --project=iphone-webkit --project=iphone-chromium --grep-invert @visual pwa.spec.mjs portal-primary-navigation.spec.mjs portal-domain-navigation.spec.mjs portal-card-navigation.spec.mjs portal-explore.spec.mjs portal-artwork-status.spec.mjs portal-adult-home-playback.spec.mjs portal-player-history.spec.mjs portal-continue-controls.spec.mjs",
+    "test:visual": "playwright test --grep @visual",
+    "test:full": "playwright test",
+    "test:update": "playwright test --grep @visual --update-snapshots"
   },
   "devDependencies": {
     "@playwright/test": "1.62.1"

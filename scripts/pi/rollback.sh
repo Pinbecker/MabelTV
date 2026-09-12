@@ -112,6 +112,10 @@ if [[ -x "$target/appliance/scripts/pi/activate-assets.sh" ]]; then
         mabeltv-library.service mabeltv-health.service mabeltv-health.timer \
         mabeltv-boot-audit.service mabeltv-retention.service \
         mabeltv-retention.timer mabeltv-owner-recovery.service)
+    if [[ -f "$target/appliance/packaging/linux/mabeltv-onedrive-backup.service" ]]; then
+        verification_units+=(mabeltv-onedrive-backup.service \
+            mabeltv-onedrive-backup.timer)
+    fi
     if [[ -f "$target/appliance/packaging/linux/mabeltv-matter.service" ]]; then
         verification_units+=(mabeltv-matter.service)
     fi

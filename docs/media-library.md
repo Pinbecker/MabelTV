@@ -5,7 +5,7 @@ Mabel TV’s browser dashboard is the normal grown-up entry point after installa
 Open the address shown on the TV, normally:
 
 ```text
-http://mabeltv.local:8080
+http://mabeltv-512.local:8080
 ```
 
 If `.local` discovery is blocked by the router or phone, use the numeric IP address shown directly underneath it on the welcome screen.
@@ -32,10 +32,16 @@ do not provide offline service workers to that address.
 
 Before travelling, open the installed HTTPS app while online, visit
 **Downloads**, and check that every item says **Ready offline**. Airplane mode
-then opens the cached MabelTV shell directly on the Downloads tab. The offline
-player serves saved video with the byte-range responses required by iPhone's
-native video player. Downloads belong to that HTTPS app's private storage on the
-individual iPhone and are not copied to other browsers or devices.
+opens the cached MabelTV shell; ordinary sections show a reconnect panel and
+their MabelTV or Adult Downloads route remains usable. The offline player serves
+saved video with the byte-range responses required by iPhone's native video
+player. Downloads belong to that HTTPS app's `mabeltv-offline-v1` IndexedDB on
+the individual iPhone and are not copied to other browsers or devices. Adult
+media requires a fresh local PIN verification after a cold offline launch.
+
+Response snapshots and artwork caches speed warm online use but are disposable
+and separate from Downloads. Their complete ownership and update rules are in
+[PWA offline and device-cache architecture](pwa-offline-cache.md).
 
 ## Dashboard sections
 
@@ -87,9 +93,9 @@ the dashboard itself remains unprivileged.
 
 Adult films can be explicitly matched to TMDB. **Scan metadata** searches using
 the local filename and optional year, presents candidates for confirmation, and
-then caches the selected title, year, synopsis, runtime, TMDB ID, and poster on
-the Pi. Opening Adult mode never performs a live lookup, so it remains fast and
-works offline.
+then stores the selected title identity and metadata in SQLite. Artwork is
+served through the same-origin proxy and cached separately on the Pi and device.
+Opening the local Adult catalogue does not require a fresh metadata lookup.
 
 The API key is not stored in HTML, JavaScript, media metadata, or logs. Put it
 on the Pi as a single line in:

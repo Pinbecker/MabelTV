@@ -1,92 +1,151 @@
 # Quality gates
 
-MabelTV uses several deliberately different checks. No single green command is
-allowed to imply more confidence than it actually provides.
+MabelTV uses risk-based validation. A check is run because it covers the code
+or appliance boundary that changed, not merely because work is being handed
+over, deployed, committed, pushed and deployed, and deployed in succession.
 
-## Architecture ratchet
+Record the command, result and tested Git tree. A successful result remains
+valid while those inputs are unchanged. Commit and push do not require another
+identical local run. During development, one relevant test is usually more
+useful than rerunning a large suite after an understood failure.
 
-`config/architecture-guardrails.json` gives every owned source area a maximum
-file size. The Python architecture suite also requires every QML/C++ source to
-be registered, every portal partial and stylesheet/script to be reachable, and
-Library mixins to preserve their dependency direction. New source files without
-an applicable budget fail the gate.
+## Tier 1: fast development checks
 
-The limits are deliberately above normal working size but below another
-monolith. They are not style scores or permission to fill a file to its limit.
-When a responsibility outgrows its owner, extract a cohesive component and
-document it instead of increasing the budget. The matching change checklist is
-in [Contributing to MabelTV](../CONTRIBUTING.md).
+Run these while editing:
 
-## Portable source gate
+```powershell
+git diff --check
+python -m unittest tests.python.test_architecture_guardrails
+node --test tests/js/test-source-syntax.mjs
+```
 
-The normal CMake test suite covers the C++ controller, the complete Python
-Library service, structural boundaries, every first-party JavaScript file,
-offline PWA upgrades, the Matter control socket, and the native libmpv smoke
-test. Node.js is required when tests are enabled so those checks cannot be
-silently omitted.
+Add the smallest owner test that exercises the behaviour being changed. Common
+choices are:
 
-On Windows, run:
+| Changed responsibility | Focused checks |
+| --- | --- |
+| SQLite schema, adapters, migration or state writes | `python -m unittest tests.python.test_state_database tests.python.test_viewing_intents` plus the affected Library/native test |
+| Authentication, owner setup or API security | affected cases in `tests.python.test_library_service` and the PIN browser contract |
+| Downloads, service worker or offline security | `node --test tests/js/test-offline-service-worker.mjs` and `npm run test:offline` from `tests/browser` |
+| Portal route or component | its browser spec on `--project=iphone-webkit`; add Chromium when worker, cache or browser compatibility is involved |
+| Adult cards, cache revisions or warm rendering | `portal-explore.spec.mjs`, `portal-domain-navigation.spec.mjs` or the closest owned spec |
+| Native controller or playback | `mabeltv_core_tests`, the relevant Python safety test and the native self-test |
+| Documentation or workflow only | architecture/quality contract tests; no browser or native build unless executable behaviour changed |
+
+Tests use temporary databases, media roots, caches and transfer directories.
+The shared Playwright fixture calls `/__fixture/reset` before every case so PIN,
+session and viewing mutations cannot contaminate another test. Do not solve a
+failure by relying on test order, increasing arbitrary sleeps or retrying the
+whole suite before reading the first causal failure.
+
+## Tier 2: core regression gate
+
+Run this before handing over an application behaviour change:
 
 ```powershell
 .\scripts\windows\build.ps1
 ```
 
-GitHub repeats the appliance-capable build and complete portable suite on
-Ubuntu. It also compiles every Python entry point, parses every Bash entry
-point, and installs the exact locked Matter dependency tree.
+It compiles the native application and runs the portable controller, complete
+Python Library/SQLite, JavaScript syntax, service-worker, Matter socket and
+libmpv smoke groups. Python and JavaScript-only edits may use their complete
+owner suites instead when a native build provides no additional signal; state
+which commands were run.
 
-## Installed iOS PWA contract
-
-The portal is tested separately because its exact layout is a product contract,
-not a native build concern. GitHub runs the pinned Chromium and WebKit versions
-on Windows against the committed iPhone and iPad visual references. Failures
-retain their screenshots and browser traces for diagnosis.
-
-To run the same contract locally:
+For portal/PWA behaviour also run:
 
 ```powershell
 Set-Location tests\browser
-npm ci --ignore-scripts
-npx playwright install chromium webkit
-npm test
+npm run test:core
 ```
 
-Screenshot changes are never updated as part of an unrelated change. Review an
-intentional design change first, then update only the affected references.
+The core browser gate runs the security, offline, warm-cache, navigation,
+content-card, Adult viewing, artwork, playback and optimistic-action contracts
+on iPhone WebKit and Chromium. Tests tagged `@visual` are excluded, avoiding
+brittle screenshot failures during ordinary functional work.
 
-## Raspberry Pi acceptance gate
+## Tier 3: focused visual and device checks
 
-QML, C++, launcher, hardware, or packaging changes still require a native Pi
-build and test before the short atomic install. After installation, verify the
-selected release, player and Library status, restart counters, watchdog,
-temperature and throttling. Remote input, HDMI/CEC, audio and real playback are
-confirmed on the physical television because a hosted runner cannot reproduce
-that hardware.
+An intentional UI change runs only its affected browser spec and visual cases,
+for example:
 
-Portal-only changes use the narrower portal checks and deployment path. They do
-not justify rebuilding the native television application. Once deployment has
-been explicitly approved, the standard fast path is:
+```powershell
+Set-Location tests\browser
+npx playwright test portal-light.spec.mjs --project=iphone-webkit --grep @visual
+```
+
+Use `npm run test:update` only after the new appearance has been reviewed. It
+updates visual tests across the configured matrix; inspect every changed PNG
+before staging it. A screenshot mismatch caused by an intended design change is
+a review task, not evidence that unrelated application logic failed.
+
+Real installed-PWA acceptance is required for safe-area, edge navigation,
+standalone launch, storage quota and iOS media behaviour that Playwright cannot
+faithfully reproduce. Real-TV checks remain required for HDMI/CEC, audio,
+remote input and playback timing.
+
+## Tier 4: comprehensive qualification
+
+Reserve maximum validation for broad portal architecture changes, dependency or
+toolchain upgrades, release candidates, and explicit requests:
+
+```powershell
+.\scripts\windows\build.ps1
+Set-Location tests\browser
+npm run test:full
+```
+
+`test:full` runs every behaviour and screenshot on iPhone WebKit, iPhone
+Chromium and iPad WebKit. It remains available locally and as the manual
+**Source quality** GitHub Actions workflow option `comprehensive`. It is not an
+ordinary pre-commit ritual.
+
+## Continuous integration
+
+Normal pull requests and pushes to `main` run:
+
+- the appliance-capable Ubuntu build, complete portable CTest suite, Python and
+  Bash syntax checks, and the locked Matter dependency tree;
+- the core iPhone PWA browser gate on Windows.
+
+Documentation-only changes skip these hosted jobs. A manual comprehensive run
+replaces the core browser job with the complete iPhone/iPad visual matrix.
+Failures retain Playwright screenshots/traces, and CTest emits its causal
+`LastTest.log` as an annotation. Diagnose that first failure before changing
+source or rerunning everything.
+
+## Deployment gates
+
+Deployment is a runtime safety boundary, not a second complete qualification
+cycle. Use current successful evidence from the same tree, then let the deploy
+tool run a small last-mile smoke check before it copies anything.
+
+Portal-only changes use, after explicit authorization:
 
 ```powershell
 .\scripts\windows\deploy-portal-to-pi.ps1
 ```
 
-The command refuses mixed native changes, deleted live assets, unreviewed
-snapshot updates and shell changes without a service-worker cache revision. It
-runs the architecture and complete browser gates, takes a targeted rollback
-backup, copies only changed runtime files, restarts only the Library service,
-then checks hashes, HTTP, services, restart counters, watchdog and Pi thermal
-state. `-PlanOnly` shows the exact files without testing, copying or restarting.
+The script rejects mixed native/backend changes, deleted live assets,
+unreviewed snapshots and shell changes without a worker revision. It runs
+architecture plus `test:smoke`, backs up the exact live files, copies only the
+selected portal assets, restarts only the Library service, verifies hashes,
+HTTP, services, restart counters and Pi thermal state, and restores the backup
+if the handoff fails.
 
-## Customer release qualification
+Backend changes use the broader atomic release path because executable and
+backend modules must stay together. SQLite schema upgrades require the
+installer's validated online backup and rollback transaction. QML, C++,
+launcher, hardware or packaging changes require a Pi-native build/test before
+the short atomic install. Do not compile while swapping the live player.
 
-Continuous integration proves source portability; it does not produce or
-approve a customer release. `scripts/pi/make-release-bundle.sh` builds customer
-artifacts only from a recorded clean commit unless an explicitly labelled
-unpublished developer override is used. The bundle records its target, source
-commit and binary hashes and includes matching corresponding source.
+## Architecture and release boundaries
 
-Publication additionally requires the clean-image, update, rollback, hardware,
-endurance, licence and commercial evidence in
-[Commercial release readiness](release-readiness.md). A working development Pi
-or a green GitHub run is not a substitute for that gate.
+`config/architecture-guardrails.json` limits are ceilings, not test targets.
+Extract a cohesive owner rather than raising a budget. New source files must be
+registered and reachable.
+
+Continuous integration proves source portability; it does not qualify a
+customer release. Clean-image installation, update/rollback, hardware,
+endurance, licensing and commercial evidence remain in
+[Commercial release readiness](release-readiness.md).

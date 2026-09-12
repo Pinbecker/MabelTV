@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './test-fixtures.mjs'
 
 async function openPortal(page, theme) {
   await page.addInitScript(theme => {

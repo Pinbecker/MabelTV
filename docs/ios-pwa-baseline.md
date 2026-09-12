@@ -25,19 +25,23 @@ these screens with deterministic data in iPhone WebKit, iPad WebKit, and iPhone
 Chromium. It also checks representative film and channel menus, the PIN gate,
 offline database upgrades, and protected-download access.
 
-Run it from `tests/browser` with:
+Run the normal behavioural contract from `tests/browser` with:
 
 ```powershell
 npm ci
 npx playwright install webkit chromium
-npm test
+npm run test:core
 ```
 
-Screenshot updates are deliberate review actions. Use `npm run test:update`,
-inspect every changed PNG, and only then commit the new references.
+The complete iPhone/iPad visual matrix is `npm run test:full`. Screenshot
+updates are deliberate review actions. Run the affected visual test first,
+then use `npm run test:update`, inspect every changed PNG, and only then commit
+the intended references. A non-visual change does not need the screenshot
+matrix merely because it touches portal code.
 
 The ownership and loading rules for future portal changes are recorded in
-[portal-architecture.md](portal-architecture.md).
+[portal-architecture.md](portal-architecture.md). Device storage and worker
+updates are detailed in [PWA offline and device-cache architecture](pwa-offline-cache.md).
 
 ## PWA behaviour contract
 

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './test-fixtures.mjs'
 
 
 async function openPortal(page) {
@@ -78,7 +78,7 @@ test('phone shell keeps the frozen header, rail, gutters and Continue layout', a
   await expect(page.locator('#homeContinueRail .watch-continue-card')).toHaveCount(8)
 })
 
-test('primary screens stay full-width and match their visual references', async ({ page }) => {
+test('@visual primary screens stay full-width and match their visual references', async ({ page }) => {
   await openPortal(page)
   const screens = [
     { trigger: '[data-view-button="overview"]', selector: '#view-overview', snapshot: 'home.png' },
@@ -115,7 +115,7 @@ test('iPad Remote view has no page-level horizontal overflow', async ({ page }, 
 })
 
 
-test('representative film menu fits the phone viewport', async ({ page }, testInfo) => {
+test('@visual representative film menu fits the phone viewport', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone overlay contract')
   await openPortal(page)
 
@@ -346,7 +346,7 @@ test('Experience icon controls and sheet headers keep their mobile contracts', a
 })
 
 
-test('MabelTV remote offers a contextual borderless Adult TV handoff', async ({ page }, testInfo) => {
+test('@visual MabelTV remote offers a contextual borderless Adult TV handoff', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone remote contract')
   await openPortal(page)
   const liveFixture = {

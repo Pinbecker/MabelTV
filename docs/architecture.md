@@ -26,17 +26,33 @@ Persistent Pi paths:
 | --- | --- | --- |
 | `/opt/mabeltv/releases/*` | immutable timestamped binaries | installer only |
 | `/opt/mabeltv/current` | atomically selected release link | installer/rollback |
-| `/var/lib/mabeltv/channels.json` | channel numbers, names, folders, aspect, show/film type | browser dashboard/operator |
-| `/var/lib/mabeltv/owner.json` | first-run state and salted parent-PIN verifier | browser dashboard |
-| `/var/lib/mabeltv/settings.json` | parent choices | application |
-| `/var/lib/mabeltv/state.json` | volume, channel, broadcast timeline, and current-uptime episode inactivity markers | application |
+| `/var/lib/mabeltv/mabeltv.db` | authoritative channels, settings, owner/authentication fields, player state, viewing history, Adult catalogue/viewing/Insights state and portal revision counters | native player and Library service |
+| `/var/lib/mabeltv/mabeltv.db-wal`, `mabeltv.db-shm` | live SQLite WAL coordination files; never back up independently | SQLite only |
+| `/var/lib/mabeltv/secrets/` | provider credentials and other root-controlled integration secrets | operator |
+| `/var/lib/mabeltv/matter/` | device-specific Matter fabric and commissioning state | Matter service |
 | `/var/lib/mabeltv/media-index.json` | ffprobe result cache | application/tools |
-| `/var/lib/mabeltv/secrets/tmdb-api-key` | optional root-controlled TMDB key | operator |
+| `/var/cache/mabeltv/tmdb-artwork` | bounded, rebuildable upstream artwork cache | Library service |
 | `/var/log/mabeltv` | rotating application and soak logs | application/tools |
-| `/srv/mabeltv/media` | user-supplied programmes | operator |
+| `/srv/mabeltv/media` | user-supplied programmes, upload work files and rebuildable generated material | operator and Library service |
 | `/media/mabeltv-usb/*` | transient read-only removable-media mounts | appliance helper |
 | `/etc/rc_keymaps/mabeltv.toml` | learned IR scan-code map | remote mapper |
 
-There is no cloud service, account database, or desktop session. A bounded standard-library HTTP service provides the LAN-only grown-up dashboard on port 8080. It writes uploads into a staging inbox, publishes only complete media, owns channel/browser-library mutations, and sends the player a coalesced live-reload signal. Authenticated portal power POSTs and the IR power key both reach the same `TvController` operations through the private player socket. `CecTvControl` asynchronously invokes `cec-client`; failures are journalled but never block MabelTV standby or wake. Avahi advertises the local address; nothing is intentionally exposed beyond the home network.
+There is no external application database or desktop session. The native player
+and bounded standard-library HTTP service share the local SQLite database in WAL
+mode and use short transactions. The HTTP service provides the grown-up portal
+on port 8080, writes uploads into a staging inbox, publishes only complete
+media, owns channel/browser-library mutations, and sends the player a coalesced
+live-reload signal. Authenticated portal power POSTs and the IR power key both
+reach the same `TvController` operations through the private player socket.
+`CecTvControl` asynchronously invokes `cec-client`; failures are journalled but
+never block MabelTV standby or wake. Avahi advertises the local address.
+
+The retained pre-migration JSON documents are recovery evidence, not live
+stores. Their compatibility command-line paths remain available to migration
+and development tooling but production reads and writes use `mabeltv.db` only.
+See [MabelTV state database](state-database.md) for the authority, migration,
+backup and rollback contracts. The installed HTTPS PWA has separate device-side
+shell, response, artwork and Downloads stores described in
+[PWA offline and device-cache architecture](pwa-offline-cache.md).
 
 Media discovery has two phases. Startup admits unchanged cached files immediately and provisionally admits new readable video paths so systemd readiness is never held behind hundreds of probes. A QtConcurrent worker validates uncached/changed files, writes the media index atomically, and publishes the result on the main thread. Live reload keeps the last-known-good library playing until the worker completes.

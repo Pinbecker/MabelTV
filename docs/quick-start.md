@@ -61,7 +61,12 @@ sudo ./install-mabeltv
 sudo reboot
 ```
 
-The checksum must say `OK`. Stop if it says `FAILED`. The installer checks the Pi model, RAM, OS, storage, power/heat history, build manifest, binary checksums, Python, systemd units, self-test, and service readiness. It never overwrites an existing media library or owner configuration. Package download and installation can take several minutes.
+The checksum must say `OK`. Stop if it says `FAILED`. The installer checks the
+Pi model, RAM, OS, storage, power/heat history, build manifest, binary checksums,
+Python, systemd units, self-test, and service readiness. It preserves the media
+library and authoritative SQLite state, and protects any schema upgrade with a
+validated online backup. Package download and installation can take several
+minutes.
 
 ## 4. Complete the three setup steps
 

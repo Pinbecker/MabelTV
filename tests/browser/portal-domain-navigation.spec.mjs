@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './test-fixtures.mjs'
 
 test.use({ serviceWorkers: 'block' })
 
@@ -13,7 +13,7 @@ async function openPortal(page) {
   await page.evaluate(() => document.fonts?.ready)
 }
 
-test('MabelTV and Adult TV each keep the same three-section structure', async ({ page }, testInfo) => {
+test('@visual MabelTV and Adult TV each keep the same three-section structure', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone navigation contract')
   await openPortal(page)
 

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './test-fixtures.mjs'
 
 test.use({ serviceWorkers: 'block' })
 
@@ -33,7 +33,7 @@ async function openPortal(page, { extraTitles = [] } = {}) {
 }
 
 
-test('Insights is a top-level Adult TV profile with MabelTV activity alongside it', async ({ page }, testInfo) => {
+test('@visual Insights is a top-level Adult TV profile with MabelTV activity alongside it', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone navigation contract')
   await openPortal(page)
 

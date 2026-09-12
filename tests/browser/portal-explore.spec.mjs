@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './test-fixtures.mjs'
 
 
 async function openExplore(page) {
@@ -25,7 +25,7 @@ async function openExplore(page) {
 }
 
 
-test('Explore is a polished four-wide continuous catalogue with direct actions', async ({ page }, testInfo) => {
+test('@visual Explore is a polished four-wide continuous catalogue with direct actions', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One phone engine owns the Explore reference')
   await openExplore(page)
 

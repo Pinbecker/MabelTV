@@ -12,6 +12,14 @@ immediate rollback snapshot. They are not live compatibility stores. Secrets,
 Matter data, LG pairing data, media, artwork, generated media indexes, upload
 work files, logs, and device configuration remain outside SQLite.
 
+`MABELTV_DATABASE` and the Library service's `--database` option may select an
+isolated database for development, migration and tests. Production defaults to
+`/var/lib/mabeltv/mabeltv.db`. Tests must always supply a temporary database and
+temporary media/cache paths; they must never touch `/var/lib`, `/var/cache` or
+`/srv`. The launcher's legacy `--channels`, `--settings` and `--state` arguments
+remain transitional command-line compatibility inputs, not alternate
+authorities.
+
 ## Relational ownership
 
 The database owns:
@@ -98,6 +106,12 @@ release refuses an unsupported version or a mismatched migration checksum.
 Future schema changes must be additive migration steps, run on a verified
 online backup in a transaction before the new application starts. They must
 never rewrite the initial migration definition.
+
+Temporary import, export, comparison or dual-read facilities belong only in the
+explicit migration tool and must have a removal point. They must not become an
+application fallback path. A release may support more than one database schema
+version during a controlled rollout, but every running writer still targets one
+authoritative schema and one database.
 
 The installer stops both database users for the short upgrade window, creates
 a validated SQLite backup immediately beforehand, and keeps that backup tied

@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$PiHost = 'pinbecker@Mabel-TV.local',
+    [string]$PiHost = 'pinbecker@mabeltv-512.local',
     [string]$PiSourceRoot = '/home/pinbecker/MabelTV',
     [switch]$All,
     [switch]$AllowDirtyPiSource

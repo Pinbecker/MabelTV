@@ -10,8 +10,9 @@ effect, if any.
 - [ ] No size budget, exception, screenshot or assertion was weakened merely to pass.
 - [ ] The repository instructions in `AGENTS.md` were followed.
 - [ ] New native files, portal parts and offline assets are registered and reachable.
-- [ ] The portable build and complete automated test suite pass.
-- [ ] The iPhone/iPad browser contract passes when portal behaviour could change.
+- [ ] Focused owner tests and the proportionate core gate pass.
+- [ ] `test:core` passes when portal behaviour could change.
+- [ ] Affected `@visual` cases were reviewed, or the comprehensive suite was run when its broader coverage was justified.
 - [ ] Native or packaging changes passed the Pi gate and retain an exact rollback.
 
 ## Evidence

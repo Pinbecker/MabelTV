@@ -1,0 +1,12 @@
+[Unit]
+Description=Create and verify the MabelTV OneDrive disaster-recovery backup
+Wants=network-online.target
+After=network-online.target local-fs.target
+ConditionPathExists=/etc/rclone/mabeltv.conf
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/mabeltv-onedrive-backup
+Nice=10
+IOSchedulingClass=idle
+UMask=0077

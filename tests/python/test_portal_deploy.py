@@ -24,7 +24,7 @@ class PortalDeployContractTests(unittest.TestCase):
 
     def test_validation_precedes_the_live_handoff(self) -> None:
         validation = self.source.index("'diff', '--check'")
-        browser = self.source.index("'playwright', 'test', 'portal.spec.mjs'")
+        browser = self.source.index("'run', 'test:smoke'")
         install = self.source.index("sudo install -m 0644")
         self.assertLess(validation, install)
         self.assertLess(browser, install)

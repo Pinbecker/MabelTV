@@ -50,7 +50,8 @@ fi
 transaction_units=(
     mabeltv.service mabeltv-library.service mabeltv-matter.service mabeltv-ir.service
     mabeltv-health.timer mabeltv-boot-audit.service
-    mabeltv-retention.timer mabeltv-owner-recovery.service
+    mabeltv-retention.timer mabeltv-onedrive-backup.timer \
+    mabeltv-owner-recovery.service
     avahi-daemon.service bluetooth.service
 )
 declare -A unit_was_enabled=()
@@ -70,7 +71,7 @@ if [[ "$skip_packages" != "true" ]]; then
         qt6-qpa-plugins qml6-module-qtquick qml6-module-qtquick-window libqt6sql6-sqlite \
         libqt6opengl6 libmpv-dev ffmpeg ir-keytable cec-utils python3 sudo logrotate avahi-daemon \
         alsa-utils ca-certificates curl util-linux psmisc qrencode udisks2 sg3-utils \
-        nodejs npm
+        nodejs npm rclone
     if [[ -z "$prebuilt_dir" ]]; then
         DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             build-essential cmake ninja-build pkg-config \
@@ -431,7 +432,8 @@ for unit in mabeltv.service mabeltv-ir.service mabeltv-recovery.service \
     mabeltv-library.service mabeltv-matter.service \
     mabeltv-health.service mabeltv-health.timer \
     mabeltv-boot-audit.service mabeltv-retention.service \
-    mabeltv-retention.timer mabeltv-owner-recovery.service; do
+    mabeltv-retention.timer mabeltv-onedrive-backup.service \
+    mabeltv-onedrive-backup.timer mabeltv-owner-recovery.service; do
     sed "s|/opt/mabeltv/current|$release_dir|g" \
         "$release_dir/appliance/packaging/linux/$unit" > "$verify_dir/$unit"
 done
@@ -497,6 +499,12 @@ systemctl enable mabeltv-boot-audit.service
 systemctl enable mabeltv-owner-recovery.service
 systemctl enable --now mabeltv-retention.timer
 /usr/local/libexec/mabeltv-retention
+if [[ -r /etc/rclone/mabeltv.conf ]] \
+    && rclone listremotes --config /etc/rclone/mabeltv.conf 2>/dev/null \
+        | grep -Fxq 'onedrive:'; then
+    systemctl enable mabeltv-onedrive-backup.timer
+    systemctl restart mabeltv-onedrive-backup.timer
+fi
 if [[ "$configure_boot" == "true" ]]; then
     # Do not pin Linux to HDMI socket 1. The launcher detects either connector
     # and still requests the safe 720p application mode from settings.

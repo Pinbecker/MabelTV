@@ -98,7 +98,9 @@ fi
 
 systemctl disable --now mabeltv.service mabeltv-library.service mabeltv-matter.service \
     mabeltv-ir.service mabeltv-health.timer mabeltv-boot-audit.service \
-    mabeltv-retention.timer mabeltv-owner-recovery.service 2>/dev/null || true
+    mabeltv-retention.timer mabeltv-onedrive-backup.timer \
+    mabeltv-onedrive-backup.service mabeltv-owner-recovery.service \
+    2>/dev/null || true
 
 unit_paths=(
     /etc/systemd/system/mabeltv.service
@@ -111,6 +113,8 @@ unit_paths=(
     /etc/systemd/system/mabeltv-boot-audit.service
     /etc/systemd/system/mabeltv-retention.service
     /etc/systemd/system/mabeltv-retention.timer
+    /etc/systemd/system/mabeltv-onedrive-backup.service
+    /etc/systemd/system/mabeltv-onedrive-backup.timer
     /etc/systemd/system/mabeltv-owner-recovery.service
 )
 helper_paths=(
@@ -130,6 +134,8 @@ helper_paths=(
     /usr/local/sbin/mabeltv-map-remote
     /usr/local/sbin/mabeltv-add-channel
     /usr/local/sbin/mabeltv-backup
+    /usr/local/sbin/mabeltv-onedrive-backup
+    /usr/local/sbin/mabeltv-configure-onedrive-backup
     /usr/local/sbin/mabeltv-rollback
     /usr/local/sbin/mabeltv-diagnostics
     /usr/local/sbin/mabeltv-media-report
@@ -159,7 +165,9 @@ systemctl try-restart avahi-daemon.service systemd-journald.service 2>/dev/null 
 
 if [[ "$purge_data" == "true" ]]; then
     rm -rf -- /var/lib/mabeltv /var/cache/mabeltv /var/log/mabeltv /srv/mabeltv/media /var/backups/mabeltv
-    rm -f -- /etc/mabeltv/library.conf /etc/mabeltv/matter.conf /etc/rc_keymaps/mabeltv.toml
+    rm -f -- /etc/mabeltv/library.conf /etc/mabeltv/matter.conf \
+        /etc/mabeltv/backup.conf /etc/rc_keymaps/mabeltv.toml \
+        /etc/rclone/mabeltv.conf
     rmdir /etc/mabeltv /srv/mabeltv /var/backups/mabeltv 2>/dev/null || true
     userdel mabeltv 2>/dev/null || true
     printf 'Mabel TV software, videos, settings and backups were permanently removed.\n'

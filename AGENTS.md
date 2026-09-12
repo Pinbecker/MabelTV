@@ -1,100 +1,76 @@
 # MabelTV agent rules
 
-These instructions apply to every AI coding session in this repository. Read
-them before inspecting or changing product code. User instructions override
-this file only when the user explicitly requests the conflicting action.
+These rules apply to every coding session in this repository. Read the
+architecture document for the area being changed before editing it. User
+instructions take precedence when they explicitly request a different action.
 
-## Non-negotiable product priorities
+## Product and data safety
 
-1. The installed iOS PWA is the primary interface. Preserve its approved
-   iPhone and iPad appearance and behaviour unless the user explicitly requests
-   a design change.
-2. Preserve real-TV geometry, colours, timing, animation, focus, z-order and
-   remote behaviour during native structural work.
-3. Keep changes proportionate. Do not combine a refactor, redesign and feature
-   change in one checkpoint.
-4. Never claim that a build, deploy, commit, push or live check happened unless
-   it was performed and verified in the current task.
+- The current development Pi SSH target is `pinbecker@mabeltv-512.local`
+  (`192.168.0.27` is the last-known LAN fallback). Use the hostname first.
 
-## Required reading and ownership
+- The installed iOS PWA is the primary portal. Preserve its approved iPhone
+  and iPad behaviour unless the user requests a change.
+- `/var/lib/mabeltv/mabeltv.db` is the sole authority for structured mutable
+  application state. Production code must not fall back to, dual-write, or
+  silently recreate the retired JSON stores. Read `docs/state-database.md`.
+- Treat schema changes as migrations. Back up with SQLite's online backup API,
+  validate integrity and foreign keys, and keep rollback possible. Never copy
+  a live database file by itself or edit live state directly.
+- Device downloads live in the PWA's `mabeltv-offline-v1` IndexedDB database.
+  Keep them separate from disposable response snapshots and Cache Storage.
+  Adult downloads and artwork must remain locked until local PIN verification.
+- Service-worker shell releases are immutable. Add required assets to the
+  correct shell manifest and increment `SHELL_RELEASE` for every delivered
+  shell change. Never clear download storage during a shell/cache upgrade.
+- Preserve real-TV geometry, timing, focus, z-order, playback and remote
+  behaviour during native work.
 
-Before editing an area, read its architecture document:
+## Ownership and boundaries
 
-- Portal/PWA: `docs/ios-pwa-baseline.md` and `docs/portal-architecture.md`
+Read the relevant document before editing:
+
+- Portal/PWA: `docs/ios-pwa-baseline.md`, `docs/portal-architecture.md`, and
+  `docs/pwa-offline-cache.md`
 - Library backend: `docs/library-service-architecture.md`
+- SQLite state: `docs/state-database.md`
 - Native QML/C++: `docs/native-architecture.md`
-- Validation/release: `docs/quality-gates.md`
-- Contribution rules and limits: `CONTRIBUTING.md` and
-  `config/architecture-guardrails.json`
+- Tests and deployment: `docs/quality-gates.md`
 
-Put behaviour in its documented owner. If no owner exists, create one focused
-owner and document it. Do not place new behaviour in a convenient large file
-merely because that file already has access to the needed state.
+Keep `mabeltv-library.py` a thin composition shell, `Main.qml` an application
+coordinator, and `TvController.h` the single QML-facing state machine. Put new
+behaviour in its documented owner. Backend mixins may communicate through the
+composed `Library` object but must not import one another.
 
-## Architecture rules
+Treat `config/architecture-guardrails.json` limits as ceilings. Do not raise a
+limit, add an exception, weaken an assertion, hide a failure, or update a
+screenshot merely to pass a gate. Preserve public routes, JSON response shapes,
+IDs, cookies, service entry points, and security boundaries unless the requested
+change deliberately revises that contract.
 
-- Treat every line limit in `config/architecture-guardrails.json` as a ceiling,
-  not a target. Extract a cohesive responsibility before reaching it.
-- Do not raise a size budget, add an exception, weaken an assertion, skip a
-  test, add `continue-on-error`, or update a screenshot merely to make checks
-  pass. Any such change requires explicit user approval after explaining why
-  the architecture cannot be corrected instead.
-- Keep `mabeltv-library.py` a thin compatibility/composition shell. Backend
-  mixins may use the composed `Library` object but must not import one another.
-- Keep `Main.qml` an application coordinator. Visual/input responsibilities
-  belong in focused components with explicit inputs.
-- Keep `TvController.h` as the one stable QML-facing state machine. Split its
-  implementation by responsibility; do not create competing controller state.
-- Register every QML/C++ file in `CMakeLists.txt`. Keep every portal partial
-  reachable from an entry document and every CSS/JavaScript module loaded by an
-  intended entry point.
-- Reuse shared tokens, icons, buttons, empty states and dialog behaviour when
-  semantics match. Do not force genuinely different controls into one generic
-  component solely because they look similar.
-- Do not introduce portal inline styles, `!important`, copied one-off SVGs,
-  duplicate global helpers or a new monolithic bundle.
-- Preserve public IDs, `data-*` attributes, API routes, JSON shapes, cookies,
-  settings/state formats and service entry points during refactors.
+## Proportionate workflow
 
-## Mandatory workflow
+1. Inspect `git status` and preserve unrelated work.
+2. Establish the current behaviour and identify the owning component.
+3. Make the smallest coherent change. Isolate tests from production paths and
+   reset mutable fixtures between tests.
+4. Run `git diff --check`, syntax/architecture checks, and the tests that cover
+   the changed responsibility while working.
+5. Before handover, run the **core** gate described in `docs/quality-gates.md`
+   when application behaviour changed. Run the comprehensive browser/screenshot
+   gate only for broad refactors, release qualification, or explicit maximum
+   validation. Intentional visual changes require focused screenshot review.
+6. Do not repeat an unchanged successful gate solely before deployment, commit,
+   or push. Record the command and commit/tree it validated; rerun only when the
+   tested inputs changed or evidence is stale.
+7. Portal-only deployment uses `scripts/windows/deploy-portal-to-pi.ps1` after
+   explicit deployment authorization. Native changes require Pi build/test and
+   the short atomic install. Capture and verify release, service, restart,
+   watchdog, HTTP, and thermal state at the applicable boundary.
+8. Do not commit or push unless asked. Stage only task files and verify the
+   remote head after pushing.
 
-1. Inspect `git status` and preserve unrelated/user changes.
-2. Establish the relevant current baseline before editing. For portal visual
-   work, run or inspect the frozen browser references first.
-3. Make the smallest coherent change in the documented owner.
-4. Run `git diff --check` and the focused tests while working.
-5. Before handover, run `scripts/windows/build.ps1`. Run the complete browser
-   suite for any portal, PWA, API-shape or shared-component change.
-6. QML, C++, launcher, hardware or packaging work must be built and tested on
-   the Pi before the short atomic install. Portal-only work uses the targeted
-   `scripts/windows/deploy-portal-to-pi.ps1` path and must not trigger a native
-   rebuild. Do not replace its validation, backup, hash and health checks with
-   an ad hoc copy unless that script cannot represent the approved change.
-7. Deployment requires explicit user authorization. Capture the current release
-   and service restart counts first; verify the selected release, services,
-   restart counts, watchdog, HTTP and thermal/throttle state afterward.
-8. Do not commit or push unless the user asks. Before either action, show that
-   the intended checks passed and stage only files belonging to the task.
-
-## Stop conditions
-
-Stop and report instead of improvising when:
-
-- a supposedly non-visual change alters a frozen screenshot;
-- a guardrail can be passed only by weakening it;
-- the correct owner or desired public behaviour is genuinely ambiguous;
-- the Pi build/test fails before installation;
-- the live release, rollback target or service health cannot be proved; or
-- user changes overlap the required edit and cannot be preserved safely.
-
-Never conceal a failure with a fallback implementation or unrequested visual
-change. Keep the last approved Pi release available until the user accepts the
-new checkpoint.
-
-## Definition of done
-
-A change is complete only when its ownership is clear, applicable guardrails
-and tests pass, frozen visuals remain unchanged unless approved, runtime work is
-verified at the proportionate deployment boundary, and the final report states
-exactly what changed, what was tested, what was deployed, and what remains
-uncommitted or unpushed.
+Stop and report if a guardrail can pass only by weakening it, unrelated user
+changes overlap the edit, a Pi build fails before installation, or the live
+release/rollback/health state cannot be proved. Never claim a check, deployment,
+commit, push, or live result that was not verified in the current task.

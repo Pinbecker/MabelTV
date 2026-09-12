@@ -180,16 +180,19 @@ class ArchitectureGuardrailTests(unittest.TestCase):
         self.assertEqual(sorted(assets - referenced), [], "Unloaded portal modules")
 
     def test_ai_instructions_cannot_quietly_weaken_the_guardrails(self) -> None:
-        instructions = (PROJECT_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        instructions = " ".join(
+            (PROJECT_ROOT / "AGENTS.md").read_text(encoding="utf-8").split()
+        )
         required_contracts = (
-            "The installed iOS PWA is the primary interface",
-            "Do not raise a size budget, add an exception, weaken an assertion",
-            "Keep `mabeltv-library.py` a thin compatibility/composition shell",
-            "Keep `Main.qml` an application coordinator",
-            "Keep `TvController.h` as the one stable QML-facing state machine",
-            "Deployment requires explicit user authorization",
-            "Do not commit or push unless the user asks",
-            "a supposedly non-visual change alters a frozen screenshot",
+            "The installed iOS PWA is the primary portal",
+            "mabeltv.db` is the sole authority",
+            "Do not raise a limit, add an exception, weaken an assertion",
+            "Keep `mabeltv-library.py` a thin composition shell",
+            "`Main.qml` an application coordinator",
+            "`TvController.h` the single QML-facing state machine",
+            "after explicit deployment authorization",
+            "Do not commit or push unless asked",
+            "update a screenshot merely to pass a gate",
         )
         for contract in required_contracts:
             self.assertIn(contract, instructions)

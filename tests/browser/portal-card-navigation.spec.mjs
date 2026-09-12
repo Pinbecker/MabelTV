@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './test-fixtures.mjs'
 
 test.use({ serviceWorkers: 'block' })
 
@@ -7,7 +7,7 @@ async function openPortal(page) {
   await expect(page.locator('.app-shell')).toBeVisible()
 }
 
-test('content cards share compact Back and journey-closing X controls', async ({ page }) => {
+test('@visual content cards share compact Back and journey-closing X controls', async ({ page }) => {
   await openPortal(page)
   await page.evaluate(() => portalSheets.open($('#adultTitleSheet')))
   await expect(page.locator('#adultTitleSheet > .watch-film-panel .portal-card-back')).toBeHidden()

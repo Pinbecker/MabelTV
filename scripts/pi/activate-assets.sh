@@ -16,6 +16,8 @@ unit_names=(
     mabeltv-boot-audit.service
     mabeltv-retention.service
     mabeltv-retention.timer
+    mabeltv-onedrive-backup.service
+    mabeltv-onedrive-backup.timer
     mabeltv-owner-recovery.service
     mabeltv-matter.service
 )
@@ -46,6 +48,8 @@ sbin_mappings=(
     soak-test.sh:mabeltv-soak-test
     fence-check.sh:mabeltv-fence-check
     doctor.sh:mabeltv-doctor
+    onedrive-backup.sh:mabeltv-onedrive-backup
+    configure-onedrive-backup.sh:mabeltv-configure-onedrive-backup
     uninstall.sh:mabeltv-uninstall
 )
 

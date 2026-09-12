@@ -15,7 +15,7 @@ to provision or replace the Pi's Wi-Fi connection.
 1. On a computer connected to the Pi, display the private setup code:
 
    ```bash
-   ssh pinbecker@192.168.0.27
+   ssh pinbecker@mabeltv-512.local
    sudo mabeltv-alexa-pairing
    ```
 

@@ -105,7 +105,12 @@ sudo ./install-mabeltv
 
 This is equally true when the original installation came from the KidsTV SD image. Reflashing is never an update step.
 
-The installer never replaces `/var/lib/mabeltv/channels.json`, `/var/lib/mabeltv/settings.json`, `/var/lib/mabeltv/owner.json`, or `/srv/mabeltv/media`. A running installation is restarted and checked. The exact previous release is recorded at `/opt/mabeltv/previous`.
+The installer preserves `/var/lib/mabeltv/mabeltv.db`,
+`/var/lib/mabeltv/secrets`, `/var/lib/mabeltv/matter`, `/etc/mabeltv` and
+`/srv/mabeltv/media`. Before a schema upgrade it creates and validates a SQLite
+online-backup snapshot; a failed activation restores both that snapshot and the
+previous release. The exact previous release is recorded at
+`/opt/mabeltv/previous`.
 
 Rollback both binaries and their matching system assets:
 

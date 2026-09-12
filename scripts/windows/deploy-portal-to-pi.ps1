@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$PiHost = 'pinbecker@Mabel-TV.local',
+    [string]$PiHost = 'pinbecker@mabeltv-512.local',
     [switch]$PlanOnly
 )
 
@@ -155,7 +155,7 @@ try {
 
     Push-Location (Join-Path $repositoryRoot 'tests/browser')
     try {
-        Invoke-CheckedExternal npx @('playwright', 'test', 'portal.spec.mjs') 'Portal browser tests failed.'
+        Invoke-CheckedExternal npm @('run', 'test:smoke') 'Portal deployment smoke tests failed.'
     } finally {
         Pop-Location
     }

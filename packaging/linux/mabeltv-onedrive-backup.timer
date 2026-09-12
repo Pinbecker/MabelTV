@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily verified MabelTV backup to OneDrive
+
+[Timer]
+OnCalendar=*-*-* 03:15:00 Europe/London
+RandomizedDelaySec=15min
+Persistent=true
+Unit=mabeltv-onedrive-backup.service
+
+[Install]
+WantedBy=timers.target

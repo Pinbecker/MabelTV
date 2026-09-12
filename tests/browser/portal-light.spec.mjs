@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './test-fixtures.mjs'
 
 test.use({ serviceWorkers: 'block' })
 
@@ -28,7 +28,7 @@ function phoneOnly(testInfo) {
 }
 
 
-test('light Home and Watch use the dark design language on neutral surfaces', async ({ page }, testInfo) => {
+test('@visual light Home and Watch use the dark design language on neutral surfaces', async ({ page }, testInfo) => {
   phoneOnly(testInfo)
   await openLightPortal(page)
 
@@ -77,7 +77,7 @@ test('light programme sheet keeps its global close icon visible', async ({ page 
 })
 
 
-test('USB browser keeps compact controls and reviews the real transfer', async ({ page }, testInfo) => {
+test('@visual USB browser keeps compact controls and reviews the real transfer', async ({ page }, testInfo) => {
   phoneOnly(testInfo)
   await openLightPortal(page)
   await page.locator('[data-view-button="system"]').click()
@@ -217,7 +217,7 @@ test('Adult management reloads keep the exact list position', async ({ page }, t
 })
 
 
-test('light remote pages keep one cohesive dark control surface', async ({ page }, testInfo) => {
+test('@visual light remote pages keep one cohesive dark control surface', async ({ page }, testInfo) => {
   phoneOnly(testInfo)
   await openLightPortal(page)
   await page.locator('[data-view-button="live"]').click()
@@ -247,7 +247,7 @@ test('light remote pages keep one cohesive dark control surface', async ({ page 
 })
 
 
-test('light utility, Settings and insight routes stay neutral and legible', async ({ page }, testInfo) => {
+test('@visual light utility, Settings and insight routes stay neutral and legible', async ({ page }, testInfo) => {
   phoneOnly(testInfo)
   await openLightPortal(page)
 
@@ -286,7 +286,7 @@ test('light utility, Settings and insight routes stay neutral and legible', asyn
 })
 
 
-test('portal accent slider recolours and persists the whole Experience', async ({ page }, testInfo) => {
+test('@visual portal accent slider recolours and persists the whole Experience', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One engine covers saved accent state')
   await openLightPortal(page)
   await page.locator('[data-view-button="system"]').click()
@@ -318,7 +318,7 @@ test('a stale Classic cookie cannot leave the Experience portal', async ({ page,
 })
 
 
-test('light Settings stays contained on iPad', async ({ page }, testInfo) => {
+test('@visual light Settings stays contained on iPad', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'ipad-webkit', 'Light tablet contract')
   await openLightPortal(page)
   await page.locator('[data-view-button="system"]').click()

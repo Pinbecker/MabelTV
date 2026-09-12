@@ -30,7 +30,8 @@ Create a release evidence folder keyed by version and full Git commit. Record th
 - The fresh-install test starts from the exact advertised Raspberry Pi Imager image with no Mabel TV files, users, packages, or configuration preloaded.
 - Failure injection after staging, asset install, symlink switch, Library restart, and player restart restores the exact previous release/assets.
 - Concurrent/retried upload tests prove offsets, `fsync`, one conversion worker, duplicate-final protection, and power-loss recovery.
-- Disk-full tests cover upload, JSON state, media-index cache, logging, support bundle, conversion, and update.
+- Disk-full tests cover upload, SQLite transactions/migrations, online backup,
+  media-index cache, logging, support bundle, conversion, and update.
 
 ## Real Pi 4 matrix
 

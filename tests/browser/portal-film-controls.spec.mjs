@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './test-fixtures.mjs'
 
 // Visual and interaction fixtures use request interception; keep the real PWA
 // worker isolated to pwa.spec.mjs so it cannot claim this page mid-test.

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './test-fixtures.mjs'
 
 test('Activity progress and tab changes retain each list position', async ({ page }) => {
   await page.goto('/')

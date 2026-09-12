@@ -189,6 +189,10 @@ stale protected content. MabelTV and Adult TV Downloads continue through the
 existing `mabeltv-offline-v1` store; Adult playback retains its local PIN check.
 Offline mutations are not queued.
 
+The store names, request strategies, update lifecycle and Adult security
+boundary are specified in
+[PWA offline and device-cache architecture](pwa-offline-cache.md).
+
 ## Shared UI contracts
 
 `window.MabelPortalUI` is the shared component boundary. Its dialog lifecycle
@@ -244,25 +248,28 @@ as explicit variants; visual resemblance alone is not a reason to merge them.
 
 ## Verification
 
-Run JavaScript syntax checks for every portal script, then:
+While developing, run JavaScript syntax and the focused browser spec for the
+owned route. Before handover of a portal behaviour change, run:
 
 ```powershell
-python -m unittest tests.python.test_library_service tests.python.test_imaging_tools tests.python.test_player_safety
+python -m unittest tests.python.test_architecture_guardrails tests.python.test_quality_gates
 node --test tests/js/test-offline-service-worker.mjs
-node --test integrations/matter/mabeltv-power-socket.test.mjs
 cd tests/browser
-npm test
+npm run test:core
 ```
 
-The browser suite covers the 393 x 852 installed-iPhone contract first, with
-iPad WebKit and iPhone Chromium providing additional layout and compatibility
-coverage. A portal-only checkpoint is deployed without rebuilding the native
-QML/C++ television application. After explicit deployment approval, use
+Add the Python owner tests when a backend or API response changed. `test:core`
+uses phone WebKit and Chromium and excludes screenshot-only assertions. Run a
+focused visual spec with `--grep @visual` when appearance intentionally changes;
+run `npm run test:full` for broad visual/navigation refactors or release
+qualification. Exact tiers are in [Quality gates](quality-gates.md).
+
+A portal-only checkpoint is deployed without rebuilding the native QML/C++
+television application. After explicit deployment approval, use
 `scripts/windows/deploy-portal-to-pi.ps1`; it selects only saved portal changes,
-requires a PWA cache revision, runs the architecture and browser gates, backs
-up the live targets, verifies hashes and Pi health, and rolls back a failed
-handoff. It never builds or restarts the native player and never commits or
-pushes.
+requires a PWA cache revision, runs a small deployment smoke gate, backs up the
+live targets, verifies hashes and Pi health, and rolls back a failed handoff.
+It never builds or restarts the native player and never commits or pushes.
 
 The server-side boundary behind these assets is documented separately in
 [library-service-architecture.md](library-service-architecture.md).
