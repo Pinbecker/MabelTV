@@ -85,10 +85,9 @@ function adultExploreTitle(title, context = 'explore') {
   }
 }
 
-function syncAdultExploreCard(card, title) {
+function syncAdultExploreActions(card, title) {
   const state = adultViewingRecord(title)
   const status = adultArtworkStatusKind(title)
-  appendAdultArtworkStatus(card.querySelector('.adult-explore-art'), title)
   const watchlist = card.querySelector('[data-explore-action="watchlist"]')
   if (watchlist) {
     watchlist.classList.toggle('active', state.watchlisted === true)
@@ -114,6 +113,52 @@ function syncAdultExploreCard(card, title) {
       watched.replaceChildren(...(watchedIcon ? [librarySignalIcon(watchedIcon)] : []))
     }
   }
+}
+
+function syncAdultExploreCard(card, title) {
+  appendAdultArtworkStatus(card.querySelector('.adult-explore-art'), title)
+  syncAdultExploreActions(card, title)
+}
+
+function adultExploreActions(title, card, context = 'explore', onChange = null) {
+  const actions = document.createElement('span')
+  actions.className = 'adult-explore-actions'
+  const apply = viewing => {
+    syncAdultExploreActions(card, title)
+    onChange?.(viewing)
+  }
+  const watchlist = MabelPortalUI.button({ iconName: 'signal-plus' })
+  watchlist.dataset.exploreAction = 'watchlist'
+  watchlist.onclick = async () => {
+    card.dataset.exploreActed = 'true'
+    if (watchlist.dataset.saving === 'true') return
+    watchlist.dataset.saving = 'true'
+    try {
+      const state = adultViewingRecord(title)
+      title.viewing = await updateAdultViewing(title, 'watchlist', {
+        enabled: state.watchlisted !== true,
+      }, apply)
+    } catch (error) { showError(error) } finally { delete watchlist.dataset.saving }
+  }
+  const watched = MabelPortalUI.button({ iconName: 'signal-check' })
+  watched.dataset.exploreAction = 'watched'
+  watched.onclick = async () => {
+    card.dataset.exploreActed = 'true'
+    if (title.media_type === 'tv') {
+      openAdultTitle(adultExploreTitle(title, context))
+      return
+    }
+    if (watched.dataset.saving === 'true') return
+    watched.dataset.saving = 'true'
+    try {
+      const complete = adultArtworkStatusKind(title) === 'watched'
+      title.viewing = await updateAdultViewing(title,
+        complete ? 'not_watched' : 'watched', {}, apply)
+    } catch (error) { showError(error) } finally { delete watched.dataset.saving }
+  }
+  actions.append(watchlist, watched)
+  syncAdultExploreActions(card, title)
+  return actions
 }
 
 function refreshAdultExploreCards() {
@@ -157,39 +202,7 @@ function adultExploreCard(title, { directActions = true, context = 'explore' } =
     openAdultTitle(adultExploreTitle(title, context))
   }
 
-  const actions = document.createElement('span')
-  actions.className = 'adult-explore-actions'
-  const watchlist = MabelPortalUI.button({ iconName: 'signal-plus' })
-  watchlist.dataset.exploreAction = 'watchlist'
-  watchlist.onclick = async () => {
-    card.dataset.exploreActed = 'true'
-    if (watchlist.dataset.saving === 'true') return
-    watchlist.dataset.saving = 'true'
-    try {
-      const state = adultViewingRecord(title)
-      title.viewing = await updateAdultViewing(title, 'watchlist', {
-        enabled: state.watchlisted !== true,
-      }, () => syncAdultExploreCard(card, title))
-    } catch (error) { showError(error) } finally { delete watchlist.dataset.saving }
-  }
-  const watched = MabelPortalUI.button({ iconName: 'signal-check' })
-  watched.dataset.exploreAction = 'watched'
-  watched.onclick = async () => {
-    card.dataset.exploreActed = 'true'
-    if (title.media_type === 'tv') {
-      openAdultTitle(adultExploreTitle(title, context))
-      return
-    }
-    if (watched.dataset.saving === 'true') return
-    watched.dataset.saving = 'true'
-    try {
-      const complete = adultArtworkStatusKind(title) === 'watched'
-      title.viewing = await updateAdultViewing(title,
-        complete ? 'not_watched' : 'watched', {},
-        () => syncAdultExploreCard(card, title))
-    } catch (error) { showError(error) } finally { delete watched.dataset.saving }
-  }
-  actions.append(watchlist, watched)
+  const actions = adultExploreActions(title, card, context)
   visual.append(openArt)
   if (directActions) visual.append(actions)
 

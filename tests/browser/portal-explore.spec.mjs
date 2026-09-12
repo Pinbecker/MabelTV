@@ -66,6 +66,78 @@ test('Explore is a polished four-wide continuous catalogue with direct actions',
 })
 
 
+test('all five My Viewing grids retain the watched and Watchlist quick actions', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'iphone-chromium', 'One phone engine owns the My Viewing action contract')
+  await page.goto('/')
+  await expect(page.locator('.app-shell')).toBeVisible()
+  await page.evaluate(() => {
+    const items = [
+      { key: 'movie:8101', media_type: 'movie', tmdb_id: 8101,
+        title: 'Saved film', year: '2021', watchlisted: true },
+      { key: 'movie:8102', media_type: 'movie', tmdb_id: 8102,
+        title: 'Queued film', year: '2022', up_next: true, up_next_rank: 1 },
+      { key: 'movie:8103', media_type: 'movie', tmdb_id: 8103,
+        title: 'Watching film', year: '2023', local_progress: { position: 120 } },
+      { key: 'tv:8104', media_type: 'tv', tmdb_id: 8104,
+        title: 'Part watched series', year: '2024', manual_state: 'part_watched',
+        episodes: { '1:1': { watched: true } } },
+      { key: 'movie:8105', media_type: 'movie', tmdb_id: 8105,
+        title: 'Watched film', year: '2025', manual_state: 'watched' },
+    ]
+    adultViewingData = { items }
+    adultViewingLoaded = true
+    const originalApi = window.api
+    window.api = async (path, options = {}) => {
+      if (path === '/api/adult/viewing' && options.method === 'POST') {
+        const payload = JSON.parse(options.body)
+        const key = `${payload.media_type}:${Number(payload.tmdb_id)}`
+        return { key, viewing: { ...adultViewingRecord({ key }), key,
+          watchlisted: payload.action === 'watchlist' ? payload.enabled : undefined,
+          manual_state: payload.action === 'not_watched' ? 'not_watched'
+            : payload.action === 'watched' ? 'watched' : adultViewingRecord({ key }).manual_state } }
+      }
+      if (path === '/api/adult/viewing') return adultViewingData
+      return originalApi(path, options)
+    }
+    history.replaceState({ adultViewing: true }, '', '#adult-viewing')
+    openView('adult-viewing')
+  })
+
+  for (const tab of ['watchlist', 'up-next', 'watching', 'part-watched', 'history']) {
+    await page.locator(`[data-viewing-tab="${tab}"]`).click()
+    const card = page.locator('#adultViewingGrid > .adult-viewing-row').first()
+    await expect(card).toBeVisible()
+    await expect(card.locator('[data-explore-action="watched"]')).toBeVisible()
+    await expect(card.locator('[data-explore-action="watchlist"]')).toBeVisible()
+  }
+
+  await page.locator('[data-viewing-tab="watchlist"]').click()
+  const saved = page.locator('#adultViewingGrid > .adult-viewing-row').first()
+  const placement = await saved.evaluate(card => {
+    const art = card.querySelector('.adult-viewing-art').getBoundingClientRect()
+    const watched = card.querySelector('[data-explore-action="watched"]').getBoundingClientRect()
+    const watchlist = card.querySelector('[data-explore-action="watchlist"]').getBoundingClientRect()
+    return {
+      watchedTop: watched.top - art.top,
+      watchlistBottom: art.bottom - watchlist.bottom,
+      watchedRight: art.right - watched.right,
+      watchlistRight: art.right - watchlist.right,
+    }
+  })
+  expect(Math.abs(placement.watchedTop)).toBeLessThanOrEqual(3)
+  expect(Math.abs(placement.watchlistBottom)).toBeLessThanOrEqual(3)
+  expect(Math.abs(placement.watchedRight)).toBeLessThanOrEqual(3)
+  expect(Math.abs(placement.watchlistRight)).toBeLessThanOrEqual(3)
+  await saved.locator('[data-explore-action="watchlist"]').click()
+  await expect(page.locator('#adultViewingGrid > .adult-viewing-row')).toHaveCount(0)
+
+  await page.locator('[data-viewing-tab="history"]').click()
+  const watched = page.locator('#adultViewingGrid > .adult-viewing-row').first()
+  await watched.locator('[data-explore-action="watched"]').click()
+  await expect(page.locator('#adultViewingGrid > .adult-viewing-row')).toHaveCount(0)
+})
+
+
 test('Explore updates a film card instantly when its detail state changes', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One phone engine covers optimistic detail state')
   await openExplore(page)

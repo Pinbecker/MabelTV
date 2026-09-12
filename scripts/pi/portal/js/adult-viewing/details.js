@@ -717,7 +717,15 @@ function renderAdultViewingList() {
     appendAdultArtworkStatus(artWrap, item, { media_type: item.media_type,
       local: item.local_progress || item.local })
     const opener = document.createElement('button'); opener.type = 'button'; opener.className = 'adult-viewing-card-open'; opener.setAttribute('aria-label', `Open ${item.title}`); opener.append(artWrap, copy); opener.onclick = () => openAdultTitle(item)
-    row.append(opener, actions); root.append(row)
+    const quickActions = adultExploreActions(item, row, 'adult-viewing', () => {
+      if (!row.isConnected) return
+      const key = row.dataset.viewingKey
+      if (!adultViewingItems().some(value => `${value.media_type}:${value.tmdb_id}` === key)) {
+        renderAdultViewing({ anchor: false })
+      }
+    })
+    quickActions.classList.add('adult-viewing-quick-actions')
+    row.append(opener, quickActions, actions); root.append(row)
   })
   if (!values.length) root.innerHTML = `<div class="watch-empty"><strong>Nothing in ${heading} yet</strong><br>Add titles from search and they will appear here.</div>`
   target.replaceChildren(...root.childNodes)
