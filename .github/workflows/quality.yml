@@ -86,8 +86,23 @@ jobs:
       - name: Build
         run: cmake --build build --parallel 2
 
-      - name: Run automated tests
-        run: ctest --test-dir build --output-on-failure
+      - name: Run native controller tests
+        run: ctest --test-dir build -R '^mabeltv_core_tests$' --output-on-failure
+
+      - name: Run Library service tests
+        run: ctest --test-dir build -R '^mabeltv_library_service_tests$' --output-on-failure
+
+      - name: Run JavaScript syntax tests
+        run: ctest --test-dir build -R '^mabeltv_javascript_source_syntax$' --output-on-failure
+
+      - name: Run offline service-worker tests
+        run: ctest --test-dir build -R '^mabeltv_offline_service_worker_tests$' --output-on-failure
+
+      - name: Run Matter socket tests
+        run: ctest --test-dir build -R '^mabeltv_matter_socket_tests$' --output-on-failure
+
+      - name: Run libmpv smoke test
+        run: ctest --test-dir build -R '^milestone0_libmpv_self_test$' --output-on-failure
 
       # This x86_64 job catches source regressions. It deliberately does not
       # produce a customer artifact or replace clean-image ARM64 Pi testing.
