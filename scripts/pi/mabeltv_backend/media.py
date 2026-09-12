@@ -22,15 +22,25 @@ from .constants import (
 
 
 class MediaCatalogueMixin:
-    @staticmethod
-    def read_json(path: Path, fallback: Any) -> Any:
+    def read_json(self, path: Path, fallback: Any) -> Any:
+        database = getattr(self, "state_database", None)
+        kind = database.kind_for(path) if database is not None else None
+        if kind is not None:
+            # A configured database is the sole production authority. Surface
+            # database failures instead of substituting an empty store or
+            # consulting the retained migration JSON.
+            return database.read(kind)
         try:
             return json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError, TypeError):
             return fallback
 
-    @staticmethod
-    def write_json(path: Path, value: Any) -> None:
+    def write_json(self, path: Path, value: Any) -> None:
+        database = getattr(self, "state_database", None)
+        kind = database.kind_for(path) if database is not None else None
+        if kind is not None:
+            database.write(kind, value)
+            return
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_name(path.name + ".new")
         with temporary.open("w", encoding="utf-8") as output:

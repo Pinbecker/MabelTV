@@ -40,5 +40,6 @@ public:
 
     static ChannelLibraryResult load(const QString &configurationPath,
                                      const QString &mediaRoot,
-                                     MediaInspector mediaInspector = {});
+                                     MediaInspector mediaInspector = {},
+                                     const QString &databasePath = {});
 };

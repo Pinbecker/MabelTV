@@ -37,6 +37,7 @@ from mabeltv_backend.constants import (
     VIEWING_SAMPLE_SECONDS,
 )
 from mabeltv_backend.discovery import AdultExploreMixin
+from mabeltv_backend.database import StateDatabase
 from mabeltv_backend.http import Handler, LibraryServer
 from mabeltv_backend.lg import LgWebOsError, LgWebOsSocket, RemoteTvActiveError
 from mabeltv_backend.media import MediaCatalogueMixin
@@ -410,6 +411,23 @@ class Library(ViewingMixin, UploadConversionMixin, AuthenticationMixin,
         self.adult_insights_path = self.adult_root / ".mabeltv-insights.json"
         self.channel_metadata_path = self.media_root / ".mabeltv-channels.json"
         self.channel_artwork_root = self.media_root / ".channel-metadata"
+        database_value = getattr(args, "database", None)
+        self.database_path = Path(database_value).resolve() if database_value else None
+        self.state_database = None
+        if self.database_path is not None:
+            self.state_database = StateDatabase(self.database_path, {
+                "channels": self.channels_path,
+                "settings": self.settings_path,
+                "owner": self.owner_path,
+                "player": self.player_state_path,
+                "viewing": self.viewing_history_path,
+                "channel_metadata": self.channel_metadata_path,
+                "adult_media": self.adult_metadata_path,
+                "adult_series": self.adult_series_state_path,
+                "adult_viewing": self.adult_viewing_path,
+                "adult_insights": self.adult_insights_path,
+            })
+            self.state_database.verify_ready()
         configured_usb_root = os.environ.get("MABELTV_USB_ROOT")
         self.usb_root = Path(configured_usb_root or "/media/mabeltv-usb").resolve()
         # A real installation must only browse an actual mount. Tests and the
@@ -555,6 +573,7 @@ def main() -> None:
     parser.add_argument("--bind", default="0.0.0.0"); parser.add_argument("--port", type=int, default=8080)
     parser.add_argument("--media-root", default="/srv/mabeltv/media"); parser.add_argument("--channels", default="/var/lib/mabeltv/channels.json")
     parser.add_argument("--settings", default="/var/lib/mabeltv/settings.json"); parser.add_argument("--owner", default="/var/lib/mabeltv/owner.json"); parser.add_argument("--config", default="/etc/mabeltv/library.conf")
+    parser.add_argument("--database", default="/var/lib/mabeltv/mabeltv.db")
     args = parser.parse_args(); LibraryServer((args.bind, args.port), Library(args)).serve_forever()
 
 

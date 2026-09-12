@@ -1,4 +1,5 @@
 #include "core/TvController.h"
+#include "core/StateDatabase.h"
 #include "hardware/CecTvControl.h"
 #include "library/ChannelLibrary.h"
 #include "library/ShuffleBag.h"
@@ -7,6 +8,9 @@
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QSqlDatabase>
+#include <QSqlError>
+#include <QSqlQuery>
 #include <QTemporaryDir>
 #include <QtTest>
 
@@ -39,6 +43,7 @@ private slots:
     void controllerReloadPreservesPlaybackAndRuntimeVolume();
     void filmChannelBookmarksPersistAcrossTvAndPortalPlayback();
     void adultLibraryIsSeparateAndParentOnly();
+    void sqliteStateIsReadableAndWritableByNativeController();
 };
 
 void CoreTests::shuffleBagVisitsEveryItemBeforeRepeating()
@@ -1330,6 +1335,80 @@ void CoreTests::adultLibraryIsSeparateAndParentOnly()
     QCOMPARE(restored.adultPlaybackDuration(QStringLiteral("potter-id")), 10234.0);
     QCOMPARE(restored.adultPlaybackProgress(QStringLiteral("potter-id")),
              842.5 / 10234.0);
+}
+
+void CoreTests::sqliteStateIsReadableAndWritableByNativeController()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/one")));
+    QFile episode(directory.filePath(QStringLiteral("media/one/Episode.mp4")));
+    QVERIFY(episode.open(QIODevice::WriteOnly));
+    episode.close();
+    const QString databasePath = directory.filePath(QStringLiteral("mabeltv.db"));
+    const QString connectionName = QStringLiteral("state-test");
+    {
+        QSqlDatabase database = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"),
+                                                           connectionName);
+        database.setDatabaseName(databasePath);
+        QVERIFY2(database.open(), qPrintable(database.lastError().text()));
+        QSqlQuery query(database);
+        const QStringList schema{
+            QStringLiteral("CREATE TABLE application_settings(key TEXT PRIMARY KEY,value_json TEXT,updated_at REAL)"),
+            QStringLiteral("CREATE TABLE player_fields(key TEXT PRIMARY KEY,value_json TEXT,updated_at REAL)"),
+            QStringLiteral("CREATE TABLE adult_resume(library_id TEXT PRIMARY KEY,position_seconds REAL,duration_seconds REAL,updated_utc_ms INTEGER,position_present INTEGER,duration_present INTEGER,updated_present INTEGER)"),
+            QStringLiteral("CREATE TABLE channel_film_resume(media_key TEXT PRIMARY KEY,position_seconds REAL,duration_seconds REAL,updated_utc_ms INTEGER,position_present INTEGER,duration_present INTEGER,updated_present INTEGER)"),
+            QStringLiteral("CREATE TABLE channel_timelines(channel_number INTEGER PRIMARY KEY,episode_index INTEGER,episode_name TEXT,position_seconds REAL)"),
+            QStringLiteral("CREATE TABLE channel_programme_positions(channel_number INTEGER,file_name TEXT,position_seconds REAL,PRIMARY KEY(channel_number,file_name))"),
+            QStringLiteral("CREATE TABLE channel_runtime_entries(channel_number INTEGER,kind TEXT,file_name TEXT,value REAL,PRIMARY KEY(channel_number,kind,file_name))"),
+            QStringLiteral("CREATE TABLE channels(number INTEGER PRIMARY KEY,name TEXT,folder TEXT,aspect TEXT,content_type TEXT)"),
+        };
+        for (const QString &statement : schema) {
+            QVERIFY2(query.exec(statement), qPrintable(query.lastError().text()));
+        }
+        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version=1")));
+        QVERIFY(query.exec(QStringLiteral(
+            "INSERT INTO channels VALUES(7,'Films','one','fit','films')")));
+        database.close();
+    }
+    QSqlDatabase::removeDatabase(connectionName);
+
+    QString error;
+    const QJsonObject settings{{QStringLiteral("schema_version"), 1},
+                               {QStringLiteral("display_resolution"),
+                                QStringLiteral("1080p")}};
+    QVERIFY2(mabeltv::state::replaceSettings(databasePath, settings, &error),
+             qPrintable(error));
+    QCOMPARE(mabeltv::state::settings(databasePath), settings);
+
+    const QJsonObject timeline{{QStringLiteral("episode_index"), 0},
+                               {QStringLiteral("episode_name"), QStringLiteral("Episode.mp4")},
+                               {QStringLiteral("position_seconds"), 12.5},
+                               {QStringLiteral("programme_positions"), QJsonObject{}},
+                               {QStringLiteral("programme_last_left_uptime_ms"), QJsonObject{}},
+                               {QStringLiteral("failed_programmes"), QJsonObject{}}};
+    const QJsonObject player{{QStringLiteral("schema_version"), 4},
+                             {QStringLiteral("current_channel"), 7},
+                             {QStringLiteral("adult_positions"), QJsonObject{}},
+                             {QStringLiteral("adult_durations"), QJsonObject{}},
+                             {QStringLiteral("adult_position_updated_utc_ms"), QJsonObject{}},
+                             {QStringLiteral("channel_film_positions"), QJsonObject{}},
+                             {QStringLiteral("channel_film_durations"), QJsonObject{}},
+                             {QStringLiteral("channel_film_position_updated_utc_ms"),
+                              QJsonObject{}},
+                             {QStringLiteral("channel_timelines"),
+                              QJsonObject{{QStringLiteral("7"), timeline}}}};
+    QVERIFY2(mabeltv::state::replacePlayer(databasePath, player, &error), qPrintable(error));
+    QCOMPARE(mabeltv::state::player(databasePath), player);
+
+    const ChannelLibraryResult library = ChannelLibrary::load(
+        QString(), directory.filePath(QStringLiteral("media")),
+        [](const QString &) {
+            return MediaInspection{true, true, 42.0, QStringLiteral("h264"), {}};
+        }, databasePath);
+    QVERIFY2(library.isValid(), qPrintable(library.error));
+    QCOMPARE(library.channels.size(), 1);
+    QCOMPARE(library.channels.constFirst().number, 7);
 }
 
 QTEST_MAIN(CoreTests)

@@ -1,4 +1,5 @@
 #include "core/TvController.h"
+#include "core/StateDatabase.h"
 #include "diagnostics/Logging.h"
 #include "hardware/CecTvControl.h"
 #include "media/MpvVideo.h"
@@ -80,28 +81,24 @@ QUrl findStartupIntro(const QString &mediaRoot)
     return {};
 }
 
-bool ownerSetupComplete(const QString &path)
+QJsonObject ownerState(const QString &path, const QString &databasePath)
 {
+    if (!databasePath.isEmpty()) return mabeltv::state::owner(databasePath);
     QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) {
-        return false;
-    }
+    if (!file.open(QIODevice::ReadOnly)) return {};
     const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
-    return document.isObject()
-        && document.object().value(QStringLiteral("setup_complete")).toBool(false);
+    return document.isObject() ? document.object() : QJsonObject{};
 }
 
-QString ownerTvName(const QString &path)
+bool ownerSetupComplete(const QString &path, const QString &databasePath)
 {
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) {
-        return QStringLiteral("KidsTV");
-    }
-    const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
-    if (!document.isObject()) {
-        return QStringLiteral("KidsTV");
-    }
-    const QString tvName = document.object().value(QStringLiteral("tv_name"))
+    return ownerState(path, databasePath)
+        .value(QStringLiteral("setup_complete")).toBool(false);
+}
+
+QString ownerTvName(const QString &path, const QString &databasePath)
+{
+    const QString tvName = ownerState(path, databasePath).value(QStringLiteral("tv_name"))
                                .toString().trimmed();
     return tvName.isEmpty() || tvName.size() > 42
         ? QStringLiteral("KidsTV")
@@ -271,6 +268,9 @@ int main(int argc, char *argv[])
     const QCommandLineOption stateOption(QStringLiteral("state"),
                                          QStringLiteral("Path to persistent television state."),
                                          QStringLiteral("file"));
+    const QCommandLineOption databaseOption(QStringLiteral("database"),
+                                            QStringLiteral("Path to authoritative MabelTV database."),
+                                            QStringLiteral("file"));
     const QCommandLineOption logDirectoryOption(QStringLiteral("log-dir"),
                                                 QStringLiteral("Directory for rotating diagnostic logs."),
                                                 QStringLiteral("directory"));
@@ -279,6 +279,7 @@ int main(int argc, char *argv[])
     parser.addOption(settingsOption);
     parser.addOption(mediaRootOption);
     parser.addOption(stateOption);
+    parser.addOption(databaseOption);
     parser.addOption(logDirectoryOption);
     parser.addPositionalArgument(QStringLiteral("media"),
                                  QStringLiteral("Local video file to play."),
@@ -318,18 +319,21 @@ int main(int argc, char *argv[])
         ? parser.value(stateOption)
         : QDir(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation))
               .filePath(QStringLiteral("state.json"));
+    const QString databasePath = parser.isSet(databaseOption)
+        ? QFileInfo(parser.value(databaseOption)).absoluteFilePath() : QString();
     const QString logDirectory = parser.isSet(logDirectoryOption)
         ? parser.value(logDirectoryOption)
         : QDir(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation))
               .filePath(QStringLiteral("logs"));
     const QString ownerPath = qEnvironmentVariable(
         "MABELTV_OWNER", QStringLiteral("/var/lib/mabeltv/owner.json"));
-    const QString tvDisplayName = ownerTvName(ownerPath);
+    const QString tvDisplayName = ownerTvName(ownerPath, databasePath);
     const QString libraryConfigurationPath = qEnvironmentVariable(
         "MABELTV_LIBRARY_CONFIG", QStringLiteral("/etc/mabeltv/library.conf"));
     const QString setupCode = configurationValue(libraryConfigurationPath,
                                                    QStringLiteral("MABELTV_SETUP_CODE"));
-    const bool firstRunSetupRequired = !setupCode.isEmpty() && !ownerSetupComplete(ownerPath);
+    const bool firstRunSetupRequired = !setupCode.isEmpty()
+        && !ownerSetupComplete(ownerPath, databasePath);
     const QString libraryUrl = QStringLiteral("http://%1.local:8080")
                                    .arg(QSysInfo::machineHostName().toLower());
     const QString lanAddress = firstLanAddress();
@@ -348,6 +352,9 @@ int main(int argc, char *argv[])
     qInfo().noquote() << "Settings:" << QDir::toNativeSeparators(settingsPath);
     qInfo().noquote() << "Media root:" << QDir::toNativeSeparators(mediaRoot);
     qInfo().noquote() << "State:" << QDir::toNativeSeparators(statePath);
+    if (!databasePath.isEmpty()) {
+        qInfo().noquote() << "Database:" << QDir::toNativeSeparators(databasePath);
+    }
     if (forceOpenGlEs2) {
         qInfo() << "Using OpenGL ES 2 compatibility mode for the libmpv fence-leak workaround";
     }
@@ -360,7 +367,8 @@ int main(int argc, char *argv[])
     }
 
     TvController television;
-    television.initialize(channelsPath, settingsPath, mediaRoot, statePath);
+    television.initialize(channelsPath, settingsPath, mediaRoot, statePath,
+                          {}, {}, databasePath);
     CecTvControl cecTvControl(tvDisplayName);
     television.setTvControl(&cecTvControl);
     qInfo() << (cecTvControl.available()

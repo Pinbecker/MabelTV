@@ -1,4 +1,5 @@
 #include "ChannelLibrary.h"
+#include "core/StateDatabase.h"
 
 #include <QDir>
 #include <QFile>
@@ -64,30 +65,41 @@ QString normaliseContentType(QString type, const QString &name, const QString &f
 
 ChannelLibraryResult ChannelLibrary::load(const QString &configurationPath,
                                           const QString &mediaRoot,
-                                          MediaInspector mediaInspector)
+                                          MediaInspector mediaInspector,
+                                          const QString &databasePath)
 {
     ChannelLibraryResult result;
-    QFile configuration(configurationPath);
-    if (!configuration.open(QIODevice::ReadOnly)) {
-        result.error = QStringLiteral("Could not open channel configuration: %1")
-                           .arg(QDir::toNativeSeparators(configurationPath));
-        return result;
+    QJsonArray configuredChannels;
+    if (!databasePath.isEmpty()) {
+        QString databaseError;
+        configuredChannels = mabeltv::state::channels(databasePath, &databaseError);
+        if (!databaseError.isEmpty()) {
+            result.error = QStringLiteral("Could not load channels from MabelTV database: %1")
+                               .arg(databaseError);
+            return result;
+        }
+    } else {
+        QFile configuration(configurationPath);
+        if (!configuration.open(QIODevice::ReadOnly)) {
+            result.error = QStringLiteral("Could not open channel configuration: %1")
+                               .arg(QDir::toNativeSeparators(configurationPath));
+            return result;
+        }
+        QJsonParseError parseError;
+        const QJsonDocument document = QJsonDocument::fromJson(
+            configuration.readAll(), &parseError);
+        if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
+            result.error = QStringLiteral("Invalid channel configuration: %1")
+                               .arg(parseError.errorString());
+            return result;
+        }
+        const QJsonObject root = document.object();
+        if (root.value(QStringLiteral("schema_version")).toInt() != 1) {
+            result.error = QStringLiteral("Unsupported channels.json schema version");
+            return result;
+        }
+        configuredChannels = root.value(QStringLiteral("channels")).toArray();
     }
-
-    QJsonParseError parseError;
-    const QJsonDocument document = QJsonDocument::fromJson(configuration.readAll(), &parseError);
-    if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
-        result.error = QStringLiteral("Invalid channel configuration: %1").arg(parseError.errorString());
-        return result;
-    }
-
-    const QJsonObject root = document.object();
-    if (root.value(QStringLiteral("schema_version")).toInt() != 1) {
-        result.error = QStringLiteral("Unsupported channels.json schema version");
-        return result;
-    }
-
-    const QJsonArray configuredChannels = root.value(QStringLiteral("channels")).toArray();
     if (configuredChannels.isEmpty()) {
         result.error = QStringLiteral("No channels are configured");
         return result;

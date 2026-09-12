@@ -51,6 +51,15 @@ class; callers do not need to know which module implements a method.
 - `portal.py`: server-side portal assembly and preserved emergency fallback
   documents.
 - `constants.py`: policy limits and shared provider/runtime constants.
+- `database.py`: the authoritative relational SQLite schema and the adapters
+  that preserve established backend dictionary/API shapes. Production reads
+  and writes do not fall back to the retained migration-source JSON files.
+
+`mabeltv-state-migrate.py` is the separate, one-time migration and validation
+command. It is the only production tool that reads the superseded JSON state
+after cutover. It also creates consistent SQLite online-backup snapshots.
+The authority boundary, cutover proof, rollback route, and future schema rules
+are defined in `docs/state-database.md`.
 
 Modules may call another responsibility through `self` on the composed
 `Library`; they should not import the executable or another mixin class. This

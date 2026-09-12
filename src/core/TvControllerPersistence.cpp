@@ -1,5 +1,6 @@
 #include "TvController.h"
 
+#include "StateDatabase.h"
 #include "TvControllerFormatting.h"
 #include "hardware/CecTvControl.h"
 
@@ -30,15 +31,20 @@ void TvController::loadSettings(const QString &settingsPath, bool preserveRuntim
     m_settingsRoot = QJsonObject{};
     m_disabledChannelNumbers.clear();
     m_disabledProgrammeNames.clear();
-    QFile settings(settingsPath);
-    if (!settings.open(QIODevice::ReadOnly)) {
-        return;
-    }
-
-    QJsonParseError error;
-    const QJsonDocument document = QJsonDocument::fromJson(settings.readAll(), &error);
-    if (error.error != QJsonParseError::NoError || !document.isObject()) {
-        return;
+    if (!m_databasePath.isEmpty()) {
+        QString error;
+        m_settingsRoot = mabeltv::state::settings(m_databasePath, &error);
+        if (!error.isEmpty()) {
+            qWarning().noquote() << "Could not load settings from database:" << error;
+            return;
+        }
+    } else {
+        QFile settings(settingsPath);
+        if (!settings.open(QIODevice::ReadOnly)) return;
+        QJsonParseError error;
+        const QJsonDocument document = QJsonDocument::fromJson(settings.readAll(), &error);
+        if (error.error != QJsonParseError::NoError || !document.isObject()) return;
+        m_settingsRoot = document.object();
     }
 
     const int previousVolume = m_volume;
@@ -54,7 +60,6 @@ void TvController::loadSettings(const QString &settingsPath, bool preserveRuntim
     const bool previousSoundEffectsEnabled = m_soundEffectsEnabled;
     const bool previousScrubbingEnabled = m_scrubbingEnabled;
 
-    m_settingsRoot = document.object();
     const QString parentOverlayStyle =
         m_settingsRoot.value(QStringLiteral("parent_overlay_style"))
             .toString(QStringLiteral("classic"));
@@ -219,6 +224,16 @@ void TvController::saveSettings()
         return;
     }
 
+    if (!m_databasePath.isEmpty()) {
+        QString error;
+        const QJsonObject latest = mabeltv::state::settings(m_databasePath, &error);
+        if (!error.isEmpty()) {
+            setParentMessage(QStringLiteral("Could not save settings"));
+            qWarning().noquote() << "Could not refresh settings from database:" << error;
+            return;
+        }
+        m_settingsRoot = latest;
+    }
     m_settingsRoot.insert(QStringLiteral("schema_version"), 1);
     m_settingsRoot.insert(QStringLiteral("parent_overlay_style"), m_parentOverlayStyle);
     m_settingsRoot.insert(QStringLiteral("tv_guide_enabled"), m_tvGuideEnabled);
@@ -263,6 +278,17 @@ void TvController::saveSettings()
         QJsonObject{{QStringLiteral("disabled_channels"), disabledChannelValues},
                     {QStringLiteral("disabled_programmes"), disabledProgrammes}});
 
+    if (!m_databasePath.isEmpty()) {
+        QString error;
+        if (!mabeltv::state::replaceSettings(m_databasePath, m_settingsRoot, &error)) {
+            setParentMessage(QStringLiteral("Could not save settings"));
+            qWarning().noquote() << "Could not save settings to database:" << error;
+            return;
+        }
+        setParentMessage(QStringLiteral("Settings saved"));
+        return;
+    }
+
     QDir().mkpath(QFileInfo(m_settingsPath).absolutePath());
     QSaveFile settings(m_settingsPath);
     if (!settings.open(QIODevice::WriteOnly)) {
@@ -291,12 +317,20 @@ void TvController::saveSettings()
 void TvController::loadState()
 {
     QJsonObject object;
-    QFile state(m_statePath);
-    if (state.open(QIODevice::ReadOnly)) {
-        QJsonParseError error;
-        const QJsonDocument document = QJsonDocument::fromJson(state.readAll(), &error);
-        if (error.error == QJsonParseError::NoError && document.isObject()) {
-            object = document.object();
+    if (!m_databasePath.isEmpty()) {
+        QString error;
+        object = mabeltv::state::player(m_databasePath, &error);
+        if (!error.isEmpty()) {
+            qWarning().noquote() << "Could not load player state from database:" << error;
+        }
+    } else {
+        QFile state(m_statePath);
+        if (state.open(QIODevice::ReadOnly)) {
+            QJsonParseError error;
+            const QJsonDocument document = QJsonDocument::fromJson(state.readAll(), &error);
+            if (error.error == QJsonParseError::NoError && document.isObject()) {
+                object = document.object();
+            }
         }
     }
 
@@ -449,13 +483,7 @@ void TvController::loadState()
 
 void TvController::saveState() const
 {
-    if (m_statePath.isEmpty()) {
-        return;
-    }
-
-    QDir().mkpath(QFileInfo(m_statePath).absolutePath());
-    QSaveFile state(m_statePath);
-    if (!state.open(QIODevice::WriteOnly)) {
+    if (m_statePath.isEmpty() && m_databasePath.isEmpty()) {
         return;
     }
 
@@ -576,6 +604,16 @@ void TvController::saveState() const
         timelines.insert(QString::number(runtime.channel.number), timeline);
     }
     object.insert(QStringLiteral("channel_timelines"), timelines);
+    if (!m_databasePath.isEmpty()) {
+        QString error;
+        if (!mabeltv::state::replacePlayer(m_databasePath, object, &error)) {
+            qWarning().noquote() << "Could not save player state to database:" << error;
+        }
+        return;
+    }
+    QDir().mkpath(QFileInfo(m_statePath).absolutePath());
+    QSaveFile state(m_statePath);
+    if (!state.open(QIODevice::WriteOnly)) return;
     state.write(QJsonDocument(object).toJson(QJsonDocument::Indented));
     state.commit();
 }

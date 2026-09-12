@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-settings_path="${MABELTV_SETTINGS:-/var/lib/mabeltv/settings.json}"
+database_path="${MABELTV_DATABASE:-/var/lib/mabeltv/mabeltv.db}"
 runtime_dir="${RUNTIME_DIRECTORY:-/run/mabeltv}"
 output_name="${MABELTV_DRM_OUTPUT:-}"
 install_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -44,14 +44,18 @@ if [[ -z "${MABELTV_HWDEC:-}" ]]; then
     fi
 fi
 
-display_mode="$(python3 - "$settings_path" <<'PY'
+display_mode="$(python3 - "$database_path" <<'PY'
 import json
+import sqlite3
 import sys
 
 try:
-    with open(sys.argv[1], "r", encoding="utf-8") as settings_file:
-        value = json.load(settings_file).get("display_resolution", "720p")
-except (OSError, ValueError, TypeError):
+    with sqlite3.connect(f"file:{sys.argv[1]}?mode=ro", uri=True) as database:
+        row = database.execute(
+            "SELECT value_json FROM application_settings WHERE key='display_resolution'"
+        ).fetchone()
+        value = json.loads(row[0]) if row else "720p"
+except (OSError, ValueError, TypeError, sqlite3.Error):
     value = "720p"
 print(value if value in {"720p", "1080p", "native"} else "720p")
 PY
@@ -97,7 +101,8 @@ PY
 exec "$install_root/mabeltv" \
     --fullscreen \
     --channels /var/lib/mabeltv/channels.json \
-    --settings "$settings_path" \
+    --settings /var/lib/mabeltv/settings.json \
     --media-root /srv/mabeltv/media \
     --state /var/lib/mabeltv/state.json \
+    --database "$database_path" \
     --log-dir /var/log/mabeltv

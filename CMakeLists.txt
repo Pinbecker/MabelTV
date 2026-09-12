@@ -13,7 +13,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Qml Quick OpenGL ShaderTools Concurrent Network)
+find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Qml Quick OpenGL ShaderTools Concurrent Network Sql)
 set(MPV_INCLUDE_DIRS "")
 set(MPV_LINK_LIBRARIES "")
 if(WIN32 AND DEFINED ENV{MABELTV_MSYS2_ROOT})
@@ -50,6 +50,8 @@ add_library(mabeltv_core STATIC
     src/core/TvControllerPersistence.cpp
     src/core/TvControllerPlayback.cpp
     src/core/TvControllerPortal.cpp
+    src/core/StateDatabase.cpp
+    src/core/StateDatabase.h
     src/hardware/CecTvControl.cpp
     src/hardware/CecTvControl.h
     src/library/ChannelLibrary.cpp
@@ -61,7 +63,7 @@ add_library(mabeltv_core STATIC
 )
 
 target_include_directories(mabeltv_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
-target_link_libraries(mabeltv_core PUBLIC Qt6::Core Qt6::Concurrent)
+target_link_libraries(mabeltv_core PUBLIC Qt6::Core Qt6::Concurrent Qt6::Sql)
 
 if(MSVC)
     target_compile_options(mabeltv_core PRIVATE /W4 /permissive-)

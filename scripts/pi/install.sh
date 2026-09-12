@@ -67,7 +67,7 @@ done
 if [[ "$skip_packages" != "true" ]]; then
     apt-get update
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        qt6-qpa-plugins qml6-module-qtquick qml6-module-qtquick-window \
+        qt6-qpa-plugins qml6-module-qtquick qml6-module-qtquick-window libqt6sql6-sqlite \
         libqt6opengl6 libmpv-dev ffmpeg ir-keytable cec-utils python3 sudo logrotate avahi-daemon \
         alsa-utils ca-certificates curl util-linux psmisc qrencode udisks2 sg3-utils \
         nodejs npm
@@ -141,7 +141,15 @@ install -d -o root -g mabeltv -m 0750 /etc/mabeltv
 backup_dir=/var/backups/mabeltv
 install -d -o root -g root -m 0700 "$backup_dir"
 preinstall_backup="$backup_dir/preinstall-$(date +%Y%m%d-%H%M%S).tar.gz"
-backup_paths=(var/lib/mabeltv etc/systemd/system/mabeltv.service etc/systemd/system/mabeltv-ir.service)
+backup_paths=(etc/systemd/system/mabeltv.service etc/systemd/system/mabeltv-ir.service)
+if [[ -f /var/lib/mabeltv/mabeltv.db ]]; then
+    # The generic tar snapshot cannot safely copy a live WAL database. Keep a
+    # separately validated SQLite online-backup beside the installer snapshot.
+    bash "$source_root/scripts/pi/backup-config.sh" "$backup_dir" >/dev/null
+else
+    # Legacy releases have file-backed state and no live SQLite database.
+    backup_paths=(var/lib/mabeltv "${backup_paths[@]}")
+fi
 [[ -f /etc/systemd/system/mabeltv-library.service ]] && backup_paths+=(etc/systemd/system/mabeltv-library.service)
 [[ -f /etc/systemd/system/mabeltv-matter.service ]] && backup_paths+=(etc/systemd/system/mabeltv-matter.service)
 [[ -f /etc/systemd/system/mabeltv-health.service ]] && backup_paths+=(etc/systemd/system/mabeltv-health.service)
@@ -206,6 +214,7 @@ install -o root -g root -m 0755 "$binary_root/mabeltv" "$incoming_dir/mabeltv"
 install -o root -g root -m 0755 "$binary_root/mabeltv_media_check" "$incoming_dir/mabeltv_media_check"
 install -o root -g root -m 0755 "$source_root/scripts/pi/mabeltv-launch.sh" "$incoming_dir/mabeltv-launch"
 install -o root -g root -m 0755 "$source_root/scripts/pi/mabeltv-library.py" "$incoming_dir/mabeltv-library"
+install -o root -g root -m 0755 "$source_root/scripts/pi/mabeltv-state-migrate.py" "$incoming_dir/mabeltv-state-migrate"
 install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-library.html" "$incoming_dir/mabeltv-library.html"
 install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-watch.html" "$incoming_dir/mabeltv-watch.html"
 install -o root -g root -m 0644 "$source_root/scripts/pi/hls.min.js" "$incoming_dir/hls.min.js"
@@ -254,16 +263,14 @@ PY
 mv "$incoming_dir" "$release_dir"
 incoming_dir=""
 
-if [[ ! -e /var/lib/mabeltv/channels.json ]]; then
-    install -o mabeltv -g mabeltv -m 0640 "$source_root/config/examples/channels.json" /var/lib/mabeltv/channels.json
+if [[ ! -e /var/lib/mabeltv/mabeltv.db ]]; then
+    "$release_dir/mabeltv-state-migrate" bootstrap \
+        --database /var/lib/mabeltv/mabeltv.db \
+        --channels "$source_root/config/examples/channels.json" \
+        --settings "$source_root/config/examples/settings.json"
 fi
-if [[ ! -e /var/lib/mabeltv/settings.json ]]; then
-    install -o mabeltv -g mabeltv -m 0640 "$source_root/config/examples/settings.json" /var/lib/mabeltv/settings.json
-fi
-# Repair mutable configuration ownership on every update. This also recovers
-# files that were copied or edited through a root maintenance session.
-chown mabeltv:mabeltv /var/lib/mabeltv/channels.json /var/lib/mabeltv/settings.json
-chmod 0640 /var/lib/mabeltv/channels.json /var/lib/mabeltv/settings.json
+chown mabeltv:mabeltv /var/lib/mabeltv/mabeltv.db
+chmod 0640 /var/lib/mabeltv/mabeltv.db
 
 if [[ ! -e /etc/mabeltv/library.conf ]]; then
     setup_code_number="$(( $(od -An -N4 -tu4 /dev/urandom) % 1000000 ))"

@@ -45,6 +45,7 @@ signals, properties and callable methods:
 | `TvControllerActions.cpp` | Remote actions, parent settings, volume/power commands and reload requests. |
 | `TvControllerPortal.cpp` | Authenticated portal playback, Adult progress and library enable/disable operations. |
 | `TvControllerPersistence.cpp` | Loading and atomically saving settings and runtime state. |
+| `StateDatabase.cpp` | Focused SQLite projections used by the native controller; SQLite remains the single persistent authority. |
 | `TvControllerPlayback.cpp` | Tuning, timeline selection, episode reuse, playback position and low-level state setters. |
 | `TvControllerFormatting.h` | Small shared formatting helpers used by more than one implementation unit. |
 
@@ -58,7 +59,8 @@ so a refactor cannot create competing channel, playback or standby state.
 - Portal commands continue to bypass only the physical child-remote lock.
 - Power and standby remain explicit operations and continue to use the shared
   connected-TV control layer.
-- Existing settings, state and media-index formats remain compatible.
+- Settings and player state use the shared SQLite database. The rebuildable
+  media index remains a separate cache file.
 - New QML and controller implementation files must be listed in
   `CMakeLists.txt` and remain covered by the native safety tests.
 - Large files must be decomposed by behaviour or view ownership, not merely

@@ -88,7 +88,8 @@ public:
                     const QString &mediaRoot,
                     const QString &statePath,
                     ChannelLibrary::MediaInspector mediaInspector = {},
-                    std::function<qint64()> uptimeClock = {});
+                    std::function<qint64()> uptimeClock = {},
+                    const QString &databasePath = {});
 
     [[nodiscard]] int currentChannelNumber() const;
     [[nodiscard]] QString currentChannelName() const;
@@ -294,6 +295,7 @@ private:
     QString m_settingsPath;
     QString m_mediaRoot;
     QString m_adultMediaRoot;
+    QString m_databasePath;
     QString m_libraryStatus;
     QStringList m_libraryWarnings;
     QString m_numericEntry;

@@ -530,15 +530,17 @@ void TvController::reloadLibrary()
     setParentMessage(QStringLiteral("Checking channel library in the background"));
     const QString channelsPath = m_channelsPath;
     const QString mediaRoot = m_mediaRoot;
+    const QString databasePath = m_databasePath;
     const QString cachePath = QDir(QFileInfo(m_statePath).absolutePath())
                                   .filePath(QStringLiteral("media-index.json"));
     m_libraryReloadWatcher.setFuture(QtConcurrent::run(
-        [channelsPath, mediaRoot, cachePath]() {
+        [channelsPath, mediaRoot, cachePath, databasePath]() {
             MediaIndex mediaIndex(cachePath);
             ChannelLibraryResult library = ChannelLibrary::load(
                 channelsPath,
                 mediaRoot,
-                [&mediaIndex](const QString &path) { return mediaIndex.inspect(path); });
+                [&mediaIndex](const QString &path) { return mediaIndex.inspect(path); },
+                databasePath);
             if (!mediaIndex.save()) {
                 library.warnings.append(
                     QStringLiteral("Could not save the media validation cache: %1")

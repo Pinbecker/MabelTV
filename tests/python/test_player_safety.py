@@ -229,7 +229,9 @@ class PlayerSafetyTests(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn('.get("display_resolution", "720p")', launcher)
+        self.assertIn("SELECT value_json FROM application_settings", launcher)
+        self.assertIn('value = "720p"', launcher)
+        self.assertIn('--database "$database_path"', launcher)
         self.assertIn('*) kms_mode="1280x720@60"', launcher)
         self.assertIn('1080p) kms_mode="1920x1080@30"', launcher)
         self.assertIn('MABELTV_DRM_MODE:-$kms_mode', launcher)
