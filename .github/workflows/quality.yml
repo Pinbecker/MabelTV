@@ -86,23 +86,22 @@ jobs:
       - name: Build
         run: cmake --build build --parallel 2
 
-      - name: Run native controller tests
-        run: ctest --test-dir build -R '^mabeltv_core_tests$' --output-on-failure
+      - name: Run automated tests
+        run: ctest --test-dir build --output-on-failure
 
-      - name: Run Library service tests
-        run: ctest --test-dir build -R '^mabeltv_library_service_tests$' --output-on-failure
+      - name: Report CTest failure details
+        if: failure()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
 
-      - name: Run JavaScript syntax tests
-        run: ctest --test-dir build -R '^mabeltv_javascript_source_syntax$' --output-on-failure
-
-      - name: Run offline service-worker tests
-        run: ctest --test-dir build -R '^mabeltv_offline_service_worker_tests$' --output-on-failure
-
-      - name: Run Matter socket tests
-        run: ctest --test-dir build -R '^mabeltv_matter_socket_tests$' --output-on-failure
-
-      - name: Run libmpv smoke test
-        run: ctest --test-dir build -R '^milestone0_libmpv_self_test$' --output-on-failure
+          path = Path("build/Testing/Temporary/LastTest.log")
+          if path.is_file():
+              detail = path.read_text(encoding="utf-8", errors="replace")[-12000:]
+              detail = detail.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+              print(f"::error title=CTest failure details::{detail}")
+          PY
 
       # This x86_64 job catches source regressions. It deliberately does not
       # produce a customer artifact or replace clean-image ARM64 Pi testing.
