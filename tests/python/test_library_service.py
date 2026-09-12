@@ -100,7 +100,9 @@ class LibraryFixture:
             owner=str(self.owner),
             config=str(self.config),
         )
-        self.library = mabeltv_library.Library(args)
+        cache = {"MABELTV_TMDB_ARTWORK_CACHE": str(self.root / "tmdb-artwork-cache")}
+        with mock.patch.dict(os.environ, cache):
+            self.library = mabeltv_library.Library(args)
         self.library.player_state_path = self.root / "player-state.json"
         self.library.player_state_path.write_text(
             '{"standby": false}\n', encoding="utf-8")
@@ -2713,10 +2715,14 @@ class LibraryUnitTests(unittest.TestCase):
             settings.write_text('{"schema_version": 1}\n', encoding="utf-8")
             config = root / "library.conf"
             config.write_text("MABELTV_SETUP_CODE=135790\n", encoding="utf-8")
-            library = mabeltv_library.Library(argparse.Namespace(
-                media_root=str(media), channels=str(channels), settings=str(settings),
-                owner=str(root / "owner.json"), config=str(config),
-            ))
+            with mock.patch.dict(os.environ, {
+                    "MABELTV_TMDB_ARTWORK_CACHE": str(root / "tmdb-artwork-cache"),
+            }):
+                library = mabeltv_library.Library(argparse.Namespace(
+                    media_root=str(media), channels=str(channels),
+                    settings=str(settings), owner=str(root / "owner.json"),
+                    config=str(config),
+                ))
             try:
                 self.assertFalse((incoming / "dead.optimising.mp4").exists())
                 self.assertFalse((incoming / "dead.ffmpeg.log").exists())

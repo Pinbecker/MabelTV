@@ -42,7 +42,11 @@ class DurableUsbTransferTests(unittest.TestCase):
             owner=str(self.fixture.owner),
             config=str(self.fixture.config),
         )
-        with mock.patch.dict(os.environ, {"MABELTV_USB_ROOT": str(self.usb_root)}):
+        with mock.patch.dict(os.environ, {
+                "MABELTV_USB_ROOT": str(self.usb_root),
+                "MABELTV_TMDB_ARTWORK_CACHE": str(
+                    self.fixture.root / "tmdb-artwork-cache"),
+        }):
             library = mabeltv_library.Library(args)
         library.admin_action = lambda action: "ok"
         library.refresh_tv = mock.Mock(return_value=True)
