@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 import threading
 import unittest
 from pathlib import Path
@@ -10,12 +11,19 @@ from typing import Any
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "pi"))
 
-from mabeltv_backend.providers import ProviderMetadataMixin  # noqa: E402
+from mabeltv_backend.adult_metadata import AdultMetadataMixin  # noqa: E402
+from mabeltv_backend.provider_transport import ProviderTransportMixin  # noqa: E402
 from mabeltv_backend.http import Handler  # noqa: E402
 from mabeltv_backend.media import MediaCatalogueMixin  # noqa: E402
+from mabeltv_backend.management import ManagementMixin  # noqa: E402
+from mabeltv_backend.database import StateDatabase  # noqa: E402
+try:  # noqa: E402
+    from tests.python.sqlite_test_database import initialise_test_database
+except ModuleNotFoundError:  # noqa: E402
+    from sqlite_test_database import initialise_test_database
 
 
-class CatalogueFixture(ProviderMetadataMixin):
+class CatalogueFixture(AdultMetadataMixin, ProviderTransportMixin):
     def __init__(self) -> None:
         self.config_lock = threading.RLock()
         self.requests: list[tuple[str, dict[str, Any]]] = []
@@ -131,17 +139,20 @@ class CatalogueFixture(ProviderMetadataMixin):
         return {"schema_version": 1}
 
 
-class AvailabilitySettingsFixture(MediaCatalogueMixin):
+class AvailabilitySettingsFixture(MediaCatalogueMixin, ManagementMixin):
     def __init__(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
         self.config_lock = threading.RLock()
         self.settings_path = Path("settings.json")
-        self.values: dict[str, Any] = {"schema_version": 1}
+        self.database_path = Path(self.temporary.name) / "mabeltv.db"
+        initialise_test_database(StateDatabase, self.database_path)
+        self.state_database = StateDatabase(self.database_path)
 
     def settings(self) -> dict[str, Any]:
-        return dict(self.values)
+        return self.read_state("settings")
 
-    def write_json(self, _path: Path, value: dict[str, Any]) -> None:
-        self.values = dict(value)
+    def __del__(self) -> None:
+        self.temporary.cleanup()
 
 
 class AdultTitleEnrichmentTests(unittest.TestCase):

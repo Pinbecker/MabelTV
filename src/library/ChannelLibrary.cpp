@@ -2,10 +2,8 @@
 #include "core/StateDatabase.h"
 
 #include <QDir>
-#include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
-#include <QJsonDocument>
 #include <QJsonObject>
 #include <QSet>
 
@@ -63,42 +61,18 @@ QString normaliseContentType(QString type, const QString &name, const QString &f
 }
 } // namespace
 
-ChannelLibraryResult ChannelLibrary::load(const QString &configurationPath,
+ChannelLibraryResult ChannelLibrary::load(const QString &databasePath,
                                           const QString &mediaRoot,
-                                          MediaInspector mediaInspector,
-                                          const QString &databasePath)
+                                          MediaInspector mediaInspector)
 {
     ChannelLibraryResult result;
-    QJsonArray configuredChannels;
-    if (!databasePath.isEmpty()) {
-        QString databaseError;
-        configuredChannels = mabeltv::state::channels(databasePath, &databaseError);
-        if (!databaseError.isEmpty()) {
-            result.error = QStringLiteral("Could not load channels from MabelTV database: %1")
-                               .arg(databaseError);
-            return result;
-        }
-    } else {
-        QFile configuration(configurationPath);
-        if (!configuration.open(QIODevice::ReadOnly)) {
-            result.error = QStringLiteral("Could not open channel configuration: %1")
-                               .arg(QDir::toNativeSeparators(configurationPath));
-            return result;
-        }
-        QJsonParseError parseError;
-        const QJsonDocument document = QJsonDocument::fromJson(
-            configuration.readAll(), &parseError);
-        if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
-            result.error = QStringLiteral("Invalid channel configuration: %1")
-                               .arg(parseError.errorString());
-            return result;
-        }
-        const QJsonObject root = document.object();
-        if (root.value(QStringLiteral("schema_version")).toInt() != 1) {
-            result.error = QStringLiteral("Unsupported channels.json schema version");
-            return result;
-        }
-        configuredChannels = root.value(QStringLiteral("channels")).toArray();
+    QString databaseError;
+    const QJsonArray configuredChannels = mabeltv::state::channels(
+        databasePath, &databaseError);
+    if (!databaseError.isEmpty()) {
+        result.error = QStringLiteral("Could not load channels from MabelTV database: %1")
+                           .arg(databaseError);
+        return result;
     }
     if (configuredChannels.isEmpty()) {
         result.error = QStringLiteral("No channels are configured");

@@ -1,6 +1,6 @@
 param(
     [string]$MediaRoot,
-    [string]$ChannelsFile,
+    [string]$Database,
     [switch]$Strict,
     [switch]$NoBuild
 )
@@ -18,13 +18,19 @@ if (-not $NoBuild) {
 if (-not $MediaRoot) {
     $MediaRoot = Join-Path ([Environment]::GetFolderPath('MyVideos')) 'MabelTV'
 }
-if (-not $ChannelsFile) {
-    $ChannelsFile = Join-Path $repositoryRoot 'config\examples\channels.json'
+if (-not $Database) {
+    $Database = Join-Path $repositoryRoot 'dev-data\mabeltv.db'
+}
+if (-not (Test-Path -LiteralPath $Database)) {
+    & python (Join-Path $repositoryRoot 'scripts\pi\mabeltv-state-migrate.py') bootstrap `
+        --database $Database `
+        --channels (Join-Path $repositoryRoot 'config\examples\channels.json') `
+        --settings (Join-Path $repositoryRoot 'config\examples\settings.json') | Out-Null
 }
 
 $application = Join-Path $repositoryRoot 'out\build\windows-debug\mabeltv_media_check.exe'
 $arguments = @(
-    '--channels', ([System.IO.Path]::GetFullPath($ChannelsFile)),
+    '--database', ([System.IO.Path]::GetFullPath($Database)),
     '--media-root', ([System.IO.Path]::GetFullPath($MediaRoot)),
     '--cache', (Join-Path $repositoryRoot 'dev-data\media-index.json')
 )

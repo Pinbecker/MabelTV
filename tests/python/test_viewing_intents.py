@@ -4,13 +4,13 @@ import json
 import unittest
 
 try:
-    from tests.python.test_library_service import (
+    from tests.python.library_test_support import (
         LibraryFixture,
         PORTAL_OVERLAY_MARKUP,
         PORTAL_SCRIPT,
     )
 except ModuleNotFoundError:
-    from test_library_service import (
+    from library_test_support import (
         LibraryFixture,
         PORTAL_OVERLAY_MARKUP,
         PORTAL_SCRIPT,
@@ -25,11 +25,11 @@ class ViewingIntentTests(unittest.TestCase):
         self.fixture.close()
 
     def test_channel_films_are_separate_from_adult_tv_viewing(self) -> None:
-        self.fixture.channels.write_text(json.dumps({
+        self.fixture.library.write_state("channels", json.loads(json.dumps({
             "schema_version": 1,
             "channels": [{"number": 5, "name": "Films", "folder": "films",
                           "aspect": "fit", "content_type": "films"}],
-        }), encoding="utf-8")
+        })))
         films = self.fixture.media / "films"
         films.mkdir(parents=True)
         (films / "The Matrix.mp4").write_bytes(b"film")
@@ -39,11 +39,10 @@ class ViewingIntentTests(unittest.TestCase):
             "poster": "mabel-film-5-603.jpg",
         }}
         self.fixture.library.write_channel_media_states(states)
-        self.fixture.library.player_state_path = self.fixture.root / "player-state.json"
-        self.fixture.library.player_state_path.write_text(json.dumps({
+        self.fixture.library.write_state("player", json.loads(json.dumps({
             "channel_film_positions": {"5/The Matrix.mp4": 1200},
             "channel_film_durations": {"5/The Matrix.mp4": 8100},
-        }), encoding="utf-8")
+        })))
 
         self.assertNotIn("movie:603", self.fixture.library.adult_local_title_index())
         self.assertFalse(any(item["key"] == "movie:603"
@@ -71,7 +70,7 @@ class ViewingIntentTests(unittest.TestCase):
         store["titles"]["movie:603"]["local_progress"] = {
             "kind": "channel-film", "position": 1200,
         }
-        self.fixture.library.write_adult_viewing_store(store)
+        self.fixture.library.write_state("adult_viewing", store)
         migrated = next(item for item in self.fixture.library.adult_viewing()["items"]
                         if item["key"] == "movie:603")
         self.assertNotIn("local_progress", migrated)
@@ -177,14 +176,14 @@ class ViewingIntentTests(unittest.TestCase):
             "duration": 8100, "title": "The Matrix",
         }}
         writes = 0
-        original_write = self.fixture.library.write_adult_viewing_store
+        original_write = self.fixture.library.save_adult_titles
 
         def count_write(value):
             nonlocal writes
             writes += 1
             original_write(value)
 
-        self.fixture.library.write_adult_viewing_store = count_write
+        self.fixture.library.save_adult_titles = count_write
 
         self.fixture.library.adult_viewing()
         first = writes
@@ -218,7 +217,7 @@ class ViewingIntentTests(unittest.TestCase):
             },
             "watchlisted": True, "up_next": True, "series_watching": True,
         }
-        self.fixture.library.write_adult_viewing_store(store)
+        self.fixture.library.write_state("adult_viewing", store)
 
         result = self.fixture.library.restart_adult_series_progress(series_id, "series")
         refreshed = self.fixture.library.adult_series_library()[0]["episodes"][0]

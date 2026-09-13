@@ -24,7 +24,8 @@ class LibraryServiceStructureTests(unittest.TestCase):
 
     def test_backend_responsibilities_are_explicit_and_bounded(self) -> None:
         expected = {
-            "auth.py", "constants.py", "http.py", "lg.py", "media.py",
+            "auth.py", "constants.py", "database.py", "database_schema.py",
+            "http.py", "lg.py", "media.py",
             "portal.py", "providers.py", "remote.py", "system.py",
             "uploads.py", "usb.py", "viewing.py",
         }

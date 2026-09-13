@@ -10,8 +10,8 @@
 
 namespace
 {
-constexpr int minimumSupportedSchemaVersion = 1;
-constexpr int maximumSupportedSchemaVersion = 2;
+    constexpr int minimumSupportedSchemaVersion = 7;
+    constexpr int maximumSupportedSchemaVersion = 7;
 
 class Connection
 {
@@ -101,8 +101,9 @@ QJsonObject keyValues(const QString &path, const QString &table, QString *error)
     return result;
 }
 
-bool replaceKeyValues(const QString &path, const QString &table,
-                      const QJsonObject &value, QString *error)
+bool mergeKeyValues(const QString &path, const QString &table,
+                    const QString &revisionDomain,
+                    const QJsonObject &value, QString *error)
 {
     Connection connection(path);
     if (!ready(connection, error)) return false;
@@ -111,13 +112,11 @@ bool replaceKeyValues(const QString &path, const QString &table,
         setError(error, database.lastError().text());
         return false;
     }
-    QSqlQuery clear(database);
-    if (!clear.exec(QStringLiteral("DELETE FROM %1").arg(table))) {
-        database.rollback(); setError(error, clear.lastError().text()); return false;
-    }
     QSqlQuery insert(database);
-    insert.prepare(QStringLiteral("INSERT INTO %1(key,value_json,updated_at) VALUES(?,?,?)")
-                       .arg(table));
+    insert.prepare(QStringLiteral(
+        "INSERT INTO %1(key,value_json,updated_at) VALUES(?,?,?) "
+        "ON CONFLICT(key) DO UPDATE SET "
+        "value_json=excluded.value_json,updated_at=excluded.updated_at").arg(table));
     const double now = QDateTime::currentMSecsSinceEpoch() / 1000.0;
     for (auto item = value.constBegin(); item != value.constEnd(); ++item) {
         insert.bindValue(0, item.key());
@@ -126,6 +125,16 @@ bool replaceKeyValues(const QString &path, const QString &table,
         if (!insert.exec()) {
             database.rollback(); setError(error, insert.lastError().text()); return false;
         }
+    }
+    QSqlQuery revision(database);
+    revision.prepare(QStringLiteral(
+        "INSERT INTO state_revisions(domain,revision,updated_at) VALUES(?,1,?) "
+        "ON CONFLICT(domain) DO UPDATE SET "
+        "revision=revision+1,updated_at=excluded.updated_at"));
+    revision.addBindValue(revisionDomain);
+    revision.addBindValue(now);
+    if (!revision.exec()) {
+        database.rollback(); setError(error, revision.lastError().text()); return false;
     }
     if (!database.commit()) {
         setError(error, database.lastError().text()); return false;
@@ -289,12 +298,13 @@ QJsonObject adultMedia(const QString &path, QString *error)
     return root;
 }
 
-bool replaceSettings(const QString &path, const QJsonObject &value, QString *error)
+bool mergeSettings(const QString &path, const QJsonObject &value, QString *error)
 {
-    return replaceKeyValues(path, QStringLiteral("application_settings"), value, error);
+    return mergeKeyValues(path, QStringLiteral("application_settings"),
+                          QStringLiteral("settings"), value, error);
 }
 
-bool replacePlayer(const QString &path, const QJsonObject &value, QString *error)
+bool savePlayerSnapshot(const QString &path, const QJsonObject &value, QString *error)
 {
     Connection connection(path);
     if (!ready(connection, error)) return false;
@@ -398,6 +408,13 @@ bool replacePlayer(const QString &path, const QJsonObject &value, QString *error
             return false;
         }
     }
+    QSqlQuery revision(database);
+    revision.prepare(QStringLiteral(
+        "INSERT INTO state_revisions(domain,revision,updated_at) VALUES('player',1,?) "
+        "ON CONFLICT(domain) DO UPDATE SET "
+        "revision=revision+1,updated_at=excluded.updated_at"));
+    revision.addBindValue(now);
+    if (!revision.exec()) return fail(revision);
     if (!database.commit()) {
         setError(error, database.lastError().text());
         return false;

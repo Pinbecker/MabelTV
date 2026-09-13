@@ -38,8 +38,7 @@ class ChannelLibrary
 public:
     using MediaInspector = std::function<MediaInspection(const QString &)>;
 
-    static ChannelLibraryResult load(const QString &configurationPath,
+    static ChannelLibraryResult load(const QString &databasePath,
                                      const QString &mediaRoot,
-                                     MediaInspector mediaInspector = {},
-                                     const QString &databasePath = {});
+                                     MediaInspector mediaInspector = {});
 };

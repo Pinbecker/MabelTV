@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import copy
 import importlib.util
+import re
 import secrets
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
@@ -66,7 +67,7 @@ class FixtureLibrary:
 
     def portal_bootstrap(self) -> dict[str, Any]:
         return {
-            "schema_version": 1, "database_schema": 2,
+            "schema_version": 1, "database_schema": 7,
             "revisions": {domain: 1 for domain in (
                 "library", "adult_viewing", "viewing_insights", "adult_insights")},
         }
@@ -327,11 +328,32 @@ class FixtureHandler(mabeltv_library.Handler):
             self.server.library.reset_test_state()
             self.json(200, {"ok": True})
             return
+        if self.path.startswith("/api/live/frame.jpg"):
+            # The deterministic fixture has no live capture process. Model the
+            # unavailable preview explicitly instead of falling through to a
+            # missing production-library method and polluting test output.
+            self.json(503, {"error": "Live preview unavailable in fixture"})
+            return
         if self.path in ("/api/adult/series/artwork/bright.svg",
                          "/api/adult/series/artwork/dark.svg"):
             colour = "#101820" if self.path.endswith("dark.svg") else "#ffffff"
             artwork = (f'<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400">'
                        f'<rect width="600" height="400" fill="{colour}"/></svg>').encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "image/svg+xml")
+            self.send_header("Content-Length", str(len(artwork)))
+            self.end_headers()
+            self.wfile.write(artwork)
+            return
+        explore_artwork = re.search(
+            r"^/api/adult/tmdb-artwork/[^/]+/explore-(\d+)\.jpg$", self.path)
+        if explore_artwork:
+            value = int(explore_artwork.group(1))
+            hue = value * 47 % 360
+            artwork = f'''<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450">
+              <defs><linearGradient id="g" x2="1" y2="1"><stop stop-color="hsl({hue} 54% 42%)"/><stop offset="1" stop-color="hsl({(hue + 70) % 360} 48% 14%)"/></linearGradient></defs>
+              <rect width="300" height="450" fill="url(#g)"/><circle cx="235" cy="90" r="76" fill="rgba(255,255,255,.12)"/><path d="M0 330L128 190l172 190v70H0z" fill="rgba(0,0,0,.3)"/><text x="24" y="395" fill="white" font-family="Arial" font-size="24" font-weight="700">TITLE {value}</text>
+            </svg>'''.encode()
             self.send_response(200)
             self.send_header("Content-Type", "image/svg+xml")
             self.send_header("Content-Length", str(len(artwork)))
@@ -357,7 +379,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Deterministic MabelTV portal fixture")
     parser.add_argument("--port", type=int, default=4178)
     args = parser.parse_args()
-    server = mabeltv_library.LibraryServer(("127.0.0.1", args.port), FixtureLibrary())
+    server = mabeltv_library.LibraryServer(
+        ("127.0.0.1", args.port), FixtureLibrary(),
+        portal_app_script=mabeltv_library.load_portal_app_script(private_scope=False),
+    )
     server.RequestHandlerClass = FixtureHandler
     try:
         server.serve_forever()

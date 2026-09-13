@@ -11,6 +11,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "pi"))
 
 from mabeltv_backend.adult_insights import AdultInsightsMixin
+from mabeltv_backend.database import StateDatabase
+try:
+    from tests.python.sqlite_test_database import initialise_test_database
+except ModuleNotFoundError:
+    from sqlite_test_database import initialise_test_database
 
 
 class InsightLibrary(AdultInsightsMixin):
@@ -21,6 +26,8 @@ class InsightLibrary(AdultInsightsMixin):
         self.adult_insights_closed = threading.Event()
         self.adult_insights_worker = None
         self.requests: list[tuple[str, dict]] = []
+        self.state_database = StateDatabase(root / "mabeltv.db")
+        initialise_test_database(StateDatabase, root / "mabeltv.db")
         self.store = {"titles": {
             "movie:1": {"media_type": "movie", "tmdb_id": 1, "title": "One",
                         "year": "1998", "manual_state": "watched",
@@ -32,16 +39,14 @@ class InsightLibrary(AdultInsightsMixin):
                         "year": "2020", "manual_state": "not_watched"},
         }}
 
-    @staticmethod
-    def read_json(path: Path, fallback):
-        try:
-            return json.loads(path.read_text(encoding="utf-8"))
-        except OSError:
-            return fallback
+    def read_state(self, kind: str):
+        return self.state_database.read(kind)
 
-    @staticmethod
-    def write_json(path: Path, value) -> None:
-        path.write_text(json.dumps(value), encoding="utf-8")
+    def write_state(self, kind: str, value) -> None:
+        self.state_database.write(kind, value)
+
+    def save_adult_insights(self, value) -> None:
+        self.state_database.save_adult_insights(value)
 
     def adult_viewing_store(self):
         return self.store

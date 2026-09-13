@@ -5,9 +5,9 @@ import unittest
 from unittest import mock
 
 try:
-    from tests.python.test_library_service import LibraryFixture, mabeltv_library
+    from tests.python.library_test_support import LibraryFixture, mabeltv_library
 except ModuleNotFoundError:
-    from test_library_service import LibraryFixture, mabeltv_library
+    from library_test_support import LibraryFixture, mabeltv_library
 
 
 class ContinueWatchingTests(unittest.TestCase):
@@ -50,9 +50,8 @@ class ContinueWatchingTests(unittest.TestCase):
         })
         channels = self.fixture.library.channels()
         channels[0]["content_type"] = "films"
-        self.fixture.library.write_json(
-            self.fixture.library.channels_path,
-            {"schema_version": 1, "channels": channels})
+        self.fixture.library.write_state(
+            "channels", {"schema_version": 1, "channels": channels})
         film = self.fixture.media / "kids-tv" / "Family Film.mp4"
         film.parent.mkdir(parents=True, exist_ok=True)
         film.write_bytes(b"film")

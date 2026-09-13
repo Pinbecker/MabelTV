@@ -13,8 +13,8 @@ QJsonObject player(const QString &databasePath, QString *error = nullptr);
 QJsonObject channelMetadata(const QString &databasePath, QString *error = nullptr);
 QJsonObject adultMedia(const QString &databasePath, QString *error = nullptr);
 
-bool replaceSettings(const QString &databasePath, const QJsonObject &value,
-                     QString *error = nullptr);
-bool replacePlayer(const QString &databasePath, const QJsonObject &value,
+bool mergeSettings(const QString &databasePath, const QJsonObject &value,
                    QString *error = nullptr);
+bool savePlayerSnapshot(const QString &databasePath, const QJsonObject &value,
+                        QString *error = nullptr);
 } // namespace mabeltv::state

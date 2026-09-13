@@ -7,13 +7,10 @@
 #include <QDateTime>
 #include <QDir>
 #include <QDirIterator>
-#include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
-#include <QJsonDocument>
 #include <QJsonObject>
 #include <QRegularExpression>
-#include <QSaveFile>
 #include <QUuid>
 #include <QtConcurrentRun>
 
@@ -75,7 +72,7 @@ TvController::TvController(QObject *parent)
                     }
                 }
                 saveState();
-                loadSettings(m_settingsPath, true);
+                loadSettings(true);
                 const bool loaded = applyLibrary(std::move(library));
                 setParentMessage(loaded ? QStringLiteral("Channel library reloaded")
                                         : m_libraryStatus);
@@ -133,36 +130,29 @@ TvController::~TvController()
     saveState();
 }
 
-bool TvController::initialize(const QString &channelsPath,
-                              const QString &settingsPath,
+bool TvController::initialize(const QString &databasePath,
                               const QString &mediaRoot,
-                              const QString &statePath,
                               ChannelLibrary::MediaInspector mediaInspector,
-                              std::function<qint64()> uptimeClock,
-                              const QString &databasePath)
+                              std::function<qint64()> uptimeClock)
 {
-    m_channelsPath = QFileInfo(channelsPath).absoluteFilePath();
-    m_settingsPath = QFileInfo(settingsPath).absoluteFilePath();
     m_mediaRoot = QFileInfo(mediaRoot).absoluteFilePath();
     m_adultMediaRoot = QDir(m_mediaRoot).filePath(QStringLiteral(".adult"));
-    m_statePath = QFileInfo(statePath).absoluteFilePath();
-    m_databasePath = databasePath.isEmpty()
-        ? QString() : QFileInfo(databasePath).absoluteFilePath();
+    m_databasePath = QFileInfo(databasePath).absoluteFilePath();
     m_episodeUptimeClock = std::move(uptimeClock);
-    loadSettings(m_settingsPath);
+    loadSettings();
 
     ChannelLibraryResult library;
     bool pendingInspections = false;
     if (mediaInspector) {
-        library = ChannelLibrary::load(m_channelsPath, m_mediaRoot,
-                                       std::move(mediaInspector), m_databasePath);
+        library = ChannelLibrary::load(m_databasePath, m_mediaRoot,
+                                       std::move(mediaInspector));
     } else {
-        const QString cachePath = QDir(QFileInfo(m_statePath).absolutePath())
+        const QString cachePath = QDir(QFileInfo(m_databasePath).absolutePath())
                                       .filePath(QStringLiteral("media-index.json"));
         MediaIndex mediaIndex(cachePath);
-        library = ChannelLibrary::load(m_channelsPath, m_mediaRoot, [&mediaIndex](const QString &path) {
+        library = ChannelLibrary::load(m_databasePath, m_mediaRoot, [&mediaIndex](const QString &path) {
             return mediaIndex.inspectCached(path);
-        }, m_databasePath);
+        });
         pendingInspections = mediaIndex.hasPendingInspections();
     }
     const bool loaded = applyLibrary(std::move(library));
@@ -415,14 +405,7 @@ QVariantMap TvController::currentChannelSummary() const
     QJsonObject channelMetadata;
     QJsonObject programmeMetadata;
     QJsonObject metadataRoot;
-    if (!m_databasePath.isEmpty()) {
-        metadataRoot = mabeltv::state::channelMetadata(m_databasePath);
-    } else {
-        QFile metadataFile(QDir(m_mediaRoot).filePath(QStringLiteral(".mabeltv-channels.json")));
-        if (metadataFile.open(QIODevice::ReadOnly)) {
-            metadataRoot = QJsonDocument::fromJson(metadataFile.readAll()).object();
-        }
-    }
+    metadataRoot = mabeltv::state::channelMetadata(m_databasePath);
     if (!metadataRoot.isEmpty()) {
         channelMetadata = metadataRoot.value(QStringLiteral("channels"))
                               .toObject()
@@ -518,14 +501,7 @@ QVariantList TvController::adultLibrary() const
     QVariantList films;
     const QDir directory(m_adultMediaRoot);
     QJsonObject metadataStates;
-    if (!m_databasePath.isEmpty()) {
-        metadataStates = mabeltv::state::adultMedia(m_databasePath);
-    } else {
-        QFile metadataFile(directory.filePath(QStringLiteral(".mabeltv-adult.json")));
-        if (metadataFile.open(QIODevice::ReadOnly)) {
-            metadataStates = QJsonDocument::fromJson(metadataFile.readAll()).object();
-        }
-    }
+    metadataStates = mabeltv::state::adultMedia(m_databasePath);
     const QStringList filters{
         QStringLiteral("*.mp4"), QStringLiteral("*.m4v"), QStringLiteral("*.mkv"),
         QStringLiteral("*.mov"), QStringLiteral("*.webm"), QStringLiteral("*.avi"),

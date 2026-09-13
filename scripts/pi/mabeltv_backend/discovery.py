@@ -232,10 +232,10 @@ class AdultExploreMixin:
                 feedback[key] = saved
                 recorded += 1
             cutoff = now - 90 * 86400
-            store["explore"] = {key: value for key, value in feedback.items()
-                                if isinstance(value, dict)
-                                and float(value.get("last_seen", 0) or 0) >= cutoff}
-            self.write_adult_viewing_store(store)
+            retained = {key: value for key, value in feedback.items()
+                        if isinstance(value, dict)
+                        and float(value.get("last_seen", 0) or 0) >= cutoff}
+            self.save_explore_feedback(retained, retain_since=cutoff)
         return {"ok": True, "recorded": recorded}
 
     def adult_explore(self, list_id: str, media_type: str, page: Any,

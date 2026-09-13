@@ -2,9 +2,9 @@ import unittest
 from unittest import mock
 
 try:
-    from tests.python.test_library_service import LibraryFixture
+    from tests.python.library_test_support import LibraryFixture
 except ModuleNotFoundError:
-    from test_library_service import LibraryFixture
+    from library_test_support import LibraryFixture
 
 
 class FilmGenreTests(unittest.TestCase):

@@ -2,6 +2,7 @@
 #include "core/StateDatabase.h"
 #include "diagnostics/Logging.h"
 #include "hardware/CecTvControl.h"
+#include "ipc/PortalControlServer.h"
 #include "media/MpvVideo.h"
 #include "media/SoundEffects.h"
 
@@ -16,8 +17,6 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkInterface>
-#include <QLocalServer>
-#include <QLocalSocket>
 #include <QProcess>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -81,24 +80,20 @@ QUrl findStartupIntro(const QString &mediaRoot)
     return {};
 }
 
-QJsonObject ownerState(const QString &path, const QString &databasePath)
+QJsonObject ownerState(const QString &databasePath)
 {
-    if (!databasePath.isEmpty()) return mabeltv::state::owner(databasePath);
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) return {};
-    const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
-    return document.isObject() ? document.object() : QJsonObject{};
+    return mabeltv::state::owner(databasePath);
 }
 
-bool ownerSetupComplete(const QString &path, const QString &databasePath)
+bool ownerSetupComplete(const QString &databasePath)
 {
-    return ownerState(path, databasePath)
+    return ownerState(databasePath)
         .value(QStringLiteral("setup_complete")).toBool(false);
 }
 
-QString ownerTvName(const QString &path, const QString &databasePath)
+QString ownerTvName(const QString &databasePath)
 {
-    const QString tvName = ownerState(path, databasePath).value(QStringLiteral("tv_name"))
+    const QString tvName = ownerState(databasePath).value(QStringLiteral("tv_name"))
                                .toString().trimmed();
     return tvName.isEmpty() || tvName.size() > 42
         ? QStringLiteral("KidsTV")
@@ -256,18 +251,9 @@ int main(int argc, char *argv[])
     parser.addVersionOption();
     const QCommandLineOption fullscreenOption(QStringLiteral("fullscreen"),
                                                QStringLiteral("Open directly in full-screen mode."));
-    const QCommandLineOption channelsOption(QStringLiteral("channels"),
-                                             QStringLiteral("Path to channels.json."),
-                                             QStringLiteral("file"));
-    const QCommandLineOption settingsOption(QStringLiteral("settings"),
-                                             QStringLiteral("Path to settings.json."),
-                                             QStringLiteral("file"));
     const QCommandLineOption mediaRootOption(QStringLiteral("media-root"),
                                               QStringLiteral("Root directory containing channel folders."),
                                               QStringLiteral("directory"));
-    const QCommandLineOption stateOption(QStringLiteral("state"),
-                                         QStringLiteral("Path to persistent television state."),
-                                         QStringLiteral("file"));
     const QCommandLineOption databaseOption(QStringLiteral("database"),
                                             QStringLiteral("Path to authoritative MabelTV database."),
                                             QStringLiteral("file"));
@@ -275,10 +261,7 @@ int main(int argc, char *argv[])
                                                 QStringLiteral("Directory for rotating diagnostic logs."),
                                                 QStringLiteral("directory"));
     parser.addOption(fullscreenOption);
-    parser.addOption(channelsOption);
-    parser.addOption(settingsOption);
     parser.addOption(mediaRootOption);
-    parser.addOption(stateOption);
     parser.addOption(databaseOption);
     parser.addOption(logDirectoryOption);
     parser.addPositionalArgument(QStringLiteral("media"),
@@ -305,35 +288,33 @@ int main(int argc, char *argv[])
                                              QStringLiteral("TvController is supplied by the application"));
 
     const QString currentDirectory = QDir::currentPath();
-    const QString channelsPath = parser.isSet(channelsOption)
-        ? parser.value(channelsOption)
-        : QDir(currentDirectory).filePath(QStringLiteral("config/examples/channels.json"));
-    const QString settingsPath = parser.isSet(settingsOption)
-        ? parser.value(settingsOption)
-        : QDir(currentDirectory).filePath(QStringLiteral("config/examples/settings.json"));
     const QString mediaRoot = parser.isSet(mediaRootOption)
         ? parser.value(mediaRootOption)
         : QDir(QStandardPaths::writableLocation(QStandardPaths::MoviesLocation))
               .filePath(QStringLiteral("MabelTV"));
-    const QString statePath = parser.isSet(stateOption)
-        ? parser.value(stateOption)
-        : QDir(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation))
-              .filePath(QStringLiteral("state.json"));
-    const QString databasePath = parser.isSet(databaseOption)
-        ? QFileInfo(parser.value(databaseOption)).absoluteFilePath() : QString();
+    const QString databaseValue = parser.isSet(databaseOption)
+        ? parser.value(databaseOption) : qEnvironmentVariable("MABELTV_DATABASE");
+    if (databaseValue.trimmed().isEmpty()) {
+        qCritical() << "MabelTV requires --database pointing to an initialized database";
+        return 2;
+    }
+    const QString databasePath = QFileInfo(databaseValue).absoluteFilePath();
+    if (!QFileInfo(databasePath).isFile()) {
+        qCritical().noquote() << "MabelTV database is unavailable:"
+                              << QDir::toNativeSeparators(databasePath);
+        return 2;
+    }
     const QString logDirectory = parser.isSet(logDirectoryOption)
         ? parser.value(logDirectoryOption)
         : QDir(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation))
               .filePath(QStringLiteral("logs"));
-    const QString ownerPath = qEnvironmentVariable(
-        "MABELTV_OWNER", QStringLiteral("/var/lib/mabeltv/owner.json"));
-    const QString tvDisplayName = ownerTvName(ownerPath, databasePath);
+    const QString tvDisplayName = ownerTvName(databasePath);
     const QString libraryConfigurationPath = qEnvironmentVariable(
         "MABELTV_LIBRARY_CONFIG", QStringLiteral("/etc/mabeltv/library.conf"));
     const QString setupCode = configurationValue(libraryConfigurationPath,
                                                    QStringLiteral("MABELTV_SETUP_CODE"));
     const bool firstRunSetupRequired = !setupCode.isEmpty()
-        && !ownerSetupComplete(ownerPath, databasePath);
+        && !ownerSetupComplete(databasePath);
     const QString libraryUrl = QStringLiteral("http://%1.local:8080")
                                    .arg(QSysInfo::machineHostName().toLower());
     const QString lanAddress = firstLanAddress();
@@ -348,13 +329,8 @@ int main(int argc, char *argv[])
     Logging::initialize(logDirectory);
     qInfo().noquote() << "Starting KidsTV" << tvDisplayName
                       << QCoreApplication::applicationVersion();
-    qInfo().noquote() << "Channels:" << QDir::toNativeSeparators(channelsPath);
-    qInfo().noquote() << "Settings:" << QDir::toNativeSeparators(settingsPath);
     qInfo().noquote() << "Media root:" << QDir::toNativeSeparators(mediaRoot);
-    qInfo().noquote() << "State:" << QDir::toNativeSeparators(statePath);
-    if (!databasePath.isEmpty()) {
-        qInfo().noquote() << "Database:" << QDir::toNativeSeparators(databasePath);
-    }
+    qInfo().noquote() << "Database:" << QDir::toNativeSeparators(databasePath);
     if (forceOpenGlEs2) {
         qInfo() << "Using OpenGL ES 2 compatibility mode for the libmpv fence-leak workaround";
     }
@@ -367,8 +343,7 @@ int main(int argc, char *argv[])
     }
 
     TvController television;
-    television.initialize(channelsPath, settingsPath, mediaRoot, statePath,
-                          {}, {}, databasePath);
+    television.initialize(databasePath, mediaRoot);
     CecTvControl cecTvControl(tvDisplayName);
     television.setTvControl(&cecTvControl);
     qInfo() << (cecTvControl.available()
@@ -482,241 +457,15 @@ int main(int argc, char *argv[])
     }
 
 #ifdef Q_OS_LINUX
-    // The library service is the only network-facing component.  It forwards
-    // a deliberately small command set over this private, owner-only socket;
-    // the player never opens another TCP port on the home network.
-    QLocalServer portalControlServer;
-    const QString portalControlPath = QStringLiteral("/run/mabeltv/portal-control.sock");
-    QLocalServer::removeServer(portalControlPath);
-    portalControlServer.setSocketOptions(QLocalServer::UserAccessOption);
-    if (!portalControlServer.listen(portalControlPath)) {
+    // The library service is the only network-facing component. It forwards
+    // newline-framed commands over this private owner-only socket.
+    PortalControlServer portalControlServer;
+    QString portalControlError;
+    if (!portalControlServer.listen(
+            QStringLiteral("/run/mabeltv/portal-control.sock"),
+            engine.rootObjects().constFirst(), &cecTvControl, &portalControlError)) {
         qWarning().noquote() << "Unable to start portal control socket:"
-                             << portalControlServer.errorString();
-    } else {
-        QObject *rootObject = engine.rootObjects().constFirst();
-        QObject::connect(&portalControlServer,
-                         &QLocalServer::newConnection,
-                         &application,
-                         [&portalControlServer, rootObject, &cecTvControl]() {
-                             while (portalControlServer.hasPendingConnections()) {
-                                 QLocalSocket *socket = portalControlServer.nextPendingConnection();
-                                 QObject::connect(socket,
-                                                  &QLocalSocket::readyRead,
-                                                  socket,
-                                                  [socket, rootObject, &cecTvControl]() {
-                                                      const QString command = QString::fromUtf8(
-                                                          socket->readAll()).trimmed();
-                                                      if (command.startsWith(QLatin1Char('{'))) {
-                                                          const QJsonDocument request = QJsonDocument::fromJson(
-                                                              command.toUtf8());
-                                                          const QJsonObject object = request.object();
-                                                          if (request.isObject()
-                                                              && object.value(QStringLiteral("command")).toString()
-                                                                  == QStringLiteral("play-external")) {
-                                                              const QFileInfo requested(
-                                                                  object.value(QStringLiteral("path")).toString());
-                                                              const QString path = requested.canonicalFilePath();
-                                                              static const QSet<QString> mediaSuffixes{
-                                                                  QStringLiteral("mp4"), QStringLiteral("m4v"),
-                                                                  QStringLiteral("mkv"), QStringLiteral("mov"),
-                                                                  QStringLiteral("webm"), QStringLiteral("avi"),
-                                                                  QStringLiteral("mpg"), QStringLiteral("mpeg"),
-                                                              };
-                                                              if (requested.isFile()
-                                                                  && path.startsWith(QStringLiteral(
-                                                                      "/media/mabeltv-usb/"))
-                                                                  && mediaSuffixes.contains(
-                                                                      requested.suffix().toLower())) {
-                                                                  QMetaObject::invokeMethod(
-                                                                      rootObject,
-                                                                      "portalExternalPlayback",
-                                                                      Qt::QueuedConnection,
-                                                                      Q_ARG(QVariant, QUrl::fromLocalFile(path)),
-                                                                      Q_ARG(QVariant, object.value(
-                                                                          QStringLiteral("title")).toString()));
-                                                                  socket->write("ok\n");
-                                                              } else {
-                                                                  socket->write("unsupported\n");
-                                                              }
-                                                              socket->disconnectFromServer();
-                                                              return;
-                                                          }
-                                                          if (request.isObject()
-                                                              && object.value(QStringLiteral("command")).toString()
-                                                                  == QStringLiteral("play-programme")) {
-                                                              socket->write("ok\n");
-                                                              socket->flush();
-                                                              QMetaObject::invokeMethod(
-                                                                  rootObject,
-                                                                  "portalPlayChannelProgramme",
-                                                                  Qt::QueuedConnection,
-                                                                  Q_ARG(QVariant, object.value(
-                                                                      QStringLiteral("channel")).toInt()),
-                                                                  Q_ARG(QVariant, object.value(
-                                                                      QStringLiteral("file")).toString()),
-                                                                  Q_ARG(QVariant, object.value(
-                                                                      QStringLiteral("position")).toDouble(0.0)));
-                                                              socket->disconnectFromServer();
-                                                              return;
-                                                          }
-                                                          if (request.isObject()
-                                                              && object.value(QStringLiteral("command")).toString()
-                                                                  == QStringLiteral("save-channel-film-position")) {
-                                                              QMetaObject::invokeMethod(
-                                                                  rootObject,
-                                                                  "portalSetChannelFilmPosition",
-                                                                  Qt::QueuedConnection,
-                                                                  Q_ARG(QVariant, object.value(
-                                                                      QStringLiteral("channel")).toInt()),
-                                                                  Q_ARG(QVariant, object.value(
-                                                                      QStringLiteral("file")).toString()),
-                                                                  Q_ARG(QVariant, object.value(
-                                                                      QStringLiteral("position")).toDouble(0.0)),
-                                                                  Q_ARG(QVariant, object.value(
-                                                                      QStringLiteral("duration")).toDouble(0.0)));
-                                                              socket->write("ok\n");
-                                                              socket->disconnectFromServer();
-                                                              return;
-                                                          }
-                                                           if (request.isObject()
-                                                               && object.value(QStringLiteral("command")).toString()
-                                                                   == QStringLiteral("play-adult-film")) {
-                                                              socket->write("ok\n");
-                                                              socket->flush();
-                                                              QMetaObject::invokeMethod(
-                                                                  rootObject,
-                                                                  "portalPlayAdultFilm",
-                                                                  Qt::QueuedConnection,
-                                                                  Q_ARG(QVariant, object.value(
-                                                                      QStringLiteral("file")).toString()),
-                                                                  Q_ARG(QVariant, object.value(
-                                                                      QStringLiteral("position")).toDouble(0.0)));
-                                                               socket->disconnectFromServer();
-                                                               return;
-                                                           }
-                                                           if (request.isObject()
-                                                               && object.value(QStringLiteral("command")).toString()
-                                                                   == QStringLiteral("tune-channel")) {
-                                                               const int channel = object.value(
-                                                                   QStringLiteral("channel")).toInt(-1);
-                                                               if (channel > 0) {
-                                                                   QMetaObject::invokeMethod(
-                                                                       rootObject,
-                                                                       "portalTuneChannel",
-                                                                       Qt::QueuedConnection,
-                                                                       Q_ARG(QVariant, channel));
-                                                                   socket->write("ok\n");
-                                                               } else {
-                                                                   socket->write("unsupported\n");
-                                                               }
-                                                               socket->disconnectFromServer();
-                                                               return;
-                                                           }
-                                                       }
-                                                       if (command == QStringLiteral("status")) {
-                                                           // Return the most recently observed power state immediately,
-                                                           // while ensuring the next portal poll sees a fresh CEC reading.
-                                                           cecTvControl.getStatus();
-                                                           QJsonObject status{
-                                                               {QStringLiteral("mode"), QStringLiteral("kids")},
-                                                               {QStringLiteral("volume"), rootObject->property(
-                                                                    "portalVolume").toInt()},
-                                                               {QStringLiteral("muted"), rootObject->property(
-                                                                    "portalMuted").toBool()},
-                                                               {QStringLiteral("remote_locked"), rootObject->property(
-                                                                    "portalRemoteLocked").toBool()},
-                                                               {QStringLiteral("standby"), rootObject->property(
-                                                                    "portalStandby").toBool()},
-                                                               {QStringLiteral("connected_tv_available"),
-                                                                cecTvControl.available()},
-                                                               {QStringLiteral("connected_tv_power"),
-                                                                cecTvControl.lastPowerStatus()},
-                                                               {QStringLiteral("subtitles_available"), rootObject->property(
-                                                                    "portalSubtitlesAvailable").toBool()},
-                                                                {QStringLiteral("subtitles_visible"), rootObject->property(
-                                                                     "portalSubtitlesVisible").toBool()},
-                                                                {QStringLiteral("widescreen_available"), rootObject->property(
-                                                                     "portalWidescreenAvailable").toBool()},
-                                                                {QStringLiteral("widescreen_enabled"), rootObject->property(
-                                                                     "portalWidescreenEnabled").toBool()},
-                                                                {QStringLiteral("adult_handoff_available"), rootObject->property(
-                                                                     "portalAdultHandoffAvailable").toBool()},
-                                                           };
-                                                          QObject *adultMode = rootObject->findChild<QObject *>(
-                                                              QStringLiteral("mabeltvAdultMode"));
-                                                          if (adultMode != nullptr
-                                                              && adultMode->property("active").toBool()) {
-                                                              status.insert(QStringLiteral("mode"),
-                                                                            QStringLiteral("adult"));
-                                                              status.insert(QStringLiteral("playing"),
-                                                                            adultMode->property("playing").toBool());
-                                                              status.insert(QStringLiteral("programme"),
-                                                                            adultMode->property("currentFilmName").toString());
-                                                              QObject *adultPlayer = rootObject->findChild<QObject *>(
-                                                                  QStringLiteral("mabeltvAdultPlayer"));
-                                                              status.insert(QStringLiteral("paused"),
-                                                                            adultPlayer != nullptr
-                                                                                && adultPlayer->property("paused").toBool());
-                                                              if (adultPlayer != nullptr) {
-                                                                  status.insert(
-                                                                      QStringLiteral("playback_position"),
-                                                                      adultPlayer->property("playbackPosition").toDouble());
-                                                                  status.insert(
-                                                                      QStringLiteral("playback_duration"),
-                                                                      adultPlayer->property("playbackDuration").toDouble());
-                                                              }
-                                                          }
-                                                          socket->write(QJsonDocument(status).toJson(
-                                                              QJsonDocument::Compact));
-                                                          socket->write("\n");
-                                                          socket->disconnectFromServer();
-                                                          return;
-                                                      }
-                                                      static const QSet<QString> allowed{
-                                                          QStringLiteral("channel-up"),
-                                                          QStringLiteral("channel-down"),
-                                                          QStringLiteral("previous-programme"),
-                                                          QStringLiteral("next-programme"),
-                                                          QStringLiteral("toggle-pause"),
-                                                           QStringLiteral("toggle-subtitles"),
-                                                           QStringLiteral("toggle-widescreen-mode"),
-                                                          QStringLiteral("volume-up"),
-                                                          QStringLiteral("volume-down"),
-                                                          QStringLiteral("toggle-mute"),
-                                                           QStringLiteral("turn-on"),
-                                                           QStringLiteral("turn-off"),
-                                                           QStringLiteral("turn-on-mabel-only"),
-                                                           QStringLiteral("turn-off-mabel-only"),
-                                                          QStringLiteral("toggle-power"),
-                                                          QStringLiteral("open-parent-menu"),
-                                                          QStringLiteral("open-tv-guide"),
-                                                          QStringLiteral("open-channel-menu"),
-                                                          QStringLiteral("close-overlay"),
-                                                           QStringLiteral("restart-programme"),
-                                                           QStringLiteral("enter-adult-mode"),
-                                                           QStringLiteral("continue-in-adult-mode"),
-                                                           QStringLiteral("return-to-mabeltv"),
-                                                           QStringLiteral("toggle-remote-lock"),
-                                                           QStringLiteral("navigate-up"),
-                                                          QStringLiteral("navigate-down"),
-                                                          QStringLiteral("navigate-left"),
-                                                          QStringLiteral("navigate-right"),
-                                                          QStringLiteral("select"),
-                                                      };
-                                                      if (allowed.contains(command)) {
-                                                          QMetaObject::invokeMethod(
-                                                              rootObject,
-                                                              "portalCommand",
-                                                              Qt::QueuedConnection,
-                                                              Q_ARG(QVariant, command));
-                                                          socket->write("ok\n");
-                                                      } else {
-                                                          socket->write("unsupported\n");
-                                                      }
-                                                      socket->disconnectFromServer();
-                                                  });
-                             }
-                         });
+                             << portalControlError;
     }
 #endif
 

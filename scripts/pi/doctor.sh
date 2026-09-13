@@ -48,8 +48,13 @@ else
     warn 'Network discovery is not running; the dashboard may need the Pi IP address'
 fi
 
-if [[ -s /var/lib/mabeltv/owner.json ]]; then
+owner_status=0
+/opt/mabeltv/current/mabeltv-state-migrate owner-status \
+    --database /var/lib/mabeltv/mabeltv.db >/dev/null 2>&1 || owner_status=$?
+if ((owner_status == 0)); then
     pass 'First-time setup has been completed'
+elif ((owner_status != 3)); then
+    fail 'The MabelTV database owner state could not be verified'
 elif [[ -r /etc/mabeltv/library.conf ]] && grep -q '^MABELTV_LIBRARY_PIN=' /etc/mabeltv/library.conf; then
     warn 'Legacy parent PIN is still in use; change it from the dashboard'
 else

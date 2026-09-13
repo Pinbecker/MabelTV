@@ -95,11 +95,6 @@ class UsbMixin:
     def usb_busy_reason(self, identity: str, include_processes: bool = True) -> str | None:
         """Return why a drive must stay awake, or None when standby is safe."""
         identity = self.usb_identity(identity)
-        with self.usb_import_lock:
-            if any(job.get("volume") == identity
-                   and job.get("status") not in {"complete", "error"}
-                   for job in self.usb_imports.values()):
-                return "Wait for the USB import to finish"
         for manifest in self.incoming.glob("*.json"):
             if manifest.name.endswith(".result.json"):
                 continue
@@ -260,10 +255,6 @@ class UsbMixin:
                 volume["sleeping"] = volume["id"] in self.usb_sleeping
         volumes.sort(key=lambda value: (not value["mounted"], value["label"].lower()))
         jobs = self.usb_import_jobs(active_only=True)
-        with self.usb_import_lock:
-            jobs.extend(dict(job) for job in self.usb_imports.values()
-                        if job.get("status") not in {"complete", "error"}
-                        and not any(value.get("id") == job.get("id") for value in jobs))
         return {"volumes": volumes, "imports": jobs}
 
     def usb_resolve(self, identity: str, relative: str = "") -> Path:
@@ -676,17 +667,9 @@ class UsbMixin:
 
     def usb_import_status(self, job_id: str) -> dict[str, Any]:
         if not re.fullmatch(r"[a-f0-9]{32}", job_id):
-            with self.usb_import_lock:
-                legacy = self.usb_imports.get(job_id)
-            if legacy is not None:
-                return dict(legacy)
             raise ValueError("USB import not found")
         batch = self.read_json(self.usb_import_root / f"{job_id}.json", None)
         if not isinstance(batch, dict):
-            with self.usb_import_lock:
-                legacy = self.usb_imports.get(job_id)
-            if legacy is not None:
-                return dict(legacy)
             raise ValueError("USB import not found")
 
         states: list[dict[str, Any]] = []

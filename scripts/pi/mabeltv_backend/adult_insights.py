@@ -21,7 +21,7 @@ class AdultInsightsMixin:
             item.get("history"))
 
     def adult_insights_cache(self) -> dict[str, Any]:
-        value = self.read_json(self.adult_insights_path, {})
+        value = self.read_state("adult_insights")
         if not isinstance(value, dict):
             value = {}
         if not isinstance(value.get("titles"), dict):
@@ -33,7 +33,7 @@ class AdultInsightsMixin:
 
     def write_adult_insights_cache(self, value: dict[str, Any]) -> None:
         value["updated"] = time.time()
-        self.write_json(self.adult_insights_path, value)
+        self.save_adult_insights(value)
 
     @staticmethod
     def adult_insights_metadata(value: dict[str, Any], media_type: str) -> dict[str, Any]:

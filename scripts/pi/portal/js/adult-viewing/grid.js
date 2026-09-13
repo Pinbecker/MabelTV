@@ -255,7 +255,7 @@ function renderAdultViewingList({ loadMore = false } = {}) {
   reconcileAdultViewingRows(target, rows)
   state.rendered = true
   observeAdultViewingMore(more)
-  if (reorderable) window.bindUpNextReorder?.(target)
+  if (reorderable) bindUpNextReorder(target)
 }
 
 async function persistAdultViewingCache() {

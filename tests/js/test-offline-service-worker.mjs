@@ -6,7 +6,14 @@ import vm from 'node:vm'
 
 const projectRoot = new URL('../../', import.meta.url)
 const workerSource = fs.readFileSync(new URL('scripts/pi/service-worker.js', projectRoot), 'utf8')
+const schemaSource = fs.readFileSync(new URL('scripts/pi/mabeltv-offline-schema.js', projectRoot), 'utf8')
 const offlineSource = fs.readFileSync(new URL('scripts/pi/mabeltv-offline.js', projectRoot), 'utf8')
+
+function loadOfflineClient(context) {
+  vm.runInContext(schemaSource, context, { filename: 'mabeltv-offline-schema.js' })
+  context.window.MabelOfflineSchema = context.MabelOfflineSchema
+  vm.runInContext(offlineSource, context, { filename: 'mabeltv-offline.js' })
+}
 
 function request(value) {
   const result = {}
@@ -44,9 +51,12 @@ function workerContext(manifest, chunks, cacheOverrides = {}) {
       location: { origin: 'https://tv.example.test' },
       addEventListener: (name, listener) => { listeners[name] = listener },
       skipWaiting: async () => { skipWaitingCalls += 1 },
-      clients: { claim: async () => {} },
+      clients: { claim: async () => {}, matchAll: async () => [{ id: 'phone' }] },
     },
+    importScripts() {},
   })
+  vm.runInContext(schemaSource, context, { filename: 'mabeltv-offline-schema.js' })
+  context.self.MabelOfflineSchema = context.MabelOfflineSchema
   vm.runInContext(workerSource, context, { filename: 'service-worker.js' })
   return { context, listeners, skipWaitingCalls: () => skipWaitingCalls }
 }
@@ -74,7 +84,6 @@ test('service worker precaches the shell without concurrent request fan-out', as
   assert.equal(added[0], '/')
   assert.ok(added.includes('/portal/js/core/app-cache.js'))
   assert.ok(!added.includes('/portal/vendor/chart.umd.min.js'))
-  assert.ok(!added.includes('/hls.min.js'))
   assert.ok(added.length > 50)
 })
 
@@ -83,7 +92,8 @@ test('service worker keeps the current rollback shell and unrelated persistent c
   const worker = workerContext({ id: 'unused' }, new Map(), {
     keys: async () => [
       'mabeltv-shell-v211', 'mabeltv-shell-v212', 'mabeltv-shell-v213',
-      'mabeltv-shell-v214', 'mabeltv-shell-v215',
+      'mabeltv-shell-v214', 'mabeltv-shell-v215', 'mabeltv-shell-v216',
+      'mabeltv-shell-v217',
       'mabeltv-offline-v1', 'mabeltv-artwork-family-v1', 'another-app-cache',
     ],
     delete: async key => { deleted.push(key); return true },
@@ -94,6 +104,7 @@ test('service worker keeps the current rollback shell and unrelated persistent c
 
   assert.deepEqual(deleted, [
     'mabeltv-shell-v211', 'mabeltv-shell-v212', 'mabeltv-shell-v213',
+    'mabeltv-shell-v214', 'mabeltv-shell-v215',
   ])
 })
 
@@ -131,6 +142,18 @@ test('cached shell navigation remains available when the Pi cannot be reached', 
   }, 'phone')
   assert.equal(response.status, 200)
   assert.match(await response.text(), /MabelTV shell/)
+})
+
+test('remote player navigation is never replaced with the cached portal shell', async () => {
+  const worker = workerContext({ id: 'unused' }, new Map())
+  worker.context.fetch = async request => new Response(
+    request.url.includes('/watch/player') ? '<main>Remote player</main>' : 'wrong',
+    { headers: { 'Content-Type': 'text/html' } },
+  )
+  const response = await dispatchedResponse(worker.listeners.fetch, {
+    url: 'https://tv.example.test/watch/player?stream=token', mode: 'navigate',
+  }, 'phone')
+  assert.match(await response.text(), /Remote player/)
 })
 
 test('protected artwork cache is never exposed to a locked client', async () => {
@@ -252,7 +275,7 @@ function offlineClientContext() {
       dispatchEvent() {},
     },
   })
-  vm.runInContext(offlineSource, context, { filename: 'mabeltv-offline.js' })
+  loadOfflineClient(context)
   return { context, messages }
 }
 
@@ -315,7 +338,7 @@ test('offline client refuses to claim readiness outside a secure context', async
       dispatchEvent() {},
     },
   })
-  vm.runInContext(offlineSource, context, { filename: 'mabeltv-offline.js' })
+  loadOfflineClient(context)
   await assert.rejects(
     context.window.MabelOffline.initialise(),
     /secure HTTPS address/,
@@ -344,7 +367,7 @@ test('offline client shares one in-progress worker initialisation', async () => 
     },
     window: { isSecureContext: true, indexedDB: {}, dispatchEvent() {} },
   })
-  vm.runInContext(offlineSource, context, { filename: 'mabeltv-offline.js' })
+  loadOfflineClient(context)
 
   const first = context.window.MabelOffline.initialise()
   const second = context.window.MabelOffline.initialise()
@@ -408,6 +431,24 @@ test('service worker acknowledges each client access state change', () => {
   })
   assert.equal(acknowledgement.type, 'mabeltv-offline-access')
   assert.equal(acknowledgement.unlocked, false)
+})
+
+test('service worker forgets protected access when a client has closed', async () => {
+  const worker = workerContext({ id: 'unused' }, new Map())
+  let accessUpdate
+  worker.listeners.message({
+    data: { type: 'mabeltv-offline-access', unlocked: true },
+    source: { id: 'phone' },
+    waitUntil: promise => { accessUpdate = promise },
+  })
+  await accessUpdate
+  assert.equal(worker.context.offlineClientAuthorised({ clientId: 'phone' }), true)
+
+  worker.context.self.clients.matchAll = async () => []
+  let activation
+  worker.listeners.activate({ waitUntil: promise => { activation = promise } })
+  await activation
+  assert.equal(worker.context.offlineClientAuthorised({ clientId: 'phone' }), false)
 })
 
 test('offline PIN verifier unlocks protected media without storing the PIN', async () => {

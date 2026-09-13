@@ -3,125 +3,143 @@
 ## Authority boundary
 
 Production uses `/var/lib/mabeltv/mabeltv.db` as the sole authority for
-structured mutable application state. The library service and native player
-both read and write that database. They do not fall back to the pre-migration
-JSON files and do not dual-write JSON projections.
+structured mutable application state. The Python Library service and native Qt
+player share it. Production code does not fall back to, dual-write or silently
+recreate the retired JSON stores.
 
-The original JSON files are retained unchanged as migration evidence and as an
-immediate rollback snapshot. They are not live compatibility stores. Secrets,
-Matter data, LG pairing data, media, artwork, generated media indexes, upload
-work files, logs, and device configuration remain outside SQLite.
+The original JSON files remain immutable migration evidence and rollback input.
+Secrets, OAuth/API credentials, LG pairing data, Matter fabric data, media,
+artwork, generated indexes, operational transfer journals, logs and device
+configuration stay outside SQLite.
 
-`MABELTV_DATABASE` and the Library service's `--database` option may select an
-isolated database for development, migration and tests. Production defaults to
-`/var/lib/mabeltv/mabeltv.db`. Tests must always supply a temporary database and
-temporary media/cache paths; they must never touch `/var/lib`, `/var/cache` or
-`/srv`. The launcher's legacy `--channels`, `--settings` and `--state` arguments
-remain transitional command-line compatibility inputs, not alternate
-authorities.
+Tests and migration tooling must pass an explicit temporary database. Production
+defaults to `/var/lib/mabeltv/mabeltv.db`. Physical owner recovery calls
+`mabeltv-state-migrate reset-owner`, exports the current owner record before
+clearing it transactionally, and never treats retained `owner.json` as live.
 
-## Relational ownership
+## Schema ownership and identities
 
-The database owns:
+`database_schema.py` is the only schema and migration owner. `database.py`
+owns connections, transactions, relational projections and repository
+operations. Schema version 7 contains these main relationships:
 
-- channels, application settings, owner/authentication fields, and player state;
-- viewing sessions and their source attributes;
-- channel and programme metadata and favourites;
-- Adult TV local-film and series/episode associations;
-- title history, watched episode state, watchlist membership, Up Next order,
-  ratings, Explore feedback, availability data, and Insights enrichment state.
+- channels and favourites: `channels`, `channel_metadata`,
+  `channel_favourites`, `programme_favourites` and `channel_metadata_state`;
+- settings/auth/runtime aggregates: `application_settings`, `owner_fields` and
+  `player_fields`;
+- MabelTV history: `viewing_sessions` plus source attributes;
+- local Adult media: `local_media`, `adult_series`, `adult_seasons` and their
+  episode rows;
+- provider identity and descriptive metadata: `external_titles`, with
+  `local_title_links` and `adult_series_title_links` linking local media;
+- Adult viewing state: `adult_titles`, `title_watch_events`, `watchlist_entries`,
+  `up_next_entries`, `title_ratings` and `title_episode_state`;
+- discovery/availability/insights: `explore_feedback`, `availability_cache`,
+  `adult_viewing_state`, `adult_insights_titles`, `adult_insights_failures` and
+  `adult_insights_state`;
+- operations and cache coherency: `schema_migrations`, `imports` and
+  `state_revisions`.
 
-Stable TMDB identities use `(media_type, tmdb_id)`. Local media keeps its
-existing relative path as the stable filesystem identity and preserves its
-existing `library_id`. Flexible provider payloads and unknown legacy fields are
-kept in JSON columns so migration never discards data.
+Stable external identities are `(media_type, tmdb_id)`. Local film identity is
+its existing media-root-relative path plus its preserved `library_id`. Episode
+paths are qualified by series ID, so identical season/episode filenames in two
+series cannot collide. `local_media.series_id` is a foreign key to
+`adult_series`. Explicit link tables connect local items to TMDB titles;
+provider IDs are not inferred only from opaque metadata JSON.
 
-Every write that replaces one established application document runs in one
-`BEGIN IMMEDIATE` transaction. Foreign keys protect title and channel
-relationships. Channel renumbering updates the existing row so related
-playback timelines follow it through `ON UPDATE CASCADE`. WAL mode permits the
-native player and library service to read while the other process commits, and
-both clients wait up to five seconds for a writer.
+Flexible upstream payloads and unknown imported fields remain in checked JSON
+columns where normalizing them would lose data. They are extensions to a
+relational owner, not an alternate store.
 
-Schema version 2 adds `state_revisions`, a small transactional ledger for the
-portal's `library`, `adult_viewing`, `viewing_insights`, and `adult_insights`
-cache domains. Each authoritative state write increments its related revision
-inside the same transaction. The authenticated `/api/bootstrap` response uses
-those counters to validate device-local response snapshots without exposing
-application data before authentication.
+Descriptive title metadata has one relational owner in `external_titles`.
+`adult_titles` owns only personal viewing state and cannot exist without its
+external title. Watchlist membership, Up Next order and personal ratings each
+have exactly one physical owner in their dedicated child tables. The retired
+duplicate relationship columns were removed in schema 5, duplicate title
+metadata columns in schema 6, and schema 7 rejects retired setting values.
+Reads reconstruct the established API
+dictionary shape from joins so the public API contract does not change.
+Explicit `false` membership flags and timestamps or ranks left behind by a
+former Watchlist/Up Next membership normalize to absence. Upgrade and JSON
+import reports count each such normalization. Before retiring schema 1/2
+duplicate columns, the upgrader proves that every explicit positive value and
+its metadata agree with the canonical child row; it aborts on any conflict.
 
-Read-time reconciliation of local Adult playback progress writes only when the
-stored progress differs. An unchanged `GET /api/adult/viewing` is read-only, so
-opening the portal cannot invalidate the snapshot it has just validated.
+## Transaction and revision rules
 
-The native player accepts database schemas 1 and 2 because schema 2 is an
-additive portal-only extension and does not alter any native-owned table. Its
-maximum supported schema must advance with the Python schema version whenever a
-future additive migration remains compatible; the cross-language regression
-test enforces that release contract.
+Connections enable foreign keys, WAL mode and a bounded busy timeout. Writers
+use `BEGIN IMMEDIATE`. Related state, relationship changes and their
+`state_revisions` increment commit together.
 
-## Initial migration and proof
+Use targeted repository operations for hot or independently mutable state:
+field-level settings merges, channel insert/update/delete, selected Adult title
+updates, availability and Explore feedback. Whole-aggregate replacement remains
+valid for a single-writer coherent snapshot such as player runtime state, but it
+must still commit atomically with its revision. Never implement a cross-process
+read/modify/write operation solely under a Python mutex.
 
-`mabeltv-state-migrate import` only creates a new database. It refuses to
-overwrite an existing target and imports from copies of all ten legacy stores.
-Before publishing the database it reconstructs each legacy document from the
-relational rows, compares canonical content and record counts, runs SQLite
-integrity and foreign-key checks, records the source hashes and report in the
-database, and atomically renames the completed candidate.
+Channel renumbering updates the channel, channel/programme metadata, favourites
+and disabled settings in one transaction. Foreign keys cascade channel
+favourites. A uniqueness or validation failure rolls the complete mutation
+back. Local/series, viewing and Insights writers upsert changed rows and delete
+only rows absent from the submitted authoritative aggregate. Stable rows retain
+their identity; writers do not clear and rebuild whole tables.
 
-The production cutover sequence is:
+The revision domains are `library`, `adult_viewing`, `viewing_insights`,
+`adult_insights`, `settings`, `identity` and `player`. Portal snapshots may paint
+only after authentication and only when their stored revision matches the
+bootstrap ledger. Rebuildable caches never advance or become authoritative.
 
-1. Create and copy off-device a complete pre-migration archive.
-2. Build and test the candidate release without changing the active release.
-3. Stop the player and library services for the final short snapshot.
-4. Import that stopped snapshot to a new candidate database and require an
-   exact validation report.
-5. Preserve the JSON files, install the candidate release atomically, and start
-   both services against the database.
-6. Check the active release, service restart counts, HTTP health, SQLite
-   integrity, foreign keys, and the hashes of the retained JSON snapshot.
+## Version compatibility
 
-## Rollback
+Migrations are append-only and checksummed. Never edit a released migration;
+add the next integer migration and update both Python and native maximum/minimum
+support in the same release. The current native release accepts schema 7 only,
+preventing an old binary from writing a database whose invariants it does not
+understand. Cross-language tests enforce the version match.
 
-Before cutover, rollback means deleting only the unpublished candidate database
-and restarting the existing release; the live JSON stores have not changed.
+Upgrade validation requires `PRAGMA integrity_check`,
+`PRAGMA foreign_key_check`, schema/checksum verification and focused semantic
+checks. Migration success means the reconstructed records and fields match the
+source after its reported semantic normalisations, not merely that SQL
+completed.
 
-Immediately after cutover, rollback means stopping both services, preserving a
-SQLite online backup, selecting the previous release, and restarting it against
-the untouched final JSON snapshot.
+## Initial migration evidence and retirement policy
 
-If SQLite has accepted newer user activity, first run
-`mabeltv-state-migrate export-json` into a new directory. That command recreates
-and validates all ten JSON documents without modifying the database or live
-files. An operator can then stop the services, archive both forms, install the
-validated exported files at their original paths, select the previous release,
-and start the services. This is an explicit recovery operation; the production
-application never maintains JSON in parallel.
+`mabeltv-state-migrate import` creates a new candidate database, refuses to
+overwrite an existing target, imports copies of the ten historical JSON stores,
+reconstructs each document for deterministic comparison, records source hashes
+and explicit source normalisations, and runs integrity/foreign-key checks before
+atomic publication. Retired setting names and values are translated at this
+boundary; database triggers prevent the retired `parent_pin`, `crt_effect`,
+`portal_theme`, `portal_design` and `portal_palette` keys from later becoming
+authoritative. Portal Experience appearance is a device-local preference owned
+by `experience-theme.js`. Retained source JSON may be removed only
+after an explicit retention decision and verified
+backups; production code must never regain a compatibility read or dual-write.
 
-## Schema evolution and backup
+Operational JSON under `.incoming` (including `.incoming/.usb-imports`) and
+`.recycle-bin` remains a durable filesystem journal because it coordinates files
+that exist outside the database. It must be written atomically. Disaster backups
+exclude these journals with their associated media; after a total-device restore,
+an interrupted transfer is restarted from its original source.
 
-SQLite `user_version` and the `schema_migrations` table identify the schema.
-Each migration has a version, name, source checksum, and application time. A
-release refuses an unsupported version or a mismatched migration checksum.
-Future schema changes must be additive migration steps, run on a verified
-online backup in a transaction before the new application starts. They must
-never rewrite the initial migration definition.
+## Backup, restore and rollback
 
-Temporary import, export, comparison or dual-read facilities belong only in the
-explicit migration tool and must have a removal point. They must not become an
-application fallback path. A release may support more than one database schema
-version during a controlled rollout, but every running writer still targets one
-authoritative schema and one database.
+Never copy `mabeltv.db` directly while services are active and never back up
+only the main file without WAL state. Use SQLite's online backup API through
+`mabeltv-state-migrate backup`, then validate the snapshot's integrity, foreign
+keys and schema. Package that snapshot with secrets/device configuration,
+a manifest and checksums.
 
-The installer stops both database users for the short upgrade window, creates
-a validated SQLite backup immediately beforehand, and keeps that backup tied
-to the release transaction. If any subsequent asset, unit, service, or health
-check fails, it restores both the prior release and the exact pre-upgrade
-database snapshot before restarting services.
+A fresh restore installs a compatible Git release, restores secrets and device
+configuration with restrictive ownership, restores the validated database
+snapshot while services are stopped, copies media separately, then starts the
+Library and native services and checks schema, integrity, foreign keys, HTTP,
+service restart counts and representative personal state.
 
-Backups use SQLite's online backup API and validate the resulting snapshot with
-`integrity_check` and `foreign_key_check`. Copying only a live `mabeltv.db` file
-is prohibited because committed state may also be present in its WAL file.
-Disaster-recovery archives also include secrets and device/integration
-configuration separately, plus relative-path checksums and the active release
-and schema versions.
+Before a production schema upgrade, create and verify an online backup and
+record the active release. Before the new release is proven, rollback means stop
+both database clients, restore the pre-upgrade database snapshot atomically,
+point `/opt/mabeltv/current` at the matching prior release, restart and re-run
+health/integrity checks. Reverting code alone after a schema upgrade is unsafe.

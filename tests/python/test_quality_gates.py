@@ -78,6 +78,10 @@ class QualityGateTests(unittest.TestCase):
         self.assertLess(manifest_check, unit_check)
         self.assertLess(unit_check, activation)
         self.assertIn('mv -Tf /opt/mabeltv/current.new /opt/mabeltv/current', installer)
+        self.assertIn(
+            'mabeltv-offline-schema.js" "$incoming_dir/mabeltv-offline-schema.js',
+            installer,
+        )
         self.assertIn('restore_failed_release "$release_dir"', installer)
 
 

@@ -173,7 +173,7 @@
     })
     window.addEventListener('online', () => {
       portalConnectionState = 'connecting'
-      void window.attemptPortalReconnect?.()
+      void attemptPortalReconnect()
     })
     $('#watchSearch').oninput = event => { watchSearchText = event.target.value; renderAdultWatch() }
     $('#watchSearchClear').onclick = event => { event.preventDefault(); watchSearchText = ''; renderAdultWatch(); $('#watchSearch').focus() }

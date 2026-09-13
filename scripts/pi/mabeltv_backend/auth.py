@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import secrets
 import socket
 import sys
@@ -45,7 +46,7 @@ class AuthenticationMixin:
         }
 
     def owner(self) -> dict[str, Any]:
-        value = self.read_json(self.owner_path, {})
+        value = self.read_state("owner")
         return value if isinstance(value, dict) else {}
 
     @staticmethod
@@ -74,6 +75,20 @@ class AuthenticationMixin:
             # owner-facing display starts from the generic product name.
             return "", PRODUCT_NAME
 
+    def recovery_tv_identity(self) -> tuple[str, str]:
+        """Recover identity from the root-created physical reset snapshot."""
+        try:
+            recovery = Path(self.owner_recovery_path.read_text(encoding="utf-8").strip())
+            recovery = recovery.resolve(strict=True)
+            recovery_root = (self.owner_recovery_path.parent / "recovery").resolve()
+            if recovery_root not in recovery.parents:
+                raise ValueError("Owner recovery path is outside the recovery directory")
+            saved = json.loads((recovery / "owner.json").read_text(encoding="utf-8"))
+            return self.normalise_tv_identity(
+                saved.get("child_name") or saved.get("tv_name") or PRODUCT_NAME)
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            return "", PRODUCT_NAME
+
     def configured(self) -> bool:
         owner = self.owner()
         return bool(owner.get("setup_complete") and owner.get("pin_hash")
@@ -82,23 +97,6 @@ class AuthenticationMixin:
     def portal_pin_required(self) -> bool:
         """Keep existing installations private unless their owner opts out."""
         return bool(self.owner().get("portal_pin_required", True))
-
-    def migrate_legacy_owner(self) -> None:
-        if self.owner_path.exists():
-            return
-        legacy_pin = self.read_config(self.config_path).get("MABELTV_LIBRARY_PIN", "")
-        if not PIN_PATTERN.fullmatch(legacy_pin):
-            return
-        owner = {
-            "schema_version": 1,
-            "setup_complete": True,
-            "owner_name": "Owner",
-            "tv_name": PRODUCT_NAME,
-            "legacy_default_pin": legacy_pin == "0973",
-            "portal_pin_required": True,
-            **self.pin_record(legacy_pin),
-        }
-        self.write_json(self.owner_path, owner)
 
     def verify_pin(self, pin: str) -> bool:
         owner = self.owner()
@@ -126,8 +124,8 @@ class AuthenticationMixin:
             "portal_pin_required": self.portal_pin_required(),
             "setup_code_required": True,
             # Recovery is an explicit state written by the physical boot-marker
-            # service. A fresh install also seeds channels.json, so the mere
-            # presence of channels cannot distinguish setup from recovery.
+            # service. Seeded channel rows alone cannot distinguish setup from
+            # physical recovery.
             "default_channels": setup_channels,
             "recovering_owner": self.owner_recovery_path.is_file(),
         }
@@ -212,14 +210,13 @@ class AuthenticationMixin:
                     "channels", existing_channels or DEFAULT_CHANNELS))
             for channel in channels:
                 (self.media_root / channel["folder"]).mkdir(mode=0o750, exist_ok=True)
-            self.write_json(self.channels_path, {"schema_version": 1, "channels": channels})
             owner_name = str(payload.get("owner_name", "Owner")).strip()[:60] or "Owner"
             if recovering_owner:
-                child_name, tv_name = self.tv_identity()
+                child_name, tv_name = self.recovery_tv_identity()
             else:
                 child_name, tv_name = self.normalise_tv_identity(
                     payload.get("child_name", "Kids"))
-            self.write_json(self.owner_path, {
+            owner = {
                 "schema_version": 1,
                 "setup_complete": True,
                 "owner_name": owner_name,
@@ -229,7 +226,8 @@ class AuthenticationMixin:
                 "portal_pin_required": True,
                 "created_at": int(time.time()),
                 **self.pin_record(pin),
-            })
+            }
+            self.complete_setup_state(channels, owner)
             self.unlink_with_retry(self.owner_recovery_path)
             self.sessions.clear()
         try:
@@ -252,11 +250,11 @@ class AuthenticationMixin:
         if not PIN_PATTERN.fullmatch(new_pin):
             raise ValueError("Choose a PIN containing 4 to 8 numbers")
         with self.config_lock:
-            owner = self.owner()
-            owner.update(self.pin_record(new_pin))
-            owner["legacy_default_pin"] = False
-            owner["pin_changed_at"] = int(time.time())
-            self.write_json(self.owner_path, owner)
+            self.merge_state_fields("owner", {
+                **self.pin_record(new_pin),
+                "legacy_default_pin": False,
+                "pin_changed_at": int(time.time()),
+            })
             self.sessions.clear()
 
     def set_portal_pin_required(self, payload: dict[str, Any]) -> bool:
@@ -268,23 +266,23 @@ class AuthenticationMixin:
         if not isinstance(required, bool):
             raise ValueError("Choose whether the portal should require a PIN")
         with self.config_lock:
-            owner = self.owner()
-            owner["portal_pin_required"] = required
-            owner["portal_pin_changed_at"] = int(time.time())
-            self.write_json(self.owner_path, owner)
+            self.merge_state_fields("owner", {
+                "portal_pin_required": required,
+                "portal_pin_changed_at": int(time.time()),
+            })
             self.sessions.clear()
         return required
 
     def change_tv_name(self, payload: dict[str, Any]) -> dict[str, str | bool]:
         child_name, tv_name = self.normalise_tv_identity(payload.get("child_name"))
         with self.config_lock:
-            owner = self.owner()
             if not self.configured():
                 raise ValueError("Finish first-time setup before naming this TV")
-            owner["child_name"] = child_name
-            owner["tv_name"] = tv_name
-            owner["tv_name_changed_at"] = int(time.time())
-            self.write_json(self.owner_path, owner)
+            self.merge_state_fields("owner", {
+                "child_name": child_name,
+                "tv_name": tv_name,
+                "tv_name_changed_at": int(time.time()),
+            })
         try:
             self.admin_action("restart-player")
             restarted = True

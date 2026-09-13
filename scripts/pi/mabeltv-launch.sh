@@ -100,9 +100,6 @@ PY
 
 exec "$install_root/mabeltv" \
     --fullscreen \
-    --channels /var/lib/mabeltv/channels.json \
-    --settings /var/lib/mabeltv/settings.json \
     --media-root /srv/mabeltv/media \
-    --state /var/lib/mabeltv/state.json \
     --database "$database_path" \
     --log-dir /var/log/mabeltv

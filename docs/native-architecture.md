@@ -45,7 +45,8 @@ signals, properties and callable methods:
 | `TvControllerActions.cpp` | Remote actions, parent settings, volume/power commands and reload requests. |
 | `TvControllerPortal.cpp` | Authenticated portal playback, Adult progress and library enable/disable operations. |
 | `TvControllerPersistence.cpp` | Loading and atomically saving settings and runtime state. |
-| `StateDatabase.cpp` | Focused SQLite projections used by the native controller; SQLite remains the single persistent authority. |
+| `StateDatabase.cpp` | Focused SQLite projections, field-level settings merges and atomic player snapshots; SQLite remains the single persistent authority. |
+| `ipc/PortalControlServer.cpp` | Buffered newline-framed local control socket and command dispatch into the controller. |
 | `TvControllerPlayback.cpp` | Tuning, timeline selection, episode reuse, playback position and low-level state setters. |
 | `TvControllerFormatting.h` | Small shared formatting helpers used by more than one implementation unit. |
 
@@ -65,3 +66,20 @@ so a refactor cannot create competing channel, playback or standby state.
   `CMakeLists.txt` and remain covered by the native safety tests.
 - Large files must be decomposed by behaviour or view ownership, not merely
   renamed or split at arbitrary line counts.
+
+
+## Local control protocol
+
+`PortalControlServer` is the sole owner of
+`/run/mabeltv/portal-control.sock`. Each Library request uses one short-lived
+connection and one newline-delimited command. The server keeps a per-connection
+buffer so a command split across socket reads is preserved until complete;
+coalesced bytes after the first command are not treated as another request.
+Inputs over 64 KiB are rejected. The router validates command arguments before
+invoking `TvController`; `main.cpp` only wires the server to the application
+lifecycle.
+
+The native process merges only the settings keys it owns. Player state is a
+single-writer coherent aggregate and is replaced atomically. Both operations
+advance their SQLite revision in the same transaction. The native binary must
+reject any schema version outside the exact version supported by that release.

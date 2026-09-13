@@ -12,10 +12,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "pi"))
 
 from mabeltv_backend.discovery import AdultExploreMixin
-from mabeltv_backend.providers import ProviderMetadataMixin
+from mabeltv_backend.adult_metadata import AdultMetadataMixin
 
 
-class ExploreFixture(AdultExploreMixin, ProviderMetadataMixin):
+class ExploreFixture(AdultExploreMixin, AdultMetadataMixin):
     def __init__(self) -> None:
         self.config_lock = threading.RLock()
         self.store = {"schema_version": 1, "titles": {
@@ -63,8 +63,10 @@ class ExploreFixture(AdultExploreMixin, ProviderMetadataMixin):
     def adult_viewing_store(self) -> dict[str, Any]:
         return deepcopy(self.store)
 
-    def write_adult_viewing_store(self, value: dict[str, Any]) -> None:
-        self.store = deepcopy(value)
+    def save_explore_feedback(self, values: dict[str, dict[str, Any]],
+                              retain_since: float) -> None:
+        del retain_since
+        self.store["explore"] = deepcopy(values)
 
     def settings(self) -> dict[str, Any]:
         return {"watchmode_availability_enabled": self.availability_enabled}

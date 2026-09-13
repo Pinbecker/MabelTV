@@ -17,6 +17,10 @@ class PortalDeployContractTests(unittest.TestCase):
 
     def test_fast_path_is_strictly_portal_only(self) -> None:
         self.assertIn("scripts/pi/portal/", self.source)
+        self.assertIn(
+            "'scripts/pi/mabeltv-offline-schema.js' = 'mabeltv-offline-schema.js'",
+            self.source,
+        )
         self.assertIn("mixedNativeChanges", self.source)
         self.assertIn("unsupportedServiceChanges", self.source)
         self.assertIn("will not delete live files", self.source)

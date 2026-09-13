@@ -38,7 +38,7 @@ function Get-PortalTarget {
         'scripts/pi/mabeltv-library.html' = 'mabeltv-library.html'
         'scripts/pi/mabeltv-offline.js' = 'mabeltv-offline.js'
         'scripts/pi/service-worker.js' = 'service-worker.js'
-        'scripts/pi/hls.min.js' = 'hls.min.js'
+        'scripts/pi/mabeltv-offline-schema.js' = 'mabeltv-offline-schema.js'
         'scripts/pi/mabeltv-manifest.json' = 'mabeltv-manifest.json'
         'scripts/pi/mabeltv-icon.png' = 'mabeltv-icon.png'
         'scripts/pi/apple-touch-icon.png' = 'apple-touch-icon.png'

@@ -26,7 +26,5 @@
   window.MabelAssets = Object.freeze({
     chart: () => loadScript('/portal/vendor/chart.umd.min.js',
       () => typeof window.Chart === 'function'),
-    hls: () => loadScript('/hls.min.js',
-      () => typeof window.Hls === 'function'),
   })
 })()

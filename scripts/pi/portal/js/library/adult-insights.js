@@ -411,7 +411,7 @@ function openAdultInsightBrowse(kind, value = '') {
     history.replaceState({ ...(history.state || {}), insights: true }, '', '#insights')
   }
   history.pushState({ insightsChild: true, insightsParent: 'insights' }, '', `#${path}`)
-  window.openInsightsRoute?.(path)
+  openInsightsRoute(path)
 }
 
 function openAdultInsightsRoute(requested) {
@@ -442,9 +442,6 @@ function closeAdultInsightsRoute() {
   $('#adultInsightBrowse')?.classList.add('hidden')
   if (myInsightsMode === 'adult') $('#adultInsightsDashboard')?.classList.remove('hidden')
 }
-
-window.openAdultInsightsRoute = openAdultInsightsRoute
-window.closeAdultInsightsRoute = closeAdultInsightsRoute
 
 function scheduleAdultInsightsPoll() {
   clearTimeout(adultInsightsPoll)
@@ -522,9 +519,6 @@ function loadMyInsights() {
   return setMyInsightsMode(myInsightsMode)
 }
 
-window.setMyInsightsMode = setMyInsightsMode
-window.loadMyInsights = loadMyInsights
-
 $$('[data-insights-mode]').forEach(button => button.addEventListener('click', () =>
   setMyInsightsMode(button.dataset.insightsMode, { updateHistory: true })))
 
@@ -551,7 +545,7 @@ $('#adultInsightBrowseBack')?.addEventListener('click', () => {
   if (history.state?.insightsParent === 'insights') history.back()
   else {
     history.replaceState({ insights: true }, '', '#insights')
-    window.openInsightsRoute?.('insights')
+    openInsightsRoute('insights')
   }
 })
 

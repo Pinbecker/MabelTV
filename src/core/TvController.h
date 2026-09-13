@@ -83,13 +83,10 @@ public:
     explicit TvController(QObject *parent = nullptr);
     ~TvController() override;
 
-    bool initialize(const QString &channelsPath,
-                    const QString &settingsPath,
+    bool initialize(const QString &databasePath,
                     const QString &mediaRoot,
-                    const QString &statePath,
                     ChannelLibrary::MediaInspector mediaInspector = {},
-                    std::function<qint64()> uptimeClock = {},
-                    const QString &databasePath = {});
+                    std::function<qint64()> uptimeClock = {});
 
     [[nodiscard]] int currentChannelNumber() const;
     [[nodiscard]] QString currentChannelName() const;
@@ -241,7 +238,7 @@ private:
         bool enabled = true;
     };
 
-    void loadSettings(const QString &settingsPath, bool preserveRuntimeVolume = false);
+    void loadSettings(bool preserveRuntimeVolume = false);
     void saveSettings();
     void loadState();
     void saveState() const;
@@ -290,9 +287,6 @@ private:
     QTimer m_numericTimer;
     QElapsedTimer m_broadcastClock;
     QElapsedTimer m_processUptimeClock;
-    QString m_statePath;
-    QString m_channelsPath;
-    QString m_settingsPath;
     QString m_mediaRoot;
     QString m_adultMediaRoot;
     QString m_databasePath;

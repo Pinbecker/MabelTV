@@ -11,10 +11,6 @@
       clearTimeout(liveFallbackTimer)
       clearTimeout(liveFrameTimer)
       const video = $('#liveVideo')
-      if (window.liveHls) {
-        window.liveHls.destroy()
-        window.liveHls = null
-      }
       video.pause()
       video.removeAttribute('src')
       video.load()
@@ -45,10 +41,6 @@
       clearTimeout(liveFallbackTimer)
       image.removeAttribute('src')
       image.classList.add('hidden')
-      if (window.liveHls) {
-        window.liveHls.destroy()
-        window.liveHls = null
-      }
       video.pause()
       video.classList.remove('hidden')
       video.removeAttribute('src')
@@ -231,7 +223,7 @@
         : 'Live preview'
       if ($('#liveState')) $('#liveState').textContent = available ? (state.paused ? 'Paused' : 'Live') : 'Offline'
       renderRemoteState(state)
-      window.renderLgTvPowerState?.(state)
+      lgTvRemote.renderPowerState(state)
     }
 
     async function refreshLiveTv(restartStream = false) {
@@ -413,10 +405,6 @@
       const image = $('#liveMjpeg')
       image.removeAttribute('src')
       image.classList.add('hidden')
-      if (window.liveHls) {
-        window.liveHls.destroy()
-        window.liveHls = null
-      }
       api('/api/live/stop', { method: 'POST', body: '{}' }).catch(() => {})
     }
     $$('[data-view-button]').forEach(button => button.onclick = () => {

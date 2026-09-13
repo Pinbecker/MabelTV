@@ -6,14 +6,22 @@ instructions take precedence when they explicitly request a different action.
 
 ## Product and data safety
 
-- The current development Pi SSH target is `pinbecker@mabeltv-512.local`
-  (`192.168.0.27` is the last-known LAN fallback). Use the hostname first.
+- The live development Pi is `pinbecker@mabeltv-512.local`; the portal is
+  `http://mabeltv-512.local:8080`. Use that exact hostname. Do not default to a
+  historical numeric IP or a guessed hostname. If Windows mDNS briefly fails,
+  retry or discover the current address for `mabeltv-512.local` before passing
+  it explicitly to a deployment script.
 
 - The installed iOS PWA is the primary portal. Preserve its approved iPhone
   and iPad behaviour unless the user requests a change.
 - `/var/lib/mabeltv/mabeltv.db` is the sole authority for structured mutable
   application state. Production code must not fall back to, dual-write, or
   silently recreate the retired JSON stores. Read `docs/state-database.md`.
+- Retired JSON paths belong only to explicit import/export tooling and retained
+  migration evidence. Recovery, diagnostics and administrative tools must read
+  or mutate SQLite. The native player and media checker require `--database`;
+  do not restore JSON command-line fallbacks. Persistence tests use a temporary
+  database.
 - Treat schema changes as migrations. Back up with SQLite's online backup API,
   validate integrity and foreign keys, and keep rollback possible. Never copy
   a live database file by itself or edit live state directly.
@@ -42,6 +50,11 @@ coordinator, and `TvController.h` the single QML-facing state machine. Put new
 behaviour in its documented owner. Backend mixins may communicate through the
 composed `Library` object but must not import one another.
 
+`mabeltv_backend/portal.py` owns the ordered private `/portal-app.js` bundle.
+Downloads IndexedDB schema changes belong only in `mabeltv-offline-schema.js`.
+Library test fixtures belong in `tests/python/library_test_support.py`; keep
+domain tests separate and database-backed.
+
 Treat `config/architecture-guardrails.json` limits as ceilings. Do not raise a
 limit, add an exception, weaken an assertion, hide a failure, or update a
 screenshot merely to pass a gate. Preserve public routes, JSON response shapes,
@@ -63,10 +76,14 @@ change deliberately revises that contract.
 6. Do not repeat an unchanged successful gate solely before deployment, commit,
    or push. Record the command and commit/tree it validated; rerun only when the
    tested inputs changed or evidence is stale.
-7. Portal-only deployment uses `scripts/windows/deploy-portal-to-pi.ps1` after
-   explicit deployment authorization. Native changes require Pi build/test and
-   the short atomic install. Capture and verify release, service, restart,
-   watchdog, HTTP, and thermal state at the applicable boundary.
+7. This is a phone-first project: after a requested implementation passes its
+   proportionate checks, deploy it to the live development Pi so the owner can
+   review it in the installed iOS PWA. This is the normal completion path unless
+   the user says to investigate/report only, not deploy, or stop. Portal-only
+   work uses `scripts/windows/deploy-portal-to-pi.ps1`; do not run a native build
+   for it. Backend, SQLite, native and packaging changes use the guarded atomic
+   release path in `docs/quality-gates.md`. Capture and verify release, service,
+   restart, watchdog, HTTP and thermal state at the applicable boundary.
 8. Do not commit or push unless asked. Stage only task files and verify the
    remote head after pushing.
 

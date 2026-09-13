@@ -26,5 +26,5 @@ class ViewingQueueMixin:
             for rank, key in enumerate(ordered, start=1):
                 store["titles"][key]["up_next_rank"] = rank
                 store["titles"][key]["updated"] = now
-            self.write_adult_viewing_store(store)
+            self.save_adult_titles({key: store["titles"][key] for key in ordered})
         return {"ok": True, "keys": ordered}

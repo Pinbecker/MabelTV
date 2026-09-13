@@ -76,3 +76,41 @@ test('Adult TV home cards load availability and open local episodes', async ({ p
   expect(await page.locator('#adultTitleSeasonEpisodes [data-episode="1"]')
     .evaluate(row => row.matches(':focus-visible'))).toBe(false)
 })
+
+test('opened series seasons survive a cold portal reload in the device cache', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'iphone-webkit', 'iPhone WebKit owns the installed-PWA contract')
+  const openSeason = async () => {
+    await page.evaluate(() => openAdultTitle({
+      key: 'tv:6001', media_type: 'tv', tmdb_id: 6001,
+      title: 'Fixture Series', year: '2026',
+    }))
+    await expect(page.locator('#adultTitleSeasons [data-season="1"]')).toBeVisible()
+    await page.locator('#adultTitleSeasons [data-season="1"]').click()
+  }
+
+  await openPortal(page)
+  await page.evaluate(() => window.MabelAppCache.remove('adult-season-v1:6001:1'))
+  await openSeason()
+  await expect(page.locator('#adultTitleSeasonEpisodes .adult-series-episode')).toHaveCount(3)
+  await expect.poll(() => page.evaluate(async () =>
+    Boolean((await window.MabelAppCache.read('adult-season-v1:6001:1'))?.data)))
+    .toBe(true)
+
+  await page.reload()
+  await expect(page.locator('.app-shell')).toBeVisible()
+  await page.evaluate(() => {
+    const networkApi = window.api
+    window.__seasonRequests = 0
+    window.api = (path, options) => {
+      if (path.startsWith('/api/adult/season?')) {
+        window.__seasonRequests += 1
+        return Promise.reject(new Error('The season network response is deliberately unavailable'))
+      }
+      return networkApi(path, options)
+    }
+  })
+  await openSeason()
+  await expect(page.locator('#adultTitleSeasonEpisodes .adult-series-episode'))
+    .toHaveCount(3, { timeout: 1000 })
+  expect(await page.evaluate(() => window.__seasonRequests)).toBe(0)
+})

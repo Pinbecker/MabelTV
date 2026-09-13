@@ -1,8 +1,10 @@
 'use strict'
 
-const SHELL_RELEASE = '215'
+importScripts('/mabeltv-offline-schema.js')
+
+const SHELL_RELEASE = '217'
 const SHELL_CACHE = `mabeltv-shell-v${SHELL_RELEASE}`
-const PREVIOUS_SHELL_CACHE = 'mabeltv-shell-v214'
+const PREVIOUS_SHELL_CACHE = 'mabeltv-shell-v216'
 const SHELL_CACHE_PREFIX = 'mabeltv-shell-v'
 const FAMILY_ARTWORK_CACHE = 'mabeltv-artwork-family-v1'
 const PROTECTED_ARTWORK_CACHE = 'mabeltv-artwork-protected-v1'
@@ -11,9 +13,11 @@ const SHELL_URLS = [
   '/',
   '/manifest.webmanifest',
   '/mabeltv-icon.png',
+  '/mabeltv-offline-schema.js',
   '/mabeltv-offline.js',
   '/portal/js/core/app-cache.js',
   '/portal/js/core/assets.js',
+  '/portal-app.js',
   '/portal/css/tokens.css',
   '/portal/css/base.css',
   '/portal/css/components.css',
@@ -54,45 +58,12 @@ const SHELL_URLS = [
   '/portal/css/lg-tv-remote.css',
   '/portal/css/experience-light.css',
   '/portal/icons.svg',
-  '/portal/js/ui-components.js',
-  '/portal/js/core/foundation.js',
-  '/portal/js/core/scroll.js',
-  '/portal/js/core/navigation.js',
-  '/portal/js/core/live.js',
-  '/portal/js/core/load.js',
   '/portal/js/experience-theme.js',
-  '/portal/js/channel-page.js',
-  '/portal/js/library/adult-library.js',
-  '/portal/js/library/usb-browser.js',
-  '/portal/js/library/viewing-insights.js',
-  '/portal/js/library/adult-insights.js',
-  '/portal/js/library/device-status.js',
-  '/portal/js/library/channels.js',
-  '/portal/js/playback/players.js',
-  '/portal/js/playback/film-library.js',
-  '/portal/js/playback/adult-series.js',
-  '/portal/js/playback/film-catalogue.js',
-  '/portal/js/playback/programmes.js',
-  '/portal/js/playback/downloads.js',
-  '/portal/js/playback/view.js',
-  '/portal/js/adult-viewing/catalogue.js',
-  '/portal/js/adult-viewing/seasons.js',
-  '/portal/js/adult-viewing/details.js',
-  '/portal/js/adult-viewing/up-next-order.js',
-  '/portal/js/adult-viewing/person.js',
-  '/portal/js/adult-viewing/explore.js',
-  '/portal/js/adult-viewing/grid.js',
-  '/portal/js/adult-viewing/home.js',
-  '/portal/js/adult-viewing/filmography.js',
-  '/portal/js/adult-viewing/rating.js',
-  '/portal/js/actions.js',
-  '/portal/js/lg-tv-remote.js',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/apple-touch-icon.png',
 ]
 const LAZY_SHELL_URLS = [
-  '/hls.min.js',
   '/portal/vendor/chart.umd.min.js',
   '/portal/assets/providers/netflix-app.jpg',
   '/portal/assets/providers/prime-video-app.jpg',
@@ -105,9 +76,10 @@ const LAZY_SHELL_URLS = [
   '/portal/assets/providers/paramount-plus-app.jpg',
   '/portal/assets/providers/apple-tv-app.jpg',
 ]
-const DB_NAME = 'mabeltv-offline-v1'
-const DB_VERSION = 2
+const { databaseName: DB_NAME, version: DB_VERSION,
+  upgrade: upgradeDatabase } = self.MabelOfflineSchema
 const unlockedClients = new Set()
+let lastClientPrune = 0
 
 function requestResult(request) {
   return new Promise((resolve, reject) => {
@@ -119,19 +91,7 @@ function requestResult(request) {
 function openDatabase() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION)
-    request.onupgradeneeded = () => {
-      const database = request.result
-      if (!database.objectStoreNames.contains('downloads')) {
-        database.createObjectStore('downloads', { keyPath: 'id' })
-      }
-      if (!database.objectStoreNames.contains('chunks')) {
-        const chunks = database.createObjectStore('chunks', { keyPath: 'key' })
-        chunks.createIndex('downloadId', 'downloadId', { unique: false })
-      }
-      if (!database.objectStoreNames.contains('security')) {
-        database.createObjectStore('security', { keyPath: 'id' })
-      }
-    }
+    request.onupgradeneeded = () => upgradeDatabase(request.result)
     request.onsuccess = () => resolve(request.result)
     request.onerror = () => reject(request.error || new Error('Offline storage failed'))
   })
@@ -249,8 +209,18 @@ self.addEventListener('activate', event => {
         && key !== SHELL_CACHE
         && key !== PREVIOUS_SHELL_CACHE).map(key => caches.delete(key)))),
     self.clients.claim(),
+    pruneUnlockedClients(),
   ]))
 })
+
+async function pruneUnlockedClients() {
+  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+  const active = new Set(clients.map(client => client.id))
+  for (const id of unlockedClients) {
+    if (!active.has(id)) unlockedClients.delete(id)
+  }
+  lastClientPrune = Date.now()
+}
 
 self.addEventListener('message', event => {
   if (event.data?.type === 'mabeltv-activate-update') {
@@ -259,7 +229,9 @@ self.addEventListener('message', event => {
   }
   if (event.data?.type !== 'mabeltv-offline-access') return
   if (event.data.unlocked === true && event.source?.id) unlockedClients.add(event.source.id)
+  else if (event.source?.id) unlockedClients.delete(event.source.id)
   else unlockedClients.clear()
+  event.waitUntil?.(pruneUnlockedClients())
   event.ports?.[0]?.postMessage({ type: 'mabeltv-offline-access', unlocked: event.data.unlocked === true })
 })
 
@@ -310,6 +282,7 @@ async function artworkResponse(request, cacheName, authorised = true) {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url)
   if (url.origin !== self.location.origin) return
+  if (Date.now() - lastClientPrune > 60000) event.waitUntil?.(pruneUnlockedClients())
   if (url.pathname === '/offline-ready') {
     event.respondWith(new Response(JSON.stringify({ ready: true }), {
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
@@ -345,6 +318,13 @@ self.addEventListener('fetch', event => {
     return
   }
   if (event.request.mode === 'navigate') {
+    if (url.pathname === '/watch/player') {
+      event.respondWith(fetch(event.request).catch(() => new Response(
+        'The MabelTV player needs a connection to the Pi', {
+          status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        })))
+      return
+    }
     const response = caches.open(SHELL_CACHE).then(cache => cache.match('/'))
       .then(cached => cached || fetch(event.request))
       .catch(() => new Response('MabelTV is not available offline yet', {

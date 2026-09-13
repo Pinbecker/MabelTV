@@ -151,8 +151,6 @@ async function loadAdultHome({ refresh = false } = {}) {
   }
 }
 
-window.loadAdultHome = loadAdultHome
-
 $('#adultHomeRefresh')?.addEventListener('click', () => {
   adultHomePage = adultHomePage % 3 + 1
   adultHomeLoadedAt = 0

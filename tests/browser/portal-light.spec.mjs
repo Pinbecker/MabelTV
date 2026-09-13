@@ -307,17 +307,6 @@ test('@visual portal accent slider recolours and persists the whole Experience',
 })
 
 
-test('a stale Classic cookie cannot leave the Experience portal', async ({ page, context }, testInfo) => {
-  test.skip(testInfo.project.name !== 'iphone-chromium', 'One compatibility check is enough')
-  await context.addCookies([{
-    name: 'mabeltv_portal_design', value: 'classic', domain: '127.0.0.1', path: '/',
-  }])
-  await openLightPortal(page)
-  await expect(page.locator('body.portal-experience')).toBeVisible()
-  await expect(page.locator('body.portal-classic')).toHaveCount(0)
-})
-
-
 test('@visual light Settings stays contained on iPad', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'ipad-webkit', 'Light tablet contract')
   await openLightPortal(page)

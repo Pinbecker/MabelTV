@@ -39,6 +39,13 @@ PORTAL_STYLES = "\n".join(
 PORTAL_SOURCE = "\n".join(
     (PORTAL_HTML, PORTAL_PARTIALS, PORTAL_SCRIPT, PORTAL_STYLES)
 )
+NATIVE_APPLICATION_SOURCE = "\n".join(
+    path.read_text(encoding="utf-8")
+    for path in (
+        PROJECT_ROOT / "src" / "app" / "main.cpp",
+        PROJECT_ROOT / "src" / "ipc" / "PortalControlServer.cpp",
+    )
+)
 
 
 class PlayerSafetyTests(unittest.TestCase):
@@ -197,9 +204,7 @@ class PlayerSafetyTests(unittest.TestCase):
         )
         adult_qml = ADULT_QML_SOURCE
         main_qml = MAIN_QML_SOURCE
-        application = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
-            encoding="utf-8"
-        )
+        application = NATIVE_APPLICATION_SOURCE
 
         self.assertIn("void playbackStopped();", header)
         self.assertIn("emit playbackStopped();", source)
@@ -252,9 +257,7 @@ class PlayerSafetyTests(unittest.TestCase):
         )
         adult_qml = ADULT_QML_SOURCE
         main_qml = MAIN_QML_SOURCE
-        application = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
-            encoding="utf-8"
-        )
+        application = NATIVE_APPLICATION_SOURCE
 
         self.assertIn("void requestAdultModeShortcut();", controller_header)
         self.assertIn("Adult mode requested from parent-access shortcut", controller_source)
@@ -272,8 +275,7 @@ class PlayerSafetyTests(unittest.TestCase):
         player_source = (PROJECT_ROOT / "src" / "media" / "MpvVideo.cpp").read_text(
             encoding="utf-8")
         main_qml = MAIN_QML_SOURCE
-        application = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
-            encoding="utf-8")
+        application = NATIVE_APPLICATION_SOURCE
 
         self.assertIn("Q_PROPERTY(double videoAspectRatio", player_header)
         self.assertIn('"video-params/aspect"', player_source)
@@ -296,9 +298,7 @@ class PlayerSafetyTests(unittest.TestCase):
     def test_adult_library_is_a_remote_first_media_portal(self) -> None:
         adult_qml = ADULT_QML_SOURCE
         main_qml = MAIN_QML_SOURCE
-        application = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
-            encoding="utf-8"
-        )
+        application = NATIVE_APPLICATION_SOURCE
 
         self.assertIn('text: "Adult Library"', adult_qml)
         self.assertIn("id: detailPanel", adult_qml)
@@ -322,17 +322,15 @@ class PlayerSafetyTests(unittest.TestCase):
     def test_usb_playback_reuses_the_serialised_adult_decoder(self) -> None:
         adult_qml = ADULT_QML_SOURCE
         main_qml = MAIN_QML_SOURCE
-        application = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
-            encoding="utf-8"
-        )
+        application = NATIVE_APPLICATION_SOURCE
         self.assertIn("function portalExternalPlayback", main_qml)
         self.assertIn("pendingExternalSource", main_qml)
         self.assertIn("function requestExternal", adult_qml)
         self.assertIn("onPlaybackStopped", adult_qml)
         self.assertIn("externalStartTimer.restart()", adult_qml)
         self.assertIn('QStringLiteral("play-external")', application)
-        self.assertIn('path.startsWith(QStringLiteral(', application)
-        self.assertIn('"/media/mabeltv-usb/"', application)
+        self.assertIn("path.startsWith(usbRoot)", application)
+        self.assertIn('QStringLiteral("/media/mabeltv-usb")', application)
 
     def test_film_channels_get_a_skippable_countdown_before_starting(self) -> None:
         controller_header = (PROJECT_ROOT / "src" / "core" / "TvController.h").read_text(
@@ -392,12 +390,10 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("void TvController::turnOnMabelOnly()", controller)
         self.assertIn("void TvController::turnOffMabelOnly()", controller)
 
-        application = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
-            encoding="utf-8"
-        )
+        application = NATIVE_APPLICATION_SOURCE
         self.assertIn('QStringLiteral("connected_tv_power")', application)
-        self.assertIn("cecTvControl.lastPowerStatus()", application)
-        self.assertIn("cecTvControl.getStatus();", application)
+        self.assertIn("m_tvControl->lastPowerStatus()", application)
+        self.assertIn("m_tvControl->getStatus();", application)
         self.assertIn("connectedTvStatusTimer.setInterval(10'000)", application)
         self.assertIn('QStringLiteral("playback_position")', application)
         self.assertIn('QStringLiteral("playback_duration")', application)
@@ -446,9 +442,7 @@ class PlayerSafetyTests(unittest.TestCase):
     def test_adult_transition_uses_one_renderer_and_preserves_film_position(self) -> None:
         main_qml = MAIN_QML_SOURCE
         adult_qml = ADULT_QML_SOURCE
-        application = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
-            encoding="utf-8"
-        )
+        application = NATIVE_APPLICATION_SOURCE
 
         self.assertIn("visible: !adultMode.active", main_qml)
         self.assertIn("property bool openingAdultMode", main_qml)

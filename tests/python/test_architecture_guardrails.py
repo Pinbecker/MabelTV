@@ -139,6 +139,36 @@ class ArchitectureGuardrailTests(unittest.TestCase):
         ]
         self.assertEqual(undocumented, [], "Undocumented Library backend modules")
 
+    def test_python_classes_do_not_shadow_their_own_methods(self) -> None:
+        violations = []
+        for path in [PROJECT_ROOT / "scripts/pi/mabeltv-library.py",
+                     *BACKEND_ROOT.glob("*.py")]:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for klass in (node for node in ast.walk(tree)
+                          if isinstance(node, ast.ClassDef)):
+                names = [node.name for node in klass.body
+                         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))]
+                duplicates = sorted({name for name in names if names.count(name) > 1})
+                for name in duplicates:
+                    violations.append(f"{relative(path)}:{klass.name}.{name}")
+        self.assertEqual(violations, [], "A later method silently shadows an earlier one")
+
+    def test_native_runtime_has_no_retired_json_authority(self) -> None:
+        sources = "\n".join(
+            path.read_text(encoding="utf-8", errors="replace")
+            for path in (PROJECT_ROOT / "src").rglob("*")
+            if path.suffix in {".cpp", ".h"}
+            and path.name != "media-check.cpp"
+        )
+        for retired in (".mabeltv-channels.json", ".mabeltv-adult.json",
+                        "m_channelsPath", "m_settingsPath", "m_statePath"):
+            self.assertNotIn(retired, sources)
+        launcher = (PROJECT_ROOT / "scripts/pi/mabeltv-launch.sh").read_text(
+            encoding="utf-8")
+        for option in ("--channels", "--settings", "--state"):
+            self.assertNotIn(option, launcher)
+        self.assertIn('--database "$database_path"', launcher)
+
     def test_every_portal_partial_is_reachable_from_an_entry_document(self) -> None:
         entry_documents = (PROJECT_ROOT / "scripts/pi/mabeltv-library.html",)
         visited: set[Path] = set()
@@ -172,12 +202,38 @@ class ArchitectureGuardrailTests(unittest.TestCase):
             path.read_text(encoding="utf-8") for path in documents
         )
         referenced = set(re.findall(r"/portal/((?:css|js)/[^\"']+)", entries))
+        portal_owner = ast.parse(
+            (BACKEND_ROOT / "portal.py").read_text(encoding="utf-8")
+        )
+        app_sources = next(
+            ast.literal_eval(node.value)
+            for node in portal_owner.body
+            if isinstance(node, ast.Assign)
+            and any(isinstance(target, ast.Name)
+                    and target.id == "PORTAL_APP_SOURCES" for target in node.targets)
+        )
+        referenced.update(f"js/{name}" for name in app_sources)
         assets = {
             path.relative_to(PORTAL_ROOT).as_posix()
             for folder, suffix in (("css", "*.css"), ("js", "*.js"))
             for path in (PORTAL_ROOT / folder).rglob(suffix)
         }
         self.assertEqual(sorted(assets - referenced), [], "Unloaded portal modules")
+
+    def test_portal_bundle_does_not_restore_internal_window_bridges(self) -> None:
+        source = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in (PORTAL_ROOT / "js").rglob("*.js")
+        )
+        internal_names = (
+            "attemptPortalReconnect", "openPrimarySection", "navigateDomainRoute",
+            "loadAdultHome", "bindUpNextReorder", "openInsightsRoute",
+            "openAdultInsightsRoute", "closeAdultInsightsRoute",
+            "setMyInsightsMode", "loadMyInsights", "renderLgTvPowerState",
+            "startLgTvRemote", "stopLgTvRemote", "MabelPortalLibrary", "liveHls",
+        )
+        for name in internal_names:
+            self.assertNotRegex(source, rf"window\.{name}\b")
 
     def test_ai_instructions_cannot_quietly_weaken_the_guardrails(self) -> None:
         instructions = " ".join(
@@ -190,12 +246,46 @@ class ArchitectureGuardrailTests(unittest.TestCase):
             "Keep `mabeltv-library.py` a thin composition shell",
             "`Main.qml` an application coordinator",
             "`TvController.h` the single QML-facing state machine",
-            "after explicit deployment authorization",
+            "This is a phone-first project",
+            "mabeltv-512.local",
             "Do not commit or push unless asked",
             "update a screenshot merely to pass a gate",
         )
         for contract in required_contracts:
             self.assertIn(contract, instructions)
+
+    def test_linux_entrypoints_have_lf_line_endings(self) -> None:
+        attributes = (PROJECT_ROOT / ".gitattributes").read_text(encoding="utf-8")
+        for pattern in ("*.sh text eol=lf", "*.py text eol=lf",
+                        "*.mjs text eol=lf"):
+            self.assertIn(pattern, attributes)
+
+        violations = []
+        for source_root in ("scripts", "packaging", "integrations"):
+            for path in (PROJECT_ROOT / source_root).rglob("*"):
+                if not path.is_file():
+                    continue
+                data = path.read_bytes()
+                if data.startswith(b"#!") and b"\r\n" in data:
+                    violations.append(relative(path))
+        self.assertEqual(
+            violations,
+            [],
+            "Linux entrypoints must survive a Windows-built release archive:\n"
+            + "\n".join(violations),
+        )
+
+    def test_owner_operations_use_the_authoritative_database(self) -> None:
+        recovery = (PROJECT_ROOT / "packaging/linux/mabeltv-owner-recovery").read_text(
+            encoding="utf-8")
+        doctor = (PROJECT_ROOT / "scripts/pi/doctor.sh").read_text(encoding="utf-8")
+        installer = (PROJECT_ROOT / "scripts/pi/install.sh").read_text(encoding="utf-8")
+        self.assertIn('runuser --user mabeltv -- "$state_tool" reset-owner', recovery)
+        self.assertNotIn("mv /var/lib/mabeltv/owner.json", recovery)
+        self.assertIn("mabeltv-state-migrate owner-status", doctor)
+        self.assertIn('mabeltv-state-migrate" owner-status', installer)
+        self.assertIn("owner_status != 3", doctor)
+        self.assertIn("owner_status == 3", installer)
 
 
 if __name__ == "__main__":

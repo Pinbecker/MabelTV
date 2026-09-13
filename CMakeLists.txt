@@ -52,6 +52,8 @@ add_library(mabeltv_core STATIC
     src/core/TvControllerPortal.cpp
     src/core/StateDatabase.cpp
     src/core/StateDatabase.h
+    src/ipc/PortalControlServer.cpp
+    src/ipc/PortalControlServer.h
     src/hardware/CecTvControl.cpp
     src/hardware/CecTvControl.h
     src/library/ChannelLibrary.cpp
@@ -63,7 +65,7 @@ add_library(mabeltv_core STATIC
 )
 
 target_include_directories(mabeltv_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
-target_link_libraries(mabeltv_core PUBLIC Qt6::Core Qt6::Concurrent Qt6::Sql)
+target_link_libraries(mabeltv_core PUBLIC Qt6::Core Qt6::Concurrent Qt6::Network Qt6::Sql)
 
 if(MSVC)
     target_compile_options(mabeltv_core PRIVATE /W4 /permissive-)
@@ -163,6 +165,8 @@ if(BUILD_TESTING)
 
     qt_add_executable(mabeltv_core_tests
         tests/unit/CoreTests.cpp
+        tests/unit/TestStateFixture.cpp
+        tests/unit/TestStateFixture.h
     )
     target_link_libraries(mabeltv_core_tests PRIVATE mabeltv_core Qt6::Test)
 
@@ -171,6 +175,7 @@ if(BUILD_TESTING)
         NAME mabeltv_library_service_tests
         COMMAND "${Python3_EXECUTABLE}" -m unittest discover
                 -s "${CMAKE_CURRENT_SOURCE_DIR}/tests/python"
+                -t "${CMAKE_CURRENT_SOURCE_DIR}"
                 -p "test_*.py"
     )
     find_program(NODE_EXECUTABLE node REQUIRED)

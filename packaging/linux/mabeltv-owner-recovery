@@ -8,26 +8,49 @@ boot_root=/boot/firmware
 marker="$boot_root/mabeltv-reset-pin"
 [[ -e "$marker" ]] || exit 0
 
-stamp="$(date +%Y%m%d-%H%M%S)"
-recovery="/var/lib/mabeltv/recovery/$stamp-owner-reset"
-install -d -o mabeltv -g mabeltv -m 0750 "$recovery"
-# Record an explicit recovery state before removing the credential. A fresh
-# installation also has a seeded channels.json, so channels alone cannot tell
-# the dashboard whether it must preserve an established line-up verbatim.
 pending="/var/lib/mabeltv/owner-recovery-pending"
-pending_temporary="$(mktemp /var/lib/mabeltv/owner-recovery-pending.XXXXXX)"
-printf '%s\n' "$recovery" > "$pending_temporary"
-chown mabeltv:mabeltv "$pending_temporary"
-chmod 0640 "$pending_temporary"
-mv -f -- "$pending_temporary" "$pending"
-if [[ -f /var/lib/mabeltv/owner.json ]]; then
-    mv /var/lib/mabeltv/owner.json "$recovery/owner.json"
-    chown mabeltv:mabeltv "$recovery/owner.json"
-    chmod 0640 "$recovery/owner.json"
-fi
-if [[ -f /etc/mabeltv/library.conf ]]; then
-    cp -a /etc/mabeltv/library.conf "$recovery/library.conf"
-    chown mabeltv:mabeltv "$recovery/library.conf"
+state_tool=/opt/mabeltv/current/mabeltv-state-migrate
+[[ -x "$state_tool" ]] || {
+    printf 'The active release does not provide the SQLite recovery tool.\n' >&2
+    exit 1
+}
+install -d -o mabeltv -g mabeltv -m 0750 /var/lib/mabeltv/recovery
+
+if "$state_tool" owner-status --database /var/lib/mabeltv/mabeltv.db \
+        >/dev/null 2>&1; then
+    recovery="$(mktemp -d /var/lib/mabeltv/recovery/owner-reset-XXXXXXXX)"
+    chown mabeltv:mabeltv "$recovery"
+    chmod 0750 "$recovery"
+    if [[ -f /etc/mabeltv/library.conf ]]; then
+        cp -a /etc/mabeltv/library.conf "$recovery/library.conf"
+        chown mabeltv:mabeltv "$recovery/library.conf"
+    fi
+    # Record recovery intent before clearing the credential. If power fails
+    # after the database commit, the next boot reuses this verified export.
+    pending_temporary="$(mktemp /var/lib/mabeltv/owner-recovery-pending.XXXXXX)"
+    printf '%s\n' "$recovery" > "$pending_temporary"
+    chown mabeltv:mabeltv "$pending_temporary"
+    chmod 0640 "$pending_temporary"
+    mv -f -- "$pending_temporary" "$pending"
+    runuser --user mabeltv -- "$state_tool" reset-owner \
+        --database /var/lib/mabeltv/mabeltv.db \
+        --output "$recovery/owner.json"
+else
+    status=$?
+    if ((status != 3)); then
+        printf 'The SQLite owner state could not be verified; recovery was not attempted.\n' >&2
+        exit "$status"
+    fi
+    # Resume safely if power failed after the owner was cleared.
+    [[ -s "$pending" ]] || {
+        printf 'SQLite has no owner and no recoverable reset is pending.\n' >&2
+        exit 1
+    }
+    recovery="$(cat -- "$pending")"
+    [[ "$recovery" == /var/lib/mabeltv/recovery/* && -s "$recovery/owner.json" ]] || {
+        printf 'The pending owner recovery snapshot is invalid.\n' >&2
+        exit 1
+    }
 fi
 
 setup_code_number="$(( $(od -An -N4 -tu4 /dev/urandom) % 1000000 ))"

@@ -24,11 +24,19 @@ if ($MediaFile) {
     if (-not $MediaRoot) {
         $MediaRoot = & (Join-Path $PSScriptRoot 'generate-dev-library.ps1')
     }
+    $database = Join-Path $repositoryRoot 'dev-data\mabeltv.db'
+    $stateTool = Join-Path $repositoryRoot 'scripts\pi\mabeltv-state-migrate.py'
+    if (Test-Path -LiteralPath $database) {
+        & python $stateTool upgrade --database $database | Out-Null
+    } else {
+        & python $stateTool bootstrap `
+            --database $database `
+            --channels (Join-Path $repositoryRoot 'config\examples\channels.json') `
+            --settings (Join-Path $repositoryRoot 'config\examples\settings.json') | Out-Null
+    }
     $arguments += @(
-        '--channels', (Join-Path $repositoryRoot 'config\examples\channels.json'),
-        '--settings', (Join-Path $repositoryRoot 'config\examples\settings.json'),
         '--media-root', ([System.IO.Path]::GetFullPath($MediaRoot)),
-        '--state', (Join-Path $repositoryRoot 'dev-data\state.json'),
+        '--database', $database,
         '--log-dir', (Join-Path $repositoryRoot 'dev-data\logs')
     )
 }

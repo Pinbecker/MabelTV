@@ -27,6 +27,7 @@ test('every first-party JavaScript entry point parses', () => {
     'tests/browser',
   ].map(relative => path.join(projectRoot, relative))
   const individualScripts = [
+    'scripts/pi/mabeltv-offline-schema.js',
     'scripts/pi/mabeltv-offline.js',
     'scripts/pi/service-worker.js',
   ].map(relative => path.join(projectRoot, relative))

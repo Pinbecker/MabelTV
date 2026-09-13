@@ -5,9 +5,9 @@ from pathlib import Path
 from unittest import mock
 
 try:
-    from tests.python.test_library_service import LibraryFixture, mabeltv_library
+    from tests.python.library_test_support import LibraryFixture, mabeltv_library
 except ModuleNotFoundError:
-    from test_library_service import LibraryFixture, mabeltv_library
+    from library_test_support import LibraryFixture, mabeltv_library
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -51,7 +51,10 @@ class AdultHandoffTests(unittest.TestCase):
             encoding="utf-8")
         adult = (PROJECT_ROOT / "qml/AdultModeOverlay.qml").read_text(
             encoding="utf-8")
-        native = (PROJECT_ROOT / "src/app/main.cpp").read_text(encoding="utf-8")
+        native = "\n".join(
+            (PROJECT_ROOT / path).read_text(encoding="utf-8")
+            for path in ("src/app/main.cpp", "src/ipc/PortalControlServer.cpp")
+        )
 
         self.assertIn('command === "continue-in-adult-mode"', main)
         self.assertIn("pendingExternalPosition = position", main)

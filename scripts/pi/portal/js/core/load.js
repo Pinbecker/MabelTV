@@ -57,7 +57,6 @@
 
     function applyLibraryData(data, preferredUploadChannel = null) {
       library = data
-      window.MabelPortalLibrary = library
       applyTvName()
       const channels = library.channels || []
       const upload = $('#channel')

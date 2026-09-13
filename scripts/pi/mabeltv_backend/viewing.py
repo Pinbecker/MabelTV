@@ -24,7 +24,7 @@ from .constants import (
 class ViewingMixin:
     def load_viewing_store(self) -> dict[str, Any]:
         """Load the compact, private session history kept on this appliance."""
-        value = self.read_json(self.viewing_history_path, {})
+        value = self.read_state("viewing")
         sessions = value.get("sessions", []) if isinstance(value, dict) else []
         if not isinstance(sessions, list):
             sessions = []
@@ -65,7 +65,7 @@ class ViewingMixin:
                 or any(not str(item.get("id") or "") for item in sessions
                        if isinstance(item, dict))):
             try:
-                self.write_json(self.viewing_history_path, store)
+                self.write_state("viewing", store)
             except OSError as error:
                 print(f"Could not migrate viewing history: {error}",
                       file=sys.stderr, flush=True)
@@ -103,7 +103,7 @@ class ViewingMixin:
         if mode.get("mode") == "adult":
             return None
 
-        state = self.read_json(self.player_state_path, {})
+        state = self.read_state("player")
         if (not isinstance(state, dict) or state.get("standby") is True
                 or state.get("playback_paused") is True):
             return None
@@ -264,7 +264,7 @@ class ViewingMixin:
             now = time.monotonic()
             if not self.viewing_dirty or (not force and now - self.viewing_last_flush < 60):
                 return
-            self.write_json(self.viewing_history_path, self.viewing_store)
+            self.write_state("viewing", self.viewing_store)
             self.viewing_dirty = False
             self.viewing_last_flush = now
 

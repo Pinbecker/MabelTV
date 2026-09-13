@@ -1,8 +1,8 @@
 (() => {
   'use strict'
 
-  const DB_NAME = 'mabeltv-offline-v1'
-  const DB_VERSION = 2
+  const { databaseName: DB_NAME, version: DB_VERSION,
+    upgrade: upgradeDatabase } = window.MabelOfflineSchema
   const CHUNK_SIZE = 4 * 1024 * 1024
   const PIN_ITERATIONS = 260000
   const SECURITY_ID = 'portal'
@@ -40,19 +40,7 @@
   function openDatabase() {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION)
-      request.onupgradeneeded = () => {
-        const database = request.result
-        if (!database.objectStoreNames.contains('downloads')) {
-          database.createObjectStore('downloads', { keyPath: 'id' })
-        }
-        if (!database.objectStoreNames.contains('chunks')) {
-          const chunks = database.createObjectStore('chunks', { keyPath: 'key' })
-          chunks.createIndex('downloadId', 'downloadId', { unique: false })
-        }
-        if (!database.objectStoreNames.contains('security')) {
-          database.createObjectStore('security', { keyPath: 'id' })
-        }
-      }
+      request.onupgradeneeded = () => upgradeDatabase(request.result)
       request.onsuccess = () => resolve(request.result)
       request.onerror = () => reject(request.error || new Error('Private device storage is unavailable'))
     })

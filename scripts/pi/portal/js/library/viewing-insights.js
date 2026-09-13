@@ -490,13 +490,13 @@
       if (requested.startsWith('insights/adult/')) {
         $('.insights-page')?.classList.add('is-child')
         $('#viewingRangeControls')?.classList.add('hidden')
-        window.setMyInsightsMode?.('adult', { load: false })
-        window.openAdultInsightsRoute?.(requested)
+        setMyInsightsMode('adult', { load: false })
+        openAdultInsightsRoute(requested)
         openView('insights', { instantScroll: true, resetScroll: true })
         resetViewScroll()
         return
       }
-      window.closeAdultInsightsRoute?.()
+      closeAdultInsightsRoute()
       const previousScreen = viewingInsightsRoute.screen
       const item = requested.match(/^insights\/item\/(.+)\/(summary|patterns|history)$/)
       const period = requested.match(/^insights\/period\/(\d{4}-\d{2}-\d{2})\/([0-3])$/)
@@ -512,7 +512,7 @@
       }
       $('.insights-page')?.classList.toggle('is-child', viewingInsightsRoute.screen !== 'dashboard')
       $('#viewingRangeControls')?.classList.toggle('hidden', viewingInsightsRoute.screen !== 'dashboard')
-      window.setMyInsightsMode?.(requested === 'insights' ? 'adult' : 'mabel', { load: false })
+      setMyInsightsMode(requested === 'insights' ? 'adult' : 'mabel', { load: false })
       openView('insights', { instantScroll: true, resetScroll: true })
       renderInsightsRoute()
       if (saved) {
@@ -521,7 +521,6 @@
       }
       else resetViewScroll()
     }
-    window.openInsightsRoute = openInsightsRoute
     if (location.hash === '#insights' || location.hash.startsWith('#insights/')) {
       queueMicrotask(() => openInsightsRoute(location.hash.slice(1)))
     }

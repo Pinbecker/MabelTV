@@ -17,7 +17,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from .constants import CHUNK_LIMIT, SESSION_SECONDS
 from .lg import RemoteTvActiveError
-from .portal import INDEX, SERVICE_ROOT, WATCH_PAGE
+from .portal import INDEX, PORTAL_APP_SCRIPT, SERVICE_ROOT, WATCH_PAGE
 
 STATIC_ASSETS = {
     "/mabeltv-icon.png": ("mabeltv-icon.png", "image/png"),
@@ -26,7 +26,7 @@ STATIC_ASSETS = {
     "/apple-touch-icon-180x180.png": ("apple-touch-icon.png", "image/png"),
     "/icons/icon-192.png": ("icons/icon-192.png", "image/png"),
     "/icons/icon-512.png": ("icons/icon-512.png", "image/png"),
-    "/hls.min.js": ("hls.min.js", "text/javascript; charset=utf-8"),
+    "/mabeltv-offline-schema.js": ("mabeltv-offline-schema.js", "text/javascript; charset=utf-8"),
     "/mabeltv-offline.js": ("mabeltv-offline.js", "text/javascript; charset=utf-8"),
     "/service-worker.js": ("service-worker.js", "text/javascript; charset=utf-8"),
     "/manifest.json": ("mabeltv-manifest.json", "application/manifest+json"),
@@ -285,6 +285,14 @@ class Handler(BaseHTTPRequestHandler):
         self.stream_bytes(asset_path.read_bytes(), content_type)
         return True
 
+    def serve_portal_application(self) -> bool:
+        if urlsplit(self.path).path != "/portal-app.js":
+            return False
+        self.stream_bytes(
+            self.server.portal_app_script.encode("utf-8"),
+            "text/javascript; charset=utf-8")
+        return True
+
     def serve_portal_asset(self, path: str) -> bool:
         if not path.startswith("/portal/"):
             return False
@@ -439,7 +447,8 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == "/":
                 self.serve_html(INDEX, inline_script="<script>" in INDEX)
                 return
-            if self.serve_static_asset() or self.serve_portal_asset(parsed.path):
+            if self.serve_portal_application() or self.serve_static_asset() \
+                    or self.serve_portal_asset(parsed.path):
                 return
             if parsed.path in {"/api/external/media", "/api/offline/media"}:
                 token = str(query.get("stream", [""])[0])
@@ -620,9 +629,11 @@ class LibraryServer(ThreadingHTTPServer):
     allow_reuse_address = True
     request_queue_size = 16
 
-    def __init__(self, address: tuple[str, int], library: Any) -> None:
+    def __init__(self, address: tuple[str, int], library: Any,
+                 *, portal_app_script: str = PORTAL_APP_SCRIPT) -> None:
         super().__init__(address, Handler)
         self.library = library
+        self.portal_app_script = portal_app_script
         self.worker_slots = threading.BoundedSemaphore(12)
         self.library.start_viewing_tracker()
 

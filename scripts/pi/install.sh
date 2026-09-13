@@ -223,7 +223,7 @@ install -o root -g root -m 0755 "$source_root/scripts/pi/mabeltv-library.py" "$i
 install -o root -g root -m 0755 "$source_root/scripts/pi/mabeltv-state-migrate.py" "$incoming_dir/mabeltv-state-migrate"
 install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-library.html" "$incoming_dir/mabeltv-library.html"
 install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-watch.html" "$incoming_dir/mabeltv-watch.html"
-install -o root -g root -m 0644 "$source_root/scripts/pi/hls.min.js" "$incoming_dir/hls.min.js"
+install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-offline-schema.js" "$incoming_dir/mabeltv-offline-schema.js"
 install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-offline.js" "$incoming_dir/mabeltv-offline.js"
 install -o root -g root -m 0644 "$source_root/scripts/pi/service-worker.js" "$incoming_dir/service-worker.js"
 install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-icon.png" "$incoming_dir/mabeltv-icon.png"
@@ -537,12 +537,17 @@ printf 'Mabel TV Library is available on this home network at http://%s.local:80
 if systemctl is-active --quiet mabeltv-matter.service 2>/dev/null; then
     printf 'Alexa Matter setup: sudo mabeltv-alexa-pairing\n'
 fi
-if [[ ! -s /var/lib/mabeltv/owner.json ]]; then
+owner_status=0
+"$release_dir/mabeltv-state-migrate" owner-status \
+    --database /var/lib/mabeltv/mabeltv.db >/dev/null 2>&1 || owner_status=$?
+if ((owner_status == 3)); then
     setup_code="$(sed -n 's/^MABELTV_SETUP_CODE=//p' /etc/mabeltv/library.conf)"
     if [[ -n "$setup_code" ]]; then
         printf '\nFIRST-TIME SETUP CODE: %s\n' "$setup_code"
         printf 'Open http://%s.local:8080 and follow the three short setup steps.\n' "$(hostname)"
     fi
+elif ((owner_status != 0)); then
+    printf 'Warning: the installed database owner state could not be verified.\n' >&2
 fi
 if [[ "$product_install" == "true" ]]; then
     printf 'Restart the Raspberry Pi to enter appliance mode: sudo reboot\n'

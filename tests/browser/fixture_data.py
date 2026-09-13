@@ -105,9 +105,6 @@ LIBRARY_PAYLOAD: dict[str, Any] = {
     "appearance": {
         "parent_overlay_style": "classic",
         "tv_guide_enabled": False,
-        "portal_theme": "dark",
-        "portal_design": "current",
-        "portal_palette": "ember",
     },
     "tv_settings": {
         "playback_mode": "continuous",

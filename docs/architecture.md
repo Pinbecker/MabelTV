@@ -48,8 +48,9 @@ reach the same `TvController` operations through the private player socket.
 never block MabelTV standby or wake. Avahi advertises the local address.
 
 The retained pre-migration JSON documents are recovery evidence, not live
-stores. Their compatibility command-line paths remain available to migration
-and development tooling but production reads and writes use `mabeltv.db` only.
+stores. Only the explicit import/validation tool and test fixtures accept those
+documents; runtime commands and production reads and writes use `mabeltv.db`
+only.
 See [MabelTV state database](state-database.md) for the authority, migration,
 backup and rollback contracts. The installed HTTPS PWA has separate device-side
 shell, response, artwork and Downloads stores described in

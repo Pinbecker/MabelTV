@@ -1,6 +1,6 @@
 'use strict'
 
-;(() => {
+const lgTvRemote = (() => {
   const STATUS_INTERVAL_MS = 8000
   const POINTER_INTERVAL_MS = 36
   let statusTimer = null
@@ -220,18 +220,18 @@
     })
   }
 
-  window.renderLgTvPowerState = renderSharedPowerState
-
-  window.startLgTvRemote = () => {
+  function start() {
     renderSharedPowerState()
     refresh()
     if (!statusTimer) statusTimer = window.setInterval(refresh, STATUS_INTERVAL_MS)
   }
 
-  window.stopLgTvRemote = () => {
+  function stop() {
     if (statusTimer) window.clearInterval(statusTimer)
     statusTimer = null
     pointerContacts.clear()
     trackpad?.classList.remove('is-active')
   }
+
+  return Object.freeze({ renderPowerState: renderSharedPowerState, start, stop })
 })()

@@ -1,6 +1,8 @@
 #include "core/TvController.h"
 #include "core/StateDatabase.h"
 #include "hardware/CecTvControl.h"
+#include "ipc/PortalControlServer.h"
+#include "TestStateFixture.h"
 #include "library/ChannelLibrary.h"
 #include "library/ShuffleBag.h"
 
@@ -12,6 +14,7 @@
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QTemporaryDir>
+#include <QUuid>
 #include <QtTest>
 
 #include <cmath>
@@ -44,6 +47,7 @@ private slots:
     void filmChannelBookmarksPersistAcrossTvAndPortalPlayback();
     void adultLibraryIsSeparateAndParentOnly();
     void sqliteStateIsReadableAndWritableByNativeController();
+    void portalControlCommandsAreNewlineFramed();
 };
 
 void CoreTests::shuffleBagVisitsEveryItemBeforeRepeating()
@@ -97,8 +101,11 @@ void CoreTests::channelLibraryLoadsAndSortsValidChannels()
     })");
     configuration.close();
 
+    const QString databasePath = TestStateFixture::databaseFromJsonFixtures(
+        configuration.fileName(), directory.filePath(QStringLiteral("settings.json")),
+        directory.filePath(QStringLiteral("state.json")));
     const ChannelLibraryResult result = ChannelLibrary::load(
-        configuration.fileName(),
+        databasePath,
         directory.filePath(QStringLiteral("media")),
         [](const QString &) { return MediaInspection{true, true, 42.0, QStringLiteral("h264"), {}}; });
 
@@ -127,8 +134,11 @@ void CoreTests::channelLibraryKeepsMissingFoldersAsNoSignalChannels()
     })");
     configuration.close();
 
+    const QString databasePath = TestStateFixture::databaseFromJsonFixtures(
+        configuration.fileName(), directory.filePath(QStringLiteral("settings.json")),
+        directory.filePath(QStringLiteral("state.json")));
     const ChannelLibraryResult result = ChannelLibrary::load(
-        configuration.fileName(), directory.filePath(QStringLiteral("media")), [](const QString &) {
+        databasePath, directory.filePath(QStringLiteral("media")), [](const QString &) {
             return MediaInspection{true, true, 0.0, QStringLiteral("h264"), {}};
         });
 
@@ -163,7 +173,7 @@ void CoreTests::controllerTunesNumericChannelsAndHonoursVolumeLimit()
     settings.close();
 
     TvController controller;
-    QVERIFY(controller.initialize(configuration.fileName(),
+    QVERIFY(TestStateFixture::initializeController(controller, configuration.fileName(),
                                   settings.fileName(),
                                   directory.filePath(QStringLiteral("media")),
                                   directory.filePath(QStringLiteral("state.json")),
@@ -206,7 +216,7 @@ void CoreTests::controllerClearsNoSignalWhenReturningToPopulatedChannel()
     configuration.close();
 
     TvController controller;
-    QVERIFY(controller.initialize(configuration.fileName(),
+    QVERIFY(TestStateFixture::initializeController(controller, configuration.fileName(),
                                   directory.filePath(QStringLiteral("settings.json")),
                                   directory.filePath(QStringLiteral("media")),
                                   directory.filePath(QStringLiteral("state.json")),
@@ -249,7 +259,7 @@ void CoreTests::controllerSkipsAnEpisodeAfterPlaybackFailure()
     configuration.close();
 
     TvController controller;
-    QVERIFY(controller.initialize(configuration.fileName(),
+    QVERIFY(TestStateFixture::initializeController(controller, configuration.fileName(),
                                   directory.filePath(QStringLiteral("settings.json")),
                                   directory.filePath(QStringLiteral("media")),
                                   directory.filePath(QStringLiteral("state.json")),
@@ -297,7 +307,7 @@ void CoreTests::controllerDoesNotPersistWatchdogQuarantine()
     };
 
     TvController controller;
-    QVERIFY(controller.initialize(configuration.fileName(),
+    QVERIFY(TestStateFixture::initializeController(controller, configuration.fileName(),
                                   directory.filePath(QStringLiteral("settings.json")),
                                   directory.filePath(QStringLiteral("media")),
                                   statePath,
@@ -308,7 +318,7 @@ void CoreTests::controllerDoesNotPersistWatchdogQuarantine()
     controller.prepareForPlaybackRestart(QStringLiteral("synthetic frame stall"));
 
     TvController restored;
-    QVERIFY(restored.initialize(configuration.fileName(),
+    QVERIFY(TestStateFixture::initializeController(restored, configuration.fileName(),
                                 directory.filePath(QStringLiteral("settings.json")),
                                 directory.filePath(QStringLiteral("media")),
                                 statePath,
@@ -350,7 +360,7 @@ void CoreTests::controllerMovesBetweenProgrammesInFilenameOrder()
     settings.close();
 
     TvController controller;
-    QVERIFY(controller.initialize(configuration.fileName(),
+    QVERIFY(TestStateFixture::initializeController(controller, configuration.fileName(),
                                   directory.filePath(QStringLiteral("settings.json")),
                                   directory.filePath(QStringLiteral("media")),
                                   directory.filePath(QStringLiteral("state.json")),
@@ -388,7 +398,7 @@ void CoreTests::controllerMovesBetweenProgrammesInFilenameOrder()
     QCOMPARE(channelDisplays.count(), 1);
 
     TvController restored;
-    QVERIFY(restored.initialize(configuration.fileName(),
+    QVERIFY(TestStateFixture::initializeController(restored, configuration.fileName(),
                                 settings.fileName(),
                                 directory.filePath(QStringLiteral("media")),
                                 directory.filePath(QStringLiteral("state.json")),
@@ -430,7 +440,7 @@ void CoreTests::controllerRestartsStaleShowsButNeverFilms()
         "schema_version": 1,
         "channels": [
             {"number": 1, "name": "Shows", "folder": "shows", "content_type": "shows"},
-            {"number": 2, "name": "Films", "folder": "films"}
+            {"number": 2, "name": "Films", "folder": "films", "content_type": "films"}
         ]
     })");
     configuration.close();
@@ -446,7 +456,7 @@ void CoreTests::controllerRestartsStaleShowsButNeverFilms()
 
     qint64 uptimeMilliseconds = 0;
     TvController controller;
-    QVERIFY(controller.initialize(
+    QVERIFY(TestStateFixture::initializeController(controller,
         configuration.fileName(),
         settings.fileName(),
         directory.filePath(QStringLiteral("media")),
@@ -515,7 +525,7 @@ void CoreTests::controllerDisplaysSeasonEpisodeOrFilmNameWhenProgrammeChanges()
     configuration.close();
 
     TvController controller;
-    QVERIFY(controller.initialize(configuration.fileName(),
+    QVERIFY(TestStateFixture::initializeController(controller, configuration.fileName(),
                                   directory.filePath(QStringLiteral("settings.json")),
                                   directory.filePath(QStringLiteral("media")),
                                   directory.filePath(QStringLiteral("state.json")),
@@ -592,7 +602,7 @@ void CoreTests::controllerRestoresCorruptFilmPositionWithoutChangingFilm()
     state.close();
 
     TvController controller;
-    QVERIFY(controller.initialize(
+    QVERIFY(TestStateFixture::initializeController(controller,
         configuration.fileName(), settings.fileName(), directory.filePath(QStringLiteral("media")),
         state.fileName(), [](const QString &) {
             return MediaInspection{true, true, 600.0, QStringLiteral("h264"), {}};
@@ -603,8 +613,7 @@ void CoreTests::controllerRestoresCorruptFilmPositionWithoutChangingFilm()
     QCOMPARE(playbackRequests.at(0).at(0).toUrl().fileName(), QStringLiteral("Finding Dory.mp4"));
     QVERIFY(playbackRequests.at(0).at(1).toDouble() < 0.2);
 
-    QVERIFY(state.open(QIODevice::ReadOnly));
-    const QJsonObject saved = QJsonDocument::fromJson(state.readAll()).object();
+    const QJsonObject saved = mabeltv::state::player(TestStateFixture::databasePath(controller));
     const QJsonObject positions = saved.value(QStringLiteral("channel_timelines")).toObject()
                                      .value(QStringLiteral("5")).toObject()
                                      .value(QStringLiteral("programme_positions")).toObject();
@@ -630,7 +639,7 @@ void CoreTests::standbyWakeWaitsForWelcomeBeforeResumingPlayback()
     configuration.close();
 
     TvController controller;
-    QVERIFY(controller.initialize(configuration.fileName(),
+    QVERIFY(TestStateFixture::initializeController(controller, configuration.fileName(),
                                   directory.filePath(QStringLiteral("settings.json")),
                                   directory.filePath(QStringLiteral("media")),
                                   directory.filePath(QStringLiteral("state.json")),
@@ -712,7 +721,7 @@ void CoreTests::remoteLockBlocksActionsAndPersists()
     const QString statePath = directory.filePath(QStringLiteral("state.json"));
     {
         TvController controller;
-        QVERIFY(controller.initialize(configuration.fileName(),
+        QVERIFY(TestStateFixture::initializeController(controller, configuration.fileName(),
                                       settingsPath,
                                       directory.filePath(QStringLiteral("media")),
                                       statePath,
@@ -741,7 +750,7 @@ void CoreTests::remoteLockBlocksActionsAndPersists()
     }
 
     TvController restored;
-    QVERIFY(restored.initialize(configuration.fileName(),
+    QVERIFY(TestStateFixture::initializeController(restored, configuration.fileName(),
                                 settingsPath,
                                 directory.filePath(QStringLiteral("media")),
                                 statePath,
@@ -780,7 +789,7 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
     settings.close();
 
     TvController controller;
-    QVERIFY(controller.initialize(configuration.fileName(),
+    QVERIFY(TestStateFixture::initializeController(controller, configuration.fileName(),
                                   settings.fileName(),
                                   directory.filePath(QStringLiteral("media")),
                                   directory.filePath(QStringLiteral("state.json")),
@@ -830,30 +839,28 @@ void CoreTests::parentControlsRequireThreeConfirmationsAndPersistSettings()
     QVERIFY(!controller.volumeLimitEnabled());
     QVERIFY(controller.scrubbingEnabled());
 
-    QFile savedSettings(settings.fileName());
-    QVERIFY(savedSettings.open(QIODevice::ReadOnly));
-    const QJsonDocument savedDocument = QJsonDocument::fromJson(savedSettings.readAll());
-    QCOMPARE(savedDocument.object().value(QStringLiteral("playback_mode")).toString(),
+    const QJsonObject savedSettings = mabeltv::state::settings(TestStateFixture::databasePath(controller));
+    QCOMPARE(savedSettings.value(QStringLiteral("playback_mode")).toString(),
              QStringLiteral("resume"));
-    QCOMPARE(savedDocument.object().value(QStringLiteral("parent_overlay_style")).toString(),
+    QCOMPARE(savedSettings.value(QStringLiteral("parent_overlay_style")).toString(),
              QStringLiteral("modern"));
-    QVERIFY(savedDocument.object().value(QStringLiteral("tv_guide_enabled")).toBool());
-    QCOMPARE(savedDocument.object().value(QStringLiteral("episode_reset_minutes")).toInt(), 5);
-    QCOMPARE(savedDocument.object().value(QStringLiteral("tv_border")).toString(),
+    QVERIFY(savedSettings.value(QStringLiteral("tv_guide_enabled")).toBool());
+    QCOMPARE(savedSettings.value(QStringLiteral("episode_reset_minutes")).toInt(), 5);
+    QCOMPARE(savedSettings.value(QStringLiteral("tv_border")).toString(),
              QStringLiteral("silver-90s"));
-    QCOMPARE(savedDocument.object().value(QStringLiteral("crt_glass")).toInt(), 100);
-    QVERIFY(!savedDocument.object().contains(QStringLiteral("crt_effect")));
-    QCOMPARE(savedDocument.object().value(QStringLiteral("video_distortion")).toInt(), 100);
-    QVERIFY(savedDocument.object().value(QStringLiteral("scrubbing_enabled")).toBool());
-    QVERIFY(!savedDocument.object().contains(QStringLiteral("parent_pin")));
-    QVERIFY(!savedDocument.object()
+    QCOMPARE(savedSettings.value(QStringLiteral("crt_glass")).toInt(), 100);
+    QVERIFY(!savedSettings.contains(QStringLiteral("crt_effect")));
+    QCOMPARE(savedSettings.value(QStringLiteral("video_distortion")).toInt(), 100);
+    QVERIFY(savedSettings.value(QStringLiteral("scrubbing_enabled")).toBool());
+    QVERIFY(!savedSettings.contains(QStringLiteral("parent_pin")));
+    QVERIFY(!savedSettings
                  .value(QStringLiteral("volume"))
                  .toObject()
                  .value(QStringLiteral("limit_enabled"))
                  .toBool(true));
 
     TvController restored;
-    QVERIFY(restored.initialize(configuration.fileName(),
+    QVERIFY(TestStateFixture::initializeController(restored, configuration.fileName(),
                                 settings.fileName(),
                                 directory.filePath(QStringLiteral("media")),
                                 directory.filePath(QStringLiteral("restored-state.json")),
@@ -914,7 +921,7 @@ void CoreTests::tvGuideBuildsOrderedScheduleAndTunesChannels()
     settings.close();
 
     TvController controller;
-    QVERIFY(controller.initialize(
+    QVERIFY(TestStateFixture::initializeController(controller,
         configuration.fileName(), settings.fileName(),
         directory.filePath(QStringLiteral("media")),
         directory.filePath(QStringLiteral("state.json")),
@@ -928,7 +935,6 @@ void CoreTests::tvGuideBuildsOrderedScheduleAndTunesChannels()
         }));
     QVERIFY(controller.tvGuideEnabled());
     controller.start();
-
     const QVariantList rows = controller.guideSchedule();
     QCOMPARE(rows.size(), 2);
     const QVariantMap firstChannel = rows.at(0).toMap();
@@ -987,7 +993,7 @@ void CoreTests::parentLibraryControlsPersistAndAffectPlayback()
         return MediaInspection{true, true, 42.0, QStringLiteral("h264"), {}};
     };
     TvController controller;
-    QVERIFY(controller.initialize(configuration.fileName(),
+    QVERIFY(TestStateFixture::initializeController(controller, configuration.fileName(),
                                   settings.fileName(),
                                   directory.filePath(QStringLiteral("media")),
                                   directory.filePath(QStringLiteral("state.json")),
@@ -1016,9 +1022,7 @@ void CoreTests::parentLibraryControlsPersistAndAffectPlayback()
     controller.dispatch(TvController::ChannelUp);
     QCOMPARE(controller.currentChannelNumber(), 1);
 
-    QFile savedSettings(settings.fileName());
-    QVERIFY(savedSettings.open(QIODevice::ReadOnly));
-    const QJsonObject savedRoot = QJsonDocument::fromJson(savedSettings.readAll()).object();
+    const QJsonObject savedRoot = mabeltv::state::settings(TestStateFixture::databasePath(controller));
     const QJsonObject librarySettings = savedRoot.value(QStringLiteral("library")).toObject();
     QCOMPARE(librarySettings.value(QStringLiteral("disabled_channels")).toArray().at(0).toInt(), 2);
     QVERIFY(librarySettings.value(QStringLiteral("disabled_programmes"))
@@ -1028,7 +1032,7 @@ void CoreTests::parentLibraryControlsPersistAndAffectPlayback()
                 .contains(playingFile));
 
     TvController restored;
-    QVERIFY(restored.initialize(configuration.fileName(),
+    QVERIFY(TestStateFixture::initializeController(restored, configuration.fileName(),
                                 settings.fileName(),
                                 directory.filePath(QStringLiteral("media")),
                                 directory.filePath(QStringLiteral("restored-state.json")),
@@ -1080,23 +1084,23 @@ void CoreTests::currentChannelSummaryIncludesArtworkMetadataAndFilmProgress()
     }}})");
     settings.close();
 
-    QFile metadata(QDir(mediaRoot).filePath(QStringLiteral(".mabeltv-channels.json")));
-    QVERIFY(metadata.open(QIODevice::WriteOnly));
-    metadata.write(R"({
-        "channels":{"1":{"artwork":"show.jpg"}},
-        "programmes":{"5/Film One.mp4":{
-            "title":"The First Film","year":"1999","poster":"film-one.jpg"
-        }}
-    })");
-    metadata.close();
-
     TvController controller;
-    QVERIFY(controller.initialize(configuration.fileName(), settings.fileName(), mediaRoot,
+    QVERIFY(TestStateFixture::initializeController(controller, configuration.fileName(), settings.fileName(), mediaRoot,
                                   directory.filePath(QStringLiteral("state.json")),
                                   [](const QString &) {
                                       return MediaInspection{true, true, 600.0,
                                                              QStringLiteral("h264"), {}};
                                   }));
+    TestStateFixture::seedChannelMetadata(TestStateFixture::databasePath(controller), QJsonObject{
+        {QStringLiteral("channels"), QJsonObject{
+            {QStringLiteral("1"), QJsonObject{{QStringLiteral("artwork"),
+                                                QStringLiteral("show.jpg")}}}}},
+        {QStringLiteral("programmes"), QJsonObject{
+            {QStringLiteral("5/Film One.mp4"), QJsonObject{
+                {QStringLiteral("title"), QStringLiteral("The First Film")},
+                {QStringLiteral("year"), QStringLiteral("1999")},
+                {QStringLiteral("poster"), QStringLiteral("film-one.jpg")}}}}},
+    });
     QSignalSpy playbackRequests(&controller, &TvController::playbackRequested);
     controller.start();
     QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 1, 1500);
@@ -1155,7 +1159,7 @@ void CoreTests::controllerReloadPreservesPlaybackAndRuntimeVolume()
     settings.close();
 
     TvController controller;
-    QVERIFY(controller.initialize(configuration.fileName(), settings.fileName(),
+    QVERIFY(TestStateFixture::initializeController(controller, configuration.fileName(), settings.fileName(),
                                   directory.filePath(QStringLiteral("media")),
                                   directory.filePath(QStringLiteral("state.json")),
                                   [](const QString &) {
@@ -1222,7 +1226,7 @@ void CoreTests::filmChannelBookmarksPersistAcrossTvAndPortalPlayback()
     configuration.close();
 
     TvController controller;
-    QVERIFY(controller.initialize(configuration.fileName(),
+    QVERIFY(TestStateFixture::initializeController(controller, configuration.fileName(),
                                   directory.filePath(QStringLiteral("settings.json")),
                                   directory.filePath(QStringLiteral("media")),
                                   directory.filePath(QStringLiteral("state.json")),
@@ -1236,10 +1240,7 @@ void CoreTests::filmChannelBookmarksPersistAcrossTvAndPortalPlayback()
     QVERIFY(std::abs(playbackRequests.constFirst().at(1).toDouble() - 1800.0) < 0.5);
 
     controller.updatePlaybackPosition(1950.0, false);
-    QFile state(directory.filePath(QStringLiteral("state.json")));
-    QVERIFY(state.open(QIODevice::ReadOnly));
-    QJsonObject saved = QJsonDocument::fromJson(state.readAll()).object();
-    state.close();
+    QJsonObject saved = mabeltv::state::player(TestStateFixture::databasePath(controller));
     QCOMPARE(saved.value(QStringLiteral("channel_film_positions")).toObject()
                  .value(QStringLiteral("5/Film.mp4")).toDouble(),
              1950.0);
@@ -1251,8 +1252,7 @@ void CoreTests::filmChannelBookmarksPersistAcrossTvAndPortalPlayback()
 
     controller.setChannelFilmPlaybackState(
         5, QStringLiteral("Film.mp4"), 2400.0, 7200.0);
-    QVERIFY(state.open(QIODevice::ReadOnly));
-    saved = QJsonDocument::fromJson(state.readAll()).object();
+    saved = mabeltv::state::player(TestStateFixture::databasePath(controller));
     QCOMPARE(saved.value(QStringLiteral("channel_film_positions")).toObject()
                  .value(QStringLiteral("5/Film.mp4")).toDouble(),
              2400.0);
@@ -1279,17 +1279,8 @@ void CoreTests::adultLibraryIsSeparateAndParentOnly()
     QVERIFY(nestedFilm.open(QIODevice::WriteOnly));
     nestedFilm.write("nested");
     nestedFilm.close();
-    QFile adultMetadata(directory.filePath(QStringLiteral("media/.adult/.mabeltv-adult.json")));
-    QVERIFY(adultMetadata.open(QIODevice::WriteOnly));
-    adultMetadata.write(R"({
-        "Evening Film.mkv":{"library_id":"evening-id"},
-        "Harry Potter/Philosophers Stone.mp4":{"library_id":"potter-id",
-          "metadata":{"title":"Harry Potter and the Philosopher's Stone","year":"2001"}}
-    })");
-    adultMetadata.close();
-
     TvController controller;
-    QVERIFY(controller.initialize(configuration.fileName(),
+    QVERIFY(TestStateFixture::initializeController(controller, configuration.fileName(),
                                   directory.filePath(QStringLiteral("settings.json")),
                                   directory.filePath(QStringLiteral("media")),
                                   directory.filePath(QStringLiteral("state.json")),
@@ -1297,6 +1288,16 @@ void CoreTests::adultLibraryIsSeparateAndParentOnly()
                                       return MediaInspection{true, true, 42.0,
                                                              QStringLiteral("h264"), {}};
                                   }));
+    TestStateFixture::seedAdultMedia(TestStateFixture::databasePath(controller), QJsonObject{
+        {QStringLiteral("Evening Film.mkv"), QJsonObject{
+            {QStringLiteral("library_id"), QStringLiteral("evening-id")}}},
+        {QStringLiteral("Harry Potter/Philosophers Stone.mp4"), QJsonObject{
+            {QStringLiteral("library_id"), QStringLiteral("potter-id")},
+            {QStringLiteral("metadata"), QJsonObject{
+                {QStringLiteral("title"),
+                 QStringLiteral("Harry Potter and the Philosopher's Stone")},
+                {QStringLiteral("year"), QStringLiteral("2001")}}}}},
+    });
     const QVariantList adult = controller.adultLibrary();
     QCOMPARE(adult.size(), 2);
     QCOMPARE(adult.constFirst().toMap().value(QStringLiteral("name")).toString(),
@@ -1323,7 +1324,7 @@ void CoreTests::adultLibraryIsSeparateAndParentOnly()
     controller.setAdultPlaybackPosition(QStringLiteral("potter-id"), 842.5);
     controller.setAdultPlaybackDuration(QStringLiteral("potter-id"), 10234.0);
     TvController restored;
-    QVERIFY(restored.initialize(configuration.fileName(),
+    QVERIFY(TestStateFixture::initializeController(restored, configuration.fileName(),
                                 directory.filePath(QStringLiteral("settings.json")),
                                 directory.filePath(QStringLiteral("media")),
                                 directory.filePath(QStringLiteral("state.json")),
@@ -1362,11 +1363,12 @@ void CoreTests::sqliteStateIsReadableAndWritableByNativeController()
             QStringLiteral("CREATE TABLE channel_programme_positions(channel_number INTEGER,file_name TEXT,position_seconds REAL,PRIMARY KEY(channel_number,file_name))"),
             QStringLiteral("CREATE TABLE channel_runtime_entries(channel_number INTEGER,kind TEXT,file_name TEXT,value REAL,PRIMARY KEY(channel_number,kind,file_name))"),
             QStringLiteral("CREATE TABLE channels(number INTEGER PRIMARY KEY,name TEXT,folder TEXT,aspect TEXT,content_type TEXT)"),
+            QStringLiteral("CREATE TABLE state_revisions(domain TEXT PRIMARY KEY,revision INTEGER,updated_at REAL)"),
         };
         for (const QString &statement : schema) {
             QVERIFY2(query.exec(statement), qPrintable(query.lastError().text()));
         }
-        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version=1")));
+        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version=7")));
         QVERIFY(query.exec(QStringLiteral(
             "INSERT INTO channels VALUES(7,'Films','one','fit','films')")));
         database.close();
@@ -1377,7 +1379,7 @@ void CoreTests::sqliteStateIsReadableAndWritableByNativeController()
     const QJsonObject settings{{QStringLiteral("schema_version"), 1},
                                {QStringLiteral("display_resolution"),
                                 QStringLiteral("1080p")}};
-    QVERIFY2(mabeltv::state::replaceSettings(databasePath, settings, &error),
+    QVERIFY2(mabeltv::state::mergeSettings(databasePath, settings, &error),
              qPrintable(error));
     QCOMPARE(mabeltv::state::settings(databasePath), settings);
 
@@ -1398,7 +1400,8 @@ void CoreTests::sqliteStateIsReadableAndWritableByNativeController()
                               QJsonObject{}},
                              {QStringLiteral("channel_timelines"),
                               QJsonObject{{QStringLiteral("7"), timeline}}}};
-    QVERIFY2(mabeltv::state::replacePlayer(databasePath, player, &error), qPrintable(error));
+    QVERIFY2(mabeltv::state::savePlayerSnapshot(databasePath, player, &error),
+             qPrintable(error));
     QCOMPARE(mabeltv::state::player(databasePath), player);
 
     const QString versionTwoConnectionName = QStringLiteral("state-test-v2");
@@ -1414,20 +1417,45 @@ void CoreTests::sqliteStateIsReadableAndWritableByNativeController()
     QSqlDatabase::removeDatabase(versionTwoConnectionName);
 
     error.clear();
+    QCOMPARE(mabeltv::state::settings(databasePath, &error), QJsonObject{});
+    QVERIFY(error.contains(QStringLiteral("Unsupported MabelTV database schema 2")));
+
+    const QString currentVersionConnectionName = QStringLiteral("state-test-current");
+    {
+        QSqlDatabase database = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"),
+                                                            currentVersionConnectionName);
+        database.setDatabaseName(databasePath);
+        QVERIFY2(database.open(), qPrintable(database.lastError().text()));
+        QSqlQuery query(database);
+        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version=7")));
+        database.close();
+    }
+    QSqlDatabase::removeDatabase(currentVersionConnectionName);
+    error.clear();
     QCOMPARE(mabeltv::state::settings(databasePath, &error), settings);
-    QVERIFY2(error.isEmpty(), qPrintable(error));
-    QVERIFY2(mabeltv::state::replacePlayer(databasePath, player, &error), qPrintable(error));
-    QCOMPARE(mabeltv::state::player(databasePath, &error), player);
     QVERIFY2(error.isEmpty(), qPrintable(error));
 
     const ChannelLibraryResult library = ChannelLibrary::load(
-        QString(), directory.filePath(QStringLiteral("media")),
+        databasePath, directory.filePath(QStringLiteral("media")),
         [](const QString &) {
             return MediaInspection{true, true, 42.0, QStringLiteral("h264"), {}};
-        }, databasePath);
+        });
     QVERIFY2(library.isValid(), qPrintable(library.error));
     QCOMPARE(library.channels.size(), 1);
     QCOMPARE(library.channels.constFirst().number, 7);
+}
+
+void CoreTests::portalControlCommandsAreNewlineFramed()
+{
+    QByteArray buffer("{\"command\":\"play-");
+    QByteArray command;
+    QVERIFY(!PortalControlServer::takeCommand(buffer, &command));
+    buffer += "programme\"}\nstatus\r\n";
+    QVERIFY(PortalControlServer::takeCommand(buffer, &command));
+    QCOMPARE(command, QByteArray("{\"command\":\"play-programme\"}"));
+    QVERIFY(PortalControlServer::takeCommand(buffer, &command));
+    QCOMPARE(command, QByteArray("status"));
+    QVERIFY(buffer.isEmpty());
 }
 
 QTEST_MAIN(CoreTests)

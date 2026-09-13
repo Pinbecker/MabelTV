@@ -2,16 +2,6 @@ import { test, expect } from './test-fixtures.mjs'
 
 
 async function openExplore(page) {
-  await page.route('**/api/adult/tmdb-artwork/**', async route => {
-    const match = route.request().url().match(/explore-(\d+)/)
-    const value = Number(match?.[1] || 1)
-    const hue = value * 47 % 360
-    const body = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450">
-      <defs><linearGradient id="g" x2="1" y2="1"><stop stop-color="hsl(${hue} 54% 42%)"/><stop offset="1" stop-color="hsl(${(hue + 70) % 360} 48% 14%)"/></linearGradient></defs>
-      <rect width="300" height="450" fill="url(#g)"/><circle cx="235" cy="90" r="76" fill="rgba(255,255,255,.12)"/><path d="M0 330L128 190l172 190v70H0z" fill="rgba(0,0,0,.3)"/><text x="24" y="395" fill="white" font-family="Arial" font-size="24" font-weight="700">TITLE ${value}</text>
-    </svg>`
-    await route.fulfill({ status: 200, contentType: 'image/svg+xml', body })
-  })
   await page.goto('/')
   await expect(page.locator('.app-shell')).toBeVisible()
   await page.evaluate(() => {
@@ -22,6 +12,14 @@ async function openExplore(page) {
   await page.locator('#adultViewingExplore').click()
   await expect(page.locator('#view-adult-explore')).toBeVisible()
   await expect(page.locator('.adult-explore-card').first()).toBeVisible()
+  await page.locator('.adult-explore-card img').evaluateAll(images => Promise.all(
+    images.map(image => image.complete && image.naturalWidth > 0
+      ? Promise.resolve()
+      : new Promise((resolve, reject) => {
+          image.addEventListener('load', resolve, { once: true })
+          image.addEventListener('error', reject, { once: true })
+        })),
+  ))
 }
 
 

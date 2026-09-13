@@ -84,14 +84,29 @@ and danger remain semantic tokens rather than user-selected accent colours.
 
 ## JavaScript ownership and execution order
 
-The portal uses ordered classic scripts, not JavaScript modules. Top-level state
-is deliberately shared between the files, so changing script order can break
-initialisation even when each file is syntactically valid.
+`portal.py` owns the explicit `PORTAL_APP_SOURCES` order and serves their
+concatenated application as `/portal-app.js`. The sources execute inside one
+strict IIFE: they can share the established ordered application scope without
+publishing dozens of mutable globals on `window`. Theme, offline-storage and
+response-cache owners load separately because they have independent lifecycle
+contracts. Changing the source order is a functional change and must be tested.
+Internal route, viewing, live-TV and LG-remote functions call one another in the
+private scope; do not restore `window.*` compatibility bridges. The only global
+names owned by first-party portal code are the separately loaded
+`MabelOfflineSchema`, `MabelOffline`, `MabelAppCache`, `MabelAssets`,
+`MabelExperienceTheme` and `MabelPortalUI` APIs.
 
-1. `mabeltv-offline.js`: service-worker registration and the durable downloaded
-   media store. `core/app-cache.js` follows it and owns disposable authorised
-   response snapshots in a separate IndexedDB database. `core/assets.js` owns
-   deferred third-party script loading.
+The Playwright fixture is the sole exception to the wrapper, for test
+instrumentation only. It injects `load_portal_app_script(private_scope=False)`
+into its loopback-only `LibraryServer`, which leaves the same ordered source in
+the page's lexical scope for established white-box browser tests. Production
+servers always use the default private bundle. Do not add production globals or
+ship the fixture form to preserve a test shortcut.
+
+1. `mabeltv-offline-schema.js` owns the shared Downloads IndexedDB schema;
+   `mabeltv-offline.js` owns registration and durable media operations.
+   `core/app-cache.js` owns disposable authorised response snapshots in a
+   separate database. `core/assets.js` owns deferred third-party loading.
 2. `portal/js/ui-components.js`: shared DOM components and dialog lifecycle.
 3. `portal/js/core/foundation.js`: shared state, API, escaping, auth, and base
    helpers.
@@ -143,12 +158,12 @@ initialisation even when each file is syntactically valid.
 30. `portal/js/actions.js`: application event bindings and remote commands.
 31. `portal/js/lg-tv-remote.js`: the separate LG webOS remote.
 
-Classic intentionally omits Experience-only Adult-viewing and LG-remote scripts.
 
 ## Startup, caching, and offline ownership
 
-`service-worker.js` owns immutable shell generations. Navigations and shell
-assets are cache-first inside the current generation; installation must finish
+`service-worker.js` owns immutable shell generations. App navigations and shell assets are cache-first inside the current generation;
+`/watch/player` remains network-only because it requires a live per-session
+stream token. Installation must finish
 the complete critical shell before activation. A new worker waits for a safe
 client boundary, and activation retains the immediately previous shell as the
 rollback generation. Cache cleanup is scoped to older `mabeltv-shell-v*`
@@ -156,16 +171,17 @@ entries and must never delete downloaded media, response snapshots, artwork,
 or caches belonging to another application.
 
 Large optional libraries are not part of initial execution. `core/assets.js`
-loads Chart.js when an Insights route first needs it and retains HLS.js as an
-on-demand fallback. Provider artwork is also outside the critical shell.
+loads Chart.js when an Insights route first needs it. Provider artwork is also
+outside the critical shell.
 Dynamic catalogue artwork uses native lazy loading and asynchronous decoding.
 TMDB posters, backdrops and people images use the authenticated same-origin
 artwork route rather than a cross-origin opaque response. The Pi keeps a
 bounded rebuildable copy, and the worker keeps up to 1,000 recently displayed
 family and protected Adult images in its runtime artwork caches. A cache-write
-failure never replaces a successful network response. Protected artwork is
-returned from the worker cache only to a client whose local Adult access has
-been unlocked.
+failure never replaces a successful network response. Protected artwork is returned from the worker cache only to a client whose
+local Adult access has been unlocked. The worker prunes closed client IDs on
+activation, messages and periodically during fetches, so an unlock cannot live
+past its browser client.
 
 `core/app-cache.js` owns `mabeltv-app-cache-v1`. It contains only disposable
 API snapshots and can be rebuilt from SQLite. It never contains downloaded
@@ -265,11 +281,13 @@ run `npm run test:full` for broad visual/navigation refactors or release
 qualification. Exact tiers are in [Quality gates](quality-gates.md).
 
 A portal-only checkpoint is deployed without rebuilding the native QML/C++
-television application. After explicit deployment approval, use
-`scripts/windows/deploy-portal-to-pi.ps1`; it selects only saved portal changes,
-requires a PWA cache revision, runs a small deployment smoke gate, backs up the
-live targets, verifies hashes and Pi health, and rolls back a failed handoff.
-It never builds or restarts the native player and never commits or pushes.
+television application. Phone review on the installed iOS PWA is the normal
+handover, so use `scripts/windows/deploy-portal-to-pi.ps1` after proportionate
+checks unless the task says not to deploy. It targets
+`pinbecker@mabeltv-512.local`, selects only saved portal changes, requires a PWA
+cache revision, runs a small deployment smoke gate, backs up the live targets,
+verifies hashes and Pi health, and rolls back a failed handoff. It never builds
+or restarts the native player and never commits or pushes.
 
 The server-side boundary behind these assets is documented separately in
 [library-service-architecture.md](library-service-architecture.md).

@@ -7,9 +7,9 @@ import unittest
 from unittest import mock
 
 try:
-    from tests.python.test_library_service import LibraryFixture, mabeltv_library
+    from tests.python.library_test_support import LibraryFixture, mabeltv_library
 except ModuleNotFoundError:
-    from test_library_service import LibraryFixture, mabeltv_library
+    from library_test_support import LibraryFixture, mabeltv_library
 
 
 class DurableUsbTransferTests(unittest.TestCase):
@@ -41,6 +41,7 @@ class DurableUsbTransferTests(unittest.TestCase):
             settings=str(self.fixture.settings),
             owner=str(self.fixture.owner),
             config=str(self.fixture.config),
+            database=str(self.fixture.database),
         )
         with mock.patch.dict(os.environ, {
                 "MABELTV_USB_ROOT": str(self.usb_root),

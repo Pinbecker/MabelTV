@@ -100,10 +100,14 @@ while ($queue.Count -gt 0) {
 
 $configurationDirectory = Join-Path $staging 'config'
 New-Item -ItemType Directory -Force -Path $configurationDirectory | Out-Null
-Copy-Item -LiteralPath (Join-Path $repositoryRoot 'config\examples\channels.json') `
-    -Destination (Join-Path $configurationDirectory 'channels.json')
-Copy-Item -LiteralPath (Join-Path $repositoryRoot 'config\examples\settings.json') `
-    -Destination (Join-Path $configurationDirectory 'settings.json')
+$packagedDatabase = Join-Path $configurationDirectory 'mabeltv.db'
+& python (Join-Path $repositoryRoot 'scripts\pi\mabeltv-state-migrate.py') bootstrap `
+    --database $packagedDatabase `
+    --channels (Join-Path $repositoryRoot 'config\examples\channels.json') `
+    --settings (Join-Path $repositoryRoot 'config\examples\settings.json') | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    throw "Could not create the packaged MabelTV database."
+}
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'README.md') -Destination $staging
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'LICENSE') -Destination $staging
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs') -Destination $staging -Recurse
@@ -118,7 +122,7 @@ try {
     }
 
     & (Join-Path $staging 'mabeltv_media_check.exe') `
-        --channels (Join-Path $configurationDirectory 'channels.json') `
+        --database $packagedDatabase `
         --media-root (Join-Path $repositoryRoot 'dev-data\media') `
         --cache (Join-Path $repositoryRoot 'dev-data\package-media-index.json')
     if ($LASTEXITCODE -ne 0) {
@@ -131,16 +135,22 @@ try {
     }
     New-Item -ItemType Directory -Force -Path $smokeRoot | Out-Null
     $smokeMediaRoot = & (Join-Path $PSScriptRoot 'generate-dev-library.ps1')
+    $smokeDatabase = Join-Path $smokeRoot 'mabeltv.db'
+    & python (Join-Path $repositoryRoot 'scripts\pi\mabeltv-state-migrate.py') bootstrap `
+        --database $smokeDatabase `
+        --channels (Join-Path $repositoryRoot 'config\examples\channels.json') `
+        --settings (Join-Path $repositoryRoot 'config\examples\settings.json') | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not create the packaged UI smoke-test database."
+    }
     $processInfo = [System.Diagnostics.ProcessStartInfo]::new()
     $processInfo.FileName = Join-Path $staging 'mabeltv.exe'
     $processInfo.WorkingDirectory = $staging
     $processInfo.UseShellExecute = $false
     $processInfo.Environment['PATH'] = $env:PATH
     foreach ($argument in @(
-        '--channels', (Join-Path $configurationDirectory 'channels.json'),
-        '--settings', (Join-Path $configurationDirectory 'settings.json'),
         '--media-root', $smokeMediaRoot,
-        '--state', (Join-Path $smokeRoot 'state.json'),
+        '--database', $smokeDatabase,
         '--log-dir', (Join-Path $smokeRoot 'logs')
     )) {
         $processInfo.ArgumentList.Add($argument)

@@ -48,6 +48,13 @@ The same actor, title, episode or collection URL is therefore reused across
 cards and screens. Provider URLs are normalised by the portal asset helper so
 equivalent images share a cache key.
 
+Opened title and season details also have disposable IndexedDB snapshots. A
+season snapshot paints its complete episode list immediately on later opens,
+including after a cold app launch, while current SQLite viewing state is
+overlaid separately. Metadata older than one day refreshes in the background;
+the refreshed metadata appears on the next opening rather than rebuilding or
+flashing the sheet currently being viewed.
+
 Family artwork can be served directly from its cache. Adult artwork is returned
 from the protected cache only when the requesting service-worker client has
 been unlocked. If a locked client is offline it receives 401 rather than cached
@@ -62,8 +69,10 @@ state or part of the SQLite authority boundary.
 - `SHELL_URLS` are required for a complete offline shell. Installation fails
   and removes the candidate cache if any required asset cannot be cached.
 - `LAZY_SHELL_URLS` are optional features cached on first use.
-- navigation requests use the cached root document, so every bottom section can
-  open while disconnected and show its reconnect state;
+- app navigation requests use the cached root document, so every bottom section
+  can open while disconnected and show its reconnect state;
+- `/watch/player` navigation is network-only and returns a clear 503 offline,
+  because its stream token and media source belong to a live session;
 - ordinary API responses are not put in Cache Storage;
 - online artwork is cache-first through the appropriate family/protected cache;
 - `/offline-media/<id>` and `/offline-subtitles/<id>.vtt` read the Downloads
@@ -78,7 +87,9 @@ complete shell available for rollback.
 
 ## Downloads and Adult protection
 
-`mabeltv-offline.js` owns download creation and device storage. Downloads are
+`mabeltv-offline-schema.js` is the single IndexedDB name/version/upgrade owner
+shared by the page and worker. `mabeltv-offline.js` owns download creation and
+device storage. Downloads are
 written incrementally as Blob chunks so iOS does not need a complete film in
 memory. Partial downloads can resume, completed media supports HTTP byte ranges,
 and subtitles are stored with the manifest.
@@ -87,7 +98,8 @@ Adult manifests are marked `protected` and are also recognised by their source
 kind for compatibility. The device stores a PBKDF2 digest and salt, never the
 PIN. Successful verification unlocks only the current in-memory service-worker
 client. A cold launch, worker restart, lock or loss of that client requires
-verification again. Never persist an `unlocked` flag or move protected artwork
+verification again. Closed client IDs are pruned from the worker's in-memory
+unlock set. Never persist an `unlocked` flag or move protected artwork
 or media into a generally readable cache.
 
 ## Change rules

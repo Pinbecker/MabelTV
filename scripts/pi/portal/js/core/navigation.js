@@ -80,8 +80,6 @@
       })()
       return portalReconnectPromise
     }
-    window.attemptPortalReconnect = attemptPortalReconnect
-
     function rememberPrimarySectionLocation(name, section) {
       if (!primarySectionRoots[section]) return
       primarySectionLocations.set(section, {
@@ -109,16 +107,14 @@
         remoteKind = 'channel'
       }
       history.replaceState(destination.state, '', destination.route)
-      if (destination.view === 'insights' && window.openInsightsRoute) {
-        window.openInsightsRoute(destination.route.replace(/^#/, ''), null, { reset })
+      if (destination.view === 'insights') {
+        openInsightsRoute(destination.route.replace(/^#/, ''), null, { reset })
       } else {
         if (destination.view === 'watch' && !offlineMode) renderRemoteViewing()
         openView(destination.view, { resetScroll: reset })
       }
       return true
     }
-    window.openPrimarySection = openPrimarySection
-
     function escapeHtml(value) {
       const span = document.createElement('span')
       span.textContent = String(value)
@@ -127,9 +123,8 @@
 
     function openRequestedView(event = null) {
       const requested = location.hash.replace(/^#/, '')
-      if ((requested === 'insights' || requested.startsWith('insights/'))
-          && window.openInsightsRoute) {
-        window.openInsightsRoute(requested, event)
+      if (requested === 'insights' || requested.startsWith('insights/')) {
+        openInsightsRoute(requested, event)
         return
       }
       const channelRoute = requested.match(/^channel\/(\d+)\/(watch|library)$/)
@@ -201,7 +196,7 @@
         route = adult ? 'insights' : 'insights/mabeltv'
         const method = replace ? 'replaceState' : 'pushState'
         history[method]({ insights: true, myInsightsMode: adult ? 'adult' : 'mabel' }, '', `#${route}`)
-        window.openInsightsRoute?.(route, null, { reset: resetScroll })
+        openInsightsRoute(route, null, { reset: resetScroll })
         return
       }
       if (section === 'downloads') {
@@ -219,8 +214,6 @@
       if (view === 'watch') renderRemoteViewing()
       openView(view, { resetScroll })
     }
-    window.navigateDomainRoute = navigateDomainRoute
-
     window.addEventListener('popstate', event => openRequestedView(event))
 
     function startOfflineStorage() {
@@ -482,7 +475,7 @@
       const unavailableOffline = showOfflineUnavailable(name, activeNavigation)
       if (unavailableOffline) {
         stopLiveTv()
-        window.stopLgTvRemote?.()
+        lgTvRemote.stop()
         stopHomeStatusRefresh()
         resetViewScroll()
         return
@@ -500,13 +493,13 @@
       }
       if (name === 'live') startLiveTv()
       else stopLiveTv()
-      if (name === 'lg-tv') window.startLgTvRemote?.()
-      else window.stopLgTvRemote?.()
+      if (name === 'lg-tv') lgTvRemote.start()
+      else lgTvRemote.stop()
       if (name === 'overview') startHomeStatusRefresh()
       else stopHomeStatusRefresh()
       if (name === 'usb') refreshUsb().catch(error => notice(error.message, true))
       if (name === 'watch' && remoteKind === 'downloads') renderDownloads().catch(showError)
-      if (name === 'insights') (window.loadMyInsights || loadViewingInsights)().catch?.(() => {})
+      if (name === 'insights') loadMyInsights().catch(() => {})
       if (name === 'adult-home') loadAdultHome().catch(showError)
       if (name === 'activity') loadActivity().catch(error => notice(error.message, true))
       if (name === 'adult-viewing') loadAdultViewing().catch(showError)

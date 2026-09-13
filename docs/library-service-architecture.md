@@ -1,135 +1,132 @@
 # Library service architecture
 
-The local library service is the private backend for the MabelTV portal and
-installed iOS PWA. Its HTTP URLs, cookies, JSON shapes, local data files, and
-systemd entry point are compatibility contracts. Structural work must not
-change those contracts unless a separate feature explicitly requires it.
+The local Library service is the private backend for the MabelTV portal and its
+installed iOS PWA. Public routes, cookies, JSON response shapes, local socket
+commands and the systemd entry point are compatibility contracts.
 
-## Stable entry point
+## Composition and dependency direction
 
-`scripts/pi/mabeltv-library.py` is the executable compatibility shell. It owns
-process startup, the live-picture helper, construction of shared runtime state,
-and the public names used by existing tests and maintenance tools. It composes
-focused mixins from `scripts/pi/mabeltv_backend` into the public `Library`
-class; callers do not need to know which module implements a method.
+`scripts/pi/mabeltv-library.py` is the stable executable and composition root.
+It creates shared locks, queues, workers and paths, composes the focused mixins
+into `Library`, and starts the bounded HTTP service. It must not contain route
+implementations, provider algorithms, persistence adapters or live-stream
+protocol code.
 
-## Backend ownership
+Backend mixins communicate through `self` on the composed `Library`. They must
+not import another mixin or the executable. Small protocol/value helpers may be
+imported by more than one owner when they do not carry application state. This
+keeps dependencies directed toward the composition root and avoids hidden
+secondary service objects.
 
-- `auth.py`: first-time setup, owner identity, PIN verification, login limits,
+## Backend owners
+
+- `database_schema.py`: immutable schema definitions and the ordered migration
+  ledger.
+- `database.py`: SQLite connections, transactions, relational adapters,
+  revision counters and supported backup/integrity operations.
+- `auth.py`: first-time setup, owner identity, PIN verification, login limits
   and session lifetime.
-- `media.py`: channel and Adult media catalogues, saved state, recycle-bin and
-  management actions, settings, and safe media paths.
-- `uploads.py`: the shared durable transfer queue, resumable records,
-  publication, playback inspection, and conversion/optimisation workers.
-- `viewing.py`: private viewing samples, session compaction, retention, and
-  MabelTV playback-session insights.
-- `viewing_queue.py`: validation and atomic persistence of the ordered Adult TV
-  Up Next queue.
-- `adult_insights.py`: timeless Adult TV watched-history and personal-rating
-  aggregates. It progressively caches TMDB genres and credits on the Pi, never
-  calls Watchmode, and deliberately does not treat backfilled watched marks as
-  viewing dates. Its response includes the cached per-title genres, countries,
-  languages and credited-person IDs used for instant client-side drill-downs.
-- `providers.py`: TMDB, Watchmode, OpenSubtitles, artwork, title and person
-  search, and provider-backed viewing metadata. Multi-search returns people as
-  identity-only results; local and viewing state remains exclusive to titles.
-  Explicit film matches retain TMDB genre names in `metadata.genres` for the
-  local film filter; films without a match remain visible in All genres.
-- `artwork.py`: the authenticated same-origin TMDB image proxy and its bounded,
-  rebuildable Pi cache under `/var/cache/mabeltv/tmdb-artwork`. It keeps
-  provider latency away from repeat device loads without turning artwork into
-  authoritative application state.
-- `discovery.py`: curated, paginated TMDB Explore lists. It enriches catalogue
-  results with current local/viewing state but never performs Watchmode calls.
-  The Adult TV home can additionally require a supported UK flatrate, free or
-  ad-supported provider; rent and purchase offers never qualify that feed.
-- `usb.py`: removable-volume discovery, browsing, power state, playback, and
-  imports. USB imports feed the shared upload queue so they retain progress,
-  survive restarts, and use the same validation and publication path.
-- `remote.py`: phone playback, external streams/downloads, live TV control,
-  and the separate LG TV remote.
+- `media.py`: read models for channels, programmes, Adult media and safe media
+  paths. Structured state goes through the database; its `read_json` and
+  `write_json` helpers are only for operational filesystem journals.
+- `management.py`: serialized administrative mutations for channel/settings
+  changes, media organization and the recoverable recycle-bin workflow.
+- `uploads.py`: resumable upload records, queueing, publication and worker
+  lifecycle. `.incoming` manifests are operational journals.
+- `transcoding.py`: probing and media conversion/optimization policy used by
+  uploads and USB preparation.
+- `viewing.py`: viewing samples, session compaction, retention and MabelTV
+  viewing insights.
+- `viewing_queue.py`: validation and atomic persistence of Adult Up Next order.
+- `provider_transport.py`: API-key reads, bounded HTTP transport, response
+  caching and OpenSubtitles transport.
+- `adult_metadata.py`: Adult TMDB titles, series, people, collections,
+  Watchmode availability and the merge with local/viewing state.
+- `providers.py`: children's channel and local-film metadata matching and
+  application.
+- `adult_insights.py`: Adult watched/rating aggregates and progressive TMDB
+  enrichment.
+- `discovery.py`: curated paginated Explore results enriched with local state.
+- `artwork.py`: authenticated same-origin artwork proxy and the bounded,
+  rebuildable Pi cache at `/var/cache/mabeltv/tmdb-artwork`.
+- `remote.py`: browser playback sessions, external media tokens/downloads and
+  native MabelTV live/player commands.
+- `lg_control.py`: LG webOS status, pointer session and command orchestration.
+- `lg.py`: low-level webOS socket protocol and command catalogues.
+- `live_stream.py`: live-picture ffmpeg process ownership and stream lifecycle.
+- `usb.py`: removable-volume discovery, power, browsing, playback and imports.
 - `system.py`: service/device status, temperature, support and admin actions.
-- `lg.py`: the small WebOS socket protocol client and LG command catalogues.
-- `http.py`: security headers, transport helpers, bounded server threads, and
+- `http.py`: security headers, transport helpers, bounded request threads and
   explicit GET/POST route tables.
-- `portal.py`: server-side portal assembly and preserved emergency fallback
-  documents.
-- `constants.py`: policy limits and shared provider/runtime constants.
-- `database.py`: the authoritative relational SQLite schema and the adapters
-  that preserve established backend dictionary/API shapes. Production reads
-  and writes do not fall back to the retained migration-source JSON files.
+- `portal.py`: fail-fast assembly of the installed HTML and the ordered private
+  `/portal-app.js` application bundle.
+- `constants.py`: shared runtime limits and policy constants.
 
-`mabeltv-state-migrate.py` is the separate, one-time migration and validation
-command. It is the only production tool that reads the superseded JSON state
-after cutover. It also creates consistent SQLite online-backup snapshots.
-The authority boundary, cutover proof, rollback route, and future schema rules
-are defined in `docs/state-database.md`.
+`mabeltv-state-migrate.py` is the separate migration, validation, owner-recovery
+and online-backup command. It is the only production tool allowed to read the
+retired JSON state snapshots.
 
-Modules may call another responsibility through `self` on the composed
-`Library`; they should not import the executable or another mixin class. This
-keeps the dependency direction one-way and avoids circular imports.
+## Persistence and mutation contracts
 
-## Routing contract
+`/var/lib/mabeltv/mabeltv.db` is the sole structured state authority. A mutation
+that changes related records and its cache revision commits them in one
+`BEGIN IMMEDIATE` transaction. Channel add/update/delete uses targeted database
+operations; renumbering moves metadata, favourites and disabled-programme
+settings atomically. Settings use field-level merges so the native player and
+portal cannot erase one another's unrelated keys. Adult title relationships
+have one owner each: watchlist, Up Next and ratings live in their dedicated
+relational tables.
 
-Simple JSON endpoints live in the named route tables in `http.py`. Routes that
-need query parsing, range streaming, authentication setup, cookies, or a custom
-response remain small named handler methods. Every request still passes through
-the same origin, authentication, security-header, and error boundaries as the
-original single-file service.
+The remaining JSON manifests under `.incoming` (including
+`.incoming/.usb-imports`) and `.recycle-bin` describe recoverable filesystem
+operations. They are deliberately file-backed, atomically replaced, and do not
+duplicate application state. The durable manifest is their only owner; there is
+no parallel in-memory USB job model.
 
-## Installation and rollback
+## Portal and HTTP contracts
 
-The executable and the complete `mabeltv_backend` package must be installed
-together in the same release directory. `install.sh` stages and syntax-checks
-both before switching `/opt/mabeltv/current`; the Windows developer deploy also
-recognises backend-module changes and restarts only `mabeltv-library.service`.
-Backend or portal changes do not require rebuilding the native QML/C++ player.
+Simple JSON endpoints are registered in the named route tables in `http.py`.
+Routes requiring query parsing, range streaming, setup authentication, cookies
+or custom responses remain named handler methods. Every route passes through
+one origin/authentication/security-header boundary.
 
-The Adult viewing store owns the durable Up Next rank. The portal persists a
-complete reordered queue in one authenticated `POST /api/adult/viewing/reorder`
-request so a drag cannot leave a partially moved queue behind. Personal
-recommendations are built from positively rated watched-title seeds and cached
-Adult-insights genre metadata; the separate broad shelf supplies deliberate
-variety. Availability checks remain TMDB-only and limited to included, free or
-ad-supported UK providers.
+Portal startup is atomic with the backend release. Missing HTML, partials,
+application sources or the watch page is a startup failure; there is no embedded
+stale fallback UI. The portal source list has one owner in `portal.py` and is
+assembled into an IIFE so module-to-module calls stay inside one private scope.
+Only separately loaded lifecycle owners (`MabelOffline`, `MabelAppCache`,
+`MabelAssets`, `MabelExperienceTheme` and `MabelPortalUI`) publish names on
+`window`; application routing, live TV and Adult viewing do not use global
+compatibility bridges.
 
-Rollback is release-level: point `/opt/mabeltv/current` back to the previous
-complete release and restart the library service. Never combine an executable
-from one revision with backend modules from another.
+VLC receives a short-lived bearer URL from authenticated
+`POST /api/external/start`. Cloudflare bypass is scoped only to
+`/api/external/media`, and MabelTV validates that stream token before serving
+range requests. Never broaden that exception to `/api/external/*`.
 
-## Change rules
+## Concurrency and lifecycle
 
-### External-player transport
+`config_lock` serializes compound administrative and state read/modify/write
+operations. Provider calls should happen outside that lock; merge the result
+into freshly read state while holding the lock so a slow upstream response
+cannot restore stale data. Dedicated locks own upload, viewing, remote-stream,
+LG, artwork and USB mutable runtime state. Worker shutdown and `Library.close()`
+must remain idempotent.
 
-VLC receives a temporary bearer URL from the authenticated
-`POST /api/external/start` route. It does not inherit the browser's Cloudflare
-Access cookie. On the live `mabeltv.dancoakes.uk` deployment, the Cloudflare
-application **MabelTV VLC token streams** applies a path-specific Bypass policy
-only to `/api/external/media`; MabelTV still validates the stream token before
-serving bytes. Keep the portal and `/api/external/start` behind the normal
-Access policy. Do not broaden this exception to `/api/external/*`.
+The SQLite layer provides cross-process serialization. In-memory Python locks do
+not protect the native process, so all cross-process consistency must be encoded
+as targeted SQL, constraints and transactions.
 
-Verify changes with a fresh token and cookie-free HTTPS range requests,
-including a middle-file range and suffix range. Missing and invalid tokens
-must return the backend's rejection, while protected portal routes must still
-require Cloudflare sign-in. A sign-in HTML response to a media request is a
-transport failure, even if following the redirect produces HTTP 200.
+## Tests, installation and rollback
 
-### Source changes
+Every Library test owns a temporary database, media root, cache and transfer
+area through `tests/python/library_test_support.py`. Domain suites live in
+separate modules; do not recreate a single broad test file or import fixtures
+from a test case module.
 
-- Preserve route paths, status codes, cookie attributes, response fields, and
-  the SQLite schema contract during a refactor. Additive schema changes go
-  through the versioned migration owner in `database.py` and must remain
-  readable by every process in the release.
-- Keep standard-library-only operation unless a deliberate packaging decision
-  adds and validates a runtime dependency.
-- Put new behaviour in the module that owns it; do not grow the compatibility
-  shell or add a second route ladder.
-- Preserve the patchable public names in `mabeltv-library.py` while existing
-  tests and maintenance scripts depend on them.
-- Give every test fixture its own temporary database, media root, artwork cache
-  and transfer directories. Reset mutable browser-fixture state before every
-  test so a failure cannot cascade into later cases.
-- Select the development, core, deployment or comprehensive checks from
-  `docs/quality-gates.md` according to the changed responsibility. A Library
-  change does not automatically require the complete visual browser matrix.
+The executable and complete `mabeltv_backend` package ship as one release.
+Backend/schema changes use the atomic installer, including a verified SQLite
+online backup before upgrade. A rollback must restore a release compatible with
+the restored database snapshot; never point old code at a newer unsupported
+schema. Portal-only work may use the scoped portal deploy after explicit
+authorization. See `quality-gates.md` and `state-database.md`.

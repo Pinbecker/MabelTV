@@ -1,22 +1,33 @@
 #!/usr/bin/env python3
-"""Safely add or update one Mabel TV channel in the live Pi configuration."""
+"""Safely add or update one MabelTV channel in the authoritative database."""
 
 from __future__ import annotations
 
 import argparse
-import json
 import os
 from pathlib import Path, PurePosixPath
-import tempfile
+import sys
+from typing import Any
+
+
+def _state_database_type() -> Any:
+    candidates = (Path(__file__).resolve().parent, Path("/opt/mabeltv/current"))
+    for candidate in candidates:
+        if (candidate / "mabeltv_backend" / "database.py").is_file():
+            sys.path.insert(0, str(candidate))
+            from mabeltv_backend.database import StateDatabase
+            return StateDatabase
+    raise SystemExit("The active MabelTV database package is unavailable.")
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--config", default="/var/lib/mabeltv/channels.json")
+    parser.add_argument("--database", default="/var/lib/mabeltv/mabeltv.db")
     parser.add_argument("--number", required=True, type=int)
     parser.add_argument("--name", required=True)
     parser.add_argument("--folder", required=True)
     parser.add_argument("--aspect", choices=("crop", "fit", "stretch"), default="crop")
+    parser.add_argument("--content-type", choices=("shows", "films"))
     return parser.parse_args()
 
 
@@ -25,82 +36,72 @@ def valid_folder(value: str) -> bool:
     return bool(value) and not folder.is_absolute() and ".." not in folder.parts
 
 
-def main() -> int:
-    args = parse_args()
+def configure_channel(database: Any, requested: dict[str, Any]) -> bool:
+    """Apply one idempotent channel change through targeted SQLite operations."""
+    channels = database.read("channels").get("channels", [])
+    number = int(requested["number"])
+    folder = str(requested["folder"])
+    matching_number = next(
+        (channel for channel in channels if int(channel.get("number", -1)) == number), None)
+    matching_folder = next(
+        (channel for channel in channels if str(channel.get("folder", "")) == folder), None)
+    if matching_number is not None and matching_number.get("folder") != folder:
+        raise ValueError(
+            f"Channel {number} already uses folder {matching_number.get('folder')!r}")
+    if matching_folder is not None and int(matching_folder.get("number", -1)) != number:
+        raise ValueError(
+            f"Folder {folder!r} already belongs to channel {matching_folder.get('number')}")
+
+    existing = matching_number or matching_folder
+    desired = {
+        "number": number,
+        "name": str(requested["name"]).strip(),
+        "folder": folder,
+        "aspect": str(requested.get("aspect", "crop")),
+        "content_type": str(requested.get("content_type")
+                            or (existing or {}).get("content_type", "shows")),
+    }
+    if existing == desired:
+        return False
+    if existing is None:
+        database.insert_channel(desired)
+    else:
+        database.update_channel(int(existing["number"]), desired)
+    return True
+
+
+def _drop_to_service_user() -> None:
     if os.geteuid() != 0:
         raise SystemExit("Run this command with sudo.")
-    if not 0 <= args.number <= 999:
-        raise SystemExit("Channel number must be between 0 and 999.")
+    import pwd
+    account = pwd.getpwnam("mabeltv")
+    os.initgroups(account.pw_name, account.pw_gid)
+    os.setgid(account.pw_gid)
+    os.setuid(account.pw_uid)
+
+
+def main() -> int:
+    args = parse_args()
+    if not 1 <= args.number <= 999:
+        raise SystemExit("Channel number must be between 1 and 999.")
     if not args.name.strip():
         raise SystemExit("Channel name cannot be empty.")
     if not valid_folder(args.folder):
         raise SystemExit("Folder must be a safe path relative to the media root.")
 
-    config_path = Path(args.config)
+    StateDatabase = _state_database_type()
+    _drop_to_service_user()
+    database = StateDatabase(Path(args.database))
+    database.verify_ready()
     try:
-        root = json.loads(config_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
-        raise SystemExit(f"Could not read {config_path}: {error}") from error
-
-    channels = root.get("channels")
-    if not isinstance(channels, list):
-        raise SystemExit(f"{config_path} does not contain a channels list.")
-
-    matching_number = next(
-        (channel for channel in channels if channel.get("number") == args.number), None
-    )
-    matching_folder = next(
-        (channel for channel in channels if channel.get("folder") == args.folder), None
-    )
-    if matching_number is not None and matching_number.get("folder") != args.folder:
-        raise SystemExit(
-            f"Channel {args.number} already uses folder "
-            f"{matching_number.get('folder')!r}; no changes made."
-        )
-    if matching_folder is not None and matching_folder.get("number") != args.number:
-        raise SystemExit(
-            f"Folder {args.folder!r} already belongs to channel "
-            f"{matching_folder.get('number')}; no changes made."
-        )
-
-    channel = matching_number or matching_folder
-    desired = {
-        "number": args.number,
-        "name": args.name.strip(),
-        "folder": args.folder,
-        "aspect": args.aspect,
-    }
-    changed = channel != desired
-    if channel is None:
-        channels.append(desired)
-    elif changed:
-        channel.clear()
-        channel.update(desired)
-    channels.sort(key=lambda item: int(item.get("number", 1000)))
-
-    if not changed:
+        changed = configure_channel(database, vars(args))
+    except ValueError as error:
+        raise SystemExit(f"{error}; no changes made.") from error
+    if changed:
+        print(f"Configured channel {args.number}: {args.name} "
+              f"({args.folder}, {args.aspect}).")
+    else:
         print(f"Channel {args.number} is already configured as {args.name}.")
-        return 0
-
-    config_path.parent.mkdir(parents=True, exist_ok=True)
-    stat = config_path.stat()
-    descriptor, temporary_name = tempfile.mkstemp(
-        prefix=f".{config_path.name}.", dir=config_path.parent
-    )
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            json.dump(root, handle, indent=2, ensure_ascii=False)
-            handle.write("\n")
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.chmod(temporary_name, stat.st_mode)
-        os.chown(temporary_name, stat.st_uid, stat.st_gid)
-        os.replace(temporary_name, config_path)
-    finally:
-        if os.path.exists(temporary_name):
-            os.unlink(temporary_name)
-
-    print(f"Configured channel {args.number}: {args.name} ({args.folder}, {args.aspect}).")
     return 0
 
 

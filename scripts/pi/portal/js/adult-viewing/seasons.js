@@ -1,5 +1,7 @@
 'use strict'
 
+const ADULT_SEASON_CACHE_MAX_AGE = 24 * 60 * 60 * 1000
+
 function adultSeasonSummary(season, watched = Number(season.watched_count || 0)) {
   const total = Number(season.episodes || 0)
   return watched ? `${watched} of ${total} watched` : `${total} episode${total === 1 ? '' : 's'}`
@@ -400,6 +402,88 @@ function configureAdultTitleSeasonManagement(detail, season, card) {
   } : null
 }
 
+function adultTitleSeasonCacheKey(detail, season) {
+  return `adult-season-v1:${Number(detail.tmdb_id)}:${Number(season.number)}`
+}
+
+function adultTitleSeasonCurrentResult(detail, season, result) {
+  const viewing = adultViewingRecord(detail)
+  const episodeStates = viewing?.episodes && typeof viewing.episodes === 'object'
+    ? viewing.episodes : null
+  const localEpisodes = new Map(adultTitleLocalSeasonEpisodes(detail, season.number)
+    .map(episode => [Number(episode.episode), episode]))
+  return {
+    ...result,
+    episodes: (result?.episodes || []).map(episode => {
+      const saved = episodeStates?.[`${season.number}:${episode.number}`]
+      return {
+        ...episode,
+        watched: (episodeStates ? saved?.watched === true : episode.watched === true)
+          || localEpisodes.get(Number(episode.number))?.watched === true,
+      }
+    }),
+  }
+}
+
+function renderAdultTitleSeasonResult(detail, season, card, result, targetEpisode = 0) {
+  season.watched_count = result.episodes.filter(episode => episode.watched).length
+  const statusCount = season.watched_count
+  renderAdultTitleSeasonHeader(detail, season, result.episodes.length, statusCount)
+  $('#adultTitleSeasonEpisodeCount').textContent = `${result.episodes.length} total`
+  const overview = $('#adultTitleSeasonOverview')
+  overview.textContent = result.overview || season.overview || ''
+  overview.classList.toggle('hidden', !overview.textContent)
+  $('#adultTitleSeasonArtwork').replaceChildren(adultStreamingArtwork(
+    detail, season, result, 'adult-season-sheet-artwork'))
+  const root = $('#adultTitleSeasonEpisodes')
+  root.replaceChildren(...result.episodes.map(episode =>
+    adultStreamingEpisodeRow(detail, season, result, episode, card)))
+  if (!result.episodes.length) root.replaceChildren(portalEmptyState({
+    className: 'adult-series-empty',
+    title: 'No episodes found',
+    message: 'TMDB has no episode details for this series yet.',
+    messageTag: 'span',
+  }))
+  wireAdultSeasonBulkButton($('#adultTitleSeasonWatched'), `Series ${season.number}`,
+    statusCount, result.episodes.length, async targetWatched => {
+      const previous = result.episodes.map(episode => episode.watched)
+      result.episodes.forEach(episode => { episode.watched = targetWatched })
+      season.watched_count = targetWatched ? result.episodes.length : 0
+      syncAdultStreamingSeasonCard(card, season, detail)
+      syncAdultTitleNextEpisode(detail)
+      try {
+        detail.viewing = await updateAdultViewing(detail, 'season_watched', {
+          season: season.number, episode_count: result.episodes.length,
+          watched: targetWatched,
+        })
+        if (detail.local?.kind === 'series') {
+          const localSeries = (library?.adult_series || []).find(value =>
+            value.id === detail.local.series)
+          ;(localSeries?.episodes || []).filter(episode =>
+            Number(episode.season) === Number(season.number))
+            .forEach(episode => { episode.watched = targetWatched })
+        }
+        await syncAdultTitleEpisodeStatus(detail)
+        portalSheets.close($('#adultTitleSeasonSheet'), { restore: false })
+        openAdultTitleSeason(detail, season, card, targetEpisode)
+        return targetWatched ? result.episodes.length : 0
+      } catch (error) {
+        result.episodes.forEach((episode, index) => { episode.watched = previous[index] })
+        season.watched_count = previous.filter(Boolean).length
+        syncAdultStreamingSeasonCard(card, season, detail)
+        syncAdultTitleNextEpisode(detail)
+        throw error
+      }
+    })
+  $('#adultTitleSeasonWatched').disabled = false
+  syncAdultStreamingSeasonCard(card, season, detail)
+  if (targetEpisode) {
+    const target = root.querySelector(`[data-episode="${targetEpisode}"]`)
+    target?.classList.add('is-next')
+    requestAnimationFrame(() => target?.scrollIntoView({ block: 'center', behavior: 'smooth' }))
+  }
+}
+
 async function openAdultTitleSeason(detail, season, card, targetEpisode = 0) {
   const revision = ++adultSeasonOpenRevision
   const titleSheet = $('#adultTitleSheet')
@@ -432,66 +516,26 @@ async function openAdultTitleSeason(detail, season, card, targetEpisode = 0) {
     },
   })
   configureAdultTitleSeasonManagement(detail, season, card)
+  const cacheKey = adultTitleSeasonCacheKey(detail, season)
+  let displayed = null
   try {
+    const cached = await readPortalDataCache(cacheKey)
+    if (revision !== adultSeasonOpenRevision) return
+    if (cached) {
+      displayed = adultTitleSeasonCurrentResult(detail, season, cached.data)
+      renderAdultTitleSeasonResult(detail, season, card, displayed, targetEpisode)
+      if (Date.now() - cached.saved_at < ADULT_SEASON_CACHE_MAX_AGE) return
+    }
     const result = await api(`/api/adult/season?tmdb_id=${detail.tmdb_id}&season=${season.number}`)
     if (revision !== adultSeasonOpenRevision) return
-    season.watched_count = result.episodes.filter(episode => episode.watched).length
-    const statusCount = season.watched_count
-    renderAdultTitleSeasonHeader(detail, season, result.episodes.length, statusCount)
-    $('#adultTitleSeasonEpisodeCount').textContent = `${result.episodes.length} total`
-    const overview = $('#adultTitleSeasonOverview')
-    overview.textContent = result.overview || season.overview || ''
-    overview.classList.toggle('hidden', !overview.textContent)
-    $('#adultTitleSeasonArtwork').replaceChildren(adultStreamingArtwork(
-      detail, season, result, 'adult-season-sheet-artwork'))
-    root.replaceChildren(...result.episodes.map(episode =>
-      adultStreamingEpisodeRow(detail, season, result, episode, card)))
-    if (!result.episodes.length) root.replaceChildren(portalEmptyState({
-      className: 'adult-series-empty',
-      title: 'No episodes found',
-      message: 'TMDB has no episode details for this series yet.',
-      messageTag: 'span',
-    }))
-    wireAdultSeasonBulkButton($('#adultTitleSeasonWatched'), `Series ${season.number}`,
-      statusCount, result.episodes.length, async targetWatched => {
-        const previous = result.episodes.map(episode => episode.watched)
-        result.episodes.forEach(episode => { episode.watched = targetWatched })
-        season.watched_count = targetWatched ? result.episodes.length : 0
-        syncAdultStreamingSeasonCard(card, season, detail)
-        syncAdultTitleNextEpisode(detail)
-        try {
-          detail.viewing = await updateAdultViewing(detail, 'season_watched', {
-            season: season.number, episode_count: result.episodes.length,
-            watched: targetWatched,
-          })
-          if (detail.local?.kind === 'series') {
-            const localSeries = (library?.adult_series || []).find(value =>
-              value.id === detail.local.series)
-            ;(localSeries?.episodes || []).filter(episode =>
-              Number(episode.season) === Number(season.number))
-              .forEach(episode => { episode.watched = targetWatched })
-          }
-          await syncAdultTitleEpisodeStatus(detail)
-          portalSheets.close(seasonSheet, { restore: false })
-          openAdultTitleSeason(detail, season, card, targetEpisode)
-          return targetWatched ? result.episodes.length : 0
-        } catch (error) {
-          result.episodes.forEach((episode, index) => { episode.watched = previous[index] })
-          season.watched_count = previous.filter(Boolean).length
-          syncAdultStreamingSeasonCard(card, season, detail)
-          syncAdultTitleNextEpisode(detail)
-          throw error
-        }
-      })
-    bulk.disabled = false
-    syncAdultStreamingSeasonCard(card, season, detail)
-    if (targetEpisode) {
-      const target = root.querySelector(`[data-episode="${targetEpisode}"]`)
-      target?.classList.add('is-next')
-      requestAnimationFrame(() => target?.scrollIntoView({ block: 'center', behavior: 'smooth' }))
+    const fresh = adultTitleSeasonCurrentResult(detail, season, result)
+    if (!displayed) {
+      renderAdultTitleSeasonResult(detail, season, card, fresh, targetEpisode)
     }
+    await writePortalDataCache(cacheKey, result)
   } catch (error) {
     if (revision !== adultSeasonOpenRevision) return
+    if (displayed) return
     root.replaceChildren(portalEmptyState({
       className: 'adult-series-empty',
       title: 'Episodes unavailable',

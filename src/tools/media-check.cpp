@@ -16,8 +16,8 @@ int main(int argc, char *argv[])
     QCommandLineParser parser;
     parser.setApplicationDescription(QStringLiteral("Validate a Mabel TV channel library"));
     parser.addHelpOption();
-    const QCommandLineOption channelsOption(QStringLiteral("channels"),
-                                             QStringLiteral("Path to channels.json."),
+    const QCommandLineOption databaseOption(QStringLiteral("database"),
+                                             QStringLiteral("Path to the MabelTV database."),
                                              QStringLiteral("file"));
     const QCommandLineOption mediaRootOption(QStringLiteral("media-root"),
                                               QStringLiteral("Root directory containing channel folders."),
@@ -27,15 +27,16 @@ int main(int argc, char *argv[])
                                           QStringLiteral("file"));
     const QCommandLineOption strictOption(QStringLiteral("strict"),
                                            QStringLiteral("Return a non-zero status when warnings are found."));
-    parser.addOption(channelsOption);
+    parser.addOption(databaseOption);
     parser.addOption(mediaRootOption);
     parser.addOption(cacheOption);
     parser.addOption(strictOption);
     parser.process(application);
 
-    const QString channelsPath = parser.isSet(channelsOption)
-        ? parser.value(channelsOption)
-        : QDir::current().filePath(QStringLiteral("config/examples/channels.json"));
+    const QString databasePath = parser.value(databaseOption);
+    if (databasePath.trimmed().isEmpty()) {
+        parser.showHelp(2);
+    }
     const QString mediaRoot = parser.isSet(mediaRootOption)
         ? parser.value(mediaRootOption)
         : QDir(QStandardPaths::writableLocation(QStandardPaths::MoviesLocation))
@@ -47,7 +48,7 @@ int main(int argc, char *argv[])
 
     MediaIndex index(cachePath);
     const ChannelLibraryResult library = ChannelLibrary::load(
-        channelsPath, mediaRoot, [&index](const QString &path) { return index.inspect(path); });
+        databasePath, mediaRoot, [&index](const QString &path) { return index.inspect(path); });
     const bool cacheSaved = index.save();
 
     QTextStream output(stdout);
