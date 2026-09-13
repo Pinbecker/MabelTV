@@ -5,6 +5,7 @@ import copy
 import importlib.util
 import re
 import secrets
+import time
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from typing import Any
@@ -67,7 +68,7 @@ class FixtureLibrary:
 
     def portal_bootstrap(self) -> dict[str, Any]:
         return {
-            "schema_version": 1, "database_schema": 7,
+            "schema_version": 1, "database_schema": 8,
             "revisions": {domain: 1 for domain in (
                 "library", "adult_viewing", "viewing_insights", "adult_insights")},
         }
@@ -133,22 +134,63 @@ class FixtureLibrary:
             "catalog_known": True, "available_apps": ["netflix"],
         }
 
-    def viewing_insights(self, days: int, timezone_offset: int) -> dict[str, Any]:
+    @staticmethod
+    def _viewing_fixture_item() -> dict[str, Any]:
+        return {
+            "item_id": "channel:3", "item_key": "channel:3",
+            "kind": "channel", "title": "Little Explorers",
+            "source": "MabelTV series channel", "channel_number": 3,
+            "artwork": "", "available": True, "seconds": 300,
+            "sessions": 1, "first_watched": 2_000_000_000,
+            "last_watched": 2_000_000_300,
+        }
+
+    def viewing_overview(self, days: int, timezone_offset: int,
+                         timezone_name: str = "") -> dict[str, Any]:
         summary = {
-            "today_seconds": 0, "week_seconds": 0, "month_seconds": 0,
-            "range_seconds": 0, "previous_range_seconds": 0,
-            "average_active_day_seconds": 0, "longest_session_seconds": 0,
-            "active_days": 0, "sessions": 0, "unique_items": 0,
-            "busiest_period": "Overnight", "busiest_weekday": "Mon",
+            "range_seconds": 300, "previous_range_seconds": 240,
+            "average_active_day_seconds": 300, "longest_session_seconds": 300,
+            "active_days": 1, "sessions": 1, "unique_items": 1,
+            "busiest_period": "Afternoon", "busiest_weekday": "Mon",
         }
         return {
             "tracking_started": 2_000_000_000, "range_days": days,
-            "summary": summary, "daily": [], "weekly": [], "monthly": [],
-            "timeline": [], "time_of_day": [], "hourly": [], "weekdays": [],
-            "by_surface": [], "by_kind": [], "top_titles": [],
-            "top_channels": [], "top_films": [], "items": [],
-            "recent": [], "sessions": [],
+            "range_label": {1: "Today", 7: "Last 7 days", 30: "Last 30 days",
+                            365: "Last 12 months"}.get(days, "Last 7 days"),
+            "summary": summary,
+            "timeline": [{"name": "Mon", "seconds": 300}],
+            "time_of_day": [{"name": name, "seconds": 300 if name == "Afternoon" else 0}
+                            for name in ("Overnight", "Morning", "Afternoon", "Evening")],
+            "highlights": [self._viewing_fixture_item()],
+            "catalogue": {"channels": 1, "films": 0,
+                          "channel_artwork": [], "film_artwork": []},
         }
+
+    def viewing_catalogue_insights(self) -> dict[str, Any]:
+        return {"tracking_started": 2_000_000_000, "scope": "all-history",
+                "items": [self._viewing_fixture_item()]}
+
+    def viewing_item_insight(self, item_id: str, days: int,
+                             timezone_offset: int, timezone_name: str = "") -> dict[str, Any]:
+        item = {**self._viewing_fixture_item(), "active_days": 1,
+                "average_session_seconds": 300, "longest_session_seconds": 300,
+                "share": 1, "busiest_period": "Afternoon", "timeline": [],
+                "time_of_day": [], "hourly": [], "weekdays": [],
+                "by_surface": [{"name": "tv", "seconds": 300}],
+                "history": []}
+        return {"tracking_started": 2_000_000_000, "range_days": days,
+                "range_label": "All history" if days == 0 else f"Last {days} days",
+                "item": item}
+
+    def viewing_diary(self, value: str, timezone_offset: int,
+                      timezone_name: str = "") -> dict[str, Any]:
+        today = time.strftime("%Y-%m-%d")
+        selected = value or today
+        periods = [{"name": name, "seconds": 0, "sessions": 0, "entries": []}
+                   for name in ("Overnight", "Morning", "Afternoon", "Evening")]
+        return {"date": selected, "label": "Today" if selected == today else selected,
+                "is_today": selected == today, "previous_date": "2026-09-12",
+                "next_date": None if selected == today else today, "periods": periods}
 
     def adult_viewing(self) -> dict[str, Any]:
         return {"items": [copy.deepcopy(value) for value in self.viewing_titles.values()],
@@ -200,6 +242,31 @@ class FixtureLibrary:
 
     def adult_explore_feedback(self, payload: dict[str, Any]) -> dict[str, Any]:
         return {"ok": True, "recorded": len(payload.get("items", []))}
+
+    def adult_home_what_to_watch(self, page: Any, limit: Any = 12) -> dict[str, Any]:
+        return self.adult_explore("for-you", "all", page, True, limit)
+
+    def adult_released_this_week(self, limit: Any = 16) -> dict[str, Any]:
+        result = self.adult_explore("popular", "all", 9, False, limit)
+        for index, value in enumerate(result["results"]):
+            value["release_label"] = "New film" if value["media_type"] == "movie" \
+                else ("New series" if index < 2 else "Series 2 starts")
+            value["cinema_only"] = value["media_type"] == "movie" and index == 0
+        return {"from": "2026-09-07", "to": "2026-09-13",
+                "results": result["results"], "attribution": "Release data from TMDB"}
+
+    def adult_home_availability(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return {"region": "GB", "items": [{
+            "key": f"{value['media_type']}:{int(value['tmdb_id'])}",
+            "providers": [] if int(value["tmdb_id"]) == 14001 else [
+                {"provider_id": 8, "name": "Netflix", "type": "flatrate",
+                 "label": "Stream", "logo_path": "/netflix.jpg"},
+                {"provider_id": 29, "name": "Sky Go", "type": "flatrate",
+                 "label": "Stream", "logo_path": "/sky.jpg"},
+                {"provider_id": 337, "name": "Disney Plus", "type": "flatrate",
+                 "label": "Stream", "logo_path": "/disney.jpg"},
+            ], "sources": [], "available": True,
+        } for value in payload.get("titles", [])]}
 
     def adult_title_detail(self, media_type: str, tmdb_id: Any) -> dict[str, Any]:
         identifier = int(tmdb_id)
@@ -258,6 +325,12 @@ class FixtureLibrary:
             current.update({"manual_state": "part_watched", "history": []})
         elif action == "not_watched":
             current.update({"manual_state": "not_watched", "history": []})
+        elif action == "season_watched":
+            season = int(payload["season"])
+            watched = bool(payload["watched"])
+            episodes = current.setdefault("episodes", {})
+            for number in range(1, int(payload["episode_count"]) + 1):
+                episodes[f"{season}:{number}"] = {"watched": watched}
         elif action == "rating":
             rating = int(payload.get("rating", 0) or 0)
             corrected = current.get("manual_state") in {

@@ -83,7 +83,7 @@ class ManagementMixin:
             self._apply_management(payload)
         if payload.get("action") in {
                 "optimise-adult", "set-remote-simultaneous",
-                "set-watchmode-availability",
+                "set-watchmode-availability", "set-adult-provider-badges",
                 "create-adult-series", "create-adult-season",
                 "trash-adult-series", "optimisation-action"}:
             # These settings belong to the portal/library service.  In
@@ -132,6 +132,13 @@ class ManagementMixin:
                 raise ValueError("Choose whether Watchmode availability is on or off")
             self.merge_state_fields(
                 "settings", {"watchmode_availability_enabled": enabled})
+            return
+        if action == "set-adult-provider-badges":
+            enabled = payload.get("enabled")
+            if not isinstance(enabled, bool):
+                raise ValueError("Choose whether streaming service badges are shown")
+            self.merge_state_fields(
+                "settings", {"adult_provider_badges_enabled": enabled})
             return
         if action == "set-tv-settings":
             requested = payload.get("settings")
@@ -430,6 +437,8 @@ class ManagementMixin:
                                "favourites": sorted(favourites),
                                "updated": time.time()})
                 self.write_channel_media_states(states)
+            self.relocate_viewing_item(
+                source_number, source.name, target_number, destination.name)
         elif action == "rename":
             source = self.safe_media_path(channel, str(payload.get("file", "")))
             if not source.is_file(): raise ValueError("Programme not found")
@@ -461,6 +470,10 @@ class ManagementMixin:
                                "favourites": sorted(favourites),
                                "updated": time.time()})
                 self.write_channel_media_states(states)
+            if self.channel_content_type(channel) == "films":
+                self.relocate_viewing_item(
+                    int(channel["number"]), source.name,
+                    int(channel["number"]), destination.name)
         elif action == "trash":
             source = self.safe_media_path(channel, str(payload.get("file", "")))
             if not source.is_file(): raise ValueError("Programme not found")

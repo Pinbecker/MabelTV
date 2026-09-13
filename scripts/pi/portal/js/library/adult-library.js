@@ -2,14 +2,6 @@
 
 const librarySignalIcon = window.MabelPortalUI.icon
 
-let viewingInsightsRange = 1
-let openViewingSessionSwipe = null
-let viewingInsightsData = null
-let viewingInsightsLoadedRange = null
-let selectedViewingItemKey = ''
-let viewingInsightsRoute = { screen: 'dashboard' }
-const viewingCharts = new Map()
-
 function adultOptimisationLabel(film) {
       const state = film?.playback_state || 'original'
       const progress = Math.max(0, Math.min(100, Number(film?.playback_progress || 0)))

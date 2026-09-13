@@ -340,6 +340,19 @@
       if (!target || button.disabled) return
       button.disabled = true
       try {
+        if (target.scope === 'tracked-season') {
+          const detail = target.viewingTitle
+          detail.viewing = await updateAdultViewing(detail, 'season_watched', {
+            season: target.season, episode_count: target.episodeCount, watched: false,
+          })
+          target.viewingSeason.watched_count = 0
+          await syncAdultTitleEpisodeStatus(detail)
+          portalSheets.dismiss($('#adultSeriesRestartSheet'))
+          adultSeriesRestartTarget = null
+          setTimeout(() => target.returnTo?.(), 0)
+          notice(`${target.episodeCount} episode${target.episodeCount === 1 ? '' : 's'} reset to not watched.`)
+          return
+        }
         const result = await api('/api/adult/series/restart', {
           method: 'POST', body: JSON.stringify({
             series: target.seriesId,

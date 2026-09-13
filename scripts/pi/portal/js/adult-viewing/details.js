@@ -143,12 +143,8 @@ function renderAdultTitleEnrichment(detail, prefix, openTitle, openPerson = open
         placeholder.textContent = String(part.title || '?').slice(0, 1).toUpperCase()
         art.append(placeholder)
       }
-      if (part.on_mabeltv) {
-        const local = document.createElement('i')
-        local.textContent = 'MabelTV'
-        art.append(local)
-      }
       appendAdultArtworkStatus(art, part)
+      renderAdultProviderBadges(art, part)
       const title = document.createElement('strong')
       title.textContent = part.title
       const year = document.createElement('small')
@@ -635,6 +631,7 @@ async function openAdultTitle(title, returnTo = null) {
         local_context: localContext, catalogue_only: title.catalogue_only === true,
       }
       renderAdultTitleDetail(displayed, false, revision, false)
+      rememberAdultTitleMetadata(displayed, title)
     }
     const detail = await api(
       `/api/adult/title?media_type=${title.media_type}&tmdb_id=${title.tmdb_id}`)
@@ -642,6 +639,7 @@ async function openAdultTitle(title, returnTo = null) {
     const fresh = { ...detail, viewing: adultViewingRecord(title),
       local_context: localContext,
       catalogue_only: title.catalogue_only === true }
+    rememberAdultTitleMetadata(fresh, title)
     if (cached) {
       const providerResult = displayed.provider_result
       Object.assign(displayed, fresh)

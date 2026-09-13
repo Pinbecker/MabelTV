@@ -279,6 +279,38 @@ class AdultMetadataMixin:
         return {"query": query, "results": results,
                 "attribution": "Streaming availability data from TMDB and JustWatch"}
 
+    def adult_title_provider_groups(self, media_type: str, tmdb_id: Any) \
+            -> dict[str, Any]:
+        """Return the normalised UK TMDB provider groups for one title."""
+        key = self.adult_title_key(media_type, tmdb_id)
+        if self.settings().get("watchmode_availability_enabled") is False:
+            return {"providers": [], "provider_link": "", "disabled": True}
+        media_type, raw_id = key.split(":", 1)
+        response = self.adult_cached_tmdb_request(
+            f"{media_type}/{raw_id}/watch/providers")
+        region = response.get("results", {}).get("GB", {}) \
+            if isinstance(response, dict) else {}
+        groups = []
+        for provider_type, label in (("flatrate", "Stream"), ("free", "Free"),
+                                     ("ads", "With ads"), ("rent", "Rent"),
+                                     ("buy", "Buy")):
+            for provider in region.get(provider_type, []) \
+                    if isinstance(region, dict) else []:
+                if not isinstance(provider, dict):
+                    continue
+                groups.append({
+                    "provider_id": int(provider.get("provider_id", 0) or 0),
+                    "name": str(provider.get("provider_name", "")),
+                    "type": provider_type, "label": label,
+                    "logo_path": str(provider.get("logo_path") or ""),
+                })
+        return {
+            "providers": groups,
+            "provider_link": str(region.get("link", ""))
+            if isinstance(region, dict) else "",
+            "disabled": False,
+        }
+
     def adult_title_detail(self, media_type: str, tmdb_id: Any) -> dict[str, Any]:
         key = self.adult_title_key(media_type, tmdb_id)
         media_type, raw_id = key.split(":", 1)
@@ -304,25 +336,9 @@ class AdultMetadataMixin:
                               for release in choices)
                 summary["release_date"] = uk_date
                 summary["year"] = uk_date[:4]
-        availability_enabled = self.settings().get(
-            "watchmode_availability_enabled") is not False
-        providers = self.adult_cached_tmdb_request(
-            f"{media_type}/{raw_id}/watch/providers") if availability_enabled else {}
-        region = providers.get("results", {}).get("GB", {}) \
-            if isinstance(providers, dict) else {}
-        groups = []
-        for provider_type, label in (("flatrate", "Stream"), ("free", "Free"),
-                                     ("ads", "With ads"), ("rent", "Rent"),
-                                     ("buy", "Buy")):
-            for provider in region.get(provider_type, []) if isinstance(region, dict) else []:
-                if not isinstance(provider, dict):
-                    continue
-                groups.append({
-                    "provider_id": int(provider.get("provider_id", 0) or 0),
-                    "name": str(provider.get("provider_name", "")),
-                    "type": provider_type, "label": label,
-                    "logo_path": str(provider.get("logo_path") or ""),
-                })
+        provider_result = self.adult_title_provider_groups(media_type, raw_id)
+        availability_enabled = provider_result.get("disabled") is not True
+        groups = provider_result["providers"]
         runtime = value.get("runtime") if media_type == "movie" else (
             value.get("episode_run_time", [None]) or [None])[0]
         credits = value.get("credits", {}) if isinstance(value.get("credits"), dict) else {}
@@ -417,8 +433,7 @@ class AdultMetadataMixin:
                         for item in value.get("seasons", []) if isinstance(item, dict)
                         and int(item.get("season_number", 0) or 0) > 0],
             "providers": groups, "availability_enabled": availability_enabled,
-            "provider_link": str(region.get("link", ""))
-            if isinstance(region, dict) else "", "region": "GB",
+            "provider_link": provider_result["provider_link"], "region": "GB",
             "on_mabeltv": key in local_titles,
             "local": local_title,
             "attribution": "Streaming availability data from TMDB and JustWatch",

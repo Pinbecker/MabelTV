@@ -13,6 +13,77 @@ async function openPortal(page) {
   await page.evaluate(() => document.fonts?.ready)
 }
 
+async function expectCompactDomainTabs(page, viewSelector) {
+  const controls = await page.locator(viewSelector).evaluate(view => {
+    const tabs = [...view.querySelectorAll('.watch-tabs button')]
+    return {
+      icons: tabs.map(tab => tab.querySelector('use')?.getAttribute('href')),
+      tabFonts: tabs.map(tab => getComputedStyle(tab).fontSize),
+      iconSizes: tabs.map(tab => {
+        const box = tab.querySelector('svg').getBoundingClientRect()
+        return [Math.round(box.width), Math.round(box.height)]
+      }),
+    }
+  })
+  expect(controls).toEqual({
+    icons: [
+      '/portal/icons.svg#signal-play',
+      '/portal/icons.svg#signal-chart-column',
+      '/portal/icons.svg#signal-download',
+    ],
+    tabFonts: ['14px', '14px', '14px'],
+    iconSizes: [[15, 15], [15, 15], [15, 15]],
+  })
+}
+
+async function expectCompactSearch(page, inputSelector) {
+  const search = await page.locator(inputSelector).evaluate(input => ({
+    searchHeight: Math.round(input.closest('.watch-search').getBoundingClientRect().height),
+    inputHeight: Math.round(input.getBoundingClientRect().height),
+    placeholderFont: getComputedStyle(input, '::placeholder').fontSize,
+  }))
+  expect(search).toEqual({
+    searchHeight: 42,
+    inputHeight: 40,
+    placeholderFont: '15px',
+  })
+}
+
+test('MabelTV and Adult TV keep compact icon tabs across every section', async ({ page }) => {
+  await openPortal(page)
+
+  await page.locator('[data-view-button="watch"]').click()
+  await expectCompactDomainTabs(page, '#view-watch')
+  await expectCompactSearch(page, '#watchMabelSearch')
+  await page.locator('#watchMabelInsightsTab').click()
+  await expect(page.locator('#mabelInsightsDashboard')).toBeVisible()
+  await expectCompactDomainTabs(page, '#view-insights')
+  await page.locator('#insightsDownloadsTab').click()
+  await expect(page.locator('#watchDownloadsLayout')).toBeVisible()
+  await expectCompactDomainTabs(page, '#view-watch')
+
+  await page.locator('[data-view-button="adult-home"]').click()
+  await expectCompactDomainTabs(page, '#view-adult-home')
+  await expectCompactSearch(page, '#watchSearch')
+  await expect(page.locator('#adultHomeReleased .adult-release-cinema-tag'))
+    .toHaveText('Cinema')
+  await expect(page.locator('#adultHomeReleased .adult-explore-card').first()
+    .locator('.adult-provider-strip')).toHaveCount(0)
+  const releaseMeta = await page.locator(
+    '#adultHomeReleased .adult-explore-open-copy small',
+  ).allTextContents()
+  expect(releaseMeta.every(value => value && !value.includes(' · '))).toBe(true)
+  await expect(page.locator(
+    '#adultHomeForYou .adult-release-cinema-tag, #adultHomeDifferent .adult-release-cinema-tag',
+  )).toHaveCount(0)
+  await page.locator('#adultHomeInsightsTab').click()
+  await expect(page.locator('#adultInsightsDashboard')).toBeVisible()
+  await expectCompactDomainTabs(page, '#view-insights')
+  await page.locator('#insightsDownloadsTab').click()
+  await expect(page.locator('#watchDownloadsLayout')).toBeVisible()
+  await expectCompactDomainTabs(page, '#view-watch')
+})
+
 test('@visual MabelTV and Adult TV each keep the same three-section structure', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone navigation contract')
   await openPortal(page)
@@ -49,11 +120,42 @@ test('@visual MabelTV and Adult TV each keep the same three-section structure', 
   expect(Math.abs(adultWatchTitle.height - mabelWatchTitle.height)).toBeLessThan(1)
   const sectionOrder = await page.locator('#view-adult-home').evaluate(view => [
     'adultHomeContinueSection', 'adultHomeUpNextSection',
-    'adultHomeForYouSection', 'adultHomeDifferentSection',
+    'adultHomeReleasedSection', 'adultHomeForYouSection', 'adultHomeDifferentSection',
   ].map(id => [...view.querySelectorAll('section')].indexOf(view.querySelector(`#${id}`))))
   expect(sectionOrder).toEqual([...sectionOrder].sort((left, right) => left - right))
   await expect(page.locator('#adultHomeForYou .adult-explore-card')).toHaveCount(8)
+  await expect(page.locator('#adultHomeReleased .adult-explore-card')).toHaveCount(16)
+  await expect(page.locator('#adultHomeReleasedSection')).toHaveClass(/adult-home-release-card/)
+  await expect(page.locator('#adultHomeReleasedSection .adult-home-swipe-cue')).toBeVisible()
+  await expect(page.locator('#adultHomeReleased')).toHaveCSS('overflow-x', 'auto')
+  const releasedWidths = await page.locator('#adultHomeReleased .adult-explore-card')
+    .evaluateAll(cards => cards.slice(0, 5).map(card => card.getBoundingClientRect().width))
+  expect(releasedWidths.every(width => width > 70)).toBe(true)
   await expect(page.locator('#adultHomeDifferent .adult-explore-card')).toHaveCount(8)
+  const caption = await page.locator('#adultHomeForYou .adult-explore-open-copy').first()
+    .evaluate(copy => {
+      const title = copy.querySelector('strong')
+      const copyBox = copy.getBoundingClientRect()
+      const titleBox = title.getBoundingClientRect()
+      const style = getComputedStyle(title)
+      return {
+        leftOffset: Math.round(titleBox.left - copyBox.left),
+        textAlign: style.textAlign,
+        textOverflow: style.textOverflow,
+        whiteSpace: style.whiteSpace,
+      }
+    })
+  expect(caption).toEqual({ leftOffset: 0, textAlign: 'left', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })
+  const continueCard = page.locator('#adultHomeContinueRail .watch-continue-card').first()
+  if (await continueCard.count()) {
+    expect((await continueCard.boundingBox()).width).toBeLessThanOrEqual(225)
+    await expect(continueCard.locator('.watch-continue-copy i')).toHaveCount(0)
+  }
+  await expect(page.locator('#adultHomeForYou .adult-provider-strip').first()).toBeVisible()
+  await expect(page.locator('#adultHomeForYou .adult-provider-strip img').first())
+    .toHaveAttribute('src', /apple-touch-icon|providers/)
+  await expect(page.locator('#adultHomeForYou .adult-provider-strip img').first())
+    .toHaveCSS('width', '17px')
   await expect(page.locator('#view-adult-home')).not.toContainText('Tonight')
   await expect(page.locator('#view-adult-home')).not.toContainText('Ready on MabelTV')
   await expect(page.locator('#view-adult-home')).not.toContainText('Your history balanced')
@@ -121,7 +223,7 @@ test('Watch and Insights retain their completed screens without rebuilding them'
   page.on('request', request => {
     const url = new URL(request.url())
     if (url.pathname === '/api/adult/insights') requests.adult += 1
-    if (url.pathname === '/api/viewing-insights') requests.mabel += 1
+    if (url.pathname === '/api/viewing-insights/overview') requests.mabel += 1
   })
   await openPortal(page)
 
@@ -162,7 +264,8 @@ test('stored Insights paint immediately while an old view refreshes behind them'
   await openPortal(page)
   await page.locator('[data-view-button="watch"]').click()
   await page.locator('#watchMabelInsightsTab').click()
-  await expect.poll(() => page.evaluate(() => viewingInsightsLoadedRange)).toBe(1)
+  await expect.poll(() => page.evaluate(() => Boolean(
+    viewingResource('overview', '7')))).toBe(true)
   const mabelTotal = await page.locator('#viewingRangeTotal').textContent()
   await page.locator('[data-view-button="adult-home"]').click()
   await page.locator('#adultHomeInsightsTab').click()
@@ -176,7 +279,7 @@ test('stored Insights paint immediately while an old view refreshes behind them'
     })
     const transaction = database.transaction('snapshots', 'readwrite')
     const store = transaction.objectStore('snapshots')
-    for (const key of ['mabel-insights-v1-1', 'adult-insights-v1']) {
+    for (const key of ['mabel-insights-v2-overview-7', 'adult-insights-v1']) {
       const cached = await new Promise((resolve, reject) => {
         const request = store.get(key)
         request.onsuccess = () => resolve(request.result)
@@ -192,7 +295,7 @@ test('stored Insights paint immediately while an old view refreshes behind them'
     })
     database.close()
   })
-  await page.route('**/api/viewing-insights?*', async route => {
+  await page.route('**/api/viewing-insights/overview?*', async route => {
     await new Promise(resolve => setTimeout(resolve, 1200))
     await route.continue()
   })

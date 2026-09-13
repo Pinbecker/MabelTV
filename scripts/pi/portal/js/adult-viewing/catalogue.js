@@ -19,20 +19,6 @@ let adultSearchViewportBaseline = Math.max(
   window.innerHeight, window.visualViewport?.height || 0)
 let adultSearchKeyboardWasOpen = false
 
-function adultPosterUrl(path, size = 'w342') {
-  if (!path) return ''
-  const name = String(path).replace(/^\/+/, '')
-  return `/api/adult/tmdb-artwork/${encodeURIComponent(size)}/${encodeURIComponent(name)}`
-}
-
-function adultViewingPosterUrl(item) {
-  if (item.poster_path) return adultPosterUrl(item.poster_path)
-  const localPoster = item.local?.poster
-  if (!localPoster) return ''
-  return item.local?.kind === 'channel-film'
-    ? `/api/channel/artwork/${encodeURIComponent(localPoster)}`
-    : `/api/adult/artwork/${encodeURIComponent(localPoster)}`
-}
 
 function adultViewingRecord(title = {}) {
   const key = title.key || (title.media_type && title.tmdb_id
@@ -510,13 +496,10 @@ function adultDiscoveryCard(title) {
     art.append(image)
   } else art.append(librarySignalIcon(person ? 'signal-user'
     : title.media_type === 'tv' ? 'signal-tv' : 'signal-film'))
-  if (!person && title.on_mabeltv) {
-    const badge = document.createElement('span')
-    badge.className = 'watch-format adult-local-badge'
-    badge.textContent = 'On MabelTV'
-    art.append(badge)
+  if (!person) {
+    appendAdultArtworkStatus(art, title)
+    renderAdultProviderBadges(art, title)
   }
-  if (!person) appendAdultArtworkStatus(art, title)
   const copy = document.createElement('span')
   copy.className = 'watch-card-copy'
   const name = document.createElement('strong')
@@ -747,6 +730,7 @@ async function loadAdultProviders(detail, refresh = false, revision = adultTitle
     const result = await api(`/api/adult/providers?media_type=${detail.media_type}&tmdb_id=${detail.tmdb_id}${refresh ? '&refresh=1' : ''}`)
     if (revision !== adultTitleOpenRevision || selectedAdultTitle?.key !== detail.key) return
     detail.provider_result = result
+    rememberAdultTitleMetadata(detail)
     if (JSON.stringify(previousResult || null) !== JSON.stringify(result)) {
       renderAdultProviderLinks(detail, result)
     }

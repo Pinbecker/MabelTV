@@ -6,17 +6,19 @@ configure_boot="false"
 skip_packages="false"
 enable_ir="false"
 product_install="false"
+preserve_player="false"
 prebuilt_dir=""
 source_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 usage() {
-    printf 'Usage: sudo bash scripts/pi/install.sh [--product-install] [--prebuilt DIR] [--enable-service] [--configure-boot] [--enable-ir] [--skip-packages]\n'
+    printf 'Usage: sudo bash scripts/pi/install.sh [--product-install] [--prebuilt DIR] [--enable-service] [--preserve-player] [--configure-boot] [--enable-ir] [--skip-packages]\n'
 }
 
 while (($#)); do
     case "$1" in
         --product-install) product_install="true"; enable_service="true"; configure_boot="true"; shift ;;
         --enable-service) enable_service="true"; shift ;;
+        --preserve-player) preserve_player="true"; shift ;;
         --configure-boot) configure_boot="true"; shift ;;
         --enable-ir) enable_ir="true"; shift ;;
         --prebuilt) prebuilt_dir="$(readlink -f "${2:-}")"; shift 2 ;;
@@ -29,6 +31,12 @@ done
 if [[ $EUID -ne 0 ]]; then
     printf 'Run this installer with sudo.\n' >&2
     exit 1
+fi
+if [[ "$preserve_player" == "true" \
+    && ( "$product_install" == "true" || "$configure_boot" == "true" \
+         || "$enable_ir" == "true" ) ]]; then
+    printf '%s\n' '--preserve-player cannot be used for product, boot or IR changes.' >&2
+    exit 2
 fi
 bash "$source_root/scripts/pi/preflight.sh"
 player_was_active="false"
@@ -151,7 +159,9 @@ if [[ -f /var/lib/mabeltv/mabeltv.db ]]; then
     database_existed_before="true"
     # The generic tar snapshot cannot safely copy a live WAL database. Keep a
     # separately validated SQLite online-backup beside the installer snapshot.
-    bash "$source_root/scripts/pi/backup-config.sh" "$backup_dir" >/dev/null
+    backup_scope=()
+    [[ "$preserve_player" == "true" ]] && backup_scope=(--database-only)
+    bash "$source_root/scripts/pi/backup-config.sh" "$backup_dir" "${backup_scope[@]}" >/dev/null
 else
     # Legacy releases have file-backed state and no live SQLite database.
     backup_paths=(var/lib/mabeltv "${backup_paths[@]}")
@@ -209,6 +219,20 @@ else
         fi
     fi
 fi
+if [[ "$preserve_player" == "true" ]]; then
+    active_release="$(readlink -f /opt/mabeltv/current 2>/dev/null || true)"
+    [[ -n "$active_release" && -d "$active_release" ]] || {
+        printf '%s\n' '--preserve-player requires an existing installed release.' >&2; exit 2;
+    }
+    for binary in mabeltv mabeltv_media_check; do
+        cmp -s "$binary_root/$binary" "$active_release/$binary" || {
+            printf '%s\n' "--preserve-player refused because $binary changed." >&2; exit 2;
+        }
+    done
+    [[ "$enable_service" != "true" || "$player_was_active" == "true" ]] || {
+        printf '%s\n' '--preserve-player cannot enable an inactive player.' >&2; exit 2;
+    }
+fi
 
 release_id="$version-$(date +%Y%m%d%H%M%S)"
 incoming_dir="/opt/mabeltv/releases/.incoming-$release_id-$$"
@@ -230,8 +254,10 @@ install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-icon.png" "$inc
 install -o root -g root -m 0644 "$source_root/scripts/pi/apple-touch-icon.png" "$incoming_dir/apple-touch-icon.png"
 install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv-manifest.json" "$incoming_dir/mabeltv-manifest.json"
 install -d -o root -g root -m 0755 "$incoming_dir/mabeltv_backend"
-install -o root -g root -m 0644 "$source_root/scripts/pi/mabeltv_backend/"*.py \
-    "$incoming_dir/mabeltv_backend/"
+cp -a "$source_root/scripts/pi/mabeltv_backend/." "$incoming_dir/mabeltv_backend/"
+chown -R root:root "$incoming_dir/mabeltv_backend"
+find "$incoming_dir/mabeltv_backend" -type d -exec chmod 0755 '{}' +
+find "$incoming_dir/mabeltv_backend" -type f -exec chmod 0644 '{}' +
 install -d -o root -g root -m 0755 "$incoming_dir/portal"
 cp -a "$source_root/scripts/pi/portal/." "$incoming_dir/portal/"
 # Developer copies can carry restrictive source-directory modes (for example
@@ -262,7 +288,7 @@ python3 - "$incoming_dir/mabeltv-library" "$incoming_dir/mabeltv_backend" <<'PY'
 import ast
 import pathlib
 import sys
-paths = [pathlib.Path(sys.argv[1]), *sorted(pathlib.Path(sys.argv[2]).glob("*.py"))]
+paths = [pathlib.Path(sys.argv[1]), *sorted(pathlib.Path(sys.argv[2]).rglob("*.py"))]
 for path in paths:
     ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 PY
@@ -347,6 +373,7 @@ restore_failed_release() {
     trap - ERR
     printf 'Restoring the appliance state from before this update.\n' >&2
     for unit in "${transaction_units[@]}"; do
+        [[ "$preserve_player" == "true" && "$unit" == "mabeltv.service" ]] && continue
         [[ "$unit" == "avahi-daemon.service" ]] \
             || systemctl disable --now "$unit" 2>/dev/null || true
     done
@@ -386,6 +413,7 @@ restore_failed_release() {
     fi
     systemctl daemon-reload || true
     for unit in "${transaction_units[@]}"; do
+        [[ "$preserve_player" == "true" && "$unit" == "mabeltv.service" ]] && continue
         if [[ "${unit_was_enabled[$unit]}" == "true" ]]; then
             systemctl enable "$unit" 2>/dev/null || true
         else
@@ -415,13 +443,22 @@ trap transaction_error ERR
 # resulting validated snapshot is the exact rollback point if any later unit,
 # HTTP or health check rejects this release.
 if [[ "$database_existed_before" == "true" ]]; then
-    systemctl stop mabeltv.service mabeltv-library.service
-    database_migration_backup="$(
-        bash "$release_dir/appliance/scripts/pi/backup-config.sh" "$backup_dir"
-    )"
-    database_restore_required="true"
-    "$release_dir/mabeltv-state-migrate" upgrade \
-        --database /var/lib/mabeltv/mabeltv.db
+    if [[ "$preserve_player" == "true" ]]; then
+        current_schema="$(python3 -c 'import sqlite3; c=sqlite3.connect("/var/lib/mabeltv/mabeltv.db"); print(c.execute("PRAGMA user_version").fetchone()[0])')"
+        target_schema="$(PYTHONPATH="$release_dir/appliance/scripts/pi" python3 -c 'from mabeltv_backend.database_schema import SCHEMA_VERSION; print(SCHEMA_VERSION)')"
+        [[ "$current_schema" == "$target_schema" ]] || {
+            printf '%s\n' '--preserve-player refused because a database migration is required.' >&2; exit 2;
+        }
+        systemctl stop mabeltv-library.service
+    else
+        systemctl stop mabeltv.service mabeltv-library.service
+        database_migration_backup="$(
+            bash "$release_dir/appliance/scripts/pi/backup-config.sh" "$backup_dir"
+        )"
+        database_restore_required="true"
+        "$release_dir/mabeltv-state-migrate" upgrade \
+            --database /var/lib/mabeltv/mabeltv.db
+    fi
 fi
 bash "$release_dir/appliance/scripts/pi/activate-assets.sh" "$release_dir"
 
@@ -463,11 +500,18 @@ if [[ "$enable_service" == "true" ]]; then
     systemctl enable mabeltv.service
 fi
 if [[ "$player_should_run" == "true" ]]; then
-    if ! systemctl restart mabeltv.service \
-        || ! wait_for_stable_service mabeltv.service 55 10; then
-        printf 'The new player did not become healthy; restoring the previous release.\n' >&2
-        restore_failed_release "$release_dir"
-        exit 1
+    if [[ "$preserve_player" == "true" ]]; then
+        wait_for_stable_service mabeltv.service 15 3 || {
+            printf 'The preserved player is not healthy; restoring the previous release.\n' >&2
+            restore_failed_release "$release_dir"; exit 1;
+        }
+    else
+        if ! systemctl restart mabeltv.service \
+            || ! wait_for_stable_service mabeltv.service 55 10; then
+            printf 'The new player did not become healthy; restoring the previous release.\n' >&2
+            restore_failed_release "$release_dir"
+            exit 1
+        fi
     fi
     # Releases before on-network commissioning temporarily disabled BlueZ so
     # matter.js could own the raw HCI adapter. Restore the state captured by
@@ -482,12 +526,14 @@ if [[ "$player_should_run" == "true" ]]; then
                 && systemctl start bluetooth.service 2>/dev/null || true
         )
     fi
-    systemctl enable mabeltv-matter.service
-    if ! systemctl restart mabeltv-matter.service \
-        || ! wait_for_stable_service mabeltv-matter.service 30 8; then
-        printf 'The local Matter accessory did not start; restoring the previous release.\n' >&2
-        restore_failed_release "$release_dir"
-        exit 1
+    if [[ "$preserve_player" != "true" ]]; then
+        systemctl enable mabeltv-matter.service
+        if ! systemctl restart mabeltv-matter.service \
+            || ! wait_for_stable_service mabeltv-matter.service 30 8; then
+            printf 'The local Matter accessory did not start; restoring the previous release.\n' >&2
+            restore_failed_release "$release_dir"
+            exit 1
+        fi
     fi
 fi
 systemctl enable mabeltv-health.timer

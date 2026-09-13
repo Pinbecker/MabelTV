@@ -13,11 +13,13 @@ import json
 import sqlite3
 import threading
 import time
+import uuid
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
 
 
+from .repositories.viewing import ViewingRepositoryMixin
 from .database_schema import (
     MIGRATIONS,
     MIGRATION_CHECKSUMS,
@@ -117,7 +119,7 @@ def normalise_adult_viewing(value: Any) -> tuple[dict[str, Any], dict[str, int]]
     return root, {key: count for key, count in normalisations.items() if count}
 
 
-class StateDatabase:
+class StateDatabase(ViewingRepositoryMixin):
     """Own MabelTV's authoritative relational SQLite state."""
 
     schema_version = SCHEMA_VERSION
@@ -309,6 +311,13 @@ class StateDatabase:
                 "source_normalisations": normalisations}
 
     def verify_ready(self) -> None:
+        version = self.verify_upgrade_source()
+        if version != SCHEMA_VERSION:
+            raise RuntimeError(
+                f"MabelTV database schema {version} is not supported; expected {SCHEMA_VERSION}")
+
+    def verify_upgrade_source(self) -> int:
+        """Validate a current or older known schema before backup or upgrade."""
         if not self.path.is_file():
             raise RuntimeError(f"MabelTV database does not exist: {self.path}")
         connection = self.connect()
@@ -319,14 +328,15 @@ class StateDatabase:
             self._verify_migration_history(connection, version)
         finally:
             connection.close()
-        if version != SCHEMA_VERSION:
+        if version < 1 or version > SCHEMA_VERSION:
             raise RuntimeError(
-                f"MabelTV database schema {version} is not supported; expected {SCHEMA_VERSION}")
+                f"MabelTV database schema {version} cannot be upgraded to {SCHEMA_VERSION}")
         if integrity != "ok":
             raise RuntimeError(f"MabelTV database failed quick_check: {integrity}")
         if foreign_keys:
             raise RuntimeError(
                 f"MabelTV database has {len(foreign_keys)} foreign-key violation(s)")
+        return version
 
     @contextmanager
     def transaction(self) -> Iterator[sqlite3.Connection]:
@@ -476,7 +486,7 @@ class StateDatabase:
         try:
             with self.transaction() as db:
                 existing = db.execute(
-                    "SELECT number FROM channels WHERE number=?", (int(original_number),)
+                    "SELECT id,number FROM channels WHERE number=?", (int(original_number),)
                 ).fetchone()
                 if existing is None:
                     raise ValueError("Channel not found")
@@ -486,6 +496,23 @@ class StateDatabase:
                 if result.rowcount != 1:
                     raise ValueError("Channel not found")
                 new_number = fields[0]
+                channel_id = int(existing["id"])
+                viewing_changed = db.execute(
+                    "UPDATE viewing_items SET current_key=CASE "
+                    "WHEN kind='channel' THEN ? ELSE ? || lower(file_name) END,"
+                    "title_snapshot=CASE WHEN kind='channel' THEN ? ELSE title_snapshot END,"
+                    "source_snapshot=?,updated_at=? WHERE channel_id=?",
+                    (f"channel:{new_number}", f"channel:{new_number}:", fields[1],
+                     fields[1], time.time(), channel_id),
+                ).rowcount > 0
+                if viewing_changed:
+                    db.execute(
+                        "UPDATE viewing_sessions SET channel_number=?,item_key=(SELECT "
+                        "current_key FROM viewing_items WHERE viewing_items.id="
+                        "viewing_sessions.viewing_item_id) WHERE viewing_item_id IN "
+                        "(SELECT id FROM viewing_items WHERE channel_id=?)",
+                        (new_number, channel_id),
+                    )
                 if fields[4] != "shows":
                     db.execute("DELETE FROM channel_favourites WHERE channel_number=?",
                                (new_number,))
@@ -539,6 +566,8 @@ class StateDatabase:
                                 "value_json=excluded.value_json,updated_at=excluded.updated_at",
                                 (_dump(library), time.time()))
                 self._bump_revisions(db, "channels")
+                if viewing_changed:
+                    self._bump_revisions(db, "viewing")
                 if settings_changed:
                     self._bump_revisions(db, "settings")
         except sqlite3.IntegrityError as error:
@@ -549,6 +578,14 @@ class StateDatabase:
         with self.transaction() as db:
             if int(db.execute("SELECT count(*) FROM channels").fetchone()[0]) <= 1:
                 raise ValueError("Mabel TV must keep at least one channel")
+            channel = db.execute("SELECT id FROM channels WHERE number=?",
+                                 (int(number),)).fetchone()
+            if channel is None:
+                raise ValueError("Channel not found")
+            viewing_changed = db.execute(
+                "UPDATE viewing_items SET current_key=NULL,updated_at=? WHERE channel_id=?",
+                (time.time(), int(channel["id"])),
+            ).rowcount > 0
             result = db.execute("DELETE FROM channels WHERE number=?", (int(number),))
             if result.rowcount != 1:
                 raise ValueError("Channel not found")
@@ -581,6 +618,8 @@ class StateDatabase:
                         "value_json=excluded.value_json,updated_at=excluded.updated_at",
                         (_dump(library), time.time()))
             self._bump_revisions(db, "channels")
+            if viewing_changed:
+                self._bump_revisions(db, "viewing")
             if settings_changed:
                 self._bump_revisions(db, "settings")
 
@@ -804,15 +843,12 @@ class StateDatabase:
     def _read_viewing(db: sqlite3.Connection) -> dict[str, Any]:
         row = db.execute("SELECT tracking_started FROM viewing_tracking WHERE id=1").fetchone()
         sessions = []
-        columns = {"id", "started", "ended", "seconds", "surface", "kind", "item_key",
-                   "channel_number", "channel_name", "title", "position", "media_duration"}
         for saved in db.execute("SELECT * FROM viewing_sessions ORDER BY rowid"):
-            item = _load(saved["extra_json"], {})
-            for key in columns:
-                source = {"position": "position_seconds",
-                          "media_duration": "media_duration_seconds"}.get(key, key)
-                if saved[source] is not None:
-                    item[key] = saved[source]
+            item = StateDatabase._viewing_session_row(saved)
+            # Stable relational IDs are an internal database concern. The
+            # legacy JSON export/import contract remains lossless for its own
+            # fields without making that compatibility shape authoritative.
+            item.pop("viewing_item_id", None)
             sessions.append(item)
         return {"schema_version": 2,
                 "tracking_started": row[0] if row else time.time(), "sessions": sessions}
@@ -823,15 +859,48 @@ class StateDatabase:
         db.execute("INSERT OR REPLACE INTO viewing_tracking VALUES(1,?)",
                    (_number(root.get("tracking_started"), time.time()),))
         known = {"id", "started", "ended", "seconds", "surface", "kind", "item_key",
-                 "channel_number", "channel_name", "title", "position", "media_duration"}
+                 "viewing_item_id", "channel_number", "channel_name", "title", "position",
+                 "media_duration", "programme_title", "programme_file_name"}
         desired: set[str] = set()
         for ordinal, item in enumerate(root.get("sessions", [])):
             if not isinstance(item, dict):
                 continue
             identifier = str(item.get("id") or f"legacy-{ordinal}")
             desired.add(identifier)
+            item_key = str(item.get("item_key") or "") or None
+            viewing_item_id = str(item.get("viewing_item_id") or "") or None
+            if viewing_item_id is None and item_key:
+                linked = db.execute(
+                    "SELECT id FROM viewing_items WHERE current_key=?", (item_key,)
+                ).fetchone()
+                if linked is not None:
+                    viewing_item_id = str(linked["id"])
+            if viewing_item_id is None:
+                kind = "film" if str(item.get("kind") or "") == "film" else "channel"
+                channel = db.execute(
+                    "SELECT id,name FROM channels WHERE number=?",
+                    (item.get("channel_number"),),
+                ).fetchone()
+                file_name = None
+                if kind == "film":
+                    prefix = f"channel:{item.get('channel_number')}:"
+                    file_name = item_key[len(prefix):] if item_key and item_key.startswith(prefix) \
+                        else str(item.get("programme_file_name") or item.get("title") or "Untitled")
+                viewing_item_id = f"channel:{int(channel['id'])}" \
+                    if kind == "channel" and channel is not None \
+                    else f"legacy:{uuid.uuid4().hex}"
+                db.execute(
+                    "INSERT OR IGNORE INTO viewing_items VALUES(?,?,?,?,?,?,?,?,?)",
+                    (viewing_item_id, kind, int(channel["id"]) if channel is not None else None,
+                     file_name, item_key, str(item.get("title") or "Untitled"),
+                     str(item.get("channel_name") or "MabelTV"), time.time(), time.time()),
+                )
             extra = {key: saved for key, saved in item.items() if key not in known}
-            db.execute("""INSERT INTO viewing_sessions VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
+            db.execute("""INSERT INTO viewing_sessions(
+                id,started,ended,seconds,surface,kind,item_key,channel_number,
+                channel_name,title,position_seconds,media_duration_seconds,extra_json,
+                viewing_item_id,programme_title,programme_file_name)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(id) DO UPDATE SET
                   started=excluded.started,ended=excluded.ended,seconds=excluded.seconds,
                   surface=excluded.surface,kind=excluded.kind,item_key=excluded.item_key,
@@ -839,12 +908,17 @@ class StateDatabase:
                   channel_name=excluded.channel_name,title=excluded.title,
                   position_seconds=excluded.position_seconds,
                   media_duration_seconds=excluded.media_duration_seconds,
-                  extra_json=excluded.extra_json""", (
+                  extra_json=excluded.extra_json,
+                  viewing_item_id=excluded.viewing_item_id,
+                  programme_title=excluded.programme_title,
+                  programme_file_name=excluded.programme_file_name""", (
                 identifier, item.get("started"), item.get("ended"),
                 max(0, _number(item.get("seconds"))), item.get("surface"),
-                str(item.get("kind") or "unknown"), item.get("item_key"),
+                str(item.get("kind") or "unknown"), item_key,
                 item.get("channel_number"), item.get("channel_name"), item.get("title"),
-                item.get("position"), item.get("media_duration"), _dump(extra)))
+                item.get("position"), item.get("media_duration"), _dump(extra),
+                viewing_item_id, item.get("programme_title"),
+                item.get("programme_file_name")))
         StateDatabase._delete_missing(db, "viewing_sessions", "id", desired)
 
     @staticmethod
@@ -1393,6 +1467,7 @@ class StateDatabase:
     def integrity_report(self) -> dict[str, Any]:
         db = self.connect()
         try:
+            schema_version = int(db.execute("PRAGMA user_version").fetchone()[0])
             integrity = db.execute("PRAGMA integrity_check").fetchone()[0]
             foreign_keys = [dict(row) for row in db.execute("PRAGMA foreign_key_check")]
             counts = {row[0]: db.execute(f'SELECT count(*) FROM "{row[0]}"').fetchone()[0]
@@ -1401,5 +1476,5 @@ class StateDatabase:
         finally:
             db.close()
         return {"ok": integrity == "ok" and not foreign_keys,
-                "schema_version": SCHEMA_VERSION, "integrity": integrity,
+                "schema_version": schema_version, "integrity": integrity,
                 "foreign_key_errors": foreign_keys, "counts": counts}

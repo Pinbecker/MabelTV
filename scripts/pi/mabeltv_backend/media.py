@@ -83,6 +83,11 @@ class MediaCatalogueMixin:
     def delete_channel(self, number: int) -> None:
         self.state_database.delete_channel(number)
 
+    def relocate_viewing_item(self, source_channel: int, source_name: str,
+                              target_channel: int, target_name: str) -> None:
+        self.state_database.relocate_viewing_item(
+            source_channel, source_name, target_channel, target_name)
+
     def read_json(self, path: Path, fallback: Any) -> Any:
         try:
             return json.loads(path.read_text(encoding="utf-8"))
@@ -1032,8 +1037,12 @@ class MediaCatalogueMixin:
             },
             "tv_settings": self.tv_settings(settings),
             "remote_viewing": self.remote_settings(),
-            "adult_settings": {"watchmode_availability_enabled":
-                               settings.get("watchmode_availability_enabled") is not False},
+            "adult_settings": {
+                "watchmode_availability_enabled":
+                    settings.get("watchmode_availability_enabled") is not False,
+                "provider_badges_enabled":
+                    settings.get("adult_provider_badges_enabled") is not False,
+            },
             "adult_library": self.adult_library(),
             "adult_folders": self.adult_folders(),
             "adult_series": self.adult_series_library(),

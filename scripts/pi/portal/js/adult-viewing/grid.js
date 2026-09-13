@@ -126,6 +126,7 @@ function createAdultViewingRow(item, index, total) {
   appendAdultArtworkStatus(artWrap, item, {
     media_type: item.media_type, local: item.local_progress || item.local,
   })
+  renderAdultProviderBadges(artWrap, item)
   const opener = document.createElement('button'); opener.type = 'button'
   opener.className = 'adult-viewing-card-open'
   opener.setAttribute('aria-label', `Open ${item.title}`)
@@ -148,13 +149,26 @@ function adultViewingRow(item, index, total) {
   if (!row) row = createAdultViewingRow(item, index, total)
   cacheAdultViewingRow(cacheKey, row)
   syncAdultExploreActions(row, item)
+  refreshAdultViewingRowArtwork(row, item)
   appendAdultArtworkStatus(row.querySelector('.adult-viewing-art'), item, {
     media_type: item.media_type, local: item.local_progress || item.local,
   })
+  renderAdultProviderBadges(row.querySelector('.adult-viewing-art'), item)
   row.querySelector('[data-viewing-move="move_up"]')?.toggleAttribute('disabled', index === 0)
   row.querySelector('[data-viewing-move="move_down"]')
     ?.toggleAttribute('disabled', index === total - 1)
   return row
+}
+
+function refreshAdultViewingRowArtwork(row, item) {
+  const art = row.querySelector('.adult-viewing-art > :first-child')
+  if (!art) return
+  const source = adultViewingPosterUrl(item)
+  const current = art.matches('img') ? art : art.querySelector(':scope > img')
+  if (!source || (current?.dataset.adultArtworkSource || current?.getAttribute('src')) === source) return
+  const image = adultArtworkImage(source)
+  if (current) current.replaceWith(image)
+  else art.prepend(image)
 }
 
 function reconcileAdultViewingRows(target, rows) {

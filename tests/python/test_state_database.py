@@ -222,6 +222,18 @@ class StateDatabaseTests(unittest.TestCase):
             "disabled_channels": [7],
             "disabled_programmes": {"7": ["Episode.mp4"]},
         }})
+        viewing_item = self.database.ensure_viewing_items([{
+            "channel_number": 7, "kind": "channel", "title": "Shows",
+            "source": "Shows",
+        }])[0]
+        self.database.save_viewing_session({
+            "id": "stable-history", "item_key": viewing_item["item_key"],
+            "viewing_item_id": viewing_item["item_id"], "title": "Shows",
+            "channel_number": 7, "channel_name": "Shows", "kind": "channel",
+            "surface": "tv", "started": 100.0, "ended": 280.0,
+            "seconds": 180.0, "programme_title": "Episode 1",
+            "programme_file_name": "Episode.mp4",
+        }, cutoff=0, maximum=50_000)
 
         before = {
             kind: self.database.read(kind)
@@ -249,6 +261,14 @@ class StateDatabaseTests(unittest.TestCase):
         self.assertEqual(["8/Episode.mp4"], metadata["favourites"])
         self.assertEqual([8], settings["disabled_channels"])
         self.assertEqual({"8": ["Episode.mp4"]}, settings["disabled_programmes"])
+        renamed_item = self.database.viewing_item(viewing_item["item_id"])
+        self.assertEqual(renamed_item["current_key"], "channel:8")
+        self.assertEqual(renamed_item["title_snapshot"], "Shows")
+        history = self.database.viewing_sessions(item_id=viewing_item["item_id"])
+        self.assertEqual(len(history), 1)
+        self.assertEqual(history[0]["channel_number"], 8)
+        self.assertEqual(history[0]["item_key"], "channel:8")
+        self.assertEqual(history[0]["programme_title"], "Episode 1")
         self.assertEqual([], self.database.integrity_report()["foreign_key_errors"])
 
     def test_series_episode_identity_includes_the_owning_series(self) -> None:
@@ -319,6 +339,59 @@ class StateDatabaseTests(unittest.TestCase):
                 "SELECT name FROM sqlite_master WHERE name='state_revisions'").fetchone())
         finally:
             connection.close()
+
+    def test_version_seven_viewing_history_upgrades_without_record_loss(self) -> None:
+        self.database.path.unlink()
+        connection = self.database.connect()
+        try:
+            for version, name, sql in database_module.MIGRATIONS[:7]:
+                connection.executescript(sql)
+                connection.execute(
+                    "INSERT INTO schema_migrations VALUES(?,?,?,?)",
+                    (version, name, database_module.MIGRATION_CHECKSUMS[version], 1.0),
+                )
+            connection.execute("PRAGMA user_version=7")
+            connection.execute(
+                "INSERT INTO channels(number,name,folder,aspect,content_type) "
+                "VALUES(1,'Stories','stories','crop','shows')")
+            connection.execute("""INSERT INTO viewing_sessions(
+                id,started,ended,seconds,surface,kind,item_key,channel_number,
+                channel_name,title,extra_json)
+                VALUES('old-show',100,280,180,'tv','channel','channel:1',1,
+                       'Stories','Stories','{}')""")
+            connection.execute("""INSERT INTO viewing_sessions(
+                id,started,ended,seconds,surface,kind,item_key,channel_number,
+                channel_name,title,extra_json)
+                VALUES('old-film',300,480,180,'tv','film',
+                       'channel:1:Movie.mp4',1,'Stories','Movie','{}')""")
+            connection.commit()
+        finally:
+            connection.close()
+
+        backup_path = self.root / "schema-seven-backup.db"
+        result = subprocess.run(
+            [sys.executable, str(MIGRATION_TOOL_PATH), "backup",
+             "--database", str(self.database.path), "--output", str(backup_path)],
+            check=True, capture_output=True, text=True,
+        )
+        backup_report = json.loads(result.stdout)
+        self.assertEqual(7, backup_report["source_schema_version"])
+        self.assertEqual(7, backup_report["schema_version"])
+        self.assertTrue(backup_report["ok"])
+
+        report = self.database.upgrade()
+
+        self.assertEqual(7, report["previous_schema_version"])
+        self.assertEqual(8, report["schema_version"])
+        rows = self.database.viewing_sessions()
+        self.assertEqual(2, len(rows))
+        by_id = {row["id"]: row for row in rows}
+        self.assertTrue(by_id["old-show"]["viewing_item_id"].startswith("channel:"))
+        self.assertEqual(
+            f"film:legacy:{'channel:1:Movie.mp4'.encode().hex()}",
+            by_id["old-film"]["viewing_item_id"],
+        )
+        self.assertEqual([], self.database.integrity_report()["foreign_key_errors"])
 
     def test_state_writes_advance_only_the_related_portal_revisions(self) -> None:
         self.assertEqual({

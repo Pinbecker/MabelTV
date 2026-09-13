@@ -82,7 +82,26 @@ class QualityGateTests(unittest.TestCase):
             'mabeltv-offline-schema.js" "$incoming_dir/mabeltv-offline-schema.js',
             installer,
         )
+        self.assertIn(
+            'cp -a "$source_root/scripts/pi/mabeltv_backend/." '
+            '"$incoming_dir/mabeltv_backend/"',
+            installer,
+        )
+        self.assertIn('pathlib.Path(sys.argv[2]).rglob("*.py")', installer)
         self.assertIn('restore_failed_release "$release_dir"', installer)
+
+    def test_portal_atomic_install_can_preserve_the_running_player(self) -> None:
+        installer = (PROJECT_ROOT / "scripts/pi/install.sh").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("--preserve-player", installer)
+        self.assertIn('cmp -s "$binary_root/$binary" "$active_release/$binary"',
+                      installer)
+        self.assertIn('current_schema" == "$target_schema', installer)
+        self.assertIn('backup_scope=(--database-only)', installer)
+        self.assertIn('systemctl stop mabeltv-library.service', installer)
+        self.assertIn('wait_for_stable_service mabeltv.service 15 3', installer)
 
 
 if __name__ == "__main__":

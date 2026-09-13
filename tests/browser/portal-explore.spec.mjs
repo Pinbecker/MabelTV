@@ -1,6 +1,5 @@
 import { test, expect } from './test-fixtures.mjs'
 
-
 async function openExplore(page) {
   await page.goto('/')
   await expect(page.locator('.app-shell')).toBeVisible()
@@ -61,6 +60,38 @@ test('@visual Explore is a polished four-wide continuous catalogue with direct a
   await expect(first.locator('[data-explore-action="watched"]')).toHaveAttribute('data-status', 'watched')
   await expect(first).toBeVisible()
   await expect(page.locator('#notice')).toHaveText('')
+})
+
+test('a poster recovered in a title card repairs the matching Explore tile', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'iphone-chromium', 'One browser covers artwork recovery')
+  await page.route('**/api/adult/title?*', async route => {
+    const response = await route.fetch()
+    const detail = await response.json()
+    await route.fulfill({ response, json: { ...detail, poster_path: '/explore-1001.jpg' } })
+  })
+  await page.goto('/')
+  await expect(page.locator('.app-shell')).toBeVisible()
+  await page.evaluate(() => {
+    history.replaceState({ adultViewing: true }, '', '#adult-viewing')
+    openView('adult-viewing')
+  })
+  await page.locator('#adultViewingExplore').click()
+  const card = page.locator('.adult-explore-card[data-explore-key="movie:1001"]')
+  const tileImage = card.locator('.adult-explore-art > img')
+  const markedFailed = await tileImage.evaluate(image => {
+    image.dispatchEvent(new Event('error'))
+    clearTimeout(image._adultArtworkRetryTimer)
+    return image.dataset.adultArtworkFailed
+  })
+  expect(markedFailed).toBe('true')
+
+  await card.locator('.adult-explore-open-art').click()
+  await expect(page.locator('#adultTitleSheet')).toBeVisible()
+  await expect(page.locator('#adultTitlePoster img')).toHaveJSProperty('complete', true)
+  await page.locator('#adultTitleClose').click()
+
+  await expect.poll(() => tileImage.evaluate(image => image.naturalWidth)).toBeGreaterThan(0)
+  await expect(tileImage).not.toHaveAttribute('data-adult-artwork-failed', 'true')
 })
 
 
@@ -145,7 +176,6 @@ test('all five My Viewing grids retain the watched and Watchlist quick actions',
   await watched.locator('[data-explore-action="watched"]').click()
   await expect(page.locator('#adultViewingGrid > .adult-viewing-row')).toHaveCount(0)
 })
-
 
 test('large Watched libraries paint one bounded batch and extend as the user approaches the end', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One phone engine owns long-list rendering')

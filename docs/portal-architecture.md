@@ -118,7 +118,10 @@ ship the fixture form to preserve a test shortcut.
 7. `portal/js/channel-page.js`: reusable channel detail renderer.
 8. `portal/js/library/adult-library.js`: Adult film catalogue management.
 9. `portal/js/library/usb-browser.js`: USB browsing, selection, and import.
-10. `portal/js/library/viewing-insights.js`: viewing dashboards and history.
+10. `portal/js/library/viewing-insights.js`: MabelTV viewing dashboard,
+    lifetime catalogue, independently ranged item detail and one-day diary.
+    This module owns its route, range and disposable resource-cache state;
+    `adult-library.js` must not regain those globals.
 11. `portal/js/library/adult-insights.js`: the Adult TV and MabelTV insight
     dashboards, progressive TMDB enrichment state, rating shortcuts and local
     facet drill-downs. Adult routes under `#insights/adult/...` reuse the
@@ -134,29 +137,49 @@ ship the fixture form to preserve a test shortcut.
 17. `portal/js/playback/programmes.js`: programme sheets and actions.
 18. `portal/js/playback/downloads.js`: device-download rendering and actions.
 19. `portal/js/playback/view.js`: Watch view composition and dialog wiring.
-20. `portal/js/adult-viewing/catalogue.js`: Adult viewing catalogue.
-21. `portal/js/adult-viewing/seasons.js`: series and season navigation.
-22. `portal/js/adult-viewing/details.js`: Adult viewing details and startup.
-23. `portal/js/adult-viewing/up-next-order.js`: native-feeling long-press queue
+20. `portal/js/adult-viewing/catalogue.js`: Adult viewing catalogue and provider
+    identity/link helpers.
+21. `portal/js/adult-viewing/provider-badges.js`: the shared provider-summary
+    cache, lookup batching and badge renderer used by every Adult title-card
+    surface.
+22. `portal/js/adult-viewing/artwork.js`: canonical Adult artwork URLs, bounded
+    image recovery, and propagation of newly loaded title metadata to prepared
+    cards.
+23. `portal/js/adult-viewing/seasons.js`: series and season navigation. Add is
+    always available; metadata refresh and removal require real local episodes,
+    while Restart is also available for manually tracked streaming progress.
+24. `portal/js/adult-viewing/details.js`: Adult viewing details and startup.
+25. `portal/js/adult-viewing/up-next-order.js`: native-feeling long-press queue
     reordering, optimistic movement and atomic order persistence.
-24. `portal/js/adult-viewing/person.js`: cast detail cards and filmography
+26. `portal/js/adult-viewing/person.js`: cast detail cards and filmography
     navigation.
-25. `portal/js/adult-viewing/explore.js`: continuous TMDB discovery, quick
+27. `portal/js/adult-viewing/explore.js`: continuous TMDB discovery, quick
     viewing actions, weak impression feedback and visit freshness.
-26. `portal/js/adult-viewing/grid.js`: the retained, keyed My Viewing card
+28. `portal/js/adult-viewing/grid.js`: the retained, keyed My Viewing card
     renderer, filters and saved-state refresh. Each tab keeps its prepared pane,
     while long collections render in bounded batches as the user approaches the
     end. Switching tabs therefore avoids rebuilding hundreds of hidden cards.
-27. `portal/js/adult-viewing/home.js`: the Adult TV Watch landing composition:
-    local progress, Up Next and rating-led UK-available TMDB recommendations.
-    It reuses Explore cards and requests only included/free supported-service
-    results; broad discovery remains a separate Something Different shelf.
-28. `portal/js/adult-viewing/filmography.js`: TMDB-only full filmography search,
+29. `portal/js/adult-viewing/home.js`: the Adult TV Watch landing composition:
+    local progress, Up Next, and a twelve-card What to watch mix of familiar
+    watched/watchlisted choices and popular unseen titles. A separate
+    horizontal Released this week rail contains films, new shows and returning
+    season premieres in popularity order. Watch-page artwork cards reuse the
+    provider-brand catalogue to show the two highest-priority included streaming
+    services, with MabelTV first for locally available titles. Broad,
+    unwatched discovery remains a separate Something Different shelf.
+30. `portal/js/adult-viewing/filmography.js`: TMDB-only full filmography search,
     timeline and A-Z modes.
-29. `portal/js/adult-viewing/rating.js`: personal ten-star ratings and the
+31. `portal/js/adult-viewing/rating.js`: personal ten-star ratings and the
     watched-but-unrated completion queue.
-30. `portal/js/actions.js`: application event bindings and remote commands.
-31. `portal/js/lg-tv-remote.js`: the separate LG webOS remote.
+32. `portal/js/actions.js`: application event bindings and remote commands.
+33. `portal/js/lg-tv-remote.js`: the separate LG webOS remote.
+
+The shared Adult provider renderer in `provider-badges.js` applies the same icons to
+homepage, My Viewing, Ratings, Explore, search, filmography, person and film
+collection title artwork. Its device cache merges TMDB provider summaries with
+Watchmode records already present in SQLite; card rendering never spends a
+Watchmode request. `adult_provider_badges_enabled` is the SQLite-backed display
+preference and does not disable title-sheet availability lookups.
 
 
 ## Startup, caching, and offline ownership
@@ -170,6 +193,13 @@ rollback generation. Cache cleanup is scoped to older `mabeltv-shell-v*`
 entries and must never delete downloaded media, response snapshots, artwork,
 or caches belonging to another application.
 
+MabelTV Insights caches overview ranges, the lifetime catalogue, item/range
+pairs and diary dates as distinct `mabel-insights-v2-*` snapshots. A cached
+resource paints before network refresh and before the optional Chart.js bundle;
+charts attach after that bundle loads without blanking or rebuilding the page.
+Changing the dashboard range must not alter catalogue, item or diary scope.
+Back navigation retains the correct parent route, search and scroll position.
+
 Large optional libraries are not part of initial execution. `core/assets.js`
 loads Chart.js when an Insights route first needs it. Provider artwork is also
 outside the critical shell.
@@ -182,6 +212,12 @@ failure never replaces a successful network response. Protected artwork is retur
 local Adult access has been unlocked. The worker prunes closed client IDs on
 activation, messages and periodically during fetches, so an unlock cannot live
 past its browser client.
+Failed Adult artwork elements hide the browser's broken-image marker and retry
+after short bounded delays. A successful poster load in a title card wakes any
+failed tile using the same TMDB asset, even when the card requested a different
+image size. Retry query strings map to the canonical cache URL so retries do not
+consume duplicate cache entries. Fresh title metadata is merged into matching
+prepared Explore, home and My Viewing cards without rebuilding their screens.
 
 `core/app-cache.js` owns `mabeltv-app-cache-v1`. It contains only disposable
 API snapshots and can be rebuilt from SQLite. It never contains downloaded

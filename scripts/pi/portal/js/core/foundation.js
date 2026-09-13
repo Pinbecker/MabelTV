@@ -87,7 +87,11 @@ const $ = selector => document.querySelector(selector)
 
     function setOfflineProtectedAccess(unlocked) {
       offlineProtectedAccess = Boolean(unlocked)
-      window.MabelOffline?.setMediaAccess(offlineProtectedAccess)
+      const acknowledgement = window.MabelOffline?.setMediaAccess(offlineProtectedAccess)
+      if (offlineProtectedAccess) Promise.resolve(acknowledgement).then(confirmed => {
+        if (confirmed !== false) window.dispatchEvent(
+          new CustomEvent('mabeltv:adult-artwork-access'))
+      }).catch(() => {})
     }
 
     async function syncOfflineSecurity(required, pin = '') {

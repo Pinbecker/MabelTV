@@ -2,9 +2,9 @@
 
 importScripts('/mabeltv-offline-schema.js')
 
-const SHELL_RELEASE = '217'
+const SHELL_RELEASE = '235'
 const SHELL_CACHE = `mabeltv-shell-v${SHELL_RELEASE}`
-const PREVIOUS_SHELL_CACHE = 'mabeltv-shell-v216'
+const PREVIOUS_SHELL_CACHE = 'mabeltv-shell-v234'
 const SHELL_CACHE_PREFIX = 'mabeltv-shell-v'
 const FAMILY_ARTWORK_CACHE = 'mabeltv-artwork-family-v1'
 const PROTECTED_ARTWORK_CACHE = 'mabeltv-artwork-protected-v1'
@@ -256,21 +256,24 @@ async function trimCache(cache, maximum) {
 
 async function artworkResponse(request, cacheName, authorised = true) {
   const cache = await caches.open(cacheName)
+  const cacheUrl = new URL(request.url)
+  cacheUrl.search = ''
+  const cacheKey = cacheUrl.href
   if (authorised) {
-    const cached = await cache.match(request)
+    const cached = await cache.match(cacheKey)
     if (cached) return cached
   }
   let response
   try {
     response = await fetch(request)
   } catch (_) {
-    if (authorised) return (await cache.match(request))
+    if (authorised) return (await cache.match(cacheKey))
       || new Response('Artwork unavailable offline', { status: 503 })
     return new Response('Parent PIN required', { status: 401 })
   }
   if (authorised && response.ok) {
     try {
-      await cache.put(request, response.clone())
+      await cache.put(cacheKey, response.clone())
       await trimCache(cache, ARTWORK_LIMIT)
     } catch (_) {
       // A full or unavailable cache must never hide a valid network image.

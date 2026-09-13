@@ -35,6 +35,22 @@ appearing current when the data it represents has changed. Rendering code must
 preserve mounted views and update only the changed content; a background refresh
 must not blank, flash, or rebuild an already-correct screen.
 
+The Adult provider-summary snapshot is shared by every Adult TV title grid.
+Cards can therefore paint their availability icons immediately on a warm load;
+one batched background request fills missing or periodically stale TMDB
+providers and merges any Watchmode sources already cached by title-sheet use.
+It does not delay a title grid, make one browser request per card, or consume
+Watchmode allowance for titles that have not been opened. The Settings display
+switch hides every provider strip without deleting this disposable cache.
+
+MabelTV Insights uses independent response snapshots for each overview range,
+the lifetime catalogue, every item/range pair and every diary date. The
+dashboard's date selector is therefore not a global cache or application-state
+filter. Cached text and lists render immediately; Chart.js remains a lazy shell
+asset and is requested in parallel, then charts are added to the mounted route.
+These snapshots are disposable and never replace the `viewing_items` and
+`viewing_sessions` records in SQLite.
+
 Snapshots may contain private response data, including Adult metadata, so they
 must never be read before authentication. Sign-out, lock and PIN transitions
 must remove or hide protected rendered state immediately. A cache failure is a
@@ -43,7 +59,10 @@ the authenticated API and SQLite.
 
 ## Artwork caching
 
-The service worker caches successful same-origin artwork proxy responses by URL.
+The service worker caches successful same-origin artwork proxy responses by
+canonical URL. Bounded client retries may add a cache-busting query to force a
+failed browser image request to run again, but the worker strips that query from
+the cache key so every size/path still has one device copy.
 The same actor, title, episode or collection URL is therefore reused across
 cards and screens. Provider URLs are normalised by the portal asset helper so
 equivalent images share a cache key.

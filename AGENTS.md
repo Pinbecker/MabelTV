@@ -33,6 +33,10 @@ instructions take precedence when they explicitly request a different action.
   shell change. Never clear download storage during a shell/cache upgrade.
 - Preserve real-TV geometry, timing, focus, z-order, playback and remote
   behaviour during native work.
+- Portal/backend-only deployments must not restart the native player and wake
+  HDMI devices. Use the portal deployer or the atomic installer's guarded
+  `--preserve-player` mode. Native, schema, boot and device changes still use
+  the full restart path.
 
 ## Ownership and boundaries
 
@@ -54,6 +58,11 @@ composed `Library` object but must not import one another.
 Downloads IndexedDB schema changes belong only in `mabeltv-offline-schema.js`.
 Library test fixtures belong in `tests/python/library_test_support.py`; keep
 domain tests separate and database-backed.
+
+MabelTV Insights uses stable `viewing_items` plus targeted `viewing_sessions`.
+Keep dashboard, lifetime catalogue, item range and one-day diary as independent
+API/cache scopes; do not restore a global range or whole-history JSON-style
+rewrite. Calendar aggregation must use local timezone boundaries and overlap.
 
 Treat `config/architecture-guardrails.json` limits as ceilings. Do not raise a
 limit, add an exception, weaken an assertion, hide a failure, or update a

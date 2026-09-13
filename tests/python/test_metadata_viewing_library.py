@@ -345,34 +345,41 @@ class MetadataViewingLibraryTests(unittest.TestCase):
         self.assertEqual(state["state"], "processing")
 
     def test_viewing_history_joins_adjacent_samples_and_builds_summaries(self) -> None:
+        self.fixture.library.write_state("channels", {
+            "schema_version": 1, "channels": [{
+                "number": 5, "name": "Films", "folder": "films",
+                "content_type": "films", "aspect": "fit",
+            }],
+        })
+        films = self.fixture.media / "films"
+        films.mkdir(parents=True)
+        (films / "film.mp4").write_bytes(b"film")
         now = time.time()
         activity = {
-            "item_key": "channel:5:film.mp4",
             "title": "Film",
             "kind": "film",
             "surface": "tv",
             "channel_number": 5,
             "channel_name": "Films",
+            "programme_title": "Film", "programme_file_name": "film.mp4",
         }
         self.fixture.library.record_viewing(activity, 45, now - 60)
         self.fixture.library.record_viewing(activity, 30, now - 20)
 
-        self.assertEqual(self.fixture.library.viewing_store["sessions"], [])
+        self.assertEqual(self.fixture.library.state_database.viewing_sessions(), [])
         self.fixture.library.record_viewing(activity, 45, now)
-        self.assertEqual(len(self.fixture.library.viewing_store["sessions"]), 1)
-        self.assertEqual(self.fixture.library.viewing_store["sessions"][0]["seconds"], 120)
-        summary = self.fixture.library.viewing_insights(30, 0)
+        rows = self.fixture.library.state_database.viewing_sessions()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["seconds"], 120)
+        summary = self.fixture.library.viewing_overview(30, 0)
         self.assertEqual(summary["summary"]["sessions"], 1)
         self.assertEqual(summary["summary"]["range_seconds"], 120)
         self.assertEqual(summary["summary"]["active_days"], 1)
-        self.assertEqual(summary["summary"]["unique_items"], 1)
         self.assertEqual(summary["summary"]["average_active_day_seconds"], 120)
         self.assertEqual(summary["summary"]["longest_session_seconds"], 120)
-        self.assertEqual(summary["top_titles"][0]["title"], "Film")
-        self.assertEqual(summary["top_films"][0]["title"], "Film")
+        self.assertEqual(summary["highlights"][0]["title"], "Film")
         self.assertEqual(len(summary["time_of_day"]), 4)
         self.assertTrue(summary["timeline"])
-        self.assertEqual(summary["by_surface"][0]["name"], "tv")
 
     def test_viewing_history_counts_remote_playback_but_rejects_seeks(self) -> None:
         session = {
@@ -391,24 +398,35 @@ class MetadataViewingLibraryTests(unittest.TestCase):
                 self.fixture.library.record_remote_viewing(
                     session, "token", position, 1800)
 
-        sessions = self.fixture.library.viewing_store["sessions"]
+        sessions = self.fixture.library.state_database.viewing_sessions()
         self.assertEqual(len(sessions), 1)
         self.assertEqual(sessions[0]["seconds"], 120)
         self.assertEqual(sessions[0]["kind"], "channel")
         self.assertEqual(sessions[0]["title"], "Series")
+        self.assertEqual(sessions[0]["programme_title"], "Episode")
+        self.assertEqual(sessions[0]["programme_file_name"], "Episode.mp4")
 
     def test_viewing_history_joins_each_concurrent_surface_session(self) -> None:
+        self.fixture.library.write_state("channels", {
+            "schema_version": 1, "channels": [{
+                "number": 5, "name": "Films", "folder": "films",
+                "content_type": "films", "aspect": "fit",
+            }],
+        })
+        films = self.fixture.media / "films"
+        films.mkdir(parents=True)
+        (films / "film.mp4").write_bytes(b"film")
         now = time.time()
-        tv = {"item_key": "channel:5:film.mp4", "title": "Film", "kind": "film",
-              "surface": "tv", "channel_number": 5, "channel_name": "Films"}
-        device = {**tv, "item_key": "browser:channel:5/film.mp4",
-                  "surface": "device"}
+        tv = {"title": "Film", "kind": "film", "surface": "tv",
+              "channel_number": 5, "channel_name": "Films",
+              "programme_title": "Film", "programme_file_name": "film.mp4"}
+        device = {**tv, "surface": "device"}
         self.fixture.library.record_viewing(tv, 60, now - 45)
         self.fixture.library.record_viewing(device, 60, now - 30)
         self.fixture.library.record_viewing(tv, 60, now - 15)
         self.fixture.library.record_viewing(device, 60, now)
 
-        sessions = self.fixture.library.viewing_store["sessions"]
+        sessions = self.fixture.library.state_database.viewing_sessions()
         self.assertEqual(len(sessions), 2)
         self.assertEqual(sorted(item["seconds"] for item in sessions), [120, 120])
 
@@ -435,46 +453,45 @@ class MetadataViewingLibraryTests(unittest.TestCase):
         self.assertIsNone(self.fixture.library.current_tv_viewing())
 
     def test_viewing_history_rolls_episodes_up_to_channel_and_deletes_selected(self) -> None:
+        self.fixture.library.write_state("channels", {
+            "schema_version": 1,
+            "channels": [{"number": 2, "name": "Puffin Rock",
+                          "folder": "puffin", "content_type": "shows"}],
+        })
         now = time.time()
         activity = {"item_key": "channel:2", "title": "Puffin Rock",
                     "kind": "channel", "surface": "tv", "channel_number": 2,
                     "channel_name": "Puffin Rock"}
         self.fixture.library.record_viewing(activity, 60, now - 60)
         self.fixture.library.record_viewing(activity, 60, now)
-        summary = self.fixture.library.viewing_insights(1, 0)
-        self.assertEqual(summary["sessions"][0]["title"], "Puffin Rock")
-        self.assertEqual(summary["sessions"][0]["kind"], "channel")
-        session_id = summary["sessions"][0]["id"]
+        catalogue = self.fixture.library.viewing_catalogue_insights()
+        item = next(value for value in catalogue["items"]
+                    if value["kind"] == "channel")
+        detail = self.fixture.library.viewing_item_insight(item["item_id"], 0, 0)
+        self.assertEqual(detail["item"]["history"][0]["item_title"], "Puffin Rock")
+        session_id = detail["item"]["history"][0]["id"]
         result = self.fixture.library.delete_viewing_sessions({"ids": [session_id]})
         self.assertEqual(result["deleted"], 1)
-        self.assertEqual(self.fixture.library.viewing_store["sessions"], [])
+        self.assertEqual(self.fixture.library.state_database.viewing_sessions(), [])
 
-    def test_viewing_history_migration_removes_non_mabel_and_short_sessions(self) -> None:
+    def test_viewing_repository_excludes_short_sessions_from_insights(self) -> None:
         now = time.time()
         self.fixture.library.write_state("viewing", {
-            "schema_version": 1,
+            "schema_version": 2,
             "tracking_started": now - 1000,
             "sessions": [
-                {"kind": "adult", "seconds": 300, "ended": now,
-                 "channel_number": None},
-                {"kind": "usb", "seconds": 300, "ended": now,
-                 "channel_number": None},
-                {"kind": "episode", "seconds": 90, "ended": now,
-                 "channel_number": 2, "channel_name": "Puffin Rock"},
-                {"kind": "episode", "seconds": 180, "ended": now,
+                {"id": "short", "kind": "channel", "seconds": 90,
+                 "started": now - 200, "ended": now - 110,
                  "channel_number": 2, "channel_name": "Puffin Rock",
-                 "item_key": "channel:2:episode.mp4", "surface": "tv"},
+                 "item_key": "channel:2", "surface": "tv"},
+                {"id": "valid", "kind": "channel", "seconds": 180,
+                 "started": now - 180, "ended": now,
+                 "channel_number": 2, "channel_name": "Puffin Rock",
+                 "item_key": "channel:2", "surface": "tv"},
             ],
         })
-        store = self.fixture.library.load_viewing_store()
-        self.assertEqual(len(store["sessions"]), 1)
-        self.assertEqual(store["sessions"][0]["kind"], "channel")
-        self.assertEqual(store["sessions"][0]["item_key"], "channel:2")
-        self.assertTrue(store["sessions"][0]["id"])
-        persisted = self.fixture.library.read_state("viewing")
-        self.assertEqual(persisted["schema_version"], 2)
-        self.assertEqual(len(persisted["sessions"]), 1)
-
+        store = self.fixture.library.state_database.viewing_sessions()
+        self.assertEqual([item["id"] for item in store], ["valid"])
     def test_experience_uses_shared_icons_and_clear_channel_pager(self) -> None:
         channel_script = (PORTAL_ROOT / "js" / "channel-page.js").read_text(
             encoding="utf-8")
@@ -508,7 +525,7 @@ class MetadataViewingLibraryTests(unittest.TestCase):
         self.assertIn("bindViewingSessionSwipe", library_script)
         self.assertIn("viewing-session-delete", settings_css)
         self.assertIn("renderViewingItem", library_script)
-        self.assertIn("new Chart(canvas, config)", library_script)
+        self.assertIn("const chart = new Chart(canvas, {", library_script)
         self.assertNotIn("createElementNS(namespace, 'polyline')", library_script)
         self.assertIn("viewing-destinations", settings_css)
         self.assertIn("viewing-catalog-grid", settings_css)
@@ -517,14 +534,19 @@ class MetadataViewingLibraryTests(unittest.TestCase):
         self.assertIn('id="viewingItemDetail"', insights_view)
         self.assertIn('id="viewingItemWeekdays"', insights_view)
         self.assertIn('id="viewingDiary"', insights_view)
+        self.assertIn('id="viewingDayPrevious"', insights_view)
+        self.assertNotIn('id="viewingPeriod"', insights_view)
         self.assertIn('data-insights-tab="history"', insights_view)
         self.assertIn('id="viewingRangeControls"', insights_view)
         self.assertIn('id="viewingItemRangeSelect"', insights_view)
         self.assertIn('viewing-insights-loading hidden', insights_view)
-        self.assertIn('replaceInsightsRoute(`insights/item/', library_script)
-        self.assertIn("$('#viewingRangeControls')?.classList.toggle('hidden'", library_script)
-        self.assertIn('viewingInsightsLoadedRange === viewingInsightsRange', library_script)
-        self.assertIn('background-size: contain', settings_css)
+        self.assertIn('pushInsightsRoute(`insights/item/', library_script)
+        self.assertIn("$('#viewingRangeControls')?.classList.toggle(", library_script)
+        self.assertIn("async function loadViewingCatalogue", library_script)
+        self.assertIn("let viewingDashboardRange = 7", library_script)
+        self.assertIn("let viewingItemRange = 0", library_script)
+        self.assertIn('.viewing-catalog-card { display: grid; width: 100%;', settings_css)
+        self.assertIn('.viewing-catalog-art { display: grid; width: 100%; box-sizing: border-box; justify-self: stretch; aspect-ratio: 2 / 3;', settings_css)
         self.assertIn('.viewing-range.hidden { display: none; }', settings_css)
 
 

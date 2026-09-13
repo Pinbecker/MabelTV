@@ -163,7 +163,7 @@
     padding-right: 18px;
   }
 
-  body.portal-v2 .watch-continue-rail { grid-auto-columns: minmax(260px, 58%); }
+  body.portal-v2 .watch-continue-rail { grid-auto-columns: minmax(190px, 48%); }
   body.portal-v2 .watch-channel-rail { grid-auto-columns: minmax(190px, 42%); }
   body.portal-v2 .watch-channel-rail.watch-film-channel-rail {
     grid-auto-columns: calc((100% - 36px) / 4);
@@ -211,7 +211,7 @@
   body.portal-v2 .watch-tabs button {
     flex: 1;
     min-height: 44px;
-    font-size: 11px;
+    font-size: 14px;
   }
 
   body.portal-v2 .watch-mabel-layout {
@@ -255,7 +255,7 @@
   }
 
   body.portal-v2 .watch-continue-rail {
-    grid-auto-columns: minmax(270px, 84%);
+    grid-auto-columns: minmax(184px, 52%);
   }
 
   body.portal-v2 .adult-series-rail {
@@ -413,27 +413,26 @@
   body.portal-v2 .viewing-chart,
   body.portal-v2 .viewing-chart-bars { height: 165px; }
   body.portal-v2 .viewing-chart-doughnut { height: 205px; }
-  body.portal-v2 .viewing-destinations { grid-template-columns: 1fr; gap: 7px; }
-  body.portal-v2 .viewing-destinations > button { min-height: 82px; grid-template-columns: 62px minmax(0, 1fr) 16px; padding: 9px 11px; }
+  body.portal-v2 .viewing-destinations { grid-template-columns: 1fr; margin-inline: 0; }
+  body.portal-v2 .viewing-destinations > button { min-height: 82px; grid-template-columns: 62px minmax(0, 1fr) 16px; border-right: 0; border-bottom: 1px solid var(--experience-line); padding: 10px 12px; }
+  body.portal-v2 .viewing-destinations > button:last-child { border-bottom: 0; }
   body.portal-v2 .viewing-destination-art { width: 62px; height: 58px; }
   body.portal-v2 .viewing-destination-art > span { width: 39px; height: 54px; }
   body.portal-v2 .viewing-destination-icon { width: 54px; height: 54px; border-radius: 14px; }
-  body.portal-v2 .viewing-highlight-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); overflow-x: auto; scroll-snap-type: x proximity; }
-  body.portal-v2 .viewing-highlight { min-width: 0; min-height: 142px; scroll-snap-align: start; }
-  body.portal-v2 .viewing-highlight:nth-child(3) { display: none; }
+  body.portal-v2 #viewingDashboard .viewing-stat-grid article:nth-child(2) { border-right: 0; }
+  body.portal-v2 #viewingDashboard .viewing-stat-grid article:nth-child(-n+2) { border-bottom: 1px solid var(--experience-line); }
+  body.portal-v2 .viewing-highlight-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  body.portal-v2 .viewing-highlight { min-width: 0; }
   body.portal-v2 .viewing-section-hero { min-height: 98px; padding: 14px; }
   body.portal-v2 .viewing-section-hero h2 { font-size: 25px; }
-  body.portal-v2 .viewing-catalog-grid { grid-template-columns: 1fr; gap: 7px; }
-  body.portal-v2 .viewing-catalog-card { grid-template-columns: 72px minmax(0, 1fr); padding: 7px; }
-  body.portal-v2 .viewing-catalog-art { width: 72px; }
-  body.portal-v2 .viewing-catalog-card.film { grid-template-columns: 62px minmax(0, 1fr); }
-  body.portal-v2 .viewing-catalog-card.film .viewing-catalog-art { width: 62px; max-height: 82px; }
+  body.portal-v2 #mabelInsightsDashboard .viewing-section-hero { min-height: 0; padding: 13px; }
+  body.portal-v2 #mabelInsightsDashboard .viewing-section-hero h2 { font-size: 27px; }
+  body.portal-v2 .viewing-catalog-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 13px 7px; }
+  body.portal-v2 .viewing-catalog-group h3 { font-size: 20px; }
   body.portal-v2 .viewing-subnav { top: calc(101px + env(safe-area-inset-top)); }
-  body.portal-v2 .viewing-diary-periods { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  body.portal-v2 .viewing-diary-periods > button { min-height: 88px; }
-  body.portal-v2 .viewing-period-hero { grid-template-columns: 42px minmax(0, 1fr) 42px; gap: 9px; padding: 14px 9px; }
+  body.portal-v2 .viewing-period-hero { grid-template-columns: 42px minmax(0, 1fr) 42px; gap: 9px; margin-inline: 0; padding: 2px 0 12px; }
   body.portal-v2 .viewing-period-hero > button { width: 44px; height: 44px; }
-  body.portal-v2 .viewing-period-hero h2 { font-size: 25px; }
+  body.portal-v2 .viewing-period-hero h2 { font-size: 28px; }
   body.portal-v2 .viewing-period-entry { grid-template-columns: 20px 46px minmax(0, 1fr) 14px; gap: 8px; padding: 7px; }
   body.portal-v2 .viewing-period-entry-art { width: 46px; }
 

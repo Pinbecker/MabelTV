@@ -54,7 +54,7 @@ QString databaseFromJsonFixtures(const QString &channelsPath,
         for (const QString &statement : schema) {
             if (!query.exec(statement)) return {};
         }
-        if (!query.exec(QStringLiteral("PRAGMA user_version=7"))) return {};
+        if (!query.exec(QStringLiteral("PRAGMA user_version=8"))) return {};
         const QJsonArray channels = readTestObject(channelsPath)
                                         .value(QStringLiteral("channels")).toArray();
         query.prepare(QStringLiteral("INSERT INTO channels VALUES(?,?,?,?,?)"));

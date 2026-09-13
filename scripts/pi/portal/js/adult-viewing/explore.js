@@ -116,7 +116,9 @@ function syncAdultExploreActions(card, title) {
 }
 
 function syncAdultExploreCard(card, title) {
-  appendAdultArtworkStatus(card.querySelector('.adult-explore-art'), title)
+  const art = card.querySelector('.adult-explore-art')
+  appendAdultArtworkStatus(art, title)
+  renderAdultProviderBadges(art, title)
   syncAdultExploreActions(card, title)
 }
 
@@ -165,8 +167,29 @@ function refreshAdultExploreCards() {
   document.querySelectorAll('.adult-explore-card').forEach(card => {
     const title = card._adultExploreTitle
       || adultExploreItems.find(item => item.key === card.dataset.exploreKey)
-    if (title) syncAdultExploreCard(card, title)
+    if (title) {
+      syncAdultExploreArtwork(card, title)
+      syncAdultExploreCard(card, title)
+    }
   })
+}
+
+function syncAdultExploreArtwork(card, title) {
+  const art = card.querySelector('.adult-explore-art')
+  if (!art) return
+  const source = adultViewingPosterUrl(title)
+  const current = art.querySelector(':scope > img')
+  if (source) {
+    const currentSource = current?.dataset.adultArtworkSource || current?.getAttribute('src') || ''
+    if (!current || currentSource !== source) {
+      const image = adultArtworkImage(source)
+      if (current) current.replaceWith(image)
+      else art.prepend(image)
+    }
+    art.querySelector(':scope > svg.icon')?.remove()
+  } else if (!current && !art.querySelector(':scope > svg.icon')) {
+    art.prepend(librarySignalIcon(title.media_type === 'tv' ? 'signal-tv' : 'signal-film'))
+  }
 }
 
 function adultExploreCard(title, { directActions = true, context = 'explore' } = {}) {
@@ -175,6 +198,7 @@ function adultExploreCard(title, { directActions = true, context = 'explore' } =
   card._adultExploreTitle = title
   card.dataset.exploreKey = title.key
   card.dataset.mediaType = title.media_type
+  card.dataset.exploreContext = context
   const visual = document.createElement('div')
   visual.className = 'adult-explore-visual'
   const openArt = document.createElement('button')
@@ -183,21 +207,9 @@ function adultExploreCard(title, { directActions = true, context = 'explore' } =
   openArt.setAttribute('aria-label', `Open details for ${title.title}`)
   const art = document.createElement('span')
   art.className = 'adult-explore-art'
-  if (title.poster_path) {
-    const image = document.createElement('img')
-    image.loading = 'lazy'
-    image.decoding = 'async'
-    image.src = adultPosterUrl(title.poster_path)
-    image.alt = ''
-    image.loading = 'lazy'
-    art.append(image)
-  } else art.append(librarySignalIcon(title.media_type === 'tv' ? 'signal-tv' : 'signal-film'))
-  if (title.on_mabeltv) {
-    const local = document.createElement('span')
-    local.className = 'watch-format adult-local-badge'
-    local.textContent = 'MabelTV'
-    art.append(local)
-  }
+  const source = adultViewingPosterUrl(title)
+  if (source) art.append(adultArtworkImage(source))
+  else art.append(librarySignalIcon(title.media_type === 'tv' ? 'signal-tv' : 'signal-film'))
   openArt.append(art)
   openArt.onclick = () => {
     card.dataset.exploreActed = 'true'
@@ -206,6 +218,12 @@ function adultExploreCard(title, { directActions = true, context = 'explore' } =
 
   const actions = adultExploreActions(title, card, context)
   visual.append(openArt)
+  if (context === 'adult-home-release' && title.cinema_only === true) {
+    const cinema = document.createElement('span')
+    cinema.className = 'adult-release-cinema-tag'
+    cinema.textContent = 'Cinema'
+    visual.append(cinema)
+  }
   if (directActions) visual.append(actions)
 
   const openCopy = document.createElement('button')
@@ -214,8 +232,10 @@ function adultExploreCard(title, { directActions = true, context = 'explore' } =
   const name = document.createElement('strong')
   name.textContent = title.title
   const meta = document.createElement('small')
-  meta.textContent = [title.year, title.media_type === 'tv' ? 'Series' : 'Film']
-    .filter(Boolean).join(' · ')
+  meta.textContent = context === 'adult-home-release'
+    ? String(title.release_label || '')
+    : [title.year, title.media_type === 'tv' ? 'Series' : 'Film']
+      .filter(Boolean).join(' · ')
   openCopy.append(name, meta)
   if (context === 'filmography' && title.character) {
     const role = document.createElement('small')

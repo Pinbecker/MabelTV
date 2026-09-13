@@ -167,9 +167,27 @@ portal script above or the atomic release route below.
 
 Backend changes use the broader atomic release path because executable and
 backend modules must stay together. SQLite schema upgrades require the
-installer's validated online backup and rollback transaction. QML, C++,
+installer’s validated online backup and rollback transaction. QML, C++,
 launcher, hardware or packaging changes require a Pi-native build/test before
 the short atomic install. Do not compile while swapping the live player.
+
+For a portal/backend-only atomic release, preserve the running native player so
+opening HDMI/CEC again does not wake the connected Google TV:
+
+```bash
+sudo bash scripts/pi/install.sh --prebuilt /opt/mabeltv/current \
+  --skip-packages --enable-service --preserve-player
+```
+
+This mode still creates the release and backup, validates systemd units,
+atomically switches `/opt/mabeltv/current`, and restarts and checks the Library
+service. Its deployment backup uses SQLite's online API without pausing Matter;
+the scheduled disaster-recovery backup still captures Matter state coherently.
+It refuses to run if either native binary changed, the player is not
+already active when `--enable-service` is requested, or the database schema
+needs migration. It leaves both the native player and Matter processes running.
+Use the ordinary guarded installer whenever native code, schema, boot, IR or
+device integration changed.
 
 For the atomic route, build in a fresh source directory while the installed
 release continues running:
@@ -179,10 +197,15 @@ bash scripts/pi/preflight.sh
 cmake -S . -B out/pi-production -G Ninja -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_TESTING=ON -DMABELTV_PI_APPLIANCE=ON
 cmake --build out/pi-production --parallel 1
-ctest --test-dir out/pi-production --output-on-failure
+TMPDIR=/var/tmp ctest --test-dir out/pi-production --output-on-failure
 sudo bash scripts/pi/install.sh --prebuilt "$PWD/out/pi-production" \
   --skip-packages --enable-service
 ```
+
+On the development Pi, `/tmp` is a small RAM filesystem. Set `TMPDIR=/var/tmp`
+for CTest so upload, conversion and offline-download fixtures exercise their
+real storage reservations on the persistent disk rather than failing with a
+false low-space result.
 
 The installer owns the short service interruption, online SQLite backup,
 schema transaction, atomic release link, health checks and rollback. After it

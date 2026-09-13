@@ -121,6 +121,8 @@
         renderParentOverlayStyle()
         renderTvGuideSetting()
         renderWatchmodeAvailabilitySetting()
+        renderAdultProviderBadgesSetting()
+        refreshAdultProviderBadges()
         renderPortalPinSetting()
         refreshTmdbStatus().catch(() => {})
       }

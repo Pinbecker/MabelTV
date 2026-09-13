@@ -168,6 +168,7 @@ test('shared portal component contracts stay canonical', async ({ page }, testIn
     const searchStyles = searches.map(element => {
       const style = getComputedStyle(element)
       return {
+        id: element.querySelector('input')?.id,
         display: style.display,
         minHeight: style.minHeight,
         radius: style.borderRadius,
@@ -215,21 +216,15 @@ test('shared portal component contracts stay canonical', async ({ page }, testIn
     }
   })
 
-  expect(contract.searchCount).toBe(6)
-  contract.searchStyles.slice(0, 4).forEach(style => expect(style).toMatchObject({
-      display: 'grid',
-      minHeight: '48px',
-      radius: '8px',
-    }))
-  expect(contract.searchStyles[4]).toMatchObject({
-    display: 'grid',
-    minHeight: '42px',
-    radius: '8px',
-  })
-  expect(contract.searchStyles[5]).toMatchObject({
-    display: 'grid',
-    minHeight: '34px',
-    radius: '8px',
+  expect(contract.searchCount).toBe(7)
+  contract.searchStyles.forEach(style => {
+    const browseSearch = style.id === 'viewingBrowseSearch'
+    expect(style).toMatchObject({
+      display: browseSearch ? 'flex' : 'grid',
+      minHeight: browseSearch || ['watchMabelSearch', 'watchSearch', 'adultViewingSearch'].includes(style.id)
+        ? '42px' : style.id === 'adultFilmographySearch' ? '34px' : '48px',
+      radius: browseSearch ? '12px' : '8px',
+    })
   })
   expect(contract.iconClass).toBe('icon')
   expect(contract.iconHref).toBe('/portal/icons.svg#signal-play')

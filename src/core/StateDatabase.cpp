@@ -10,8 +10,8 @@
 
 namespace
 {
-    constexpr int minimumSupportedSchemaVersion = 7;
-    constexpr int maximumSupportedSchemaVersion = 7;
+    constexpr int minimumSupportedSchemaVersion = 8;
+    constexpr int maximumSupportedSchemaVersion = 8;
 
 class Connection
 {

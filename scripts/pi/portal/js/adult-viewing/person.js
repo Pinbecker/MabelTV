@@ -113,6 +113,7 @@ function renderAdultPersonDetail(person, context = '', returnTo = null) {
       art.append(placeholder)
     }
     appendAdultArtworkStatus(art, title)
+    renderAdultProviderBadges(art, title)
     const name = document.createElement('strong')
     name.textContent = title.title
     const role = document.createElement('small')

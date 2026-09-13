@@ -73,6 +73,7 @@ POST_JSON_ROUTES = {
     "/api/adult/viewing": ("adult_viewing_update", 200),
     "/api/adult/viewing/reorder": ("adult_up_next_reorder", 200),
     "/api/adult/explore/feedback": ("adult_explore_feedback", 200),
+    "/api/adult/home/availability": ("adult_home_availability", 200),
     "/api/adult/netflix/play-tv": ("play_netflix_on_tv", 200),
     "/api/tmdb/channel": ("refresh_channel_show_metadata", 200),
     "/api/tmdb/programme": ("refresh_channel_programme_metadata", 200),
@@ -440,6 +441,39 @@ class Handler(BaseHTTPRequestHandler):
             return True
         return False
 
+    def handle_viewing_insights_get(
+            self, path: str, query: dict[str, list[str]]) -> bool:
+        """Serve the four independently refreshable MabelTV Insights resources."""
+        timezone_name = str(query.get("timezone", [""])[0])
+        try:
+            offset = int(query.get("timezone_offset", ["0"])[0])
+        except (TypeError, ValueError):
+            offset = 0
+        if path == "/api/viewing-insights/overview":
+            try:
+                days = int(query.get("days", ["7"])[0])
+            except (TypeError, ValueError):
+                days = 7
+            self.json(200, self.server.library.viewing_overview(
+                days, offset, timezone_name))
+            return True
+        if path == "/api/viewing-insights/catalogue":
+            self.json(200, self.server.library.viewing_catalogue_insights())
+            return True
+        if path == "/api/viewing-insights/item":
+            try:
+                days = int(query.get("days", ["0"])[0])
+            except (TypeError, ValueError):
+                days = 0
+            self.json(200, self.server.library.viewing_item_insight(
+                str(query.get("item_id", [""])[0]), days, offset, timezone_name))
+            return True
+        if path == "/api/viewing-insights/diary":
+            self.json(200, self.server.library.viewing_diary(
+                str(query.get("date", [""])[0]), offset, timezone_name))
+            return True
+        return False
+
     def do_GET(self) -> None:
         try:
             parsed = urlsplit(self.path)
@@ -482,13 +516,7 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if self.dispatch_json_get():
                 return
-            if parsed.path == "/api/viewing-insights":
-                try:
-                    days = int(query.get("days", ["30"])[0])
-                    offset = int(query.get("timezone_offset", ["0"])[0])
-                except (TypeError, ValueError):
-                    days, offset = 30, 0
-                self.json(200, self.server.library.viewing_insights(days, offset))
+            if self.handle_viewing_insights_get(parsed.path, query):
                 return
             if parsed.path == "/api/remote/media":
                 session = self.server.library.remote_session(str(query.get("stream", [""])[0]))
@@ -509,6 +537,13 @@ class Handler(BaseHTTPRequestHandler):
                     str(query.get("page", ["1"])[0]),
                     str(query.get("available", ["0"])[0]) == "1",
                     str(query.get("limit", [""])[0])),
+                "/api/adult/home/what-to-watch": lambda:
+                    self.server.library.adult_home_what_to_watch(
+                        str(query.get("page", ["1"])[0]),
+                        str(query.get("limit", ["12"])[0])),
+                "/api/adult/home/released-this-week": lambda:
+                    self.server.library.adult_released_this_week(
+                        str(query.get("limit", ["16"])[0])),
                 "/api/adult/title": lambda: self.server.library.adult_title_detail(
                     str(query.get("media_type", [""])[0]), str(query.get("tmdb_id", [""])[0])),
                 "/api/adult/person": lambda: self.server.library.adult_person_detail(

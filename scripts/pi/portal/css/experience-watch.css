@@ -75,15 +75,35 @@ body.portal-v2 .watch-tabs {
 }
 
 body.portal-v2 .watch-tabs button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   position: relative;
   min-height: 48px;
   border-radius: 0;
   background: transparent;
   color: var(--experience-dim);
   padding: 0 1px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 750;
 }
+
+body.portal-v2 .watch-tabs button .icon {
+  width: 15px;
+  height: 15px;
+}
+
+body.portal-v2 .watch-search {
+  height: 42px;
+  min-height: 42px;
+  max-height: 42px;
+  box-sizing: border-box;
+  padding-inline: 11px;
+}
+
+body.portal-v2 .watch-search input { min-height: 40px; }
+body.portal-v2 .watch-search input::placeholder { font-size: 15px; }
 
 body.portal-v2 .watch-tabs button::after {
   position: absolute;
@@ -202,6 +222,11 @@ body.portal-v2 .watch-channel-rail {
   scrollbar-width: none;
 }
 
+body.portal-v2 .watch-continue-rail {
+  grid-auto-columns: clamp(190px, 24%, 225px);
+  gap: 9px;
+}
+
 body.portal-v2 .watch-continue-rail::-webkit-scrollbar,
 body.portal-v2 .watch-channel-rail::-webkit-scrollbar { display: none; }
 
@@ -266,28 +291,13 @@ body.portal-v2 .watch-continue-copy {
   align-self: end;
   display: grid;
   gap: 2px;
-  padding: 38px 42px 14px 12px;
+  padding: 28px 10px 10px;
   background: linear-gradient(180deg, transparent, rgba(5, 5, 10, 0.9));
 }
 
-body.portal-v2 .watch-continue-copy small { color: var(--experience-orange); font-size: 9px; font-weight: 800; text-transform: uppercase; }
-body.portal-v2 .watch-continue-copy strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
-body.portal-v2 .watch-continue-copy span { color: rgba(255, 255, 255, 0.68); font-size: 10px; }
-body.portal-v2 .watch-continue-copy i {
-  position: absolute;
-  top: 50%;
-  right: 13px;
-  width: 20px;
-  height: 20px;
-  overflow: visible;
-  margin: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--experience-orange);
-  transform: translateY(-50%);
-}
-body.portal-v2 .watch-continue-copy i::before { content: none; }
-body.portal-v2 .watch-continue-copy i .icon { width: 20px; height: 20px; }
+body.portal-v2 .watch-continue-copy small { overflow: hidden; color: var(--experience-orange); font-size: 8px; font-weight: 800; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+body.portal-v2 .watch-continue-copy strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+body.portal-v2 .watch-continue-copy span { color: rgba(255, 255, 255, 0.68); font-size: 9px; }
 
 body.portal-v2 .watch-catalogue { margin-top: 0; }
 
@@ -299,7 +309,10 @@ body.portal-v2 .watch-poster-grid {
 
 body.portal-v2 .watch-card {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
+  justify-content: stretch;
+  justify-items: start;
   min-width: 0;
   min-height: 0;
   border-radius: 0;
@@ -342,14 +355,20 @@ body.portal-v2 .watch-format { position: absolute; top: 7px; left: 7px; border-r
 
 body.portal-v2 .watch-card-copy {
   display: grid;
+  width: 100%;
   min-width: 0;
   gap: 2px;
-  padding-top: 8px;
+  justify-items: start;
+  padding-top: 5px;
+  text-align: left;
 }
 
 body.portal-v2 .watch-card-copy strong,
 body.portal-v2 .watch-card-copy small {
+  display: block;
+  width: 100%;
   overflow: hidden;
+  text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

@@ -23,6 +23,7 @@ class OneDriveBackupTests(unittest.TestCase):
         self.assertIn('etc/rc_keymaps/mabeltv.toml', script)
         self.assertNotIn('paths=(srv/mabeltv/media', script)
         self.assertNotIn('mabeltv.db-wal', script)
+        self.assertIn('--database-only', script)
 
     def test_remote_backup_is_immutable_verified_and_bounded(self) -> None:
         script = self.Residents("scripts/pi/onedrive-backup.sh")

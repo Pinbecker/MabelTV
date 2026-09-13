@@ -194,8 +194,11 @@ body.portal-v2 .adult-viewing-grid.is-grid .adult-viewing-row {
 body.portal-v2 .adult-viewing-grid.is-grid .adult-viewing-card-open {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 6px;
+  gap: 4px;
   align-content: start;
+  justify-content: stretch;
+  justify-items: start;
+  text-align: left;
 }
 
 body.portal-v2 .adult-viewing-grid.is-grid .adult-viewing-row img,
@@ -204,22 +207,24 @@ body.portal-v2 .adult-viewing-grid.is-grid .adult-viewing-row .adult-viewing-pla
   border-radius: 7px;
 }
 
-body.portal-v2 .adult-viewing-grid.is-grid .adult-viewing-copy { width: 100%; overflow: hidden; align-content: start; gap: 1px; }
+body.portal-v2 .adult-viewing-grid.is-grid .adult-viewing-copy { width: 100%; overflow: hidden; align-content: start; justify-items: start; gap: 0; text-align: left; }
 body.portal-v2 .adult-viewing-grid.is-grid .adult-viewing-copy strong {
-  display: -webkit-box;
-  min-height: 2.35em;
+  display: block;
+  width: 100%;
+  min-height: 0;
   overflow: hidden;
   font-size: 11px;
   line-height: 1.18;
-  text-overflow: clip;
-  white-space: normal;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 body.portal-v2 .adult-viewing-grid.is-grid .adult-viewing-copy span {
   display: block;
+  width: 100%;
   overflow: hidden;
   font-size: 8px;
+  text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -732,13 +737,6 @@ body.portal-v2 .adult-netflix-launch-status { min-height: 15px; margin: -5px var
   }
   body.portal-v2 #view-adult-home.adult-search-mode #adultDiscoveryGrid .watch-card-copy small {
     font-size: 8px;
-  }
-  body.portal-v2 #view-adult-home.adult-search-mode #adultDiscoveryGrid .adult-local-badge {
-    top: 4px;
-    left: 4px;
-    max-width: calc(100% - 8px);
-    padding: 2px 3px;
-    font-size: 6px;
   }
   body.portal-v2 #view-adult-home.adult-search-mode .adult-search-prompt { grid-column: 1 / -1; }
 }

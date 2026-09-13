@@ -27,6 +27,8 @@ PORTAL_APP_SOURCES = (
     "playback/downloads.js",
     "playback/view.js",
     "adult-viewing/catalogue.js",
+    "adult-viewing/provider-badges.js",
+    "adult-viewing/artwork.js",
     "adult-viewing/seasons.js",
     "adult-viewing/details.js",
     "adult-viewing/up-next-order.js",

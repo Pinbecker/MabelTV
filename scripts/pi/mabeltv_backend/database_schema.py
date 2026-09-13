@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 
 SCHEMA = r"""
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -575,6 +575,94 @@ BEGIN
     SELECT RAISE(ABORT, 'retired setting values cannot become authoritative');
 END;
 """
+
+VIEWING_IDENTITY_SCHEMA = r"""
+CREATE TABLE viewing_items (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL CHECK(kind IN ('channel','film')),
+    channel_id INTEGER,
+    file_name TEXT COLLATE NOCASE,
+    current_key TEXT UNIQUE,
+    title_snapshot TEXT NOT NULL,
+    source_snapshot TEXT NOT NULL,
+    created_at REAL NOT NULL,
+    updated_at REAL NOT NULL,
+    FOREIGN KEY(channel_id) REFERENCES channels(id) ON DELETE SET NULL,
+    CHECK((kind='channel' AND file_name IS NULL)
+       OR (kind='film' AND file_name IS NOT NULL))
+);
+CREATE UNIQUE INDEX viewing_items_channel_idx
+ON viewing_items(channel_id, kind, file_name)
+WHERE channel_id IS NOT NULL;
+
+ALTER TABLE viewing_sessions ADD COLUMN viewing_item_id TEXT
+    REFERENCES viewing_items(id) ON DELETE SET NULL;
+ALTER TABLE viewing_sessions ADD COLUMN programme_title TEXT;
+ALTER TABLE viewing_sessions ADD COLUMN programme_file_name TEXT;
+
+INSERT INTO viewing_items(
+    id,kind,channel_id,file_name,current_key,title_snapshot,source_snapshot,
+    created_at,updated_at)
+SELECT 'channel:' || channels.id,'channel',channels.id,NULL,
+       'channel:' || channels.number,channels.name,channels.name,
+       unixepoch(),unixepoch()
+FROM channels
+WHERE channels.content_type='shows';
+
+INSERT OR IGNORE INTO viewing_items(
+    id,kind,channel_id,file_name,current_key,title_snapshot,source_snapshot,
+    created_at,updated_at)
+SELECT 'film:legacy:' || lower(hex(sessions.item_key)),'film',channels.id,
+       substr(sessions.item_key,
+              length('channel:' || sessions.channel_number || ':') + 1),
+       sessions.item_key,
+       COALESCE(MAX(sessions.title),'Untitled'),
+       COALESCE(MAX(sessions.channel_name),'MabelTV'),
+       COALESCE(MIN(sessions.started),unixepoch()),
+       COALESCE(MAX(sessions.ended),unixepoch())
+FROM viewing_sessions AS sessions
+LEFT JOIN channels ON channels.number=sessions.channel_number
+WHERE sessions.kind='film' AND sessions.item_key IS NOT NULL
+  AND channels.id IS NOT NULL
+GROUP BY sessions.item_key;
+
+INSERT OR IGNORE INTO viewing_items(
+    id,kind,channel_id,file_name,current_key,title_snapshot,source_snapshot,
+    created_at,updated_at)
+SELECT 'legacy:' || sessions.kind || ':' || lower(hex(sessions.item_key)),
+       CASE WHEN sessions.kind='film' THEN 'film' ELSE 'channel' END,
+       NULL,
+       CASE WHEN sessions.kind='film' THEN
+         COALESCE(NULLIF(substr(sessions.item_key,
+             length('channel:' || sessions.channel_number || ':') + 1),''),
+             COALESCE(sessions.title,'Untitled'))
+       ELSE NULL END,
+       sessions.item_key,
+       COALESCE(MAX(sessions.title),'Untitled'),
+       COALESCE(MAX(sessions.channel_name),'MabelTV'),
+       COALESCE(MIN(sessions.started),unixepoch()),
+       COALESCE(MAX(sessions.ended),unixepoch())
+FROM viewing_sessions AS sessions
+WHERE sessions.item_key IS NOT NULL
+  AND NOT EXISTS (
+      SELECT 1 FROM viewing_items
+      WHERE viewing_items.current_key=sessions.item_key)
+GROUP BY sessions.item_key;
+
+UPDATE viewing_sessions
+SET viewing_item_id=(
+    SELECT viewing_items.id
+    FROM viewing_items
+    WHERE viewing_items.current_key=viewing_sessions.item_key)
+WHERE item_key IS NOT NULL;
+
+UPDATE viewing_sessions
+SET programme_title=title
+WHERE kind='film' AND programme_title IS NULL;
+
+CREATE INDEX viewing_sessions_stable_item_idx
+ON viewing_sessions(viewing_item_id, ended);
+"""
 MIGRATIONS = (
     (1, "initial relational state", SCHEMA),
     (2, "portal cache revision ledger", REVISION_SCHEMA),
@@ -584,6 +672,8 @@ MIGRATIONS = (
      CANONICAL_ADULT_RELATIONSHIPS_SCHEMA),
     (6, "relational media and title ownership", RELATIONAL_MEDIA_OWNERSHIP_SCHEMA),
     (7, "reject retired setting values", CURRENT_SETTINGS_SCHEMA),
+    (8, "stable MabelTV viewing identities and targeted history",
+     VIEWING_IDENTITY_SCHEMA),
 )
 MIGRATION_CHECKSUMS = {
     version: hashlib.sha256(sql.encode("utf-8")).hexdigest()

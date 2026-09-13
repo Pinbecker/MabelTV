@@ -1368,7 +1368,7 @@ void CoreTests::sqliteStateIsReadableAndWritableByNativeController()
         for (const QString &statement : schema) {
             QVERIFY2(query.exec(statement), qPrintable(query.lastError().text()));
         }
-        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version=7")));
+        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version=8")));
         QVERIFY(query.exec(QStringLiteral(
             "INSERT INTO channels VALUES(7,'Films','one','fit','films')")));
         database.close();
@@ -1427,7 +1427,7 @@ void CoreTests::sqliteStateIsReadableAndWritableByNativeController()
         database.setDatabaseName(databasePath);
         QVERIFY2(database.open(), qPrintable(database.lastError().text()));
         QSqlQuery query(database);
-        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version=7")));
+        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version=8")));
         database.close();
     }
     QSqlDatabase::removeDatabase(currentVersionConnectionName);

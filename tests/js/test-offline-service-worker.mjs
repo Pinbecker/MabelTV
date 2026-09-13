@@ -89,23 +89,22 @@ test('service worker precaches the shell without concurrent request fan-out', as
 
 test('service worker keeps the current rollback shell and unrelated persistent caches', async () => {
   const deleted = []
+  let cacheKeys = []
   const worker = workerContext({ id: 'unused' }, new Map(), {
-    keys: async () => [
-      'mabeltv-shell-v211', 'mabeltv-shell-v212', 'mabeltv-shell-v213',
-      'mabeltv-shell-v214', 'mabeltv-shell-v215', 'mabeltv-shell-v216',
-      'mabeltv-shell-v217',
-      'mabeltv-offline-v1', 'mabeltv-artwork-family-v1', 'another-app-cache',
-    ],
+    keys: async () => cacheKeys,
     delete: async key => { deleted.push(key); return true },
   })
+  const current = vm.runInContext('SHELL_CACHE', worker.context)
+  const previous = vm.runInContext('PREVIOUS_SHELL_CACHE', worker.context)
+  cacheKeys = [
+    'mabeltv-shell-v1', 'mabeltv-shell-v2', previous, current,
+    'mabeltv-offline-v1', 'mabeltv-artwork-family-v1', 'another-app-cache',
+  ]
   let activation
   worker.listeners.activate({ waitUntil: promise => { activation = promise } })
   await activation
 
-  assert.deepEqual(deleted, [
-    'mabeltv-shell-v211', 'mabeltv-shell-v212', 'mabeltv-shell-v213',
-    'mabeltv-shell-v214', 'mabeltv-shell-v215',
-  ])
+  assert.deepEqual(deleted, ['mabeltv-shell-v1', 'mabeltv-shell-v2'])
 })
 
 test('a complete shell update waits for a safe activation boundary', async () => {
@@ -186,8 +185,10 @@ test('same-origin TMDB artwork is retained for an unlocked offline client', asyn
   const worker = workerContext({ id: 'unused' }, new Map(), {
     open: async () => ({
       add: async () => {},
-      match: async request => stored.get(request.url)?.clone(),
-      put: async (request, response) => { stored.set(request.url, response.clone()) },
+      match: async request => stored.get(typeof request === 'string' ? request : request.url)?.clone(),
+      put: async (request, response) => {
+        stored.set(typeof request === 'string' ? request : request.url, response.clone())
+      },
       keys: async () => [...stored.keys()].map(url => new Request(url)),
       delete: async request => stored.delete(request.url),
     }),
@@ -206,6 +207,34 @@ test('same-origin TMDB artwork is retained for an unlocked offline client', asyn
   worker.context.fetch = async () => { throw new Error('Pi offline') }
   response = await dispatchedResponse(worker.listeners.fetch, artwork, 'phone')
   assert.equal(await response.text(), 'tmdb-poster')
+})
+
+test('artwork retry queries reuse one canonical cached image', async () => {
+  const stored = new Map()
+  const worker = workerContext({ id: 'unused' }, new Map(), {
+    open: async () => ({
+      add: async () => {},
+      match: async request => stored.get(typeof request === 'string' ? request : request.url)?.clone(),
+      put: async (request, response) => {
+        stored.set(typeof request === 'string' ? request : request.url, response.clone())
+      },
+      keys: async () => [...stored.keys()].map(url => new Request(url)),
+      delete: async request => stored.delete(request.url),
+    }),
+  })
+  worker.context.fetch = async () => new Response('recovered-poster', { status: 200 })
+  worker.listeners.message({
+    data: { type: 'mabeltv-offline-access', unlocked: true }, source: { id: 'phone' },
+  })
+  const base = 'https://tv.example.test/api/adult/tmdb-artwork/w342/recovered.jpg'
+  const response = await dispatchedResponse(worker.listeners.fetch,
+    new Request(`${base}?retry=1-123`), 'phone')
+
+  assert.equal(await response.text(), 'recovered-poster')
+  assert.deepEqual([...stored.keys()], [base])
+  worker.context.fetch = async () => { throw new Error('Pi offline') }
+  const cached = await dispatchedResponse(worker.listeners.fetch, new Request(base), 'phone')
+  assert.equal(await cached.text(), 'recovered-poster')
 })
 
 test('an artwork cache failure never hides a successful network image', async () => {

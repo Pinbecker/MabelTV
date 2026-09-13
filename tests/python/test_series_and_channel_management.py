@@ -203,9 +203,11 @@ class SeriesAndChannelManagementTests(unittest.TestCase):
             },
         })
         now = time.time()
-        self.fixture.library.viewing_store["sessions"] = [{
+        item = next(value for value in self.fixture.library.current_viewing_catalogue()
+                    if value["kind"] == "film")
+        self.fixture.library.state_database.save_viewing_session({
             "id": "film-session",
-            "item_key": f"channel:3:{film.name.casefold()}",
+            "item_key": item["item_key"], "viewing_item_id": item["item_id"],
             "title": "Room on the Broom - original",
             "channel_number": 3,
             "channel_name": "Old name",
@@ -214,11 +216,14 @@ class SeriesAndChannelManagementTests(unittest.TestCase):
             "started": now - 180,
             "ended": now,
             "seconds": 180,
-        }]
+            "programme_file_name": film.name,
+        }, cutoff=0, maximum=50_000)
 
-        summary = self.fixture.library.viewing_insights(1, 0)
-        self.assertEqual(summary["top_films"][0]["title"], "Room on the Broom")
-        self.assertEqual(summary["sessions"][0]["source"], "Films")
+        summary = self.fixture.library.viewing_catalogue_insights()
+        current = next(value for value in summary["items"] if value["item_id"] == item["item_id"])
+        self.assertEqual(current["title"], "Room on the Broom")
+        detail = self.fixture.library.viewing_item_insight(item["item_id"], 0, 0)
+        self.assertEqual(detail["item"]["history"][0]["source"], "Films")
 
     def test_viewing_insights_include_item_drilldowns_and_completion_patterns(self) -> None:
         self.fixture.library.write_state("channels", json.loads(json.dumps({
@@ -227,25 +232,36 @@ class SeriesAndChannelManagementTests(unittest.TestCase):
         local_now = time.localtime()
         now = time.mktime((local_now.tm_year, local_now.tm_mon, local_now.tm_mday,
                            12, 0, 0, 0, 0, -1))
-        item_key = "channel:3:the film.mp4"
-        self.fixture.library.viewing_store["sessions"] = [
+        film = self.fixture.media / "films" / "The Film.mp4"
+        film.parent.mkdir(parents=True, exist_ok=True)
+        film.write_bytes(b"film")
+        identity = next(value for value in self.fixture.library.current_viewing_catalogue()
+                        if value["kind"] == "film")
+        for session in [
             {
-                "id": "film-one", "item_key": item_key, "title": "The Film",
+                "id": "film-one", "item_key": identity["item_key"],
+                "viewing_item_id": identity["item_id"], "title": "The Film",
                 "channel_number": 3, "channel_name": "Films", "kind": "film",
                 "surface": "tv", "started": now - 7200, "ended": now - 6900,
                 "seconds": 300, "position": 1800, "media_duration": 3600,
+                "programme_file_name": film.name,
             },
             {
-                "id": "film-two", "item_key": item_key, "title": "The Film",
+                "id": "film-two", "item_key": identity["item_key"],
+                "viewing_item_id": identity["item_id"], "title": "The Film",
                 "channel_number": 3, "channel_name": "Films", "kind": "film",
                 "surface": "device", "started": now - 3600, "ended": now - 3420,
                 "seconds": 180, "position": 3420, "media_duration": 3600,
+                "programme_file_name": film.name,
             },
-        ]
+        ]:
+            self.fixture.library.state_database.save_viewing_session(
+                session, cutoff=0, maximum=50_000)
 
-        insights = self.fixture.library.viewing_insights(365, 0)
-        item = insights["items"][0]
-        self.assertEqual(item["item_key"], item_key)
+        insights = self.fixture.library.viewing_item_insight(
+            identity["item_id"], 365, 0)
+        item = insights["item"]
+        self.assertEqual(item["item_id"], identity["item_id"])
         self.assertEqual(item["sessions"], 2)
         self.assertEqual(item["active_days"], 1)
         self.assertEqual(item["average_session_seconds"], 240)
@@ -257,9 +273,6 @@ class SeriesAndChannelManagementTests(unittest.TestCase):
         self.assertEqual(len(item["hourly"]), 24)
         self.assertEqual(len(item["weekdays"]), 7)
         self.assertEqual(len(item["timeline"]), 12)
-        self.assertEqual(insights["top_films"][0]["item_key"], item_key)
-        self.assertEqual(len(insights["hourly"]), 24)
-        self.assertEqual(len(insights["weekdays"]), 7)
 
     def test_pi_ready_adult_upload_is_kept_without_conversion(self) -> None:
         self.fixture.library.complete_setup({

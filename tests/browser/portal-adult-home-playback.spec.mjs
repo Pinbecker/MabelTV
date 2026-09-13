@@ -31,6 +31,14 @@ function seasonDetail() {
 
 test('Adult TV home cards load availability and open local episodes', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One phone engine covers the Adult TV home route')
+  await page.route(url => new URL(url).pathname === '/api/adult/home/availability', async route => {
+    const payload = route.request().postDataJSON()
+    await route.fulfill({ json: { region: 'GB', items: payload.titles.map(title => ({
+      key: `${title.media_type}:${Number(title.tmdb_id)}`, providers: [], available: true,
+      sources: [{ source_id: 407, name: 'All 4', type: 'free',
+        web_url: 'https://www.channel4.com/programmes/title' }],
+    })) } })
+  })
   await page.route(url => new URL(url).pathname === '/api/adult/title', route =>
     route.fulfill({ json: titleDetail() }))
   await page.route(url => new URL(url).pathname === '/api/adult/season', route =>
@@ -44,6 +52,22 @@ test('Adult TV home cards load availability and open local episodes', async ({ p
   await openPortal(page)
   await page.evaluate(() => openView('adult-home'))
   await expect(page.locator('#adultHomeForYou .adult-explore-card')).toHaveCount(8)
+  await page.evaluate(() => {
+    library.adult_library = [{
+      path: 'Fixture Film/Fixture Film.mp4', title: 'A long fixture film title',
+      browser_ready: true, remote_position: 600, remote_duration: 3600,
+      remote_last_watched: 2_000_000_000, metadata: { title: 'A long fixture film title' },
+    }]
+    renderAdultHomeContinue()
+  })
+  const continueCard = page.locator('#adultHomeContinueRail .watch-continue-card')
+  await expect(continueCard).toBeVisible()
+  expect((await continueCard.boundingBox()).width).toBeLessThanOrEqual(225)
+  await expect(continueCard.locator('.watch-continue-copy i')).toHaveCount(0)
+  for (const root of ['#adultHomeForYou', '#adultHomeReleased', '#adultHomeDifferent']) {
+    await expect(page.locator(`${root} .adult-provider-strip img[title="Channel 4"]`).first())
+      .toBeVisible()
+  }
   await page.evaluate(() => {
     library.adult_series = [{
       id: 'fixture-series', title: 'Fixture Series',

@@ -20,14 +20,17 @@ clearing it transactionally, and never treats retained `owner.json` as live.
 ## Schema ownership and identities
 
 `database_schema.py` is the only schema and migration owner. `database.py`
-owns connections, transactions, relational projections and repository
-operations. Schema version 7 contains these main relationships:
+owns connections, transactions and the general relational projections;
+`repositories/viewing.py` owns targeted viewing identity/session operations and is
+composed into the same `StateDatabase`. Schema version 8 contains these main
+relationships:
 
 - channels and favourites: `channels`, `channel_metadata`,
   `channel_favourites`, `programme_favourites` and `channel_metadata_state`;
 - settings/auth/runtime aggregates: `application_settings`, `owner_fields` and
   `player_fields`;
-- MabelTV history: `viewing_sessions` plus source attributes;
+- MabelTV history: stable `viewing_items` identities and targeted
+  `viewing_sessions`, including exact programme snapshots;
 - local Adult media: `local_media`, `adult_series`, `adult_seasons` and their
   episode rows;
 - provider identity and descriptive metadata: `external_titles`, with
@@ -56,7 +59,9 @@ Descriptive title metadata has one relational owner in `external_titles`.
 external title. Watchlist membership, Up Next order and personal ratings each
 have exactly one physical owner in their dedicated child tables. The retired
 duplicate relationship columns were removed in schema 5, duplicate title
-metadata columns in schema 6, and schema 7 rejects retired setting values.
+metadata columns in schema 6, schema 7 rejects retired setting values, and
+schema 8 gives channels and films stable viewing identities so history survives
+supported channel renames, renumbering and film moves.
 Reads reconstruct the established API
 dictionary shape from joins so the public API contract does not change.
 Explicit `false` membership flags and timestamps or ranks left behind by a
@@ -85,6 +90,13 @@ back. Local/series, viewing and Insights writers upsert changed rows and delete
 only rows absent from the submitted authoritative aggregate. Stable rows retain
 their identity; writers do not clear and rebuild whole tables.
 
+`viewing_items` owns the durable identity of a MabelTV channel or local film.
+`viewing_sessions` stores one mutable session row with an exact programme
+snapshot and a foreign key to that identity. Sampling may extend that row, but
+must never reconstruct and replace the complete history document. Calendar and
+Insights aggregates are read models computed from overlap with the requested
+timezone boundaries; they are neither stored state nor a second source of truth.
+
 The revision domains are `library`, `adult_viewing`, `viewing_insights`,
 `adult_insights`, `settings`, `identity` and `player`. Portal snapshots may paint
 only after authentication and only when their stored revision matches the
@@ -94,7 +106,7 @@ bootstrap ledger. Rebuildable caches never advance or become authoritative.
 
 Migrations are append-only and checksummed. Never edit a released migration;
 add the next integer migration and update both Python and native maximum/minimum
-support in the same release. The current native release accepts schema 7 only,
+support in the same release. The current native release accepts schema 8 only,
 preventing an old binary from writing a database whose invariants it does not
 understand. Cross-language tests enforce the version match.
 

@@ -189,6 +189,12 @@ test('series sheets use the full metadata catalogue with local availability over
   await expect(page.locator('#adultTitleSeasonMetadata')).toBeHidden()
   await expect(page.locator('#adultTitleSeasonRestart')).toBeHidden()
   await expect(page.locator('#adultTitleSeasonDelete')).toBeHidden()
+  await page.locator('#adultTitleSeasonSettingsClose').click()
+  await page.locator('#adultTitleSeasonEpisodes [data-episode="1"] .adult-streaming-episode-toggle').click()
+  await page.locator('#adultTitleSeasonSettings').click()
+  await expect(page.locator('#adultTitleSeasonRestart')).toBeVisible()
+  await expect(page.locator('#adultTitleSeasonMetadata')).toBeHidden()
+  await expect(page.locator('#adultTitleSeasonDelete')).toBeHidden()
 })
 
 test('adding a catalogue season prepares its local destination without a create-series card', async ({ page }, testInfo) => {

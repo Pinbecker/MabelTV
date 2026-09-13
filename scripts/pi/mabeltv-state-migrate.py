@@ -331,7 +331,7 @@ def main() -> None:
         report["source_normalisations"] = normalisations
     elif args.command == "backup":
         database = StateDatabase(args.database)
-        database.verify_ready()
+        source_version = database.verify_upgrade_source()
         if args.output.exists():
             raise FileExistsError(f"Refusing to overwrite backup: {args.output}")
         args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -342,7 +342,10 @@ def main() -> None:
         finally:
             destination.close()
             source.close()
-        report = StateDatabase(args.output).integrity_report()
+        snapshot = StateDatabase(args.output)
+        snapshot.verify_upgrade_source()
+        report = snapshot.integrity_report()
+        report["source_schema_version"] = source_version
     elif args.command == "export-json":
         report = export_sources(args.database, args.output_root)
     elif args.command == "upgrade":

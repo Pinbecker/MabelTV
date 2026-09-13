@@ -118,6 +118,22 @@ function restoreAdultTitleSheet(detail, returnTo = null) {
   renderAdultTitleDetail(detail, false)
 }
 
+function openAdultTrackedSeasonRestartSheet(detail, season, returnTo) {
+  adultSeriesRestartTarget = {
+    viewingTitle: detail,
+    viewingSeason: season,
+    scope: 'tracked-season',
+    season: Number(season.number),
+    episodeCount: Number(season.episodes || 0),
+    returnTo,
+  }
+  $('#adultSeriesRestartTitle').textContent = `Restart Series ${season.number}?`
+  $('#adultSeriesRestartDescription').textContent =
+    'This clears every watched mark you have tracked for this series.'
+  $('#adultSeriesRestartTarget').textContent = `${detail.title} · Series ${season.number}`
+  portalSheets.open($('#adultSeriesRestartSheet'), { returnTo })
+}
+
 async function openAdultEpisodeDestination(detail, season, episode, seasonCard = null) {
   const local = findLocalAdultEpisode(detail, season.number, episode.number)
   if (local) {
@@ -321,13 +337,18 @@ async function ensureAdultTitleSeasonStorage(detail, season) {
 function configureAdultTitleSeasonManagement(detail, season, card) {
   const localSeries = adultTitleLocalSeries(detail)
   const localEpisodes = adultTitleLocalSeasonEpisodes(detail, season.number)
-  const localSeason = Boolean(localSeries
-    && (localSeries.seasons || []).map(Number).includes(Number(season.number)))
+  // Empty folders can be prepared when an upload flow is opened and then
+  // cancelled. They are storage scaffolding, not a local series to manage.
+  const localSeason = Boolean(localSeries && localEpisodes.length)
+  const trackedSeason = Number(season.watched_count || 0) > 0
+    || Object.entries(detail.viewing?.episodes || {}).some(([key, value]) =>
+      key.startsWith(`${Number(season.number)}:`) && value?.watched === true)
   const upload = $('#adultTitleSeasonUpload')
   const settingsSheet = $('#adultTitleSeasonSettingsSheet')
   $('#adultTitleSeasonSettings').classList.toggle('hidden', detail.catalogue_only === true)
   $('#adultTitleSeasonSettingsEyebrow').textContent = `${detail.title} · Series ${season.number}`
   $('#adultTitleSeasonSettings').onclick = () => {
+    configureAdultTitleSeasonManagement(detail, season, card)
     portalSheets.suspend($('#adultTitleSeasonSheet'))
     portalSheets.open(settingsSheet, {
       returnTo: () => openAdultTitleSeason(detail, season, card),
@@ -362,7 +383,8 @@ function configureAdultTitleSeasonManagement(detail, season, card) {
   const metadata = $('#adultTitleSeasonMetadata')
   const restart = $('#adultTitleSeasonRestart')
   const remove = $('#adultTitleSeasonDelete')
-  ;[metadata, restart, remove].forEach(button => button.classList.toggle('hidden', !localSeason))
+  ;[metadata, remove].forEach(button => button.classList.toggle('hidden', !localSeason))
+  restart.classList.toggle('hidden', !localSeason && !trackedSeason)
   metadata.disabled = !tmdbConfigured
   metadata.onclick = localSeason && tmdbConfigured ? async () => {
     metadata.disabled = true
@@ -376,11 +398,12 @@ function configureAdultTitleSeasonManagement(detail, season, card) {
       openAdultTitleSeason(detail, season, card)
     } catch (error) { showError(error) } finally { metadata.disabled = false }
   } : null
-  restart.onclick = localSeason ? () => {
+  restart.onclick = localSeason || trackedSeason ? () => {
     portalSheets.dismiss(settingsSheet)
     portalSheets.dismiss($('#adultTitleSeasonSheet'))
-    openAdultSeriesRestartSheet(localSeries, season.number,
-      () => openAdultTitleSeason(detail, season, card))
+    const returnTo = () => openAdultTitleSeason(detail, season, card)
+    if (localSeason) openAdultSeriesRestartSheet(localSeries, season.number, returnTo)
+    else openAdultTrackedSeasonRestartSheet(detail, season, returnTo)
   } : null
   remove.onclick = localSeason ? async () => {
     if (!confirm(`Remove every local episode in Series ${season.number} of “${detail.title}” from MabelTV?`)) return

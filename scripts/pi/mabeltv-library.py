@@ -164,10 +164,8 @@ class Library(ViewingMixin, UploadConversionMixin, TranscodingMixin, Authenticat
         self.viewing_worker: threading.Thread | None = None
         self.viewing_last_tv_sample: tuple[dict[str, Any], float] | None = None
         self.viewing_remote_samples: dict[str, tuple[float, float]] = {}
-        self.viewing_pending: dict[tuple[str, str], dict[str, Any]] = {}
-        self.viewing_dirty = False
-        self.viewing_last_flush = 0.0
-        self.viewing_store = self.load_viewing_store()
+        self.viewing_pending: dict[tuple[str, str, str], dict[str, Any]] = {}
+        self.viewing_tracking_started = self.state_database.ensure_viewing_tracking()
         self.adult_insights_lock = threading.Lock()
         self.adult_insights_closed = threading.Event()
         self.adult_insights_worker: threading.Thread | None = None
@@ -249,7 +247,6 @@ class Library(ViewingMixin, UploadConversionMixin, TranscodingMixin, Authenticat
             self.viewing_worker.join(timeout=min(timeout, VIEWING_SAMPLE_SECONDS + 1))
         if self.adult_insights_worker:
             self.adult_insights_worker.join(timeout=min(timeout, 2.0))
-        self.flush_viewing_store(force=True)
         if self.conversion_worker.is_alive():
             raise RuntimeError("The media worker did not stop cleanly")
         self.live_stream.stop()

@@ -5,17 +5,19 @@ let adultHomeLoading = false
 let adultHomeLoadedAt = 0
 let adultHomePersonal = []
 let adultHomeDifferent = []
+let adultHomeReleased = []
 let adultHomeCacheRestored = false
 
 async function restoreAdultHomeCache() {
   if (adultHomeCacheRestored) return
   adultHomeCacheRestored = true
-  const cached = await readPortalDataCache('adult-home-v1', 'adult_viewing')
+  const cached = await readPortalDataCache('adult-home-v2', 'adult_viewing')
   if (!cached) return
   adultHomeLoadedAt = cached.stale ? 0 : Number(cached.saved_at) || 0
   adultHomePage = Number(cached.data.page) || 1
   adultHomePersonal = cached.data.personal || []
   adultHomeDifferent = cached.data.different || []
+  adultHomeReleased = cached.data.released || []
 }
 
 function adultHomeIsWatched(title) {
@@ -24,10 +26,12 @@ function adultHomeIsWatched(title) {
   }) === 'watched'
 }
 
-function adultHomeUnique(values, excluded = new Set(), limit = 8) {
+function adultHomeUnique(values, excluded = new Set(), limit = 8,
+  { includeWatched = false } = {}) {
   const result = []
   for (const title of values || []) {
-    if (!title?.key || excluded.has(title.key) || adultHomeIsWatched(title)) continue
+    if (!title?.key || excluded.has(title.key)
+        || (!includeWatched && adultHomeIsWatched(title))) continue
     excluded.add(title.key)
     result.push(title)
     if (result.length >= limit) break
@@ -35,12 +39,12 @@ function adultHomeUnique(values, excluded = new Set(), limit = 8) {
   return result
 }
 
-function renderAdultHomeGrid(root, values) {
+function renderAdultHomeGrid(root, values, context = 'adult-home') {
   const signature = values.map(title => title.key).join('|')
   if (root.dataset.homeTitles === signature && root.children.length) return
   root.dataset.homeTitles = signature
   root.replaceChildren(...values.map(title => adultExploreCard(title, {
-    context: 'adult-home',
+    context,
   })))
   if (!values.length) {
     const quiet = document.createElement('span')
@@ -80,16 +84,17 @@ function adultHomeUpNext(excluded) {
       - Number(right.up_next_rank || 999999)), excluded, 8)
 }
 
-function renderAdultHomeSection(section, root, values) {
+function renderAdultHomeSection(section, root, values, context = 'adult-home') {
   $(section).classList.toggle('hidden', !values.length)
-  renderAdultHomeGrid($(root), values)
+  renderAdultHomeGrid($(root), values, context)
 }
 
 function renderAdultHomeLoading() {
-  for (const selector of ['#adultHomeForYou', '#adultHomeDifferent']) {
+  for (const [selector, count] of [['#adultHomeForYou', 8],
+    ['#adultHomeReleased', 8], ['#adultHomeDifferent', 8]]) {
     const root = $(selector)
     delete root.dataset.homeTitles
-    root.replaceChildren(...Array.from({ length: 8 }, () => {
+    root.replaceChildren(...Array.from({ length: count }, () => {
       const card = document.createElement('span')
       card.className = 'adult-explore-loading'
       card.append(document.createElement('i'), document.createElement('b'),
@@ -106,8 +111,11 @@ function renderAdultHomeKnownContent() {
     adultHomeUpNext(excluded))
   if (adultHomePersonal.length) {
     renderAdultHomeGrid($('#adultHomeForYou'),
-      adultHomeUnique(adultHomePersonal, excluded, 8))
+      adultHomeUnique(adultHomePersonal, excluded, 8, { includeWatched: true }))
   }
+  renderAdultHomeSection('#adultHomeReleasedSection', '#adultHomeReleased',
+    adultHomeUnique(adultHomeReleased, new Set(), 16, { includeWatched: true }),
+    'adult-home-release')
   if (adultHomeDifferent.length) {
     renderAdultHomeGrid($('#adultHomeDifferent'),
       adultHomeUnique(adultHomeDifferent, excluded, 8))
@@ -131,21 +139,29 @@ async function loadAdultHome({ refresh = false } = {}) {
     const broadLists = ['documentary', 'animation', 'british', 'science-fiction',
       'comedy', 'crime', 'drama', 'popular']
     const broad = broadLists[(new Date().getDate() + adultHomePage) % broadLists.length]
+    const releasedRequest = api('/api/adult/home/released-this-week?limit=16')
+      .catch(() => null)
     const [personal, different] = await Promise.all([
-      api(`/api/adult/explore?list=for-you&media_type=all&page=${adultHomePage}&available=1&limit=12`),
+      api(`/api/adult/home/what-to-watch?page=${adultHomePage}&limit=8`),
       api(`/api/adult/explore?list=${encodeURIComponent(broad)}&media_type=all&page=${adultHomePage}&available=1&limit=12`),
     ])
     adultHomePersonal = personal.results || []
     adultHomeDifferent = different.results || []
     adultHomeLoadedAt = Date.now()
-    await writePortalDataCache('adult-home-v1', {
+    renderAdultHomeKnownContent()
+    const released = await releasedRequest
+    if (released) adultHomeReleased = released.results || []
+    await writePortalDataCache('adult-home-v2', {
       page: adultHomePage, personal: adultHomePersonal, different: adultHomeDifferent,
+      released: adultHomeReleased,
     }, 'adult_viewing')
     renderAdultHomeKnownContent()
   } catch (error) {
     renderAdultHomeKnownContent()
     if (!adultHomePersonal.length) renderAdultHomeGrid($('#adultHomeForYou'), [])
     if (!adultHomeDifferent.length) renderAdultHomeGrid($('#adultHomeDifferent'), [])
+    if (!adultHomeReleased.length) renderAdultHomeSection(
+      '#adultHomeReleasedSection', '#adultHomeReleased', [])
   } finally {
     adultHomeLoading = false
   }

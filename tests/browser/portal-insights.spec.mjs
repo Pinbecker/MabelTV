@@ -176,6 +176,136 @@ test('Adult TV insight facets and people open their useful next level', async ({
 })
 
 
+test('MabelTV Insights libraries keep every card aligned inside the page gutter', async ({ page }) => {
+  await openPortal(page)
+  await page.locator('[data-view-button="watch"]').click()
+  await page.locator('#watchMabelInsightsTab').click()
+
+  const renderLibrary = async kind => {
+    await page.evaluate(selectedKind => {
+      const items = Array.from({ length: 8 }, (_, index) => ({
+        item_id: `${selectedKind}:${index}`,
+        kind: selectedKind,
+        title: index % 2 ? `A deliberately much longer title ${index}` : `Title ${index}`,
+        source: selectedKind === 'film' ? 'Family Films' : 'MabelTV series channel',
+        channel_number: index + 1,
+        artwork: '', seconds: index * 60, sessions: index % 3,
+      }))
+      viewingResources.set('catalogue:', {
+        data: { items }, savedAt: Date.now(), stale: false, restored: true,
+      })
+      viewingInsightsRoute = { screen: selectedKind === 'film' ? 'films' : 'channels' }
+      renderInsightsRoute(true)
+    }, kind)
+    await page.evaluate(() => new Promise(resolve =>
+    requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    return page.locator('#viewingBrowseGrid').evaluate(root => ({
+      group: (() => {
+        const group = root.querySelector('.viewing-catalog-group')
+        const box = group.getBoundingClientRect()
+        const style = getComputedStyle(group)
+        return {
+          left: Math.round(box.left), right: Math.round(innerWidth - box.right),
+          borderWidth: style.borderTopWidth, radius: parseFloat(style.borderRadius),
+          background: style.backgroundColor,
+        }
+      })(),
+      cards: [...root.querySelectorAll('.viewing-catalog-card')].map(card => {
+        const cardBox = card.getBoundingClientRect()
+        const artBox = card.querySelector('.viewing-catalog-art').getBoundingClientRect()
+        const title = card.querySelector('.viewing-catalog-copy strong')
+        return {
+          cardWidth: Math.round(cardBox.width), cardHeight: Math.round(cardBox.height),
+          artWidth: Math.round(artBox.width), artHeight: Math.round(artBox.height),
+          titleWhiteSpace: getComputedStyle(title).whiteSpace,
+        }
+      }),
+    }))
+  }
+
+  for (const kind of ['film', 'channel']) {
+    const layout = await renderLibrary(kind)
+    const boxes = layout.cards
+    expect(new Set(boxes.map(box => box.cardWidth)).size, JSON.stringify(boxes)).toBe(1)
+    expect(new Set(boxes.map(box => box.cardHeight)).size, JSON.stringify(boxes)).toBe(1)
+    expect(new Set(boxes.map(box => box.artWidth)).size, JSON.stringify(boxes)).toBe(1)
+    expect(new Set(boxes.map(box => box.artHeight)).size, JSON.stringify(boxes)).toBe(1)
+    expect(boxes.every(box => box.titleWhiteSpace === 'nowrap')).toBe(true)
+    expect(Math.abs((boxes[0].artWidth / boxes[0].artHeight) - (2 / 3))).toBeLessThan(.02)
+    expect(layout.group.left).toBeGreaterThanOrEqual(15)
+    expect(layout.group.right).toBeGreaterThanOrEqual(15)
+    expect(layout.group.borderWidth).toBe('1px')
+    expect(layout.group.radius).toBeGreaterThanOrEqual(10)
+    expect(layout.group.background).not.toBe('rgba(0, 0, 0, 0)')
+  }
+  await expect(page.locator('#viewingBrowseCount')).toHaveCount(0)
+
+  await page.evaluate(() => {
+    const periods = ['Overnight', 'Morning', 'Afternoon', 'Evening'].map(name => ({
+      name, seconds: 0, sessions: 0, entries: [],
+    }))
+    viewingResources.set('diary:2026-09-11', {
+      data: {
+        date: '2026-09-11', label: 'Friday 11 September', is_today: false,
+        previous_date: '2026-09-10', next_date: '2026-09-12', periods,
+      },
+      savedAt: Date.now(), stale: false, restored: true,
+    })
+    viewingInsightsRoute = { screen: 'diary', date: '2026-09-11' }
+    renderInsightsRoute(true)
+  })
+  const gutters = await page.locator('#viewingDiary .viewing-period-hero').evaluate(hero => {
+    const box = hero.getBoundingClientRect()
+    return [Math.round(box.left), Math.round(document.documentElement.clientWidth - box.right)]
+  })
+  expect(gutters[0]).toBeGreaterThanOrEqual(15)
+  expect(gutters[1]).toBeGreaterThanOrEqual(15)
+  const diaryHeader = await page.locator('#viewingDiary').evaluate(root => {
+    const back = root.querySelector(':scope > .viewing-page-back').getBoundingClientRect()
+    const hero = root.querySelector('.viewing-day-hero')
+    const heroBox = hero.getBoundingClientRect()
+    return {
+      gap: Math.round(heroBox.top - back.bottom),
+      position: getComputedStyle(hero).position,
+      lines: [...hero.querySelectorAll('h2 > span')].map(line => line.textContent),
+    }
+  })
+  expect(diaryHeader.gap).toBeLessThanOrEqual(2)
+  expect(diaryHeader.position).toBe('static')
+  expect(diaryHeader.lines).toEqual(['Friday 11', 'September'])
+  const diarySurface = await page.locator('#viewingDiary .viewing-diary-period').first()
+    .evaluate(period => {
+      const style = getComputedStyle(period)
+      return {
+        borderWidth: style.borderTopWidth,
+        radius: parseFloat(style.borderRadius),
+        background: style.backgroundColor,
+      }
+    })
+  expect(diarySurface.borderWidth).toBe('1px')
+  expect(diarySurface.radius).toBeGreaterThanOrEqual(10)
+  expect(diarySurface.background).not.toBe('rgba(0, 0, 0, 0)')
+
+  await page.evaluate(() => {
+    document.querySelectorAll('.viewing-screen').forEach(screen => screen.classList.add('hidden'))
+    document.querySelector('#viewingItemDetail').classList.remove('hidden')
+    document.querySelector('#viewingItemSummary').classList.remove('hidden')
+  })
+  const detailStats = await page.locator('#viewingItemSummary .viewing-stat-grid article')
+    .evaluateAll(cards => cards.map(card => {
+      const style = getComputedStyle(card)
+      return {
+        borderWidth: style.borderTopWidth,
+        radius: parseFloat(style.borderRadius),
+        background: style.backgroundColor,
+      }
+    }))
+  expect(detailStats).toHaveLength(8)
+  expect(detailStats.every(card => card.borderWidth === '1px')).toBe(true)
+  expect(detailStats.every(card => card.radius >= 10)).toBe(true)
+  expect(detailStats.every(card => card.background !== 'rgba(0, 0, 0, 0)')).toBe(true)
+})
+
 test('USB remains available from Settings and keeps Settings selected', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone navigation contract')
   await openPortal(page)

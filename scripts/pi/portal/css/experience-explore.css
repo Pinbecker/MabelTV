@@ -84,6 +84,31 @@ body.portal-v2 .adult-explore-art {
 
 body.portal-v2 .adult-explore-art img { width: 100%; height: 100%; object-fit: cover; }
 body.portal-v2 .adult-explore-art > .icon { width: 28px; height: 28px; }
+body.portal-v2 .adult-provider-strip {
+  position: absolute;
+  z-index: 4;
+  top: 5px;
+  left: 5px;
+  display: flex;
+  max-width: calc(100% - 30px);
+  gap: 2px;
+  pointer-events: none;
+}
+body.portal-v2 .adult-provider-badge-host > .adult-provider-strip > img {
+  flex: 0 0 17px;
+  width: 17px;
+  height: 17px;
+  min-width: 17px;
+  max-width: 17px;
+  min-height: 17px;
+  max-height: 17px;
+  aspect-ratio: 1;
+  box-sizing: border-box;
+  border: 1px solid #fff;
+  border-radius: 7px;
+  box-shadow: 0 1px 5px rgba(0,0,0,.48);
+}
+body.portal-v2 .adult-provider-icon { object-fit: cover; }
 body.portal-v2 .adult-explore-actions {
   position: absolute;
   z-index: 5;
@@ -147,29 +172,40 @@ body.portal-v2 .adult-explore-art > .adult-artwork-status { display: none; }
 
 body.portal-v2 .adult-explore-open-copy {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   width: 100%;
+  min-height: 0;
   min-width: 0;
+  align-content: start;
+  align-items: start;
   gap: 1px;
+  justify-content: stretch;
+  justify-items: start;
   background: transparent;
   color: var(--experience-ink);
-  padding: 6px 0 0;
+  padding: 4px 0 0;
   text-align: left;
 }
 
 body.portal-v2 .adult-explore-open-copy strong {
-  display: -webkit-box;
-  min-height: 2.35em;
+  display: block;
+  width: 100%;
+  min-height: 0;
   overflow: hidden;
   font-size: 10px;
   line-height: 1.18;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 body.portal-v2 .adult-explore-open-copy small {
+  display: block;
+  width: 100%;
   overflow: hidden;
   color: var(--experience-dim);
   font-size: 8px;
+  text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

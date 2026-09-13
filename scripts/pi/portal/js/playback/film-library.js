@@ -266,9 +266,7 @@
       title.textContent = watchFilmTitle(film)
       const time = document.createElement('span')
       time.textContent = `${watchTimeLabel(film.remote_position)} watched`
-      const play = document.createElement('i')
-      play.append(portalIcon('signal-play'))
-      copy.append(label, title, time, play)
+      copy.append(label, title, time)
       card.append(art, copy)
       card.onclick = () => openFilmEntry(entry, 'continue')
       item.append(card)
@@ -323,9 +321,7 @@
       title.textContent = episode.display_name
       const time = document.createElement('span')
       time.textContent = `${watchTimeLabel(episode.remote_position)} watched`
-      const play = document.createElement('i')
-      play.append(portalIcon('signal-play'))
-      copy.append(label, title, time, play)
+      copy.append(label, title, time)
       card.append(art, copy)
       // Continue Watching is a direct launch surface, not a drill-down into
       // series management. Its close action must return to Adult TV.

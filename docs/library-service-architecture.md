@@ -24,6 +24,8 @@ secondary service objects.
   ledger.
 - `database.py`: SQLite connections, transactions, relational adapters,
   revision counters and supported backup/integrity operations.
+- `repositories/viewing.py`: the targeted relational repository for stable MabelTV
+  viewing identities and session CRUD; it composes into `StateDatabase`.
 - `auth.py`: first-time setup, owner identity, PIN verification, login limits
   and session lifetime.
 - `media.py`: read models for channels, programmes, Adult media and safe media
@@ -35,8 +37,10 @@ secondary service objects.
   lifecycle. `.incoming` manifests are operational journals.
 - `transcoding.py`: probing and media conversion/optimization policy used by
   uploads and USB preparation.
-- `viewing.py`: viewing samples, session compaction, retention and MabelTV
-  viewing insights.
+- `viewing.py`: viewing sample/session lifecycle, stable catalogue identities,
+  targeted session persistence, retention and the four scoped Insights APIs.
+- `viewing_analytics.py`: pure timezone-aware calendar allocation and aggregate
+  builders. It has no database, HTTP or runtime-state ownership.
 - `viewing_queue.py`: validation and atomic persistence of Adult Up Next order.
 - `provider_transport.py`: API-key reads, bounded HTTP transport, response
   caching and OpenSubtitles transport.
@@ -46,7 +50,12 @@ secondary service objects.
   application.
 - `adult_insights.py`: Adult watched/rating aggregates and progressive TMDB
   enrichment.
-- `discovery.py`: curated paginated Explore results enriched with local state.
+- `discovery.py`: curated paginated Explore results enriched with local state,
+  the familiar/popular What to watch mix, popularity-ranked weekly film,
+  series-debut and season-premiere discovery, and the bounded batch lookup used
+  to decorate Adult TV cards with streaming availability. That batch merges
+  TMDB providers with existing SQLite-cached Watchmode summaries; it must not
+  spend one Watchmode request per card.
 - `artwork.py`: authenticated same-origin artwork proxy and the bounded,
   rebuildable Pi cache at `/var/cache/mabeltv/tmdb-artwork`.
 - `remote.py`: browser playback sessions, external media tokens/downloads and
@@ -82,6 +91,30 @@ The remaining JSON manifests under `.incoming` (including
 operations. They are deliberately file-backed, atomically replaced, and do not
 duplicate application state. The durable manifest is their only owner; there is
 no parallel in-memory USB job model.
+
+MabelTV viewing history is append/update/delete state, not a document. Each
+channel and local film resolves to a stable `viewing_items.id`; sessions retain
+that ID plus the exact programme title and filename seen at playback time.
+Supported channel renumbers/renames and film moves update the current catalogue
+link without rewriting the historical programme snapshot. The Library writes
+only the active session row and deletes selected rows directly. Do not restore
+the former whole-history read/modify/write path.
+
+Insights has four read contracts with separate scopes:
+
+- `/api/viewing-insights/overview` is the range-controlled dashboard and
+  defaults in the portal to seven calendar days;
+- `/api/viewing-insights/catalogue` is the lifetime channel/film catalogue and
+  is never filtered by the dashboard control;
+- `/api/viewing-insights/item` owns an independent item range and defaults to
+  all history;
+- `/api/viewing-insights/diary` represents one local calendar date, split into
+  morning, afternoon, evening and night while retaining viewing order.
+
+Calendar boundaries use the browser's IANA timezone when available, with the
+numeric offset only as a compatibility fallback. Cross-midnight sessions are
+allocated by overlap, so a day and its periods receive only the seconds watched
+inside their actual local boundaries, including 23/25-hour DST days.
 
 ## Portal and HTTP contracts
 

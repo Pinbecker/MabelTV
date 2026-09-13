@@ -65,6 +65,13 @@
       "max_lines": 1600
     },
     {
+      "area": "Library persistence repository",
+      "patterns": [
+        "scripts/pi/mabeltv_backend/repositories/*.py"
+      ],
+      "max_lines": 500
+    },
+    {
       "area": "Portal JavaScript responsibility",
       "patterns": [
         "scripts/pi/portal/js/**/*.js"

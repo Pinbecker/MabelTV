@@ -263,7 +263,9 @@ class ArchitectureGuardrailTests(unittest.TestCase):
         violations = []
         for source_root in ("scripts", "packaging", "integrations"):
             for path in (PROJECT_ROOT / source_root).rglob("*"):
-                if not path.is_file():
+                if (not path.is_file()
+                        or any(part in {"node_modules", "__pycache__"}
+                               for part in path.parts)):
                     continue
                 data = path.read_bytes()
                 if data.startswith(b"#!") and b"\r\n" in data:

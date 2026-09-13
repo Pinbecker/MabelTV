@@ -200,6 +200,14 @@
         ? 'On · direct links and rental prices' : 'Off · TMDB details still available'
     }
 
+    function renderAdultProviderBadgesSetting() {
+      const enabled = adultProviderBadgesEnabled()
+      $('#adultProviderBadgesToggle').setAttribute('aria-pressed', String(enabled))
+      $('#adultProviderBadgesToggle').textContent = enabled ? 'On' : 'Off'
+      $('#adultProviderBadgesState').textContent = enabled
+        ? 'On · shown on Adult TV artwork' : 'Off · title sheets are unchanged'
+    }
+
     function renderPortalPinSetting() {
       const required = library?.owner?.portal_pin_required !== false
       $('#portalPinState').textContent = required
@@ -213,6 +221,9 @@
     })
     $('#watchmodeAvailabilityToggle').onclick = () => manage('set-watchmode-availability', {
       enabled: !adultAvailabilityEnabled(),
+    })
+    $('#adultProviderBadgesToggle').onclick = () => manage('set-adult-provider-badges', {
+      enabled: !adultProviderBadgesEnabled(),
     })
 
     ;[['#tvCrtGlass', '#tvCrtGlassValue'], ['#tvDistortion', '#tvDistortionValue'], ['#tvMaximumVolume', '#tvMaximumVolumeValue']]

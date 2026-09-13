@@ -173,6 +173,14 @@ class AdultTitleEnrichmentTests(unittest.TestCase):
                                         "enabled": False}))
         self.assertFalse(library.settings()["watchmode_availability_enabled"])
 
+    def test_provider_badge_setting_defaults_on_and_persists_off(self) -> None:
+        library = AvailabilitySettingsFixture()
+
+        self.assertNotEqual(library.settings().get("adult_provider_badges_enabled"), False)
+        self.assertTrue(library.manage({"action": "set-adult-provider-badges",
+                                        "enabled": False}))
+        self.assertFalse(library.settings()["adult_provider_badges_enabled"])
+
     def test_movie_detail_normalises_and_caches_franchise_cast_and_director(self) -> None:
         library = CatalogueFixture()
 

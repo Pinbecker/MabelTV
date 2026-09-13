@@ -7,6 +7,11 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 backup_root="${1:-/var/backups/mabeltv}"
+database_only="${2:-}"
+[[ -z "$database_only" || "$database_only" == "--database-only" ]] || {
+    printf 'Usage: %s [BACKUP-DIRECTORY] [--database-only]\n' "$0" >&2
+    exit 2
+}
 database="${MABELTV_DATABASE:-/var/lib/mabeltv/mabeltv.db}"
 install -d -o root -g root -m 0700 "$backup_root"
 stamp="$(date -u +%Y-%m-%dT%H%M%SZ)"
@@ -48,17 +53,15 @@ finally:
 PY
 chmod 0600 "$staging/var/lib/mabeltv/mabeltv.db"
 
-if systemctl is-active --quiet mabeltv-matter.service 2>/dev/null; then
-    systemctl stop mabeltv-matter.service
-    matter_was_active="true"
+paths=()
+if [[ "$database_only" != "--database-only" ]]; then
+    if systemctl is-active --quiet mabeltv-matter.service 2>/dev/null; then
+        systemctl stop mabeltv-matter.service
+        matter_was_active="true"
+    fi
+    paths=(var/lib/mabeltv/secrets var/lib/mabeltv/matter etc/mabeltv
+        etc/rc_keymaps/mabeltv.toml)
 fi
-
-paths=(
-    var/lib/mabeltv/secrets
-    var/lib/mabeltv/matter
-    etc/mabeltv
-    etc/rc_keymaps/mabeltv.toml
-)
 included_paths=()
 missing_paths=()
 for relative in "${paths[@]}"; do
