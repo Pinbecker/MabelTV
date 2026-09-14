@@ -238,6 +238,56 @@ class Handler(BaseHTTPRequestHandler):
         if not self.authorised(): self.json(HTTPStatus.UNAUTHORIZED, {"error": "Parent PIN required"}); return False
         return True
 
+    def native_request(self) -> bool:
+        return (self.headers.get("X-MabelTV-Native") == "1"
+                and self.client_address[0] in {"127.0.0.1", "::1"})
+
+    def handle_native_my_tv_get(
+            self, path: str, query: dict[str, list[str]]) -> bool:
+        if not path.startswith("/api/native/my-tv/"):
+            return False
+        artwork = re.fullmatch(
+            r"/api/native/my-tv/artwork/([^/]+)/([^/]+)", path)
+        if artwork:
+            if self.client_address[0] not in {"127.0.0.1", "::1"}:
+                self.json(HTTPStatus.FORBIDDEN, {"error": "Native TV access only"})
+                return True
+            result = self.server.library.tmdb_artwork(*artwork.groups())
+            content_type = mimetypes.guess_type(result.name)[0] or "image/jpeg"
+            self.stream_file(result, content_type,
+                             "private, max-age=31536000, immutable")
+            return True
+        if not self.native_request():
+            self.json(HTTPStatus.FORBIDDEN, {"error": "Native TV access only"})
+            return True
+        if path == "/api/native/my-tv/home":
+            self.json(200, self.server.library.native_my_tv_home())
+        elif path == "/api/native/my-tv/recommendations":
+            self.json(200, self.server.library.native_my_tv_recommendations())
+        elif path == "/api/native/my-tv/search":
+            self.json(200, self.server.library.native_my_tv_search(
+                str(query.get("q", [""])[0])))
+        elif path == "/api/native/my-tv/title":
+            self.json(200, self.server.library.native_my_tv_detail(
+                str(query.get("media_type", [""])[0]),
+                str(query.get("tmdb_id", [""])[0])))
+        elif path == "/api/native/my-tv/season":
+            self.json(200, self.server.library.my_tv_title_season(
+                str(query.get("tmdb_id", [""])[0]),
+                str(query.get("season", [""])[0])))
+        else:
+            self.json(404, {"error": "Not found"})
+        return True
+
+    def handle_native_my_tv_post(self, path: str) -> bool:
+        if path != "/api/native/my-tv/launch":
+            return False
+        if not self.native_request():
+            self.json(HTTPStatus.FORBIDDEN, {"error": "Native TV access only"})
+            return True
+        self.json(200, self.server.library.native_my_tv_launch(self.body()))
+        return True
+
     def same_origin(self) -> bool:
         origin = self.headers.get("Origin", "")
         if not origin:
@@ -499,6 +549,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             parsed = urlsplit(self.path)
             query = parse_qs(parsed.query)
+            if self.handle_native_my_tv_get(parsed.path, query): return
             if self.path == "/":
                 self.serve_named_html(INDEX, inline_script="<script>" in INDEX)
                 return
@@ -520,8 +571,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.stream_bytes(data, "text/vtt; charset=utf-8")
                 return
             if self.path == "/api/setup":
-                self.json(200, self.server.library.public_setup())
-                return
+                self.json(200, self.server.library.public_setup()); return
             if not self.require():
                 return
             if parsed.path == "/watch/player":
@@ -619,6 +669,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         try:
+            if self.handle_native_my_tv_post(urlsplit(self.path).path):
+                return
             if not self.require_same_origin():
                 return
             address = self.client_address[0]

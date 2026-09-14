@@ -137,6 +137,7 @@
       }
       $('#remoteMabelAction').classList.toggle('active', available && !my_tv)
       $('#remoteMyTvAction').classList.toggle('active', available && my_tv)
+      $('#remoteKeyboard')?.classList.toggle('is-visible', available && my_tv && !state.playing)
       const volumeValue = $('#remoteVolumeValue')
       if (volumeValue) {
         const volume = Number.isFinite(Number(state.volume)) ? Math.max(0, Math.min(100, Number(state.volume))) : null

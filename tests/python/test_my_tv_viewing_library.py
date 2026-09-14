@@ -10,6 +10,118 @@ class MyTvViewingLibraryTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.fixture.close()
 
+    def test_native_my_tv_home_combines_local_progress_and_cached_providers(self) -> None:
+        film = self.fixture.library.my_tv_root / "Finding Nemo.mp4"
+        film.write_bytes(b"film")
+        states = self.fixture.library.my_tv_media_states()
+        states[film.name] = {
+            "library_id": "a" * 32,
+            "remote_position": 120,
+            "remote_duration": 600,
+            "remote_last_watched": 42,
+            "metadata": {
+                "tmdb_id": 12, "title": "Finding Nemo", "year": "2003",
+                "poster_path": "/nemo.jpg", "backdrop_path": "/reef.jpg",
+            },
+        }
+        self.fixture.library.write_my_tv_media_states(states)
+        self.fixture.library.my_tv_viewing_update({
+            "media_type": "movie", "tmdb_id": 12, "title": "Finding Nemo",
+            "action": "up_next", "enabled": True,
+        })
+        store = self.fixture.library.my_tv_viewing_store()
+        store["availability"]["movie:12"] = {
+            "checked": time.time(), "link_schema": 3,
+            "sources": [{"source_id": 372, "name": "Disney Plus",
+                         "type": "sub", "web_url": "https://disneyplus.com/title/12"}],
+        }
+        self.fixture.library.write_state("my_tv_viewing", store)
+        self.fixture.library.my_tv_home_what_to_watch = mock.Mock()
+        self.fixture.library.my_tv_home_availability = mock.Mock()
+        self.fixture.library.my_tv_viewing = mock.Mock()
+
+        result = self.fixture.library.native_my_tv_home()
+
+        self.assertEqual(result["continue"][0]["title"], "Finding Nemo")
+        self.assertTrue(result["continue"][0]["source"].startswith("file:"))
+        self.assertEqual(result["continue"][0]["provider_sources"][0]["name"],
+                         "Disney Plus")
+        self.assertEqual(result["up_next"][0]["key"], "movie:12")
+        self.assertTrue(result["up_next"][0]["on_mabeltv"])
+        self.assertEqual(result["recommended"], [])
+        self.assertEqual(result["library"][0]["poster_path"], "/nemo.jpg")
+        self.fixture.library.my_tv_home_what_to_watch.assert_not_called()
+        self.fixture.library.my_tv_home_availability.assert_not_called()
+        self.fixture.library.my_tv_viewing.assert_not_called()
+
+    def test_native_my_tv_recommendations_do_not_filter_each_title_by_provider(self) -> None:
+        self.fixture.library.my_tv_explore = mock.Mock(return_value={
+            "results": [{"key": "movie:13", "media_type": "movie",
+                         "tmdb_id": 13, "title": "For You"}],
+        })
+
+        result = self.fixture.library.native_my_tv_recommendations()
+
+        self.assertEqual(result["results"][0]["title"], "For You")
+        self.fixture.library.my_tv_explore.assert_called_once_with(
+            "popular", "all", 1, False, 12)
+
+    def test_native_detail_uses_cached_links_without_a_watchmode_request(self) -> None:
+        store = self.fixture.library.my_tv_viewing_store()
+        store["availability"]["movie:603"] = {
+            "checked": time.time(), "link_schema": 3,
+            "sources": [{"source_id": 203, "name": "Netflix", "type": "sub",
+                         "web_url": "https://netflix.com/watch/603"}],
+        }
+        self.fixture.library.write_state("my_tv_viewing", store)
+        self.fixture.library.my_tv_title_detail = mock.Mock(return_value={
+            "key": "movie:603", "media_type": "movie", "tmdb_id": 603,
+            "title": "The Matrix",
+        })
+        self.fixture.library.my_tv_streaming_links = mock.Mock()
+
+        result = self.fixture.library.native_my_tv_detail("movie", 603)
+
+        self.assertEqual(result["provider_result"]["sources"][0]["name"], "Netflix")
+        self.assertTrue(result["provider_result"]["cached"])
+        self.fixture.library.my_tv_title_detail.assert_called_once_with(
+            "movie", 603, include_providers=False)
+        self.fixture.library.my_tv_streaming_links.assert_not_called()
+
+    def test_native_search_reuses_home_index_without_rescanning_local_media(self) -> None:
+        self.fixture.library._native_my_tv_local_cards = {
+            "tv:4586": {"local": {"id": "gilmore"}},
+        }
+        self.fixture.library.tmdb_request = mock.Mock(return_value={"results": [{
+            "id": 4586, "media_type": "tv", "name": "Gilmore Girls",
+            "first_air_date": "2000-10-05", "poster_path": "/gilmore.jpg",
+        }]})
+        self.fixture.library.my_tv_local_title_index = mock.Mock()
+
+        first = self.fixture.library.native_my_tv_search("gilmore")
+        second = self.fixture.library.native_my_tv_search("gilmore")
+
+        self.assertEqual(first["results"][0]["title"], "Gilmore Girls")
+        self.assertTrue(first["results"][0]["on_mabeltv"])
+        self.assertEqual(second["results"][0]["key"], "tv:4586")
+        self.fixture.library.tmdb_request.assert_called_once()
+        self.fixture.library.my_tv_local_title_index.assert_not_called()
+
+    def test_native_my_tv_launch_uses_exact_netflix_destination(self) -> None:
+        self.fixture.library.play_netflix_on_tv = mock.Mock(
+            return_value={"ok": True, "message": "Opening Netflix"})
+        self.fixture.library.lg_tv_launch_shortcut = mock.Mock(
+            return_value={"ok": True, "message": "Opening app"})
+
+        payload = {"provider": "Netflix", "destination": "https://netflix.com/watch/12"}
+        result = self.fixture.library.native_my_tv_launch(payload)
+        self.assertEqual(result["message"], "Opening Netflix")
+        self.fixture.library.play_netflix_on_tv.assert_called_once_with(payload)
+        self.fixture.library.lg_tv_launch_shortcut.assert_not_called()
+
+        self.fixture.library.native_my_tv_launch({"provider": "BBC iPlayer"})
+        self.fixture.library.lg_tv_launch_shortcut.assert_called_once_with("iplayer")
+
     def test_my_tv_discovery_merges_local_titles_and_keeps_viewing_facts_separate(self) -> None:
         film = self.fixture.library.my_tv_root / "The Matrix.mp4"
         film.write_bytes(b"film")
@@ -25,7 +137,10 @@ class MyTvViewingLibraryTests(unittest.TestCase):
         }]})
 
         found = self.fixture.library.my_tv_discovery("Matrix")
+        repeated = self.fixture.library.my_tv_discovery("Matrix")
         self.assertTrue(found["results"][0]["on_mabeltv"])
+        self.assertEqual(repeated["results"][0]["title"], "The Matrix")
+        self.fixture.library.tmdb_request.assert_called_once()
         title = found["results"][0]
         saved = self.fixture.library.my_tv_viewing_update(
             title | {"action": "watchlist", "enabled": True})

@@ -226,7 +226,7 @@ class MyTvMetadataMixin:
         query = str(query or "").strip()
         if len(query) < 2:
             return {"query": query, "results": []}
-        response = self.tmdb_request("search/multi", {
+        response = self.my_tv_cached_tmdb_request("search/multi", {
             "query": query[:120], "include_my_tv": "false", "language": "en-GB",
             "page": 1,
         })
@@ -311,7 +311,8 @@ class MyTvMetadataMixin:
             "disabled": False,
         }
 
-    def my_tv_title_detail(self, media_type: str, tmdb_id: Any) -> dict[str, Any]:
+    def my_tv_title_detail(self, media_type: str, tmdb_id: Any,
+                           include_providers: bool = True) -> dict[str, Any]:
         key = self.my_tv_title_key(media_type, tmdb_id)
         media_type, raw_id = key.split(":", 1)
         value = self.my_tv_cached_tmdb_request(f"{media_type}/{raw_id}", {
@@ -336,7 +337,8 @@ class MyTvMetadataMixin:
                               for release in choices)
                 summary["release_date"] = uk_date
                 summary["year"] = uk_date[:4]
-        provider_result = self.my_tv_title_provider_groups(media_type, raw_id)
+        provider_result = self.my_tv_title_provider_groups(media_type, raw_id) \
+            if include_providers else {"providers": [], "provider_link": "", "disabled": False}
         availability_enabled = provider_result.get("disabled") is not True
         groups = provider_result["providers"]
         runtime = value.get("runtime") if media_type == "movie" else (
@@ -928,3 +930,176 @@ class MyTvMetadataMixin:
                 items.append(value)
         return {"items": items, "watchmode_configured": bool(self.watchmode_key()),
                 "region": "GB"}
+
+    def _native_local_title(self, value: dict[str, Any], kind: str) -> dict[str, Any]:
+        """Project one local item into the native My TV card contract."""
+        metadata = value.get("metadata", {})
+        if not isinstance(metadata, dict):
+            metadata = {}
+        tmdb_id = int(metadata.get("tmdb_id", 0) or 0)
+        media_type = "tv" if kind == "series" else "movie"
+        result = {
+            "key": f"{media_type}:{tmdb_id}" if tmdb_id else f"local:{value.get('id') or value.get('library_id')}",
+            "media_type": media_type,
+            "tmdb_id": tmdb_id,
+            "title": str(metadata.get("title") or value.get("title")
+                         or value.get("display_name") or value.get("name") or "Untitled"),
+            "year": str(metadata.get("year") or ""),
+            "overview": str(metadata.get("overview") or ""),
+            "poster_path": str(metadata.get("poster_path") or ""),
+            "backdrop_path": str(metadata.get("backdrop_path") or ""),
+            "on_mabeltv": True,
+            "local": value,
+            "local_kind": kind,
+        }
+        if kind == "film":
+            result["source"] = (self.my_tv_root / str(value.get("path") or "")).resolve().as_uri()
+            result["progress"] = {
+                "position": float(value.get("remote_position", 0) or 0),
+                "duration": float(value.get("remote_duration", 0) or 0),
+                "updated": float(value.get("remote_last_watched", 0) or 0),
+            }
+        else:
+            episodes = value.get("episodes", []) if isinstance(value.get("episodes"), list) else []
+            episodes = [dict(episode) for episode in episodes if isinstance(episode, dict)]
+            for episode in episodes:
+                episode["source"] = (self.my_tv_series_root / str(value.get("id") or "")
+                                     / str(episode.get("path") or "")).resolve().as_uri()
+            result["local"] = dict(value) | {"episodes": episodes}
+            resumable = [episode for episode in episodes if isinstance(episode, dict)
+                         and float(episode.get("remote_position", 0) or 0) > 0]
+            next_episode = max(resumable,
+                               key=lambda episode: float(episode.get("remote_last_watched", 0) or 0),
+                               default=None)
+            result["progress"] = {
+                "position": float((next_episode or {}).get("remote_position", 0) or 0),
+                "duration": float((next_episode or {}).get("remote_duration", 0) or 0),
+                "updated": float((next_episode or {}).get("remote_last_watched", 0) or 0),
+                "episode": next_episode,
+            }
+        return result
+
+    def native_my_tv_home(self) -> dict[str, Any]:
+        """Return the TV home payload without waiting on external providers."""
+        films = [self._native_local_title(value, "film")
+                 for value in self.my_tv_library()]
+        series = [self._native_local_title(value, "series")
+                  for value in self.my_tv_series_library()]
+        local_by_key = {value["key"]: value for value in films + series}
+        self._native_my_tv_local_cards = local_by_key
+        store = self.my_tv_viewing_store()
+        tracked = []
+        for key, saved in store.get("titles", {}).items():
+            if not isinstance(saved, dict):
+                continue
+            value = dict(saved)
+            value.update({"key": key, "on_mabeltv": key in local_by_key})
+            tracked.append(value)
+        for value in tracked:
+            local = local_by_key.get(str(value.get("key") or ""))
+            if local:
+                value.update({field: saved for field, saved in local.items()
+                              if saved not in (None, "", [], {})})
+        up_next = sorted((value for value in tracked if value.get("up_next") is True),
+                         key=lambda value: int(value.get("up_next_rank", 999999) or 999999))
+        continue_watching = sorted(
+            (value for value in films + series
+             if float(value.get("progress", {}).get("position", 0) or 0) >= 30),
+            key=lambda value: float(value.get("progress", {}).get("updated", 0) or 0),
+            reverse=True)
+        cards = continue_watching + up_next + films + series
+        self._native_attach_cached_sources(cards, store.get("availability", {}))
+        return {
+            "tv_name": self.tv_identity()[1],
+            "continue": continue_watching[:8],
+            "up_next": up_next[:16],
+            "recommended": [],
+            "library": films + series,
+        }
+
+    def _native_attach_cached_sources(
+            self, values: list[dict[str, Any]],
+            availability: dict[str, Any] | None = None) -> None:
+        """Attach persisted Watchmode results without network requests."""
+        if availability is None:
+            availability = self.my_tv_viewing_store().get("availability", {})
+        if not isinstance(availability, dict):
+            return
+        for value in values:
+            cached = availability.get(str(value.get("key") or ""), {})
+            if not isinstance(cached, dict):
+                continue
+            value["provider_sources"] = [
+                deepcopy(source) for source in cached.get("sources", [])
+                if isinstance(source, dict) and str(source.get("type") or "").lower()
+                in {"sub", "free", "tve", "ads"}
+            ]
+
+    def native_my_tv_recommendations(self) -> dict[str, Any]:
+        """Load a modest recommendation shelf after the home screen is visible."""
+        result = self.my_tv_explore("popular", "all", 1, False, 12)
+        values = list(result.get("results", []))[:12]
+        self._native_attach_cached_sources(values)
+        return {"results": values}
+
+    def native_my_tv_search(self, query: str) -> dict[str, Any]:
+        """Search TMDB without rescanning local media for every keystroke."""
+        query = str(query or "").strip()
+        if len(query) < 3:
+            return {"query": query, "results": []}
+        response = self.my_tv_cached_tmdb_request("search/multi", {
+            "query": query[:120], "include_my_tv": "false",
+            "language": "en-GB", "page": 1,
+        })
+        local = getattr(self, "_native_my_tv_local_cards", {})
+        if not isinstance(local, dict):
+            local = {}
+        store = self.my_tv_viewing_store()
+        results = []
+        seen = set()
+        for value in response.get("results", []) if isinstance(response, dict) else []:
+            if not isinstance(value, dict) or value.get("media_type") not in {"movie", "tv"}:
+                continue
+            item = self.my_tv_title_summary(value, str(value["media_type"]))
+            if not item["tmdb_id"] or not item["title"]:
+                continue
+            key = self.my_tv_title_key(item["media_type"], item["tmdb_id"])
+            if key in seen:
+                continue
+            seen.add(key)
+            local_item = local.get(key)
+            item.update({
+                "key": key, "local": local_item.get("local")
+                if isinstance(local_item, dict) else None,
+                "on_mabeltv": key in local,
+                "viewing": deepcopy(store.get("titles", {}).get(key, {})),
+            })
+            results.append(item)
+            if len(results) >= 20:
+                break
+        self._native_attach_cached_sources(results, store.get("availability", {}))
+        return {"query": query, "results": results,
+                "attribution": "Catalogue data from TMDB"}
+
+    def native_my_tv_detail(self, media_type: str, tmdb_id: Any) -> dict[str, Any]:
+        detail = self.my_tv_title_detail(media_type, tmdb_id, include_providers=False)
+        self._native_attach_cached_sources([detail])
+        detail["provider_result"] = {
+            "sources": detail.pop("provider_sources", []), "cached": True,
+        }
+        return detail
+
+    def native_my_tv_launch(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Open an available service on the paired television."""
+        name = str(payload.get("provider") or "").casefold()
+        shortcut = next((value for marker, value in (
+            ("netflix", "netflix"), ("iplayer", "iplayer"), ("bbc", "iplayer"),
+            ("prime", "prime"), ("amazon", "prime"), ("itv", "itvx"),
+            ("channel 4", "channel4"), ("all 4", "channel4"),
+            ("disney", "disney"), ("apple", "appletv"),
+            ("paramount", "paramount")) if marker in name), "")
+        if not shortcut:
+            raise ValueError("That streaming app is not available on the connected TV")
+        if shortcut == "netflix" and payload.get("destination"):
+            return self.play_netflix_on_tv(payload)
+        return self.lg_tv_launch_shortcut(shortcut)

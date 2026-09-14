@@ -2,9 +2,9 @@
 
 importScripts('/mabeltv-offline-schema.js')
 
-const SHELL_RELEASE = '239'
+const SHELL_RELEASE = '242'
 const SHELL_CACHE = `mabeltv-shell-v${SHELL_RELEASE}`
-const PREVIOUS_SHELL_CACHE = 'mabeltv-shell-v238'
+const PREVIOUS_SHELL_CACHE = 'mabeltv-shell-v241'
 const SHELL_CACHE_PREFIX = 'mabeltv-shell-v'
 const FAMILY_ARTWORK_CACHE = 'mabeltv-artwork-family-v1'
 const PROTECTED_ARTWORK_CACHE = 'mabeltv-artwork-protected-v1'
@@ -38,6 +38,7 @@ const SHELL_URLS = [
   '/portal/css/experience-home.css',
   '/portal/css/experience-remote.css',
   '/portal/css/experience-watch.css',
+  '/portal/css/experience-watch-channels.css',
   '/portal/css/experience-library.css',
   '/portal/css/experience-viewing.css',
   '/portal/css/experience-explore.css',

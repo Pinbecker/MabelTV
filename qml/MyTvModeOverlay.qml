@@ -66,6 +66,7 @@ Item {
         scrubberActive = false
         scrubberFocus = 0
         active = true
+        libraryView.open()
         externalSession = false
         externalSource = ""
         externalTitle = ""
@@ -185,6 +186,8 @@ Item {
         }
         if (backPressHeld || Date.now() < ignoreLibraryBackBeforeMs)
             return
+        if (libraryView.back())
+            return
         if (navigationZone === 1) {
             navigationZone = 0
             return
@@ -203,6 +206,8 @@ Item {
     function currentFilm() {
         if (externalSession)
             return { "name": externalTitle, "source": externalSource, "size": 0 }
+        if (libraryView.selectedPlayback)
+            return libraryView.selectedPlayback
         const films = visibleFilms
         return selectedIndex >= 0 && selectedIndex < films.length
                 ? films[selectedIndex] : null
@@ -325,6 +330,26 @@ Item {
         selectedSavedPosition = startPosition
         myTvPlayer.play(film.source, startPosition)
         controlsTimer.restart()
+    }
+
+    function startNativePlayback(item, startPosition) {
+        if (!item || !item.source)
+            return
+        libraryView.selectedPlayback = item
+        errorMessage = ""
+        externalSession = false
+        playing = true
+        stopping = false
+        controlsOpacity = 1
+        scrubberActive = false
+        scrubberFocus = 0
+        myTvPlayer.play(item.source, Math.max(0, Number(startPosition) || 0))
+        controlsTimer.restart()
+    }
+
+    function appendRemoteText(value) {
+        if (!playing)
+            libraryView.appendRemoteText(value)
     }
 
     function playSelected() {
@@ -459,36 +484,14 @@ Item {
                     return true
                 return true
             }
-            if (navigationZone === 0) {
-                if (key === Qt.Key_Up)
-                    selectCollectionRelative(-1)
-                else if (key === Qt.Key_Down)
-                    selectCollectionRelative(1)
-                else if ((key === Qt.Key_Right || key === Qt.Key_Return
-                          || key === Qt.Key_Enter) && visibleFilms.length > 0)
-                    navigationZone = 1
-                else if (isBackKey(key)) {
-                    if (!isAutoRepeat)
-                        back(true)
-                } else
-                    return false
-            } else if (key === Qt.Key_Left) {
-                navigateGrid(-1, 0)
-            } else if (key === Qt.Key_Right) {
-                navigateGrid(1, 0)
-            } else if (key === Qt.Key_Up) {
-                navigateGrid(0, -1)
-            } else if (key === Qt.Key_Down) {
-                navigateGrid(0, 1)
-            } else if ((key === Qt.Key_Return || key === Qt.Key_Enter) && !isAutoRepeat) {
-                playSelected()
-            } else if (isBackKey(key)) {
+            if (!isAutoRepeat && libraryView.handleKey(key))
+                return true
+            if (isBackKey(key)) {
                 if (!isAutoRepeat)
                     back(true)
-            } else {
-                return false
+                return true
             }
-            return true
+            return false
         }
 
         if (stopping)
@@ -622,6 +625,7 @@ Item {
     }
 
     MyTvLibraryView {
+        id: libraryView
         host: overlay
         tvController: controller
     }

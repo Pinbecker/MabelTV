@@ -285,6 +285,11 @@ Window {
         }
     }
 
+    function portalTextInput(text) {
+        if (myTvMode.active && !myTvMode.playing)
+            myTvMode.appendRemoteText(String(text || ""))
+    }
+
     function portalTuneChannel(channel) {
         if (poweringOff || pendingPowerAction.length > 0)
             return

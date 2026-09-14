@@ -1,588 +1,533 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import MabelTV 1.0
+
 Item {
+    id: view
     required property var host
     required property var tvController
+    property color accent: "#10cfb2"
+    property bool loading: false
+    property string errorMessage: ""
+    property string query: ""
+    property bool keyboardVisible: false
+    property bool detailVisible: false
+    property int selectedZone: 1
+    property int selectedRow: 0
+    property int selectedCard: 0
+    property var homeData: ({ "continue": [], "up_next": [], "recommended": [], "library": [] })
+    property var searchResults: []
+    property var rows: []
+    property var currentDetail: ({})
+    property var selectedPlayback: null
+    property var activeSearchRequest: null
+    property var activeDetailRequest: null
+    property int searchGeneration: 0
+    property int detailGeneration: 0
+    property int homeGeneration: 0
+    readonly property real uiScale: host.uiScale
+    readonly property string nativeBase: "http://127.0.0.1:8080"
 
-    id: libraryScreen
+    onSelectedRowChanged: Qt.callLater(ensureSelectedRowVisible)
+
     anchors.fill: parent
     visible: !host.playing
 
     Rectangle {
         anchors.fill: parent
-        color: "#080a0d"
+        color: "#f2f4f7"
         gradient: Gradient {
-            GradientStop { position: 0; color: "#10141a" }
-            GradientStop { position: 0.58; color: "#090c10" }
-            GradientStop { position: 1; color: "#06080a" }
+            GradientStop { position: 0; color: "#ffffff" }
+            GradientStop { position: 0.58; color: "#f5f7f9" }
+            GradientStop { position: 1; color: "#edf0f4" }
         }
     }
-
-    Image {
+    Rectangle {
         anchors.right: parent.right
         anchors.top: parent.top
-        width: parent.width * 0.42
-        height: parent.height * 0.48
-        source: host.currentFilm() ? host.currentFilm().poster : ""
-        fillMode: Image.PreserveAspectCrop
-        opacity: 0.055
-        visible: source.toString().length > 0
-        asynchronous: true
-        cache: true
+        width: parent.width * 0.46
+        height: parent.height * 0.38
+        radius: width
+        color: "#1810cfb2"
+    }
+
+    Column {
+        id: page
+        anchors.fill: parent
+        anchors.leftMargin: 58 * view.uiScale
+        anchors.rightMargin: 58 * view.uiScale
+        anchors.topMargin: 34 * view.uiScale
+        anchors.bottomMargin: 30 * view.uiScale
+        spacing: 18 * view.uiScale
+
+        Row {
+            width: parent.width
+            height: 76 * view.uiScale
+            Column {
+                width: parent.width * 0.55
+                spacing: 2 * view.uiScale
+                Text {
+                    color: view.accent
+                    font.family: "DejaVu Sans"
+                    font.bold: true
+                    font.letterSpacing: 2.3 * view.uiScale
+                    font.pixelSize: 13 * view.uiScale
+                    text: "YOUR FILMS AND SERIES"
+                }
+                Text {
+                    color: "#11151d"
+                    font.family: "DejaVu Sans"
+                    font.bold: true
+                    font.pixelSize: 38 * view.uiScale
+                    text: "What do you want to watch?"
+                }
+            }
+            Rectangle {
+                width: parent.width * 0.45
+                height: 58 * view.uiScale
+                anchors.verticalCenter: parent.verticalCenter
+                radius: 13 * view.uiScale
+                color: "white"
+                border.width: view.selectedZone === 0 ? 4 * view.uiScale : 1
+                border.color: view.selectedZone === 0 ? view.accent : "#d5dbe1"
+                Row {
+                    anchors.fill: parent
+                    anchors.leftMargin: 18 * view.uiScale
+                    anchors.rightMargin: 18 * view.uiScale
+                    spacing: 13 * view.uiScale
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: view.accent
+                        font.pixelSize: 26 * view.uiScale
+                        text: "⌕"
+                    }
+                    Text {
+                        width: parent.width - 45 * view.uiScale
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: view.query.length ? "#161b22" : "#737c88"
+                        elide: Text.ElideRight
+                        font.family: "DejaVu Sans"
+                        font.pixelSize: 16 * view.uiScale
+                        text: view.query.length ? view.query : "Search films and series"
+                    }
+                }
+            }
+        }
+
+        Flickable {
+            id: shelves
+            width: parent.width
+            height: parent.height - 112 * view.uiScale
+            contentHeight: shelfColumn.implicitHeight
+            clip: true
+
+            Column {
+                id: shelfColumn
+                width: parent.width
+                spacing: 22 * view.uiScale
+                Repeater {
+                    id: shelfRepeater
+                    model: view.rows
+                    delegate: Column {
+                        id: shelfDelegate
+                        required property int index
+                        required property var modelData
+                        readonly property int rowIndex: index
+                        readonly property var rowData: modelData
+                        width: shelfColumn.width
+                        spacing: 10 * view.uiScale
+                        Row {
+                            width: parent.width
+                            Text {
+                                width: parent.width * 0.78
+                                color: "#151922"
+                                font.family: "DejaVu Sans"
+                                font.bold: true
+                                font.pixelSize: 24 * view.uiScale
+                                text: modelData.title
+                            }
+                            Text {
+                                width: parent.width * 0.22
+                                horizontalAlignment: Text.AlignRight
+                                color: "#747d89"
+                                font.family: "DejaVu Sans"
+                                font.pixelSize: 13 * view.uiScale
+                                text: modelData.items.length + (modelData.wide ? " in progress" : " titles")
+                            }
+                        }
+                        ListView {
+                            id: cardList
+                            property int shelfIndex: shelfDelegate.rowIndex
+                            property bool shelfWide: Boolean(shelfDelegate.rowData.wide)
+                            width: parent.width
+                            height: shelfWide ? 190 * view.uiScale : 310 * view.uiScale
+                            orientation: ListView.Horizontal
+                            spacing: 15 * view.uiScale
+                            clip: false
+                            model: shelfDelegate.rowData.items
+                            currentIndex: shelfIndex === view.selectedRow ? view.selectedCard : 0
+                            onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
+                            delegate: MyTvCard {
+                                required property int index
+                                host: view
+                                modelData: cardList.model[index]
+                                wide: cardList.shelfWide
+                                selected: view.selectedZone === 1
+                                    && cardList.shelfIndex === view.selectedRow
+                                    && index === view.selectedCard
+                            }
+                        }
+                    }
+                }
+                Text {
+                    visible: !view.loading && view.rows.length === 0
+                    width: parent.width
+                    color: "#68717d"
+                    horizontalAlignment: Text.AlignHCenter
+                    font.family: "DejaVu Sans"
+                    font.pixelSize: 18 * view.uiScale
+                    text: view.errorMessage || "There is nothing to show here yet."
+                }
+            }
+        }
     }
 
     Rectangle {
-        anchors.fill: parent
-        gradient: Gradient {
-            orientation: Gradient.Horizontal
-            GradientStop { position: 0; color: "#0010141a" }
-            GradientStop { position: 0.63; color: "#85080a0d" }
-            GradientStop { position: 1; color: "#d6080a0d" }
-        }
-    }
-
-    Row {
-        id: myTvHeader
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.leftMargin: Math.max(28, 42 * host.uiScale)
-        anchors.rightMargin: Math.max(28, 42 * host.uiScale)
-        anchors.topMargin: Math.max(20, 27 * host.uiScale)
-        height: Math.max(48, 60 * host.uiScale)
-        spacing: Math.max(12, 16 * host.uiScale)
-
-        Rectangle {
-            width: Math.max(5, 7 * host.uiScale)
-            height: parent.height * 0.72
-            anchors.verticalCenter: parent.verticalCenter
-            radius: width / 2
-            color: "#d6b36a"
-
-            Text {
-                visible: false
-                anchors.centerIn: parent
-                color: "#11151a"
-                font.family: "DejaVu Sans"
-                font.bold: true
-                font.pixelSize: parent.height * 0.42
-                text: "M"
-            }
-        }
-
-        Column {
-            anchors.verticalCenter: parent.verticalCenter
-            width: parent.width - headerStats.width - Math.max(5, 7 * host.uiScale)
-                   - parent.spacing * 2
-            spacing: 1
-
-            Text {
-                color: "#f6f3ed"
-                font.family: "DejaVu Sans"
-                font.bold: true
-                font.pixelSize: Math.max(20, 27 * host.uiScale)
-                text: "My TV Library"
-            }
-            Text {
-                color: "#737c86"
-                font.family: "DejaVu Sans"
-                font.pixelSize: Math.max(11, 13 * host.uiScale)
-                text: tvDisplayName.toUpperCase() + "  /  PRIVATE"
-            }
-        }
-
-        Row {
-            id: headerStats
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: Math.max(10, 14 * host.uiScale)
-
-            Rectangle {
-                width: filmCountText.implicitWidth + Math.max(24, 32 * host.uiScale)
-                height: Math.max(30, 36 * host.uiScale)
-                radius: height / 2
-                color: "#12161b"
-                border.color: "#29313a"
-
-                Text {
-                    id: filmCountText
-                    anchors.centerIn: parent
-                    color: "#9ba3ac"
-                    font.family: "DejaVu Sans"
-                    font.bold: true
-                    font.pixelSize: Math.max(11, 14 * host.uiScale)
-                    text: tvController.myTvLibrary.length + " FILMS"
-                }
-            }
-
-            Rectangle {
-                width: privacyText.implicitWidth + Math.max(24, 32 * host.uiScale)
-                height: Math.max(30, 36 * host.uiScale)
-                radius: height / 2
-                color: "transparent"
-                border.color: "transparent"
-
-                Text {
-                    id: privacyText
-                    anchors.centerIn: parent
-                    color: "#666f79"
-                    font.family: "DejaVu Sans"
-                    font.bold: true
-                    font.letterSpacing: 1.2
-                    font.pixelSize: Math.max(10, 12 * host.uiScale)
-                    text: "LOCAL MEDIA"
-                }
-            }
-        }
-    }
-
-    Text {
-        id: collectionLabel
-        anchors.left: parent.left
-        anchors.top: myTvHeader.bottom
-        anchors.leftMargin: Math.max(28, 42 * host.uiScale)
-        anchors.topMargin: Math.max(18, 24 * host.uiScale)
-        color: "#69727c"
-        font.family: "DejaVu Sans"
-        font.bold: true
-        font.letterSpacing: 1.8
-        font.pixelSize: Math.max(10, 12 * host.uiScale)
-        text: "LIBRARY"
-    }
-
-    ListView {
-        id: collectionTabs
-        anchors.left: parent.left
-        anchors.top: collectionLabel.bottom
-        anchors.bottom: myTvFooter.top
-        anchors.leftMargin: Math.max(24, 36 * host.uiScale)
-        anchors.topMargin: Math.max(9, 12 * host.uiScale)
-        anchors.bottomMargin: Math.max(14, 20 * host.uiScale)
-        width: Math.max(190, parent.width * 0.17)
-        orientation: ListView.Vertical
-        spacing: Math.max(3, 5 * host.uiScale)
-        clip: true
-        model: host.collections
-        currentIndex: host.selectedCollectionIndex
-        onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
-
-        delegate: Rectangle {
-            required property int index
-            required property var modelData
-            readonly property bool selected: index === host.selectedCollectionIndex
-            width: collectionTabs.width
-            height: Math.max(42, 52 * host.uiScale)
-            radius: Math.max(7, 9 * host.uiScale)
-            color: selected
-                   ? (host.navigationZone === 0 ? "#eeeae2" : "#20262d")
-                   : "transparent"
-            border.color: selected
-                          ? (host.navigationZone === 0 ? "#ffffff" : "#343d47")
-                          : "transparent"
-            border.width: 1
-
-            Row {
-                anchors.fill: parent
-                anchors.leftMargin: Math.max(13, 17 * host.uiScale)
-                anchors.rightMargin: Math.max(13, 17 * host.uiScale)
-                spacing: Math.max(8, 11 * host.uiScale)
-
-                Text {
-                    id: tabName
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - tabCount.width - parent.spacing
-                    color: selected && host.navigationZone === 0
-                           ? "#15191e" : "#e2dfd9"
-                    elide: Text.ElideRight
-                    font.family: "DejaVu Sans"
-                    font.bold: true
-                    font.pixelSize: Math.max(12, 15 * host.uiScale)
-                    text: modelData.name
-                }
-
-                Text {
-                    id: tabCount
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: selected && host.navigationZone === 0
-                           ? "#65707a" : "#7f8994"
-                    font.family: "DejaVu Sans"
-                    font.bold: true
-                    font.pixelSize: Math.max(11, 13 * host.uiScale)
-                    text: host.collectionFilmCount(modelData)
-                }
-            }
-        }
-    }
-
-    Item {
-        id: libraryBody
-        anchors.left: collectionTabs.right
-        anchors.right: parent.right
-        anchors.top: myTvHeader.bottom
-        anchors.bottom: myTvFooter.top
-        anchors.leftMargin: Math.max(24, 34 * host.uiScale)
-        anchors.rightMargin: Math.max(28, 42 * host.uiScale)
-        anchors.topMargin: Math.max(18, 24 * host.uiScale)
-        anchors.bottomMargin: Math.max(10, 14 * host.uiScale)
-
-        Rectangle {
-            id: detailPanel
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            width: 0
-            radius: Math.max(16, 22 * host.uiScale)
-            color: "#151a20"
-            border.color: "#303943"
-            border.width: 1
-            clip: true
-            visible: false
-
-            Rectangle {
-                id: detailArtwork
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                height: parent.height * 0.46
-                color: host.accentColor(host.selectedIndex)
-                gradient: Gradient {
-                    GradientStop {
-                        position: 0
-                        color: Qt.lighter(host.accentColor(host.selectedIndex), 1.16)
-                    }
-                    GradientStop {
-                        position: 1
-                        color: Qt.darker(host.accentColor(host.selectedIndex), 1.45)
-                    }
-                }
-
-                Image {
-                    anchors.fill: parent
-                    source: host.currentFilm() ? host.currentFilm().poster : ""
-                    fillMode: Image.PreserveAspectCrop
-                    visible: source.toString().length > 0
-                    asynchronous: true
-                    cache: true
-                }
-
-                Rectangle {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    height: parent.height * 0.38
-                    gradient: Gradient {
-                        GradientStop { position: 0; color: "#00151a20" }
-                        GradientStop { position: 1; color: "#f0151a20" }
-                    }
-                }
-
-                Text {
-                    anchors.left: parent.left
-                    anchors.bottom: parent.bottom
-                    anchors.margins: Math.max(16, 22 * host.uiScale)
-                    color: "#e7e2dc"
-                    font.family: "DejaVu Sans"
-                    font.bold: true
-                    font.pixelSize: Math.max(12, 15 * host.uiScale)
-                    text: host.selectedSavedPosition >= 30
-                          ? "CONTINUE AT " + host.formatTime(host.selectedSavedPosition)
-                          : "READY TO PLAY"
-                }
-            }
-
-            Column {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: detailArtwork.bottom
-                anchors.bottom: parent.bottom
-                anchors.margins: Math.max(18, 24 * host.uiScale)
-                spacing: Math.max(7, 10 * host.uiScale)
-
-                Text {
-                    width: parent.width
-                    color: "#f5f1ea"
-                    maximumLineCount: 2
-                    elide: Text.ElideRight
-                    wrapMode: Text.Wrap
-                    font.family: "DejaVu Sans"
-                    font.bold: true
-                    font.pixelSize: Math.max(22, 29 * host.uiScale)
-                    text: host.currentFilm() ? host.currentFilm().name : ""
-                }
-
-                Text {
-                    width: parent.width
-                    color: "#8f99a5"
-                    elide: Text.ElideRight
-                    font.family: "DejaVu Sans"
-                    font.pixelSize: Math.max(11, 14 * host.uiScale)
-                    text: host.currentFilm()
-                          ? (host.currentFilm().year
-                             ? host.currentFilm().year + "   •   " : "")
-                            + host.formatFileSize(host.currentFilm().size)
-                            + "   •   LOCAL"
-                          : ""
-                }
-
-                Text {
-                    width: parent.width
-                    visible: host.currentFilm() && host.currentFilm().overview
-                    color: "#b2bac3"
-                    maximumLineCount: 3
-                    elide: Text.ElideRight
-                    wrapMode: Text.Wrap
-                    font.family: "DejaVu Sans"
-                    font.pixelSize: Math.max(11, 13 * host.uiScale)
-                    lineHeight: 1.15
-                    text: host.currentFilm() ? host.currentFilm().overview : ""
-                }
-
-                Item { width: 1; height: Math.max(2, 4 * host.uiScale) }
-
-                Rectangle {
-                    width: parent.width
-                    height: Math.max(42, 54 * host.uiScale)
-                    radius: Math.max(10, 14 * host.uiScale)
-                    color: "#f1eee7"
-
-                    Text {
-                        anchors.centerIn: parent
-                        color: "#15191e"
-                        font.family: "DejaVu Sans"
-                        font.bold: true
-                        font.pixelSize: Math.max(14, 17 * host.uiScale)
-                        text: host.selectedSavedPosition >= 30
-                              ? "OK   RESUME FILM" : "OK   PLAY FILM"
-                    }
-                }
-            }
-        }
-
-        GridView {
-            id: posterGrid
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            visible: host.visibleFilms.length > 0
-            clip: true
-            readonly property int columns: 5
-            cellWidth: width / columns
-            cellHeight: height / 2
-            model: host.visibleFilms
-            currentIndex: host.selectedIndex
-            highlightMoveDuration: 150
-            onCurrentIndexChanged: positionViewAtIndex(currentIndex, GridView.Contain)
-
-            delegate: Rectangle {
-                required property int index
-                required property var modelData
-                readonly property bool selected: index === host.selectedIndex
-                readonly property bool focused: selected && host.navigationZone === 1
-                width: posterGrid.cellWidth - Math.max(12, 16 * host.uiScale)
-                height: posterGrid.cellHeight - Math.max(6, 8 * host.uiScale)
-                radius: Math.max(8, 10 * host.uiScale)
-                color: "transparent"
-                border.color: "transparent"
-                border.width: 0
-                z: focused ? 2 : 1
-                scale: focused ? 1.02 : 1
-
-                Behavior on scale { NumberAnimation { duration: 120 } }
-
-                Rectangle {
-                    id: posterArtwork
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.top: parent.top
-                    height: Math.min(parent.height * 0.84,
-                                     (parent.width - Math.max(16, 22 * host.uiScale)) / 0.68)
-                    width: height * 0.68
-                    color: "transparent"
-                    border.width: 0
-
-                    Image {
-                        anchors.fill: parent
-                        source: modelData.poster
-                        fillMode: Image.PreserveAspectFit
-                        visible: source.toString().length > 0
-                        asynchronous: true
-                        cache: true
-                    }
-
-                    Rectangle {
-                        visible: false
-                        anchors.left: parent.left
-                        anchors.top: parent.top
-                        anchors.margins: Math.max(5, 7 * host.uiScale)
-                        width: numberText.implicitWidth + Math.max(12, 16 * host.uiScale)
-                        height: Math.max(24, 30 * host.uiScale)
-                        radius: height / 2
-                        color: "#c80a0d11"
-
-                        Text {
-                            id: numberText
-                            anchors.centerIn: parent
-                            color: "#f1eee8"
-                            font.family: "DejaVu Sans"
-                            font.bold: true
-                            font.pixelSize: Math.max(10, 12 * host.uiScale)
-                            text: String(index + 1).padStart(2, "0")
-                        }
-                    }
-
-                    Rectangle {
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        anchors.margins: Math.max(9, 12 * host.uiScale)
-                        visible: tvController.myTvPlaybackPosition(modelData.id) >= 30
-                        width: continueText.implicitWidth + Math.max(10, 13 * host.uiScale)
-                        height: Math.max(18, 22 * host.uiScale)
-                        radius: height / 2
-                        color: "#e8e2d6"
-
-                        Text {
-                            id: continueText
-                            anchors.centerIn: parent
-                            color: "#17201b"
-                            font.family: "DejaVu Sans"
-                            font.bold: true
-                            font.pixelSize: Math.max(8, 9 * host.uiScale)
-                            text: "RESUME"
-                        }
-                    }
-                }
-
-                Rectangle {
-                    id: filmProgressTrack
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    anchors.leftMargin: Math.max(8, 10 * host.uiScale)
-                    anchors.rightMargin: Math.max(8, 10 * host.uiScale)
-                    height: Math.max(3, 4 * host.uiScale)
-                    radius: height / 2
-                    color: "#27303a"
-                    visible: tvController.myTvPlaybackPosition(modelData.id) >= 30
-
-                    property real duration: Math.max(
-                        tvController.myTvPlaybackDuration(modelData.id),
-                        Number(modelData.runtime || 0) * 60)
-                    property real progress: (duration >= 10
-                                             ? Math.min(1, tvController.myTvPlaybackPosition(modelData.id)
-                                                        / duration) : 0)
-                                            + host.libraryProgressRevision * 0
-
-                    Rectangle {
-                        width: parent.width * parent.progress
-                        height: parent.height
-                        radius: parent.radius
-                        color: focused ? "#d6b36a" : "#b96c53"
-                    }
-                }
-
-                Column {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.top: posterArtwork.bottom
-                    anchors.bottom: parent.bottom
-                    anchors.leftMargin: Math.max(4, 6 * host.uiScale)
-                    anchors.rightMargin: Math.max(4, 6 * host.uiScale)
-                    anchors.topMargin: Math.max(5, 7 * host.uiScale)
-                    spacing: Math.max(1, 2 * host.uiScale)
-
-                    Rectangle {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: posterArtwork.width
-                        height: Math.max(2, 3 * host.uiScale)
-                        radius: height / 2
-                        color: focused ? "#d6b36a" : "transparent"
-                    }
-
-                    Text {
-                        width: parent.width
-                        color: focused ? "#ffffff" : "#c7c7c3"
-                        maximumLineCount: 1
-                        elide: Text.ElideRight
-                        horizontalAlignment: Text.AlignHCenter
-                        font.family: "DejaVu Sans"
-                        font.bold: focused
-                        font.pixelSize: Math.max(10, 12 * host.uiScale)
-                        text: modelData.name
-                    }
-
-                    Text {
-                        width: parent.width
-                        color: focused ? "#aeb5bc" : "#6e7781"
-                        elide: Text.ElideRight
-                        horizontalAlignment: Text.AlignHCenter
-                        font.family: "DejaVu Sans"
-                        font.pixelSize: Math.max(8, 9 * host.uiScale)
-                        text: modelData.year ? modelData.year : "FILM"
-                    }
-                }
-            }
-        }
-
-        Column {
-            anchors.centerIn: parent
-            width: Math.min(parent.width * 0.78, 760)
-            visible: tvController.myTvLibrary.length === 0
-            spacing: Math.max(12, 16 * host.uiScale)
-
-            Text {
-                width: parent.width
-                color: "#f4f0e9"
-                horizontalAlignment: Text.AlignHCenter
-                font.family: "DejaVu Sans"
-                font.bold: true
-                font.pixelSize: Math.max(30, 44 * host.uiScale)
-                text: "Your film library is ready"
-            }
-
-            Text {
-                width: parent.width
-                color: "#8f98a3"
-                horizontalAlignment: Text.AlignHCenter
-                wrapMode: Text.Wrap
-                font.family: "DejaVu Sans"
-                font.pixelSize: Math.max(14, 18 * host.uiScale)
-                text: "Add films and collections from the My TV section in the parent web portal."
-            }
-        }
-    }
-
-    Row {
-        id: myTvFooter
-        anchors.left: parent.left
+        visible: view.loading
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        anchors.leftMargin: Math.max(32, 48 * host.uiScale)
-        anchors.rightMargin: Math.max(32, 48 * host.uiScale)
-        anchors.bottomMargin: Math.max(14, 20 * host.uiScale)
-        height: Math.max(22, 28 * host.uiScale)
-
+        anchors.margins: 34 * view.uiScale
+        width: loadingText.implicitWidth + 28 * view.uiScale
+        height: 42 * view.uiScale
+        radius: height / 2
+        color: "#e8ffffff"
+        border.width: 1
+        border.color: "#d5dbe1"
         Text {
-            width: parent.width * 0.78
-            color: host.errorMessage.length > 0 ? "#ff9b89" : "#77818c"
-            elide: Text.ElideRight
-            font.family: "DejaVu Sans"
-            font.pixelSize: Math.max(11, 13 * host.uiScale)
-            text: host.errorMessage.length > 0
-                  ? host.errorMessage
-                  : (host.navigationZone === 0
-                     ? "↑ ↓  CHOOSE COLLECTION     → / OK  OPEN FILMS     BACK  EXIT"
-                     : "↑ ↓ ← →  MOVE     OK  PLAY     BACK  COLLECTIONS")
-        }
-
-        Text {
-            width: parent.width * 0.22
-            color: "#59626d"
-            horizontalAlignment: Text.AlignRight
+            id: loadingText
+            anchors.centerIn: parent
+            color: view.accent
             font.family: "DejaVu Sans"
             font.bold: true
-            font.pixelSize: Math.max(10, 12 * host.uiScale)
-            text: tvDisplayName.toUpperCase() + "  •  MY TV"
+            font.pixelSize: 13 * view.uiScale
+            text: "Loading My TV…"
+        }
+    }
+
+    MyTvDetailView {
+        id: detailView
+        host: view
+        visible: view.detailVisible
+        z: 10
+        onClosed: view.detailVisible = false
+    }
+    Rectangle {
+        visible: view.keyboardVisible
+        anchors.fill: parent
+        z: 19
+        color: "#66070a0d"
+    }
+    MyTvKeyboard {
+        id: keyboard
+        host: view
+        visible: view.keyboardVisible
+        z: 20
+        onAccepted: value => view.appendSearch(value)
+        onClosed: view.keyboardVisible = false
+    }
+
+    function request(path, method, payload, success, failure) {
+        const xhr = new XMLHttpRequest()
+        xhr.open(method || "GET", nativeBase + path)
+        xhr.setRequestHeader("X-MabelTV-Native", "1")
+        if (payload !== null) xhr.setRequestHeader("Content-Type", "application/json")
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState !== XMLHttpRequest.DONE) return
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try { success(JSON.parse(xhr.responseText)) }
+                catch (error) { if (failure) failure("My TV returned invalid data") }
+            } else if (failure) {
+                try { failure(JSON.parse(xhr.responseText).error || "My TV is unavailable") }
+                catch (error) { failure("My TV is unavailable") }
+            }
+        }
+        xhr.send(payload === null ? null : JSON.stringify(payload))
+        return xhr
+    }
+
+    function open() {
+        detailVisible = false
+        keyboardVisible = false
+        selectedZone = 1
+        selectedRow = 0
+        selectedCard = 0
+        query = ""
+        loadHome()
+    }
+    function loadHome() {
+        const generation = ++homeGeneration
+        loading = true
+        errorMessage = ""
+        request("/api/native/my-tv/home", "GET", null, result => {
+            if (generation !== homeGeneration) return
+            homeData = result; rebuildRows(); loading = false
+            recommendationTimer.restart()
+        }, message => { errorMessage = message; loading = false; rebuildRows() })
+    }
+    function rebuildRows() {
+        if (query.length) {
+            rows = searchResults.length ? [{ title: "Search results", items: searchResults, wide: false }] : []
+        } else {
+            const next = []
+            if ((homeData.continue || []).length) next.push({ title: "Continue watching", items: homeData.continue, wide: true })
+            if ((homeData.up_next || []).length) next.push({ title: "Up next", items: homeData.up_next, wide: false })
+            if ((homeData.recommended || []).length) next.push({ title: "What to watch", items: homeData.recommended, wide: false })
+            if ((homeData.library || []).length) next.push({ title: "From your library", items: homeData.library, wide: false })
+            rows = next
+        }
+        selectedRow = Math.max(0, Math.min(selectedRow, rows.length - 1))
+        selectedCard = Math.max(0, Math.min(selectedCard, currentItems().length - 1))
+    }
+    function currentItems() { return rows.length > selectedRow ? rows[selectedRow].items : [] }
+    function currentItem() { const values = currentItems(); return values.length > selectedCard ? values[selectedCard] : null }
+    function ensureSelectedRowVisible() {
+        const row = shelfRepeater.itemAt(selectedRow)
+        if (!row) return
+        const top = row.y
+        const bottom = row.y + row.height
+        if (top < shelves.contentY) shelves.contentY = top
+        else if (bottom > shelves.contentY + shelves.height)
+            shelves.contentY = Math.min(shelves.contentHeight - shelves.height,
+                                        bottom - shelves.height)
+    }
+    function artworkUrl(item, backdrop) {
+        const path = backdrop && item.backdrop_path ? item.backdrop_path : item.poster_path
+        return path ? nativeBase + "/api/native/my-tv/artwork/" + (backdrop ? "w780" : "w342")
+            + "/" + encodeURIComponent(String(path).replace(/^\//, "")) : ""
+    }
+    function providerPriority(name) {
+        const value = String(name || "").toLowerCase()
+        if (value.includes("mabel")) return 0
+        if (value.includes("netflix")) return 1
+        if (value.includes("prime") || value.includes("amazon")) return 2
+        if (value.includes("iplayer") || value.includes("bbc")) return 3
+        if (value.includes("channel 4") || value.includes("all 4")) return 4
+        if (value.includes("itv")) return 5
+        if (value.includes("sky")) return 6
+        if (value.includes("now") || value.includes("max")) return 1000
+        return 100
+    }
+    function providerEntry(value) {
+        const name = String(value.name || "Streaming service")
+        const lowered = name.toLowerCase()
+        let localAsset = ""
+        if (lowered.includes("netflix")) localAsset = "netflix-app.jpg"
+        else if (lowered.includes("prime") || lowered.includes("amazon")) localAsset = "prime-video-app.jpg"
+        else if (lowered.includes("iplayer") || lowered.includes("bbc")) localAsset = "bbc-iplayer-app.jpg"
+        else if (lowered.includes("channel 4") || lowered.includes("all 4")) localAsset = "channel-4-app.jpg"
+        else if (lowered.includes("itv")) localAsset = "itvx-app.jpg"
+        else if (lowered.includes("sky")) localAsset = "sky-go-app.jpg"
+        else if (lowered.includes("disney")) localAsset = "disney-plus-app.jpg"
+        else if (lowered.includes("paramount")) localAsset = "paramount-plus-app.jpg"
+        else if (lowered.includes("apple")) localAsset = "apple-tv-app.jpg"
+        else if (lowered.includes("now")) localAsset = "now-app.jpg"
+        return { name: name, asset: localAsset ? nativeBase + "/portal/assets/providers/" + localAsset
+            : (value.logo_path ? nativeBase + "/api/native/my-tv/artwork/w92/"
+                + encodeURIComponent(String(value.logo_path).replace(/^\//, "")) : ""),
+            destination: value.android_url || value.web_url || "", raw: value }
+    }
+    function providerBadges(item) {
+        const values = []
+        if (item.on_mabeltv) values.push({ name: tvDisplayName, asset: nativeBase + "/apple-touch-icon.png", local: true })
+        for (const provider of item.providers || []) {
+            if (!["flatrate", "free", "ads"].includes(String(provider.type || "").toLowerCase())) continue
+            if (!values.some(value => value.name === provider.name)) values.push(providerEntry(provider))
+        }
+        for (const source of item.provider_sources || []) {
+            if (!["sub", "free", "tve", "ads"].includes(String(source.type || "").toLowerCase())) continue
+            if (!values.some(value => String(value.name).toLowerCase() === String(source.name).toLowerCase()))
+                values.push(providerEntry(source))
+        }
+        values.sort((left, right) => providerPriority(left.name) - providerPriority(right.name))
+        return values.slice(0, 2)
+    }
+    function detailProviders(item) {
+        const values = []
+        if (item.on_mabeltv)
+            values.push({ name: tvDisplayName, asset: nativeBase + "/apple-touch-icon.png", local: true })
+        for (const provider of item.providers || []) {
+            if (["flatrate", "free", "ads"].includes(String(provider.type || "").toLowerCase())
+                    && !values.some(value => value.name === provider.name))
+                values.push(providerEntry(provider))
+        }
+        for (const source of item.provider_result?.sources || []) {
+            if (!["sub", "free", "tve", "ads"].includes(String(source.type || "").toLowerCase())) continue
+            if (!values.some(value => String(value.name).toLowerCase() === String(source.name).toLowerCase())) values.push(providerEntry(source))
+        }
+        values.sort((left, right) => providerPriority(left.name) - providerPriority(right.name))
+        return values
+    }
+    function progressRatio(item) {
+        const progress = item.progress || item.local_progress || {}
+        const duration = Number(progress.duration || 0)
+        return duration > 0 ? Math.min(1, Number(progress.position || 0) / duration) : 0
+    }
+    function progressLabel(item) {
+        const episode = item.progress?.episode
+        return episode ? "Continue · S" + String(episode.season).padStart(2, "0")
+            + " E" + String(episode.episode).padStart(2, "0") : "Continue"
+    }
+    function appendSearch(value) {
+        if (value === "\b") query = query.slice(0, -1)
+        else query += value
+        beginSearch()
+    }
+    function appendRemoteText(value) {
+        selectedZone = 0; keyboardVisible = true
+        if (value === "\b") appendSearch(value)
+        else { query += value; beginSearch() }
+    }
+    function localSearchResults(value) {
+        const needle = String(value || "").trim().toLowerCase()
+        if (!needle.length) return []
+        const found = []
+        const seen = ({})
+        const pools = [homeData.continue || [], homeData.up_next || [],
+                       homeData.recommended || [], homeData.library || []]
+        for (const pool of pools) for (const item of pool) {
+            const key = item.key || item.media_type + ":" + item.tmdb_id
+            if (seen[key]) continue
+            if ((String(item.title || "") + " " + String(item.year || "")).toLowerCase().includes(needle)) {
+                seen[key] = true
+                found.push(item)
+            }
+        }
+        return found
+    }
+    function beginSearch() {
+        searchGeneration++
+        if (activeSearchRequest) { activeSearchRequest.abort(); activeSearchRequest = null }
+        searchResults = localSearchResults(query)
+        selectedRow = 0; selectedCard = 0; rebuildRows()
+        if (query.trim().length >= 3) searchTimer.restart()
+        else searchTimer.stop()
+    }
+    function openSelected() {
+        const item = currentItem()
+        if (!item) return
+        if (!Number(item.tmdb_id || 0)) {
+            currentDetail = item; detailView.open(item); detailVisible = true; return
+        }
+        const generation = ++detailGeneration
+        if (activeDetailRequest) activeDetailRequest.abort()
+        currentDetail = item; detailView.open(item); detailVisible = true
+        activeDetailRequest = request("/api/native/my-tv/title?media_type=" + item.media_type + "&tmdb_id=" + item.tmdb_id,
+                "GET", null, result => {
+            if (generation !== detailGeneration || !detailVisible) return
+            if (item.local) result.local = item.local
+            result.on_mabeltv = item.on_mabeltv || result.on_mabeltv
+            currentDetail = result; detailView.open(result)
+            if (generation === detailGeneration) activeDetailRequest = null
+        }, message => {
+            if (generation === detailGeneration && detailVisible) errorMessage = message
+            if (generation === detailGeneration) activeDetailRequest = null
+        })
+    }
+    function detailActions(item) {
+        const actions = []
+        if (item.on_mabeltv && item.local) actions.push({ id: "play", label: item.media_type === "tv" ? "▶ Play next episode" : "▶ Play" })
+        return actions
+    }
+    function runDetailAction(action, item) {
+        if (action.id !== "play") return
+        let playable = item
+        if (item.media_type === "tv") {
+            const episodes = item.local?.episodes || []
+            playable = episodes.find(value => !value.watched) || episodes[0]
+        }
+        if (playable?.source) {
+            selectedPlayback = { name: item.title, source: playable.source,
+                id: playable.library_id || item.local?.library_id || item.key }
+            host.startNativePlayback(selectedPlayback, Number(playable.remote_position || 0))
+        }
+    }
+    function launchProvider(provider, item) {
+        if (provider.local) { runDetailAction({ id: "play" }, item); return }
+        loading = true
+        request("/api/native/my-tv/launch", "POST", { provider: provider.name,
+            destination: provider.destination, title: item.title,
+            media_type: item.media_type, tmdb_id: item.tmdb_id }, result => {
+            errorMessage = result.message || "Opening " + provider.name; loading = false
+        }, message => { errorMessage = message; loading = false })
+    }
+    function back() {
+        if (keyboardVisible) { keyboardVisible = false; return true }
+        if (detailVisible) {
+            detailGeneration++; if (activeDetailRequest) activeDetailRequest.abort()
+            activeDetailRequest = null; detailVisible = false; return true
+        }
+        if (query.length) {
+            searchGeneration++; if (activeSearchRequest) activeSearchRequest.abort()
+            activeSearchRequest = null; query = ""; searchResults = []; rebuildRows(); return true
+        }
+        if (selectedZone === 1) { selectedZone = 0; return true }
+        return false
+    }
+    function handleKey(key) {
+        if (keyboardVisible) return keyboard.handleKey(key)
+        if (detailVisible) return detailView.handleKey(key)
+        if (key === Qt.Key_Escape || key === Qt.Key_Backspace || key === Qt.Key_B) return false
+        if (selectedZone === 0) {
+            if (key === Qt.Key_Down && rows.length) selectedZone = 1
+            else if (key === Qt.Key_Return || key === Qt.Key_Enter) keyboardVisible = true
+            else return false
+            return true
+        }
+        if (key === Qt.Key_Left) selectedCard = Math.max(0, selectedCard - 1)
+        else if (key === Qt.Key_Right) selectedCard = Math.min(currentItems().length - 1, selectedCard + 1)
+        else if (key === Qt.Key_Up) {
+            if (selectedRow > 0) { selectedRow--; selectedCard = Math.min(selectedCard, currentItems().length - 1) }
+            else selectedZone = 0
+        } else if (key === Qt.Key_Down && selectedRow + 1 < rows.length) {
+            selectedRow++; selectedCard = Math.min(selectedCard, currentItems().length - 1)
+        } else if (key === Qt.Key_Return || key === Qt.Key_Enter) openSelected()
+        else return false
+        return true
+    }
+
+    Timer {
+        id: searchTimer
+        interval: 650
+        repeat: false
+        onTriggered: {
+            const submitted = view.query.trim()
+            if (submitted.length < 3) return
+            const generation = view.searchGeneration
+            view.activeSearchRequest = view.request(
+                "/api/native/my-tv/search?q=" + encodeURIComponent(submitted), "GET", null,
+                result => {
+                    if (generation !== view.searchGeneration || submitted !== view.query.trim()) return
+                    view.searchResults = result.results || []; view.selectedRow = 0; view.selectedCard = 0
+                    view.rebuildRows(); view.activeSearchRequest = null
+                }, message => {
+                    if (generation === view.searchGeneration) view.errorMessage = message
+                    if (generation === view.searchGeneration) view.activeSearchRequest = null
+                })
+        }
+    }
+    Timer {
+        id: recommendationTimer
+        interval: 120
+        repeat: false
+        onTriggered: {
+            const generation = view.homeGeneration
+            view.request("/api/native/my-tv/recommendations", "GET", null, result => {
+                if (generation !== view.homeGeneration) return
+                const updated = Object.assign({}, view.homeData)
+                updated.recommended = result.results || []
+                view.homeData = updated
+                if (!view.query.length) view.rebuildRows()
+            })
         }
     }
 }

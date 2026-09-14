@@ -152,6 +152,39 @@ body.portal-v2 .remote-app button {
 
 body.portal-v2 .remote-app button:active { transform: scale(0.96); }
 
+body.portal-v2 .remote-keyboard {
+  display: none;
+  gap: 5px;
+  margin: 9px 0 2px;
+}
+body.portal-v2 .remote-keyboard.is-visible { display: grid; }
+body.portal-v2 .remote-keyboard label {
+  color: var(--experience-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+body.portal-v2 .remote-keyboard div { display: grid; grid-template-columns: 1fr auto; gap: 7px; }
+body.portal-v2 .remote-keyboard input {
+  min-width: 0;
+  height: 42px;
+  border: 1px solid var(--experience-line);
+  border-radius: 10px;
+  background: var(--experience-raised);
+  color: var(--experience-ink);
+  padding: 0 12px;
+  font: inherit;
+}
+body.portal-v2 .remote-keyboard button {
+  min-width: 68px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--experience-accent);
+  color: #052b25;
+  font-weight: 850;
+}
+
 body.portal-v2 .remote-destinations {
   padding: 0;
 }

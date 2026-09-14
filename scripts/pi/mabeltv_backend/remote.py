@@ -47,7 +47,8 @@ from .lg import (
 
 
 class RemotePlaybackMixin:
-    def remote_resume_position(self, library_id: str, media_state: dict[str, Any]) -> float:
+    def remote_resume_position(self, library_id: str, media_state: dict[str, Any],
+                               player_state: dict[str, Any] | None = None) -> float:
         """Use the position from the most recently active film session.
 
         An already-running TV and browser player never read this value again,
@@ -62,7 +63,8 @@ class RemotePlaybackMixin:
             ))
         except (TypeError, ValueError):
             pass
-        player_state = self.read_state("player")
+        if player_state is None:
+            player_state = self.read_state("player")
         if isinstance(player_state, dict):
             positions = player_state.get("my_tv_positions", {})
             if isinstance(positions, dict):
@@ -87,18 +89,20 @@ class RemotePlaybackMixin:
         position = max(timestamped, key=lambda item: item[0])[1] \
             if timestamped and len(timestamped) == len(valid) \
             else max([item[1] for item in valid] or [0])
-        duration = self.remote_resume_duration(library_id, media_state)
+        duration = self.remote_resume_duration(library_id, media_state, player_state)
         return self.normalise_resume_position(position, duration)
 
     def remote_last_watched(self, library_id: str,
-                            media_state: dict[str, Any]) -> float:
+                            media_state: dict[str, Any],
+                            player_state: dict[str, Any] | None = None) -> float:
         """Return the newest activity timestamp across TV and browser players."""
         try:
             browser_updated = max(
                 0.0, float(media_state.get("remote_last_watched", 0) or 0))
         except (TypeError, ValueError):
             browser_updated = 0.0
-        player_state = self.read_state("player")
+        if player_state is None:
+            player_state = self.read_state("player")
         updates = player_state.get("my_tv_position_updated_utc_ms", {}) \
             if isinstance(player_state, dict) else {}
         try:
@@ -109,14 +113,16 @@ class RemotePlaybackMixin:
         return max(browser_updated, tv_updated)
 
     def remote_resume_duration(self, library_id: str,
-                               media_state: dict[str, Any]) -> float:
+                               media_state: dict[str, Any],
+                               player_state: dict[str, Any] | None = None) -> float:
         """Use duration learned from either the television or the browser."""
         candidates: list[float] = []
         try:
             candidates.append(float(media_state.get("remote_duration", 0) or 0))
         except (TypeError, ValueError):
             pass
-        player_state = self.read_state("player")
+        if player_state is None:
+            player_state = self.read_state("player")
         durations = player_state.get("my_tv_durations", {}) \
             if isinstance(player_state, dict) else {}
         if isinstance(durations, dict):
@@ -943,7 +949,7 @@ class RemotePlaybackMixin:
                    "enter-my-tv-mode", "continue-in-my-tv-mode",
                    "navigate-up", "navigate-down", "navigate-left",
                    "navigate-right", "select", "return-to-mabeltv", "toggle-remote-lock",
-                   "tune-channel"}
+                   "text-input", "tune-channel"}
         if command not in allowed:
             raise ValueError("Unknown live TV control")
         wire_command = command
@@ -957,6 +963,12 @@ class RemotePlaybackMixin:
                 raise ValueError("That channel is hidden from the television")
             wire_command = json.dumps({"command": command, "channel": channel_number},
                                       separators=(",", ":"))
+        elif command == "text-input":
+            text = str(payload.get("text") or "")
+            if not text or len(text) > 120 or any(character in text for character in "\r\n\t"):
+                raise ValueError("Enter up to 120 characters")
+            wire_command = json.dumps({"command": command, "text": text},
+                                      separators=(",", ":"), ensure_ascii=False)
         try:
             with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
                 client.settimeout(2)

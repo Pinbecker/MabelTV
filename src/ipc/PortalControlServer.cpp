@@ -174,6 +174,20 @@ void PortalControlServer::dispatch(QLocalSocket *socket, const QByteArray &rawCo
             }
             return;
         }
+        if (request.isObject() && operation == QStringLiteral("text-input")) {
+            const QString text = object.value(QStringLiteral("text")).toString();
+            if (!text.isEmpty() && text.size() <= 120
+                && !text.contains(QLatin1Char('\n')) && !text.contains(QLatin1Char('\r'))
+                && !text.contains(QLatin1Char('\t'))) {
+                QMetaObject::invokeMethod(m_rootObject, "portalTextInput",
+                                          Qt::QueuedConnection,
+                                          Q_ARG(QVariant, text));
+                finish(socket, "ok\n");
+            } else {
+                finish(socket, "unsupported\n");
+            }
+            return;
+        }
     }
 
     if (command == QStringLiteral("status")) {

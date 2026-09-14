@@ -560,7 +560,18 @@ let managementBusy = false
       setRemoteFeedback(`Opening channel ${channel}`, 'success')
     }
 
-    $$('[data-live-command]').forEach(button => button.onclick = () => sendLiveCommand(button.dataset.liveCommand, button))
+      $$('[data-live-command]').forEach(button => button.onclick = () => sendLiveCommand(button.dataset.liveCommand, button))
+      const remoteKeyboard = $('#remoteKeyboard')
+      const remoteKeyboardText = $('#remoteKeyboardText')
+      remoteKeyboard?.addEventListener('submit', async event => {
+        event.preventDefault()
+        const text = remoteKeyboardText.value
+        if (!text) return
+        if (await sendLiveCommand('text-input', remoteKeyboard.querySelector('button'), { text })) {
+          remoteKeyboardText.value = ''
+          remoteKeyboardText.focus()
+        }
+      })
     const livePreviewToggle = $('#toggleLivePreview')
     if (livePreviewToggle) livePreviewToggle.onclick = () => {
       const card = livePreviewToggle.closest('.mabel-status-card')

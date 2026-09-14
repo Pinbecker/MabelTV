@@ -84,6 +84,50 @@ test('Mabel TV and My TV keep compact icon tabs across every section', async ({ 
   await expectCompactDomainTabs(page, '#view-watch')
 })
 
+test('Mabel TV groups compact episode channels ahead of unchanged film channels', async ({ page }) => {
+  await openPortal(page)
+  await page.locator('[data-view-button="watch"]').click()
+  await page.evaluate(() => {
+    const episode = number => ({
+      number, name: `Series ${number}`, enabled: true, content_type: 'shows',
+      folder: `series-${number}`, metadata: { title: `Series ${number}` },
+      programmes: Array.from({ length: number }, (_, index) => ({
+        name: `episode-${index + 1}.mp4`, display_name: `Episode ${index + 1}`,
+        enabled: true, browser_ready: true, metadata: {},
+      })),
+    })
+    library.channels = [episode(6), {
+      number: 2, name: 'Film channel 2', enabled: true, content_type: 'films',
+      folder: 'films-2', metadata: {}, programmes: [{
+        name: 'film.mp4', display_name: 'Fixture Film', enabled: true,
+        browser_ready: true, metadata: { title: 'Fixture Film', year: '2024' },
+      }],
+    }, episode(1), episode(3), {
+      ...episode(10), name: 'Family Videos', programmes: episode(3).programmes,
+    }]
+    renderRemoteViewing({ force: true })
+  })
+
+  await expect(page.locator('.mabel-episode-channel-section h2')).toHaveText('Episode channels')
+  await expect(page.locator('.watch-mabel-series-channel-card')).toHaveCount(4)
+  await expect(page.locator('.watch-mabel-series-channel-card .watch-mabel-channel-copy small'))
+    .toHaveText(['CH 1 · 1 episode', 'CH 3 · 3 episodes', 'CH 6 · 6 episodes', 'CH 10 · 3 episodes'])
+  await expect(page.locator('.watch-mabel-episode')).toHaveCount(0)
+  await expect(page.locator('.mabel-film-channels-heading h2')).toHaveText('Film channels')
+  await expect(page.locator('.mabel-film-channel .watch-mabel-film-card')).toHaveCount(1)
+  await expect(page.locator('.watch-mabel-series-channel-card').last().locator('img'))
+    .toHaveAttribute('src', /mabel-show-10-0\.jpg$/)
+  const columns = await page.locator('.mabel-episode-channel-grid').evaluate(grid =>
+    getComputedStyle(grid).gridTemplateColumns.split(' ').length)
+  expect(columns).toBe(3)
+  const titleStyle = await page.locator('.watch-mabel-channel-copy strong').first().evaluate(title => ({
+    overflow: getComputedStyle(title).overflow,
+    textOverflow: getComputedStyle(title).textOverflow,
+    whiteSpace: getComputedStyle(title).whiteSpace,
+  }))
+  expect(titleStyle).toEqual({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })
+})
+
 test('@visual Mabel TV and My TV each keep the same three-section structure', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone navigation contract')
   await openPortal(page)

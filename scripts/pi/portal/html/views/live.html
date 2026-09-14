@@ -38,6 +38,10 @@
               <div class="tv-remote-rocker tv-remote-volume-rocker" aria-label="Volume controls"><button type="button" data-live-command="volume-up" aria-label="Volume up"><svg><use href="/portal/icons.svg#signal-plus"/></svg></button><button type="button" id="remoteMute" class="tv-remote-rocker-state tv-remote-mute" data-live-command="toggle-mute" aria-label="Mute" aria-pressed="false"><svg class="tv-remote-volume-on"><use href="/portal/icons.svg#signal-volume"/></svg><svg class="tv-remote-volume-off"><use href="/portal/icons.svg#signal-volume-x"/></svg></button><button type="button" data-live-command="volume-down" aria-label="Volume down"><svg><use href="/portal/icons.svg#signal-minus"/></svg></button></div>
             </div>
             <button id="remoteBack" type="button" class="tv-remote-back" data-live-command="close-overlay"><svg><use href="/portal/icons.svg#signal-arrow-left"/></svg><span>Back</span></button>
+            <form id="remoteKeyboard" class="remote-keyboard" autocomplete="off">
+              <label for="remoteKeyboardText">Type on My TV</label>
+              <div><input id="remoteKeyboardText" type="text" maxlength="120" placeholder="Search on the television"><button type="submit">Send</button></div>
+            </form>
             <div class="tv-remote-utility-row remote-destinations" aria-label="TV shortcuts">
               <button type="button" class="remote-mode remote-mode-mabel" data-live-command="return-to-mabeltv" id="remoteMabelAction"><svg><use href="/portal/icons.svg#signal-tv"/></svg><span><span data-tv-name>Your TV</span></span></button>
               <button type="button" class="remote-mode remote-mode-guide" data-live-command="open-channel-menu"><svg><use href="/portal/icons.svg#signal-list-filter"/></svg><span>Channels</span></button>

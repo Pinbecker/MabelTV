@@ -39,100 +39,145 @@
       const mabel = $('#remoteMabel'); mabel.innerHTML = ''
       const mabelFilms = mabelFilmEntries()
       renderMabelDiscovery(mabelFilms)
-      ;(library?.channels || []).forEach(channel => {
+      const channels = [...(library?.channels || [])].sort((left, right) =>
+        Number(left.number || 0) - Number(right.number || 0))
+      const episodeChannels = channels.filter(channel => channel.content_type !== 'films')
+      const filmChannels = channels.filter(channel => channel.content_type === 'films')
+      const episodeArtworkPositions = {
+        'mabel-show-1-1588.jpg': '82% center',
+        'mabel-show-2-69926.jpg': '85% center',
+        'mabel-show-9-322913.jpg': '88% center',
+      }
+      if (episodeChannels.length) {
+        const section = document.createElement('section')
+        section.className = 'watch-section mabel-episode-channel-section'
+        const head = document.createElement('header')
+        head.className = 'watch-section-head'
+        head.innerHTML = '<div><p class="watch-section-kicker">Shows on your channels</p><h2>Episode channels</h2></div>'
+        const grid = document.createElement('div')
+        grid.className = 'mabel-episode-channel-grid'
+        episodeChannels.forEach(channel => {
+          const programmes = channel.enabled
+            ? (channel.programmes || []).filter(programme => programme.enabled)
+            : []
+          const metadata = channel.metadata || {}
+          const card = document.createElement('button')
+          card.type = 'button'
+          card.className = 'watch-card watch-mabel-series-channel-card'
+          card.setAttribute('aria-label', `Open channel ${channel.number}, ${channel.name}`)
+          const art = document.createElement('span')
+          art.className = 'watch-card-art'
+          const artwork = channel.name === 'Family Videos'
+            ? 'mabel-show-10-0.jpg'
+            : metadata.artwork
+          if (artwork) {
+            const image = document.createElement('img')
+            image.loading = 'lazy'
+            image.decoding = 'async'
+            image.src = `/api/channel/artwork/${encodeURIComponent(artwork)}`
+            image.style.objectPosition = episodeArtworkPositions[artwork] || '50% center'
+            image.alt = ''
+            art.append(image)
+          } else {
+            const placeholder = document.createElement('span')
+            placeholder.className = 'watch-card-placeholder'
+            placeholder.textContent = String(metadata.title || channel.name).slice(0, 1).toUpperCase()
+            art.append(placeholder)
+          }
+          const copy = document.createElement('span')
+          copy.className = 'watch-card-copy watch-mabel-channel-copy'
+          const detail = document.createElement('small')
+          detail.textContent = `CH ${channel.number} · ${channel.enabled
+            ? `${programmes.length} episode${programmes.length === 1 ? '' : 's'}`
+            : 'Hidden from TV'}`
+          const title = document.createElement('strong')
+          title.textContent = metadata.title || channel.name
+          copy.append(detail, title)
+          card.append(art, copy)
+          card.onclick = () => openChannel(channel, true)
+          grid.append(card)
+        })
+        section.append(head, grid)
+        mabel.append(section)
+      }
+      if (filmChannels.length) {
+        const heading = document.createElement('section')
+        heading.className = 'watch-section mabel-film-channels-heading'
+        heading.innerHTML = '<header class="watch-section-head"><div><p class="watch-section-kicker">Films on your channels</p><h2>Film channels</h2></div></header>'
+        mabel.append(heading)
+      }
+      filmChannels.forEach(channel => {
         const programmes = channel.enabled
           ? (channel.programmes || []).filter(programme => programme.enabled)
           : []
-        const isFilms = channel.content_type === 'films'
-        const section = document.createElement('section'); section.className = `watch-section mabel-channel-section ${isFilms ? 'mabel-film-channel' : 'mabel-show-channel'}`
+        const section = document.createElement('section'); section.className = 'watch-section mabel-channel-section mabel-film-channel'
         section.dataset.watchChannelFolder = String(channel.folder || '')
-        const metadata = channel.metadata || {}
-        if (!isFilms) {
-          const identity = document.createElement('button'); identity.type = 'button'; identity.className = 'mabel-show-identity'
-          if (metadata.artwork) identity.style.backgroundImage = `linear-gradient(90deg,rgba(7,12,10,.92) 0%,rgba(7,12,10,.62) 52%,rgba(7,12,10,.2) 100%),url('/api/channel/artwork/${encodeURIComponent(metadata.artwork)}')`
-          identity.innerHTML = `<div><span>CH ${channel.number} · ${channel.enabled ? `${programmes.length} episodes` : 'Hidden from TV'}</span><h2>${escapeHtml(metadata.title || channel.name)}</h2><p>${escapeHtml(metadata.overview || `${channel.name} on ${tvName()}.`)}</p></div>`
-          identity.setAttribute('aria-label', `Open channel ${channel.number}, ${channel.name}`)
-          identity.onclick = () => openChannel(channel, true)
-          section.append(identity)
-        } else {
-          const artworks = [...new Set((channel.programmes || [])
-            .map(programme => programme.metadata?.poster)
-            .filter(Boolean))]
-          const firstArtwork = artworks.length ? Math.floor(Math.random() * artworks.length) : 0
-          const head = document.createElement('button'); head.type = 'button'; head.className = 'watch-section-head mabel-film-head'
-          head.innerHTML = `<span class="mabel-film-head-art" aria-hidden="true"><span class="mabel-film-head-art-layer is-visible"></span><span class="mabel-film-head-art-layer"></span></span><span class="mabel-film-head-copy"><span>CH ${channel.number} · Film channel${channel.enabled ? '' : ' · Hidden from TV'}</span><h2>${escapeHtml(channel.name)}</h2></span>`
-          if (artworks.length) {
-            head.dataset.filmArt = 'true'
-            head._mabelFilmArtworks = artworks
-            head._mabelFilmArtIndex = firstArtwork
-            head._mabelFilmArtLayer = 0
-            head.querySelector('.mabel-film-head-art-layer').style.backgroundImage = `url('/api/channel/artwork/${encodeURIComponent(artworks[firstArtwork])}')`
-          }
-          head.setAttribute('aria-label', `Open channel ${channel.number}, ${channel.name}`); head.onclick = () => openChannel(channel, true); section.append(head)
+        const artworks = [...new Set((channel.programmes || [])
+          .map(programme => programme.metadata?.poster)
+          .filter(Boolean))]
+        const firstArtwork = artworks.length ? Math.floor(Math.random() * artworks.length) : 0
+        const head = document.createElement('button'); head.type = 'button'; head.className = 'watch-section-head mabel-film-head'
+        head.innerHTML = `<span class="mabel-film-head-art" aria-hidden="true"><span class="mabel-film-head-art-layer is-visible"></span><span class="mabel-film-head-art-layer"></span></span><span class="mabel-film-head-copy"><span>CH ${channel.number} · Film channel${channel.enabled ? '' : ' · Hidden from TV'}</span><h2>${escapeHtml(channel.name)}</h2></span>`
+        if (artworks.length) {
+          head.dataset.filmArt = 'true'
+          head._mabelFilmArtworks = artworks
+          head._mabelFilmArtIndex = firstArtwork
+          head._mabelFilmArtLayer = 0
+          head.querySelector('.mabel-film-head-art-layer').style.backgroundImage = `url('/api/channel/artwork/${encodeURIComponent(artworks[firstArtwork])}')`
         }
+        head.setAttribute('aria-label', `Open channel ${channel.number}, ${channel.name}`); head.onclick = () => openChannel(channel, true); section.append(head)
         if (programmes.length) {
           const rail = document.createElement('div')
-          rail.className = `watch-channel-rail${isFilms ? ' watch-film-channel-rail' : ' watch-episode-rail'}`
-          rail.setAttribute('aria-label', `${channel.name} ${isFilms ? 'films' : 'episodes'}`)
+          rail.className = 'watch-channel-rail watch-film-channel-rail'
+          rail.setAttribute('aria-label', `${channel.name} films`)
           programmes.forEach(programme => {
             const card = document.createElement('button'); card.type = 'button'
             const programmeMetadata = programme.metadata || {}
-            if (isFilms) {
-              const resumable = watchFilmResumable(programme)
-              const progressValue = watchFilmProgress(programme)
-              card.className = 'watch-card watch-mabel-film-card'
-              card.setAttribute('aria-label', `${watchFilmTitle(programme)}${resumable ? `, resume at ${watchTimeLabel(programme.remote_position)}` : ''}`)
-              const art = document.createElement('span'); art.className = 'watch-card-art'
-              if (programmeMetadata.poster) {
-                const image = document.createElement('img')
-                image.loading = 'lazy'
-                image.decoding = 'async'
-                image.src = `/api/channel/artwork/${encodeURIComponent(programmeMetadata.poster)}`
-                image.alt = ''
-                image.loading = 'lazy'
-                art.append(image)
-              } else {
-                const placeholder = document.createElement('span')
-                placeholder.className = 'watch-card-placeholder'
-                placeholder.textContent = watchFilmTitle(programme).slice(0, 1).toUpperCase()
-                art.append(placeholder)
-              }
-              if (programme.browser_ready === false) {
-                const format = document.createElement('span')
-                format.className = 'watch-format'
-                format.textContent = 'VLC READY'
-                art.append(format)
-              }
-              if (resumable && progressValue) {
-                const progress = document.createElement('span')
-                progress.className = 'watch-progress'
-                const fill = document.createElement('span')
-                fill.style.width = `${progressValue}%`
-                progress.append(fill)
-                art.append(progress)
-              }
-              const copy = document.createElement('span'); copy.className = 'watch-card-copy'
-              const title = document.createElement('strong'); title.textContent = watchFilmTitle(programme)
-              const detail = document.createElement('small')
-              detail.textContent = resumable
-                ? `Resume · ${watchTimeLabel(programme.remote_position)}`
-                : [programmeMetadata.year, channel.name].filter(Boolean).join(' · ') || 'Film'
-              copy.append(title, detail)
-              card.append(art, copy)
+            const resumable = watchFilmResumable(programme)
+            const progressValue = watchFilmProgress(programme)
+            card.className = 'watch-card watch-mabel-film-card'
+            card.setAttribute('aria-label', `${watchFilmTitle(programme)}${resumable ? `, resume at ${watchTimeLabel(programme.remote_position)}` : ''}`)
+            const art = document.createElement('span'); art.className = 'watch-card-art'
+            if (programmeMetadata.poster) {
+              const image = document.createElement('img')
+              image.loading = 'lazy'
+              image.decoding = 'async'
+              image.src = `/api/channel/artwork/${encodeURIComponent(programmeMetadata.poster)}`
+              image.alt = ''
+              image.loading = 'lazy'
+              art.append(image)
             } else {
-              card.className = 'watch-programme watch-mabel-episode'
-              const copy = document.createElement('span'); copy.className = 'watch-mabel-copy'
-              const title = document.createElement('strong'); title.textContent = programmeMetadata.title || programme.display_name
-              const play = document.createElement('small')
-              play.textContent = programme.browser_ready === false ? 'TV or VLC · choose where to play' : 'Choose where to watch'
-              if (programme.browser_ready !== false) play.append(portalIcon('signal-chevron-right'))
-              copy.append(title, play); card.append(copy)
+              const placeholder = document.createElement('span')
+              placeholder.className = 'watch-card-placeholder'
+              placeholder.textContent = watchFilmTitle(programme).slice(0, 1).toUpperCase()
+              art.append(placeholder)
             }
+            if (programme.browser_ready === false) {
+              const format = document.createElement('span')
+              format.className = 'watch-format'
+              format.textContent = 'VLC READY'
+              art.append(format)
+            }
+            if (resumable && progressValue) {
+              const progress = document.createElement('span')
+              progress.className = 'watch-progress'
+              const fill = document.createElement('span')
+              fill.style.width = `${progressValue}%`
+              progress.append(fill)
+              art.append(progress)
+            }
+            const copy = document.createElement('span'); copy.className = 'watch-card-copy'
+            const title = document.createElement('strong'); title.textContent = watchFilmTitle(programme)
+            const detail = document.createElement('small')
+            detail.textContent = resumable
+              ? `Resume · ${watchTimeLabel(programme.remote_position)}`
+              : [programmeMetadata.year, channel.name].filter(Boolean).join(' · ') || 'Film'
+            copy.append(title, detail)
+            card.append(art, copy)
             card.onclick = () => openWatchProgrammeSheet(channel, programme)
             rail.append(card)
           })
           section.append(rail)
-          if (!isFilms) addMabelEpisodeRailCue(section, rail)
         } else {
           const empty = document.createElement('p'); empty.className = 'watch-channel-empty'; empty.textContent = channel.enabled ? 'No programmes are currently shown. Open this channel to manage it.' : 'This channel is hidden from the television. Open it to make changes.'; section.append(empty)
         }

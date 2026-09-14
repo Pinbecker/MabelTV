@@ -14,6 +14,10 @@ MY_TV_QML_SOURCE = "\n".join(
     for name in (
         "MyTvModeOverlay.qml",
         "MyTvLibraryView.qml",
+        "MyTvCard.qml",
+        "MyTvDetailView.qml",
+        "MyTvKeyboard.qml",
+        "MyTvProviderIcon.qml",
         "MyTvPlaybackControls.qml",
     )
 )
@@ -300,17 +304,30 @@ class PlayerSafetyTests(unittest.TestCase):
         main_qml = MAIN_QML_SOURCE
         application = NATIVE_APPLICATION_SOURCE
 
-        self.assertIn('text: "My TV Library"', my_tv_qml)
-        self.assertIn("id: detailPanel", my_tv_qml)
-        self.assertIn("id: collectionTabs", my_tv_qml)
-        self.assertIn("id: posterGrid", my_tv_qml)
-        self.assertIn("readonly property int columns: 5", my_tv_qml)
-        self.assertIn("cellHeight: height / 2", my_tv_qml)
+        self.assertIn('text: "What do you want to watch?"', my_tv_qml)
+        self.assertIn('title: "Continue watching"', my_tv_qml)
+        self.assertIn('title: "Up next"', my_tv_qml)
+        self.assertIn('title: "What to watch"', my_tv_qml)
+        self.assertIn('title: "From your library"', my_tv_qml)
+        self.assertIn("id: detailView", my_tv_qml)
+        self.assertIn("id: keyboard", my_tv_qml)
+        self.assertIn("orientation: ListView.Horizontal", my_tv_qml)
+        self.assertIn("function providerBadges(item)", my_tv_qml)
+        self.assertIn("return values.slice(0, 2)", my_tv_qml)
         self.assertIn("anchors.right: parent.right", my_tv_qml)
-        self.assertIn("fillMode: Image.PreserveAspectFit", my_tv_qml)
-        self.assertIn("function selectCollectionRelative(offset)", my_tv_qml)
-        self.assertIn("function navigateGrid(horizontal, vertical)", my_tv_qml)
-        self.assertIn("function selectRelative(offset)", my_tv_qml)
+        self.assertIn("fillMode: Image.PreserveAspectCrop", my_tv_qml)
+        self.assertIn("function openSelected()", my_tv_qml)
+        self.assertIn("function appendRemoteText(value)", my_tv_qml)
+        self.assertIn("function beginSearch()", my_tv_qml)
+        self.assertIn("activeSearchRequest.abort()", my_tv_qml)
+        self.assertIn("generation !== view.searchGeneration", my_tv_qml)
+        self.assertIn('interval: 650', my_tv_qml)
+        self.assertIn('/api/native/my-tv/artwork/', my_tv_qml)
+        self.assertIn('/api/native/my-tv/recommendations', my_tv_qml)
+        self.assertIn("function launchProvider(provider, item)", my_tv_qml)
+        self.assertIn('operation == QStringLiteral("text-input")', application)
+        self.assertIn('"portalTextInput"', application)
+        self.assertIn("function portalTextInput(text)", main_qml)
         self.assertIn("function togglePause()", my_tv_qml)
         self.assertIn("function restartFilm()", my_tv_qml)
         self.assertIn("myTvMode.restartFilm()", main_qml)
@@ -460,9 +477,8 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertNotIn("HOLD MUTE  SUBTITLES", my_tv_qml)
         self.assertIn("id: playbackChoiceModal", my_tv_qml)
         self.assertIn("function confirmPlaybackChoice()", my_tv_qml)
-        self.assertIn("id: filmProgressTrack", my_tv_qml)
-        self.assertIn("tvController.myTvPlaybackDuration(modelData.id)", my_tv_qml)
-        self.assertIn("Number(modelData.runtime || 0) * 60", my_tv_qml)
+        self.assertIn("host.progressRatio(card.modelData)", my_tv_qml)
+        self.assertIn("function startNativePlayback(item, startPosition)", my_tv_qml)
         self.assertIn("id: subtitleAction", my_tv_qml)
         self.assertIn("visible: host.scrubberActive && mediaPlayer.subtitlesAvailable", my_tv_qml)
         self.assertIn("readonly property bool subtitlesAvailable: myTvPlayer.subtitlesAvailable", my_tv_qml)

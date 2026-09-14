@@ -103,6 +103,38 @@ class LibraryHttpTests(unittest.TestCase):
         self.assertEqual(status, 403)
         self.assertIn("did not come from", body["error"])
 
+    def test_native_my_tv_routes_require_the_loopback_client_header(self) -> None:
+        status, body = self.request("/api/native/my-tv/home")
+        self.assertEqual(status, 403)
+        self.assertEqual(body["error"], "Native TV access only")
+
+        self.server.library.native_my_tv_home = mock.Mock(return_value={
+            "continue": [], "up_next": [], "recommended": [], "library": [],
+        })
+        request = urllib.request.Request(self.base + "/api/native/my-tv/home")
+        request.add_header("X-MabelTV-Native", "1")
+        with urllib.request.urlopen(request, timeout=5) as response:
+            self.assertEqual(response.status, 200)
+            self.assertEqual(json.loads(response.read())["library"], [])
+        self.server.library.native_my_tv_home.assert_called_once_with()
+
+        self.server.library.native_my_tv_recommendations = mock.Mock(
+            return_value={"results": []})
+        request = urllib.request.Request(
+            self.base + "/api/native/my-tv/recommendations")
+        request.add_header("X-MabelTV-Native", "1")
+        with urllib.request.urlopen(request, timeout=5) as response:
+            self.assertEqual(json.loads(response.read()), {"results": []})
+
+        artwork = self.fixture.root / "cached-poster.jpg"
+        artwork.write_bytes(b"poster")
+        self.server.library.tmdb_artwork = mock.Mock(return_value=artwork)
+        with urllib.request.urlopen(
+                self.base + "/api/native/my-tv/artwork/w342/cached-poster.jpg",
+                timeout=5) as response:
+            self.assertEqual(response.read(), b"poster")
+            self.assertIn("immutable", response.headers["Cache-Control"])
+
     def test_external_stream_token_works_without_browser_cookie_and_supports_range(self) -> None:
         movie = self.fixture.media / ".my-tv" / "VLC Film.mkv"
         movie.parent.mkdir(parents=True, exist_ok=True)

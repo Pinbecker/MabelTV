@@ -66,6 +66,26 @@ class LiveStatusResilienceTests(unittest.TestCase):
                 "command": "tune-channel", "channel": "not-a-channel",
             })
 
+    def test_live_tv_keyboard_text_is_validated_and_forwarded(self) -> None:
+        with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True):
+            with mock.patch.object(mabeltv_library.socket, "socket") as socket_factory:
+                client = socket_factory.return_value.__enter__.return_value
+                client.recv.return_value = b"ok\n"
+                self.assertEqual(
+                    self.fixture.library.live_tv_control({
+                        "command": "text-input", "text": "Wallace & Gromit",
+                    }),
+                    {"ok": True, "message": "Command sent"})
+                client.sendall.assert_called_once_with(
+                    b'{"command":"text-input","text":"Wallace & Gromit"}\n')
+
+        for invalid in ("", "line one\nline two", "x" * 121):
+            with self.subTest(invalid=invalid[:12]):
+                with self.assertRaisesRegex(ValueError, "up to 120"):
+                    self.fixture.library.live_tv_control({
+                        "command": "text-input", "text": invalid,
+                    })
+
     def test_live_tv_status_reports_my_tv_mode_instead_of_hidden_kids_playback(self) -> None:
         self.fixture.library.live_stream.status = mock.Mock(return_value={
             "available": False, "reason": "Waiting for the TV programme",

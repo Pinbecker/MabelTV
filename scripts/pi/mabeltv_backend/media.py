@@ -391,6 +391,9 @@ class MediaCatalogueMixin:
 
     def _my_tv_library(self) -> list[dict[str, Any]]:
         states = self.my_tv_media_states()
+        player_state = self.read_state("player")
+        if not isinstance(player_state, dict):
+            player_state = {}
         changed = False
         values = []
         candidates = list(self.my_tv_root.glob("*"))
@@ -422,11 +425,12 @@ class MediaCatalogueMixin:
                     if isinstance(state.get("metadata"), dict) else {},
                     "favourite": state.get("favourite") is True,
                     "browser_ready": item.suffix.lower() in REMOTE_BROWSER_EXTENSIONS,
-                    "remote_position": self.remote_resume_position(state["library_id"], state),
+                    "remote_position": self.remote_resume_position(
+                        state["library_id"], state, player_state),
                     "remote_duration": self.remote_resume_duration(
-                        state["library_id"], state),
+                        state["library_id"], state, player_state),
                     "remote_last_watched": self.remote_last_watched(
-                        state["library_id"], state),
+                        state["library_id"], state, player_state),
                 })
         if changed:
             self.write_my_tv_media_states(states)

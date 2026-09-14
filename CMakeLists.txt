@@ -114,6 +114,10 @@ qt_add_resources(mabeltv "mabeltv_qml"
         qml/SignalIcon.qml
         qml/MyTvModeOverlay.qml
         qml/MyTvLibraryView.qml
+        qml/MyTvCard.qml
+        qml/MyTvProviderIcon.qml
+        qml/MyTvDetailView.qml
+        qml/MyTvKeyboard.qml
         qml/MyTvPlaybackControls.qml
 )
 
