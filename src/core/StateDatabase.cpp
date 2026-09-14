@@ -10,8 +10,8 @@
 
 namespace
 {
-    constexpr int minimumSupportedSchemaVersion = 8;
-    constexpr int maximumSupportedSchemaVersion = 8;
+    constexpr int minimumSupportedSchemaVersion = 9;
+    constexpr int maximumSupportedSchemaVersion = 9;
 
 class Connection
 {
@@ -206,8 +206,8 @@ QJsonObject player(const QString &path, QString *error)
         root.insert(prefix + QStringLiteral("_position_updated_utc_ms"), updates);
         return true;
     };
-    if (!addResumes(QStringLiteral("adult_resume"), QStringLiteral("library_id"),
-                    QStringLiteral("adult"))
+    if (!addResumes(QStringLiteral("my_tv_resume"), QStringLiteral("library_id"),
+                    QStringLiteral("my_tv"))
         || !addResumes(QStringLiteral("channel_film_resume"), QStringLiteral("media_key"),
                        QStringLiteral("channel_film"))) return {};
     QJsonObject timelines;
@@ -272,7 +272,7 @@ QJsonObject channelMetadata(const QString &path, QString *error)
                        {QStringLiteral("programmes"), programmesRoot}};
 }
 
-QJsonObject adultMedia(const QString &path, QString *error)
+QJsonObject myTvMedia(const QString &path, QString *error)
 {
     Connection connection(path);
     if (!ready(connection, error)) return {};
@@ -280,7 +280,7 @@ QJsonObject adultMedia(const QString &path, QString *error)
     if (!run(query, QStringLiteral(
             "SELECT relative_path,library_id,state,message,progress,favourite,favourite_present,"
             "remote_position,remote_duration,remote_last_watched,metadata_json "
-            "FROM local_media WHERE domain='adult'"), error)) return {};
+            "FROM local_media WHERE domain='my_tv'"), error)) return {};
     QJsonObject root;
     while (query.next()) {
         QJsonObject value;
@@ -318,7 +318,7 @@ bool savePlayerSnapshot(const QString &path, const QJsonObject &value, QString *
         setError(error, query.lastError().text());
         return false;
     };
-    const QStringList tables{QStringLiteral("player_fields"), QStringLiteral("adult_resume"),
+    const QStringList tables{QStringLiteral("player_fields"), QStringLiteral("my_tv_resume"),
                              QStringLiteral("channel_film_resume"),
                              QStringLiteral("channel_runtime_entries"),
                              QStringLiteral("channel_programme_positions"),
@@ -328,8 +328,8 @@ bool savePlayerSnapshot(const QString &path, const QJsonObject &value, QString *
         if (!clear.exec(QStringLiteral("DELETE FROM %1").arg(table))) return fail(clear);
     }
     const QSet<QString> structured{
-        QStringLiteral("adult_positions"), QStringLiteral("adult_durations"),
-        QStringLiteral("adult_position_updated_utc_ms"),
+        QStringLiteral("my_tv_positions"), QStringLiteral("my_tv_durations"),
+        QStringLiteral("my_tv_position_updated_utc_ms"),
         QStringLiteral("channel_film_positions"), QStringLiteral("channel_film_durations"),
         QStringLiteral("channel_film_position_updated_utc_ms"),
         QStringLiteral("channel_timelines")};
@@ -367,7 +367,7 @@ bool savePlayerSnapshot(const QString &path, const QJsonObject &value, QString *
         }
         return true;
     };
-    if (!saveResumes(QStringLiteral("adult_resume"), QStringLiteral("adult"))
+    if (!saveResumes(QStringLiteral("my_tv_resume"), QStringLiteral("my_tv"))
         || !saveResumes(QStringLiteral("channel_film_resume"),
                         QStringLiteral("channel_film"))) return false;
     const QJsonObject timelines = value.value(QStringLiteral("channel_timelines")).toObject();

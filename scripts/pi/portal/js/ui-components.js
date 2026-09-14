@@ -346,7 +346,7 @@
     if (!['watched', 'part-watched'].includes(kind)) return null
     const complete = kind === 'watched'
     const badge = document.createElement('span')
-    badge.className = `adult-artwork-status is-${kind}`
+    badge.className = `my-tv-artwork-status is-${kind}`
     badge.setAttribute('aria-label', title || (complete ? 'Watched' : 'Part watched'))
     badge.title = title || (complete ? 'Watched' : 'Part watched')
     badge.append(icon(complete ? 'signal-check' : 'signal-minus'))

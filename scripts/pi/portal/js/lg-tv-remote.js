@@ -43,7 +43,7 @@ const lgTvRemote = (() => {
 
     if (!value.configured) {
       heading.textContent = 'LG TV not configured'
-      detail.textContent = 'Connected-TV control needs setting up on MabelTV'
+      detail.textContent = `Connected-TV control needs setting up on ${tvName()}`
     } else if (!on) {
       heading.textContent = 'TV is off or unavailable'
       detail.textContent = 'Tap Power to wake the connected television'

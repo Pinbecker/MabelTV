@@ -64,7 +64,7 @@ class ViewingRepositoryMixin:
                 if kind == "film" and not file_name:
                     continue
                 title = str(raw.get("title") or channel["name"] or "Untitled").strip()
-                source = str(raw.get("source") or channel["name"] or "MabelTV").strip()
+                source = str(raw.get("source") or channel["name"] or "TV").strip()
                 current_key = f"channel:{channel_number}" if kind == "channel" \
                     else f"channel:{channel_number}:{file_name.casefold()}"
                 if kind == "channel":

@@ -20,5 +20,5 @@ bool initializeController(TvController &controller,
                           const QString &databasePath = {});
 QString databasePath(const TvController &controller);
 void seedChannelMetadata(const QString &databasePath, const QJsonObject &root);
-void seedAdultMedia(const QString &databasePath, const QJsonObject &values);
+void seedMyTvMedia(const QString &databasePath, const QJsonObject &values);
 } // namespace TestStateFixture

@@ -82,10 +82,10 @@ class ManagementMixin:
         with self.config_lock:
             self._apply_management(payload)
         if payload.get("action") in {
-                "optimise-adult", "set-remote-simultaneous",
-                "set-watchmode-availability", "set-adult-provider-badges",
-                "create-adult-series", "create-adult-season",
-                "trash-adult-series", "optimisation-action"}:
+                "optimise-my-tv", "set-remote-simultaneous",
+                "set-watchmode-availability", "set-my-tv-provider-badges",
+                "create-my-tv-series", "create-my-tv-season",
+                "trash-my-tv-series", "optimisation-action"}:
             # These settings belong to the portal/library service.  In
             # particular, allowing a browser stream alongside the television
             # must never refresh or otherwise disturb the TV player.
@@ -95,18 +95,18 @@ class ManagementMixin:
     def _apply_management(self, payload: dict[str, Any]) -> None:
         action = payload.get("action")
         if action == "optimisation-action":
-            self.adult_optimisation_action(str(payload.get("file", "")),
+            self.my_tv_optimisation_action(str(payload.get("file", "")),
                                            str(payload.get("operation", "")))
             return
-        if action == "create-adult-series":
-            self.create_adult_series(str(payload.get("name", "")))
+        if action == "create-my-tv-series":
+            self.create_my_tv_series(str(payload.get("name", "")))
             return
-        if action == "create-adult-season":
-            self.create_adult_season(
+        if action == "create-my-tv-season":
+            self.create_my_tv_season(
                 str(payload.get("series", "")), payload.get("season"))
             return
-        if action == "trash-adult-series":
-            self.trash_adult_series_items(payload)
+        if action == "trash-my-tv-series":
+            self.trash_my_tv_series_items(payload)
             return
         if action == "set-parent-overlay-style":
             style = str(payload.get("style", ""))
@@ -133,12 +133,12 @@ class ManagementMixin:
             self.merge_state_fields(
                 "settings", {"watchmode_availability_enabled": enabled})
             return
-        if action == "set-adult-provider-badges":
+        if action == "set-my-tv-provider-badges":
             enabled = payload.get("enabled")
             if not isinstance(enabled, bool):
                 raise ValueError("Choose whether streaming service badges are shown")
             self.merge_state_fields(
-                "settings", {"adult_provider_badges_enabled": enabled})
+                "settings", {"my_tv_provider_badges_enabled": enabled})
             return
         if action == "set-tv-settings":
             requested = payload.get("settings")
@@ -268,64 +268,64 @@ class ManagementMixin:
             if folder.is_dir() and not any(folder.iterdir()):
                 folder.rmdir()
             return
-        if action == "create-adult-folder":
-            name = self.normalise_adult_folder(str(payload.get("name", "")))
-            destination = self.adult_root / name
+        if action == "create-my-tv-folder":
+            name = self.normalise_my_tv_folder(str(payload.get("name", "")))
+            destination = self.my_tv_root / name
             if destination.exists():
-                raise ValueError("That Adult TV folder already exists")
+                raise ValueError("That My TV folder already exists")
             destination.mkdir(mode=0o750)
             return
-        if action == "rename-adult-folder":
-            source = self.adult_folder_path(str(payload.get("folder", "")))
+        if action == "rename-my-tv-folder":
+            source = self.my_tv_folder_path(str(payload.get("folder", "")))
             if not source.is_dir():
-                raise ValueError("Adult TV folder not found")
-            new_name = self.normalise_adult_folder(str(payload.get("name", "")))
-            destination = self.adult_root / new_name
+                raise ValueError("My TV folder not found")
+            new_name = self.normalise_my_tv_folder(str(payload.get("name", "")))
+            destination = self.my_tv_root / new_name
             if destination.exists() and destination != source:
-                raise ValueError("That Adult TV folder already exists")
+                raise ValueError("That My TV folder already exists")
             old_name = source.name
             source.rename(destination)
-            states = self.adult_media_states()
+            states = self.my_tv_media_states()
             prefix = old_name + "/"
             updated = {
                 (new_name + "/" + key[len(prefix):]) if key.startswith(prefix) else key: value
                 for key, value in states.items()
             }
             if updated != states:
-                self.write_adult_media_states(updated)
+                self.write_my_tv_media_states(updated)
             return
-        if action == "delete-adult-folder":
-            folder = self.adult_folder_path(str(payload.get("folder", "")))
+        if action == "delete-my-tv-folder":
+            folder = self.my_tv_folder_path(str(payload.get("folder", "")))
             if not folder.is_dir():
-                raise ValueError("Adult TV folder not found")
+                raise ValueError("My TV folder not found")
             if any(folder.iterdir()):
                 raise ValueError("Move every film out of this folder before deleting it")
             folder.rmdir()
             return
-        if action == "move-adult":
-            source = self.safe_adult_path(str(payload.get("file", "")))
+        if action == "move-my-tv":
+            source = self.safe_my_tv_path(str(payload.get("file", "")))
             if not source.is_file():
                 raise ValueError("Film not found")
             requested_folder = str(payload.get("folder", "")).strip()
-            parent = (self.adult_folder_path(requested_folder, create=False)
-                      if requested_folder else self.adult_root)
+            parent = (self.my_tv_folder_path(requested_folder, create=False)
+                      if requested_folder else self.my_tv_root)
             if not parent.is_dir():
-                raise ValueError("Choose an existing Adult TV folder")
+                raise ValueError("Choose an existing My TV folder")
             destination = parent / source.name
             if destination.exists() and destination != source:
                 raise ValueError("That folder already contains a film with this name")
             if destination == source:
                 return
-            old_relative = self.adult_relative_path(source)
-            new_relative = self.adult_relative_path(destination)
+            old_relative = self.my_tv_relative_path(source)
+            new_relative = self.my_tv_relative_path(destination)
             source.rename(destination)
-            states = self.adult_media_states()
+            states = self.my_tv_media_states()
             if old_relative in states:
                 states[new_relative] = states.pop(old_relative)
-                self.write_adult_media_states(states)
+                self.write_my_tv_media_states(states)
             return
-        if action == "rename-adult":
-            source = self.safe_adult_path(str(payload.get("file", "")))
+        if action == "rename-my-tv":
+            source = self.safe_my_tv_path(str(payload.get("file", "")))
             if not source.is_file():
                 raise ValueError("Film not found")
             proposed = SAFE_NAME.sub("", str(payload.get("name", "")).strip()).strip(". ")
@@ -333,40 +333,40 @@ class ManagementMixin:
                 raise ValueError("Enter a film name")
             destination = source.with_name(proposed + source.suffix)
             if destination.exists() and destination != source:
-                raise ValueError("That name is already used in Adult mode")
+                raise ValueError("That name is already used in My TV")
             source.rename(destination)
-            state = self.adult_media_states()
-            old_relative = self.adult_relative_path(source)
-            new_relative = self.adult_relative_path(destination)
+            state = self.my_tv_media_states()
+            old_relative = self.my_tv_relative_path(source)
+            new_relative = self.my_tv_relative_path(destination)
             if old_relative in state:
                 state[new_relative] = state.pop(old_relative)
-                self.write_adult_media_states(state)
+                self.write_my_tv_media_states(state)
             return
-        if action == "optimise-adult":
-            self.request_adult_optimisation(str(payload.get("file", "")))
+        if action == "optimise-my-tv":
+            self.request_my_tv_optimisation(str(payload.get("file", "")))
             return
-        if action == "trash-adult":
-            source = self.safe_adult_path(str(payload.get("file", "")))
+        if action == "trash-my-tv":
+            source = self.safe_my_tv_path(str(payload.get("file", "")))
             if not source.is_file():
                 raise ValueError("Film not found")
             item_id = f"{int(time.time())}-{uuid.uuid4().hex[:8]}"
             destination_dir = self.bin / item_id
             destination_dir.mkdir(mode=0o750)
-            relative = self.adult_relative_path(source)
-            states = self.adult_media_states()
-            adult_state = states.get(relative, {})
+            relative = self.my_tv_relative_path(source)
+            states = self.my_tv_media_states()
+            my_tv_state = states.get(relative, {})
             self.write_json(destination_dir / "manifest.json", {
                 "id": item_id, "file_name": source.name,
-                "folder": ".adult" + ("/" + source.parent.name
-                                        if source.parent != self.adult_root else ""),
-                "channel_name": "Adult mode", "adult_state": adult_state,
+                "folder": ".my-tv" + ("/" + source.parent.name
+                                        if source.parent != self.my_tv_root else ""),
+                "channel_name": "My TV", "my_tv_state": my_tv_state,
             })
             try:
                 shutil.move(str(source), str(destination_dir / source.name))
             except Exception:
                 shutil.rmtree(destination_dir, ignore_errors=True)
                 raise
-            self.remove_adult_media_state(relative)
+            self.remove_my_tv_media_state(relative)
             return
         if action in {"toggle-channel", "toggle-programme", "move-programme",
                       "rename", "trash"}:
@@ -496,34 +496,34 @@ class ManagementMixin:
             if action == "restore":
                 folder = self.media_root / str(manifest.get("folder", "")); file_name = str(manifest.get("file_name", "")); destination = folder / Path(file_name).name
                 if not manifest.get("folder") or destination.exists(): raise ValueError("Cannot restore this item because a file with that name already exists")
-                adult_series_id = str(manifest.get("adult_series_id", ""))
-                adult_series_state = manifest.get("adult_series_state")
-                adult_series_episode_state = manifest.get("adult_series_episode_state")
-                if adult_series_id:
-                    series_root = self.adult_series_root / adult_series_id
-                    if (not re.fullmatch(r"[a-f0-9]{32}", adult_series_id)
-                            or not isinstance(adult_series_state, dict)
-                            or not isinstance(adult_series_episode_state, dict)
+                my_tv_series_id = str(manifest.get("my_tv_series_id", ""))
+                my_tv_series_state = manifest.get("my_tv_series_state")
+                my_tv_series_episode_state = manifest.get("my_tv_series_episode_state")
+                if my_tv_series_id:
+                    series_root = self.my_tv_series_root / my_tv_series_id
+                    if (not re.fullmatch(r"[a-f0-9]{32}", my_tv_series_id)
+                            or not isinstance(my_tv_series_state, dict)
+                            or not isinstance(my_tv_series_episode_state, dict)
                             or series_root == destination
                             or series_root not in destination.parents):
-                        raise ValueError("Cannot restore this episode outside its Adult TV series")
+                        raise ValueError("Cannot restore this episode outside its My TV series")
                 folder.mkdir(mode=0o750, exist_ok=True); shutil.move(str(directory / file_name), str(destination)); shutil.rmtree(directory)
-                if (re.fullmatch(r"[a-f0-9]{32}", adult_series_id)
-                        and isinstance(adult_series_state, dict)
-                        and isinstance(adult_series_episode_state, dict)):
-                    series_root = self.adult_series_root / adult_series_id
-                    states = self.adult_series_states()
-                    states["series"].setdefault(adult_series_id, adult_series_state)
+                if (re.fullmatch(r"[a-f0-9]{32}", my_tv_series_id)
+                        and isinstance(my_tv_series_state, dict)
+                        and isinstance(my_tv_series_episode_state, dict)):
+                    series_root = self.my_tv_series_root / my_tv_series_id
+                    states = self.my_tv_series_states()
+                    states["series"].setdefault(my_tv_series_id, my_tv_series_state)
                     relative = destination.relative_to(series_root).as_posix()
-                    states["episodes"][f"{adult_series_id}/{relative}"] = \
-                        adult_series_episode_state
-                    self.write_adult_series_states(states)
-                adult_state = manifest.get("adult_state")
-                if str(manifest.get("folder", "")).startswith(".adult") \
-                        and isinstance(adult_state, dict):
-                    states = self.adult_media_states()
-                    states[self.adult_relative_path(destination)] = adult_state
-                    self.write_adult_media_states(states)
+                    states["episodes"][f"{my_tv_series_id}/{relative}"] = \
+                        my_tv_series_episode_state
+                    self.write_my_tv_series_states(states)
+                my_tv_state = manifest.get("my_tv_state")
+                if str(manifest.get("folder", "")).startswith(".my-tv") \
+                        and isinstance(my_tv_state, dict):
+                    states = self.my_tv_media_states()
+                    states[self.my_tv_relative_path(destination)] = my_tv_state
+                    self.write_my_tv_media_states(states)
             else:
                 shutil.rmtree(directory)
         else:

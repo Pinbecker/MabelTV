@@ -84,18 +84,18 @@
 
     .library-hero,
     .channel-hero,
-    .adult-hero,
+    .my-tv-hero,
     .usb-hero {
       align-items: flex-start;
       flex-direction: column;
     }
 
-    .adult-hero-actions,
+    .my-tv-hero-actions,
     .library-hero-actions {
       width: 100%;
     }
 
-    .adult-hero-actions > *,
+    .my-tv-hero-actions > *,
     .library-hero-actions > * {
       flex: 1;
     }
@@ -103,12 +103,12 @@
 
   @container (max-width: 760px) {
     .watch-discovery,
-    .adult-discovery {
+    .my-tv-discovery {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .watch-search,
-    .adult-search {
+    .my-tv-search {
       grid-column: 1 / -1;
     }
 
@@ -124,12 +124,12 @@
       grid-template-columns: minmax(0, 1fr);
     }
 
-    .adult-hero {
+    .my-tv-hero {
       align-items: flex-start;
       flex-direction: column;
     }
 
-    .adult-hero-actions {
+    .my-tv-hero-actions {
       width: 100%;
     }
   }
@@ -364,19 +364,19 @@
     }
 
     .watch-discovery,
-    .adult-discovery {
+    .my-tv-discovery {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: var(--space-2);
       margin-bottom: var(--space-5);
     }
 
     .watch-search,
-    .adult-search {
+    .my-tv-search {
       grid-column: 1 / -1;
     }
 
     .watch-tool,
-    .adult-tool {
+    .my-tv-tool {
       min-height: 50px;
       padding: 6px 8px;
     }
@@ -419,7 +419,7 @@
       gap: var(--space-5) var(--space-3);
     }
 
-    .adult-film-list {
+    .my-tv-film-list {
       grid-template-columns: minmax(0, 1fr);
     }
 
@@ -427,18 +427,18 @@
       font-size: 0.78rem;
     }
 
-    .adult-hero-actions {
+    .my-tv-hero-actions {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .adult-hero-stat {
+    .my-tv-hero-stat {
       grid-column: 1 / -1;
       grid-row: 1;
       justify-self: start;
     }
 
-    .adult-hero-actions button {
+    .my-tv-hero-actions button {
       justify-content: center;
     }
 
@@ -554,7 +554,7 @@
 
     .library-hero,
     .channel-hero,
-    .adult-hero,
+    .my-tv-hero,
     .usb-hero {
       padding: var(--space-4);
     }
@@ -603,25 +603,25 @@
       font-size: 0.72rem;
     }
 
-    .adult-discovery {
+    .my-tv-discovery {
       margin-top: var(--space-4);
     }
 
-    .adult-folder-tools {
+    .my-tv-folder-tools {
       grid-template-columns: minmax(0, 1fr);
     }
 
-    .adult-film-sheet-summary {
+    .my-tv-film-sheet-summary {
       grid-template-columns: 76px minmax(0, 1fr);
       gap: var(--space-3);
       margin-bottom: var(--space-3);
     }
 
-    .adult-film-sheet-poster {
+    .my-tv-film-sheet-poster {
       width: 76px;
     }
 
-    .adult-film-sheet-summary p {
+    .my-tv-film-sheet-summary p {
       display: -webkit-box;
       overflow: hidden;
       font-size: 0.92rem;
@@ -630,15 +630,15 @@
       -webkit-line-clamp: 6;
     }
 
-    .adult-library {
+    .my-tv-library {
       padding: var(--space-4);
     }
 
-    button.adult-film {
+    button.my-tv-film {
       grid-template-columns: 76px minmax(0, 1fr) 40px;
     }
 
-    button.adult-film .adult-film-poster {
+    button.my-tv-film .my-tv-film-poster {
       width: 76px;
       height: 114px;
     }
@@ -734,12 +734,12 @@
     }
 
     .watch-discovery,
-    .adult-discovery {
+    .my-tv-discovery {
       grid-template-columns: minmax(0, 1fr);
     }
 
     .watch-search,
-    .adult-search {
+    .my-tv-search {
       grid-column: auto;
     }
 

@@ -24,30 +24,30 @@ async function expectHeaderClear(page, sheet, closeId) {
 
 test('Watchmode can be disabled while TMDB title exploration remains available', async ({ page }) => {
   let providerRequests = 0
-  await page.route(url => new URL(url).pathname === '/api/adult/providers', route => {
+  await page.route(url => new URL(url).pathname === '/api/my-tv/providers', route => {
     providerRequests += 1
     return route.abort()
   })
   await openPortal(page, 'dark')
   await page.evaluate(() => {
-    library.adult_settings.watchmode_availability_enabled = false
+    library.my_tv_settings.watchmode_availability_enabled = false
     renderWatchmodeAvailabilitySetting()
-    openAdultTitle({ key: 'movie:12', media_type: 'movie', tmdb_id: 12,
+    openMyTvTitle({ key: 'movie:12', media_type: 'movie', tmdb_id: 12,
       title: 'Finding Nemo' })
   })
   await expect(page.locator('#watchmodeAvailabilityToggle')).toHaveText('Off')
   await expect(page.locator('#watchmodeAvailabilityState')).toContainText('TMDB details still available')
-  await expect(page.locator('#adultTitleSheet')).toBeVisible()
-  await expect(page.locator('#adultProviderList')).toContainText('turned off in Settings')
+  await expect(page.locator('#myTvTitleSheet')).toBeVisible()
+  await expect(page.locator('#myTvProviderList')).toContainText('turned off in Settings')
   expect(providerRequests).toBe(0)
 })
 
 test('exact provider identifiers beat marketplace wording', async ({ page }) => {
   await openPortal(page, 'dark')
-  expect(await page.evaluate(() => adultProviderBrandFor(
+  expect(await page.evaluate(() => myTvProviderBrandFor(
     { source_id: 490, name: 'MAX (Via Amazon Prime)' }, 'source_id', 'watchmodeIds')?.id
   )).toBe('hbo-max')
-  expect(await page.evaluate(() => adultProviderBrandFor(
+  expect(await page.evaluate(() => myTvProviderBrandFor(
     { source_id: 533, name: 'Lionsgate+ (Via Amazon Prime)' }, 'source_id', 'watchmodeIds')?.id || ''
   )).toBe('')
 })
@@ -56,27 +56,27 @@ test('title cards show saved summary and controls while richer details load', as
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One phone covers the loading-state contract')
   await openPortal(page, 'dark')
   await page.evaluate(() => {
-    library.adult_library = [{
+    library.my_tv_library = [{
       path: 'Films/Die Hard.mp4', display_name: 'Die Hard', browser_ready: true,
       metadata: { tmdb_id: 12, title: 'Die Hard' },
     }]
     window.__finishTitleLoad = null
     window.api = () => new Promise(resolve => { window.__finishTitleLoad = resolve })
-    openAdultTitle({ key: 'movie:12', media_type: 'movie', tmdb_id: 12,
+    openMyTvTitle({ key: 'movie:12', media_type: 'movie', tmdb_id: 12,
       title: 'Die Hard', year: '1988', overview: 'Saved title summary.',
       poster_path: '/die-hard.jpg', viewing: { watchlisted: true },
       local: { kind: 'film', path: 'Films/Die Hard.mp4' } })
   })
 
-  const sheet = page.locator('#adultTitleSheet')
+  const sheet = page.locator('#myTvTitleSheet')
   await expect(sheet).not.toHaveAttribute('aria-busy', 'true')
-  await expect(page.locator('#adultTitleName')).toHaveText('Die Hard')
-  await expect(page.locator('#adultTitleOverview')).toHaveText('Saved title summary.')
-  await expect(page.locator('#adultTitlePoster img')).toHaveAttribute('src', /die-hard/)
-  await expect(page.locator('#adultTitleIntents [data-viewing-action="watchlist"]'))
+  await expect(page.locator('#myTvTitleName')).toHaveText('Die Hard')
+  await expect(page.locator('#myTvTitleOverview')).toHaveText('Saved title summary.')
+  await expect(page.locator('#myTvTitlePoster img')).toHaveAttribute('src', /die-hard/)
+  await expect(page.locator('#myTvTitleIntents [data-viewing-action="watchlist"]'))
     .toHaveClass(/active/)
-  await expect(page.locator('#adultTitleFilmActions')).toBeVisible()
-  await expect(page.locator('#adultProviderList .adult-title-loading-provider')).toHaveCount(5)
+  await expect(page.locator('#myTvTitleFilmActions')).toBeVisible()
+  await expect(page.locator('#myTvProviderList .my-tv-title-loading-provider')).toHaveCount(5)
 
   await page.evaluate(() => window.__finishTitleLoad({
     key: 'movie:12', media_type: 'movie', tmdb_id: 12, title: 'Die Hard',
@@ -86,23 +86,23 @@ test('title cards show saved summary and controls while richer details load', as
     viewing: {}, providers: [], cast: [], collection: null,
   }))
   await expect(sheet).not.toHaveAttribute('aria-busy', 'true')
-  await expect(page.locator('#adultTitleMeta')).toContainText('15 Jul 1988')
-  await expect(page.locator('#adultTitleOverview')).toContainText('hostage crisis')
-  await expect(page.locator('#adultTitlePoster .adult-title-loading-cover')).toHaveCount(0)
+  await expect(page.locator('#myTvTitleMeta')).toContainText('15 Jul 1988')
+  await expect(page.locator('#myTvTitleOverview')).toContainText('hostage crisis')
+  await expect(page.locator('#myTvTitlePoster .my-tv-title-loading-cover')).toHaveCount(0)
 })
 
 test('mobile global search stays directly below the fixed app header', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone search layout contract')
   await openPortal(page, 'dark')
-  await page.locator('[data-view-button="adult-home"]').click()
+  await page.locator('[data-view-button="my-tv-home"]').click()
   await page.locator('#watchSearch').focus()
-  await expect(page.locator('#view-adult-home')).toHaveClass(/adult-search-mode/)
+  await expect(page.locator('#view-my-tv-home')).toHaveClass(/my-tv-search-mode/)
   await page.evaluate(async () => Promise.allSettled(
-    document.querySelector('#view-adult-home').getAnimations()
+    document.querySelector('#view-my-tv-home').getAnimations()
       .map(animation => animation.finished)))
   const layout = await page.evaluate(() => {
     const header = document.querySelector('.mobile-head').getBoundingClientRect()
-    const searchSurface = document.querySelector('#view-adult-home .watch-discovery').getBoundingClientRect()
+    const searchSurface = document.querySelector('#view-my-tv-home .watch-discovery').getBoundingClientRect()
     const search = document.querySelector('#watchSearch').getBoundingClientRect()
     return {
       headerVisible: header.top === 0 && header.bottom > 0,
@@ -119,13 +119,13 @@ test('mobile global search stays directly below the fixed app header', async ({ 
     fullWidth: true,
   })
   await page.evaluate(() => {
-    document.querySelector('#adultDiscoverySection').classList.remove('hidden')
-    document.querySelector('#adultDiscoveryGrid').replaceChildren(portalEmptyState({
-      className: 'watch-empty', title: 'Searching Adult TV…',
+    document.querySelector('#myTvDiscoverySection').classList.remove('hidden')
+    document.querySelector('#myTvDiscoveryGrid').replaceChildren(portalEmptyState({
+      className: 'watch-empty', title: 'Searching My TV…',
       message: 'Checking your library and streaming catalogue.',
     }))
   })
-  const emptyState = await page.locator('#adultDiscoveryGrid > .watch-empty').evaluate(element => {
+  const emptyState = await page.locator('#myTvDiscoveryGrid > .watch-empty').evaluate(element => {
     const card = element.getBoundingClientRect()
     const grid = element.parentElement.getBoundingClientRect()
     return {
@@ -167,7 +167,7 @@ for (const theme of ['light', 'dark']) {
   test(`${theme} series headers reserve close space and cover scrolling ticks`, async ({ page }, testInfo) => {
     await openPortal(page, theme)
     await page.evaluate(() => {
-      library.adult_series = [{
+      library.my_tv_series = [{
         id: 'layout-series', title: 'Severance', seasons: [1, 2, 3, 4, 5, 6, 7],
         season_count: 7, episode_count: 2, watched_count: 0,
         metadata: { tmdb_id: 6001, poster: 'bright.svg' },
@@ -177,42 +177,42 @@ for (const theme of ['light', 'dark']) {
           watched: false, browser_ready: true,
         })),
       }]
-      openAdultSeriesSheet(library.adult_series[0])
+      openMyTvSeriesSheet(library.my_tv_series[0])
     })
-    const titles = page.locator('#adultSeriesEpisodes .adult-season-card-copy strong')
-    await expect(page.locator('#adultSeriesIntents')).toBeVisible()
-    await expect(page.locator('#adultSeriesIntents [data-viewing-action]:not(.hidden)')).toHaveCount(4)
-    await expect.poll(() => page.locator('#adultSeriesEpisodes img').first()
+    const titles = page.locator('#myTvSeriesEpisodes .my-tv-season-card-copy strong')
+    await expect(page.locator('#myTvSeriesIntents')).toBeVisible()
+    await expect(page.locator('#myTvSeriesIntents [data-viewing-action]:not(.hidden)')).toHaveCount(4)
+    await expect.poll(() => page.locator('#myTvSeriesEpisodes img').first()
       .evaluate(image => image.naturalWidth)).toBe(600)
     for (const index of [0, 1]) await expect(titles.nth(index)).toHaveCSS('color', 'rgb(255, 255, 255)')
     await page.screenshot({ path: testInfo.outputPath('series.png') })
-    await expectHeaderClear(page, '#adultSeriesSheet', '#adultSeriesClose')
-    await page.locator('#adultSeriesSheet').evaluate(dialog => {
+    await expectHeaderClear(page, '#myTvSeriesSheet', '#myTvSeriesClose')
+    await page.locator('#myTvSeriesSheet').evaluate(dialog => {
       const panel = dialog.querySelector('.library-sheet-body')
       const h = dialog.querySelector('header').getBoundingClientRect()
-      const s = dialog.querySelector('.adult-season-status').getBoundingClientRect()
+      const s = dialog.querySelector('.my-tv-season-status').getBoundingClientRect()
       panel.scrollTop += s.y - h.y - 30
     })
     await page.screenshot({ path: testInfo.outputPath('series-scrolled.png') })
-    expect(await page.locator('#adultSeriesSheet').evaluate(dialog => {
+    expect(await page.locator('#myTvSeriesSheet').evaluate(dialog => {
       const header = dialog.querySelector('header')
-      const r = dialog.querySelector('.adult-season-status').getBoundingClientRect()
+      const r = dialog.querySelector('.my-tv-season-status').getBoundingClientRect()
       return header.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2))
     })).toBe(true)
-    await page.locator('#adultSeriesMore').click()
-    await expect(page.locator('#adultSeriesMoreSheet')).toBeVisible()
+    await page.locator('#myTvSeriesMore').click()
+    await expect(page.locator('#myTvSeriesMoreSheet')).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath('series-more.png') })
-    await page.locator('#adultSeriesMoreClose').click()
-    await page.locator('#adultSeriesClose').click()
-    await expect(page.locator('#adultSeriesSheet')).not.toBeVisible()
-    await page.evaluate(() => openAdultSeasonSheet(library.adult_series[0], 3))
+    await page.locator('#myTvSeriesMoreClose').click()
+    await page.locator('#myTvSeriesClose').click()
+    await expect(page.locator('#myTvSeriesSheet')).not.toBeVisible()
+    await page.evaluate(() => openMyTvSeasonSheet(library.my_tv_series[0], 3))
     await page.screenshot({ path: testInfo.outputPath('season.png') })
-    await expectHeaderClear(page, '#adultSeasonSheet', '#adultSeasonClose')
-    await expect(page.locator('#adultSeasonMeta .adult-title-fact')).toHaveCount(3)
-    await expect(page.locator('#adultSeasonMeta')).toContainText('Episodes0')
-    await expect(page.locator('#adultSeasonMeta')).toContainText('On MabelTV0')
-    await expect(page.locator('#adultSeasonMeta')).toContainText('Watched0')
-    const rows = await page.locator('#adultSeasonSheet .adult-season-tools button').evaluateAll(buttons => buttons.map(button => {
+    await expectHeaderClear(page, '#myTvSeasonSheet', '#myTvSeasonClose')
+    await expect(page.locator('#myTvSeasonMeta .my-tv-title-fact')).toHaveCount(3)
+    await expect(page.locator('#myTvSeasonMeta')).toContainText('Episodes0')
+    await expect(page.locator('#myTvSeasonMeta')).toContainText('On Mabel TV0')
+    await expect(page.locator('#myTvSeasonMeta')).toContainText('Watched0')
+    const rows = await page.locator('#myTvSeasonSheet .my-tv-season-tools button').evaluateAll(buttons => buttons.map(button => {
       const box = button.getBoundingClientRect()
       const icon = button.querySelector('.icon').getBoundingClientRect()
       const text = button.querySelector('span').getBoundingClientRect()
@@ -225,13 +225,13 @@ for (const theme of ['light', 'dark']) {
       expect(row.height).toBeGreaterThanOrEqual(44)
       expect(row.iconRight).toBeLessThan(row.textLeft)
     }
-    await page.locator('#adultSeasonClose').click()
-    await expect(page.locator('#adultSeasonSheet')).not.toBeVisible()
+    await page.locator('#myTvSeasonClose').click()
+    await expect(page.locator('#myTvSeasonSheet')).not.toBeVisible()
     await page.evaluate(() => {
-      const series = library.adult_series[0]
+      const series = library.my_tv_series[0]
       series.metadata.poster = ''
       series.episodes.forEach(episode => { episode.still = '' })
-      openAdultSeriesSheet(series)
+      openMyTvSeriesSheet(series)
     })
     await expect(titles.first()).toHaveCSS('color', theme === 'light'
       ? 'rgb(23, 27, 35)' : 'rgb(247, 247, 248)')
@@ -240,9 +240,9 @@ for (const theme of ['light', 'dark']) {
 
   test(`${theme} streaming season sheets hide their scrollbar without blocking scrolling`, async ({ page }) => {
     await openPortal(page, theme)
-    const panel = page.locator('#adultTitleSeasonSheet .library-sheet-body')
+    const panel = page.locator('#myTvTitleSeasonSheet .library-sheet-body')
     await page.evaluate(() => {
-      const sheet = document.querySelector('#adultTitleSeasonSheet')
+      const sheet = document.querySelector('#myTvTitleSeasonSheet')
       const sheetPanel = sheet?.querySelector('.library-sheet-body')
       if (!(sheet instanceof HTMLDialogElement) || !(sheetPanel instanceof HTMLElement)) {
         throw new Error('Streaming season sheet is unavailable')
@@ -273,31 +273,31 @@ for (const theme of ['light', 'dark']) {
   test(`${theme} My Viewing search, compact controls and responsive grid fit`, async ({ page }, testInfo) => {
     await openPortal(page, theme)
     await page.evaluate(async () => {
-      openView('adult-viewing')
+      openView('my-tv-viewing')
       await new Promise(resolve => setTimeout(resolve, 100))
-      adultViewingData = { items: Array.from({ length: 11 }, (_, index) => ({
+      myTvViewingData = { items: Array.from({ length: 11 }, (_, index) => ({
         key: `tv:${6001 + index}`, media_type: 'tv', tmdb_id: 6001 + index,
         title: `Series ${String(index + 1).padStart(2, '0')}`, year: String(2022 - index),
         series_watching: true, viewing_updated: 2_000_000_000 - index,
       })) }
-      adultViewingLoaded = true
-      adultViewingTab = 'watching'
-      adultViewingFilter = 'all'
+      myTvViewingLoaded = true
+      myTvViewingTab = 'watching'
+      myTvViewingFilter = 'all'
       document.querySelectorAll('[data-viewing-tab]').forEach(button =>
         button.classList.toggle('active', button.dataset.viewingTab === 'watching'))
-      renderAdultViewing()
+      renderMyTvViewing()
     })
-    await expect(page.locator('#view-adult-viewing')).toBeVisible()
+    await expect(page.locator('#view-my-tv-viewing')).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath('my-viewing.png'), animations: 'disabled' })
     const layout = await page.evaluate(() => {
-      const tabs = document.querySelector('#adultViewingTabs')
-      const search = document.querySelector('#adultViewingSearch')
-      const tools = document.querySelector('.adult-viewing-tools')
+      const tabs = document.querySelector('#myTvViewingTabs')
+      const search = document.querySelector('#myTvViewingSearch')
+      const tools = document.querySelector('.my-tv-viewing-tools')
       const toolGroups = [...tools.children]
       const selects = [...tools.querySelectorAll('select')]
-      const cards = [...document.querySelectorAll('.adult-viewing-row')]
+      const cards = [...document.querySelectorAll('.my-tv-viewing-row')]
       const mobileHead = document.querySelector('.mobile-head')
-      const back = document.querySelector('#adultViewingBack')
+      const back = document.querySelector('#myTvViewingBack')
       const tabButtons = [...tabs.querySelectorAll('button')]
       return {
         pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
@@ -317,7 +317,7 @@ for (const theme of ['light', 'dark']) {
         layoutSwitcherCount: tools.querySelectorAll('[data-viewing-layout]').length,
         firstRowCards: cards.filter(card =>
           Math.round(card.getBoundingClientRect().top) === Math.round(cards[0].getBoundingClientRect().top)).length,
-        firstCardMeta: cards[0].querySelector('.adult-viewing-copy span').textContent,
+        firstCardMeta: cards[0].querySelector('.my-tv-viewing-copy span').textContent,
         rightEdge: Math.max(...cards.map(card => card.getBoundingClientRect().right)),
         viewport: document.documentElement.clientWidth,
       }
@@ -338,15 +338,15 @@ for (const theme of ['light', 'dark']) {
     else expect(layout.firstRowCards).toBeGreaterThanOrEqual(5)
     expect(layout.firstCardMeta).toBe('2022 · TV series')
     expect(layout.rightEdge).toBeLessThanOrEqual(layout.viewport)
-    await page.locator('#adultViewingSearch').fill('Series 10')
-    await expect(page.locator('.adult-viewing-row')).toHaveCount(1)
-    await page.locator('#adultViewingSearchClear').click()
-    await expect(page.locator('.adult-viewing-row')).toHaveCount(11)
-    await page.locator('#adultViewingSort').selectOption('za')
-    await expect(page.locator('.adult-viewing-copy strong').first()).toHaveText('Series 11')
-    await page.locator('#adultViewingFilter').selectOption('movie')
-    await expect(page.locator('.adult-viewing-row')).toHaveCount(0)
-    await page.locator('#adultViewingFilter').selectOption('tv')
-    await expect(page.locator('.adult-viewing-row')).toHaveCount(11)
+    await page.locator('#myTvViewingSearch').fill('Series 10')
+    await expect(page.locator('.my-tv-viewing-row')).toHaveCount(1)
+    await page.locator('#myTvViewingSearchClear').click()
+    await expect(page.locator('.my-tv-viewing-row')).toHaveCount(11)
+    await page.locator('#myTvViewingSort').selectOption('za')
+    await expect(page.locator('.my-tv-viewing-copy strong').first()).toHaveText('Series 11')
+    await page.locator('#myTvViewingFilter').selectOption('movie')
+    await expect(page.locator('.my-tv-viewing-row')).toHaveCount(0)
+    await page.locator('#myTvViewingFilter').selectOption('tv')
+    await expect(page.locator('.my-tv-viewing-row')).toHaveCount(11)
   })
 }

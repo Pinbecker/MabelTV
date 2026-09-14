@@ -294,32 +294,32 @@ void TvController::loadState()
     const bool sameUptimeSession =
         object.value(QStringLiteral("uptime_session_id")).toString() == m_sessionId;
     const int stateSchemaVersion = object.value(QStringLiteral("schema_version")).toInt(0);
-    const QJsonObject adultPositions = object.value(QStringLiteral("adult_positions")).toObject();
-    m_adultPlaybackPositions.clear();
-    for (auto iterator = adultPositions.constBegin(); iterator != adultPositions.constEnd();
+    const QJsonObject myTvPositions = object.value(QStringLiteral("my_tv_positions")).toObject();
+    m_myTvPlaybackPositions.clear();
+    for (auto iterator = myTvPositions.constBegin(); iterator != myTvPositions.constEnd();
          ++iterator) {
         const double position = iterator.value().toDouble(0.0);
         if (!iterator.key().isEmpty() && std::isfinite(position) && position >= 2.0) {
-            m_adultPlaybackPositions.insert(iterator.key(), position);
+            m_myTvPlaybackPositions.insert(iterator.key(), position);
         }
     }
-    const QJsonObject adultPositionUpdates =
-        object.value(QStringLiteral("adult_position_updated_utc_ms")).toObject();
-    m_adultPlaybackUpdatedUtcMs.clear();
-    for (auto iterator = adultPositionUpdates.constBegin();
-         iterator != adultPositionUpdates.constEnd(); ++iterator) {
+    const QJsonObject myTvPositionUpdates =
+        object.value(QStringLiteral("my_tv_position_updated_utc_ms")).toObject();
+    m_myTvPlaybackUpdatedUtcMs.clear();
+    for (auto iterator = myTvPositionUpdates.constBegin();
+         iterator != myTvPositionUpdates.constEnd(); ++iterator) {
         const qint64 updated = static_cast<qint64>(iterator.value().toDouble(0.0));
-        if (m_adultPlaybackPositions.contains(iterator.key()) && updated > 0) {
-            m_adultPlaybackUpdatedUtcMs.insert(iterator.key(), updated);
+        if (m_myTvPlaybackPositions.contains(iterator.key()) && updated > 0) {
+            m_myTvPlaybackUpdatedUtcMs.insert(iterator.key(), updated);
         }
     }
-    const QJsonObject adultDurations = object.value(QStringLiteral("adult_durations")).toObject();
-    m_adultPlaybackDurations.clear();
-    for (auto iterator = adultDurations.constBegin(); iterator != adultDurations.constEnd();
+    const QJsonObject myTvDurations = object.value(QStringLiteral("my_tv_durations")).toObject();
+    m_myTvPlaybackDurations.clear();
+    for (auto iterator = myTvDurations.constBegin(); iterator != myTvDurations.constEnd();
          ++iterator) {
         const double duration = iterator.value().toDouble(0.0);
         if (!iterator.key().isEmpty() && std::isfinite(duration) && duration >= 10.0) {
-            m_adultPlaybackDurations.insert(iterator.key(), duration);
+            m_myTvPlaybackDurations.insert(iterator.key(), duration);
         }
     }
     const QJsonObject channelFilmPositions =
@@ -438,26 +438,26 @@ void TvController::saveState() const
         {QStringLiteral("playback_paused"), m_playbackPaused},
     };
 
-    QJsonObject adultPositions;
-    for (auto iterator = m_adultPlaybackPositions.constBegin();
-         iterator != m_adultPlaybackPositions.constEnd(); ++iterator) {
-        adultPositions.insert(iterator.key(), iterator.value());
+    QJsonObject myTvPositions;
+    for (auto iterator = m_myTvPlaybackPositions.constBegin();
+         iterator != m_myTvPlaybackPositions.constEnd(); ++iterator) {
+        myTvPositions.insert(iterator.key(), iterator.value());
     }
-    object.insert(QStringLiteral("adult_positions"), adultPositions);
+    object.insert(QStringLiteral("my_tv_positions"), myTvPositions);
 
-    QJsonObject adultPositionUpdates;
-    for (auto iterator = m_adultPlaybackUpdatedUtcMs.constBegin();
-         iterator != m_adultPlaybackUpdatedUtcMs.constEnd(); ++iterator) {
-        adultPositionUpdates.insert(iterator.key(), static_cast<double>(iterator.value()));
+    QJsonObject myTvPositionUpdates;
+    for (auto iterator = m_myTvPlaybackUpdatedUtcMs.constBegin();
+         iterator != m_myTvPlaybackUpdatedUtcMs.constEnd(); ++iterator) {
+        myTvPositionUpdates.insert(iterator.key(), static_cast<double>(iterator.value()));
     }
-    object.insert(QStringLiteral("adult_position_updated_utc_ms"), adultPositionUpdates);
+    object.insert(QStringLiteral("my_tv_position_updated_utc_ms"), myTvPositionUpdates);
 
-    QJsonObject adultDurations;
-    for (auto iterator = m_adultPlaybackDurations.constBegin();
-         iterator != m_adultPlaybackDurations.constEnd(); ++iterator) {
-        adultDurations.insert(iterator.key(), iterator.value());
+    QJsonObject myTvDurations;
+    for (auto iterator = m_myTvPlaybackDurations.constBegin();
+         iterator != m_myTvPlaybackDurations.constEnd(); ++iterator) {
+        myTvDurations.insert(iterator.key(), iterator.value());
     }
-    object.insert(QStringLiteral("adult_durations"), adultDurations);
+    object.insert(QStringLiteral("my_tv_durations"), myTvDurations);
 
     QJsonObject channelFilmPositions;
     for (auto iterator = m_channelFilmPlaybackPositions.constBegin();

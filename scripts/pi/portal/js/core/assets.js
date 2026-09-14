@@ -12,8 +12,8 @@
       script.async = true
       script.onload = () => available()
         ? resolve()
-        : reject(new Error(`MabelTV loaded ${path}, but it did not start`))
-      script.onerror = () => reject(new Error(`MabelTV could not load ${path}`))
+        : reject(new Error(`${tvName()} loaded ${path}, but it did not start`))
+      script.onerror = () => reject(new Error(`${tvName()} could not load ${path}`))
       document.head.append(script)
     }).catch(error => {
       pending.delete(path)

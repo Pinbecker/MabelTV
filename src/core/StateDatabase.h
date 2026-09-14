@@ -11,7 +11,7 @@ QJsonObject settings(const QString &databasePath, QString *error = nullptr);
 QJsonObject owner(const QString &databasePath, QString *error = nullptr);
 QJsonObject player(const QString &databasePath, QString *error = nullptr);
 QJsonObject channelMetadata(const QString &databasePath, QString *error = nullptr);
-QJsonObject adultMedia(const QString &databasePath, QString *error = nullptr);
+QJsonObject myTvMedia(const QString &databasePath, QString *error = nullptr);
 
 bool mergeSettings(const QString &databasePath, const QJsonObject &value,
                    QString *error = nullptr);

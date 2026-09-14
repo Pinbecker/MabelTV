@@ -137,7 +137,7 @@ test('cached shell navigation remains available when the Pi cannot be reached', 
     }),
   })
   const response = await dispatchedResponse(worker.listeners.fetch, {
-    url: 'https://tv.example.test/adult-tv', mode: 'navigate',
+    url: 'https://tv.example.test/my-tv', mode: 'navigate',
   }, 'phone')
   assert.equal(response.status, 200)
   assert.match(await response.text(), /MabelTV shell/)
@@ -167,7 +167,7 @@ test('protected artwork cache is never exposed to a locked client', async () => 
     }),
   })
   worker.context.fetch = async () => { throw new Error('Pi offline') }
-  const artwork = new Request('https://tv.example.test/api/adult/artwork/private.jpg')
+  const artwork = new Request('https://tv.example.test/api/my-tv/artwork/private.jpg')
 
   let response = await dispatchedResponse(worker.listeners.fetch, artwork, 'phone')
   assert.equal(response.status, 401)
@@ -199,7 +199,7 @@ test('same-origin TMDB artwork is retained for an unlocked offline client', asyn
     source: { id: 'phone' },
   })
   const artwork = new Request(
-    'https://tv.example.test/api/adult/tmdb-artwork/w342/example.jpg')
+    'https://tv.example.test/api/my-tv/tmdb-artwork/w342/example.jpg')
 
   let response = await dispatchedResponse(worker.listeners.fetch, artwork, 'phone')
   assert.equal(await response.text(), 'tmdb-poster')
@@ -226,7 +226,7 @@ test('artwork retry queries reuse one canonical cached image', async () => {
   worker.listeners.message({
     data: { type: 'mabeltv-offline-access', unlocked: true }, source: { id: 'phone' },
   })
-  const base = 'https://tv.example.test/api/adult/tmdb-artwork/w342/recovered.jpg'
+  const base = 'https://tv.example.test/api/my-tv/tmdb-artwork/w342/recovered.jpg'
   const response = await dispatchedResponse(worker.listeners.fetch,
     new Request(`${base}?retry=1-123`), 'phone')
 
@@ -251,7 +251,7 @@ test('an artwork cache failure never hides a successful network image', async ()
     source: { id: 'phone' },
   })
   const response = await dispatchedResponse(worker.listeners.fetch, new Request(
-    'https://tv.example.test/api/adult/tmdb-artwork/w500/example.jpg'), 'phone')
+    'https://tv.example.test/api/my-tv/tmdb-artwork/w500/example.jpg'), 'phone')
   assert.equal(response.status, 200)
   assert.equal(await response.text(), 'visible-poster')
 })
@@ -407,32 +407,32 @@ test('offline client shares one in-progress worker initialisation', async () => 
   assert.equal(readinessChecks, 1)
 })
 
-test('service worker protects adult downloads but leaves family downloads available', async () => {
-  const adultManifest = {
-    id: 'adult-film', status: 'complete', size: 4, chunkSize: 4,
-    mimeType: 'video/mp4', source: { kind: 'adult', file: 'Private Film.mp4' },
+test('service worker protects my_tv downloads but leaves family downloads available', async () => {
+  const myTvManifest = {
+    id: 'my-tv-film', status: 'complete', size: 4, chunkSize: 4,
+    mimeType: 'video/mp4', source: { kind: 'my_tv', file: 'Private Film.mp4' },
   }
-  const adultChunks = new Map([
-    ['adult-film:0', { data: new Blob([Uint8Array.from([0, 1, 2, 3])]) }],
+  const myTvChunks = new Map([
+    ['my-tv-film:0', { data: new Blob([Uint8Array.from([0, 1, 2, 3])]) }],
   ])
-  const adultWorker = workerContext(adultManifest, adultChunks)
-  const adultRequest = new Request('https://tv.example.test/offline-media/adult-film')
+  const myTvWorker = workerContext(myTvManifest, myTvChunks)
+  const myTvRequest = new Request('https://tv.example.test/offline-media/my-tv-film')
 
-  let response = await dispatchedResponse(adultWorker.listeners.fetch, adultRequest, 'phone')
+  let response = await dispatchedResponse(myTvWorker.listeners.fetch, myTvRequest, 'phone')
   assert.equal(response.status, 401)
 
-  adultWorker.listeners.message({
+  myTvWorker.listeners.message({
     data: { type: 'mabeltv-offline-access', unlocked: true },
     source: { id: 'phone' },
   })
-  response = await dispatchedResponse(adultWorker.listeners.fetch, adultRequest, 'phone')
+  response = await dispatchedResponse(myTvWorker.listeners.fetch, myTvRequest, 'phone')
   assert.equal(response.status, 200)
 
-  adultWorker.listeners.message({
+  myTvWorker.listeners.message({
     data: { type: 'mabeltv-offline-access', unlocked: false },
     source: {},
   })
-  response = await dispatchedResponse(adultWorker.listeners.fetch, adultRequest, 'phone')
+  response = await dispatchedResponse(myTvWorker.listeners.fetch, myTvRequest, 'phone')
   assert.equal(response.status, 401)
 
   const familyManifest = {

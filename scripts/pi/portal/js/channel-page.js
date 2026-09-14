@@ -23,7 +23,7 @@ const ChannelPageComponents = (() => {
           <div class="channel-page-identity">
             <span id="workspaceChannelBadge" class="channel-page-badge">CH</span>
             <div>
-              <p id="workspaceEyebrow" class="channel-page-eyebrow">MabelTV channel</p>
+              <p id="workspaceEyebrow" class="channel-page-eyebrow">${escapeHtml(tvName())} channel</p>
               <div class="channel-page-title-row">
                 <h1 id="workspaceChannelName">Channel</h1>
                 <button id="workspaceFavourite" type="button" class="channel-page-favourite hidden" aria-label="Add channel to favourites">
@@ -41,7 +41,7 @@ const ChannelPageComponents = (() => {
           <div class="channel-page-actions">
             <button id="channelWatchTv" type="button" class="channel-page-primary">
               <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-monitor-play"/></svg>
-              <span><strong>Open on TV</strong><small>Switch MabelTV to this channel</small></span>
+              <span><strong>Open on TV</strong><small>Switch ${escapeHtml(tvName())} to this channel</small></span>
             </button>
             <button id="workspaceAddMedia" type="button" class="channel-page-secondary" aria-label="Add videos">
               <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-plus"/></svg>

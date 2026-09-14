@@ -10,7 +10,7 @@ Mabel TV is designed to work locally.
 - The software contacts normal Raspberry Pi OS package/release infrastructure during installation and OS updates; those services have their own policies.
 
 TMDB enrichment is optional and inactive until a grown-up supplies an API key
-and presses **Scan metadata** for a particular Adult film. A scan sends the
+and presses **Scan metadata** for a particular My TV film. A scan sends the
 derived film title and optional year to TMDB; choosing a match downloads its
 details and poster. The result is cached locally, and ordinary browsing and
 playback make no TMDB requests. Media files are never uploaded to TMDB.

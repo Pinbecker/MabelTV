@@ -28,7 +28,7 @@ secondary service objects.
   viewing identities and session CRUD; it composes into `StateDatabase`.
 - `auth.py`: first-time setup, owner identity, PIN verification, login limits
   and session lifetime.
-- `media.py`: read models for channels, programmes, Adult media and safe media
+- `media.py`: read models for channels, programmes, My TV media and safe media
   paths. Structured state goes through the database; its `read_json` and
   `write_json` helpers are only for operational filesystem journals.
 - `management.py`: serialized administrative mutations for channel/settings
@@ -41,19 +41,19 @@ secondary service objects.
   targeted session persistence, retention and the four scoped Insights APIs.
 - `viewing_analytics.py`: pure timezone-aware calendar allocation and aggregate
   builders. It has no database, HTTP or runtime-state ownership.
-- `viewing_queue.py`: validation and atomic persistence of Adult Up Next order.
+- `viewing_queue.py`: validation and atomic persistence of My TV Up Next order.
 - `provider_transport.py`: API-key reads, bounded HTTP transport, response
   caching and OpenSubtitles transport.
-- `adult_metadata.py`: Adult TMDB titles, series, people, collections,
+- `my_tv_metadata.py`: My TV TMDB titles, series, people, collections,
   Watchmode availability and the merge with local/viewing state.
 - `providers.py`: children's channel and local-film metadata matching and
   application.
-- `adult_insights.py`: Adult watched/rating aggregates and progressive TMDB
+- `my_tv_insights.py`: My TV watched/rating aggregates and progressive TMDB
   enrichment.
 - `discovery.py`: curated paginated Explore results enriched with local state,
   the familiar/popular What to watch mix, popularity-ranked weekly film,
   series-debut and season-premiere discovery, and the bounded batch lookup used
-  to decorate Adult TV cards with streaming availability. That batch merges
+  to decorate My TV cards with streaming availability. That batch merges
   TMDB providers with existing SQLite-cached Watchmode summaries; it must not
   spend one Watchmode request per card.
 - `artwork.py`: authenticated same-origin artwork proxy and the bounded,
@@ -82,7 +82,7 @@ that changes related records and its cache revision commits them in one
 `BEGIN IMMEDIATE` transaction. Channel add/update/delete uses targeted database
 operations; renumbering moves metadata, favourites and disabled-programme
 settings atomically. Settings use field-level merges so the native player and
-portal cannot erase one another's unrelated keys. Adult title relationships
+portal cannot erase one another's unrelated keys. My TV title relationships
 have one owner each: watchlist, Up Next and ratings live in their dedicated
 relational tables.
 
@@ -129,7 +129,7 @@ stale fallback UI. The portal source list has one owner in `portal.py` and is
 assembled into an IIFE so module-to-module calls stay inside one private scope.
 Only separately loaded lifecycle owners (`MabelOffline`, `MabelAppCache`,
 `MabelAssets`, `MabelExperienceTheme` and `MabelPortalUI`) publish names on
-`window`; application routing, live TV and Adult viewing do not use global
+`window`; application routing, live TV and My TV viewing do not use global
 compatibility bridges.
 
 VLC receives a short-lived bearer URL from authenticated

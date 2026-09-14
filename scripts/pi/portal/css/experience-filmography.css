@@ -1,11 +1,11 @@
-body.portal-v2 .adult-person-known-for > header {
+body.portal-v2 .my-tv-person-known-for > header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-body.portal-v2 .adult-person-known-for.is-complete-history > header {
+body.portal-v2 .my-tv-person-known-for.is-complete-history > header {
   position: sticky;
   z-index: 3;
   top: calc(-1 * var(--experience-sheet-padding));
@@ -15,7 +15,7 @@ body.portal-v2 .adult-person-known-for.is-complete-history > header {
   background: var(--experience-raised);
 }
 
-body.portal-v2 #adultPersonFilmography {
+body.portal-v2 #myTvPersonFilmography {
   min-height: 28px;
   border: 0;
   background: transparent;
@@ -25,28 +25,28 @@ body.portal-v2 #adultPersonFilmography {
   font-weight: 820;
 }
 
-body.portal-v2 .adult-filmography-page {
+body.portal-v2 .my-tv-filmography-page {
   width: min(100%, 1280px);
   margin: 0 auto;
 }
 
-body.portal-v2 .adult-filmography-head { display: grid; gap: 4px; }
+body.portal-v2 .my-tv-filmography-head { display: grid; gap: 4px; }
 
-body.portal-v2 .adult-filmography-head > .view-back {
+body.portal-v2 .my-tv-filmography-head > .view-back {
   justify-self: start;
   justify-content: flex-start;
   min-height: 30px;
   margin: 0;
 }
 
-body.portal-v2 .adult-filmography-person {
+body.portal-v2 .my-tv-filmography-person {
   display: grid;
   grid-template-columns: 56px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
 }
 
-body.portal-v2 .adult-filmography-photo {
+body.portal-v2 .my-tv-filmography-photo {
   display: grid;
   width: 56px;
   aspect-ratio: 2 / 3;
@@ -57,11 +57,11 @@ body.portal-v2 .adult-filmography-photo {
   background: var(--experience-soft);
 }
 
-body.portal-v2 .adult-filmography-photo img { width: 100%; height: 100%; object-fit: cover; }
-body.portal-v2 .adult-filmography-photo b { color: var(--experience-muted); font-size: 18px; }
-body.portal-v2 .adult-filmography-person .eyebrow { margin: 0 0 2px; }
-body.portal-v2 .adult-filmography-person h1 { margin: 0; font-size: clamp(25px, 6.6vw, 40px); }
-body.portal-v2 .adult-filmography-meta {
+body.portal-v2 .my-tv-filmography-photo img { width: 100%; height: 100%; object-fit: cover; }
+body.portal-v2 .my-tv-filmography-photo b { color: var(--experience-muted); font-size: 18px; }
+body.portal-v2 .my-tv-filmography-person .eyebrow { margin: 0 0 2px; }
+body.portal-v2 .my-tv-filmography-person h1 { margin: 0; font-size: clamp(25px, 6.6vw, 40px); }
+body.portal-v2 .my-tv-filmography-meta {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, auto));
   justify-content: start;
@@ -69,11 +69,11 @@ body.portal-v2 .adult-filmography-meta {
   margin: 4px 0 0;
 }
 
-body.portal-v2 .adult-filmography-meta > div { display: grid; gap: 1px; min-width: 0; }
-body.portal-v2 .adult-filmography-meta dt { overflow: hidden; color: var(--experience-dim); font-size: 7px; font-weight: 850; letter-spacing: .09em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
-body.portal-v2 .adult-filmography-meta dd { margin: 0; color: var(--experience-muted); font-size: 9px; font-weight: 720; white-space: nowrap; }
+body.portal-v2 .my-tv-filmography-meta > div { display: grid; gap: 1px; min-width: 0; }
+body.portal-v2 .my-tv-filmography-meta dt { overflow: hidden; color: var(--experience-dim); font-size: 7px; font-weight: 850; letter-spacing: .09em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+body.portal-v2 .my-tv-filmography-meta dd { margin: 0; color: var(--experience-muted); font-size: 9px; font-weight: 720; white-space: nowrap; }
 
-body.portal-v2 .adult-filmography-controls {
+body.portal-v2 .my-tv-filmography-controls {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 100px;
   align-items: center;
@@ -81,25 +81,25 @@ body.portal-v2 .adult-filmography-controls {
   margin-top: 8px;
 }
 
-body.portal-v2 .adult-filmography-controls .portal-search { min-height: 34px; }
-body.portal-v2 .adult-filmography-controls .portal-search input { min-height: 32px; font-size: 11px; }
+body.portal-v2 .my-tv-filmography-controls .portal-search { min-height: 34px; }
+body.portal-v2 .my-tv-filmography-controls .portal-search input { min-height: 32px; font-size: 11px; }
 
-body.portal-v2 .adult-filmography-controls .adult-viewing-select {
+body.portal-v2 .my-tv-filmography-controls .my-tv-viewing-select {
   min-height: 34px;
   border-radius: 8px;
 }
 
-body.portal-v2 .adult-filmography-controls .adult-viewing-select select {
+body.portal-v2 .my-tv-filmography-controls .my-tv-viewing-select select {
   min-height: 32px;
   font-size: 10px;
 }
 
-body.portal-v2 .adult-filmography-grid .adult-explore-role {
+body.portal-v2 .my-tv-filmography-grid .my-tv-explore-role {
   color: var(--experience-muted);
   font-weight: 650;
 }
 
-body.portal-v2 .adult-filmography-timeline {
+body.portal-v2 .my-tv-filmography-timeline {
   position: relative;
   display: grid;
   gap: 22px;
@@ -107,7 +107,7 @@ body.portal-v2 .adult-filmography-timeline {
   padding-left: 13px;
 }
 
-body.portal-v2 .adult-filmography-timeline::before {
+body.portal-v2 .my-tv-filmography-timeline::before {
   position: absolute;
   inset: 7px auto 7px 2px;
   width: 1px;
@@ -115,8 +115,8 @@ body.portal-v2 .adult-filmography-timeline::before {
   content: '';
 }
 
-body.portal-v2 .adult-filmography-year { position: relative; min-width: 0; }
-body.portal-v2 .adult-filmography-year::before {
+body.portal-v2 .my-tv-filmography-year { position: relative; min-width: 0; }
+body.portal-v2 .my-tv-filmography-year::before {
   position: absolute;
   top: 7px;
   left: -15px;
@@ -128,7 +128,7 @@ body.portal-v2 .adult-filmography-year::before {
   content: '';
 }
 
-body.portal-v2 .adult-filmography-year > header {
+body.portal-v2 .my-tv-filmography-year > header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -136,10 +136,10 @@ body.portal-v2 .adult-filmography-year > header {
   margin-bottom: 7px;
 }
 
-body.portal-v2 .adult-filmography-year h2 { margin: 0; font-size: 18px; }
-body.portal-v2 .adult-filmography-year > header span { color: var(--experience-dim); font-size: 8px; font-weight: 780; }
-body.portal-v2 .adult-filmography-grid { min-width: 0; }
+body.portal-v2 .my-tv-filmography-year h2 { margin: 0; font-size: 18px; }
+body.portal-v2 .my-tv-filmography-year > header span { color: var(--experience-dim); font-size: 8px; font-weight: 780; }
+body.portal-v2 .my-tv-filmography-grid { min-width: 0; }
 
 @media (max-width: 640px) {
-  body.portal-v2 .adult-filmography-page { margin-top: -22px; padding-top: 0; }
+  body.portal-v2 .my-tv-filmography-page { margin-top: -22px; padding-top: 0; }
 }

@@ -12,12 +12,17 @@
   let mediaAccess = false
   let mediaAccessRevision = 0
 
+  function offlineTvName() {
+    try { return localStorage.getItem('mabeltv-tv-name') || 'Your TV' }
+    catch (_) { return 'Your TV' }
+  }
+
   function offlineSupportError() {
     if (!window.isSecureContext) {
-      return new Error('Offline downloads are available in the MabelTV Home Screen app installed from its secure HTTPS address.')
+      return new Error(`Offline downloads are available in the ${offlineTvName()} Home Screen app installed from its secure HTTPS address.`)
     }
     if (!('serviceWorker' in navigator)) {
-      return new Error('This browser cannot run the MabelTV offline player.')
+      return new Error(`This browser cannot run the ${offlineTvName()} offline player.`)
     }
     return null
   }
@@ -63,7 +68,7 @@
 
   function protectedDownload(manifest) {
     return manifest?.protected === true
-      || ['adult', 'adult-series'].includes(manifest?.source?.kind)
+      || ['my_tv', 'my-tv-series'].includes(manifest?.source?.kind)
   }
 
   async function getSecurity() {
@@ -158,7 +163,7 @@
       return true
     }
     if (!value?.salt || !value?.digest) {
-      throw new Error('Reconnect to MabelTV and sign in once to prepare secure offline access.')
+      throw new Error(`Reconnect to ${offlineTvName()} and sign in once to prepare secure offline access.`)
     }
     const now = Date.now()
     const lockedUntil = Number(value.lockedUntil || 0)
@@ -230,7 +235,7 @@
       ...options,
     })
     const body = await response.json().catch(() => ({}))
-    if (!response.ok) throw new Error(body.error || 'MabelTV could not prepare that download')
+    if (!response.ok) throw new Error(body.error || `${offlineTvName()} could not prepare that download`)
     return body
   }
 
@@ -255,12 +260,12 @@
     const estimate = await navigator.storage.estimate()
     const available = Number(estimate.quota || 0) - Number(estimate.usage || 0)
     if (estimate.quota && available < size + Math.min(256 * 1024 * 1024, size * 0.08)) {
-      throw new Error(`This device needs ${formatBytes(size)} free in MabelTV storage for that download.`)
+      throw new Error(`This device needs ${formatBytes(size)} free in ${offlineTvName()} storage for that download.`)
     }
   }
 
   async function startDownload(payload, fallbackTitle, onUpdate) {
-    if (!navigator.onLine) throw new Error('Reconnect to MabelTV to start or resume this download.')
+    if (!navigator.onLine) throw new Error(`Reconnect to ${offlineTvName()} to start or resume this download.`)
     const prepared = await prepare(payload, onUpdate)
     const id = prepared.content_id
     const existing = await getDownload(id)
@@ -286,7 +291,7 @@
       createdAt: Number(existing?.createdAt || Date.now()),
       updatedAt: Date.now(),
       error: '',
-      protected: ['adult', 'adult-series'].includes(payload?.kind),
+      protected: ['my_tv', 'my-tv-series'].includes(payload?.kind),
     }
     await putDownload(manifest)
     changed()
@@ -381,7 +386,7 @@
       await new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
           navigator.serviceWorker.removeEventListener('controllerchange', controlled)
-          reject(new Error('The offline app is finishing setup. Close and reopen MabelTV, then try again.'))
+          reject(new Error(`The offline app is finishing setup. Close and reopen ${offlineTvName()}, then try again.`))
         }, 6000)
         function controlled() {
           if (!navigator.serviceWorker.controller) return
@@ -396,7 +401,7 @@
     const accessRevision = mediaAccessRevision
     const check = await fetch('/offline-ready', { cache: 'no-store' })
     if (!check.ok) {
-      throw new Error('The MabelTV offline player did not finish starting. Close and reopen the app, then try again.')
+      throw new Error(`The ${offlineTvName()} offline player did not finish starting. Close and reopen the app, then try again.`)
     }
     if (accessRevision === mediaAccessRevision) setMediaAccess(mediaAccess)
   }

@@ -27,7 +27,7 @@
           method: 'POST', body: JSON.stringify(source),
         })
         if (onCleared) onCleared()
-        renderAdultWatch()
+        renderMyTvWatch()
         renderHomeLibrary()
       } finally {
         if (action) {
@@ -39,13 +39,13 @@
     }
 
     async function clearWatchFilmProgress(film, actionOverride = null) {
-      const source = { kind: 'adult', file: film.path }
+      const source = { kind: 'my_tv', file: film.path }
       await clearContinueProgress({
         source, title: watchFilmTitle(film), action: actionOverride,
         onCleared: () => {
           film.remote_position = 0
           film.remote_last_watched = 0
-          const storedFilm = (library?.adult_library || []).find(item => item.path === film.path)
+          const storedFilm = (library?.my_tv_library || []).find(item => item.path === film.path)
           if (storedFilm) {
             storedFilm.remote_position = 0
             storedFilm.remote_last_watched = 0
@@ -67,8 +67,8 @@
       return watchFilmTitle(value).replace(/^the\s+/i, '').trim()
     }
 
-    function adultFilmEntry(film) {
-      return { kind: 'adult', film }
+    function myTvFilmEntry(film) {
+      return { kind: 'my_tv', film }
     }
 
     function mabelFilmEntries() {
@@ -81,7 +81,7 @@
 
     function allFilmEntries() {
       return [
-        ...(library?.adult_library || []).map(adultFilmEntry),
+        ...(library?.my_tv_library || []).map(myTvFilmEntry),
         ...mabelFilmEntries(),
       ].sort((left, right) => filmSortTitle(left.film).localeCompare(
         filmSortTitle(right.film), undefined, { sensitivity: 'base' }))
@@ -94,8 +94,8 @@
           right.name, undefined, { sensitivity: 'base' }))
     }
 
-    function favouriteAdultSeries() {
-      return (library?.adult_series || [])
+    function favouriteMyTvSeries() {
+      return (library?.my_tv_series || [])
         .filter(series => series.favourite === true)
         .sort((left, right) => left.title.localeCompare(
           right.title, undefined, { sensitivity: 'base' }))
@@ -105,7 +105,7 @@
       const film = entry.film
       const metadata = film.metadata || {}
       const fallback = watchFilmTitle(film).slice(0, 1).toUpperCase()
-      if (entry.kind === 'adult') return filmPoster(film)
+      if (entry.kind === 'my_tv') return filmPoster(film)
       if (metadata.poster) {
         const image = document.createElement('img')
         image.loading = 'lazy'
@@ -123,7 +123,7 @@
     }
 
     function filmEntrySourceLabel(entry) {
-      return entry.kind === 'adult' ? 'Adult TV' : entry.channel.name
+      return entry.kind === 'my_tv' ? 'My TV' : entry.channel.name
     }
 
     function filmEntrySearchText(entry) {
@@ -134,18 +134,18 @@
     }
 
     function openFilmEntry(entry, context = 'library') {
-      if (entry.kind === 'adult') openAdultFilmDetail(entry.film, context)
+      if (entry.kind === 'my_tv') openMyTvFilmDetail(entry.film, context)
       else openWatchProgrammeSheet(entry.channel, entry.film, context)
     }
 
-    function openAdultFilmDetail(film, context = 'library') {
+    function openMyTvFilmDetail(film, context = 'library') {
       const metadata = film?.metadata || {}
       const tmdbId = Number(metadata.tmdb_id || 0)
-      if (!tmdbId || typeof openAdultTitle !== 'function') {
+      if (!tmdbId || typeof openMyTvTitle !== 'function') {
         openWatchFilmSheet(film, context)
         return
       }
-      openAdultTitle({
+      openMyTvTitle({
         key: `movie:${tmdbId}`, media_type: 'movie', tmdb_id: tmdbId,
         title: watchFilmTitle(film), year: metadata.year || '',
         local: { kind: 'film', path: film.path }, on_mabeltv: true,
@@ -193,21 +193,21 @@
       return placeholder
     }
 
-    function adultWatchCard(film) {
+    function myTvWatchCard(film) {
       const metadata = film.metadata || {}
       const resumable = watchFilmResumable(film)
       const card = document.createElement('button')
       card.type = 'button'
       card.className = 'watch-card'
-      card.dataset.adultPath = film.path
+      card.dataset.myTvPath = film.path
       card.setAttribute('aria-label', `${watchFilmTitle(film)}${resumable ? `, resume at ${watchTimeLabel(film.remote_position)}` : ''}`)
       const art = document.createElement('span')
       art.className = 'watch-card-art'
       art.append(filmPoster(film))
-      art.append(adultOptimisationBadge(film))
+      art.append(myTvOptimisationBadge(film))
       const tmdbId = Number(metadata.tmdb_id || 0)
-      if (tmdbId && typeof appendAdultArtworkStatus === 'function') {
-        appendAdultArtworkStatus(art, {
+      if (tmdbId && typeof appendMyTvArtworkStatus === 'function') {
+        appendMyTvArtworkStatus(art, {
           key: `movie:${tmdbId}`, media_type: 'movie', tmdb_id: tmdbId,
           title: watchFilmTitle(film), local: { kind: 'film', path: film.path },
         })
@@ -235,13 +235,13 @@
       detail.textContent = resumable ? `Resume · ${watchTimeLabel(film.remote_position)}` : [metadata.year, film.folder].filter(Boolean).join(' · ') || 'Film'
       copy.append(title, detail)
       card.append(art, copy)
-      card.onclick = () => openAdultFilmDetail(film)
+      card.onclick = () => openMyTvFilmDetail(film)
       return card
     }
 
     function continueWatchCard(value) {
-      if (value?.kind === 'adult-series') return adultSeriesContinueCard(value)
-      const entry = value?.film ? value : adultFilmEntry(value)
+      if (value?.kind === 'my-tv-series') return myTvSeriesContinueCard(value)
+      const entry = value?.film ? value : myTvFilmEntry(value)
       const film = entry.film
       const item = document.createElement('div')
       item.className = 'watch-continue-item'
@@ -253,11 +253,11 @@
       art.className = 'watch-continue-art'
       art.style.setProperty('--watch-progress', `${watchFilmProgress(film)}%`)
       art.append(filmEntryPoster(entry))
-      if (entry.kind === 'adult') {
-        card.dataset.adultPath = film.path
-        art.append(adultOptimisationBadge(film))
+      if (entry.kind === 'my_tv') {
+        card.dataset.myTvPath = film.path
+        art.append(myTvOptimisationBadge(film))
       }
-      if (entry.kind === 'adult') appendAdultLocalArtworkStatus(art, 'movie', film)
+      if (entry.kind === 'my_tv') appendMyTvLocalArtworkStatus(art, 'movie', film)
       const copy = document.createElement('span')
       copy.className = 'watch-continue-copy'
       const label = document.createElement('small')
@@ -273,20 +273,20 @@
       return item
     }
 
-    function adultSeriesContinueEntries() {
-      return (library?.adult_series || []).map(series => {
+    function myTvSeriesContinueEntries() {
+      return (library?.my_tv_series || []).map(series => {
         const episode = (series.episodes || [])
           .filter(value => value.watched !== true && watchFilmResumable(value))
           .sort((left, right) => Number(right.remote_last_watched || 0)
             - Number(left.remote_last_watched || 0))[0]
         return episode ? {
-          kind: 'adult-series', series, episode,
+          kind: 'my-tv-series', series, episode,
           lastWatched: Number(episode.remote_last_watched || 0),
         } : null
       }).filter(Boolean)
     }
 
-    function adultSeriesContinueCard(entry) {
+    function myTvSeriesContinueCard(entry) {
       const { series, episode } = entry
       const item = document.createElement('div')
       item.className = 'watch-continue-item'
@@ -302,7 +302,7 @@
         const image = document.createElement('img')
         image.loading = 'lazy'
         image.decoding = 'async'
-        image.src = `/api/adult/series/artwork/${encodeURIComponent(artworkName)}`
+        image.src = `/api/my-tv/series/artwork/${encodeURIComponent(artworkName)}`
         image.alt = ''
         image.loading = 'lazy'
         art.append(image)
@@ -312,7 +312,7 @@
         placeholder.textContent = series.title.slice(0, 1).toUpperCase()
         art.append(placeholder)
       }
-      appendAdultLocalArtworkStatus(art, 'tv', series)
+      appendMyTvLocalArtworkStatus(art, 'tv', series)
       const copy = document.createElement('span')
       copy.className = 'watch-continue-copy'
       const label = document.createElement('small')
@@ -324,8 +324,8 @@
       copy.append(label, title, time)
       card.append(art, copy)
       // Continue Watching is a direct launch surface, not a drill-down into
-      // series management. Its close action must return to Adult TV.
-      card.onclick = () => openAdultEpisodeSheet(series, episode)
+      // series management. Its close action must return to My TV.
+      card.onclick = () => openMyTvEpisodeSheet(series, episode)
       item.append(card)
       return item
     }
@@ -338,7 +338,7 @@
       const art = document.createElement('span')
       art.className = 'home-poster-art'
       art.append(filmEntryPoster(entry))
-      if (entry.kind === 'adult') appendAdultLocalArtworkStatus(art, 'movie', entry.film)
+      if (entry.kind === 'my_tv') appendMyTvLocalArtworkStatus(art, 'movie', entry.film)
       if (entry.film.favourite) {
         art.classList.add('has-favourite')
         const favourite = document.createElement('span')
@@ -400,15 +400,15 @@
       return card
     }
 
-    function homeAdultSeriesTile(series) {
+    function homeMyTvSeriesTile(series) {
       const card = document.createElement('button')
       card.type = 'button'
       card.className = 'home-poster-card home-channel-card'
       card.setAttribute('aria-label', `Open favourite series ${series.title}`)
       const art = document.createElement('span')
       art.className = 'home-poster-art home-channel-art'
-      art.append(adultSeriesArtwork(series))
-      appendAdultLocalArtworkStatus(art, 'tv', series)
+      art.append(myTvSeriesArtwork(series))
+      appendMyTvLocalArtworkStatus(art, 'tv', series)
       art.classList.add('has-favourite')
       const favourite = document.createElement('span')
       favourite.className = 'home-favourite-mark'
@@ -419,20 +419,20 @@
       const title = document.createElement('strong')
       title.textContent = series.title
       const source = document.createElement('small')
-      source.textContent = 'Adult TV series'
+      source.textContent = 'My TV series'
       copy.append(title, source)
       card.append(art, copy)
-      card.onclick = () => openAdultSeriesViewing(series)
+      card.onclick = () => openMyTvSeriesViewing(series)
       return card
     }
 
-    function openAdultSeriesViewing(series) {
+    function openMyTvSeriesViewing(series) {
       const tmdbId = Number(series?.metadata?.tmdb_id || 0)
       if (!tmdbId) {
-        openAdultSeriesSheet(series)
+        openMyTvSeriesSheet(series)
         return
       }
-      openAdultTitle({
+      openMyTvTitle({
         media_type: 'tv', tmdb_id: tmdbId,
         title: series.metadata?.title || series.title,
         local: { kind: 'series', series: series.id },
@@ -468,13 +468,13 @@
 
       const favouriteFilms = entries.filter(entry => entry.film.favourite)
       const favouriteChannels = favouriteSeriesChannels()
-      const favouriteSeries = favouriteAdultSeries()
+      const favouriteSeries = favouriteMyTvSeries()
       const favourites = [
         ...favouriteFilms.map(entry => ({ type: 'film', entry,
           title: watchFilmTitle(entry.film) })),
         ...favouriteChannels.map(channel => ({ type: 'channel', channel,
           title: channel.metadata?.title || channel.name })),
-        ...favouriteSeries.map(series => ({ type: 'adult-series', series,
+        ...favouriteSeries.map(series => ({ type: 'my-tv-series', series,
           title: series.title })),
       ].sort((left, right) => left.title.localeCompare(
         right.title, undefined, { sensitivity: 'base' }))
@@ -484,7 +484,7 @@
       favouriteRail.innerHTML = ''
       favourites.forEach(value => favouriteRail.append(value.type === 'film'
         ? homePosterTile(value.entry, 'favourite')
-        : value.type === 'adult-series' ? homeAdultSeriesTile(value.series)
+        : value.type === 'my-tv-series' ? homeMyTvSeriesTile(value.series)
           : homeChannelTile(value.channel)))
       $('#homeFavouritesEmpty').classList.toggle('hidden', Boolean(favourites.length))
 
@@ -502,14 +502,14 @@
     }
 
     async function setFilmFavourite(entry, enabled) {
-      const payload = entry.kind === 'adult'
-        ? { kind: 'adult', file: entry.film.path, enabled }
+      const payload = entry.kind === 'my_tv'
+        ? { kind: 'my_tv', file: entry.film.path, enabled }
         : { kind: 'channel', channel: entry.channel.number,
             file: entry.film.name, enabled }
       await api('/api/favourite', { method: 'POST', body: JSON.stringify(payload) })
       entry.film.favourite = enabled
       renderHomeLibrary()
-      renderAdultWatch()
+      renderMyTvWatch()
     }
 
     async function setChannelFavourite(channel, enabled) {
@@ -522,13 +522,13 @@
       renderHomeLibrary()
     }
 
-    async function setAdultSeriesFavourite(series, enabled) {
+    async function setMyTvSeriesFavourite(series, enabled) {
       await api('/api/favourite', { method: 'POST', body: JSON.stringify({
-        kind: 'adult-series', series: series.id, enabled,
+        kind: 'my-tv-series', series: series.id, enabled,
       }) })
       series.favourite = enabled
       renderHomeLibrary()
-      renderAdultSeries(adultSearchText)
+      renderMyTvSeries(myTvSearchText)
     }
 
     function closeWatchFilmSheet(restoreParent = true) {
@@ -540,13 +540,13 @@
 
     function playWatchFilm(film, position) {
       closeWatchFilmSheet(false)
-      openRemotePlayer({ kind: 'adult', file: film.path }, position)
+      openRemotePlayer({ kind: 'my_tv', file: film.path }, position)
     }
 
     function playWatchFilmOnTv(film, position = null) {
       closeWatchFilmSheet(false)
       playOnTv({
-        kind: 'adult',
+        kind: 'my_tv',
         file: film.path,
         position: position === null
           ? Number(film.remote_position || 0) : Math.max(0, Number(position) || 0),
@@ -579,12 +579,12 @@
       const playHere = position => {
         const mobile = isAppleMobilePlayer()
         if (mobile) controls.close()
-        openRemotePlayer({ kind: 'adult', file: film.path }, position,
+        openRemotePlayer({ kind: 'my_tv', file: film.path }, position,
           mobile ? controls.reopen : null)
       }
       const playOnTvNow = (position = null) => {
         playOnTv({
-          kind: 'adult', file: film.path,
+          kind: 'my_tv', file: film.path,
           position: position === null
             ? Number(film.remote_position || 0) : Math.max(0, Number(position) || 0),
         }, title)
@@ -624,7 +624,7 @@
           restartAction: () => playHere(0),
         })
       } : () => playHere(resumable ? Number(film.remote_position || 0) : 0)
-        : () => openInVlc({ kind: 'adult', file: film.path }, title)
+        : () => openInVlc({ kind: 'my_tv', file: film.path }, title)
     }
 
     function openWatchFilmSheet(film, context = 'library', returnTo = null) {
@@ -641,19 +641,19 @@
       const posterRoot = $('#watchFilmPoster')
       posterRoot.replaceChildren(filmPoster(film))
       const eyebrow = $('#watchFilmEyebrow')
-      eyebrow.textContent = 'On MabelTV'
+      eyebrow.textContent = `On ${tvName()}`
       eyebrow.classList.add('is-mabeltv')
       $('#watchFilmTitle').textContent = title
       const metaRoot = $('#watchFilmMeta')
-      renderAdultTitleMetadata(metaRoot, {}, {
+      renderMyTvTitleMetadata(metaRoot, {}, {
         facts: [
           { label: 'Release', value: metadata.year },
           { label: 'Runtime', value: Number(film.remote_duration || 0) > 0 ? watchTimeLabel(film.remote_duration) : '' },
-          { label: 'Collection', value: film.folder || 'Adult library' },
+          { label: 'Collection', value: film.folder || 'My TV library' },
           { label: 'Quality', value: film.playback_state === 'optimised' ? 'Optimised for Pi' : 'Original' },
         ],
       })
-      $('#watchFilmOverview').textContent = metadata.overview || 'A film from your private MabelTV library.'
+      $('#watchFilmOverview').textContent = metadata.overview || `A film from your private ${tvName()} library.`
       configureWatchFilmExpansion($('#watchFilmTitle'), $('#watchFilmTitleExpand'))
       configureWatchFilmExpansion($('#watchFilmOverview'), $('#watchFilmOverviewExpand'))
       const progressRoot = $('#watchFilmProgress')
@@ -662,7 +662,7 @@
       $('#watchFilmProgressFill').style.width = `${progress}%`
       const availability = $('#watchFilmAvailability')
       availability.classList.toggle('hidden', streamable)
-      availability.textContent = streamable ? '' : 'This original can open directly in VLC. Downloading prepares a separate browser-compatible copy for offline MabelTV playback.'
+      availability.textContent = streamable ? '' : `This original can open directly in VLC. Downloading prepares a separate browser-compatible copy for offline ${tvName()} playback.`
       const tvPlay = $('#watchFilmTv')
       const herePlay = $('#watchFilmHere')
       configureFilmPlaybackActions(film, context, {
@@ -674,7 +674,7 @@
       favouriteButton.setAttribute('aria-label', film.favourite
         ? 'Remove film from favourites' : 'Add film to favourites')
       favouriteButton.onclick = () => setFilmFavourite(
-        adultFilmEntry(film), film.favourite !== true).then(() => {
+        myTvFilmEntry(film), film.favourite !== true).then(() => {
           favouriteButton.classList.toggle('active', film.favourite === true)
           favouriteButton.setAttribute('aria-label', film.favourite
             ? 'Remove film from favourites' : 'Add film to favourites')
@@ -683,8 +683,8 @@
       if (typeof wireLocalFilmViewingActions === 'function') {
         void wireLocalFilmViewingActions(viewingActions, film).catch(showError)
       } else viewingActions.classList.add('hidden')
-      if (typeof renderAdultPersonalRating === 'function') {
-        renderAdultPersonalRating($('#watchFilmPersonalRating'), localFilmViewingDetail(film) || {})
+      if (typeof renderMyTvPersonalRating === 'function') {
+        renderMyTvPersonalRating($('#watchFilmPersonalRating'), localFilmViewingDetail(film) || {})
       }
       if (typeof loadLocalFilmProviders === 'function') {
         void loadLocalFilmProviders(film).catch(showError)
@@ -693,7 +693,7 @@
       manageFilm.classList.remove('hidden')
       manageFilm.onclick = () => {
         closeWatchFilmSheet(false)
-        openAdultFilmSheet(film, () => openWatchFilmSheet(film, context, returnTo))
+        openMyTvFilmSheet(film, () => openWatchFilmSheet(film, context, returnTo))
       }
       const dialog = $('#watchFilmSheet')
       portalSheets.open(dialog, { returnTo })

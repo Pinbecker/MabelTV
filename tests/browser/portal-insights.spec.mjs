@@ -4,7 +4,7 @@ test.use({ serviceWorkers: 'block' })
 
 
 async function openPortal(page, { extraTitles = [] } = {}) {
-  await page.route('**/api/adult/insights', async route => {
+  await page.route('**/api/my-tv/insights', async route => {
     const response = await route.fetch()
     const data = await response.json()
     data.actors.forEach((person, index) => { person.profile_path = `/insight-person-${index + 1}.jpg` })
@@ -15,7 +15,7 @@ async function openPortal(page, { extraTitles = [] } = {}) {
     data.recent_posters = data.titles.slice(0, 5)
     await route.fulfill({ response, json: data })
   })
-  await page.route('**/api/adult/tmdb-artwork/**', route => {
+  await page.route('**/api/my-tv/tmdb-artwork/**', route => {
     const requestUrl = new URL(route.request().url())
     const [, size, name] = requestUrl.pathname.match(/tmdb-artwork\/([^/]+)\/([^/]+)$/) || []
     const sourceUrl = `https://image.tmdb.org/t/p/${size}/${name}`
@@ -33,24 +33,24 @@ async function openPortal(page, { extraTitles = [] } = {}) {
 }
 
 
-test('@visual Insights is a top-level Adult TV profile with MabelTV activity alongside it', async ({ page }, testInfo) => {
+test('@visual Insights is a top-level My TV profile with Mabel TV activity alongside it', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone navigation contract')
   await openPortal(page)
 
   await expect(page.locator('[data-view-button="usb"]')).toHaveCount(0)
-  await page.locator('[data-view-button="adult-home"]').click()
-  await page.locator('#adultHomeInsightsTab').click()
+  await page.locator('[data-view-button="my-tv-home"]').click()
+  await page.locator('#myTvHomeInsightsTab').click()
   await expect(page.locator('#view-insights')).toBeVisible()
-  await expect(page.locator('[data-view-button="adult-home"]')).toHaveAttribute('aria-current', 'page')
-  await expect(page.locator('#insightsDomainTitle')).toHaveText('Adult TV')
-  await expect(page.locator('#adultInsightWatched')).toHaveText('146')
-  await expect(page.locator('#adultInsightActors .adult-insight-person')).toHaveCount(8)
-  await expect(page.locator('#adultInsightActors .adult-insight-person-image img').first()).toBeVisible()
-  await expect(page.locator('#adultInsightRatedTitles')).toHaveCSS('overflow-x', 'auto')
-  await expect(page.locator('#adultInsightRatedTitles .adult-insight-title')).toHaveCount(9)
-  expect(await page.locator('#adultInsightRatedTitles').evaluate(element =>
+  await expect(page.locator('[data-view-button="my-tv-home"]')).toHaveAttribute('aria-current', 'page')
+  await expect(page.locator('#insightsDomainTitle')).toHaveText('My TV')
+  await expect(page.locator('#myTvInsightWatched')).toHaveText('146')
+  await expect(page.locator('#myTvInsightActors .my-tv-insight-person')).toHaveCount(8)
+  await expect(page.locator('#myTvInsightActors .my-tv-insight-person-image img').first()).toBeVisible()
+  await expect(page.locator('#myTvInsightRatedTitles')).toHaveCSS('overflow-x', 'auto')
+  await expect(page.locator('#myTvInsightRatedTitles .my-tv-insight-title')).toHaveCount(9)
+  expect(await page.locator('#myTvInsightRatedTitles').evaluate(element =>
     element.scrollWidth > element.clientWidth)).toBe(true)
-  const posterSizes = await page.locator('#adultInsightRatedTitles .adult-insight-title-poster')
+  const posterSizes = await page.locator('#myTvInsightRatedTitles .my-tv-insight-title-poster')
     .evaluateAll(posters => posters.map(poster => {
       const box = poster.getBoundingClientRect()
       return [Math.round(box.width), Math.round(box.height)]
@@ -60,24 +60,24 @@ test('@visual Insights is a top-level Adult TV profile with MabelTV activity alo
   expect(new Set(posterSizes.map(([, height]) => height)).size,
     `poster heights: ${posterSizes.map(([, height]) => height).join(', ')}`).toBe(1)
   expect(posterSizes[0][0]).toBeGreaterThan(60)
-  await expect(page.locator('.adult-insight-stats > button svg')).toHaveCount(0)
-  await expect(page.locator('#adultInsightsDashboard')).toBeVisible()
+  await expect(page.locator('.my-tv-insight-stats > button svg')).toHaveCount(0)
+  await expect(page.locator('#myTvInsightsDashboard')).toBeVisible()
   await expect(page.locator('#mabelInsightsDashboard')).toBeHidden()
   await page.waitForTimeout(250)
   await page.evaluate(() => window.scrollTo(0, 0))
   await expect(page).toHaveScreenshot('my-insights.png')
-  await page.locator('#adultInsightActors').scrollIntoViewIfNeeded()
-  await expect.poll(() => page.locator('#adultInsightCreative img').evaluateAll(images =>
+  await page.locator('#myTvInsightActors').scrollIntoViewIfNeeded()
+  await expect.poll(() => page.locator('#myTvInsightCreative img').evaluateAll(images =>
     images.every(image => image.complete))).toBe(true)
   await expect(page).toHaveScreenshot('my-insights-people.png')
-  await page.locator('#adultInsightRatedSection').scrollIntoViewIfNeeded()
+  await page.locator('#myTvInsightRatedSection').scrollIntoViewIfNeeded()
   await expect(page).toHaveScreenshot('my-insights-rated.png')
 
   await page.locator('[data-view-button="watch"]').click()
   await page.locator('#watchMabelInsightsTab').click()
   await expect(page.locator('#mabelInsightsDashboard')).toBeVisible()
-  await expect(page.locator('#adultInsightsDashboard')).toBeHidden()
-  await expect(page.locator('#insightsDomainTitle')).toHaveText('MabelTV')
+  await expect(page.locator('#myTvInsightsDashboard')).toBeHidden()
+  await expect(page.locator('#insightsDomainTitle')).toHaveText('Mabel TV')
   await expect(page.locator('#viewingRangeControls')).toBeVisible()
   const range = await page.locator('#viewingRangeControls').evaluate(root => ({
     height: root.getBoundingClientRect().height,
@@ -89,7 +89,7 @@ test('@visual Insights is a top-level Adult TV profile with MabelTV activity alo
 })
 
 
-test('Adult TV insight facets and people open their useful next level', async ({ page }, testInfo) => {
+test('My TV insight facets and people open their useful next level', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone navigation contract')
   const filmography = Array.from({ length: 30 }, (_, index) => ({
     key: `${index === 2 || index === 5 || index === 7 || index === 10 ? 'tv' : 'movie'}:${1001 + index}`,
@@ -98,7 +98,7 @@ test('Adult TV insight facets and people open their useful next level', async ({
     year: String(2026 - index), poster_path: `/insight-${1001 + index}.jpg`,
     character: `Character ${index + 1}`,
   }))
-  await page.route('**/api/adult/person?*', route => route.fulfill({
+  await page.route('**/api/my-tv/person?*', route => route.fulfill({
     status: 200, contentType: 'application/json', body: JSON.stringify({
       tmdb_id: 1, name: 'Michael Caine', profile_path: '/insight-person-1.jpg',
       known_for_department: 'Acting', birthday: '1933-03-14', place_of_birth: 'London',
@@ -110,17 +110,17 @@ test('Adult TV insight facets and people open their useful next level', async ({
     ...title, rating: 0, genres: [], countries: [], language: 'EN', cast_ids: [1],
     creative_ids: [], on_mabeltv: false, watchlisted: false,
   })) })
-  await page.locator('[data-view-button="adult-home"]').click()
-  await page.locator('#adultHomeInsightsTab').click()
+  await page.locator('[data-view-button="my-tv-home"]').click()
+  await page.locator('#myTvHomeInsightsTab').click()
 
-  await page.locator('#adultInsightActors .adult-insight-person').first().click()
-  await expect(page.locator('#adultPersonSheet')).toBeVisible()
-  await expect(page.locator('#adultPersonName')).toHaveText('Michael Caine')
-  await expect(page.locator('#adultPersonContext')).toContainText('most-watched actors')
-  await expect(page.locator('#adultPersonKnownForHeading')).toHaveText('You Have Watched')
-  await expect(page.locator('#adultPersonCredits .adult-franchise-card')).toHaveCount(30)
-  await expect(page.locator('#adultPersonCredits')).toHaveCSS('overflow-x', 'hidden')
-  const watchedGrid = await page.locator('#adultPersonCredits .adult-franchise-card').evaluateAll(cards => {
+  await page.locator('#myTvInsightActors .my-tv-insight-person').first().click()
+  await expect(page.locator('#myTvPersonSheet')).toBeVisible()
+  await expect(page.locator('#myTvPersonName')).toHaveText('Michael Caine')
+  await expect(page.locator('#myTvPersonContext')).toContainText('most-watched actors')
+  await expect(page.locator('#myTvPersonKnownForHeading')).toHaveText('You Have Watched')
+  await expect(page.locator('#myTvPersonCredits .my-tv-franchise-card')).toHaveCount(30)
+  await expect(page.locator('#myTvPersonCredits')).toHaveCSS('overflow-x', 'hidden')
+  const watchedGrid = await page.locator('#myTvPersonCredits .my-tv-franchise-card').evaluateAll(cards => {
     const positions = cards.map(card => card.getBoundingClientRect())
     return {
       columns: new Set(positions.slice(0, 5).map(position => Math.round(position.left))).size,
@@ -134,8 +134,8 @@ test('Adult TV insight facets and people open their useful next level', async ({
   expect(watchedGrid.secondRowTop).toBeGreaterThan(watchedGrid.firstRowTop)
   expect(watchedGrid.thirdRowTop).toBeGreaterThan(watchedGrid.secondRowTop)
   expect(watchedGrid.fitsWidth).toBe(true)
-  const stickyHeader = page.locator('#adultPersonKnownFor > header')
-  const body = page.locator('#adultPersonSheet .library-sheet-body')
+  const stickyHeader = page.locator('#myTvPersonKnownFor > header')
+  const body = page.locator('#myTvPersonSheet .library-sheet-body')
   await body.evaluate(element => { element.scrollTop = element.scrollHeight })
   const stickyPosition = await stickyHeader.evaluate((header) => {
     const body = header.closest('.library-sheet-body')
@@ -147,36 +147,36 @@ test('Adult TV insight facets and people open their useful next level', async ({
     }
   })
   expect(Math.abs(stickyPosition.headerTop - stickyPosition.expectedTop)).toBeLessThanOrEqual(3)
-  await expect(page.locator('#adultPersonCredits .adult-franchise-card').first())
+  await expect(page.locator('#myTvPersonCredits .my-tv-franchise-card').first())
     .toContainText('Character 1')
-  await expect(page.locator('#adultPersonFilmography')).toBeVisible()
+  await expect(page.locator('#myTvPersonFilmography')).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('insight-person-watched.png'),
     animations: 'disabled' })
-  await page.locator('#adultPersonClose').click()
+  await page.locator('#myTvPersonClose').click()
 
-  await page.locator('#adultInsightGenres .adult-insight-bar').first().click()
-  await expect(page.locator('#adultInsightBrowse')).toBeVisible()
-  await expect(page.locator('#adultInsightBrowseTitle')).toHaveText('Drama')
-  await expect(page.locator('#adultInsightBrowseGrid .adult-explore-card')).toHaveCount(5)
-  const tools = await page.locator('.adult-insight-browse-tools').evaluate(root => {
+  await page.locator('#myTvInsightGenres .my-tv-insight-bar').first().click()
+  await expect(page.locator('#myTvInsightBrowse')).toBeVisible()
+  await expect(page.locator('#myTvInsightBrowseTitle')).toHaveText('Drama')
+  await expect(page.locator('#myTvInsightBrowseGrid .my-tv-explore-card')).toHaveCount(5)
+  const tools = await page.locator('.my-tv-insight-browse-tools').evaluate(root => {
     const search = root.querySelector('.viewing-search').getBoundingClientRect()
-    const select = root.querySelector('.adult-viewing-select').getBoundingClientRect()
+    const select = root.querySelector('.my-tv-viewing-select').getBoundingClientRect()
     return { search: search.height, select: select.height }
   })
   expect(tools.search).toBeLessThanOrEqual(36)
   expect(Math.abs(tools.search - tools.select)).toBeLessThanOrEqual(1)
-  await expect(page).toHaveURL(/#insights\/adult\/genre\/Drama$/)
-  await page.locator('#adultInsightBrowseBack').click()
+  await expect(page).toHaveURL(/#insights\/my_tv\/genre\/Drama$/)
+  await page.locator('#myTvInsightBrowseBack').click()
 
-  await page.locator('#adultInsightWorld .adult-insight-world-group').nth(1).locator('button').filter({ hasText: 'Canada' }).click()
-  await expect(page.locator('#adultInsightBrowseTitle')).toHaveText('Canada')
-  await expect(page.locator('#adultInsightBrowseGrid .adult-explore-card')).toHaveCount(3)
-  await page.locator('#adultInsightBrowseGrid .adult-explore-open-art').first().click()
-  await expect(page.locator('#adultTitleSheet')).toBeVisible()
+  await page.locator('#myTvInsightWorld .my-tv-insight-world-group').nth(1).locator('button').filter({ hasText: 'Canada' }).click()
+  await expect(page.locator('#myTvInsightBrowseTitle')).toHaveText('Canada')
+  await expect(page.locator('#myTvInsightBrowseGrid .my-tv-explore-card')).toHaveCount(3)
+  await page.locator('#myTvInsightBrowseGrid .my-tv-explore-open-art').first().click()
+  await expect(page.locator('#myTvTitleSheet')).toBeVisible()
 })
 
 
-test('MabelTV Insights libraries keep every card aligned inside the page gutter', async ({ page }) => {
+test('Mabel TV Insights libraries keep every card aligned inside the page gutter', async ({ page }) => {
   await openPortal(page)
   await page.locator('[data-view-button="watch"]').click()
   await page.locator('#watchMabelInsightsTab').click()
@@ -187,7 +187,7 @@ test('MabelTV Insights libraries keep every card aligned inside the page gutter'
         item_id: `${selectedKind}:${index}`,
         kind: selectedKind,
         title: index % 2 ? `A deliberately much longer title ${index}` : `Title ${index}`,
-        source: selectedKind === 'film' ? 'Family Films' : 'MabelTV series channel',
+        source: selectedKind === 'film' ? 'Family Films' : 'Mabel TV series channel',
         channel_number: index + 1,
         artwork: '', seconds: index * 60, sessions: index % 3,
       }))

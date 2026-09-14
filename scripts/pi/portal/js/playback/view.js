@@ -22,9 +22,9 @@
       $('#remoteConcurrentState').textContent = simultaneous
         ? 'On · TV and browser can play together' : 'Off · one player at a time'
       $('#remoteConcurrentToggle').setAttribute('aria-pressed', String(simultaneous))
-      $('#watchDomainTitle').textContent = watchDomain === 'adult' ? 'Adult TV' : 'MabelTV'
-      $('#watchDomainFooter').innerHTML = watchDomain === 'adult'
-        ? 'Adult TV · Downloads' : `<span data-tv-name>${escapeHtml(tvName())}</span> · Remote viewing`
+      $('#watchDomainTitle').textContent = watchDomain === 'my_tv' ? 'My TV' : tvName()
+      $('#watchDomainFooter').innerHTML = watchDomain === 'my_tv'
+        ? 'My TV · Downloads' : `<span data-tv-name>${escapeHtml(tvName())}</span> · Remote viewing`
       $('#watchMabelTab').classList.toggle('active', remoteKind === 'channel'); $('#watchMabelTab').setAttribute('aria-selected', String(remoteKind === 'channel'))
       $('#watchMabelInsightsTab').classList.remove('active'); $('#watchMabelInsightsTab').setAttribute('aria-selected', 'false')
       $('#watchDownloadsTab').classList.toggle('active', remoteKind === 'downloads'); $('#watchDownloadsTab').setAttribute('aria-selected', String(remoteKind === 'downloads'))
@@ -50,7 +50,7 @@
         if (!isFilms) {
           const identity = document.createElement('button'); identity.type = 'button'; identity.className = 'mabel-show-identity'
           if (metadata.artwork) identity.style.backgroundImage = `linear-gradient(90deg,rgba(7,12,10,.92) 0%,rgba(7,12,10,.62) 52%,rgba(7,12,10,.2) 100%),url('/api/channel/artwork/${encodeURIComponent(metadata.artwork)}')`
-          identity.innerHTML = `<div><span>CH ${channel.number} · ${channel.enabled ? `${programmes.length} episodes` : 'Hidden from TV'}</span><h2>${escapeHtml(metadata.title || channel.name)}</h2><p>${escapeHtml(metadata.overview || `${channel.name} on MabelTV.`)}</p></div>`
+          identity.innerHTML = `<div><span>CH ${channel.number} · ${channel.enabled ? `${programmes.length} episodes` : 'Hidden from TV'}</span><h2>${escapeHtml(metadata.title || channel.name)}</h2><p>${escapeHtml(metadata.overview || `${channel.name} on ${tvName()}.`)}</p></div>`
           identity.setAttribute('aria-label', `Open channel ${channel.number}, ${channel.name}`)
           identity.onclick = () => openChannel(channel, true)
           section.append(identity)
@@ -140,19 +140,19 @@
       })
       if (!mabel.children.length) mabel.append(portalEmptyState({
         className: 'watch-empty',
-        message: 'No MabelTV channels have been created yet.',
+        message: `No ${tvName()} channels have been created yet.`,
       }))
       startMabelFilmArtCycle()
-      renderAdultWatch()
+      renderMyTvWatch()
       renderHomeLibrary()
     }
 
     $('#watchMabelTab').onclick = () => navigateDomainRoute(watchDomain, 'watch')
     $('#watchMabelInsightsTab').onclick = () => navigateDomainRoute(watchDomain, 'insights')
     $('#watchDownloadsTab').onclick = () => navigateDomainRoute(watchDomain, 'downloads')
-    $('#adultHomeWatchTab').onclick = () => navigateDomainRoute('adult', 'watch')
-    $('#adultHomeInsightsTab').onclick = () => navigateDomainRoute('adult', 'insights')
-    $('#adultHomeDownloadsTab').onclick = () => navigateDomainRoute('adult', 'downloads')
+    $('#myTvHomeWatchTab').onclick = () => navigateDomainRoute('my_tv', 'watch')
+    $('#myTvHomeInsightsTab').onclick = () => navigateDomainRoute('my_tv', 'insights')
+    $('#myTvHomeDownloadsTab').onclick = () => navigateDomainRoute('my_tv', 'downloads')
     const watchTitle = $('#view-watch .watch-title > div:first-child')
     watchTitle.onclick = () => scrollPortalToTop()
     watchTitle.onkeydown = event => {
@@ -175,92 +175,92 @@
       portalConnectionState = 'connecting'
       void attemptPortalReconnect()
     })
-    $('#watchSearch').oninput = event => { watchSearchText = event.target.value; renderAdultWatch() }
-    $('#watchSearchClear').onclick = event => { event.preventDefault(); watchSearchText = ''; renderAdultWatch(); $('#watchSearch').focus() }
+    $('#watchSearch').oninput = event => { watchSearchText = event.target.value; renderMyTvWatch() }
+    $('#watchSearchClear').onclick = event => { event.preventDefault(); watchSearchText = ''; renderMyTvWatch(); $('#watchSearch').focus() }
     $('#watchMabelSearch').oninput = event => { mabelSearchText = event.target.value; renderMabelDiscovery(mabelFilmEntries()) }
     $('#watchMabelSearchClear').onclick = event => { event.preventDefault(); mabelSearchText = ''; renderMabelDiscovery(mabelFilmEntries()); $('#watchMabelSearch').focus() }
-    const adultSeriesCreate = $('#adultSeriesCreate')
-    if (adultSeriesCreate) adultSeriesCreate.onclick = async () => {
+    const myTvSeriesCreate = $('#myTvSeriesCreate')
+    if (myTvSeriesCreate) myTvSeriesCreate.onclick = async () => {
       const name = prompt('Series name:')
       if (!name?.trim()) return
       try {
         await api('/api/manage', { method: 'POST', body: JSON.stringify({
-          action: 'create-adult-series', name: name.trim(),
+          action: 'create-my-tv-series', name: name.trim(),
         }) })
         await reloadLibraryWithoutLosingPlace()
-        const created = library?.adult_series?.find(series =>
+        const created = library?.my_tv_series?.find(series =>
           series.stored_title?.toLocaleLowerCase() === name.trim().toLocaleLowerCase()
           || series.title?.toLocaleLowerCase() === name.trim().toLocaleLowerCase())
         if (!created) throw new Error('The series was created, but could not be reopened')
-        openAdultSeriesSheet(created)
+        openMyTvSeriesSheet(created)
       } catch (error) { showError(error) }
     }
-    const adultSeriesClose = $('#adultSeriesClose')
-    const adultSeriesSheet = $('#adultSeriesSheet')
+    const myTvSeriesClose = $('#myTvSeriesClose')
+    const myTvSeriesSheet = $('#myTvSeriesSheet')
     const dismissContentCardJourney = () => portalSheets.dismissJourney()
-    portalSheets.wire(adultSeriesSheet, {
-      closeButton: adultSeriesClose,
+    portalSheets.wire(myTvSeriesSheet, {
+      closeButton: myTvSeriesClose,
       close: dismissContentCardJourney,
-      onClose: () => { selectedAdultSeries = null },
+      onClose: () => { selectedMyTvSeries = null },
     })
-    const adultSeriesMoreSheet = $('#adultSeriesMoreSheet')
-    portalSheets.wire(adultSeriesMoreSheet, {
-      closeButton: $('#adultSeriesMoreClose'),
-      close: closeAdultSeriesMoreSheet,
+    const myTvSeriesMoreSheet = $('#myTvSeriesMoreSheet')
+    portalSheets.wire(myTvSeriesMoreSheet, {
+      closeButton: $('#myTvSeriesMoreClose'),
+      close: closeMyTvSeriesMoreSheet,
     })
-    const adultSeasonClose = $('#adultSeasonClose')
-    const adultSeasonSheet = $('#adultSeasonSheet')
-    portalSheets.wire(adultSeasonSheet, {
-      closeButton: adultSeasonClose,
+    const myTvSeasonClose = $('#myTvSeasonClose')
+    const myTvSeasonSheet = $('#myTvSeasonSheet')
+    portalSheets.wire(myTvSeasonSheet, {
+      closeButton: myTvSeasonClose,
       close: dismissContentCardJourney,
-      onClose: () => { selectedAdultSeason = null },
+      onClose: () => { selectedMyTvSeason = null },
     })
-    portalSheets.wire($('#adultSeasonSettingsSheet'), {
-      closeButton: $('#adultSeasonSettingsClose'),
+    portalSheets.wire($('#myTvSeasonSettingsSheet'), {
+      closeButton: $('#myTvSeasonSettingsClose'),
     })
-    const adultSeriesRestartClose = $('#adultSeriesRestartClose')
-    const adultSeriesRestartCancel = $('#adultSeriesRestartCancel')
-    if (adultSeriesRestartCancel) adultSeriesRestartCancel.onclick = returnFromAdultSeriesRestartSheet
-    const adultSeriesRestartConfirm = $('#adultSeriesRestartConfirm')
-    if (adultSeriesRestartConfirm) adultSeriesRestartConfirm.onclick = confirmAdultSeriesRestart
-    const adultSeriesRestartSheet = $('#adultSeriesRestartSheet')
-    portalSheets.wire(adultSeriesRestartSheet, {
-      closeButton: adultSeriesRestartClose,
-      close: returnFromAdultSeriesRestartSheet,
+    const myTvSeriesRestartClose = $('#myTvSeriesRestartClose')
+    const myTvSeriesRestartCancel = $('#myTvSeriesRestartCancel')
+    if (myTvSeriesRestartCancel) myTvSeriesRestartCancel.onclick = returnFromMyTvSeriesRestartSheet
+    const myTvSeriesRestartConfirm = $('#myTvSeriesRestartConfirm')
+    if (myTvSeriesRestartConfirm) myTvSeriesRestartConfirm.onclick = confirmMyTvSeriesRestart
+    const myTvSeriesRestartSheet = $('#myTvSeriesRestartSheet')
+    portalSheets.wire(myTvSeriesRestartSheet, {
+      closeButton: myTvSeriesRestartClose,
+      close: returnFromMyTvSeriesRestartSheet,
     })
-    const adultSeriesUploadClose = $('#adultSeriesUploadClose')
-    const adultSeriesUploadSheet = $('#adultSeriesUploadSheet')
-    const closeAdultSeriesUploadSheet = () => {
-      closeLibrarySheet(adultSeriesUploadSheet)
-      adultSeriesUploadTarget = null
+    const myTvSeriesUploadClose = $('#myTvSeriesUploadClose')
+    const myTvSeriesUploadSheet = $('#myTvSeriesUploadSheet')
+    const closeMyTvSeriesUploadSheet = () => {
+      closeLibrarySheet(myTvSeriesUploadSheet)
+      myTvSeriesUploadTarget = null
     }
-    portalSheets.wire(adultSeriesUploadSheet, {
-      closeButton: adultSeriesUploadClose,
-      close: closeAdultSeriesUploadSheet,
-      cancel: () => closeLibrarySheet(adultSeriesUploadSheet),
+    portalSheets.wire(myTvSeriesUploadSheet, {
+      closeButton: myTvSeriesUploadClose,
+      close: closeMyTvSeriesUploadSheet,
+      cancel: () => closeLibrarySheet(myTvSeriesUploadSheet),
       onClose: () => {
-        if (!adultSeriesSourcePickerOpen) adultSeriesUploadTarget = null
+        if (!myTvSeriesSourcePickerOpen) myTvSeriesUploadTarget = null
       },
     })
-    const adultSeriesChooseSource = $('#adultSeriesChooseSource')
-    if (adultSeriesChooseSource) adultSeriesChooseSource.onclick = openAdultSeriesSourceSheet
-    const adultSeriesSourceClose = $('#adultSeriesSourceClose')
-    if (adultSeriesSourceClose) adultSeriesSourceClose.onclick = returnToAdultSeriesUploadSheet
-    const adultSeriesSourceFiles = $('#adultSeriesSourceFiles')
-    if (adultSeriesSourceFiles) adultSeriesSourceFiles.onclick = chooseAdultSeriesFiles
-    const adultSeriesSourceUsb = $('#adultSeriesSourceUsb')
-    if (adultSeriesSourceUsb) adultSeriesSourceUsb.onclick = chooseAdultSeriesUsb
-    const adultSeriesSourceSheet = $('#adultSeriesSourceSheet')
-    portalSheets.wire(adultSeriesSourceSheet, {
-      closeButton: adultSeriesSourceClose,
-      close: returnToAdultSeriesUploadSheet,
+    const myTvSeriesChooseSource = $('#myTvSeriesChooseSource')
+    if (myTvSeriesChooseSource) myTvSeriesChooseSource.onclick = openMyTvSeriesSourceSheet
+    const myTvSeriesSourceClose = $('#myTvSeriesSourceClose')
+    if (myTvSeriesSourceClose) myTvSeriesSourceClose.onclick = returnToMyTvSeriesUploadSheet
+    const myTvSeriesSourceFiles = $('#myTvSeriesSourceFiles')
+    if (myTvSeriesSourceFiles) myTvSeriesSourceFiles.onclick = chooseMyTvSeriesFiles
+    const myTvSeriesSourceUsb = $('#myTvSeriesSourceUsb')
+    if (myTvSeriesSourceUsb) myTvSeriesSourceUsb.onclick = chooseMyTvSeriesUsb
+    const myTvSeriesSourceSheet = $('#myTvSeriesSourceSheet')
+    portalSheets.wire(myTvSeriesSourceSheet, {
+      closeButton: myTvSeriesSourceClose,
+      close: returnToMyTvSeriesUploadSheet,
     })
-    const adultEpisodeClose = $('#adultEpisodeClose')
-    const adultEpisodeSheet = $('#adultEpisodeSheet')
-    portalSheets.wire(adultEpisodeSheet, {
-      closeButton: adultEpisodeClose,
-      close: closeAdultEpisodeSheet,
-      onClose: () => { selectedAdultEpisode = null },
+    const myTvEpisodeClose = $('#myTvEpisodeClose')
+    const myTvEpisodeSheet = $('#myTvEpisodeSheet')
+    portalSheets.wire(myTvEpisodeSheet, {
+      closeButton: myTvEpisodeClose,
+      close: closeMyTvEpisodeSheet,
+      onClose: () => { selectedMyTvEpisode = null },
     })
     const homeFilmSearch = $('#homeFilmSearch')
     const homeFilmSearchClear = $('#homeFilmSearchClear')
@@ -281,6 +281,7 @@
       close: dialog?.hasAttribute('data-card-sheet') ? dismissContentCardJourney : close,
       onClose,
     }))
-    $('#watchAddAdult').onclick = () => $('#adultAddFilms').click()
-    $('#watchManageAdult').onclick = () => openLibrarySheet($('#adultCollectionSheet'))
+    $('#watchAddMyTv').onclick = () =>
+      openLibrarySheet($('#myTvUploadSheet'), $('#myTvFile'))
+    $('#watchManageMyTv').onclick = () => openLibrarySheet($('#myTvCollectionSheet'))
     $('#remoteConcurrentToggle').onclick = () => manage('set-remote-simultaneous', { enabled: library?.remote_viewing?.allow_simultaneous !== true })

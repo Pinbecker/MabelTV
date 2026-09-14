@@ -40,9 +40,9 @@ class StateDatabaseTests(unittest.TestCase):
             "owner": {"schema_version": 1, "setup_complete": True,
                       "pin_hash": "private", "portal_pin_required": True},
             "player": {"schema_version": 4, "current_channel": 7,
-                       "adult_positions": {"film-id": 12.5},
-                       "adult_durations": {"film-id": 100.0},
-                       "adult_position_updated_utc_ms": {"film-id": 1234},
+                       "my_tv_positions": {"film-id": 12.5},
+                       "my_tv_durations": {"film-id": 100.0},
+                       "my_tv_position_updated_utc_ms": {"film-id": 1234},
                        "channel_film_positions": {}, "channel_film_durations": {},
                        "channel_film_position_updated_utc_ms": {},
                        "channel_timelines": {"7": {"episode_index": 0,
@@ -61,23 +61,23 @@ class StateDatabaseTests(unittest.TestCase):
                                  "favourites": ["7/Film.mp4"],
                                  "future_extension": "preserved",
                                  "favourite_channels": [7], "updated": 200},
-            "adult_media": {"Films/Movie.mp4": {"library_id": "media-id",
+            "my_tv_media": {"Films/Movie.mp4": {"library_id": "media-id",
                             "favourite": False, "metadata": {"tmdb_id": 10},
                             "custom": {"kept": True}}},
-            "adult_series": {"schema_version": 1, "series": {"series-id": {
+            "my_tv_series": {"schema_version": 1, "series": {"series-id": {
                 "title": "Series", "favourite": False,
                 "metadata": {"tmdb_id": 20}}}, "episodes": {
                 "series-id/Season 1/Episode.mp4": {"library_id": "episode-id",
                     "watched": True, "metadata": {"season_number": 1,
                                                     "episode_number": 1}}}},
-            "adult_viewing": {"schema_version": 1, "titles": {"movie:10": {
+            "my_tv_viewing": {"schema_version": 1, "titles": {"movie:10": {
                 "media_type": "movie", "tmdb_id": 10, "title": "Movie",
                 "history": [100, 200], "watchlisted": True,
                 "watchlist_updated": 200, "up_next": True, "up_next_rank": 1,
                 "personal_rating": 9, "rating_updated": 201}},
                 "availability": {"movie:10": {"checked": 300}},
                 "explore": {"movie:11": {"last_seen": 400, "impressions": 2}}},
-            "adult_insights": {"schema_version": 1,
+            "my_tv_insights": {"schema_version": 1,
                                "titles": {"movie:10": {"genres": ["Drama"],
                                                          "checked": 500}},
                                "failures": {"movie:11": 501}},
@@ -150,7 +150,7 @@ class StateDatabaseTests(unittest.TestCase):
     def test_physical_owner_recovery_exports_then_clears_sqlite_owner(self) -> None:
         owner = {
             "schema_version": 1, "setup_complete": True,
-            "child_name": "Mabel", "tv_name": "MabelTV",
+            "child_name": "Mabel", "tv_name": "Mabel TV",
             "pin_hash": "private", "pin_salt": "private",
         }
         self.database.write("owner", owner)
@@ -290,16 +290,16 @@ class StateDatabaseTests(unittest.TestCase):
                 },
             },
         }
-        self.database.write("adult_series", value)
-        restored = self.database.read("adult_series")
+        self.database.write("my_tv_series", value)
+        restored = self.database.read("my_tv_series")
         self.assertEqual(value, restored)
         connection = self.database.connect()
         try:
             paths = [row[0] for row in connection.execute(
                 "SELECT relative_path FROM local_media "
-                "WHERE domain='adult_episode' ORDER BY relative_path")]
+                "WHERE domain='my_tv_episode' ORDER BY relative_path")]
             links = [tuple(row) for row in connection.execute(
-                "SELECT series_id,media_type,tmdb_id FROM adult_series_title_links "
+                "SELECT series_id,media_type,tmdb_id FROM my_tv_series_title_links "
                 "ORDER BY series_id")]
         finally:
             connection.close()
@@ -382,7 +382,7 @@ class StateDatabaseTests(unittest.TestCase):
         report = self.database.upgrade()
 
         self.assertEqual(7, report["previous_schema_version"])
-        self.assertEqual(8, report["schema_version"])
+        self.assertEqual(9, report["schema_version"])
         rows = self.database.viewing_sessions()
         self.assertEqual(2, len(rows))
         by_id = {row["id"]: row for row in rows}
@@ -395,19 +395,19 @@ class StateDatabaseTests(unittest.TestCase):
 
     def test_state_writes_advance_only_the_related_portal_revisions(self) -> None:
         self.assertEqual({
-            "library": 0, "adult_viewing": 0,
-            "viewing_insights": 0, "adult_insights": 0,
+            "library": 0, "my_tv_viewing": 0,
+            "viewing_insights": 0, "my_tv_insights": 0,
             "settings": 0, "identity": 0, "player": 0,
         }, self.database.revisions())
 
         self.database.write("settings", {"schema_version": 1})
-        self.database.write("adult_viewing", {
+        self.database.write("my_tv_viewing", {
             "schema_version": 1, "titles": {}, "availability": {}, "explore": {},
         })
 
         self.assertEqual({
-            "library": 0, "adult_viewing": 1,
-            "viewing_insights": 0, "adult_insights": 1,
+            "library": 0, "my_tv_viewing": 1,
+            "viewing_insights": 0, "my_tv_insights": 1,
             "settings": 1, "identity": 0, "player": 0,
         }, self.database.revisions())
 
@@ -437,12 +437,12 @@ class StateDatabaseTests(unittest.TestCase):
             documentation,
         )
 
-    def test_adult_relationship_state_has_one_physical_owner(self) -> None:
+    def test_my_tv_relationship_state_has_one_physical_owner(self) -> None:
         connection = self.database.connect()
         try:
             columns = {
                 row["name"]
-                for row in connection.execute("PRAGMA table_info(adult_titles)")
+                for row in connection.execute("PRAGMA table_info(my_tv_titles)")
             }
         finally:
             connection.close()
@@ -463,10 +463,10 @@ class StateDatabaseTests(unittest.TestCase):
             },
             "availability": {}, "explore": {},
         }
-        self.database.write("adult_viewing", value)
-        self.assertEqual(value, self.database.read("adult_viewing"))
+        self.database.write("my_tv_viewing", value)
+        self.assertEqual(value, self.database.read("my_tv_viewing"))
 
-    def test_adult_title_metadata_has_one_relational_owner(self) -> None:
+    def test_my_tv_title_metadata_has_one_relational_owner(self) -> None:
         value = {
             "schema_version": 1,
             "titles": {
@@ -479,14 +479,14 @@ class StateDatabaseTests(unittest.TestCase):
             },
             "availability": {}, "explore": {},
         }
-        self.database.write("adult_viewing", value)
-        self.assertEqual(value, self.database.read("adult_viewing"))
+        self.database.write("my_tv_viewing", value)
+        self.assertEqual(value, self.database.read("my_tv_viewing"))
 
         connection = self.database.connect()
         try:
-            adult_columns = {
+            my_tv_columns = {
                 row["name"] for row in connection.execute(
-                    "PRAGMA table_info(adult_titles)")
+                    "PRAGMA table_info(my_tv_titles)")
             }
             external = dict(connection.execute(
                 "SELECT title,year,poster_path,overview,runtime,updated "
@@ -496,7 +496,7 @@ class StateDatabaseTests(unittest.TestCase):
             connection.close()
         self.assertTrue({
             "title", "year", "poster_path", "overview", "runtime", "updated",
-        }.isdisjoint(adult_columns))
+        }.isdisjoint(my_tv_columns))
         self.assertEqual({
             "title": "Series", "year": "2024", "poster_path": "/poster.jpg",
             "overview": "A synopsis", "runtime": 47, "updated": 123.0,
@@ -541,14 +541,14 @@ class StateDatabaseTests(unittest.TestCase):
             "tv_border": "silver-90s",
         }, self.database.read("settings"))
         self.assertEqual({
-            "adult_viewing.watchlisted_false": 1,
-            "adult_viewing.watchlist_updated_without_membership": 1,
-            "adult_viewing.up_next_false": 1,
-            "adult_viewing.up_next_rank_without_membership": 1,
-            "adult_viewing.rating_zero": 1,
-            "adult_viewing.rating_updated_without_rating": 1,
+            "my_tv_viewing.watchlisted_false": 1,
+            "my_tv_viewing.watchlist_updated_without_membership": 1,
+            "my_tv_viewing.up_next_false": 1,
+            "my_tv_viewing.up_next_rank_without_membership": 1,
+            "my_tv_viewing.rating_zero": 1,
+            "my_tv_viewing.rating_updated_without_rating": 1,
         }, report["source_normalisations"])
-        migrated_title = self.database.read("adult_viewing")["titles"]["movie:99"]
+        migrated_title = self.database.read("my_tv_viewing")["titles"]["movie:99"]
         for retired in (
                 "watchlisted", "watchlist_updated", "up_next", "up_next_rank",
                 "personal_rating", "rating_updated"):
@@ -594,8 +594,8 @@ class StateDatabaseTests(unittest.TestCase):
             kind: self.database.read(kind)
             for kind in (
                 "channels", "settings", "owner", "player", "viewing",
-                "channel_metadata", "adult_media", "adult_series",
-                "adult_viewing", "adult_insights",
+                "channel_metadata", "my_tv_media", "my_tv_series",
+                "my_tv_viewing", "my_tv_insights",
             )
         }
         source["settings"] = {
@@ -608,7 +608,7 @@ class StateDatabaseTests(unittest.TestCase):
             "portal_design": "classic",
             "portal_palette": "tide",
         }
-        source["adult_viewing"] = {
+        source["my_tv_viewing"] = {
             "schema_version": 1,
             "titles": {
                 "movie:99": {
@@ -628,10 +628,10 @@ class StateDatabaseTests(unittest.TestCase):
             "player": "var/lib/mabeltv/state.json",
             "viewing": "var/lib/mabeltv/viewing-history.json",
             "channel_metadata": "srv/mabeltv/media/.mabeltv-channels.json",
-            "adult_media": "srv/mabeltv/media/.adult/.mabeltv-adult.json",
-            "adult_series": "srv/mabeltv/media/.adult/.mabeltv-series.json",
-            "adult_viewing": "srv/mabeltv/media/.adult/.mabeltv-viewing.json",
-            "adult_insights": "srv/mabeltv/media/.adult/.mabeltv-insights.json",
+            "my_tv_media": "srv/mabeltv/media/.adult/.mabeltv-adult.json",
+            "my_tv_series": "srv/mabeltv/media/.adult/.mabeltv-series.json",
+            "my_tv_viewing": "srv/mabeltv/media/.adult/.mabeltv-viewing.json",
+            "my_tv_insights": "srv/mabeltv/media/.adult/.mabeltv-insights.json",
         }
         for kind, relative in relative_stores.items():
             path = source_root / relative
@@ -649,7 +649,7 @@ class StateDatabaseTests(unittest.TestCase):
         report = json.loads(imported.stdout)
         self.assertEqual(6, len(report["source_normalisations"]))
         self.assertTrue(any(
-            "adult_viewing nonmembership markers omitted" in item
+            "my_tv_viewing nonmembership markers omitted" in item
             for item in report["source_normalisations"]
         ))
         migrated = database_module.StateDatabase(target)
@@ -659,7 +659,7 @@ class StateDatabaseTests(unittest.TestCase):
             "playback_mode": "resume",
             "tv_border": "charcoal-90s",
         }, migrated.read("settings"))
-        migrated_title = migrated.read("adult_viewing")["titles"]["movie:99"]
+        migrated_title = migrated.read("my_tv_viewing")["titles"]["movie:99"]
         self.assertNotIn("watchlisted", migrated_title)
         self.assertNotIn("watchlist_updated", migrated_title)
         self.assertNotIn("up_next", migrated_title)
@@ -680,7 +680,7 @@ class StateDatabaseTests(unittest.TestCase):
                     "PRAGMA foreign_key_list(local_media)")
             ]
             self.assertTrue(any(
-                item["table"] == "adult_series"
+                item["table"] == "my_tv_series"
                 and item["from"] == "series_id"
                 and item["to"] == "id"
                 for item in foreign_keys
@@ -688,24 +688,24 @@ class StateDatabaseTests(unittest.TestCase):
             with self.assertRaises(database_module.sqlite3.IntegrityError):
                 connection.execute(
                     "INSERT INTO local_media(relative_path,domain,series_id) "
-                    "VALUES('missing/Season 1/Episode.mp4','adult_episode','missing')"
+                    "VALUES('missing/Season 1/Episode.mp4','my_tv_episode','missing')"
                 )
         finally:
             connection.close()
 
-    def test_adult_viewing_title_requires_its_canonical_external_title(self) -> None:
+    def test_my_tv_viewing_title_requires_its_canonical_external_title(self) -> None:
         connection = self.database.connect()
         try:
             with self.assertRaises(database_module.sqlite3.IntegrityError):
                 connection.execute(
-                    "INSERT INTO adult_titles(media_type,tmdb_id) VALUES('movie',99)"
+                    "INSERT INTO my_tv_titles(media_type,tmdb_id) VALUES('movie',99)"
                 )
             connection.execute(
                 "INSERT INTO external_titles(media_type,tmdb_id,title) "
                 "VALUES('movie',99,'Canonical title')"
             )
             connection.execute(
-                "INSERT INTO adult_titles(media_type,tmdb_id) VALUES('movie',99)"
+                "INSERT INTO my_tv_titles(media_type,tmdb_id) VALUES('movie',99)"
             )
             with self.assertRaises(database_module.sqlite3.IntegrityError):
                 connection.execute(
@@ -729,7 +729,7 @@ class StateDatabaseTests(unittest.TestCase):
             "failures": {},
         }
         self.database.write("viewing", viewing)
-        self.database.write("adult_insights", insights)
+        self.database.write("my_tv_insights", insights)
         connection = self.database.connect()
         try:
             before = (
@@ -737,7 +737,7 @@ class StateDatabaseTests(unittest.TestCase):
                     "SELECT rowid FROM viewing_sessions WHERE id='stable'"
                 ).fetchone()[0],
                 connection.execute(
-                    "SELECT rowid FROM adult_insights_titles "
+                    "SELECT rowid FROM my_tv_insights_titles "
                     "WHERE title_key='movie:1'"
                 ).fetchone()[0],
             )
@@ -745,7 +745,7 @@ class StateDatabaseTests(unittest.TestCase):
             connection.close()
 
         self.database.write("viewing", viewing)
-        self.database.write("adult_insights", insights)
+        self.database.write("my_tv_insights", insights)
         connection = self.database.connect()
         try:
             after = (
@@ -753,7 +753,7 @@ class StateDatabaseTests(unittest.TestCase):
                     "SELECT rowid FROM viewing_sessions WHERE id='stable'"
                 ).fetchone()[0],
                 connection.execute(
-                    "SELECT rowid FROM adult_insights_titles "
+                    "SELECT rowid FROM my_tv_insights_titles "
                     "WHERE title_key='movie:1'"
                 ).fetchone()[0],
             )

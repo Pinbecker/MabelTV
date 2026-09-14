@@ -34,13 +34,13 @@ class TranscodingMixin:
         try:
             result = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=codec_type,codec_name,profile,pix_fmt,width,height,avg_frame_rate", "-of", "json", str(path)], check=False, capture_output=True, text=True, timeout=30)
         except (OSError, subprocess.TimeoutExpired) as error:
-            raise ValueError("Mabel TV could not finish checking that video") from error
+            raise ValueError(f"{self.tv_identity()[1]} could not finish checking that video") from error
         try:
             streams = json.loads(result.stdout).get("streams", [])
         except (TypeError, ValueError):
             streams = []
         if result.returncode != 0 or not streams or streams[0].get("codec_type") != "video":
-            raise ValueError("Mabel TV could not find a video stream in that file")
+            raise ValueError(f"{self.tv_identity()[1]} could not find a video stream in that file")
         return streams[0]
 
     @staticmethod
@@ -68,7 +68,7 @@ class TranscodingMixin:
             "scale=1280:720:force_original_aspect_ratio=decrease:force_divisible_by=2,fps=30",
             "2500k", "3000k", "5000k")
 
-    def optimise_adult_for_playback(self, source: Path, destination: Path,
+    def optimise_my_tv_for_playback(self, source: Path, destination: Path,
                                     progress_callback: Any = None) -> None:
         # Films are normally 23.976/24/25 fps. Preserve that cadence instead
         # of manufacturing duplicate 30 fps frames, while capping the stream
@@ -77,14 +77,14 @@ class TranscodingMixin:
             source, destination,
             "scale=1280:720:force_original_aspect_ratio=decrease:force_divisible_by=2",
             "1800k", "2000k", "4000k", progress_callback
-            or self.adult_optimisation_progress_callback)
+            or self.my_tv_optimisation_progress_callback)
 
-    def request_adult_optimisation(self, file_name: str) -> None:
-        source = self.safe_adult_path(file_name)
+    def request_my_tv_optimisation(self, file_name: str) -> None:
+        source = self.safe_my_tv_path(file_name)
         if not source.is_file():
             raise ValueError("Film not found")
-        relative = self.adult_relative_path(source)
-        state = self.adult_media_states().get(relative, {})
+        relative = self.my_tv_relative_path(source)
+        state = self.my_tv_media_states().get(relative, {})
         if isinstance(state, dict) and state.get("state") in {"queued", "processing"}:
             raise ValueError("This film is already being optimised")
         # Keep the original until the new copy has passed validation and has
@@ -92,45 +92,45 @@ class TranscodingMixin:
         reserve = source.stat().st_size + 512 * 1024 * 1024
         if shutil.disk_usage(self.media_root).free < reserve:
             raise ValueError("There is not enough free space to safely optimise this film")
-        with self.adult_optimisation_lock:
-            if relative in self.adult_optimisation_active:
+        with self.my_tv_optimisation_lock:
+            if relative in self.my_tv_optimisation_active:
                 raise ValueError("This film is already being optimised")
-            self.adult_optimisation_active.add(relative)
+            self.my_tv_optimisation_active.add(relative)
         with self.config_lock:
-            self.set_adult_media_state(relative, "queued", progress=0)
-        threading.Thread(target=self.optimise_adult_file, args=(relative,),
-                         name="mabeltv-adult-optimise", daemon=True).start()
+            self.set_my_tv_media_state(relative, "queued", progress=0)
+        threading.Thread(target=self.optimise_my_tv_file, args=(relative,),
+                         name="mabeltv-my-tv-optimise", daemon=True).start()
 
-    def adult_optimisation_action(self, file_name: str, action: str) -> None:
+    def my_tv_optimisation_action(self, file_name: str, action: str) -> None:
         if action not in {"pause", "resume", "cancel"}:
             raise ValueError("Unknown optimisation action")
-        source = self.safe_adult_path(file_name)
-        relative = self.adult_relative_path(source)
+        source = self.safe_my_tv_path(file_name)
+        relative = self.my_tv_relative_path(source)
         with self.config_lock:
-            state = self.adult_media_states().get(relative, {})
+            state = self.my_tv_media_states().get(relative, {})
             current = str(state.get("state", "")) if isinstance(state, dict) else ""
             if action == "pause":
                 if current not in {"queued", "processing"}:
                     raise ValueError("This optimisation cannot be paused now")
-                self.set_adult_media_state(relative, "paused", "Paused by you",
+                self.set_my_tv_media_state(relative, "paused", "Paused by you",
                                            progress=int(state.get("progress", 0) or 0))
             elif action == "resume":
                 if current != "paused":
                     raise ValueError("This optimisation is not paused")
-                self.set_adult_media_state(relative, "processing", "",
+                self.set_my_tv_media_state(relative, "processing", "",
                                            progress=int(state.get("progress", 0) or 0))
             else:
                 if current not in {"queued", "processing", "paused"}:
                     raise ValueError("This optimisation cannot be cancelled now")
-                self.set_adult_media_state(relative, "error", "Optimisation cancelled",
+                self.set_my_tv_media_state(relative, "error", "Optimisation cancelled",
                                            progress=int(state.get("progress", 0) or 0))
 
-    def optimise_adult_file(self, file_name: str) -> None:
-        source = self.safe_adult_path(file_name)
+    def optimise_my_tv_file(self, file_name: str) -> None:
+        source = self.safe_my_tv_path(file_name)
         try:
             # One encoder at a time keeps temperature and memory use inside a
             # predictable envelope even if two portal buttons are pressed.
-            with self.adult_optimisation_serial:
+            with self.my_tv_optimisation_serial:
                 if not source.is_file():
                     raise ValueError("Film not found")
                 destination = source.with_suffix(".mp4")
@@ -138,45 +138,45 @@ class TranscodingMixin:
                     raise ValueError("An MP4 with this film name already exists")
                 with self.config_lock:
                     started = time.time()
-                    self.set_adult_media_state(file_name, "processing", progress=0,
+                    self.set_my_tv_media_state(file_name, "processing", progress=0,
                                                started=started, eta_seconds=None)
 
                 def save_progress(percent: int, message: str = "") -> None:
                     elapsed = max(0.0, time.time() - started)
                     eta = int(elapsed * (100 - percent) / percent) if percent > 0 else 0
                     with self.config_lock:
-                        current = self.adult_media_states().get(file_name, {})
+                        current = self.my_tv_media_states().get(file_name, {})
                         saved_state = "paused" if isinstance(current, dict) \
                             and current.get("state") == "paused" else "processing"
-                        self.set_adult_media_state(
+                        self.set_my_tv_media_state(
                             file_name, saved_state, message, progress=percent,
                             started=started, eta_seconds=eta or None)
 
-                self.adult_optimisation_progress_callback = save_progress
-                self.optimise_adult_for_playback(source, destination)
+                self.my_tv_optimisation_progress_callback = save_progress
+                self.optimise_my_tv_for_playback(source, destination)
                 if destination != source:
                     source.unlink()
-                destination_relative = self.adult_relative_path(destination)
+                destination_relative = self.my_tv_relative_path(destination)
                 with self.config_lock:
-                    states = self.adult_media_states()
+                    states = self.my_tv_media_states()
                     current = states.pop(file_name, {})
                     if not isinstance(current, dict):
                         current = {}
                     current.update({"state": "optimised", "message": "",
                                     "progress": 100, "updated": time.time()})
                     states[destination_relative] = current
-                    self.write_adult_media_states(states)
+                    self.write_my_tv_media_states(states)
                 self.refresh_tv()
         except Exception as error:
             with self.config_lock:
-                self.set_adult_media_state(
+                self.set_my_tv_media_state(
                     file_name, "error",
                     str(error) if isinstance(error, ValueError)
-                    else "MabelTV could not optimise this film")
+                    else f"{self.tv_identity()[1]} could not optimise this film")
         finally:
-            self.adult_optimisation_progress_callback = None
-            with self.adult_optimisation_lock:
-                self.adult_optimisation_active.discard(file_name)
+            self.my_tv_optimisation_progress_callback = None
+            with self.my_tv_optimisation_lock:
+                self.my_tv_optimisation_active.discard(file_name)
 
     def _optimise_for_playback(self, source: Path, destination: Path,
                                video_filter: str, bitrate: str,
@@ -216,8 +216,8 @@ class TranscodingMixin:
                 while process.poll() is None:
                     if time.monotonic() >= deadline:
                         os.killpg(process.pid, signal.SIGTERM)
-                        raise ValueError("Mabel TV stopped this optimisation because it took too long")
-                    saved = self.adult_media_states().get(self.adult_relative_path(source), {})
+                        raise ValueError(f"{self.tv_identity()[1]} stopped this optimisation because it took too long")
+                    saved = self.my_tv_media_states().get(self.my_tv_relative_path(source), {})
                     requested_state = str(saved.get("state", "")) if isinstance(saved, dict) else ""
                     if requested_state == "error" and str(saved.get("message", "")) == "Optimisation cancelled":
                         os.killpg(process.pid, signal.SIGTERM)
@@ -260,7 +260,7 @@ class TranscodingMixin:
                     details = error_log.read_text(encoding="utf-8", errors="replace").strip()
                     if details:
                         print(details[-4000:], file=sys.stderr, flush=True)
-                    raise ValueError("Mabel TV could not optimise this video for smooth playback")
+                    raise ValueError(f"{self.tv_identity()[1]} could not optimise this video for smooth playback")
             self.video_info(temporary)
             os.replace(temporary, destination)
         finally:

@@ -6,7 +6,7 @@
       const payload = {
         action, volume: usbVolume, paths: [...usbSelection], target: $('#usbTarget').value,
       }
-      if (payload.target === 'adult') payload.folder = $('#usbAdultFolder').value
+      if (payload.target === 'my_tv') payload.folder = $('#usbMyTvFolder').value
       if (payload.target === 'channel') payload.channel = Number($('#usbChannel').value)
       if (payload.target === 'series') {
         payload.series = $('#usbSeries').value
@@ -45,13 +45,13 @@
 
     $('#usbTarget').onchange = () => {
       const target = $('#usbTarget').value
-      $('#usbAdultFolderLabel').classList.toggle('hidden', target !== 'adult')
+      $('#usbMyTvFolderLabel').classList.toggle('hidden', target !== 'my_tv')
       $('#usbChannelLabel').classList.toggle('hidden', target !== 'channel')
       $('#usbSeriesLabel').classList.toggle('hidden', target !== 'series')
       $('#usbSeasonLabel').classList.toggle('hidden', target !== 'series')
       if ($('#usbImportSheet').open) refreshUsbImportPlan()
     }
-    $('#usbAdultFolder').onchange = () => {
+    $('#usbMyTvFolder').onchange = () => {
       if ($('#usbImportSheet').open) refreshUsbImportPlan()
     }
     $('#usbChannel').onchange = () => {
@@ -193,19 +193,19 @@
     }
 
     function renderWatchmodeAvailabilitySetting() {
-      const enabled = library?.adult_settings?.watchmode_availability_enabled !== false
+      const enabled = library?.my_tv_settings?.watchmode_availability_enabled !== false
       $('#watchmodeAvailabilityToggle').setAttribute('aria-pressed', String(enabled))
       $('#watchmodeAvailabilityToggle').textContent = enabled ? 'On' : 'Off'
       $('#watchmodeAvailabilityState').textContent = enabled
         ? 'On · direct links and rental prices' : 'Off · TMDB details still available'
     }
 
-    function renderAdultProviderBadgesSetting() {
-      const enabled = adultProviderBadgesEnabled()
-      $('#adultProviderBadgesToggle').setAttribute('aria-pressed', String(enabled))
-      $('#adultProviderBadgesToggle').textContent = enabled ? 'On' : 'Off'
-      $('#adultProviderBadgesState').textContent = enabled
-        ? 'On · shown on Adult TV artwork' : 'Off · title sheets are unchanged'
+    function renderMyTvProviderBadgesSetting() {
+      const enabled = myTvProviderBadgesEnabled()
+      $('#myTvProviderBadgesToggle').setAttribute('aria-pressed', String(enabled))
+      $('#myTvProviderBadgesToggle').textContent = enabled ? 'On' : 'Off'
+      $('#myTvProviderBadgesState').textContent = enabled
+        ? 'On · shown on My TV artwork' : 'Off · title sheets are unchanged'
     }
 
     function renderPortalPinSetting() {
@@ -220,10 +220,10 @@
       enabled: !(library?.appearance?.tv_guide_enabled === true)
     })
     $('#watchmodeAvailabilityToggle').onclick = () => manage('set-watchmode-availability', {
-      enabled: !adultAvailabilityEnabled(),
+      enabled: !myTvAvailabilityEnabled(),
     })
-    $('#adultProviderBadgesToggle').onclick = () => manage('set-adult-provider-badges', {
-      enabled: !adultProviderBadgesEnabled(),
+    $('#myTvProviderBadgesToggle').onclick = () => manage('set-my-tv-provider-badges', {
+      enabled: !myTvProviderBadgesEnabled(),
     })
 
     ;[['#tvCrtGlass', '#tvCrtGlassValue'], ['#tvDistortion', '#tvDistortionValue'], ['#tvMaximumVolume', '#tvMaximumVolumeValue']]
@@ -319,7 +319,7 @@
               : (uploadStates[job.status] || job.status)
       const source = isUsb ? `${job.source_label || 'USB drive'} → ` : ''
       const detail = isOptimising ? activityDuration(job.eta_seconds)
-        : `${source}${job.channel_name || 'MabelTV'} · ${Math.round(percent)}%`
+        : `${source}${job.channel_name || tvName()} · ${Math.round(percent)}%`
       const paused = isOptimising ? job.state === 'paused' : (job.status === 'paused' || transfer === 'paused')
       const cancellable = isOptimising ? ['queued', 'processing', 'paused'].includes(job.state)
         : job.cancelable === true

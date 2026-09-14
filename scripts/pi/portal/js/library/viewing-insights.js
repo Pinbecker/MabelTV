@@ -227,7 +227,7 @@ function renderViewingHighlights(values) {
   const root = $('#viewingHighlights')
   root.replaceChildren()
   if (!values?.length) {
-    root.innerHTML = '<p class="viewing-empty">Highlights will appear after MabelTV has been watched.</p>'
+    root.innerHTML = `<p class="viewing-empty">Highlights will appear after ${escapeHtml(tvName())} has been watched.</p>`
     return
   }
   values.slice(0, 3).forEach(item => {
@@ -349,7 +349,7 @@ function renderViewingBrowse(kind) {
   const filtered = values.filter(item => [item.title, item.source, item.channel_number]
     .some(value => String(value || '').toLocaleLowerCase().includes(query)))
   $('#viewingBrowseKicker').textContent = isFilms
-    ? 'MabelTV film library' : 'MabelTV series library'
+    ? `${tvName()} film library` : `${tvName()} series library`
   $('#viewingBrowseTitle').textContent = isFilms ? 'Every film' : 'Every channel'
   $('#viewingBrowseIntro').textContent = isFilms
     ? 'Lifetime progress for every current and previously watched film.'
@@ -739,16 +739,16 @@ function openInsightsRoute(requested, event = null, options = {}) {
   }
   const saved = options.reset ? null : insightsPositions.get(requested)
   currentInsightsPath = requested
-  if (requested.startsWith('insights/adult/')) {
+  if (requested.startsWith('insights/my_tv/')) {
     $('.insights-page')?.classList.add('is-child')
     $('#viewingRangeControls')?.classList.add('hidden')
-    setMyInsightsMode('adult', { load: false })
-    openAdultInsightsRoute(requested)
+    setMyInsightsMode('my_tv', { load: false })
+    openMyTvInsightsRoute(requested)
     openView('insights', { instantScroll: true, resetScroll: true })
     resetViewScroll()
     return
   }
-  closeAdultInsightsRoute()
+  closeMyTvInsightsRoute()
   const previousScreen = viewingInsightsRoute.screen
   const item = requested.match(
     /^insights\/item\/(.+)\/(summary|patterns|history)$/)
@@ -776,7 +776,7 @@ function openInsightsRoute(requested, event = null, options = {}) {
     'is-child', viewingInsightsRoute.screen !== 'dashboard')
   $('#viewingRangeControls')?.classList.toggle(
     'hidden', viewingInsightsRoute.screen !== 'dashboard')
-  setMyInsightsMode(requested === 'insights' ? 'adult' : 'mabel', { load: false })
+  setMyInsightsMode(requested === 'insights' ? 'my_tv' : 'mabel', { load: false })
   openView('insights', { instantScroll: true, resetScroll: true })
   renderInsightsRoute()
   loadViewingInsights().catch(() => {})

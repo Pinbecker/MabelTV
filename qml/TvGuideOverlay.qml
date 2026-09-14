@@ -205,7 +205,7 @@ Item {
                 font.family: "DejaVu Sans"
                 font.bold: true
                 font.pixelSize: 30 * guide.uiScale
-                text: "MabelTV"
+                text: tvDisplayName
             }
 
             Rectangle {
@@ -549,7 +549,7 @@ Item {
                 font.family: "DejaVu Sans"
                 font.bold: true
                 font.pixelSize: 12 * guide.uiScale
-                text: "MABELTV"
+                text: tvDisplayName.toUpperCase()
             }
         }
 

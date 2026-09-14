@@ -42,7 +42,7 @@ function remoteTime(value) {
     }
 
     function artworkUrl(name, retry = '') {
-      const base = `/api/adult/artwork/${encodeURIComponent(name)}`
+      const base = `/api/my-tv/artwork/${encodeURIComponent(name)}`
       return retry ? `${base}?retry=${encodeURIComponent(retry)}` : base
     }
 
@@ -153,7 +153,7 @@ function remoteTime(value) {
         result = await startRemoteStream(payload)
         iosRemoteSession = new URL(result.stream_url, location.origin).searchParams.get('stream')
         $('#iosWatchTitle').textContent = result.title
-        $('#iosWatchContext').textContent = result.kind === 'usb' ? 'Playing directly from USB' : 'MabelTV remote viewing'
+        $('#iosWatchContext').textContent = result.kind === 'usb' ? 'Playing directly from USB' : `${tvName()} remote viewing`
         video.pause(); video.removeAttribute('src'); video.replaceChildren()
         let captionsAttached = false
         const attachNativeCaptions = () => {
@@ -176,7 +176,7 @@ function remoteTime(value) {
           if (resume > 10 && resume < video.duration - 5) video.currentTime = resume
           requestNativeFullscreen()
         }
-        // Do not involve the external VTT in initial source negotiation. Adult
+        // Do not involve the external VTT in initial source negotiation. MyTv
         // MP4s previously failed with MEDIA_ERR_SRC_NOT_SUPPORTED when iPadOS
         // received the video and text track together. Once canplay fires, the
         // movie is already accepted and the native AVPlayer can safely add CC.
@@ -340,7 +340,7 @@ function remoteTime(value) {
         mabelRemoteLastSaved = 0
         $('#mabelWatchTitle').textContent = result.title
         const channel = (library?.channels || []).find(value => Number(value.number) === Number(payload.channel))
-        $('#mabelWatchChannel').textContent = channel ? `CH ${channel.number} · ${channel.name}` : 'Remote Mabel TV'
+        $('#mabelWatchChannel').textContent = channel ? `CH ${channel.number} · ${channel.name}` : `Remote ${tvName()}`
         const settings = library?.tv_settings || {}
         const cabinet = $('#mabelWatchCabinet')
         const cabinetStyle = settings.tv_border || 'slim-black'
@@ -429,15 +429,15 @@ function remoteTime(value) {
 
     async function downloadToDevice(payload, title) {
       if (!offlineStorageReady || !window.MabelOffline) {
-        notice(offlineStorageError || 'Set up the secure MabelTV app from the Downloads tab first.', true)
-        const domain = ['adult', 'adult-series'].includes(payload?.kind) ? 'adult' : 'mabel'
+        notice(offlineStorageError || `Set up the secure ${tvName()} app from the Downloads tab first.`, true)
+        const domain = ['my_tv', 'my-tv-series'].includes(payload?.kind) ? 'my_tv' : 'mabel'
         navigateDomainRoute(domain, 'downloads')
         return
       }
       const pendingId = JSON.stringify(payload)
       pendingDownloads.set(pendingId, { title, source: payload,
         phase: 'preparing', message: 'Preparing download…' })
-      downloadDomain = ['adult', 'adult-series'].includes(payload?.kind) ? 'adult' : 'mabel'
+      downloadDomain = ['my_tv', 'my-tv-series'].includes(payload?.kind) ? 'my_tv' : 'mabel'
       watchDomain = downloadDomain
       navigateDomainRoute(downloadDomain, 'downloads')
       await renderDownloads()
@@ -457,11 +457,11 @@ function remoteTime(value) {
     }
 
     async function openRemotePlayer(payload, position = 0, returnTo = null) {
-      const desktopAdult = ['adult', 'adult-series'].includes(payload.kind) && !isAppleMobilePlayer()
+      const desktopMyTv = ['my_tv', 'my-tv-series'].includes(payload.kind) && !isAppleMobilePlayer()
       // Reserve the tab during the direct user gesture. Waiting for the
       // portal-only concurrency setting first would let some browsers mistake
       // the eventual player window for an unsolicited popup.
-      const playerWindow = desktopAdult ? window.open('about:blank', '_blank') : null
+      const playerWindow = desktopMyTv ? window.open('about:blank', '_blank') : null
       try {
         await allowIndependentViewing()
         if (payload.kind === 'channel') {
@@ -482,7 +482,7 @@ function remoteTime(value) {
         else if (playerWindow) {
           playerWindow.opener = null
           playerWindow.location.replace(url)
-        } else throw new Error('Allow pop-ups for MabelTV, then choose Watch on this device again.')
+        } else throw new Error(`Allow pop-ups for ${tvName()}, then choose Watch on this device again.`)
       } catch (error) {
         if (playerWindow) playerWindow.close()
         showError(error)

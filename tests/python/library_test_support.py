@@ -41,26 +41,26 @@ CORE_SCRIPTS = (
     "foundation.js", "scroll.js", "navigation.js", "live.js", "load.js",
 )
 LIBRARY_SCRIPTS = (
-    "adult-library.js", "usb-browser.js", "viewing-insights.js",
-    "adult-insights.js", "device-status.js", "channels.js",
+    "my-tv-library.js", "usb-browser.js", "viewing-insights.js",
+    "my-tv-insights.js", "device-status.js", "channels.js",
 )
 PLAYBACK_SCRIPTS = (
-    "players.js", "film-library.js", "adult-series.js", "film-catalogue.js",
+    "players.js", "film-library.js", "my-tv-series.js", "film-catalogue.js",
     "programmes.js", "downloads.js", "view.js",
 )
-ADULT_VIEWING_SCRIPTS = (
+MY_TV_VIEWING_SCRIPTS = (
     "catalogue.js", "seasons.js", "details.js", "grid.js",
 )
 OVERLAY_PARTIALS = (
-    "watch.html", "adult-library.html", "device-playback.html", "remote.html",
-    "library-management.html", "adult-viewing.html",
+    "watch.html", "my-tv-library.html", "device-playback.html", "remote.html",
+    "library-management.html", "my-tv-viewing.html",
 )
 
 PORTAL_CORE = read_portal_files("js/core", CORE_SCRIPTS)
 PORTAL_LIBRARY = read_portal_files("js/library", LIBRARY_SCRIPTS)
 PORTAL_PLAYBACK = read_portal_files("js/playback", PLAYBACK_SCRIPTS)
-PORTAL_ADULT_VIEWING = read_portal_files(
-    "js/adult-viewing", ADULT_VIEWING_SCRIPTS)
+PORTAL_MY_TV_VIEWING = read_portal_files(
+    "js/my-tv-viewing", MY_TV_VIEWING_SCRIPTS)
 PORTAL_OVERLAY_MARKUP = read_portal_files("html/overlays", OVERLAY_PARTIALS)
 PORTAL_SCRIPT = "\n".join((
     (PORTAL_ROOT / "js" / "ui-components.js").read_text(encoding="utf-8"),
@@ -68,7 +68,7 @@ PORTAL_SCRIPT = "\n".join((
     (PORTAL_ROOT / "js" / "channel-page.js").read_text(encoding="utf-8"),
     PORTAL_LIBRARY,
     PORTAL_PLAYBACK,
-    PORTAL_ADULT_VIEWING,
+    PORTAL_MY_TV_VIEWING,
     (PORTAL_ROOT / "js" / "actions.js").read_text(encoding="utf-8"),
     (PORTAL_ROOT / "js" / "lg-tv-remote.js").read_text(encoding="utf-8"),
 ))

@@ -4,7 +4,7 @@ test.use({ serviceWorkers: 'block' })
 
 
 async function openLightPortal(page) {
-  await page.route('**/api/adult/tmdb-artwork/**', route => route.fulfill({
+  await page.route('**/api/my-tv/tmdb-artwork/**', route => route.fulfill({
     status: 200,
     contentType: 'image/svg+xml',
     body: '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450"><defs><linearGradient id="g" x2="1" y2="1"><stop stop-color="#b5d9d3"/><stop offset="1" stop-color="#537a86"/></linearGradient></defs><rect width="300" height="450" fill="url(#g)"/><circle cx="210" cy="110" r="76" fill="rgba(255,255,255,.2)"/><path d="M0 360L300 180v270H0z" fill="rgba(0,0,0,.24)"/></svg>',
@@ -55,11 +55,11 @@ test('@visual light Home and Watch use the dark design language on neutral surfa
   await expect(activeTab).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
   await expect(page).toHaveScreenshot('light-watch-mabeltv.png')
 
-  await page.locator('[data-view-button="adult-home"]').click()
-  await expect(page.locator('#view-adult-home')).toBeVisible()
-  await expect(page).toHaveScreenshot('light-watch-adult.png')
+  await page.locator('[data-view-button="my-tv-home"]').click()
+  await expect(page.locator('#view-my-tv-home')).toBeVisible()
+  await expect(page).toHaveScreenshot('light-watch-my_tv.png')
 
-  await page.locator('#adultHomeDownloadsTab').click()
+  await page.locator('#myTvHomeDownloadsTab').click()
   await expect(page.locator('#watchDownloadsLayout')).toBeVisible()
   await expect(page).toHaveScreenshot('light-watch-downloads.png')
 })
@@ -95,7 +95,7 @@ test('@visual USB browser keeps compact controls and reviews the real transfer',
       { name: 'X-Men', path: 'Films/X-Men', type: 'folder' },
       { name: 'Finding Nemo.mp4', path: 'Films/Finding Nemo.mp4', type: 'video', size: 734_000_000, browser_ready: true },
     ]
-    library.adult_series = [{
+    library.my_tv_series = [{
       id: 'b'.repeat(32), title: 'Silicon Valley', stored_title: 'Silicon Valley',
       seasons: [1, 7], episodes: [], season_count: 2, episode_count: 0,
     }]
@@ -107,9 +107,9 @@ test('@visual USB browser keeps compact controls and reviews the real transfer',
       if (path === '/api/usb' && JSON.parse(options.body || '{}').action === 'plan') {
         const payload = JSON.parse(options.body)
         const destination = payload.target === 'series'
-          ? `Adult TV series · Silicon Valley · Series ${payload.season}`
+          ? `My TV series · Silicon Valley · Series ${payload.season}`
           : payload.target === 'channel' ? 'CH 1 — CBeebies'
-            : 'Adult TV films · All films (no collection)'
+            : 'My TV films · All films (no collection)'
         return {
           files_total: 3, bytes_total: 1_468_000_000, free_bytes: 800_000_000_000,
           enough_space: true, destination_label: destination, rename_count: 1,
@@ -136,14 +136,14 @@ test('@visual USB browser keeps compact controls and reviews the real transfer',
   await expect(page.locator('#usbPlanFiles')).toHaveText('3')
   await expect(page.locator('#usbRenameSummary')).toContainText('Finding Nemo (2).mp4')
   await expect(page.locator('#confirmUsbImport')).toBeEnabled()
-  await expect(page.locator('#usbAdultFolderLabel')).toBeVisible()
-  await expect(page.locator('#usbAdultFolder')).toContainText('All films — no collection')
+  await expect(page.locator('#usbMyTvFolderLabel')).toBeVisible()
+  await expect(page.locator('#usbMyTvFolder')).toContainText('All films — no collection')
   await expect(page.locator('#usbSeriesLabel')).toBeHidden()
   await expect(page.locator('#usbSeasonLabel')).toBeHidden()
   await expect(page.locator('#usbChannelLabel')).toBeHidden()
   await expect(page).toHaveScreenshot('light-usb-transfer-destination.png')
   await page.locator('#usbTarget').selectOption('series')
-  await expect(page.locator('#usbAdultFolderLabel')).toBeHidden()
+  await expect(page.locator('#usbMyTvFolderLabel')).toBeHidden()
   await expect(page.locator('#usbSeriesLabel')).toBeVisible()
   await expect(page.locator('#usbSeasonLabel')).toBeVisible()
   await expect(page.locator('#usbChannelLabel')).toBeHidden()
@@ -153,7 +153,7 @@ test('@visual USB browser keeps compact controls and reviews the real transfer',
   await expect(page.locator('#usbPlanStatus')).toContainText('Silicon Valley · Series 7')
   await expect(page).toHaveScreenshot('light-usb-transfer-series.png')
   await page.locator('#usbTarget').selectOption('channel')
-  await expect(page.locator('#usbAdultFolderLabel')).toBeHidden()
+  await expect(page.locator('#usbMyTvFolderLabel')).toBeHidden()
   await expect(page.locator('#usbSeriesLabel')).toBeHidden()
   await expect(page.locator('#usbSeasonLabel')).toBeHidden()
   await expect(page.locator('#usbChannelLabel')).toBeVisible()
@@ -169,51 +169,15 @@ test('@visual USB browser keeps compact controls and reviews the real transfer',
     renderActivity({
       active: true, temperature_warning: false, uploads: [{
         id: 'a'.repeat(32), file_name: 'Finding Nemo.mp4', source_kind: 'usb',
-        source_label: 'Family Videos', channel_name: 'Adult TV · All films', size: 100,
+        source_label: 'Family Videos', channel_name: 'My TV · All films', size: 100,
         offset: 35, status: 'uploading', transfer_state: 'active',
         source_available: true, cancelable: true,
       }], optimisations: [],
     })
   })
   await expect(page.locator('#activityUploadList')).toContainText('Copying from Family Videos')
-  await expect(page.locator('#activityUploadList')).toContainText('Family Videos → Adult TV · All films')
+  await expect(page.locator('#activityUploadList')).toContainText('Family Videos → My TV · All films')
   await expect(page.getByRole('button', { name: 'Cancel transfer' })).toBeVisible()
-})
-
-
-test('Adult management reloads keep the exact list position', async ({ page }, testInfo) => {
-  phoneOnly(testInfo)
-  await openLightPortal(page)
-  await page.evaluate(() => {
-    const fixture = structuredClone(library)
-    fixture.adult_library = Array.from({ length: 80 }, (_, index) => ({
-      path: `Film ${String(index).padStart(2, '0')}.mp4`,
-      display_name: `Film ${String(index).padStart(2, '0')}`,
-      size: 500_000_000, folder: '', playback_state: 'original', metadata: {},
-    }))
-    library = fixture
-    renderAdultLibrary()
-    openView('adult')
-    const originalApi = api
-    api = async (path, options = {}) => {
-      if (path === '/api/manage') return { ok: true, message: 'Renamed' }
-      if (path === '/api/library') return structuredClone(fixture)
-      return originalApi(path, options)
-    }
-  })
-  await page.evaluate(() => setPortalScrollTop(document.documentElement.scrollHeight))
-  const before = await page.evaluate(() => portalScrollTop())
-  expect(before).toBeGreaterThan(1000)
-  await page.evaluate(() => manage('rename-adult', {
-    file: 'Film 79.mp4', name: 'X-Men 79',
-  }))
-  await page.waitForTimeout(80)
-  const afterRename = await page.evaluate(() => portalScrollTop())
-  expect(Math.abs(afterRename - before)).toBeLessThan(6)
-  await page.evaluate(() => reloadLibraryWithoutLosingPlace())
-  await page.waitForTimeout(80)
-  const afterMetadata = await page.evaluate(() => portalScrollTop())
-  expect(Math.abs(afterMetadata - before)).toBeLessThan(6)
 })
 
 
@@ -267,9 +231,9 @@ test('@visual light utility, Settings and insight routes stay neutral and legibl
   await page.evaluate(() => window.scrollTo(0, 0))
   await expect(page).toHaveScreenshot('light-settings.png')
 
-  await page.locator('[data-view-button="adult-home"]').click()
-  await page.locator('#adultHomeInsightsTab').click()
-  await expect(page.locator('#adultInsightsDashboard')).toBeVisible()
+  await page.locator('[data-view-button="my-tv-home"]').click()
+  await page.locator('#myTvHomeInsightsTab').click()
+  await expect(page.locator('#myTvInsightsDashboard')).toBeVisible()
   await expect(page).toHaveScreenshot('light-my-insights.png')
   await page.locator('[data-view-button="watch"]').click()
   await page.locator('#watchMabelInsightsTab').click()

@@ -20,7 +20,7 @@ sys.path.insert(0, str(SCRIPT_ROOT))
 from mabeltv_backend.database import (  # noqa: E402
     SCHEMA_VERSION,
     StateDatabase,
-    normalise_adult_viewing,
+    normalise_my_tv_viewing,
 )
 
 
@@ -31,10 +31,10 @@ RELATIVE_STORES = {
     "player": "var/lib/mabeltv/state.json",
     "viewing": "var/lib/mabeltv/viewing-history.json",
     "channel_metadata": "srv/mabeltv/media/.mabeltv-channels.json",
-    "adult_media": "srv/mabeltv/media/.adult/.mabeltv-adult.json",
-    "adult_series": "srv/mabeltv/media/.adult/.mabeltv-series.json",
-    "adult_viewing": "srv/mabeltv/media/.adult/.mabeltv-viewing.json",
-    "adult_insights": "srv/mabeltv/media/.adult/.mabeltv-insights.json",
+    "my_tv_media": "srv/mabeltv/media/.adult/.mabeltv-adult.json",
+    "my_tv_series": "srv/mabeltv/media/.adult/.mabeltv-series.json",
+    "my_tv_viewing": "srv/mabeltv/media/.adult/.mabeltv-viewing.json",
+    "my_tv_insights": "srv/mabeltv/media/.adult/.mabeltv-insights.json",
 }
 
 
@@ -112,14 +112,14 @@ def normalise_import_sources(source: dict[str, Any]) -> tuple[dict[str, Any], li
             changes.append("settings.playback_mode restart -> resume")
         if original.get("tv_border") in {"cream", "charcoal", "walnut"}:
             changes.append("settings.tv_border legacy cabinet -> current cabinet")
-    adult_viewing, relationship_changes = normalise_adult_viewing(
-        source.get("adult_viewing", {}))
-    expected["adult_viewing"] = adult_viewing
+    my_tv_viewing, relationship_changes = normalise_my_tv_viewing(
+        source.get("my_tv_viewing", {}))
+    expected["my_tv_viewing"] = my_tv_viewing
     if relationship_changes:
         counts = ", ".join(
             f"{key}={count}" for key, count in sorted(relationship_changes.items()))
         changes.append(
-            "adult_viewing nonmembership markers omitted; canonical child "
+            "my_tv_viewing nonmembership markers omitted; canonical child "
             f"relationship rows own current membership ({counts})")
     return expected, changes
 
@@ -132,9 +132,9 @@ def shape_counts(kind: str, value: Any) -> dict[str, int]:
     if kind == "channel_metadata":
         return {name: len(value.get(name, {})) for name in
                 ("channels", "programmes", "favourites", "favourite_channels")}
-    if kind == "adult_series":
+    if kind == "my_tv_series":
         return {name: len(value.get(name, {})) for name in ("series", "episodes")}
-    if kind == "adult_viewing":
+    if kind == "my_tv_viewing":
         titles = value.get("titles", {})
         return {
             "titles": len(titles),
@@ -151,7 +151,7 @@ def shape_counts(kind: str, value: Any) -> dict[str, int]:
             "availability": len(value.get("availability", {})),
             "explore": len(value.get("explore", {})),
         }
-    if kind == "adult_insights":
+    if kind == "my_tv_insights":
         return {name: len(value.get(name, {})) for name in ("titles", "failures")}
     return {"fields": len(value) if isinstance(value, dict) else 0}
 
@@ -192,8 +192,8 @@ def import_sources(source_root: Path, database_path: Path,
     try:
         # Channels precede player timeline foreign keys.
         for kind in ("channels", "settings", "owner", "player", "viewing",
-                     "channel_metadata", "adult_media", "adult_series",
-                     "adult_viewing", "adult_insights"):
+                     "channel_metadata", "my_tv_media", "my_tv_series",
+                     "my_tv_viewing", "my_tv_insights"):
             database.write(kind, expected[kind])
         report = compare(expected, database)
         report["source_hashes"] = hashes
@@ -373,11 +373,11 @@ def main() -> None:
             "owner": {}, "player": {"schema_version": 4},
             "viewing": {"schema_version": 2, "tracking_started": time.time(),
                         "sessions": []},
-            "channel_metadata": {}, "adult_media": {},
-            "adult_series": {"series": {}, "episodes": {}},
-            "adult_viewing": {"schema_version": 1, "titles": {},
+            "channel_metadata": {}, "my_tv_media": {},
+            "my_tv_series": {"series": {}, "episodes": {}},
+            "my_tv_viewing": {"schema_version": 1, "titles": {},
                               "availability": {}, "explore": {}},
-            "adult_insights": {"schema_version": 1, "titles": {}, "failures": {}},
+            "my_tv_insights": {"schema_version": 1, "titles": {}, "failures": {}},
         }
         for kind, value in source.items():
             database.write(kind, value)

@@ -11,23 +11,23 @@ async function openPortal(page, theme = 'dark') {
 
 async function longFilms(page) {
   await page.evaluate(() => {
-    library.adult_folders = ['Collection']
-    library.adult_library = Array.from({ length: 120 }, (_, i) => ({
+    library.my_tv_folders = ['Collection']
+    library.my_tv_library = Array.from({ length: 120 }, (_, i) => ({
       path: `film-${i}.mp4`, display_name: `Film ${String(i).padStart(2, '0')}`,
       folder: 'Collection', browser_ready: true,
       metadata: { tmdb_id: i + 1, title: `Film ${String(i).padStart(2, '0')}`,
         genres: ['Adventure'] },
     }))
-    adultHomeLoadedAt = Date.now()
-    const titles = library.adult_library.map((film, index) => ({
+    myTvHomeLoadedAt = Date.now()
+    const titles = library.my_tv_library.map((film, index) => ({
       key: `movie:${index + 1}`, media_type: 'movie', tmdb_id: index + 1,
       title: film.display_name, year: '2020', local: { kind: 'film', path: film.path },
       viewing: {},
     }))
-    document.querySelector('#adultHomeForYou')
-      .replaceChildren(...titles.map(title => adultExploreCard(title)))
+    document.querySelector('#myTvHomeForYou')
+      .replaceChildren(...titles.map(title => myTvExploreCard(title)))
   })
-  await page.locator('[data-view-button="adult-home"]').click()
+  await page.locator('[data-view-button="my-tv-home"]').click()
   await settled(page)
 }
 
@@ -37,32 +37,32 @@ const settled = page => page.evaluate(async () => {
   await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
 })
 
-test('Adult TV recommendation refresh retains its viewport', async ({ page }) => {
+test('My TV recommendation refresh retains its viewport', async ({ page }) => {
   await openPortal(page, 'light')
   await longFilms(page)
   await page.evaluate(() => window.scrollTo(0, 1200))
   const before = await scrollY(page)
   expect(before).toBeGreaterThan(100)
   await page.evaluate(() => {
-    const cards = [...document.querySelectorAll('#adultHomeForYou .adult-explore-card')]
-    document.querySelector('#adultHomeForYou').replaceChildren(...cards)
+    const cards = [...document.querySelectorAll('#myTvHomeForYou .my-tv-explore-card')]
+    document.querySelector('#myTvHomeForYou').replaceChildren(...cards)
   })
   await settled(page)
   expect(await scrollY(page)).toBeCloseTo(before, 0)
 })
 
-test('bottom navigation preserves the Adult TV film position', async ({ page }) => {
+test('bottom navigation preserves the My TV film position', async ({ page }) => {
   await openPortal(page)
   await longFilms(page)
   await page.evaluate(() => window.scrollTo(0, 1800))
   const before = await scrollY(page)
   await page.locator('[data-view-button="system"]').click()
   await expect(page.locator('#view-system')).toBeVisible()
-  await page.locator('[data-view-button="adult-home"]').click()
-  await expect(page.locator('#view-adult-home')).toBeVisible()
+  await page.locator('[data-view-button="my-tv-home"]').click()
+  await expect(page.locator('#view-my-tv-home')).toBeVisible()
   await settled(page)
   expect(await scrollY(page)).toBeCloseTo(before, 0)
-  await page.locator('[data-view-button="adult-home"]').click()
+  await page.locator('[data-view-button="my-tv-home"]').click()
   await settled(page)
   expect(await scrollY(page)).toBeLessThanOrEqual(1)
 })
@@ -144,27 +144,27 @@ test('returning from a numbered series restores the show sheet position', async 
       season_count: 20, episode_count: 20, episodes: Array.from({ length: 20 }, (_, i) => ({
         path: `show/${i + 1}/episode.mp4`, season: i + 1, episode: 1, display_name: 'Episode', browser_ready: true,
       })) }
-    library.adult_series = [series]
-    openAdultSeriesSheet(series)
+    library.my_tv_series = [series]
+    openMyTvSeriesSheet(series)
   })
-  await expect(page.locator('#adultSeriesMore')).toBeVisible()
-  await expect(page.locator('#adultSeriesMore use')).toHaveAttribute('href', '/portal/icons.svg#signal-cog')
+  await expect(page.locator('#myTvSeriesMore')).toBeVisible()
+  await expect(page.locator('#myTvSeriesMore use')).toHaveAttribute('href', '/portal/icons.svg#signal-cog')
   await page.screenshot({ path: testInfo.outputPath('local-series-card-header-gear.png') })
-  await page.locator('#adultSeriesMore').click()
-  await expect(page.locator('#adultSeriesMoreSheet')).toBeVisible()
-  const optionsHeight = await page.locator('#adultSeriesMoreSheet > article')
+  await page.locator('#myTvSeriesMore').click()
+  await expect(page.locator('#myTvSeriesMoreSheet')).toBeVisible()
+  const optionsHeight = await page.locator('#myTvSeriesMoreSheet > article')
     .evaluate(element => element.getBoundingClientRect().height)
   expect(optionsHeight).toBeLessThan(await page.evaluate(() => window.innerHeight * 0.8))
-  await page.locator('#adultSeriesMoreClose').click()
-  await expect(page.locator('#adultSeriesSheet')).toBeVisible()
-  const panel = page.locator('#adultSeriesSheet .library-sheet-body')
-  const season = page.locator('#adultSeriesEpisodes .adult-season-card').nth(12)
+  await page.locator('#myTvSeriesMoreClose').click()
+  await expect(page.locator('#myTvSeriesSheet')).toBeVisible()
+  const panel = page.locator('#myTvSeriesSheet .library-sheet-body')
+  const season = page.locator('#myTvSeriesEpisodes .my-tv-season-card').nth(12)
   await season.scrollIntoViewIfNeeded()
   const before = await panel.evaluate(element => element.scrollTop)
   expect(before).toBeGreaterThan(500)
   await season.click()
-  await page.locator('#adultSeasonSheet > .library-sheet-panel .portal-card-back').click()
-  await expect(page.locator('#adultSeriesSheet')).toBeVisible()
+  await page.locator('#myTvSeasonSheet > .library-sheet-panel .portal-card-back').click()
+  await expect(page.locator('#myTvSeriesSheet')).toBeVisible()
   await settled(page)
   expect(await panel.evaluate(element => element.scrollTop)).toBeCloseTo(before, 0)
 })
@@ -176,21 +176,21 @@ test('domain navigation and My Viewing Back retain each page position', async ({
   await page.locator('#watchMabelTab').dispatchEvent('click')
   await expect.poll(() => scrollY(page)).toBeLessThanOrEqual(1)
   await page.evaluate(() => window.scrollTo(0, 350))
-  await page.getByRole('button', { name: 'Scroll MabelTV to top' }).dispatchEvent('click')
+  await page.getByRole('button', { name: 'Scroll Mabel TV to top' }).dispatchEvent('click')
   await expect.poll(() => scrollY(page)).toBeLessThanOrEqual(1)
   await page.evaluate(() => window.scrollTo(0, 350))
-  await page.locator('[data-view-button="adult-home"]').dispatchEvent('click')
+  await page.locator('[data-view-button="my-tv-home"]').dispatchEvent('click')
   await expect.poll(() => scrollY(page)).toBeCloseTo(1600, 0)
   await page.evaluate(() => window.scrollTo(0, 1600))
-  await page.locator('#adultMyViewing').dispatchEvent('click')
-  await expect(page.locator('#view-adult-viewing')).toBeVisible()
-  await page.locator('#adultViewingBack').click()
-  await expect(page.locator('#view-adult-home')).toBeVisible()
+  await page.locator('#myTvMyViewing').dispatchEvent('click')
+  await expect(page.locator('#view-my-tv-viewing')).toBeVisible()
+  await page.locator('#myTvViewingBack').click()
+  await expect(page.locator('#view-my-tv-home')).toBeVisible()
   await settled(page)
   expect(await scrollY(page)).toBeCloseTo(1600, 0)
-  await page.locator('#adultMyViewing').dispatchEvent('click')
+  await page.locator('#myTvMyViewing').dispatchEvent('click')
   await page.goBack()
-  await expect(page.locator('#view-adult-home')).toBeVisible()
+  await expect(page.locator('#view-my-tv-home')).toBeVisible()
   await settled(page)
   expect(await scrollY(page)).toBeCloseTo(1600, 0)
 })
@@ -226,50 +226,50 @@ test('episode back and collection selection keep the sheet position', async ({ p
     const series = { id: 'episodes', title: 'Many episodes', seasons: [1], season_count: 1, episode_count: 50,
       episodes: Array.from({ length: 50 }, (_, i) => ({ path: `show/${i}.mp4`, season: 1, episode: i + 1,
         display_name: `Episode ${i + 1}`, browser_ready: true })) }
-    library.adult_series = [series]
-    openAdultSeasonSheet(series, 1)
+    library.my_tv_series = [series]
+    openMyTvSeasonSheet(series, 1)
   })
-  await expect(page.locator('#adultSeasonSettings')).toBeVisible()
-  await expect(page.locator('#adultSeasonUpload')).toBeHidden()
-  await page.locator('#adultSeasonSettings').click()
-  await expect(page.locator('#adultSeasonSettingsSheet')).toBeVisible()
-  await expect(page.locator('#adultSeasonSettingsSheet')).not.toContainText('Manage series')
-  await expect(page.locator('#adultSeasonUpload')).toBeVisible()
+  await expect(page.locator('#myTvSeasonSettings')).toBeVisible()
+  await expect(page.locator('#myTvSeasonUpload')).toBeHidden()
+  await page.locator('#myTvSeasonSettings').click()
+  await expect(page.locator('#myTvSeasonSettingsSheet')).toBeVisible()
+  await expect(page.locator('#myTvSeasonSettingsSheet')).not.toContainText('Manage series')
+  await expect(page.locator('#myTvSeasonUpload')).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('local-series-settings.png') })
-  await page.locator('#adultSeasonSettingsClose').click()
-  await expect(page.locator('#adultSeasonSheet')).toBeVisible()
-  const panel = page.locator('#adultSeasonSheet .library-sheet-body')
-  const episode = page.locator('#adultSeasonEpisodes button').nth(25)
+  await page.locator('#myTvSeasonSettingsClose').click()
+  await expect(page.locator('#myTvSeasonSheet')).toBeVisible()
+  const panel = page.locator('#myTvSeasonSheet .library-sheet-body')
+  const episode = page.locator('#myTvSeasonEpisodes button').nth(25)
   await episode.scrollIntoViewIfNeeded()
   const before = await panel.evaluate(element => element.scrollTop)
   expect(before).toBeGreaterThan(1000)
   await episode.click()
-  const episodePanelHeight = await page.locator('#adultEpisodeSheet > article')
+  const episodePanelHeight = await page.locator('#myTvEpisodeSheet > article')
     .evaluate(element => element.getBoundingClientRect().height)
   expect(episodePanelHeight).toBeLessThan(await page.evaluate(() => window.innerHeight * 0.9))
   await page.evaluate(() => {
     playOnTv = () => { window.episodePlayedOnTv = true }
     openRemotePlayer = () => { window.episodePlayedHere = true }
   })
-  await page.locator('#adultEpisodeTv').click()
-  await expect(page.locator('#adultEpisodeSheet')).toBeVisible()
+  await page.locator('#myTvEpisodeTv').click()
+  await expect(page.locator('#myTvEpisodeSheet')).toBeVisible()
   expect(await page.evaluate(() => window.episodePlayedOnTv)).toBe(true)
-  await page.locator('#adultEpisodeHere').click()
-  await expect(page.locator('#adultEpisodeSheet')).toBeVisible()
+  await page.locator('#myTvEpisodeHere').click()
+  await expect(page.locator('#myTvEpisodeSheet')).toBeVisible()
   expect(await page.evaluate(() => window.episodePlayedHere)).toBe(true)
-  await page.locator('#adultEpisodeClose').click()
-  await expect(page.locator('#adultSeasonSheet')).toBeVisible()
+  await page.locator('#myTvEpisodeClose').click()
+  await expect(page.locator('#myTvSeasonSheet')).toBeVisible()
   await settled(page)
   expect(await panel.evaluate(element => element.scrollTop)).toBeCloseTo(before, 0)
-  await page.locator('#adultSeasonClose').click()
+  await page.locator('#myTvSeasonClose').click()
   await page.evaluate(() => {
-    library.adult_folders = Array.from({ length: 35 }, (_, i) => `Collection ${i}`)
-    renderAdultLibrary()
-    $('#watchManageAdult').click()
+    library.my_tv_folders = Array.from({ length: 35 }, (_, i) => `Collection ${i}`)
+    renderMyTvLibraryControls()
+    $('#watchManageMyTv').click()
   })
-  const collection = page.locator('#adultFolderTabs button').nth(22)
+  const collection = page.locator('#myTvFolderTabs button').nth(22)
   await collection.scrollIntoViewIfNeeded()
-  const collectionPanel = page.locator('#adultCollectionSheet .library-sheet-body')
+  const collectionPanel = page.locator('#myTvCollectionSheet .library-sheet-body')
   const collectionTop = await collectionPanel.evaluate(element => element.scrollTop)
   await collection.click()
   await settled(page)
@@ -378,35 +378,35 @@ test('download progress refresh and My Viewing filters retain position', async (
   await page.evaluate(() => renderDownloads())
   expect(await scrollY(page)).toBeCloseTo(before, 0)
   await page.evaluate(async () => {
-    openView('adult-viewing')
-    await loadAdultViewing()
-    adultViewingData = { items: Array.from({ length: 50 }, (_, i) => ({
+    openView('my-tv-viewing')
+    await loadMyTvViewing()
+    myTvViewingData = { items: Array.from({ length: 50 }, (_, i) => ({
       tmdb_id: 1000 + i, media_type: 'movie', title: `Film ${i}`, watchlisted: true,
     })) }
-    adultViewingTab = 'watchlist'
-    adultViewingFilter = 'all'
-    renderAdultViewing()
+    myTvViewingTab = 'watchlist'
+    myTvViewingFilter = 'all'
+    renderMyTvViewing()
   })
   await settled(page)
   await page.evaluate(() => window.scrollTo(0, 1200))
   const viewing = await scrollY(page)
-  await page.locator('#adultViewingFilter').selectOption('movie')
+  await page.locator('#myTvViewingFilter').selectOption('movie')
   expect(await scrollY(page)).toBeCloseTo(viewing, 0)
 })
 
 test('My Viewing tabs retain their exact viewport instead of following a reordered title', async ({ page }) => {
   await openPortal(page)
   await page.evaluate(() => {
-    openView('adult-viewing')
-    adultViewingData = { items: Array.from({ length: 60 }, (_, index) => ({
+    openView('my-tv-viewing')
+    myTvViewingData = { items: Array.from({ length: 60 }, (_, index) => ({
       tmdb_id: 2000 + index, media_type: 'movie', title: `Film ${index}`,
       watchlisted: true, watchlist_updated: 1000 - index,
       up_next: true, up_next_rank: 60 - index,
     })) }
-    adultViewingTab = 'watchlist'
-    adultViewingFilter = 'all'
-    adultViewingSort = 'recent'
-    renderAdultViewing()
+    myTvViewingTab = 'watchlist'
+    myTvViewingFilter = 'all'
+    myTvViewingSort = 'recent'
+    renderMyTvViewing()
     window.scrollTo(0, 520)
   })
   const before = await scrollY(page)
@@ -415,16 +415,16 @@ test('My Viewing tabs retain their exact viewport instead of following a reorder
   expect(await scrollY(page)).toBeCloseTo(before, 0)
 })
 
-test('Adult TV What to watch is four artwork cards wide on phones', async ({ page }, testInfo) => {
+test('My TV What to watch is four artwork cards wide on phones', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone grid contract')
   await openPortal(page)
   await longFilms(page)
-  const grid = await page.locator('#adultHomeForYou').evaluate(element => ({
+  const grid = await page.locator('#myTvHomeForYou').evaluate(element => ({
     columns: getComputedStyle(element).gridTemplateColumns.split(' ').length,
     contained: element.scrollWidth <= element.clientWidth + 1,
   }))
   expect(grid).toEqual({ columns: 4, contained: true })
-  await page.screenshot({ path: testInfo.outputPath('adult-main-film-grid.png') })
+  await page.screenshot({ path: testInfo.outputPath('my-tv-main-film-grid.png') })
 })
 
 test('long portal pages end neatly above the fixed navigation', async ({ page }, testInfo) => {

@@ -25,8 +25,8 @@ class LibraryAuthSettingsTests(unittest.TestCase):
         self.assertTrue(self.fixture.library.verify_pin("2468"))
         self.assertFalse(self.fixture.library.verify_pin("0000"))
         self.assertEqual(owner["child_name"], "Mabel")
-        self.assertEqual(owner["tv_name"], "MabelTV")
-        self.assertEqual(self.fixture.library.public_setup()["tv_name"], "MabelTV")
+        self.assertEqual(owner["tv_name"], "Mabel TV")
+        self.assertEqual(self.fixture.library.public_setup()["tv_name"], "Mabel TV")
         channels = self.fixture.library.read_state("channels")["channels"]
         self.assertEqual([channel["name"] for channel in channels],
                          ["Kids TV", "Cartoons", "Films", "Family Videos"])
@@ -62,11 +62,33 @@ class LibraryAuthSettingsTests(unittest.TestCase):
             "setup_code": "135790", "pin": "2468", "child_name": "Mabel TV",
             "channels": mabeltv_library.DEFAULT_CHANNELS,
         })
-        self.assertEqual(self.fixture.library.library()["owner"]["tv_name"], "MabelTV")
+        self.assertEqual(self.fixture.library.library()["owner"]["tv_name"], "Mabel TV")
+        revisions_before = self.fixture.library.state_database.revisions()
         with mock.patch.object(self.fixture.library, "admin_action", return_value=""):
             result = self.fixture.library.change_tv_name({"child_name": "John"})
-        self.assertEqual(result["tv_name"], "JohnTV")
+        self.assertEqual(result["tv_name"], "John TV")
         self.assertEqual(self.fixture.library.library()["owner"]["child_name"], "John")
+        revisions_after = self.fixture.library.state_database.revisions()
+        self.assertEqual(revisions_before["identity"] + 1,
+                         revisions_after["identity"])
+        self.assertEqual(revisions_before["library"] + 1,
+                         revisions_after["library"])
+
+    def test_saving_the_current_tv_name_refreshes_caches_without_restarting(self) -> None:
+        self.fixture.library.complete_setup({
+            "setup_code": "135790", "pin": "2468", "child_name": "Mabel",
+            "channels": mabeltv_library.DEFAULT_CHANNELS,
+        })
+        revisions_before = self.fixture.library.state_database.revisions()
+        with mock.patch.object(self.fixture.library, "admin_action") as admin_action:
+            result = self.fixture.library.change_tv_name({"child_name": "Mabel"})
+        self.assertFalse(result["player_restarted"])
+        admin_action.assert_not_called()
+        revisions_after = self.fixture.library.state_database.revisions()
+        self.assertEqual(revisions_before["identity"] + 1,
+                         revisions_after["identity"])
+        self.assertEqual(revisions_before["library"] + 1,
+                         revisions_after["library"])
 
     def test_login_attempts_are_rate_limited(self) -> None:
         address = "192.0.2.1"
@@ -199,7 +221,7 @@ class LibraryAuthSettingsTests(unittest.TestCase):
         self.fixture.library.needs_playback_optimisation.assert_not_called()
         self.fixture.library.optimise_for_playback.assert_not_called()
 
-    def test_adult_upload_stays_original_until_owner_requests_optimisation(self) -> None:
+    def test_my_tv_upload_stays_original_until_owner_requests_optimisation(self) -> None:
         self.fixture.library.complete_setup({
             "setup_code": "135790", "pin": "2468",
             "channels": mabeltv_library.DEFAULT_CHANNELS,
@@ -211,10 +233,10 @@ class LibraryAuthSettingsTests(unittest.TestCase):
         def optimise(source: Path, destination: Path) -> None:
             destination.write_bytes(source.read_bytes())
 
-        self.fixture.library.optimise_adult_for_playback = mock.Mock(side_effect=optimise)
+        self.fixture.library.optimise_my_tv_for_playback = mock.Mock(side_effect=optimise)
         self.fixture.library.refresh_tv = mock.Mock(return_value=True)
 
-        created = self.fixture.library.adult_upload_create({
+        created = self.fixture.library.my_tv_upload_create({
             "file_name": "My Film.mkv", "size": 16,
         })
         result = self.fixture.library.append_upload(created["id"], 0, b"raw-film-content")
@@ -230,35 +252,35 @@ class LibraryAuthSettingsTests(unittest.TestCase):
 
         self.assertTrue(state.get("complete"))
         self.assertFalse(state.get("optimised"))
-        self.assertEqual((self.fixture.library.adult_root / "My Film.mkv").read_bytes(),
+        self.assertEqual((self.fixture.library.my_tv_root / "My Film.mkv").read_bytes(),
                          b"raw-film-content")
-        self.assertEqual(self.fixture.library.adult_library()[0]["display_name"],
+        self.assertEqual(self.fixture.library.my_tv_library()[0]["display_name"],
                          "My Film")
         self.assertFalse(any((self.fixture.media / channel["folder"] / "My Film.mkv").exists()
                              for channel in mabeltv_library.DEFAULT_CHANNELS))
-        self.fixture.library.optimise_adult_for_playback.assert_not_called()
+        self.fixture.library.optimise_my_tv_for_playback.assert_not_called()
         self.fixture.library.refresh_tv.assert_called_once()
 
-        self.fixture.library.manage({"action": "optimise-adult", "file": "My Film.mkv"})
+        self.fixture.library.manage({"action": "optimise-my-tv", "file": "My Film.mkv"})
         deadline = time.monotonic() + 3
         while time.monotonic() < deadline:
-            films = self.fixture.library.adult_library()
+            films = self.fixture.library.my_tv_library()
             if films and films[0]["playback_state"] == "optimised":
                 break
             time.sleep(0.02)
-        self.assertEqual((self.fixture.library.adult_root / "My Film.mp4").read_bytes(),
+        self.assertEqual((self.fixture.library.my_tv_root / "My Film.mp4").read_bytes(),
                          b"raw-film-content")
-        self.assertFalse((self.fixture.library.adult_root / "My Film.mkv").exists())
-        self.assertEqual(self.fixture.library.adult_library()[0]["playback_state"], "optimised")
-        self.fixture.library.optimise_adult_for_playback.assert_called_once()
+        self.assertFalse((self.fixture.library.my_tv_root / "My Film.mkv").exists())
+        self.assertEqual(self.fixture.library.my_tv_library()[0]["playback_state"], "optimised")
+        self.fixture.library.optimise_my_tv_for_playback.assert_called_once()
 
-    def test_adult_optimisation_progress_is_exposed_without_reloading_library(self) -> None:
-        film = self.fixture.library.adult_root / "Long Film.mkv"
+    def test_my_tv_optimisation_progress_is_exposed_without_reloading_library(self) -> None:
+        film = self.fixture.library.my_tv_root / "Long Film.mkv"
         film.write_bytes(b"video")
-        self.fixture.library.set_adult_media_state(
+        self.fixture.library.set_my_tv_media_state(
             "Long Film.mkv", "processing", "", progress=37)
 
-        progress = self.fixture.library.adult_optimisations()
+        progress = self.fixture.library.my_tv_optimisations()
         self.assertTrue(progress["active"])
         self.assertEqual(progress["items"], [{
             "path": "Long Film.mkv",
@@ -270,8 +292,8 @@ class LibraryAuthSettingsTests(unittest.TestCase):
             "started": 0.0,
             "eta_seconds": 0,
         }])
-        self.assertEqual(self.fixture.library.adult_library()[0]["playback_progress"], 37)
-        self.assertIn("/api/adult/optimisations", PORTAL_SOURCE)
+        self.assertEqual(self.fixture.library.my_tv_library()[0]["playback_progress"], 37)
+        self.assertIn("/api/my-tv/optimisations", PORTAL_SOURCE)
         self.assertIn("Optimising ${Math.round(progress)}%", PORTAL_SOURCE)
         self.assertNotIn("setInterval(() => load()", PORTAL_SOURCE)
 

@@ -17,11 +17,11 @@
       <div id="usbRenameSummary" class="usb-rename-summary hidden"></div>
       <div class="usb-destination-fields">
         <label>Copy into<select id="usbTarget">
-          <option value="adult">Adult TV films</option>
-          <option value="series">Adult TV series</option>
+          <option value="my_tv">My TV films</option>
+          <option value="series">My TV series</option>
           <option value="channel">Kids TV channel</option>
         </select></label>
-        <label id="usbAdultFolderLabel">Film collection<select id="usbAdultFolder"></select></label>
+        <label id="usbMyTvFolderLabel">Film collection<select id="usbMyTvFolder"></select></label>
         <label id="usbSeriesLabel" class="hidden">TV series<select id="usbSeries"></select></label>
         <label id="usbSeasonLabel" class="hidden">Series<select id="usbSeason"></select></label>
         <input id="usbSeriesName" type="hidden">
@@ -240,7 +240,7 @@
       <div>
         <p class="section-kicker">Manage channel</p>
         <h2 id="channelSettingsTitle">Edit channel</h2>
-        <p>Choose how this channel looks and behaves on MabelTV.</p>
+        <p>Choose how this channel looks and behaves on <span data-tv-name>Your TV</span>.</p>
       </div>
       <button
         id="closeChannelSettings"
@@ -318,7 +318,7 @@
                 <use href="/portal/icons.svg#signal-tv" /></svg></span
             ><span
               ><strong>Channel name</strong
-              ><small>The name shown throughout MabelTV</small></span
+              ><small>The name shown throughout <span data-tv-name>Your TV</span></small></span
             ></span
           ><input id="editChannelName" maxlength="60" required /></label
         ><label class="channel-setting-field"

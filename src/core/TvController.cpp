@@ -136,7 +136,7 @@ bool TvController::initialize(const QString &databasePath,
                               std::function<qint64()> uptimeClock)
 {
     m_mediaRoot = QFileInfo(mediaRoot).absoluteFilePath();
-    m_adultMediaRoot = QDir(m_mediaRoot).filePath(QStringLiteral(".adult"));
+    m_myTvMediaRoot = QDir(m_mediaRoot).filePath(QStringLiteral(".my-tv"));
     m_databasePath = QFileInfo(databasePath).absoluteFilePath();
     m_episodeUptimeClock = std::move(uptimeClock);
     loadSettings();
@@ -156,7 +156,7 @@ bool TvController::initialize(const QString &databasePath,
         pendingInspections = mediaIndex.hasPendingInspections();
     }
     const bool loaded = applyLibrary(std::move(library));
-    reloadAdultLibrary();
+    reloadMyTvLibrary();
     if (loaded && pendingInspections) {
         qInfo() << "Uncached media will be validated in the background";
         QTimer::singleShot(0, this, &TvController::reloadLibrary);
@@ -496,12 +496,12 @@ QVariantMap TvController::currentChannelSummary() const
     };
 }
 
-QVariantList TvController::adultLibrary() const
+QVariantList TvController::myTvLibrary() const
 {
     QVariantList films;
-    const QDir directory(m_adultMediaRoot);
+    const QDir directory(m_myTvMediaRoot);
     QJsonObject metadataStates;
-    metadataStates = mabeltv::state::adultMedia(m_databasePath);
+    metadataStates = mabeltv::state::myTvMedia(m_databasePath);
     const QStringList filters{
         QStringLiteral("*.mp4"), QStringLiteral("*.m4v"), QStringLiteral("*.mkv"),
         QStringLiteral("*.mov"), QStringLiteral("*.webm"), QStringLiteral("*.avi"),

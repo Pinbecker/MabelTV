@@ -512,7 +512,7 @@ void MpvVideo::beginPlay(const QUrl &source,
 
 void MpvVideo::stop()
 {
-    // A second stop (for example closing Adult Mode while a previous stop is
+    // A second stop (for example closing MyTv Mode while a previous stop is
     // still draining) cancels any queued replay without issuing another
     // command into the same decoder teardown.
     m_hasQueuedPlay = false;
@@ -586,7 +586,7 @@ void MpvVideo::seekRelative(double seconds)
     }
     const QByteArray value = QByteArray::number(seconds, 'f', 3);
     const char *command[] = {"seek", value.constData(), "relative+exact", nullptr};
-    checkMpv(mpv_command_async(m_state->handle, 0, command), "Seeking within adult media");
+    checkMpv(mpv_command_async(m_state->handle, 0, command), "Seeking within my_tv media");
 }
 
 void MpvVideo::seekAbsolute(double seconds)
@@ -596,7 +596,7 @@ void MpvVideo::seekAbsolute(double seconds)
     }
     const QByteArray value = QByteArray::number(std::max(0.0, seconds), 'f', 3);
     const char *command[] = {"seek", value.constData(), "absolute+exact", nullptr};
-    checkMpv(mpv_command_async(m_state->handle, 0, command), "Seeking within adult media");
+    checkMpv(mpv_command_async(m_state->handle, 0, command), "Seeking within my_tv media");
 }
 
 std::uint64_t MpvVideo::renderedFrameCount() const
@@ -648,7 +648,7 @@ void MpvVideo::loadCurrentSource()
     const QByteArray encodedPath = QFileInfo(localPath).absoluteFilePath().toUtf8();
     qInfo().noquote() << "Loading media:" << QDir::toNativeSeparators(QString::fromUtf8(encodedPath));
     resetSubtitleState();
-    // This is deliberately an Adult Mode choice. Children's channels retain
+    // This is deliberately an MyTv Mode choice. Children's channels retain
     // each file's normal subtitle behaviour, while a film with embedded
     // subtitles starts with them visible and can immediately be switched off.
     const char *subtitleSelection[] = {"set", "sub-auto",

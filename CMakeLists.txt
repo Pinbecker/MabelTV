@@ -112,9 +112,9 @@ qt_add_resources(mabeltv "mabeltv_qml"
         qml/ParentConfirmationView.qml
         qml/ParentDashboardView.qml
         qml/SignalIcon.qml
-        qml/AdultModeOverlay.qml
-        qml/AdultLibraryView.qml
-        qml/AdultPlaybackControls.qml
+        qml/MyTvModeOverlay.qml
+        qml/MyTvLibraryView.qml
+        qml/MyTvPlaybackControls.qml
 )
 
 qt_add_shaders(mabeltv "mabeltv_shaders"

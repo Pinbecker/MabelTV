@@ -5,8 +5,8 @@ body.portal-v2 .watch-film-meta.is-title-facts {
   margin-top: 7px;
 }
 body.portal-v2 .watch-film-meta.is-title-facts > span + span::before { content: none; margin: 0; }
-body.portal-v2 .adult-title-fact { display: grid; min-width: 0; gap: 1px; }
-body.portal-v2 .adult-title-fact > small {
+body.portal-v2 .my-tv-title-fact { display: grid; min-width: 0; gap: 1px; }
+body.portal-v2 .my-tv-title-fact > small {
   color: var(--experience-dim);
   font-size: 7px;
   font-weight: 800;
@@ -14,7 +14,7 @@ body.portal-v2 .adult-title-fact > small {
   line-height: 1.2;
   text-transform: uppercase;
 }
-body.portal-v2 .adult-title-fact > strong {
+body.portal-v2 .my-tv-title-fact > strong {
   overflow: hidden;
   color: var(--experience-muted);
   font-size: 10px;
@@ -23,25 +23,25 @@ body.portal-v2 .adult-title-fact > strong {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-body.portal-v2 .adult-title-credit { grid-column: 1 / -1; }
-body.portal-v2 .adult-title-credit > strong {
+body.portal-v2 .my-tv-title-credit { grid-column: 1 / -1; }
+body.portal-v2 .my-tv-title-credit > strong {
   overflow: visible;
   color: var(--experience-ink);
   text-overflow: clip;
   white-space: normal;
 }
-body.portal-v2 .is-series-title-facts .adult-title-credit {
+body.portal-v2 .is-series-title-facts .my-tv-title-credit {
   grid-column: 1;
 }
-body.portal-v2 .is-series-title-facts .adult-title-rating {
+body.portal-v2 .is-series-title-facts .my-tv-title-rating {
   grid-column: 2;
 }
-body.portal-v2 .is-series-title-facts .adult-title-credit > strong {
+body.portal-v2 .is-series-title-facts .my-tv-title-credit > strong {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-body.portal-v2 .adult-title-rating-mark {
+body.portal-v2 .my-tv-title-rating-mark {
   width: fit-content;
   background: linear-gradient(90deg, #90cea1, #01b4e4);
   -webkit-background-clip: text;
@@ -53,17 +53,17 @@ body.portal-v2 .adult-title-rating-mark {
   font-weight: 900;
   letter-spacing: .04em;
 }
-body.portal-v2 .adult-title-enrichment {
+body.portal-v2 .my-tv-title-enrichment {
   min-width: 0;
   margin-top: 12px;
   border-top: 1px solid var(--experience-line);
   padding-top: 10px;
 }
-body.portal-v2 .adult-title-enrichment.hidden,
-body.portal-v2 .adult-rent-buy.hidden,
-body.portal-v2 .adult-person-known-for.hidden { display: none; }
-body.portal-v2 .adult-title-enrichment h3 { margin: 1px 0 0; font-size: 18px; }
-body.portal-v2 :is(.adult-franchise-rail, .adult-cast-rail, .adult-person-credits) {
+body.portal-v2 .my-tv-title-enrichment.hidden,
+body.portal-v2 .my-tv-rent-buy.hidden,
+body.portal-v2 .my-tv-person-known-for.hidden { display: none; }
+body.portal-v2 .my-tv-title-enrichment h3 { margin: 1px 0 0; font-size: 18px; }
+body.portal-v2 :is(.my-tv-franchise-rail, .my-tv-cast-rail, .my-tv-person-credits) {
   display: flex;
   min-width: 0;
   gap: 7px;
@@ -73,8 +73,8 @@ body.portal-v2 :is(.adult-franchise-rail, .adult-cast-rail, .adult-person-credit
   scrollbar-width: none;
   padding: 7px 0 1px;
 }
-body.portal-v2 :is(.adult-franchise-rail, .adult-cast-rail, .adult-person-credits)::-webkit-scrollbar { display: none; }
-body.portal-v2 .adult-franchise-card {
+body.portal-v2 :is(.my-tv-franchise-rail, .my-tv-cast-rail, .my-tv-person-credits)::-webkit-scrollbar { display: none; }
+body.portal-v2 .my-tv-franchise-card {
   display: grid;
   flex: 0 0 clamp(58px, calc((100% - 28px) / 5), 92px);
   min-width: 0;
@@ -86,8 +86,8 @@ body.portal-v2 .adult-franchise-card {
   padding: 0;
   text-align: left;
 }
-body.portal-v2 .adult-franchise-card:disabled { cursor: default; opacity: 1; }
-body.portal-v2 .adult-franchise-art {
+body.portal-v2 .my-tv-franchise-card:disabled { cursor: default; opacity: 1; }
+body.portal-v2 .my-tv-franchise-art {
   position: relative;
   display: grid;
   width: 100%;
@@ -99,13 +99,13 @@ body.portal-v2 .adult-franchise-art {
   background: var(--experience-soft);
   color: var(--experience-dim);
 }
-body.portal-v2 .adult-franchise-card.is-current .adult-franchise-art {
+body.portal-v2 .my-tv-franchise-card.is-current .my-tv-franchise-art {
   border-color: var(--experience-orange);
   box-shadow: inset 0 0 0 1px var(--experience-orange);
 }
-body.portal-v2 .adult-franchise-art img { width: 100%; height: 100%; object-fit: cover; }
-body.portal-v2 .adult-franchise-art > b { font-size: 20px; }
-body.portal-v2 .adult-franchise-art > i {
+body.portal-v2 .my-tv-franchise-art img { width: 100%; height: 100%; object-fit: cover; }
+body.portal-v2 .my-tv-franchise-art > b { font-size: 20px; }
+body.portal-v2 .my-tv-franchise-art > i {
   position: absolute;
   right: 3px;
   bottom: 3px;
@@ -117,7 +117,7 @@ body.portal-v2 .adult-franchise-art > i {
   font-style: normal;
   font-weight: 820;
 }
-body.portal-v2 .adult-franchise-card > strong {
+body.portal-v2 .my-tv-franchise-card > strong {
   display: -webkit-box;
   min-height: 2.3em;
   overflow: hidden;
@@ -126,8 +126,8 @@ body.portal-v2 .adult-franchise-card > strong {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
-body.portal-v2 .adult-franchise-card > small { color: var(--experience-dim); font-size: 7px; }
-body.portal-v2 .adult-cast-card {
+body.portal-v2 .my-tv-franchise-card > small { color: var(--experience-dim); font-size: 7px; }
+body.portal-v2 .my-tv-cast-card {
   display: grid;
   flex: 0 0 68px;
   min-width: 0;
@@ -139,7 +139,7 @@ body.portal-v2 .adult-cast-card {
   padding: 0;
   text-align: left;
 }
-body.portal-v2 .adult-cast-photo {
+body.portal-v2 .my-tv-cast-photo {
   display: grid;
   width: 60px;
   aspect-ratio: 1;
@@ -150,22 +150,22 @@ body.portal-v2 .adult-cast-photo {
   background: var(--experience-soft);
   color: var(--experience-muted);
 }
-body.portal-v2 .adult-cast-photo img { width: 100%; height: 100%; object-fit: cover; }
-body.portal-v2 .adult-cast-photo b { font-size: 15px; }
-body.portal-v2 .adult-cast-card > strong,
-body.portal-v2 .adult-cast-card > small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-body.portal-v2 .adult-cast-card > strong { font-size: 9px; }
-body.portal-v2 .adult-cast-card > small { color: var(--experience-dim); font-size: 7px; }
-body.portal-v2 .adult-cast-card:focus-visible,
-body.portal-v2 .adult-franchise-card:focus-visible { outline: 2px solid var(--experience-orange); outline-offset: 2px; }
-body.portal-v2 .adult-credit-rail { align-items: stretch; gap: 10px; }
-body.portal-v2 .adult-credit-group {
+body.portal-v2 .my-tv-cast-photo img { width: 100%; height: 100%; object-fit: cover; }
+body.portal-v2 .my-tv-cast-photo b { font-size: 15px; }
+body.portal-v2 .my-tv-cast-card > strong,
+body.portal-v2 .my-tv-cast-card > small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.portal-v2 .my-tv-cast-card > strong { font-size: 9px; }
+body.portal-v2 .my-tv-cast-card > small { color: var(--experience-dim); font-size: 7px; }
+body.portal-v2 .my-tv-cast-card:focus-visible,
+body.portal-v2 .my-tv-franchise-card:focus-visible { outline: 2px solid var(--experience-orange); outline-offset: 2px; }
+body.portal-v2 .my-tv-credit-rail { align-items: stretch; gap: 10px; }
+body.portal-v2 .my-tv-credit-group {
   display: grid;
   flex: 0 0 auto;
   align-content: start;
   gap: 5px;
 }
-body.portal-v2 .adult-credit-group-label {
+body.portal-v2 .my-tv-credit-group-label {
   color: var(--experience-dim);
   font-size: 8px;
   font-weight: 850;
@@ -173,20 +173,20 @@ body.portal-v2 .adult-credit-group-label {
   line-height: 1;
   text-transform: uppercase;
 }
-body.portal-v2 .adult-credit-group-cards { display: flex; gap: 7px; }
-body.portal-v2 .adult-credit-divider {
+body.portal-v2 .my-tv-credit-group-cards { display: flex; gap: 7px; }
+body.portal-v2 .my-tv-credit-divider {
   width: 1px;
   flex: 0 0 1px;
   align-self: stretch;
   background: var(--experience-line);
 }
 
-body.portal-v2 .adult-provider-section { margin-top: 12px; border-top: 1px solid var(--experience-line); padding-top: 10px; }
-body.portal-v2 .adult-provider-section > header { display: flex; align-items: end; justify-content: space-between; gap: 12px; }
-body.portal-v2 .adult-provider-section h3 { margin: 1px 0 0; font-size: 18px; }
-body.portal-v2 .adult-provider-section > header button { min-height: 36px; background: transparent; color: var(--experience-orange); font-size: 10px; }
-body.portal-v2 .adult-provider-list { display: grid; gap: 8px; margin-top: 7px; }
-body.portal-v2 .adult-provider {
+body.portal-v2 .my-tv-provider-section { margin-top: 12px; border-top: 1px solid var(--experience-line); padding-top: 10px; }
+body.portal-v2 .my-tv-provider-section > header { display: flex; align-items: end; justify-content: space-between; gap: 12px; }
+body.portal-v2 .my-tv-provider-section h3 { margin: 1px 0 0; font-size: 18px; }
+body.portal-v2 .my-tv-provider-section > header button { min-height: 36px; background: transparent; color: var(--experience-orange); font-size: 10px; }
+body.portal-v2 .my-tv-provider-list { display: grid; gap: 8px; margin-top: 7px; }
+body.portal-v2 .my-tv-provider {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -199,68 +199,68 @@ body.portal-v2 .adult-provider {
   padding: 9px 12px;
   text-align: left;
 }
-body.portal-v2 .adult-provider span { display: grid; }
-body.portal-v2 .adult-provider small { color: var(--experience-dim); font-size: 10px; text-transform: capitalize; }
-body.portal-v2 .adult-provider-logos { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 9px; }
-body.portal-v2 .adult-provider-logo { display: grid; min-width: 0; aspect-ratio: 1; place-items: center; overflow: hidden; border: 1px solid var(--experience-line); border-radius: 11px; background: #101014; padding: 0; }
-body.portal-v2 .adult-provider-logo img { display: block; width: 100%; height: 100%; object-fit: cover; }
-body.portal-v2 .adult-provider-logo.provider-mabeltv { padding: 4px; }
-body.portal-v2 .adult-provider-logo.provider-mabeltv img { border-radius: 8px; }
-body.portal-v2 .adult-provider-logo.is-availability { cursor: default; }
-body.portal-v2 .adult-provider-logo:focus-visible { outline: 2px solid var(--experience-orange); outline-offset: 2px; }
+body.portal-v2 .my-tv-provider span { display: grid; }
+body.portal-v2 .my-tv-provider small { color: var(--experience-dim); font-size: 10px; text-transform: capitalize; }
+body.portal-v2 .my-tv-provider-logos { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 9px; }
+body.portal-v2 .my-tv-provider-logo { display: grid; min-width: 0; aspect-ratio: 1; place-items: center; overflow: hidden; border: 1px solid var(--experience-line); border-radius: 11px; background: #101014; padding: 0; }
+body.portal-v2 .my-tv-provider-logo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+body.portal-v2 .my-tv-provider-logo.provider-mabeltv { padding: 4px; }
+body.portal-v2 .my-tv-provider-logo.provider-mabeltv img { border-radius: 8px; }
+body.portal-v2 .my-tv-provider-logo.is-availability { cursor: default; }
+body.portal-v2 .my-tv-provider-logo:focus-visible { outline: 2px solid var(--experience-orange); outline-offset: 2px; }
 
-body.portal-v2 .adult-rent-buy { margin-top: 10px; border-top: 1px solid var(--experience-line); }
-body.portal-v2 .adult-rent-toggle { display: flex; width: 100%; min-height: 42px; align-items: center; justify-content: space-between; gap: 12px; border: 0; background: transparent; color: var(--experience-ink); padding: 8px 0; text-align: left; }
-body.portal-v2 .adult-rent-toggle > span { display: flex; min-width: 0; align-items: baseline; gap: 8px; }
-body.portal-v2 .adult-rent-toggle strong { font-size: 14px; }
-body.portal-v2 .adult-rent-toggle small { overflow: hidden; color: var(--experience-dim); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
-body.portal-v2 .adult-rent-toggle > .icon { width: 16px; height: 16px; flex: 0 0 auto; color: var(--experience-muted); transition: transform 160ms ease; }
-body.portal-v2 .adult-rent-buy.is-expanded .adult-rent-toggle > .icon { transform: rotate(180deg); }
-body.portal-v2 .adult-rent-toggle:focus-visible { outline: 2px solid var(--experience-orange); outline-offset: 2px; }
-body.portal-v2 .adult-rent-buy-list { margin-bottom: 8px; }
-body.portal-v2 .adult-rent-buy-list[hidden] { display: none; }
-body.portal-v2 .adult-purchase-providers { display: flex; min-width: 0; gap: 8px; overflow-x: auto; scrollbar-width: none; }
-body.portal-v2 .adult-purchase-providers::-webkit-scrollbar { display: none; }
-body.portal-v2 .adult-purchase-provider { display: grid; flex: 0 0 54px; min-width: 0; gap: 3px; border: 0; background: transparent; color: var(--experience-ink); padding: 0; text-align: center; }
-body.portal-v2 .adult-purchase-logo { display: grid; width: 54px; aspect-ratio: 1; place-items: center; overflow: hidden; border: 1px solid var(--experience-line); border-radius: 10px; background: #101014; color: var(--experience-muted); }
-body.portal-v2 .adult-purchase-logo img { width: 100%; height: 100%; object-fit: cover; }
-body.portal-v2 .adult-purchase-logo b { font-size: 14px; }
-body.portal-v2 .adult-purchase-provider > strong { overflow: hidden; color: var(--experience-ink); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
-body.portal-v2 .adult-purchase-provider:focus-visible { outline: 2px solid var(--experience-orange); outline-offset: 2px; }
+body.portal-v2 .my-tv-rent-buy { margin-top: 10px; border-top: 1px solid var(--experience-line); }
+body.portal-v2 .my-tv-rent-toggle { display: flex; width: 100%; min-height: 42px; align-items: center; justify-content: space-between; gap: 12px; border: 0; background: transparent; color: var(--experience-ink); padding: 8px 0; text-align: left; }
+body.portal-v2 .my-tv-rent-toggle > span { display: flex; min-width: 0; align-items: baseline; gap: 8px; }
+body.portal-v2 .my-tv-rent-toggle strong { font-size: 14px; }
+body.portal-v2 .my-tv-rent-toggle small { overflow: hidden; color: var(--experience-dim); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+body.portal-v2 .my-tv-rent-toggle > .icon { width: 16px; height: 16px; flex: 0 0 auto; color: var(--experience-muted); transition: transform 160ms ease; }
+body.portal-v2 .my-tv-rent-buy.is-expanded .my-tv-rent-toggle > .icon { transform: rotate(180deg); }
+body.portal-v2 .my-tv-rent-toggle:focus-visible { outline: 2px solid var(--experience-orange); outline-offset: 2px; }
+body.portal-v2 .my-tv-rent-buy-list { margin-bottom: 8px; }
+body.portal-v2 .my-tv-rent-buy-list[hidden] { display: none; }
+body.portal-v2 .my-tv-purchase-providers { display: flex; min-width: 0; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+body.portal-v2 .my-tv-purchase-providers::-webkit-scrollbar { display: none; }
+body.portal-v2 .my-tv-purchase-provider { display: grid; flex: 0 0 54px; min-width: 0; gap: 3px; border: 0; background: transparent; color: var(--experience-ink); padding: 0; text-align: center; }
+body.portal-v2 .my-tv-purchase-logo { display: grid; width: 54px; aspect-ratio: 1; place-items: center; overflow: hidden; border: 1px solid var(--experience-line); border-radius: 10px; background: #101014; color: var(--experience-muted); }
+body.portal-v2 .my-tv-purchase-logo img { width: 100%; height: 100%; object-fit: cover; }
+body.portal-v2 .my-tv-purchase-logo b { font-size: 14px; }
+body.portal-v2 .my-tv-purchase-provider > strong { overflow: hidden; color: var(--experience-ink); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+body.portal-v2 .my-tv-purchase-provider:focus-visible { outline: 2px solid var(--experience-orange); outline-offset: 2px; }
 
-body.portal-v2 .adult-person-sheet .library-sheet-panel { width: min(560px, calc(100vw - 32px)); }
-body.portal-v2 .adult-person-summary { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: start; gap: 14px; }
-body.portal-v2 .adult-person-photo { display: grid; width: 92px; aspect-ratio: 2 / 3; place-items: center; overflow: hidden; border: 1px solid var(--experience-line); border-radius: 10px; background: var(--experience-soft); color: var(--experience-muted); }
-body.portal-v2 .adult-person-photo img { width: 100%; height: 100%; object-fit: cover; }
-body.portal-v2 .adult-person-photo b { font-size: 24px; }
-body.portal-v2 .adult-person-facts { display: grid; gap: 8px; margin: 0; }
-body.portal-v2 .adult-person-facts div { display: grid; gap: 2px; }
-body.portal-v2 .adult-person-facts dt { color: var(--experience-dim); font-size: 8px; font-weight: 820; letter-spacing: .08em; text-transform: uppercase; }
-body.portal-v2 .adult-person-facts dd { margin: 0; color: var(--experience-ink); font-size: 11px; line-height: 1.35; }
-body.portal-v2 .adult-person-biography { display: -webkit-box; overflow: hidden; margin: 14px 0 0; color: var(--experience-muted); font-size: 12px; line-height: 1.55; -webkit-box-orient: vertical; -webkit-line-clamp: 5; }
-body.portal-v2 .adult-person-biography.is-expanded { display: block; overflow: visible; -webkit-line-clamp: unset; }
-body.portal-v2 .adult-person-biography-expand { margin-top: 4px; }
-body.portal-v2 .adult-person-known-for { margin-top: 14px; border-top: 1px solid var(--experience-line); padding-top: 10px; }
-body.portal-v2 .adult-person-known-for h3 { margin: 0; font-size: 18px; }
-body.portal-v2 .adult-person-credits {
+body.portal-v2 .my-tv-person-sheet .library-sheet-panel { width: min(560px, calc(100vw - 32px)); }
+body.portal-v2 .my-tv-person-summary { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: start; gap: 14px; }
+body.portal-v2 .my-tv-person-photo { display: grid; width: 92px; aspect-ratio: 2 / 3; place-items: center; overflow: hidden; border: 1px solid var(--experience-line); border-radius: 10px; background: var(--experience-soft); color: var(--experience-muted); }
+body.portal-v2 .my-tv-person-photo img { width: 100%; height: 100%; object-fit: cover; }
+body.portal-v2 .my-tv-person-photo b { font-size: 24px; }
+body.portal-v2 .my-tv-person-facts { display: grid; gap: 8px; margin: 0; }
+body.portal-v2 .my-tv-person-facts div { display: grid; gap: 2px; }
+body.portal-v2 .my-tv-person-facts dt { color: var(--experience-dim); font-size: 8px; font-weight: 820; letter-spacing: .08em; text-transform: uppercase; }
+body.portal-v2 .my-tv-person-facts dd { margin: 0; color: var(--experience-ink); font-size: 11px; line-height: 1.35; }
+body.portal-v2 .my-tv-person-biography { display: -webkit-box; overflow: hidden; margin: 14px 0 0; color: var(--experience-muted); font-size: 12px; line-height: 1.55; -webkit-box-orient: vertical; -webkit-line-clamp: 5; }
+body.portal-v2 .my-tv-person-biography.is-expanded { display: block; overflow: visible; -webkit-line-clamp: unset; }
+body.portal-v2 .my-tv-person-biography-expand { margin-top: 4px; }
+body.portal-v2 .my-tv-person-known-for { margin-top: 14px; border-top: 1px solid var(--experience-line); padding-top: 10px; }
+body.portal-v2 .my-tv-person-known-for h3 { margin: 0; font-size: 18px; }
+body.portal-v2 .my-tv-person-credits {
   display: block;
   overflow-x: hidden;
   scroll-snap-type: none;
 }
-body.portal-v2 .adult-person-credits.is-complete-history {
+body.portal-v2 .my-tv-person-credits.is-complete-history {
   display: block;
   overflow-x: hidden;
 }
-body.portal-v2 .adult-person-credit-page {
+body.portal-v2 .my-tv-person-credit-page {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: start;
   gap: 10px 7px;
 }
-body.portal-v2 .adult-person-credits.is-complete-history .adult-person-credit-page {
+body.portal-v2 .my-tv-person-credits.is-complete-history .my-tv-person-credit-page {
   width: 100%;
 }
-body.portal-v2 .adult-person-credit-page .adult-franchise-card {
+body.portal-v2 .my-tv-person-credit-page .my-tv-franchise-card {
   width: 100%;
   min-width: 0;
 }

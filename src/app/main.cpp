@@ -477,17 +477,17 @@ int main(int argc, char *argv[])
 
     // The systemd watchdog proves that the Qt event loop is alive. These
     // additional checks prove that whichever libmpv player is visible is still
-    // loading or delivering frames; Adult Mode owns a separate player and must
+    // loading or delivering frames; MyTv Mode owns a separate player and must
     // not fall outside the same recovery boundary as ordinary television.
     auto *video = engine.rootObjects().constFirst()->findChild<MpvVideo *>(
         QStringLiteral("mabeltvPlayer"));
-    auto *adultVideo = engine.rootObjects().constFirst()->findChild<MpvVideo *>(
-        QStringLiteral("mabeltvAdultPlayer"));
-    if (video == nullptr || adultVideo == nullptr) {
+    auto *myTvVideo = engine.rootObjects().constFirst()->findChild<MpvVideo *>(
+        QStringLiteral("mabeltvMyTvPlayer"));
+    if (video == nullptr || myTvVideo == nullptr) {
         qCritical() << "The QML scene did not create both Mabel TV video players";
         return 45;
     }
-    if (!video->available() || !adultVideo->available()) {
+    if (!video->available() || !myTvVideo->available()) {
         qCritical() << "A libmpv player was unavailable after the QML scene started";
         return 45;
     }
@@ -499,7 +499,7 @@ int main(int argc, char *argv[])
     };
     QObject::connect(video, &MpvVideo::fatalPlayerFailure,
                      &application, restartAfterFatalPlayerFailure);
-    QObject::connect(adultVideo, &MpvVideo::fatalPlayerFailure,
+    QObject::connect(myTvVideo, &MpvVideo::fatalPlayerFailure,
                      &application, restartAfterFatalPlayerFailure);
     QTimer playbackHealthTimer;
     MpvVideo *monitoredVideo = nullptr;
@@ -514,7 +514,7 @@ int main(int argc, char *argv[])
                      &application,
                      [&application,
                        video,
-                       adultVideo,
+                       myTvVideo,
                        &television,
                        &monitoredVideo,
                        &monitoredPlaybackGeneration,
@@ -522,7 +522,7 @@ int main(int argc, char *argv[])
                        &renderedFrameForGeneration,
                        &stagnantPlaybackChecks,
                        &stagnantLoadingChecks]() {
-                         MpvVideo *activeVideo = adultVideo->isVisible() ? adultVideo : video;
+                         MpvVideo *activeVideo = myTvVideo->isVisible() ? myTvVideo : video;
                          const qulonglong activeGeneration = activeVideo->playbackGeneration();
                          if (activeVideo != monitoredVideo
                              || activeGeneration != monitoredPlaybackGeneration) {

@@ -9,12 +9,12 @@ MAIN_QML_SOURCE = "\n".join(
     (QML_ROOT / name).read_text(encoding="utf-8")
     for name in ("Main.qml", "TelevisionScreen.qml", "RemoteInputHandler.qml")
 )
-ADULT_QML_SOURCE = "\n".join(
+MY_TV_QML_SOURCE = "\n".join(
     (QML_ROOT / name).read_text(encoding="utf-8")
     for name in (
-        "AdultModeOverlay.qml",
-        "AdultLibraryView.qml",
-        "AdultPlaybackControls.qml",
+        "MyTvModeOverlay.qml",
+        "MyTvLibraryView.qml",
+        "MyTvPlaybackControls.qml",
     )
 )
 TV_CONTROLLER_SOURCE = "\n".join(
@@ -81,8 +81,8 @@ class PlayerSafetyTests(unittest.TestCase):
             "qml/RemoteInputHandler.qml",
             "qml/ParentConfirmationView.qml",
             "qml/ParentDashboardView.qml",
-            "qml/AdultLibraryView.qml",
-            "qml/AdultPlaybackControls.qml",
+            "qml/MyTvLibraryView.qml",
+            "qml/MyTvPlaybackControls.qml",
         )
         for source in sources:
             self.assertIn(source, cmake)
@@ -91,13 +91,13 @@ class PlayerSafetyTests(unittest.TestCase):
         modern_parent = (QML_ROOT / "ModernParentOverlay.qml").read_text(
             encoding="utf-8"
         )
-        adult = (QML_ROOT / "AdultModeOverlay.qml").read_text(encoding="utf-8")
+        my_tv = (QML_ROOT / "MyTvModeOverlay.qml").read_text(encoding="utf-8")
         self.assertIn("TelevisionScreen", main)
         self.assertIn("RemoteInputHandler", main)
         self.assertIn("ParentConfirmationView", modern_parent)
         self.assertIn("ParentDashboardView", modern_parent)
-        self.assertIn("AdultLibraryView", adult)
-        self.assertIn("AdultPlaybackControls", adult)
+        self.assertIn("MyTvLibraryView", my_tv)
+        self.assertIn("MyTvPlaybackControls", my_tv)
 
     def test_child_remote_lock_never_blocks_parent_portal_commands(self) -> None:
         main_qml = MAIN_QML_SOURCE
@@ -160,13 +160,13 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("Q_PROPERTY(double playbackPosition", header)
         self.assertIn("Q_PROPERTY(double playbackDuration", header)
 
-    def test_adult_overlay_binds_to_cached_telemetry(self) -> None:
-        qml = ADULT_QML_SOURCE
+    def test_my_tv_overlay_binds_to_cached_telemetry(self) -> None:
+        qml = MY_TV_QML_SOURCE
 
-        self.assertIn("adultPlayer.playbackPosition", qml)
-        self.assertIn("adultPlayer.playbackDuration", qml)
-        self.assertNotIn("adultPlayer.positionSeconds()", qml)
-        self.assertNotIn("adultPlayer.durationSeconds()", qml)
+        self.assertIn("myTvPlayer.playbackPosition", qml)
+        self.assertIn("myTvPlayer.playbackDuration", qml)
+        self.assertNotIn("myTvPlayer.positionSeconds()", qml)
+        self.assertNotIn("myTvPlayer.durationSeconds()", qml)
 
     def test_stop_and_immediate_replay_are_serialized(self) -> None:
         source = (PROJECT_ROOT / "src" / "media" / "MpvVideo.cpp").read_text(
@@ -195,31 +195,31 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("releaseUnusedDecoderMemory();", source)
         self.assertIn("malloc_trim(0);", source)
 
-    def test_adult_mode_waits_for_decoder_release_before_resuming_tv(self) -> None:
+    def test_my_tv_mode_waits_for_decoder_release_before_resuming_tv(self) -> None:
         source = (PROJECT_ROOT / "src" / "media" / "MpvVideo.cpp").read_text(
             encoding="utf-8"
         )
         header = (PROJECT_ROOT / "src" / "media" / "MpvVideo.h").read_text(
             encoding="utf-8"
         )
-        adult_qml = ADULT_QML_SOURCE
+        my_tv_qml = MY_TV_QML_SOURCE
         main_qml = MAIN_QML_SOURCE
         application = NATIVE_APPLICATION_SOURCE
 
         self.assertIn("void playbackStopped();", header)
         self.assertIn("emit playbackStopped();", source)
-        self.assertIn("onPlaybackStopped", adult_qml)
-        self.assertIn("if (overlay.closing)", adult_qml)
-        self.assertIn("adultResumeTimer.restart()", main_qml)
+        self.assertIn("onPlaybackStopped", my_tv_qml)
+        self.assertIn("if (overlay.closing)", my_tv_qml)
+        self.assertIn("myTvResumeTimer.restart()", main_qml)
         self.assertIn("interval: 400", main_qml)
 
-    def test_visible_adult_player_is_inside_stall_monitor(self) -> None:
+    def test_visible_my_tv_player_is_inside_stall_monitor(self) -> None:
         source = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
             encoding="utf-8"
         )
 
-        self.assertIn('QStringLiteral("mabeltvAdultPlayer")', source)
-        self.assertIn("adultVideo->isVisible() ? adultVideo : video", source)
+        self.assertIn('QStringLiteral("mabeltvMyTvPlayer")', source)
+        self.assertIn("myTvVideo->isVisible() ? myTvVideo : video", source)
 
     def test_pi4_avoids_wedged_h264_driver_but_keeps_hevc_hardware_decode(self) -> None:
         launcher = (PROJECT_ROOT / "scripts" / "pi" / "mabeltv-launch.sh").read_text(
@@ -244,7 +244,7 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn('"format": "xrgb8888"', launcher)
         self.assertIn('native) kms_mode="preferred"', launcher)
 
-    def test_adult_mode_has_a_direct_shortcut_and_subtitle_control(self) -> None:
+    def test_my_tv_mode_has_a_direct_shortcut_and_subtitle_control(self) -> None:
         controller_header = (PROJECT_ROOT / "src" / "core" / "TvController.h").read_text(
             encoding="utf-8"
         )
@@ -255,17 +255,17 @@ class PlayerSafetyTests(unittest.TestCase):
         player_source = (PROJECT_ROOT / "src" / "media" / "MpvVideo.cpp").read_text(
             encoding="utf-8"
         )
-        adult_qml = ADULT_QML_SOURCE
+        my_tv_qml = MY_TV_QML_SOURCE
         main_qml = MAIN_QML_SOURCE
         application = NATIVE_APPLICATION_SOURCE
 
-        self.assertIn("void requestAdultModeShortcut();", controller_header)
-        self.assertIn("Adult mode requested from parent-access shortcut", controller_source)
+        self.assertIn("void requestMyTvModeShortcut();", controller_header)
+        self.assertIn("MyTv mode requested from parent-access shortcut", controller_source)
         self.assertIn("Q_PROPERTY(bool subtitlesVisible", player_header)
         self.assertIn("Q_INVOKABLE void toggleSubtitles();", player_header)
         self.assertIn('"sub-auto",', player_source)
-        self.assertIn("subtitleDefaultOn: true", adult_qml)
-        self.assertIn("adultPlayer.toggleSubtitles()", adult_qml)
+        self.assertIn("subtitleDefaultOn: true", my_tv_qml)
+        self.assertIn("myTvPlayer.toggleSubtitles()", my_tv_qml)
         self.assertIn('QStringLiteral("toggle-subtitles")', application)
         self.assertIn('command === "toggle-subtitles"', main_qml)
 
@@ -284,50 +284,50 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn('command === "toggle-widescreen-mode"', main_qml)
         self.assertIn('QStringLiteral("toggle-widescreen-mode")', application)
 
-    def test_adult_back_returns_to_library_before_leaving_adult_mode(self) -> None:
-        adult_qml = ADULT_QML_SOURCE
+    def test_my_tv_back_returns_to_library_before_leaving_my_tv_mode(self) -> None:
+        my_tv_qml = MY_TV_QML_SOURCE
         main_qml = MAIN_QML_SOURCE
 
-        self.assertIn("function back(waitForRelease)", adult_qml)
-        self.assertIn("if (playing || stopping)", adult_qml)
-        self.assertIn("ignoreLibraryBackBeforeMs = Date.now() + 750", adult_qml)
-        self.assertIn("function handleKeyReleased", adult_qml)
-        self.assertIn("adultOverlay.handleKeyReleased(event.key, event.isAutoRepeat)", main_qml)
-        self.assertIn("adultMode.back(false)", main_qml)
+        self.assertIn("function back(waitForRelease)", my_tv_qml)
+        self.assertIn("if (playing || stopping)", my_tv_qml)
+        self.assertIn("ignoreLibraryBackBeforeMs = Date.now() + 750", my_tv_qml)
+        self.assertIn("function handleKeyReleased", my_tv_qml)
+        self.assertIn("myTvOverlay.handleKeyReleased(event.key, event.isAutoRepeat)", main_qml)
+        self.assertIn("myTvMode.back(false)", main_qml)
 
-    def test_adult_library_is_a_remote_first_media_portal(self) -> None:
-        adult_qml = ADULT_QML_SOURCE
+    def test_my_tv_library_is_a_remote_first_media_portal(self) -> None:
+        my_tv_qml = MY_TV_QML_SOURCE
         main_qml = MAIN_QML_SOURCE
         application = NATIVE_APPLICATION_SOURCE
 
-        self.assertIn('text: "Adult Library"', adult_qml)
-        self.assertIn("id: detailPanel", adult_qml)
-        self.assertIn("id: collectionTabs", adult_qml)
-        self.assertIn("id: posterGrid", adult_qml)
-        self.assertIn("readonly property int columns: 5", adult_qml)
-        self.assertIn("cellHeight: height / 2", adult_qml)
-        self.assertIn("anchors.right: parent.right", adult_qml)
-        self.assertIn("fillMode: Image.PreserveAspectFit", adult_qml)
-        self.assertIn("function selectCollectionRelative(offset)", adult_qml)
-        self.assertIn("function navigateGrid(horizontal, vertical)", adult_qml)
-        self.assertIn("function selectRelative(offset)", adult_qml)
-        self.assertIn("function togglePause()", adult_qml)
-        self.assertIn("function restartFilm()", adult_qml)
-        self.assertIn("adultMode.restartFilm()", main_qml)
-        self.assertIn("adultMode.togglePause()", main_qml)
-        self.assertIn("adultMode.selectRelative(-1)", main_qml)
-        self.assertIn('objectName: "mabeltvAdultMode"', adult_qml)
+        self.assertIn('text: "My TV Library"', my_tv_qml)
+        self.assertIn("id: detailPanel", my_tv_qml)
+        self.assertIn("id: collectionTabs", my_tv_qml)
+        self.assertIn("id: posterGrid", my_tv_qml)
+        self.assertIn("readonly property int columns: 5", my_tv_qml)
+        self.assertIn("cellHeight: height / 2", my_tv_qml)
+        self.assertIn("anchors.right: parent.right", my_tv_qml)
+        self.assertIn("fillMode: Image.PreserveAspectFit", my_tv_qml)
+        self.assertIn("function selectCollectionRelative(offset)", my_tv_qml)
+        self.assertIn("function navigateGrid(horizontal, vertical)", my_tv_qml)
+        self.assertIn("function selectRelative(offset)", my_tv_qml)
+        self.assertIn("function togglePause()", my_tv_qml)
+        self.assertIn("function restartFilm()", my_tv_qml)
+        self.assertIn("myTvMode.restartFilm()", main_qml)
+        self.assertIn("myTvMode.togglePause()", main_qml)
+        self.assertIn("myTvMode.selectRelative(-1)", main_qml)
+        self.assertIn('objectName: "mabeltvMyTvMode"', my_tv_qml)
         self.assertIn('command == QStringLiteral("status")', application)
 
-    def test_usb_playback_reuses_the_serialised_adult_decoder(self) -> None:
-        adult_qml = ADULT_QML_SOURCE
+    def test_usb_playback_reuses_the_serialised_my_tv_decoder(self) -> None:
+        my_tv_qml = MY_TV_QML_SOURCE
         main_qml = MAIN_QML_SOURCE
         application = NATIVE_APPLICATION_SOURCE
         self.assertIn("function portalExternalPlayback", main_qml)
         self.assertIn("pendingExternalSource", main_qml)
-        self.assertIn("function requestExternal", adult_qml)
-        self.assertIn("onPlaybackStopped", adult_qml)
-        self.assertIn("externalStartTimer.restart()", adult_qml)
+        self.assertIn("function requestExternal", my_tv_qml)
+        self.assertIn("onPlaybackStopped", my_tv_qml)
+        self.assertIn("externalStartTimer.restart()", my_tv_qml)
         self.assertIn('QStringLiteral("play-external")', application)
         self.assertIn("path.startsWith(usbRoot)", application)
         self.assertIn('QStringLiteral("/media/mabeltv-usb")', application)
@@ -349,17 +349,17 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("function onStopPlaybackRequested()", main_qml)
         self.assertIn("root.cancelFilmCountdown()", main_qml)
 
-    def test_power_waits_for_adult_decoder_before_entering_standby(self) -> None:
+    def test_power_waits_for_my_tv_decoder_before_entering_standby(self) -> None:
         main_qml = MAIN_QML_SOURCE
-        adult_qml = ADULT_QML_SOURCE
+        my_tv_qml = MY_TV_QML_SOURCE
         self.assertIn('property string pendingPowerAction: ""', main_qml)
-        self.assertIn("if (adultMode.active) {\n            adultMode.close()", main_qml)
+        self.assertIn("if (myTvMode.active) {\n            myTvMode.close()", main_qml)
         self.assertIn("root.performPowerOff()", main_qml)
         self.assertIn("tvController.turnOff()", main_qml)
         self.assertIn("if (root.pendingPowerAction.length > 0)", main_qml)
         self.assertNotIn("powerHoldTimer", main_qml)
         self.assertNotIn("requestSafeShutdown", main_qml)
-        self.assertIn("if (overlay.closing)\n                overlay.finishClose()", adult_qml)
+        self.assertIn("if (overlay.closing)\n                overlay.finishClose()", my_tv_qml)
 
     def test_tv_power_uses_one_explicit_cec_layer_for_remote_and_portal(self) -> None:
         controller = TV_CONTROLLER_SOURCE
@@ -404,7 +404,7 @@ class PlayerSafetyTests(unittest.TestCase):
 
         self.assertEqual(portal.count('class="home-spotlight"'), 1)
         self.assertEqual(portal.count('class="screen-title watch-title"'), 1)
-        self.assertEqual(portal.count('class="library-intro adult-library-head"'), 1)
+        self.assertEqual(portal.count('class="screen-title watch-title my-tv-home-title"'), 1)
         self.assertNotIn('portal-intro', portal)
         self.assertIn("--experience-radius: 12px", portal)
         self.assertIn("--experience-control-radius: 8px", portal)
@@ -439,61 +439,61 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("root.schedulePlaybackAfterPowerClick(true)", main_qml)
         self.assertIn("root.schedulePlaybackAfterPowerClick(false)", main_qml)
 
-    def test_adult_transition_uses_one_renderer_and_preserves_film_position(self) -> None:
+    def test_my_tv_transition_uses_one_renderer_and_preserves_film_position(self) -> None:
         main_qml = MAIN_QML_SOURCE
-        adult_qml = ADULT_QML_SOURCE
+        my_tv_qml = MY_TV_QML_SOURCE
         application = NATIVE_APPLICATION_SOURCE
 
-        self.assertIn("visible: !adultMode.active", main_qml)
-        self.assertIn("property bool openingAdultMode", main_qml)
-        self.assertIn("openingAdultMode = true\n        player.stop()", main_qml)
+        self.assertIn("visible: !myTvMode.active", main_qml)
+        self.assertIn("property bool openingMyTvMode", main_qml)
+        self.assertIn("openingMyTvMode = true\n        player.stop()", main_qml)
         self.assertIn("onPlaybackStopped", main_qml)
-        self.assertIn("if (appRoot.openingAdultMode)", main_qml)
-        self.assertIn("adultMode.open()", main_qml)
-        self.assertIn("if (!adultMode.active && !root.openingAdultMode", main_qml)
-        self.assertIn("if (adultMode.active)\n                adultMode.toggleSubtitles()", main_qml)
-        self.assertIn("controller.adultPlaybackPosition(film.id)", adult_qml)
-        self.assertIn("controller.setAdultPlaybackPosition(film.id", adult_qml)
-        self.assertIn("id: adultPositionTimer", adult_qml)
-        self.assertIn("rememberCurrentFilmPosition", adult_qml)
-        self.assertIn("savedPosition", adult_qml)
-        self.assertNotIn("HOLD MUTE  SUBTITLES", adult_qml)
-        self.assertIn("id: playbackChoiceModal", adult_qml)
-        self.assertIn("function confirmPlaybackChoice()", adult_qml)
-        self.assertIn("id: filmProgressTrack", adult_qml)
-        self.assertIn("tvController.adultPlaybackDuration(modelData.id)", adult_qml)
-        self.assertIn("Number(modelData.runtime || 0) * 60", adult_qml)
-        self.assertIn("id: subtitleAction", adult_qml)
-        self.assertIn("visible: host.scrubberActive && mediaPlayer.subtitlesAvailable", adult_qml)
-        self.assertIn("readonly property bool subtitlesAvailable: adultPlayer.subtitlesAvailable", adult_qml)
-        self.assertIn("readonly property bool subtitlesVisible: adultPlayer.subtitlesVisible", adult_qml)
-        self.assertIn("&& adultMode.subtitlesAvailable", main_qml)
-        self.assertIn("&& adultMode.subtitlesVisible", main_qml)
-        self.assertNotIn("&& adultPlayer.subtitlesAvailable", main_qml)
-        self.assertNotIn("&& adultPlayer.subtitlesVisible", main_qml)
-        self.assertIn("id: noSubtitlesMessage", adult_qml)
-        self.assertIn("NO SUBTITLES AVAILABLE", adult_qml)
-        self.assertIn("scrubberFocus === 1", adult_qml)
-        self.assertIn("function openScrubber()", adult_qml)
-        self.assertIn("function requestLibraryFilm(filePath, startPosition)", adult_qml)
-        self.assertIn("startSelectedFilm(Math.max(0, Number(startPosition) || 0))", adult_qml)
-        self.assertIn("id: libraryFilmStartTimer", adult_qml)
-        self.assertIn("if (playing && scrubberActive)", adult_qml)
-        self.assertIn("!scrubberActive && (key === Qt.Key_Up || key === Qt.Key_Down)", adult_qml)
-        self.assertIn("id: adultVolumeRail", adult_qml)
-        self.assertNotIn("id: adultVolumeCard", adult_qml)
-        self.assertNotIn("seek(300)", adult_qml)
-        self.assertNotIn("seek(-300)", adult_qml)
+        self.assertIn("if (appRoot.openingMyTvMode)", main_qml)
+        self.assertIn("myTvMode.open()", main_qml)
+        self.assertIn("if (!myTvMode.active && !root.openingMyTvMode", main_qml)
+        self.assertIn("if (myTvMode.active)\n                myTvMode.toggleSubtitles()", main_qml)
+        self.assertIn("controller.myTvPlaybackPosition(film.id)", my_tv_qml)
+        self.assertIn("controller.setMyTvPlaybackPosition(film.id", my_tv_qml)
+        self.assertIn("id: myTvPositionTimer", my_tv_qml)
+        self.assertIn("rememberCurrentFilmPosition", my_tv_qml)
+        self.assertIn("savedPosition", my_tv_qml)
+        self.assertNotIn("HOLD MUTE  SUBTITLES", my_tv_qml)
+        self.assertIn("id: playbackChoiceModal", my_tv_qml)
+        self.assertIn("function confirmPlaybackChoice()", my_tv_qml)
+        self.assertIn("id: filmProgressTrack", my_tv_qml)
+        self.assertIn("tvController.myTvPlaybackDuration(modelData.id)", my_tv_qml)
+        self.assertIn("Number(modelData.runtime || 0) * 60", my_tv_qml)
+        self.assertIn("id: subtitleAction", my_tv_qml)
+        self.assertIn("visible: host.scrubberActive && mediaPlayer.subtitlesAvailable", my_tv_qml)
+        self.assertIn("readonly property bool subtitlesAvailable: myTvPlayer.subtitlesAvailable", my_tv_qml)
+        self.assertIn("readonly property bool subtitlesVisible: myTvPlayer.subtitlesVisible", my_tv_qml)
+        self.assertIn("&& myTvMode.subtitlesAvailable", main_qml)
+        self.assertIn("&& myTvMode.subtitlesVisible", main_qml)
+        self.assertNotIn("&& myTvPlayer.subtitlesAvailable", main_qml)
+        self.assertNotIn("&& myTvPlayer.subtitlesVisible", main_qml)
+        self.assertIn("id: noSubtitlesMessage", my_tv_qml)
+        self.assertIn("NO SUBTITLES AVAILABLE", my_tv_qml)
+        self.assertIn("scrubberFocus === 1", my_tv_qml)
+        self.assertIn("function openScrubber()", my_tv_qml)
+        self.assertIn("function requestLibraryFilm(filePath, startPosition)", my_tv_qml)
+        self.assertIn("startSelectedFilm(Math.max(0, Number(startPosition) || 0))", my_tv_qml)
+        self.assertIn("id: libraryFilmStartTimer", my_tv_qml)
+        self.assertIn("if (playing && scrubberActive)", my_tv_qml)
+        self.assertIn("!scrubberActive && (key === Qt.Key_Up || key === Qt.Key_Down)", my_tv_qml)
+        self.assertIn("id: myTvVolumeRail", my_tv_qml)
+        self.assertNotIn("id: myTvVolumeCard", my_tv_qml)
+        self.assertNotIn("seek(300)", my_tv_qml)
+        self.assertNotIn("seek(-300)", my_tv_qml)
         self.assertIn("interval: 3000", main_qml)
-        self.assertNotIn("adultMode.active ? 700 : 3000", main_qml)
+        self.assertNotIn("myTvMode.active ? 700 : 3000", main_qml)
         self.assertIn("function portalPlayChannelProgramme(channel, file, position)", main_qml)
         self.assertIn("function portalSetChannelFilmPosition(channel, file, position, duration)", main_qml)
         self.assertIn('tvController.currentContentType === "films"', main_qml)
         self.assertIn("onTriggered: root.syncPlaybackPosition()", main_qml)
-        self.assertIn("function portalPlayAdultFilm(file, position)", main_qml)
-        self.assertIn("adultMode.requestLibraryFilm(String(file), startPosition)", main_qml)
+        self.assertIn("function portalPlayMyTvFilm(file, position)", main_qml)
+        self.assertIn("myTvMode.requestLibraryFilm(String(file), startPosition)", main_qml)
         self.assertIn("portalPlayChannelProgramme", application)
-        self.assertIn("portalPlayAdultFilm", application)
+        self.assertIn("portalPlayMyTvFilm", application)
         self.assertIn('QStringLiteral("position")).toDouble(0.0)', application)
 
     def test_viewing_insights_treats_stored_source_names_as_text(self) -> None:

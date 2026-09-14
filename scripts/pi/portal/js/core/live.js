@@ -81,7 +81,7 @@
 
     function updateLiveChannelSelection(state) {
       $$('[data-live-channel]').forEach(button => {
-        const current = !state.adult_mode && Number(button.dataset.liveChannel) === Number(state.channel_number)
+        const current = !state.my_tv_mode && Number(button.dataset.liveChannel) === Number(state.channel_number)
         button.classList.toggle('active', current)
         button.setAttribute('aria-current', current ? 'true' : 'false')
       })
@@ -118,14 +118,14 @@
       if (!button) return
       const waking = state?.standby === true
       button.disabled = false
-      button.setAttribute('aria-label', waking ? 'Turn MabelTV on' : 'MabelTV power options')
-      button.title = waking ? 'Turn MabelTV on' : 'MabelTV power options'
+      button.setAttribute('aria-label', waking ? `Turn ${tvName()} on` : `${tvName()} power options`)
+      button.title = waking ? `Turn ${tvName()} on` : `${tvName()} power options`
     }
 
     function renderRemoteState(state) {
       const available = state.available === true
       const locked = state.remote_locked === true
-      const adult = state.adult_mode === true
+      const my_tv = state.my_tv_mode === true
       const paused = state.paused === true
       const muted = state.muted === true
       $('#remoteConnectionDot').classList.toggle('off', !available)
@@ -135,8 +135,8 @@
         feedback.classList.remove('error')
         $('#remoteFeedback').textContent = available ? 'Ready' : 'TV offline'
       }
-      $('#remoteMabelAction').classList.toggle('active', available && !adult)
-      $('#remoteAdultAction').classList.toggle('active', available && adult)
+      $('#remoteMabelAction').classList.toggle('active', available && !my_tv)
+      $('#remoteMyTvAction').classList.toggle('active', available && my_tv)
       const volumeValue = $('#remoteVolumeValue')
       if (volumeValue) {
         const volume = Number.isFinite(Number(state.volume)) ? Math.max(0, Math.min(100, Number(state.volume))) : null
@@ -160,31 +160,31 @@
       if ($('#remotePlayPauseLabel')) $('#remotePlayPauseLabel').textContent = paused ? 'Play' : 'Pause'
       $('#remoteSubtitles').classList.toggle('active', state.subtitles_visible === true)
       $('#remoteSubtitles').setAttribute('aria-pressed', String(state.subtitles_visible === true))
-      const widescreenAvailable = !adult && state.widescreen_available === true
+      const widescreenAvailable = !my_tv && state.widescreen_available === true
       const widescreenEnabled = widescreenAvailable && state.widescreen_enabled === true
       $('#remoteWidescreen').classList.toggle('active', widescreenEnabled)
       $('#remoteWidescreen').setAttribute('aria-pressed', String(widescreenEnabled))
       $('#remoteWidescreen').setAttribute('aria-label', widescreenEnabled
         ? 'Turn widescreen mode off' : 'Turn widescreen mode on')
-      const adultHandoffAvailable = available && !adult
-        && state.adult_handoff_available === true
-      $('#remoteAdultHandoff').setAttribute('aria-label', `Continue ${state.programme || 'this programme'} in Adult TV without the television frame`)
+      const myTvHandoffAvailable = available && !my_tv
+        && state.my_tv_handoff_available === true
+      $('#remoteMyTvHandoff').setAttribute('aria-label', `Continue ${state.programme || 'this programme'} in My TV without the television frame`)
       const channelPickerLabel = $('#remoteChannelPickerLabel')
-      if (channelPickerLabel) channelPickerLabel.textContent = adult
-        ? 'Adult TV is open' : (available ? `CH ${state.channel_number} · ${state.channel_name}` : 'Choose a channel')
+      if (channelPickerLabel) channelPickerLabel.textContent = my_tv
+        ? 'My TV is open' : (available ? `CH ${state.channel_number} · ${state.channel_name}` : 'Choose a channel')
       const lockButton = $('#remoteLock')
       lockButton.classList.toggle('active', locked)
       const lockLabel = lockButton.querySelector('.remote-dock-action-label') || lockButton.querySelector('span')
       if (lockLabel) lockLabel.textContent = locked ? 'Unlock kids' : 'Lock kids'
       lockButton.setAttribute('aria-label', locked ? 'Unlock kids’ physical remote' : 'Lock kids’ physical remote')
       $$('[data-live-command]').forEach(button => {
-        const adultSubtitles = button.dataset.liveCommand !== 'toggle-subtitles'
-          || (adult && state.subtitles_available !== false)
+        const myTvSubtitles = button.dataset.liveCommand !== 'toggle-subtitles'
+          || (my_tv && state.subtitles_available !== false)
         const widescreenControl = button.dataset.liveCommand !== 'toggle-widescreen-mode'
           || widescreenAvailable
-        const adultHandoffControl = button.dataset.liveCommand !== 'continue-in-adult-mode'
-          || adultHandoffAvailable
-        button.disabled = !adultSubtitles || !widescreenControl || !adultHandoffControl
+        const myTvHandoffControl = button.dataset.liveCommand !== 'continue-in-my-tv-mode'
+          || myTvHandoffAvailable
+        button.disabled = !myTvSubtitles || !widescreenControl || !myTvHandoffControl
       })
       if ($('#remotePlay')) $('#remotePlay').disabled = !available || !paused
       if ($('#remotePause')) $('#remotePause').disabled = !available || paused
@@ -193,15 +193,15 @@
       syncPortalPowerButton(state)
       updateLiveChannelSelection(state)
       const waking = state.standby === true
-      $('#remotePowerTitle').textContent = waking ? 'Turn on MabelTV?' : 'Put MabelTV in standby?'
+      $('#remotePowerTitle').textContent = waking ? `Turn on ${tvName()}?` : `Put ${tvName()} in standby?`
       $('#remotePowerDescription').textContent = waking
         ? `The connected television is ${connectedTv.sentence}. Would you like to turn it on too?`
         : `The connected television is ${connectedTv.sentence}. Would you like to put it in standby too?`
       $('#remotePowerActionTitle').textContent = waking ? 'Yes, turn both on' : 'Yes, put both in standby'
       $('#remotePowerActionHint').textContent = waking
-        ? 'Wake MabelTV and select its HDMI input'
-        : 'Put MabelTV and the connected television in standby'
-      $('#mabelOnlyPowerActionTitle').textContent = waking ? 'No, MabelTV only' : 'No, MabelTV only'
+        ? `Wake ${tvName()} and select its HDMI input`
+        : `Put ${tvName()} and the connected television in standby`
+      $('#mabelOnlyPowerActionTitle').textContent = `No, ${tvName()} only`
       $('#mabelOnlyPowerActionHint').textContent = waking
         ? 'Leave the connected television as it is'
         : 'Keep the connected television on'
@@ -216,10 +216,10 @@
       $('#liveOff').classList.toggle('hidden', available && livePictureVisible)
       if ($('#liveLed')) $('#liveLed').classList.toggle('off', !available)
       $('#liveOffTitle').textContent = available ? 'Starting live picture…' : (state.reason || 'The TV is off')
-      $('#liveOffText').textContent = available ? 'Connecting to MabelTV' : 'Turn on the television to start the live preview.'
-      $('#liveProgramme').textContent = available ? state.programme : 'Waiting for MabelTV'
+      $('#liveOffText').textContent = available ? `Connecting to ${tvName()}` : 'Turn on the television to start the live preview.'
+      $('#liveProgramme').textContent = available ? state.programme : `Waiting for ${tvName()}`
       $('#liveChannel').textContent = available
-        ? (state.adult_mode ? 'ADULT TV · PRIVATE LIBRARY' : `CH ${state.channel_number} · ${state.channel_name}`)
+        ? (state.my_tv_mode ? 'MY TV · PRIVATE LIBRARY' : `CH ${state.channel_number} · ${state.channel_name}`)
         : 'Live preview'
       if ($('#liveState')) $('#liveState').textContent = available ? (state.paused ? 'Paused' : 'Live') : 'Offline'
       renderRemoteState(state)
@@ -258,12 +258,12 @@
       if (standby) {
         $('#homeNowPlayingTitle').textContent = 'Nothing playing'
         nowPlayingMeta.textContent = ''
-      } else if (state.adult_mode === true) {
-        const playing = state.adult_playing === true
-        $('#homeNowPlayingTitle').textContent = playing ? (state.programme || 'Adult film') : 'Adult library'
+      } else if (state.my_tv_mode === true) {
+        const playing = state.my_tv_playing === true
+        $('#homeNowPlayingTitle').textContent = playing ? (state.programme || 'My TV film') : 'My TV library'
         nowPlayingMeta.textContent = playing
-          ? `Adult Mode · ${state.paused === true ? 'Paused' : 'Playing'}`
-          : 'Adult Mode · Ready'
+          ? `My TV Mode · ${state.paused === true ? 'Paused' : 'Playing'}`
+          : 'My TV Mode · Ready'
       } else if (state.available === true) {
         $('#homeNowPlayingTitle').textContent = state.programme || 'Current programme'
         nowPlayingMeta.textContent = `CH ${state.channel_number} · ${state.channel_name} · ${state.paused === true ? 'Paused' : 'Playing'}`
@@ -281,15 +281,15 @@
 
     function homeArtworkUrl(kind, name) {
       if (!name) return ''
-      const endpoint = kind === 'adult' ? '/api/adult/artwork/' : '/api/channel/artwork/'
+      const endpoint = kind === 'my_tv' ? '/api/my-tv/artwork/' : '/api/channel/artwork/'
       return `${endpoint}${encodeURIComponent(name)}`
     }
 
     function homeMediaForState(state) {
       const currentTitle = homeMediaKey(state?.programme)
       if (!currentTitle) return null
-      if (state?.adult_mode === true) {
-        return (library?.adult_library || []).find(item => [
+      if (state?.my_tv_mode === true) {
+        return (library?.my_tv_library || []).find(item => [
           item.metadata?.title,
           item.display_name,
           item.name,
@@ -306,8 +306,8 @@
     function homeArtworkForState(state) {
       const media = homeMediaForState(state)
       if (media?.metadata?.poster)
-        return homeArtworkUrl(state?.adult_mode === true ? 'adult' : 'channel', media.metadata.poster)
-      if (state?.adult_mode !== true) {
+        return homeArtworkUrl(state?.my_tv_mode === true ? 'my_tv' : 'channel', media.metadata.poster)
+      if (state?.my_tv_mode !== true) {
         const channel = (library?.channels || []).find(item => Number(item.number) === Number(state?.channel_number))
         if (channel?.metadata?.artwork) return homeArtworkUrl('channel', channel.metadata.artwork)
         const channelPoster = channel?.programmes?.find(item => item.metadata?.poster)?.metadata?.poster
@@ -339,7 +339,7 @@
       const progress = $('#homeSpotlightProgress')
       if (!progress) return
       const media = homeMediaForState(state)
-      const key = [state?.adult_mode === true ? 'adult' : state?.channel_number,
+      const key = [state?.my_tv_mode === true ? 'my_tv' : state?.channel_number,
         homeMediaKey(state?.programme)].join(':')
       const livePosition = Number(state?.playback_position)
       const liveDuration = Number(state?.playback_duration)

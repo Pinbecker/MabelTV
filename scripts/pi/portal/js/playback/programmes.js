@@ -137,7 +137,7 @@
       const favouriteResumeChoice = context === 'favourite' && resumable
       $('#watchProgrammeEyebrow').textContent = `CH ${channel.number} · ${channel.name}`
       $('#watchProgrammeTitle').textContent = title
-      $('#watchProgrammeMeta').textContent = [metadata.year, resumable ? `Resume at ${watchTimeLabel(programme.remote_position)}` : filmChannel ? 'Film' : 'MabelTV programme'].filter(Boolean).join(' · ')
+      $('#watchProgrammeMeta').textContent = [metadata.year, resumable ? `Resume at ${watchTimeLabel(programme.remote_position)}` : filmChannel ? 'Film' : `${tvName()} programme`].filter(Boolean).join(' · ')
       $('#watchProgrammeTv').querySelector('strong').textContent = favouriteResumeChoice
         ? 'Play on TV' : resumable ? 'Continue on TV' : 'Play on TV'
       $('#watchProgrammeTv').querySelector('small').textContent = favouriteResumeChoice

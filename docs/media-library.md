@@ -33,10 +33,10 @@ do not provide offline service workers to that address.
 Before travelling, open the installed HTTPS app while online, visit
 **Downloads**, and check that every item says **Ready offline**. Airplane mode
 opens the cached MabelTV shell; ordinary sections show a reconnect panel and
-their MabelTV or Adult Downloads route remains usable. The offline player serves
+their MabelTV or My TV Downloads route remains usable. The offline player serves
 saved video with the byte-range responses required by iPhone's native video
 player. Downloads belong to that HTTPS app's `mabeltv-offline-v1` IndexedDB on
-the individual iPhone and are not copied to other browsers or devices. Adult
+the individual iPhone and are not copied to other browsers or devices. My TV
 media requires a fresh local PIN verification after a cold offline launch.
 
 Response snapshots and artwork caches speed warm online use but are disposable
@@ -75,9 +75,9 @@ The parent dashboard can discover removable USB partitions, mount supported
 FAT, exFAT, NTFS, or ext filesystems read-only, and expose only folders and
 supported video files. It never exposes the Pi's own filesystem.
 
-- **Play now** opens a temporary USB session in the Adult player. The Kids
+- **Play now** opens a temporary USB session in the My TV player. The Kids
   player is stopped first and playback waits for its decoder to be released.
-- **Import selected** copies videos or complete folders into Adult mode or a
+- **Import selected** copies videos or complete folders into My TV mode or a
   selected children's channel. Copying uses an unpublished `.part` file,
   reports byte/file progress, flushes it to disk, and publishes it atomically.
 - Imports reserve 256 MiB in addition to the selected file sizes. A duplicate
@@ -89,13 +89,13 @@ Mounting and ejecting cross a small root-owned helper which accepts only
 removable USB partitions. Drives are mounted with `ro,nosuid,nodev,noexec` and
 the dashboard itself remains unprivileged.
 
-### Adult metadata
+### My TV metadata
 
-Adult films can be explicitly matched to TMDB. **Scan metadata** searches using
+My TV films can be explicitly matched to TMDB. **Scan metadata** searches using
 the local filename and optional year, presents candidates for confirmation, and
 then stores the selected title identity and metadata in SQLite. Artwork is
 served through the same-origin proxy and cached separately on the Pi and device.
-Opening the local Adult catalogue does not require a fresh metadata lookup.
+Opening the local My TV catalogue does not require a fresh metadata lookup.
 
 The API key is not stored in HTML, JavaScript, media metadata, or logs. Put it
 on the Pi as a single line in:
@@ -124,7 +124,7 @@ without changing channel.
 
 Shows detailed status, changes the browser PIN, restarts the TV player, creates/downloads a redacted support bundle, and safely reboots or shuts down the Pi. Disruptive actions require confirmation.
 
-The on-TV adult panel remains the quickest place to tune CRT appearance, sound, volume policy, display mode, playback behaviour, and remote lock. Hold Back/Previous for 3.5 seconds, then press OK three times. That physical shortcut is separate from the browser PIN.
+The on-TV My TV panel remains the quickest place to tune CRT appearance, sound, volume policy, display mode, playback behaviour, and remote lock. Hold Back/Previous for 3.5 seconds, then press OK three times. That physical shortcut is separate from the browser PIN.
 
 ## File naming
 

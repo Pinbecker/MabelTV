@@ -66,36 +66,36 @@ class DurableUsbTransferTests(unittest.TestCase):
         folder = self.volume / "New films"
         folder.mkdir()
         (folder / "Ocean Movie.MP4").write_bytes(b"ocean")
-        self.fixture.library.adult_root.mkdir(parents=True, exist_ok=True)
-        (self.fixture.library.adult_root / "Ocean Movie.mp4").write_bytes(b"existing")
+        self.fixture.library.my_tv_root.mkdir(parents=True, exist_ok=True)
+        (self.fixture.library.my_tv_root / "Ocean Movie.mp4").write_bytes(b"existing")
 
         plan = self.fixture.library.usb_import_plan({
-            "volume": "TEST-USB", "paths": ["New films"], "target": "adult",
+            "volume": "TEST-USB", "paths": ["New films"], "target": "my_tv",
         })
 
         self.assertEqual(plan["files_total"], 1)
         self.assertEqual(plan["bytes_total"], len(b"ocean"))
         self.assertEqual(
             plan["destination_label"],
-            "Adult TV films · All films (no collection)")
+            "My TV films · All films (no collection)")
         self.assertTrue(plan["enough_space"])
         self.assertEqual(plan["renames"], [{
             "from": "Ocean Movie.MP4", "to": "Ocean Movie (2).mp4",
         }])
 
-    def test_adult_film_plan_uses_an_existing_collection(self) -> None:
+    def test_my_tv_film_plan_uses_an_existing_collection(self) -> None:
         self.stop_usb_worker()
         (self.volume / "Collection Film.mp4").write_bytes(b"collection-video")
-        collection = self.fixture.library.adult_root / "Science Fiction"
+        collection = self.fixture.library.my_tv_root / "Science Fiction"
         collection.mkdir(parents=True)
 
         plan = self.fixture.library.usb_import_plan({
             "volume": "TEST-USB", "paths": ["Collection Film.mp4"],
-            "target": "adult", "folder": "Science Fiction",
+            "target": "my_tv", "folder": "Science Fiction",
         })
         batch = self.fixture.library.start_usb_import({
             "volume": "TEST-USB", "paths": ["Collection Film.mp4"],
-            "target": "adult", "folder": "Science Fiction",
+            "target": "my_tv", "folder": "Science Fiction",
         })
         job = next(value for value in self.fixture.library.upload_jobs()
                    if value.get("batch_id") == batch["id"])
@@ -105,17 +105,17 @@ class DurableUsbTransferTests(unittest.TestCase):
         self.assertEqual(plan["folder"], "Science Fiction")
         self.assertEqual(
             plan["destination_label"],
-            "Adult TV films · Science Fiction collection")
+            "My TV films · Science Fiction collection")
         self.assertEqual(manifest["folder"], "Science Fiction")
-        self.assertEqual(job["channel_name"], "Adult TV · Science Fiction")
+        self.assertEqual(job["channel_name"], "My TV · Science Fiction")
 
     def test_series_plan_requires_an_existing_show_and_numbered_series(self) -> None:
         self.stop_usb_worker()
         (self.volume / "Silicon.Valley.S07E01.mp4").write_bytes(b"episode")
-        series_id = self.fixture.library.create_adult_series("Silicon Valley")
-        self.fixture.library.create_adult_season(series_id, 7)
+        series_id = self.fixture.library.create_my_tv_series("Silicon Valley")
+        self.fixture.library.create_my_tv_season(series_id, 7)
 
-        series = self.fixture.library.adult_series_library()[0]
+        series = self.fixture.library.my_tv_series_library()[0]
         plan = self.fixture.library.usb_import_plan({
             "volume": "TEST-USB", "paths": ["Silicon.Valley.S07E01.mp4"],
             "target": "series", "series": series_id, "season": 7,
@@ -135,7 +135,7 @@ class DurableUsbTransferTests(unittest.TestCase):
         self.assertEqual(plan["season"], 7)
         self.assertEqual(
             plan["destination_label"],
-            "Adult TV series · Silicon Valley · Series 7")
+            "My TV series · Silicon Valley · Series 7")
         self.assertEqual(manifest["series_id"], series_id)
         self.assertEqual(manifest["season"], 7)
         with self.assertRaisesRegex(ValueError, "existing series"):
@@ -144,30 +144,30 @@ class DurableUsbTransferTests(unittest.TestCase):
                 "target": "series", "series": series_id, "season": 6,
             })
 
-    def test_empty_series_destination_is_created_and_removed_in_adult_tv(self) -> None:
-        series_id = self.fixture.library.create_adult_series("Silicon Valley")
+    def test_empty_series_destination_is_created_and_removed_in_my_tv(self) -> None:
+        series_id = self.fixture.library.create_my_tv_series("Silicon Valley")
         self.fixture.library.manage({
-            "action": "create-adult-season", "series": series_id, "season": 7,
+            "action": "create-my-tv-season", "series": series_id, "season": 7,
         })
 
         self.assertEqual(
-            self.fixture.library.adult_series_library()[0]["seasons"], [7])
+            self.fixture.library.my_tv_series_library()[0]["seasons"], [7])
         self.fixture.library.refresh_tv.assert_not_called()
-        removed = self.fixture.library.trash_adult_series_items({
+        removed = self.fixture.library.trash_my_tv_series_items({
             "series": series_id, "scope": "season", "season": 7,
         })
         self.assertEqual(removed, 0)
         self.assertEqual(
-            self.fixture.library.adult_series_library()[0]["seasons"], [])
+            self.fixture.library.my_tv_series_library()[0]["seasons"], [])
 
     def test_usb_jobs_share_the_durable_activity_transfer_queue(self) -> None:
         self.stop_usb_worker()
         (self.volume / "USB Film.mp4").write_bytes(b"usb-video")
-        browser = self.fixture.library.adult_upload_create({
+        browser = self.fixture.library.my_tv_upload_create({
             "file_name": "Browser Film.mp4", "size": 20,
         })
         batch = self.fixture.library.start_usb_import({
-            "volume": "TEST-USB", "paths": ["USB Film.mp4"], "target": "adult",
+            "volume": "TEST-USB", "paths": ["USB Film.mp4"], "target": "my_tv",
         })
 
         activity = self.fixture.library.activity_status()
@@ -187,7 +187,7 @@ class DurableUsbTransferTests(unittest.TestCase):
         content = b"durable-usb-video" * 1000
         (self.volume / "Restart Film.mp4").write_bytes(content)
         batch = self.fixture.library.start_usb_import({
-            "volume": "TEST-USB", "paths": ["Restart Film.mp4"], "target": "adult",
+            "volume": "TEST-USB", "paths": ["Restart Film.mp4"], "target": "my_tv",
         })
         upload_id = self.fixture.library.read_json(
             self.fixture.library.usb_import_root / f"{batch['id']}.json", {})["upload_ids"][0]
@@ -207,7 +207,7 @@ class DurableUsbTransferTests(unittest.TestCase):
         library.upload_action(upload_id, "resume")
         result = self.wait_for_batch(batch["id"])
         self.assertEqual(result["status"], "complete")
-        self.assertEqual((library.adult_root / "Restart Film.mp4").read_bytes(), content)
+        self.assertEqual((library.my_tv_root / "Restart Film.mp4").read_bytes(), content)
 
     def test_cancel_removes_partial_copy_but_keeps_usb_original(self) -> None:
         self.stop_usb_worker()
@@ -215,7 +215,7 @@ class DurableUsbTransferTests(unittest.TestCase):
         source = self.volume / "Cancel Film.mp4"
         source.write_bytes(content)
         batch = self.fixture.library.start_usb_import({
-            "volume": "TEST-USB", "paths": [source.name], "target": "adult",
+            "volume": "TEST-USB", "paths": [source.name], "target": "my_tv",
         })
         upload_id = self.fixture.library.read_json(
             self.fixture.library.usb_import_root / f"{batch['id']}.json", {})["upload_ids"][0]

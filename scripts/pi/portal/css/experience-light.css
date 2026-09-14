@@ -155,7 +155,7 @@ html[data-experience-theme="light"] body.portal-experience .status-icon.warn {
 }
 
 html[data-experience-theme="light"] body.portal-experience .destination-library .destination-icon { color: #7045b1; }
-html[data-experience-theme="light"] body.portal-experience .destination-adult .destination-icon { color: #ad3157; }
+html[data-experience-theme="light"] body.portal-experience .destination-my_tv .destination-icon { color: #ad3157; }
 html[data-experience-theme="light"] body.portal-experience .device-status-icon { background: rgba(8, 118, 90, 0.1); }
 html[data-experience-theme="light"] body.portal-experience .usb-eject { border-color: rgba(199, 53, 75, 0.3); color: var(--experience-danger); }
 html[data-experience-theme="light"] body.portal-experience :is(.usb-selection-tray > button, .channel-page-primary, .channel-page-badge) { background: var(--experience-orange-hot); color: var(--experience-on-orange); }
@@ -186,8 +186,8 @@ html[data-experience-theme="light"] body.portal-experience :is(
 
 html[data-experience-theme="light"] body.portal-experience :is(
   .library-sheet-head,
-  .adult-series-sheet-head,
-  .adult-season-sheet-head,
+  .my-tv-series-sheet-head,
+  .my-tv-season-sheet-head,
   .watch-sheet-panel > header,
   .remote-sheet-panel > header,
   .tmdb-dialog-head
@@ -213,13 +213,13 @@ html[data-experience-theme="light"] body.portal-experience .tmdb-result-poster {
   background: linear-gradient(145deg, #eef1f5, #e0e5ec);
 }
 
-html[data-experience-theme="light"] body.portal-experience #adultFolderTabs .adult-folder-tab.active,
+html[data-experience-theme="light"] body.portal-experience #myTvFolderTabs .my-tv-folder-tab.active,
 html[data-experience-theme="light"] body.portal-experience .watch-collection-option.active {
   border-color: color-mix(in srgb, var(--experience-accent-ink) 28%, transparent);
   background: color-mix(in srgb, var(--experience-accent) 10%, var(--experience-raised));
 }
 
-html[data-experience-theme="light"] body.portal-experience #adultFolderTabs .adult-folder-tab.active .count-badge {
+html[data-experience-theme="light"] body.portal-experience #myTvFolderTabs .my-tv-folder-tab.active .count-badge {
   background: var(--experience-orange-hot);
   color: var(--experience-on-orange);
 }

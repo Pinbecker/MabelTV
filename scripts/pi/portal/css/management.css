@@ -1,7 +1,7 @@
 @layer pages {
   .library-hero,
   .channel-hero,
-  .adult-hero,
+  .my-tv-hero,
   .usb-hero {
     position: relative;
     min-width: 0;
@@ -19,18 +19,18 @@
     box-shadow: var(--shadow-card);
   }
 
-  :is(.library-hero, .channel-hero, .adult-hero, .usb-hero) h1 {
+  :is(.library-hero, .channel-hero, .my-tv-hero, .usb-hero) h1 {
     margin-bottom: var(--space-2);
   }
 
-  :is(.library-hero, .channel-hero, .adult-hero, .usb-hero) p:last-child {
+  :is(.library-hero, .channel-hero, .my-tv-hero, .usb-hero) p:last-child {
     max-width: 720px;
     margin: 0;
     color: var(--text-muted);
   }
 
   .library-hero-actions,
-  .adult-hero-actions,
+  .my-tv-hero-actions,
   .channel-workspace-actions {
     display: flex;
     flex-wrap: wrap;
@@ -38,7 +38,7 @@
   }
 
   .library-overview-bar,
-  .adult-library-context {
+  .my-tv-library-context {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -391,7 +391,7 @@
     font-size: var(--type-caption);
   }
 
-  .adult-film-more {
+  .my-tv-film-more {
     width: auto;
     height: var(--control-min);
     min-height: var(--control-min);
@@ -408,30 +408,30 @@
     color: var(--text-muted);
   }
 
-  .adult-page {
+  .my-tv-page {
     container-type: inline-size;
   }
 
-  .adult-hero {
+  .my-tv-hero {
     margin-bottom: var(--space-4);
   }
 
-  .adult-hero-actions {
+  .my-tv-hero-actions {
     align-items: center;
   }
 
-  .adult-hero-actions button {
+  .my-tv-hero-actions button {
     min-height: 52px;
     gap: var(--space-2);
     white-space: nowrap;
   }
 
-  .adult-hero-actions button svg {
+  .my-tv-hero-actions button svg {
     width: 20px;
     height: 20px;
   }
 
-  .adult-hero-stat {
+  .my-tv-hero-stat {
     min-width: 112px;
     display: flex;
     align-items: baseline;
@@ -443,40 +443,40 @@
     background: color-mix(in srgb, var(--surface-2) 86%, transparent);
   }
 
-  .adult-hero-stat strong {
+  .my-tv-hero-stat strong {
     color: var(--text);
     font-size: 1.08rem;
   }
 
-  .adult-hero-stat span {
+  .my-tv-hero-stat span {
     color: var(--text-muted);
     font-size: var(--type-caption);
   }
 
-  .adult-library {
+  .my-tv-library {
     padding: var(--space-5);
   }
 
-  .adult-discovery {
+  .my-tv-discovery {
     grid-template-columns: minmax(240px, 1fr) minmax(170px, 230px) auto;
   }
 
-  .adult-tool > span {
+  .my-tv-tool > span {
     min-width: 0;
     display: grid;
   }
 
-  .adult-tool small {
+  .my-tv-tool small {
     color: var(--text-muted);
     font-size: var(--type-caption);
     font-weight: 520;
   }
 
-  .adult-library-context p {
+  .my-tv-library-context p {
     margin: 0;
   }
 
-  .adult-library-context {
+  .my-tv-library-context {
     border-right: 0;
     border-left: 0;
     border-radius: 0;
@@ -485,7 +485,7 @@
     background: transparent;
   }
 
-  .adult-film-more {
+  .my-tv-film-more {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -496,7 +496,7 @@
     color: var(--text-soft);
   }
 
-  .adult-film-more svg {
+  .my-tv-film-more svg {
     width: 20px;
     height: 20px;
     fill: none;
@@ -504,13 +504,13 @@
     stroke-width: 1.8;
   }
 
-  .adult-film-list {
+  .my-tv-film-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: var(--space-3);
   }
 
-  button.adult-film {
+  button.my-tv-film {
     min-width: 0;
     min-height: 112px;
     display: grid;
@@ -525,51 +525,51 @@
     text-align: left;
   }
 
-  button.adult-film:hover {
+  button.my-tv-film:hover {
     border-color: var(--border-strong);
     background: var(--surface-2);
   }
 
-  button.adult-film .adult-film-poster {
+  button.my-tv-film .my-tv-film-poster {
     width: 82px;
     height: 123px;
     border-radius: 9px;
   }
 
-  button.adult-film .adult-film-copy {
+  button.my-tv-film .my-tv-film-copy {
     gap: var(--space-1);
     padding: 0;
   }
 
-  button.adult-film .adult-film-copy strong {
+  button.my-tv-film .my-tv-film-copy strong {
     font-size: 1rem;
   }
 
-  .adult-folder-tabs {
+  .my-tv-folder-tabs {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
     margin-bottom: var(--space-4);
   }
 
-  .adult-folder-tab {
+  .my-tv-folder-tab {
     border-color: var(--border);
     background: var(--surface-2);
     color: var(--text-muted);
   }
 
-  .adult-folder-tab.active {
+  .my-tv-folder-tab.active {
     background: var(--text);
     color: var(--text-inverse);
   }
 
-  .adult-folder-tools {
+  .my-tv-folder-tools {
     display: grid;
     grid-template-columns: minmax(180px, 1fr) repeat(3, auto);
     gap: var(--space-2);
   }
 
-  .adult-film-sheet-summary,
+  .my-tv-film-sheet-summary,
   .programme-action-summary {
     display: grid;
     grid-template-columns: 88px minmax(0, 1fr);
@@ -578,7 +578,7 @@
     margin-bottom: var(--space-4);
   }
 
-  .adult-film-sheet-summary p {
+  .my-tv-film-sheet-summary p {
     margin: 0;
     color: var(--text-soft);
     line-height: 1.55;
@@ -599,7 +599,7 @@
     color: var(--text-muted);
   }
 
-  .adult-film-sheet-poster {
+  .my-tv-film-sheet-poster {
     width: 88px;
     aspect-ratio: 2 / 3;
     overflow: hidden;
@@ -608,13 +608,13 @@
     background: var(--surface-3);
   }
 
-  .adult-film-sheet-poster img {
+  .my-tv-film-sheet-poster img {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
 
-  .adult-film-primary {
+  .my-tv-film-primary {
     width: 100%;
     min-height: 64px;
     justify-content: flex-start;
@@ -622,20 +622,20 @@
     text-align: left;
   }
 
-  .adult-film-primary > span {
+  .my-tv-film-primary > span {
     display: grid;
   }
 
-  .adult-film-primary small {
+  .my-tv-film-primary small {
     color: color-mix(in srgb, var(--accent-contrast) 70%, transparent);
     font-size: var(--type-caption);
   }
 
-  .adult-film-move {
+  .my-tv-film-move {
     margin: 0;
   }
 
-  .adult-film-move-panel {
+  .my-tv-film-move-panel {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: end;
@@ -647,25 +647,25 @@
     background: var(--surface-2);
   }
 
-  .adult-film-move-panel button {
+  .my-tv-film-move-panel button {
     min-height: 48px;
   }
 
-  .adult-film-action-grid {
+  .my-tv-film-action-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-2);
   }
 
-  .adult-film-action-grid button {
+  .my-tv-film-action-grid button {
     min-height: 48px;
   }
 
-  .adult-film-action-grid .danger:last-child {
+  .my-tv-film-action-grid .danger:last-child {
     grid-column: 1 / -1;
   }
 
-  .adult-film-sheet .library-sheet-panel:focus {
+  .my-tv-film-sheet .library-sheet-panel:focus {
     outline: 0;
   }
 

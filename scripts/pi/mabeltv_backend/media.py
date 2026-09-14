@@ -41,18 +41,18 @@ class MediaCatalogueMixin:
             raise RuntimeError("MabelTV structured state requires SQLite")
         database.merge_fields(kind, values, remove)
 
-    def save_adult_titles(self, values: dict[str, dict[str, Any]]) -> None:
+    def save_my_tv_titles(self, values: dict[str, dict[str, Any]]) -> None:
         database = getattr(self, "state_database", None)
         if database is None:
             raise RuntimeError("MabelTV structured state requires SQLite")
-        database.save_adult_titles(values)
+        database.save_my_tv_titles(values)
 
-    def save_adult_availability(self, title_key: str,
+    def save_my_tv_availability(self, title_key: str,
                                 payload: dict[str, Any]) -> None:
         database = getattr(self, "state_database", None)
         if database is None:
             raise RuntimeError("MabelTV structured state requires SQLite")
-        database.save_adult_availability(title_key, payload)
+        database.save_my_tv_availability(title_key, payload)
 
     def save_explore_feedback(self, values: dict[str, dict[str, Any]],
                               *, retain_since: float | None = None) -> None:
@@ -61,11 +61,11 @@ class MediaCatalogueMixin:
             raise RuntimeError("MabelTV structured state requires SQLite")
         database.save_explore_feedback(values, retain_since=retain_since)
 
-    def save_adult_insights(self, value: dict[str, Any]) -> None:
+    def save_my_tv_insights(self, value: dict[str, Any]) -> None:
         database = getattr(self, "state_database", None)
         if database is None:
             raise RuntimeError("MabelTV structured state requires SQLite")
-        database.save_adult_insights(value)
+        database.save_my_tv_insights(value)
 
     def complete_setup_state(self, channels: list[dict[str, Any]],
                              owner: dict[str, Any]) -> None:
@@ -162,7 +162,7 @@ class MediaCatalogueMixin:
         return folder / name
 
     @staticmethod
-    def normalise_adult_folder(folder_name: str) -> str:
+    def normalise_my_tv_folder(folder_name: str) -> str:
         requested = str(folder_name or "").strip()
         name = SAFE_NAME.sub("", requested).strip(". ")
         if (not name or name in {".", ".."} or "/" in requested
@@ -170,50 +170,50 @@ class MediaCatalogueMixin:
             raise ValueError("Enter a simple folder name")
         return name
 
-    def adult_folder_path(self, folder_name: str, *, create: bool = False) -> Path:
-        name = self.normalise_adult_folder(folder_name)
-        self.adult_root.mkdir(mode=0o750, exist_ok=True)
-        path = self.adult_root / name
+    def my_tv_folder_path(self, folder_name: str, *, create: bool = False) -> Path:
+        name = self.normalise_my_tv_folder(folder_name)
+        self.my_tv_root.mkdir(mode=0o750, exist_ok=True)
+        path = self.my_tv_root / name
         if path.exists() and not path.is_dir():
             raise ValueError("That folder name is already in use")
         if create:
             path.mkdir(mode=0o750, exist_ok=True)
         return path
 
-    def safe_adult_path(self, file_name: str, *, create_folder: bool = False) -> Path:
+    def safe_my_tv_path(self, file_name: str, *, create_folder: bool = False) -> Path:
         relative = str(file_name or "").strip().replace("\\", "/")
         parts = relative.split("/")
         if len(parts) not in {1, 2} or any(not part or part in {".", ".."}
                                            for part in parts):
-            raise ValueError("That is not a supported Adult library path")
+            raise ValueError("That is not a supported My TV library path")
         name = parts[-1]
         if Path(name).name != name or Path(name).suffix.lower() not in SUPPORTED_EXTENSIONS:
             raise ValueError("That is not a supported video file")
-        self.adult_root.mkdir(mode=0o750, exist_ok=True)
-        parent = self.adult_root
+        self.my_tv_root.mkdir(mode=0o750, exist_ok=True)
+        parent = self.my_tv_root
         if len(parts) == 2:
-            folder = self.normalise_adult_folder(parts[0])
+            folder = self.normalise_my_tv_folder(parts[0])
             if folder != parts[0]:
-                raise ValueError("That Adult library folder is not valid")
-            parent = self.adult_folder_path(folder, create=create_folder)
+                raise ValueError("That My TV library folder is not valid")
+            parent = self.my_tv_folder_path(folder, create=create_folder)
         return parent / name
 
-    def adult_relative_path(self, path: Path) -> str:
+    def my_tv_relative_path(self, path: Path) -> str:
         try:
-            return path.relative_to(self.adult_root).as_posix()
+            return path.relative_to(self.my_tv_root).as_posix()
         except ValueError as error:
-            raise ValueError("That film is outside the Adult library") from error
+            raise ValueError("That film is outside the My TV library") from error
 
-    def adult_folders(self) -> list[str]:
-        self.adult_root.mkdir(mode=0o750, exist_ok=True)
+    def my_tv_folders(self) -> list[str]:
+        self.my_tv_root.mkdir(mode=0o750, exist_ok=True)
         return sorted(
-            (item.name for item in self.adult_root.iterdir()
+            (item.name for item in self.my_tv_root.iterdir()
              if item.is_dir() and not item.name.startswith(".")),
             key=str.casefold,
         )
 
-    def adult_media_states(self) -> dict[str, dict[str, Any]]:
-        value = self.read_state("adult_media")
+    def my_tv_media_states(self) -> dict[str, dict[str, Any]]:
+        value = self.read_state("my_tv_media")
         return value if isinstance(value, dict) else {}
 
     def channel_media_states(self) -> dict[str, Any]:
@@ -341,14 +341,14 @@ class MediaCatalogueMixin:
             "title": title or str(programme.get("display_name", "")),
         }
 
-    def write_adult_media_states(self, values: dict[str, dict[str, Any]]) -> None:
-        self.write_state("adult_media", values)
+    def write_my_tv_media_states(self, values: dict[str, dict[str, Any]]) -> None:
+        self.write_state("my_tv_media", values)
 
-    def set_adult_media_state(self, file_name: str, state: str,
+    def set_my_tv_media_state(self, file_name: str, state: str,
                               message: str = "", progress: int | None = None,
                               **details: Any) -> None:
         with self.config_lock:
-            values = self.adult_media_states()
+            values = self.my_tv_media_states()
             current = values.get(file_name, {})
             if not isinstance(current, dict):
                 current = {}
@@ -363,18 +363,18 @@ class MediaCatalogueMixin:
                 else:
                     current[key] = value
             values[file_name] = current
-            self.write_adult_media_states(values)
+            self.write_my_tv_media_states(values)
 
-    def remove_adult_media_state(self, file_name: str) -> None:
+    def remove_my_tv_media_state(self, file_name: str) -> None:
         with self.config_lock:
-            values = self.adult_media_states()
+            values = self.my_tv_media_states()
             if file_name in values:
                 values.pop(file_name, None)
-                self.write_adult_media_states(values)
+                self.write_my_tv_media_states(values)
 
-    def recover_adult_optimisations(self) -> None:
+    def recover_my_tv_optimisations(self) -> None:
         with self.config_lock:
-            values = self.adult_media_states()
+            values = self.my_tv_media_states()
             changed = False
             for value in values.values():
                 if isinstance(value, dict) and value.get("state") in {"queued", "processing"}:
@@ -383,23 +383,23 @@ class MediaCatalogueMixin:
                     value["updated"] = time.time()
                     changed = True
             if changed:
-                self.write_adult_media_states(values)
+                self.write_my_tv_media_states(values)
 
-    def adult_library(self) -> list[dict[str, Any]]:
+    def my_tv_library(self) -> list[dict[str, Any]]:
         with self.config_lock:
-            return self._adult_library()
+            return self._my_tv_library()
 
-    def _adult_library(self) -> list[dict[str, Any]]:
-        states = self.adult_media_states()
+    def _my_tv_library(self) -> list[dict[str, Any]]:
+        states = self.my_tv_media_states()
         changed = False
         values = []
-        candidates = list(self.adult_root.glob("*"))
-        for folder in self.adult_folders():
-            candidates.extend((self.adult_root / folder).glob("*"))
+        candidates = list(self.my_tv_root.glob("*"))
+        for folder in self.my_tv_folders():
+            candidates.extend((self.my_tv_root / folder).glob("*"))
         for item in sorted(candidates,
-                           key=lambda path: self.adult_relative_path(path).casefold()):
+                           key=lambda path: self.my_tv_relative_path(path).casefold()):
             if item.is_file() and item.suffix.lower() in SUPPORTED_EXTENSIONS:
-                relative = self.adult_relative_path(item)
+                relative = self.my_tv_relative_path(item)
                 state = states.get(relative, {})
                 if not isinstance(state, dict):
                     state = {}
@@ -410,7 +410,7 @@ class MediaCatalogueMixin:
                 values.append({
                     "name": item.name,
                     "path": relative,
-                    "folder": "" if item.parent == self.adult_root else item.parent.name,
+                    "folder": "" if item.parent == self.my_tv_root else item.parent.name,
                     "library_id": state["library_id"],
                     "display_name": self.display_name(item.name),
                     "size": item.stat().st_size,
@@ -429,16 +429,16 @@ class MediaCatalogueMixin:
                         state["library_id"], state),
                 })
         if changed:
-            self.write_adult_media_states(states)
+            self.write_my_tv_media_states(states)
         return values
 
-    def adult_optimisations(self) -> dict[str, Any]:
-        """Return the tiny, frequently polled subset of Adult TV state.
+    def my_tv_optimisations(self) -> dict[str, Any]:
+        """Return the tiny, frequently polled subset of My TV state.
 
         Keeping this separate from /api/library prevents an optimisation from
         rebuilding every portal view and throwing an iPhone back to the top.
         """
-        states = self.adult_media_states()
+        states = self.my_tv_media_states()
         items = []
         for path, value in states.items():
             if not isinstance(value, dict):
@@ -459,8 +459,8 @@ class MediaCatalogueMixin:
         return {"items": items, "active": any(
             item["state"] in {"queued", "processing", "paused"} for item in items)}
 
-    def adult_series_states(self) -> dict[str, Any]:
-        value = self.read_state("adult_series")
+    def my_tv_series_states(self) -> dict[str, Any]:
+        value = self.read_state("my_tv_series")
         if not isinstance(value, dict):
             value = {}
         if not isinstance(value.get("series"), dict):
@@ -469,9 +469,9 @@ class MediaCatalogueMixin:
             value["episodes"] = {}
         return value
 
-    def write_adult_series_states(self, values: dict[str, Any]) -> None:
+    def write_my_tv_series_states(self, values: dict[str, Any]) -> None:
         values["updated"] = time.time()
-        self.write_state("adult_series", values)
+        self.write_state("my_tv_series", values)
 
     @staticmethod
     def normalise_series_title(value: str) -> str:
@@ -480,23 +480,23 @@ class MediaCatalogueMixin:
             raise ValueError("Enter a series name")
         return title
 
-    def create_adult_series(self, title: str) -> str:
+    def create_my_tv_series(self, title: str) -> str:
         title = self.normalise_series_title(title)
         with self.config_lock:
-            states = self.adult_series_states()
+            states = self.my_tv_series_states()
             for series_id, value in states["series"].items():
                 if isinstance(value, dict) and str(value.get("title", "")).casefold() == title.casefold():
-                    (self.adult_series_root / series_id).mkdir(mode=0o750, exist_ok=True)
+                    (self.my_tv_series_root / series_id).mkdir(mode=0o750, exist_ok=True)
                     return series_id
             series_id = uuid.uuid4().hex
             states["series"][series_id] = {
                 "title": title, "created": time.time(), "metadata": {},
             }
-            (self.adult_series_root / series_id).mkdir(mode=0o750, exist_ok=True)
-            self.write_adult_series_states(states)
+            (self.my_tv_series_root / series_id).mkdir(mode=0o750, exist_ok=True)
+            self.write_my_tv_series_states(states)
             return series_id
 
-    def create_adult_season(self, series_id: str, season: Any) -> int:
+    def create_my_tv_season(self, series_id: str, season: Any) -> int:
         """Create one explicit, empty series destination inside an existing show."""
         try:
             number = int(season)
@@ -504,18 +504,18 @@ class MediaCatalogueMixin:
             raise ValueError("Choose a valid series number") from error
         if number < 1 or number > 99:
             raise ValueError("Choose a series number from 1 to 99")
-        destination = self.adult_series_path(series_id, f"Season {number}")
+        destination = self.my_tv_series_path(series_id, f"Season {number}")
         if destination.exists():
             raise ValueError(f"Series {number} already exists")
         destination.mkdir(mode=0o750)
         return number
 
-    def adult_series_path(self, series_id: str, relative: str = "") -> Path:
+    def my_tv_series_path(self, series_id: str, relative: str = "") -> Path:
         if not re.fullmatch(r"[a-f0-9]{32}", str(series_id)):
-            raise ValueError("That Adult TV series is not valid")
-        root = (self.adult_series_root / series_id).resolve()
+            raise ValueError("That My TV series is not valid")
+        root = (self.my_tv_series_root / series_id).resolve()
         if not root.is_dir():
-            raise ValueError("That Adult TV series no longer exists")
+            raise ValueError("That My TV series no longer exists")
         relative_path = Path(str(relative or "").replace("\\", "/"))
         if relative_path.is_absolute() or ".." in relative_path.parts:
             raise ValueError("That episode path is not valid")
@@ -525,7 +525,7 @@ class MediaCatalogueMixin:
         return candidate
 
     @staticmethod
-    def adult_episode_identity(path: Path, ordinal: int = 0) -> dict[str, Any]:
+    def my_tv_episode_identity(path: Path, ordinal: int = 0) -> dict[str, Any]:
         stem = re.sub(r"[._]+", " ", path.stem).strip()
         match = re.search(r"(?i)\bS(?:eries|eason)?\s*0*(\d{1,2})\s*E(?:pisode)?\s*0*(\d{1,3})\b", stem)
         if not match:
@@ -544,9 +544,9 @@ class MediaCatalogueMixin:
         return {"season": season, "episode": episode,
                 "title": title or f"Episode {episode}"}
 
-    def adult_series_library(self) -> list[dict[str, Any]]:
+    def my_tv_series_library(self) -> list[dict[str, Any]]:
         with self.config_lock:
-            states = self.adult_series_states()
+            states = self.my_tv_series_states()
             changed = False
             values: list[dict[str, Any]] = []
             for series_id, series_state in sorted(
@@ -556,7 +556,7 @@ class MediaCatalogueMixin:
                 if not re.fullmatch(r"[a-f0-9]{32}", str(series_id)) \
                         or not isinstance(series_state, dict):
                     continue
-                root = self.adult_series_root / series_id
+                root = self.my_tv_series_root / series_id
                 if not root.is_dir():
                     continue
                 files = sorted(
@@ -574,7 +574,7 @@ class MediaCatalogueMixin:
                         episode_state["library_id"] = uuid.uuid4().hex
                         states["episodes"][key] = episode_state
                         changed = True
-                    parsed = self.adult_episode_identity(item, ordinal)
+                    parsed = self.my_tv_episode_identity(item, ordinal)
                     metadata = episode_state.get("metadata", {})
                     if not isinstance(metadata, dict):
                         metadata = {}
@@ -622,16 +622,16 @@ class MediaCatalogueMixin:
                     "watched_count": sum(value["watched"] for value in episodes),
                 })
             if changed:
-                self.write_adult_series_states(states)
+                self.write_my_tv_series_states(states)
             return values
 
-    def sync_adult_series_viewing_episodes(
+    def sync_my_tv_series_viewing_episodes(
             self, series_id: str, updates: dict[str, bool]) -> None:
         """Keep local episode history and the combined title view aligned."""
         if not updates:
             return
         with self.config_lock:
-            states = self.adult_series_states()
+            states = self.my_tv_series_states()
             series_state = states["series"].get(series_id, {})
             if not isinstance(series_state, dict):
                 return
@@ -639,10 +639,10 @@ class MediaCatalogueMixin:
             if not isinstance(metadata, dict):
                 return
             try:
-                key = self.adult_title_key("tv", metadata.get("tmdb_id"))
+                key = self.my_tv_title_key("tv", metadata.get("tmdb_id"))
             except ValueError:
                 return
-            store = self.adult_viewing_store()
+            store = self.my_tv_viewing_store()
             current = store["titles"].get(key, {})
             if not isinstance(current, dict):
                 current = {}
@@ -658,16 +658,16 @@ class MediaCatalogueMixin:
                 "title": str(metadata.get("title") or series_state.get("title") or "Series"),
                 "year": str(metadata.get("year") or ""), "updated": now,
             })
-            self.save_adult_titles({key: current})
+            self.save_my_tv_titles({key: current})
 
-    def set_adult_episode_watched(self, series_id: str, relative: str,
+    def set_my_tv_episode_watched(self, series_id: str, relative: str,
                                   watched: bool) -> dict[str, Any]:
-        source = self.adult_series_path(series_id, relative)
+        source = self.my_tv_series_path(series_id, relative)
         if not source.is_file() or source.suffix.lower() not in SUPPORTED_EXTENSIONS:
             raise ValueError("That episode no longer exists")
-        key = f"{series_id}/{source.relative_to(self.adult_series_root / series_id).as_posix()}"
+        key = f"{series_id}/{source.relative_to(self.my_tv_series_root / series_id).as_posix()}"
         with self.config_lock:
-            states = self.adult_series_states()
+            states = self.my_tv_series_states()
             value = states["episodes"].get(key, {})
             if not isinstance(value, dict):
                 value = {}
@@ -700,14 +700,14 @@ class MediaCatalogueMixin:
                 value["remote_position"] = 0.0
                 value["remote_last_watched"] = 0.0
             states["episodes"][key] = value
-            self.write_adult_series_states(states)
-            identity = self.adult_episode_identity(source)
+            self.write_my_tv_series_states(states)
+            identity = self.my_tv_episode_identity(source)
             metadata = value.get("metadata", {})
             if not isinstance(metadata, dict):
                 metadata = {}
             season_number = int(metadata.get("season_number") or identity["season"])
             episode_number = int(metadata.get("episode_number") or identity["episode"])
-        self.sync_adult_series_viewing_episodes(
+        self.sync_my_tv_series_viewing_episodes(
             series_id, {f"{season_number}:{episode_number}": bool(watched)})
         return {
             "ok": True, "series": series_id, "path": relative,
@@ -717,7 +717,7 @@ class MediaCatalogueMixin:
             "remote_last_watched": float(value.get("remote_last_watched", 0) or 0),
         }
 
-    def set_adult_season_watched(self, series_id: str, season: Any,
+    def set_my_tv_season_watched(self, series_id: str, season: Any,
                                  watched: bool) -> dict[str, Any]:
         """Set every local episode in one season without discarding resume history."""
         try:
@@ -726,16 +726,16 @@ class MediaCatalogueMixin:
             raise ValueError("Choose a valid series") from None
         if season_number < 1:
             raise ValueError("Choose a valid series")
-        series = next((value for value in self.adult_series_library()
+        series = next((value for value in self.my_tv_series_library()
                        if value.get("id") == series_id), None)
         if not isinstance(series, dict):
-            raise ValueError("That Adult TV series no longer exists")
+            raise ValueError("That My TV series no longer exists")
         targets = [str(episode.get("path") or "")
                    for episode in series.get("episodes", [])
                    if int(episode.get("season", 0) or 0) == season_number]
         if not targets:
             raise ValueError("That series has no episodes")
-        updated = [self.set_adult_episode_watched(series_id, relative, watched)
+        updated = [self.set_my_tv_episode_watched(series_id, relative, watched)
                    for relative in targets]
         return {
             "ok": True, "series": series_id, "season": season_number,
@@ -743,10 +743,10 @@ class MediaCatalogueMixin:
             "episodes": updated,
         }
 
-    def restart_adult_series_progress(self, series_id: str, scope: str,
+    def restart_my_tv_series_progress(self, series_id: str, scope: str,
                                       season: int | None = None) -> dict[str, Any]:
         """Clear watched state and resume points for one season or show."""
-        root = self.adult_series_path(series_id)
+        root = self.my_tv_series_path(series_id)
         if not root.is_dir():
             raise ValueError("That TV series no longer exists")
         if scope not in {"season", "series"}:
@@ -765,7 +765,7 @@ class MediaCatalogueMixin:
         changed = 0
         viewing_episode_keys: set[str] = set()
         with self.config_lock:
-            states = self.adult_series_states()
+            states = self.my_tv_series_states()
             for key, raw_value in list(states["episodes"].items()):
                 if not str(key).startswith(prefix):
                     continue
@@ -777,7 +777,7 @@ class MediaCatalogueMixin:
                 metadata = value.get("metadata", {})
                 if not isinstance(metadata, dict):
                     metadata = {}
-                parsed = self.adult_episode_identity(source)
+                parsed = self.my_tv_episode_identity(source)
                 episode_season = int(
                     metadata.get("season_number") or parsed["season"])
                 if season_number is not None:
@@ -793,8 +793,8 @@ class MediaCatalogueMixin:
                     metadata.get("episode_number") or parsed["episode"])
                 viewing_episode_keys.add(f"{episode_season}:{episode_number}")
                 changed += 1
-            self.write_adult_series_states(states)
-        changed = max(changed, self.reset_adult_series_viewing_progress(
+            self.write_my_tv_series_states(states)
+        changed = max(changed, self.reset_my_tv_series_viewing_progress(
             series_id, season_number, viewing_episode_keys))
         return {
             "ok": True,
@@ -805,18 +805,18 @@ class MediaCatalogueMixin:
             "episodes_reset": changed,
         }
 
-    def trash_adult_series_items(self, payload: dict[str, Any]) -> int:
-        """Move an episode, a season, or a complete Adult TV series to the bin."""
+    def trash_my_tv_series_items(self, payload: dict[str, Any]) -> int:
+        """Move an episode, a season, or a complete My TV series to the bin."""
         series_id = str(payload.get("series", ""))
-        root = self.adult_series_path(series_id)
+        root = self.my_tv_series_path(series_id)
         scope = str(payload.get("scope", "episode"))
         if scope not in {"episode", "season", "series"}:
             raise ValueError("Choose an episode, series, or complete show to remove")
         with self.config_lock:
-            states = self.adult_series_states()
+            states = self.my_tv_series_states()
             series_state = states["series"].get(series_id)
             if not isinstance(series_state, dict):
-                raise ValueError("That Adult TV series no longer exists")
+                raise ValueError("That My TV series no longer exists")
             title = str(series_state.get("metadata", {}).get("title")
                         if isinstance(series_state.get("metadata"), dict) else "") \
                 or str(series_state.get("title") or "Series")
@@ -824,7 +824,7 @@ class MediaCatalogueMixin:
                          and item.suffix.lower() in SUPPORTED_EXTENSIONS]
             season_directory: Path | None = None
             if scope == "episode":
-                source = self.adult_series_path(series_id, str(payload.get("file", "")))
+                source = self.my_tv_series_path(series_id, str(payload.get("file", "")))
                 if not source.is_file() or source.suffix.lower() not in SUPPORTED_EXTENSIONS:
                     raise ValueError("That episode no longer exists")
                 files = [source]
@@ -835,12 +835,12 @@ class MediaCatalogueMixin:
                     raise ValueError("Choose a series to remove") from error
                 episode_seasons = {
                     item["path"]: int(item["season"])
-                    for value in self.adult_series_library() if value["id"] == series_id
+                    for value in self.my_tv_series_library() if value["id"] == series_id
                     for item in value["episodes"]
                 }
                 files = [item for item in all_files
                          if episode_seasons.get(item.relative_to(root).as_posix()) == season]
-                season_directory = self.adult_series_path(
+                season_directory = self.my_tv_series_path(
                     series_id, f"Season {season}")
                 if not files and not season_directory.is_dir():
                     raise ValueError(f"Series {season} does not exist")
@@ -859,10 +859,10 @@ class MediaCatalogueMixin:
                     "id": item_id,
                     "file_name": source.name,
                     "folder": source.parent.relative_to(self.media_root).as_posix(),
-                    "channel_name": f"Adult TV · {title}",
-                    "adult_series_id": series_id,
-                    "adult_series_state": series_state,
-                    "adult_series_episode_state": states["episodes"].get(key, {}),
+                    "channel_name": f"My TV · {title}",
+                    "my_tv_series_id": series_id,
+                    "my_tv_series_state": series_state,
+                    "my_tv_series_episode_state": states["episodes"].get(key, {}),
                 })
                 try:
                     shutil.move(str(source), str(destination_dir / source.name))
@@ -876,7 +876,7 @@ class MediaCatalogueMixin:
                 states["episodes"].pop(key, None)
             if scope == "series":
                 states["series"].pop(series_id, None)
-            self.write_adult_series_states(states)
+            self.write_my_tv_series_states(states)
             if season_directory is not None and season_directory.is_dir() \
                     and not any(season_directory.iterdir()):
                 season_directory.rmdir()
@@ -891,17 +891,17 @@ class MediaCatalogueMixin:
             return moved
 
     def upload_destination(self, metadata: dict[str, Any]) -> Path:
-        if metadata.get("kind") == "adult":
+        if metadata.get("kind") == "my_tv":
             folder = str(metadata.get("folder", ""))
             relative = f"{folder}/{metadata.get('file_name', '')}" if folder \
                 else str(metadata.get("file_name", ""))
-            return self.safe_adult_path(relative, create_folder=bool(folder))
-        if metadata.get("kind") == "adult-series":
+            return self.safe_my_tv_path(relative, create_folder=bool(folder))
+        if metadata.get("kind") == "my-tv-series":
             series_id = str(metadata.get("series_id", ""))
             season = int(metadata.get("season", 0) or 0)
             if season < 1 or season > 99:
                 raise ValueError("That series upload has no valid series number")
-            return self.adult_series_path(
+            return self.my_tv_series_path(
                 series_id, f"Season {season}/{metadata.get('file_name', '')}")
         channel = self.channel(int(metadata.get("channel")))
         return self.safe_media_path(channel, str(metadata.get("file_name", "")))
@@ -1037,15 +1037,15 @@ class MediaCatalogueMixin:
             },
             "tv_settings": self.tv_settings(settings),
             "remote_viewing": self.remote_settings(),
-            "adult_settings": {
+            "my_tv_settings": {
                 "watchmode_availability_enabled":
                     settings.get("watchmode_availability_enabled") is not False,
                 "provider_badges_enabled":
-                    settings.get("adult_provider_badges_enabled") is not False,
+                    settings.get("my_tv_provider_badges_enabled") is not False,
             },
-            "adult_library": self.adult_library(),
-            "adult_folders": self.adult_folders(),
-            "adult_series": self.adult_series_library(),
+            "my_tv_library": self.my_tv_library(),
+            "my_tv_folders": self.my_tv_folders(),
+            "my_tv_series": self.my_tv_series_library(),
             "recycle": self.recycle_items(),
             "uploads": self.upload_jobs(),
             "storage": {"free_gb": disk.free / 1024**3,

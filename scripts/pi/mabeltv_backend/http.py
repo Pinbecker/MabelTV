@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import html
 import mimetypes
 import re
 import shutil
@@ -29,8 +30,6 @@ STATIC_ASSETS = {
     "/mabeltv-offline-schema.js": ("mabeltv-offline-schema.js", "text/javascript; charset=utf-8"),
     "/mabeltv-offline.js": ("mabeltv-offline.js", "text/javascript; charset=utf-8"),
     "/service-worker.js": ("service-worker.js", "text/javascript; charset=utf-8"),
-    "/manifest.json": ("mabeltv-manifest.json", "application/manifest+json"),
-    "/manifest.webmanifest": ("mabeltv-manifest.json", "application/manifest+json"),
 }
 
 PORTAL_ASSET_TYPES = {
@@ -47,9 +46,9 @@ GET_JSON_ROUTES = {
     "/api/lg-tv/status": "lg_tv_status",
     "/api/library": "library",
     "/api/usb": "usb_volumes",
-    "/api/adult/optimisations": "adult_optimisations",
-    "/api/adult/viewing": "adult_viewing",
-    "/api/adult/insights": "adult_insights",
+    "/api/my-tv/optimisations": "my_tv_optimisations",
+    "/api/my-tv/viewing": "my_tv_viewing",
+    "/api/my-tv/insights": "my_tv_insights",
     "/api/activity": "activity_status",
     "/api/tmdb/status": "tmdb_status",
     "/api/status": "live_status",
@@ -68,17 +67,17 @@ POST_JSON_ROUTES = {
     "/api/favourite": ("set_favourite", 200),
     "/api/tmdb/search": ("tmdb_search", 200),
     "/api/tmdb/apply": ("tmdb_apply", 200),
-    "/api/tmdb/adult-series/search": ("adult_series_search", 200),
-    "/api/tmdb/adult-series/apply": ("adult_series_apply", 200),
-    "/api/adult/viewing": ("adult_viewing_update", 200),
-    "/api/adult/viewing/reorder": ("adult_up_next_reorder", 200),
-    "/api/adult/explore/feedback": ("adult_explore_feedback", 200),
-    "/api/adult/home/availability": ("adult_home_availability", 200),
-    "/api/adult/netflix/play-tv": ("play_netflix_on_tv", 200),
+    "/api/tmdb/my-tv-series/search": ("my_tv_series_search", 200),
+    "/api/tmdb/my-tv-series/apply": ("my_tv_series_apply", 200),
+    "/api/my-tv/viewing": ("my_tv_viewing_update", 200),
+    "/api/my-tv/viewing/reorder": ("my_tv_up_next_reorder", 200),
+    "/api/my-tv/explore/feedback": ("my_tv_explore_feedback", 200),
+    "/api/my-tv/home/availability": ("my_tv_home_availability", 200),
+    "/api/my-tv/netflix/play-tv": ("play_netflix_on_tv", 200),
     "/api/tmdb/channel": ("refresh_channel_show_metadata", 200),
     "/api/tmdb/programme": ("refresh_channel_programme_metadata", 200),
-    "/api/adult/uploads": ("adult_upload_create", 201),
-    "/api/adult/series/uploads": ("adult_series_upload_create", 201),
+    "/api/my-tv/uploads": ("my_tv_upload_create", 201),
+    "/api/my-tv/series/uploads": ("my_tv_series_upload_create", 201),
     "/api/uploads": ("upload_create", 201),
 }
 
@@ -260,7 +259,7 @@ class Handler(BaseHTTPRequestHandler):
                 length = 0
             if 0 < length <= 64 * 1024:
                 self.rfile.read(length)
-            self.json(HTTPStatus.FORBIDDEN, {"error": "This request did not come from Mabel TV"})
+            self.json(HTTPStatus.FORBIDDEN, {"error": f"This request did not come from {self.server.library.tv_identity()[1]}"})
             return False
         return True
 
@@ -274,6 +273,11 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def serve_named_html(self, document: str, *, inline_script: bool = False) -> None:
+        name = html.escape(self.server.library.tv_identity()[1], quote=True)
+        self.serve_html(document.replace("__TV_NAME__", name),
+                        inline_script=inline_script)
+
     def serve_static_asset(self) -> bool:
         asset = STATIC_ASSETS.get(self.path)
         if asset is None:
@@ -284,6 +288,23 @@ class Handler(BaseHTTPRequestHandler):
             self.json(404, {"error": "Static asset not found"})
             return True
         self.stream_bytes(asset_path.read_bytes(), content_type)
+        return True
+
+    def serve_manifest(self) -> bool:
+        if self.path not in {"/manifest.json", "/manifest.webmanifest"}:
+            return False
+        name = self.server.library.tv_identity()[1]
+        manifest = json.loads((SERVICE_ROOT / "mabeltv-manifest.json").read_text(
+            encoding="utf-8"))
+        manifest.update({"name": name, "short_name": name})
+        data = json.dumps(manifest, ensure_ascii=False, separators=(",", ":")).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/manifest+json")
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-store")
+        self.security_headers()
+        self.end_headers()
+        self.wfile.write(data)
         return True
 
     def serve_portal_application(self) -> bool:
@@ -389,22 +410,22 @@ class Handler(BaseHTTPRequestHandler):
         self.json(200, route())
         return True
 
-    def handle_adult_series_post(self, payload: dict[str, Any]) -> bool:
-        if self.path == "/api/adult/series/watched":
+    def handle_my_tv_series_post(self, payload: dict[str, Any]) -> bool:
+        if self.path == "/api/my-tv/series/watched":
             watched = payload.get("watched")
             if not isinstance(watched, bool):
                 raise ValueError("Choose whether the episode is watched")
             if payload.get("scope") == "season":
-                result = self.server.library.set_adult_season_watched(
+                result = self.server.library.set_my_tv_season_watched(
                     str(payload.get("series", "")), payload.get("season"), watched)
             else:
-                result = self.server.library.set_adult_episode_watched(
+                result = self.server.library.set_my_tv_episode_watched(
                     str(payload.get("series", "")), str(payload.get("file", "")), watched)
             self.json(200, result)
             return True
-        if self.path == "/api/adult/series/restart":
+        if self.path == "/api/my-tv/series/restart":
             scope = str(payload.get("scope", ""))
-            result = self.server.library.restart_adult_series_progress(
+            result = self.server.library.restart_my_tv_series_progress(
                 str(payload.get("series", "")), scope,
                 payload.get("season") if scope == "season" else None)
             self.json(200, result)
@@ -418,11 +439,11 @@ class Handler(BaseHTTPRequestHandler):
             if not refreshed:
                 message = ("The change was saved, but the TV could not refresh. "
                            "Use Refresh TV library to try again.")
-            elif action == "optimise-adult":
+            elif action == "optimise-my-tv":
                 message = ("Optimising the original film in the background. "
                            "You can leave this page and return later.")
             elif action == "set-tv-settings":
-                message = "TV settings applied on MabelTV now."
+                message = f"TV settings applied on {self.server.library.tv_identity()[1]} now."
             else:
                 message = "Done."
             self.json(200, {"ok": True, "refreshed": refreshed, "message": message})
@@ -479,9 +500,10 @@ class Handler(BaseHTTPRequestHandler):
             parsed = urlsplit(self.path)
             query = parse_qs(parsed.query)
             if self.path == "/":
-                self.serve_html(INDEX, inline_script="<script>" in INDEX)
+                self.serve_named_html(INDEX, inline_script="<script>" in INDEX)
                 return
-            if self.serve_portal_application() or self.serve_static_asset() \
+            if self.serve_portal_application() or self.serve_manifest() \
+                    or self.serve_static_asset() \
                     or self.serve_portal_asset(parsed.path):
                 return
             if parsed.path in {"/api/external/media", "/api/offline/media"}:
@@ -503,7 +525,7 @@ class Handler(BaseHTTPRequestHandler):
             if not self.require():
                 return
             if parsed.path == "/watch/player":
-                self.serve_html(WATCH_PAGE, inline_script=True)
+                self.serve_named_html(WATCH_PAGE, inline_script=True)
                 return
             if self.path == "/api/live/stream.m3u8":
                 self.json(410, {"error": "The live picture now uses the portal frame feed"})
@@ -529,28 +551,28 @@ class Handler(BaseHTTPRequestHandler):
             query_routes = {
                 "/api/usb/browse": lambda: self.server.library.usb_browse(
                     str(query.get("volume", [""])[0]), str(query.get("path", [""])[0])),
-                "/api/adult/discovery": lambda: self.server.library.adult_discovery(
+                "/api/my-tv/discovery": lambda: self.server.library.my_tv_discovery(
                     str(query.get("q", [""])[0])),
-                "/api/adult/explore": lambda: self.server.library.adult_explore(
+                "/api/my-tv/explore": lambda: self.server.library.my_tv_explore(
                     str(query.get("list", ["for-you"])[0]),
                     str(query.get("media_type", ["all"])[0]),
                     str(query.get("page", ["1"])[0]),
                     str(query.get("available", ["0"])[0]) == "1",
                     str(query.get("limit", [""])[0])),
-                "/api/adult/home/what-to-watch": lambda:
-                    self.server.library.adult_home_what_to_watch(
+                "/api/my-tv/home/what-to-watch": lambda:
+                    self.server.library.my_tv_home_what_to_watch(
                         str(query.get("page", ["1"])[0]),
                         str(query.get("limit", ["12"])[0])),
-                "/api/adult/home/released-this-week": lambda:
-                    self.server.library.adult_released_this_week(
+                "/api/my-tv/home/released-this-week": lambda:
+                    self.server.library.my_tv_released_this_week(
                         str(query.get("limit", ["16"])[0])),
-                "/api/adult/title": lambda: self.server.library.adult_title_detail(
+                "/api/my-tv/title": lambda: self.server.library.my_tv_title_detail(
                     str(query.get("media_type", [""])[0]), str(query.get("tmdb_id", [""])[0])),
-                "/api/adult/person": lambda: self.server.library.adult_person_detail(
+                "/api/my-tv/person": lambda: self.server.library.my_tv_person_detail(
                     str(query.get("tmdb_id", [""])[0])),
-                "/api/adult/season": lambda: self.server.library.adult_title_season(
+                "/api/my-tv/season": lambda: self.server.library.my_tv_title_season(
                     str(query.get("tmdb_id", [""])[0]), str(query.get("season", [""])[0])),
-                "/api/adult/providers": lambda: self.server.library.adult_streaming_links(
+                "/api/my-tv/providers": lambda: self.server.library.my_tv_streaming_links(
                     str(query.get("media_type", [""])[0]), str(query.get("tmdb_id", [""])[0]),
                     str(query.get("refresh", ["0"])[0]) == "1"),
             }
@@ -559,7 +581,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.json(200, query_route())
                 return
             tmdb_artwork = re.fullmatch(
-                r"/api/adult/tmdb-artwork/([^/]+)/([^/]+)", parsed.path)
+                r"/api/my-tv/tmdb-artwork/([^/]+)/([^/]+)", parsed.path)
             if tmdb_artwork:
                 result = self.server.library.tmdb_artwork(*tmdb_artwork.groups())
                 content_type = mimetypes.guess_type(result.name)[0] or "image/jpeg"
@@ -569,8 +591,8 @@ class Handler(BaseHTTPRequestHandler):
             prefix_routes = (
                 ("/api/usb/imports/", self.server.library.usb_import_status, "json"),
                 ("/api/offline/preparations/", self.server.library.offline_preparation_status, "json"),
-                ("/api/adult/artwork/", self.server.library.adult_artwork, "image"),
-                ("/api/adult/series/artwork/", self.server.library.adult_series_artwork, "image"),
+                ("/api/my-tv/artwork/", self.server.library.my_tv_artwork, "image"),
+                ("/api/my-tv/series/artwork/", self.server.library.my_tv_series_artwork, "image"),
                 ("/api/channel/artwork/", self.server.library.channel_artwork, "image"),
                 ("/api/uploads/", self.server.library.upload_status, "json"),
             )
@@ -630,7 +652,7 @@ class Handler(BaseHTTPRequestHandler):
                     str(payload.get("stream", ""))))
                 return
             if (self.handle_usb_post(payload)
-                    or self.handle_adult_series_post(payload)):
+                    or self.handle_my_tv_series_post(payload)):
                 return
             if self.path.startswith("/api/uploads/"):
                 self.json(200, self.server.library.upload_action(

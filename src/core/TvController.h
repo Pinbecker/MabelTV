@@ -54,7 +54,7 @@ class TvController final : public QObject
     Q_PROPERTY(bool soundEffectsEnabled READ soundEffectsEnabled NOTIFY soundEffectsEnabledChanged)
     Q_PROPERTY(bool scrubbingEnabled READ scrubbingEnabled NOTIFY scrubbingEnabledChanged)
     Q_PROPERTY(QVariantList parentLibrary READ parentLibrary NOTIFY parentLibraryChanged)
-    Q_PROPERTY(QVariantList adultLibrary READ adultLibrary NOTIFY adultLibraryChanged)
+    Q_PROPERTY(QVariantList myTvLibrary READ myTvLibrary NOTIFY myTvLibraryChanged)
 
 public:
     enum Action
@@ -118,7 +118,7 @@ public:
     [[nodiscard]] bool soundEffectsEnabled() const;
     [[nodiscard]] bool scrubbingEnabled() const;
     [[nodiscard]] QVariantList parentLibrary() const;
-    [[nodiscard]] QVariantList adultLibrary() const;
+    [[nodiscard]] QVariantList myTvLibrary() const;
     Q_INVOKABLE QVariantMap currentChannelSummary() const;
 
     Q_INVOKABLE void start();
@@ -148,7 +148,7 @@ public:
     Q_INVOKABLE void requestParentAccess();
     Q_INVOKABLE void requestPortalParentAccess();
     Q_INVOKABLE void parentConfirm();
-    Q_INVOKABLE void requestAdultModeShortcut();
+    Q_INVOKABLE void requestMyTvModeShortcut();
     Q_INVOKABLE void closeParent();
     Q_INVOKABLE void cyclePlaybackMode(int direction);
     Q_INVOKABLE void cycleEpisodeResetMinutes(int direction);
@@ -162,13 +162,13 @@ public:
     Q_INVOKABLE void toggleVolumeLimit();
     Q_INVOKABLE void adjustMaximumVolume(int direction);
     Q_INVOKABLE void reloadLibrary();
-    Q_INVOKABLE void reloadAdultLibrary();
-    Q_INVOKABLE double adultPlaybackPosition(const QString &libraryId) const;
-    Q_INVOKABLE double adultPlaybackDuration(const QString &libraryId) const;
-    Q_INVOKABLE double adultPlaybackProgress(const QString &libraryId) const;
-    Q_INVOKABLE void setAdultPlaybackPosition(const QString &libraryId,
+    Q_INVOKABLE void reloadMyTvLibrary();
+    Q_INVOKABLE double myTvPlaybackPosition(const QString &libraryId) const;
+    Q_INVOKABLE double myTvPlaybackDuration(const QString &libraryId) const;
+    Q_INVOKABLE double myTvPlaybackProgress(const QString &libraryId) const;
+    Q_INVOKABLE void setMyTvPlaybackPosition(const QString &libraryId,
                                               double positionSeconds);
-    Q_INVOKABLE void setAdultPlaybackDuration(const QString &libraryId,
+    Q_INVOKABLE void setMyTvPlaybackDuration(const QString &libraryId,
                                               double durationSeconds);
     Q_INVOKABLE void toggleChannelEnabled(int channelNumber);
     Q_INVOKABLE void toggleProgrammeEnabled(int channelNumber, const QString &fileName);
@@ -205,8 +205,8 @@ signals:
     void soundEffectsEnabledChanged();
     void scrubbingEnabledChanged();
     void parentLibraryChanged();
-    void adultLibraryChanged();
-    void adultPlaybackStateChanged();
+    void myTvLibraryChanged();
+    void myTvPlaybackStateChanged();
 
     void playbackRequested(const QUrl &source, double startPositionSeconds);
     void stopPlaybackRequested();
@@ -288,7 +288,7 @@ private:
     QElapsedTimer m_broadcastClock;
     QElapsedTimer m_processUptimeClock;
     QString m_mediaRoot;
-    QString m_adultMediaRoot;
+    QString m_myTvMediaRoot;
     QString m_databasePath;
     QString m_libraryStatus;
     QStringList m_libraryWarnings;
@@ -307,9 +307,9 @@ private:
     QJsonObject m_settingsRoot;
     QSet<int> m_disabledChannelNumbers;
     QHash<int, QSet<QString>> m_disabledProgrammeNames;
-    QHash<QString, double> m_adultPlaybackPositions;
-    QHash<QString, double> m_adultPlaybackDurations;
-    QHash<QString, qint64> m_adultPlaybackUpdatedUtcMs;
+    QHash<QString, double> m_myTvPlaybackPositions;
+    QHash<QString, double> m_myTvPlaybackDurations;
+    QHash<QString, qint64> m_myTvPlaybackUpdatedUtcMs;
     QHash<QString, double> m_channelFilmPlaybackPositions;
     QHash<QString, double> m_channelFilmPlaybackDurations;
     QHash<QString, qint64> m_channelFilmPlaybackUpdatedUtcMs;

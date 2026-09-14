@@ -16,8 +16,8 @@ async function openPortal(page, theme) {
 
 async function filmFixture(page) {
   await page.evaluate(() => {
-    library.adult_folders = ['Marvel', 'The Lord of the Rings extended editions', 'Empty']
-    library.adult_library = [
+    library.my_tv_folders = ['Marvel', 'The Lord of the Rings extended editions', 'Empty']
+    library.my_tv_library = [
       ['Captain America', 'Marvel', ['Action', 'Adventure']],
       ['Thor', 'Marvel', ['Action', 'Fantasy']],
       ['The Fellowship of the Ring', 'The Lord of the Rings extended editions', ['Adventure', 'Fantasy']],
@@ -25,8 +25,8 @@ async function filmFixture(page) {
       ['Unmatched film', '', undefined],
     ].map(([title, folder, genres]) => ({ path: title + '.mkv', display_name: title, folder,
       browser_ready: false, size: 1000, metadata: { title, genres, year: '2014' } }))
-    renderAdultLibrary()
-    openView('adult-home')
+    renderMyTvLibraryControls()
+    openView('my-tv-home')
   })
 }
 
@@ -65,14 +65,14 @@ for (const theme of ['light', 'dark']) {
   test(`${theme} collections reuse full width action rows`, async ({ page }, testInfo) => {
     await openPortal(page, theme)
     await filmFixture(page)
-    await page.locator('#watchManageAdult').click()
-    await expect(page.locator('#adultCollectionSheet')).toBeVisible()
-    const collection = page.locator('#adultFolderTabs button').filter({ hasText: 'The Lord of the Rings extended editions' })
+    await page.locator('#watchManageMyTv').click()
+    await expect(page.locator('#myTvCollectionSheet')).toBeVisible()
+    const collection = page.locator('#myTvFolderTabs button').filter({ hasText: 'The Lord of the Rings extended editions' })
     await collection.click()
     await expect(collection).toHaveAttribute('aria-pressed', 'true')
-    await expect(page.locator('#adultRenameFolder')).toBeEnabled()
-    await expect(page.locator('#adultDeleteFolder')).toBeDisabled()
-    const rows = await page.locator('#adultFolderTabs button').evaluateAll(buttons => buttons.map(button => {
+    await expect(page.locator('#myTvRenameFolder')).toBeEnabled()
+    await expect(page.locator('#myTvDeleteFolder')).toBeDisabled()
+    const rows = await page.locator('#myTvFolderTabs button').evaluateAll(buttons => buttons.map(button => {
       const label = button.querySelector('strong')
       return { width: button.getBoundingClientRect().width, parent: button.parentElement.clientWidth,
         labelWidth: label.clientWidth, labelScroll: label.scrollWidth,
@@ -84,24 +84,24 @@ for (const theme of ['light', 'dark']) {
       expect(row.icon).toBe('/portal/icons.svg#folder')
     }
     await page.screenshot({ path: testInfo.outputPath('collections.png') })
-    await page.locator('#adultFolderTabs button').filter({ hasText: /^Empty/ }).click()
-    await expect(page.locator('#adultDeleteFolder')).toBeEnabled()
-    await page.locator('#adultFolderTabs button').filter({ hasText: 'All films' }).click()
-    await expect(page.locator('#adultFolderSelectionActions')).toBeHidden()
-    const input = await page.locator('#adultFolderName').boundingBox()
-    const create = await page.locator('#adultCreateFolder').boundingBox()
+    await page.locator('#myTvFolderTabs button').filter({ hasText: /^Empty/ }).click()
+    await expect(page.locator('#myTvDeleteFolder')).toBeEnabled()
+    await page.locator('#myTvFolderTabs button').filter({ hasText: 'All films' }).click()
+    await expect(page.locator('#myTvFolderSelectionActions')).toBeHidden()
+    const input = await page.locator('#myTvFolderName').boundingBox()
+    const create = await page.locator('#myTvCreateFolder').boundingBox()
     expect(input.y).toBeCloseTo(create.y, 0)
     expect(input.x + input.width).toBeLessThan(create.x)
-    await page.locator('#adultCollectionClose').click()
-    await expect(page.locator('#adultCollectionSheet')).toBeHidden()
+    await page.locator('#myTvCollectionClose').click()
+    await expect(page.locator('#myTvCollectionSheet')).toBeHidden()
   })
 
-  test(`${theme} Adult TV keeps compact search and library controls`, async ({ page }, testInfo) => {
+  test(`${theme} My TV keeps compact search and library controls`, async ({ page }, testInfo) => {
     await openPortal(page, theme)
     await filmFixture(page)
-    const geometry = await page.locator('#view-adult-home').evaluate(view => {
+    const geometry = await page.locator('#view-my-tv-home').evaluate(view => {
       const search = view.querySelector('.watch-search').getBoundingClientRect()
-      const viewing = view.querySelector('#adultMyViewing').getBoundingClientRect()
+      const viewing = view.querySelector('#myTvMyViewing').getBoundingClientRect()
       const tools = [...view.querySelectorAll('#watchLibraryAdmin button')]
         .map(button => button.getBoundingClientRect())
       return { search: search.height, viewing: viewing.height,
@@ -110,15 +110,15 @@ for (const theme of ['light', 'dark']) {
     expect(geometry.search).toBeLessThanOrEqual(50)
     expect(geometry.viewing).toBeLessThanOrEqual(56)
     expect(geometry.toolMax).toBeLessThanOrEqual(48)
-    await expect(page.locator('#watchManageAdult')).toBeVisible()
-    await page.screenshot({ path: testInfo.outputPath('adult-home-controls.png') })
+    await expect(page.locator('#watchManageMyTv')).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath('my-tv-home-controls.png') })
   })
 
   test(`${theme} film title card keeps its header fixed over scrolling detail content`, async ({ page }) => {
     await openPortal(page, theme)
     await filmFixture(page)
     await page.evaluate(() => {
-      openWatchFilmSheet(library.adult_library[0])
+      openWatchFilmSheet(library.my_tv_library[0])
       const filler = $('#watchFilmViewingActions')
       filler.classList.remove('hidden')
       filler.textContent = 'Extra detail '.repeat(300)
@@ -168,23 +168,23 @@ for (const theme of ['light', 'dark']) {
   })
 
   test(`${theme} local film sheets reuse the Great Britain availability footer`, async ({ page }) => {
-    await page.route(url => new URL(url).pathname === '/api/adult/title', route => route.fulfill({ json: {
+    await page.route(url => new URL(url).pathname === '/api/my-tv/title', route => route.fulfill({ json: {
       key: 'movie:123', media_type: 'movie', tmdb_id: 123, title: 'Captain America',
       providers: [{ provider_id: 8, name: 'Netflix', type: 'flatrate' }],
     } }))
-    await page.route(url => new URL(url).pathname === '/api/adult/providers', route => route.fulfill({ json: {
+    await page.route(url => new URL(url).pathname === '/api/my-tv/providers', route => route.fulfill({ json: {
       key: 'movie:123', sources: [{ source_id: 203, name: 'Netflix', type: 'sub' }],
     } }))
     await openPortal(page, theme)
     await filmFixture(page)
     await page.evaluate(() => {
-      library.adult_library[0].metadata.tmdb_id = 123
-      openWatchFilmSheet(library.adult_library[0])
+      library.my_tv_library[0].metadata.tmdb_id = 123
+      openWatchFilmSheet(library.my_tv_library[0])
     })
     await expect(page.locator('#watchFilmProviders')).toBeVisible()
     await expect(page.locator('#watchFilmProvidersHeading')).toHaveText('Where to watch')
     await expect(page.locator('#watchFilmProviderList .provider-mabeltv')).toHaveCount(1)
-    await page.evaluate(() => openWatchFilmSheet(library.adult_library[4]))
+    await page.evaluate(() => openWatchFilmSheet(library.my_tv_library[4]))
     await expect(page.locator('#watchFilmProviders')).toBeVisible()
     await expect(page.locator('#watchFilmProviderRefresh')).toBeHidden()
     await expect(page.locator('#watchFilmProviderList')).toContainText('Match this film’s metadata')
@@ -210,9 +210,9 @@ for (const theme of ['light', 'dark']) {
         })),
       },
     }
-    await page.route(url => new URL(url).pathname === '/api/adult/title', route =>
+    await page.route(url => new URL(url).pathname === '/api/my-tv/title', route =>
       route.fulfill({ json: titleDetail }))
-    await page.route(url => new URL(url).pathname === '/api/adult/person', route =>
+    await page.route(url => new URL(url).pathname === '/api/my-tv/person', route =>
       route.fulfill({ json: {
         tmdb_id: 1, name: 'Albert Brooks', known_for_department: 'Acting',
         birthday: '1947-07-22', place_of_birth: 'Beverly Hills, California',
@@ -224,7 +224,7 @@ for (const theme of ['light', 'dark']) {
             year: '1987', character: 'Aaron Altman', poster_path: '' },
         ],
       } }))
-    await page.route(url => new URL(url).pathname === '/api/adult/providers', route =>
+    await page.route(url => new URL(url).pathname === '/api/my-tv/providers', route =>
       route.fulfill({ json: { key: 'movie:12', sources: [
         { source_id: 406, name: 'Now TV', type: 'sub', web_url: 'https://www.nowtv.com/watch/12' },
         { source_id: 418, name: 'My5', type: 'free', web_url: 'https://www.channel5.com/show/12' },
@@ -249,61 +249,61 @@ for (const theme of ['light', 'dark']) {
           web_url: 'https://uk.chili.com/movies/12' },
       ] } }))
     await openPortal(page, theme)
-    await page.evaluate(() => openAdultTitle({
+    await page.evaluate(() => openMyTvTitle({
       key: 'movie:12', media_type: 'movie', tmdb_id: 12, title: 'Finding Nemo',
     }))
-    await expect(page.locator('#adultTitleMeta')).toContainText('30 May 2003')
-    await expect(page.locator('#adultTitleMeta')).toContainText('Andrew Stanton, Lee Unkrich')
-    await expect(page.locator('#adultTitleMeta')).toContainText('Animation')
-    await expect(page.locator('#adultTitleMeta')).not.toContainText('Family')
-    await expect(page.locator('#adultTitleMeta .adult-title-rating-mark')).toHaveText('TMDB')
-    await expect(page.locator('#adultTitleMeta .adult-title-rating > strong')).toHaveText('7.8')
-    await expect(page.locator('#adultTitleFranchise')).toBeVisible()
-    await expect(page.locator('#adultTitleFranchiseHeading')).toHaveText('Finding Nemo Collection')
-    await expect(page.locator('#adultTitleCastHeading')).toHaveText('Credits')
-    await expect(page.locator('#adultTitleFranchiseRail .adult-franchise-card')).toHaveCount(8)
-    await expect(page.locator('#adultTitleFranchiseRail .adult-franchise-card').first()).toBeDisabled()
-    await expect(page.locator('#adultTitleCastRail .adult-cast-card')).toHaveCount(2)
+    await expect(page.locator('#myTvTitleMeta')).toContainText('30 May 2003')
+    await expect(page.locator('#myTvTitleMeta')).toContainText('Andrew Stanton, Lee Unkrich')
+    await expect(page.locator('#myTvTitleMeta')).toContainText('Animation')
+    await expect(page.locator('#myTvTitleMeta')).not.toContainText('Family')
+    await expect(page.locator('#myTvTitleMeta .my-tv-title-rating-mark')).toHaveText('TMDB')
+    await expect(page.locator('#myTvTitleMeta .my-tv-title-rating > strong')).toHaveText('7.8')
+    await expect(page.locator('#myTvTitleFranchise')).toBeVisible()
+    await expect(page.locator('#myTvTitleFranchiseHeading')).toHaveText('Finding Nemo Collection')
+    await expect(page.locator('#myTvTitleCastHeading')).toHaveText('Credits')
+    await expect(page.locator('#myTvTitleFranchiseRail .my-tv-franchise-card')).toHaveCount(8)
+    await expect(page.locator('#myTvTitleFranchiseRail .my-tv-franchise-card').first()).toBeDisabled()
+    await expect(page.locator('#myTvTitleCastRail .my-tv-cast-card')).toHaveCount(2)
     for (const provider of ['now', 'my5', 'hbo-max']) {
-      await expect(page.locator(`#adultProviderList .provider-${provider}`)).toBeVisible()
+      await expect(page.locator(`#myTvProviderList .provider-${provider}`)).toBeVisible()
     }
-    await expect(page.locator('#adultProviderList .provider-now img')).toHaveAttribute('src', /now-app\.jpg$/)
-    await expect(page.locator('#adultTitleRentBuyToggle')).toHaveAttribute('aria-expanded', 'false')
-    await expect(page.locator('#adultTitleRentBuyToggle')).toContainText('Rent')
-    await expect(page.locator('#adultTitleRentBuyToggle')).toContainText('From £3.49')
-    await expect(page.locator('#adultTitleRentBuyList')).toBeHidden()
-    await expect(page.locator('#adultTitleRentBuyList [data-provider="appletv"]')).toHaveCount(1)
-    await expect(page.locator('#adultTitleRentBuyList [data-provider="amazon"]')).toHaveCount(1)
-    await expect(page.locator('#adultTitleRentBuyList [data-provider="rakutentv"]')).toHaveCount(0)
-    await expect(page.locator('#adultTitleRentBuyList [data-provider="googleplaymovies"]')).toHaveCount(0)
-    await expect(page.locator('#adultTitleRentBuyList [data-provider="youtube"]')).toHaveCount(0)
-    await expect(page.locator('#adultTitleRentBuyList [data-provider="chili"]')).toHaveCount(0)
-    await expect(page.locator('#adultTitleRentBuyList')).not.toContainText('Buy')
-    await expect(page.locator('#adultTitleRentBuyList')).not.toContainText('4K')
-    await page.locator('#adultTitleRentBuyToggle').click()
-    await expect(page.locator('#adultTitleRentBuyToggle')).toHaveAttribute('aria-expanded', 'true')
-    await expect(page.locator('#adultTitleRentBuyList')).toBeVisible()
-    await page.locator('#adultTitleRentBuyToggle').click()
-    await page.locator('#adultTitleCastRail .adult-cast-card').first().click()
-    await expect(page.locator('#adultPersonSheet')).toBeVisible()
-    await expect(page.locator('#adultPersonName')).toHaveText('Albert Brooks')
-    await expect(page.locator('#adultPersonContext')).toHaveText('As Marlin in Finding Nemo')
-    await expect(page.locator('#adultPersonBiography')).toContainText('actor, writer and filmmaker')
-    await expect(page.locator('#adultPersonBiographyExpand')).toBeVisible()
-    await expect(page.locator('#adultPersonBiographyExpand')).toHaveText('More')
-    await expect(page.locator('#adultPersonBiographyExpand')).toHaveAttribute('aria-expanded', 'false')
-    await expect(page.locator('#adultPersonCredits .adult-franchise-card')).toHaveCount(2)
+    await expect(page.locator('#myTvProviderList .provider-now img')).toHaveAttribute('src', /now-app\.jpg$/)
+    await expect(page.locator('#myTvTitleRentBuyToggle')).toHaveAttribute('aria-expanded', 'false')
+    await expect(page.locator('#myTvTitleRentBuyToggle')).toContainText('Rent')
+    await expect(page.locator('#myTvTitleRentBuyToggle')).toContainText('From £3.49')
+    await expect(page.locator('#myTvTitleRentBuyList')).toBeHidden()
+    await expect(page.locator('#myTvTitleRentBuyList [data-provider="appletv"]')).toHaveCount(1)
+    await expect(page.locator('#myTvTitleRentBuyList [data-provider="amazon"]')).toHaveCount(1)
+    await expect(page.locator('#myTvTitleRentBuyList [data-provider="rakutentv"]')).toHaveCount(0)
+    await expect(page.locator('#myTvTitleRentBuyList [data-provider="googleplaymovies"]')).toHaveCount(0)
+    await expect(page.locator('#myTvTitleRentBuyList [data-provider="youtube"]')).toHaveCount(0)
+    await expect(page.locator('#myTvTitleRentBuyList [data-provider="chili"]')).toHaveCount(0)
+    await expect(page.locator('#myTvTitleRentBuyList')).not.toContainText('Buy')
+    await expect(page.locator('#myTvTitleRentBuyList')).not.toContainText('4K')
+    await page.locator('#myTvTitleRentBuyToggle').click()
+    await expect(page.locator('#myTvTitleRentBuyToggle')).toHaveAttribute('aria-expanded', 'true')
+    await expect(page.locator('#myTvTitleRentBuyList')).toBeVisible()
+    await page.locator('#myTvTitleRentBuyToggle').click()
+    await page.locator('#myTvTitleCastRail .my-tv-cast-card').first().click()
+    await expect(page.locator('#myTvPersonSheet')).toBeVisible()
+    await expect(page.locator('#myTvPersonName')).toHaveText('Albert Brooks')
+    await expect(page.locator('#myTvPersonContext')).toHaveText('As Marlin in Finding Nemo')
+    await expect(page.locator('#myTvPersonBiography')).toContainText('actor, writer and filmmaker')
+    await expect(page.locator('#myTvPersonBiographyExpand')).toBeVisible()
+    await expect(page.locator('#myTvPersonBiographyExpand')).toHaveText('More')
+    await expect(page.locator('#myTvPersonBiographyExpand')).toHaveAttribute('aria-expanded', 'false')
+    await expect(page.locator('#myTvPersonCredits .my-tv-franchise-card')).toHaveCount(2)
     await page.screenshot({ path: testInfo.outputPath('cast-detail.png') })
-    await page.locator('#adultPersonBiographyExpand').click()
-    await expect(page.locator('#adultPersonBiographyExpand')).toHaveText('Less')
-    await expect(page.locator('#adultPersonBiography')).toHaveClass(/is-expanded/)
-    await page.locator('#adultPersonSheet > .library-sheet-panel .portal-card-back').click()
-    await expect(page.locator('#adultTitleSheet')).toBeVisible()
-    await expect(page.locator('#adultPersonSheet')).toBeHidden()
-    const geometry = await page.locator('#adultTitleSheet').evaluate(sheet => {
+    await page.locator('#myTvPersonBiographyExpand').click()
+    await expect(page.locator('#myTvPersonBiographyExpand')).toHaveText('Less')
+    await expect(page.locator('#myTvPersonBiography')).toHaveClass(/is-expanded/)
+    await page.locator('#myTvPersonSheet > .library-sheet-panel .portal-card-back').click()
+    await expect(page.locator('#myTvTitleSheet')).toBeVisible()
+    await expect(page.locator('#myTvPersonSheet')).toBeHidden()
+    const geometry = await page.locator('#myTvTitleSheet').evaluate(sheet => {
       const panel = sheet.querySelector('.watch-film-panel')
-      const rail = sheet.querySelector('#adultTitleFranchiseRail')
-      const cards = [...rail.querySelectorAll('.adult-franchise-card')]
+      const rail = sheet.querySelector('#myTvTitleFranchiseRail')
+      const cards = [...rail.querySelectorAll('.my-tv-franchise-card')]
       const first = cards[0].getBoundingClientRect()
       const last = cards.at(-1).getBoundingClientRect()
       const railBox = rail.getBoundingClientRect()
@@ -316,15 +316,15 @@ for (const theme of ['light', 'dark']) {
     expect(geometry).toEqual({ pageContained: true, fiveAcross: true, horizontalOverflow: true })
     await page.screenshot({ path: testInfo.outputPath('film-enrichment.png') })
 
-    await page.locator('#adultTitleCastRail .adult-cast-card').first().click()
-    await expect(page.locator('#adultPersonSheet')).toBeVisible()
-    await page.locator('#adultPersonClose').click()
-    await expect(page.locator('#adultPersonSheet')).toBeHidden()
-    await expect(page.locator('#adultTitleSheet')).toBeHidden()
+    await page.locator('#myTvTitleCastRail .my-tv-cast-card').first().click()
+    await expect(page.locator('#myTvPersonSheet')).toBeVisible()
+    await page.locator('#myTvPersonClose').click()
+    await expect(page.locator('#myTvPersonSheet')).toBeHidden()
+    await expect(page.locator('#myTvTitleSheet')).toBeHidden()
     await filmFixture(page)
     await page.evaluate(() => {
-      library.adult_library[0].metadata.tmdb_id = 12
-      openWatchFilmSheet(library.adult_library[0])
+      library.my_tv_library[0].metadata.tmdb_id = 12
+      openWatchFilmSheet(library.my_tv_library[0])
     })
     await expect(page.locator('#watchFilmFranchise')).toBeVisible()
     await expect(page.locator('#watchFilmCast')).toBeVisible()
@@ -339,7 +339,7 @@ for (const theme of ['light', 'dark']) {
       const root = $('#watchFilmViewingActions')
       const detail = { media_type: 'movie', viewing: { manual_state: 'watched' } }
       root.classList.remove('hidden')
-      wireAdultTitleIntentActions(detail, root)
+      wireMyTvTitleIntentActions(detail, root)
       const visible = [...root.querySelectorAll('button')]
         .filter(button => getComputedStyle(button).display !== 'none')
         .map(button => ({ action: button.dataset.viewingAction, label: button.querySelector('strong').textContent,
@@ -417,7 +417,7 @@ for (const theme of ['light', 'dark']) {
     })
     const unwatched = await page.evaluate(() => {
       const root = $('#watchFilmViewingActions')
-      syncAdultTitleButtons({ media_type: 'movie', viewing: {} }, root)
+      syncMyTvTitleButtons({ media_type: 'movie', viewing: {} }, root)
       return [...root.querySelectorAll('button')]
         .filter(button => !button.classList.contains('hidden'))
         .map(button => button.dataset.viewingAction)
@@ -430,9 +430,9 @@ for (const theme of ['light', 'dark']) {
     await filmFixture(page)
     await page.evaluate(() => {
       const film = {
-        ...library.adult_library[0],
+        ...library.my_tv_library[0],
         metadata: {
-          ...library.adult_library[0].metadata,
+          ...library.my_tv_library[0].metadata,
           title: 'Captain America and the extremely long title that needs more room on an iPhone screen',
           overview: 'This deliberately long synopsis needs to remain compact until someone asks to read it. '.repeat(16),
         },

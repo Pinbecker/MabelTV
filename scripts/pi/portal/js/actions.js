@@ -31,7 +31,7 @@ let managementBusy = false
           selectedManageChannel = Number(preferredChannel)
         }
         await reloadLibraryWithoutLosingPlace(preferredChannel)
-        if (result.refreshed === false || action === 'optimise-adult') {
+        if (result.refreshed === false || action === 'optimise-my-tv') {
           notice(result.message || 'The change was saved, but the TV could not refresh.',
             result.refreshed === false)
         }
@@ -40,7 +40,7 @@ let managementBusy = false
     }
 
     async function playOnTv(payload, title) {
-      if (!confirm(`Play “${title}” on Mabel TV now? This will replace what is currently playing.`)) return
+      if (!confirm(`Play “${title}” on ${tvName()} now? This will replace what is currently playing.`)) return
       try {
         await api('/api/play-on-tv', {
           method: 'POST', body: JSON.stringify(payload)
@@ -274,121 +274,121 @@ let managementBusy = false
       button.disabled = selectedUploadFiles.length === 0
     }
 
-    let selectedAdultFiles = []
+    let selectedMyTvFiles = []
 
-    function renderSelectedAdultFiles() {
-      const root = $('#adultSelectedFiles'), button = $('#adultUploadButton')
+    function renderSelectedMyTvFiles() {
+      const root = $('#myTvSelectedFiles'), button = $('#myTvUploadButton')
       root.innerHTML = ''
-      if (!selectedAdultFiles.length) {
+      if (!selectedMyTvFiles.length) {
         root.textContent = 'No films selected yet.'
         button.disabled = true
         return
       }
       const heading = document.createElement('strong')
-      heading.textContent = `${selectedAdultFiles.length} film${selectedAdultFiles.length === 1 ? '' : 's'} ready to upload`
+      heading.textContent = `${selectedMyTvFiles.length} film${selectedMyTvFiles.length === 1 ? '' : 's'} ready to upload`
       root.append(heading)
-      selectedAdultFiles.forEach((file, index) => {
+      selectedMyTvFiles.forEach((file, index) => {
         const row = document.createElement('div')
         row.className = 'selected-upload-file'
         const name = document.createElement('span')
         name.textContent = file.name
         const remove = document.createElement('button')
         remove.type = 'button'; remove.className = 'link'; remove.textContent = 'Remove'
-        remove.onclick = () => { selectedAdultFiles.splice(index, 1); renderSelectedAdultFiles() }
+        remove.onclick = () => { selectedMyTvFiles.splice(index, 1); renderSelectedMyTvFiles() }
         row.append(name, remove); root.append(row)
       })
       button.disabled = false
     }
 
-    $('#adultFile').onchange = event => {
-      const existing = new Set(selectedAdultFiles.map(selectedFileKey))
+    $('#myTvFile').onchange = event => {
+      const existing = new Set(selectedMyTvFiles.map(selectedFileKey))
       Array.from(event.target.files || []).forEach(file => {
         const key = selectedFileKey(file)
-        if (!existing.has(key)) { selectedAdultFiles.push(file); existing.add(key) }
+        if (!existing.has(key)) { selectedMyTvFiles.push(file); existing.add(key) }
       })
       event.target.value = ''
-      renderSelectedAdultFiles()
+      renderSelectedMyTvFiles()
     }
 
-    async function waitForAdultPreparation(id) {
+    async function waitForMyTvPreparation(id) {
       while (true) {
         const state = await api('/api/uploads/' + id)
         if (state.complete) return state
-        if (state.status === 'error') throw new Error(state.error || 'MabelTV could not prepare this film')
+        if (state.status === 'error') throw new Error(state.error || `${tvName()} could not prepare this film`)
         const messages = {
           validating: 'Checking the film…', queued: 'Waiting in the upload queue…',
           processing: 'Preparing the film…', publishing: 'Publishing the original film…',
-          finalising: 'Adding the film to Adult mode…'
+          finalising: 'Adding the film to My TV mode…'
         }
-        $('#adultUploadText').textContent = messages[state.status] || 'Preparing the film…'
+        $('#myTvUploadText').textContent = messages[state.status] || 'Preparing the film…'
         await new Promise(resolve => setTimeout(resolve, 1500))
       }
     }
 
-    async function sendAdultFile(file, created, position, total) {
+    async function sendMyTvFile(file, created, position, total) {
       const prefix = total > 1 ? `Film ${position} of ${total}: ` : ''
-      $('#adultProgress').max = file.size; $('#adultProgress').value = 0
+      $('#myTvProgress').max = file.size; $('#myTvProgress').value = 0
       let result = created
       if (!result.complete) result = await waitForUploadTurn(created.id, file.name)
       let offset = Number(result.offset) || 0
       while (offset < file.size) {
         const part = file.slice(offset, Math.min(offset + 8388608, file.size))
         const finalChunk = offset + part.size >= file.size
-        $('#adultUploadText').textContent = finalChunk
+        $('#myTvUploadText').textContent = finalChunk
           ? `${prefix}finishing ${file.name}…`
           : `${prefix}${file.name} · ${(offset / 1048576).toFixed(0)} MB of ${(file.size / 1048576).toFixed(0)} MB`
         result = await resilientUploadChunk(created.id, offset, part, finalChunk)
         offset = Number(result.offset) || offset
-        $('#adultProgress').value = offset
+        $('#myTvProgress').value = offset
       }
-      if (!result.complete) result = await waitForAdultPreparation(created.id)
+      if (!result.complete) result = await waitForMyTvPreparation(created.id)
       return result
     }
 
-    $('#adultUploadForm').onsubmit = async event => {
+    $('#myTvUploadForm').onsubmit = async event => {
       event.preventDefault()
-      const files = selectedAdultFiles.slice()
+      const files = selectedMyTvFiles.slice()
       if (!files.length) return
       const failures = []
-      $('#adultUploadButton').disabled = true
-      $('#adultFile').disabled = true
-      $('#adultUploadState').classList.remove('hidden')
-      const queued = await Promise.all(files.map(async file => ({ file, created: await api('/api/adult/uploads', {
+      $('#myTvUploadButton').disabled = true
+      $('#myTvFile').disabled = true
+      $('#myTvUploadState').classList.remove('hidden')
+      const queued = await Promise.all(files.map(async file => ({ file, created: await api('/api/my-tv/uploads', {
         method: 'POST', body: JSON.stringify({ file_name: file.name, size: file.size,
-          folder: $('#adultUploadFolder').value, source_id: uploadSourceId })
+          folder: $('#myTvUploadFolder').value, source_id: uploadSourceId })
       }) })))
       await Promise.all(queued.map(async ({ file, created }, index) => {
-        try { await sendAdultFile(file, created, index + 1, queued.length) }
+        try { await sendMyTvFile(file, created, index + 1, queued.length) }
         catch (error) { failures.push({ file, message: error.message }) }
       }))
-      selectedAdultFiles = failures.map(failure => failure.file)
-      renderSelectedAdultFiles()
-      $('#adultProgress').value = 0
-      $('#adultUploadState').classList.toggle('hidden', failures.length === 0)
+      selectedMyTvFiles = failures.map(failure => failure.file)
+      renderSelectedMyTvFiles()
+      $('#myTvProgress').value = 0
+      $('#myTvUploadState').classList.toggle('hidden', failures.length === 0)
       await load().catch(() => {})
       if (failures.length) {
-        $('#adultUploadText').textContent = 'Interrupted films remain selected so you can resume them.'
+        $('#myTvUploadText').textContent = 'Interrupted films remain selected so you can resume them.'
         notice(`${files.length - failures.length} of ${files.length} films were added.\n${failures.map(failure => `${failure.file.name}: ${failure.message}`).join('\n')}`, true)
       } else {
-        closeLibrarySheet($('#adultUploadSheet'))
+        closeLibrarySheet($('#myTvUploadSheet'))
       }
-      $('#adultFile').disabled = false
-      $('#adultUploadButton').disabled = selectedAdultFiles.length === 0
+      $('#myTvFile').disabled = false
+      $('#myTvUploadButton').disabled = selectedMyTvFiles.length === 0
     }
 
-    function renderSelectedAdultSeriesFiles() {
-      const root = $('#adultSeriesSelectedFiles')
-      const button = $('#adultSeriesUploadButton')
+    function renderSelectedMyTvSeriesFiles() {
+      const root = $('#myTvSeriesSelectedFiles')
+      const button = $('#myTvSeriesUploadButton')
       root.replaceChildren()
-      if (!selectedAdultSeriesFiles.length) {
+      if (!selectedMyTvSeriesFiles.length) {
         root.textContent = 'No episodes selected yet.'
         button.disabled = true
         return
       }
       const heading = document.createElement('strong')
-      heading.textContent = `${selectedAdultSeriesFiles.length} episode${selectedAdultSeriesFiles.length === 1 ? '' : 's'} ready`
+      heading.textContent = `${selectedMyTvSeriesFiles.length} episode${selectedMyTvSeriesFiles.length === 1 ? '' : 's'} ready`
       root.append(heading)
-      selectedAdultSeriesFiles.forEach((file, index) => {
+      selectedMyTvSeriesFiles.forEach((file, index) => {
         const row = document.createElement('div')
         row.className = 'selected-upload-file'
         const name = document.createElement('span')
@@ -398,8 +398,8 @@ let managementBusy = false
         remove.className = 'link'
         remove.textContent = 'Remove'
         remove.onclick = () => {
-          selectedAdultSeriesFiles.splice(index, 1)
-          renderSelectedAdultSeriesFiles()
+          selectedMyTvSeriesFiles.splice(index, 1)
+          renderSelectedMyTvSeriesFiles()
         }
         row.append(name, remove)
         root.append(row)
@@ -407,87 +407,87 @@ let managementBusy = false
       button.disabled = false
     }
 
-    $('#adultSeriesFile').onchange = event => {
-      const existing = new Set(selectedAdultSeriesFiles.map(selectedFileKey))
+    $('#myTvSeriesFile').onchange = event => {
+      const existing = new Set(selectedMyTvSeriesFiles.map(selectedFileKey))
       Array.from(event.target.files || []).forEach(file => {
         const key = selectedFileKey(file)
         if (!existing.has(key)) {
-          selectedAdultSeriesFiles.push(file)
+          selectedMyTvSeriesFiles.push(file)
           existing.add(key)
         }
       })
       event.target.value = ''
-      renderSelectedAdultSeriesFiles()
+      renderSelectedMyTvSeriesFiles()
     }
 
-    async function waitForAdultSeriesPreparation(id) {
+    async function waitForMyTvSeriesPreparation(id) {
       while (true) {
         const state = await api('/api/uploads/' + id)
         if (state.complete) return state
-        if (state.status === 'error') throw new Error(state.error || 'MabelTV could not add this episode')
+        if (state.status === 'error') throw new Error(state.error || `${tvName()} could not add this episode`)
         const messages = {
           validating: 'Checking the episode…', queued: 'Waiting in the upload queue…',
           publishing: 'Adding the episode to its series…', finalising: 'Updating the series library…',
         }
-        $('#adultSeriesUploadText').textContent = messages[state.status] || 'Preparing the episode…'
+        $('#myTvSeriesUploadText').textContent = messages[state.status] || 'Preparing the episode…'
         await new Promise(resolve => setTimeout(resolve, 1500))
       }
     }
 
-    async function sendAdultSeriesFile(file, created, position, total, season) {
+    async function sendMyTvSeriesFile(file, created, position, total, season) {
       const prefix = total > 1 ? `Episode ${position} of ${total}: ` : ''
-      $('#adultSeriesProgress').max = file.size
-      $('#adultSeriesProgress').value = 0
+      $('#myTvSeriesProgress').max = file.size
+      $('#myTvSeriesProgress').value = 0
       let result = created
       if (!result.complete) result = await waitForUploadTurn(created.id, file.name)
       let offset = Number(result.offset) || 0
       while (offset < file.size) {
         const part = file.slice(offset, Math.min(offset + 8388608, file.size))
         const finalChunk = offset + part.size >= file.size
-        $('#adultSeriesUploadText').textContent = finalChunk
+        $('#myTvSeriesUploadText').textContent = finalChunk
           ? `${prefix}finishing ${file.name}…`
           : `${prefix}${file.name} · ${(offset / 1048576).toFixed(0)} MB of ${(file.size / 1048576).toFixed(0)} MB`
         result = await resilientUploadChunk(created.id, offset, part, finalChunk)
         offset = Number(result.offset) || offset
-        $('#adultSeriesProgress').value = offset
+        $('#myTvSeriesProgress').value = offset
       }
-      if (!result.complete) result = await waitForAdultSeriesPreparation(created.id)
+      if (!result.complete) result = await waitForMyTvSeriesPreparation(created.id)
       return result
     }
 
-    $('#adultSeriesUploadForm').onsubmit = async event => {
+    $('#myTvSeriesUploadForm').onsubmit = async event => {
       event.preventDefault()
-      const files = selectedAdultSeriesFiles.slice()
-      const target = adultSeriesUploadTarget
+      const files = selectedMyTvSeriesFiles.slice()
+      const target = myTvSeriesUploadTarget
       const season = Number(target?.season)
       if (!files.length || !target || !Number.isInteger(season) || season < 1 || season > 99) return
       const failures = []
-      $('#adultSeriesUploadButton').disabled = true
-      $('#adultSeriesFile').disabled = true
-      $('#adultSeriesUploadState').classList.remove('hidden')
-      const queued = await Promise.all(files.map(async file => ({ file, created: await api('/api/adult/series/uploads', {
+      $('#myTvSeriesUploadButton').disabled = true
+      $('#myTvSeriesFile').disabled = true
+      $('#myTvSeriesUploadState').classList.remove('hidden')
+      const queued = await Promise.all(files.map(async file => ({ file, created: await api('/api/my-tv/series/uploads', {
         method: 'POST', body: JSON.stringify({ series: target.id, season, file_name: file.name,
           size: file.size, source_id: uploadSourceId }),
       }) })))
       await Promise.all(queued.map(async ({ file, created }, index) => {
-        try { await sendAdultSeriesFile(file, created, index + 1, queued.length, season) }
+        try { await sendMyTvSeriesFile(file, created, index + 1, queued.length, season) }
         catch (error) { failures.push({ file, message: error.message }) }
       }))
-      selectedAdultSeriesFiles = failures.map(failure => failure.file)
-      renderSelectedAdultSeriesFiles()
-      $('#adultSeriesProgress').value = 0
-      $('#adultSeriesUploadState').classList.toggle('hidden', failures.length === 0)
+      selectedMyTvSeriesFiles = failures.map(failure => failure.file)
+      renderSelectedMyTvSeriesFiles()
+      $('#myTvSeriesProgress').value = 0
+      $('#myTvSeriesUploadState').classList.toggle('hidden', failures.length === 0)
       await load().catch(() => {})
       if (failures.length) {
-        $('#adultSeriesUploadText').textContent = 'Interrupted episodes remain selected so you can resume them.'
+        $('#myTvSeriesUploadText').textContent = 'Interrupted episodes remain selected so you can resume them.'
         notice(`${files.length - failures.length} of ${files.length} episodes were added.\n${failures.map(failure => `${failure.file.name}: ${failure.message}`).join('\n')}`, true)
       } else {
-        closeLibrarySheet($('#adultSeriesUploadSheet'), false)
-        adultSeriesUploadTarget = null
+        closeLibrarySheet($('#myTvSeriesUploadSheet'), false)
+        myTvSeriesUploadTarget = null
         target.successReturn?.()
       }
-      $('#adultSeriesFile').disabled = false
-      $('#adultSeriesUploadButton').disabled = selectedAdultSeriesFiles.length === 0
+      $('#myTvSeriesFile').disabled = false
+      $('#myTvSeriesUploadButton').disabled = selectedMyTvSeriesFiles.length === 0
     }
 
     async function systemAction(action, waitingText) {
@@ -503,8 +503,8 @@ let managementBusy = false
     $('#rebootPi').onclick = () => { if (confirm(`Restart the Raspberry Pi now? ${tvName()} will be unavailable for about a minute.`)) systemAction('reboot', 'Restarting the Raspberry Pi…') }
     $('#poweroffPi').onclick = () => { if (confirm('Shut down the Raspberry Pi now? You will need to switch its power back on afterwards.')) systemAction('poweroff', 'Shutting down safely…') }
     const liveCommandFeedback = {
-      'return-to-mabeltv': 'Returning to MabelTV', 'open-channel-menu': 'Opening channel menu',
-      'open-parent-menu': 'Opening menu', 'enter-adult-mode': 'Opening Adult TV',
+      'return-to-mabeltv': `Returning to ${tvName()}`, 'open-channel-menu': 'Opening channel menu',
+      'open-parent-menu': 'Opening menu', 'enter-my-tv-mode': 'Opening My TV',
       'close-overlay': 'Back', 'channel-up': 'Channel up', 'channel-down': 'Channel down',
       'volume-up': 'Volume up', 'volume-down': 'Volume down', 'toggle-mute': 'Sound changed',
       'navigate-up': 'Up', 'navigate-down': 'Down', 'navigate-left': 'Left',
@@ -513,8 +513,8 @@ let managementBusy = false
       'toggle-pause': 'Playback changed', 'toggle-subtitles': 'Subtitles changed',
       'toggle-widescreen-mode': 'Widescreen mode changed',
       'toggle-remote-lock': 'Remote lock changed', 'turn-on': 'Turning TV on',
-      'turn-off': 'Turning TV off', 'turn-on-mabel-only': 'Turning MabelTV on',
-      'turn-off-mabel-only': 'Putting MabelTV in standby', 'toggle-power': 'Power command sent'
+      'turn-off': 'Turning TV off', 'turn-on-mabel-only': `Turning ${tvName()} on`,
+      'turn-off-mabel-only': `Putting ${tvName()} in standby`, 'toggle-power': 'Power command sent'
     }
 
     async function sendLiveCommand(command, button = null, extra = {}) {
@@ -621,12 +621,12 @@ let managementBusy = false
       closeButton: [$('#closeRemotePower'), $('#cancelRemotePower')],
       close: () => portalSheets.dismiss($('#remotePowerSheet')),
     })
-    const enterAdultMode = $('#enterAdultMode')
-    if (enterAdultMode) enterAdultMode.onclick = async () => {
-      const button = enterAdultMode
+    const enterMyTvMode = $('#enterMyTvMode')
+    if (enterMyTvMode) enterMyTvMode.onclick = async () => {
+      const button = enterMyTvMode
       button.disabled = true
       try {
-        await api('/api/live/control', { method: 'POST', body: JSON.stringify({ command: 'enter-adult-mode' }) })
+        await api('/api/live/control', { method: 'POST', body: JSON.stringify({ command: 'enter-my-tv-mode' }) })
       } catch (error) { notice(error.message, true) }
       finally { setTimeout(() => { button.disabled = false }, 450) }
     }

@@ -1,7 +1,7 @@
 @media (max-width: 1120px) {
   body.portal-v2 .watch-poster-grid,
   body.portal-v2 .channel-page-programmes.is-film-grid,
-  body.portal-v2 .adult-film-list { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  body.portal-v2 .my-tv-film-list { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   body.portal-v2 .library-channel-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   body.portal-v2 .live-page { grid-template-columns: minmax(300px, .7fr) minmax(0, 1.3fr); }
   body.portal-v2 .watch-channel-rail.watch-film-channel-rail {
@@ -11,16 +11,16 @@
 
 @media (max-width: 860px) {
   html:has(body.portal-v2 #view-insights.active),
-  html:has(body.portal-v2 #view-adult-home.active #adultInsightsDashboard:not(.hidden)),
+  html:has(body.portal-v2 #view-my-tv-home.active #myTvInsightsDashboard:not(.hidden)),
   body.portal-v2:has(#view-insights.active),
-  body.portal-v2:has(#view-adult-home.active #adultInsightsDashboard:not(.hidden)) {
+  body.portal-v2:has(#view-my-tv-home.active #myTvInsightsDashboard:not(.hidden)) {
     scrollbar-width: none;
   }
 
   html:has(body.portal-v2 #view-insights.active)::-webkit-scrollbar,
-  html:has(body.portal-v2 #view-adult-home.active #adultInsightsDashboard:not(.hidden))::-webkit-scrollbar,
+  html:has(body.portal-v2 #view-my-tv-home.active #myTvInsightsDashboard:not(.hidden))::-webkit-scrollbar,
   body.portal-v2:has(#view-insights.active)::-webkit-scrollbar,
-  body.portal-v2:has(#view-adult-home.active #adultInsightsDashboard:not(.hidden))::-webkit-scrollbar {
+  body.portal-v2:has(#view-my-tv-home.active #myTvInsightsDashboard:not(.hidden))::-webkit-scrollbar {
     display: none;
   }
 
@@ -153,7 +153,7 @@
 
   body.portal-v2 .watch-poster-grid,
   body.portal-v2 .channel-page-programmes.is-film-grid,
-  body.portal-v2 .adult-film-list {
+  body.portal-v2 .my-tv-film-list {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
@@ -174,7 +174,7 @@
     padding-right: 0;
   }
 
-  body.portal-v2 .adult-discovery,
+  body.portal-v2 .my-tv-discovery,
   body.portal-v2 .watch-discovery {
     grid-template-columns: minmax(0, 1fr) 180px;
   }
@@ -219,38 +219,38 @@
   }
 
   body.portal-v2 .watch-search input,
-  body.portal-v2 .adult-search input,
+  body.portal-v2 .my-tv-search input,
   body.portal-v2 .channel-page-search input {
     font-size: 16px;
   }
 
   body.portal-v2 .watch-discovery,
-  body.portal-v2 .adult-discovery {
+  body.portal-v2 .my-tv-discovery {
     grid-template-columns: 1fr;
   }
 
   body.portal-v2 .watch-tool,
-  body.portal-v2 .adult-tool {
+  body.portal-v2 .my-tv-tool {
     min-height: 44px;
   }
 
   body.portal-v2 .watch-poster-grid,
   body.portal-v2 .channel-page-programmes.is-film-grid,
-  body.portal-v2 .adult-film-list {
+  body.portal-v2 .my-tv-film-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 22px 11px;
   }
 
-  body.portal-v2 #remoteAdult > .watch-poster-grid {
+  body.portal-v2 #remoteMyTv > .watch-poster-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 14px 7px;
   }
 
-  body.portal-v2 #remoteAdult > .watch-poster-grid .watch-card-copy strong {
+  body.portal-v2 #remoteMyTv > .watch-poster-grid .watch-card-copy strong {
     font-size: 9px;
   }
 
-  body.portal-v2 #remoteAdult > .watch-poster-grid .watch-card-copy small {
+  body.portal-v2 #remoteMyTv > .watch-poster-grid .watch-card-copy small {
     font-size: 8px;
   }
 
@@ -258,28 +258,28 @@
     grid-auto-columns: minmax(184px, 52%);
   }
 
-  body.portal-v2 .adult-series-rail {
+  body.portal-v2 .my-tv-series-rail {
     grid-auto-columns: minmax(250px, 82%);
   }
 
-  body.portal-v2 .adult-series-tools { grid-template-columns: 1fr; }
-  body.portal-v2 .adult-series-sheet-head {
+  body.portal-v2 .my-tv-series-tools { grid-template-columns: 1fr; }
+  body.portal-v2 .my-tv-series-sheet-head {
     grid-template-columns: 62px minmax(0, 1fr);
     gap: 10px;
     padding: 14px 66px 14px 12px;
   }
-  body.portal-v2 .adult-series-sheet-poster,
-  body.portal-v2 .adult-series-sheet-art { width: 62px; }
-  body.portal-v2 .adult-series-sheet-head h2 { font-size: 23px; }
-  body.portal-v2 .adult-series-seasons { grid-template-columns: 1fr; }
-  body.portal-v2 .adult-season-card { min-height: 142px; }
-  body.portal-v2 .adult-season-sheet-head {
+  body.portal-v2 .my-tv-series-sheet-poster,
+  body.portal-v2 .my-tv-series-sheet-art { width: 62px; }
+  body.portal-v2 .my-tv-series-sheet-head h2 { font-size: 23px; }
+  body.portal-v2 .my-tv-series-seasons { grid-template-columns: 1fr; }
+  body.portal-v2 .my-tv-season-card { min-height: 142px; }
+  body.portal-v2 .my-tv-season-sheet-head {
     grid-template-columns: 70px minmax(0, 1fr);
     gap: 8px;
     padding: 13px 66px 13px 12px;
   }
-  body.portal-v2 .adult-season-sheet-art { width: 70px; }
-  body.portal-v2 .adult-season-sheet-head h2 { font-size: 22px; }
+  body.portal-v2 .my-tv-season-sheet-art { width: 70px; }
+  body.portal-v2 .my-tv-season-sheet-head h2 { font-size: 22px; }
 
   body.portal-v2 .home-poster-rail {
     grid-auto-columns: calc((100% - 22px) / 3);
@@ -370,7 +370,7 @@
     aspect-ratio: 16 / 8;
   }
 
-  body.portal-v2 .adult-total strong { font-size: 23px; }
+  body.portal-v2 .my-tv-total strong { font-size: 23px; }
 
   body.portal-v2 .usb-stage-actions > span { display: none; }
   body.portal-v2 .usb-drive-list { grid-template-columns: 1fr; }
@@ -535,7 +535,7 @@
     width: 42px;
   }
   body.portal-v2 .channel-page-actions button { min-height: 44px; }
-  body.portal-v2 .adult-series-tools { grid-template-columns: minmax(0, 1fr); }
+  body.portal-v2 .my-tv-series-tools { grid-template-columns: minmax(0, 1fr); }
   body.portal-v2 .channel-page-library { padding-top: 26px; }
   body.portal-v2 .channel-page.is-film-channel .channel-page-library { padding-top: 14px; }
   body.portal-v2 .channel-page-library-head { align-items: flex-start; }

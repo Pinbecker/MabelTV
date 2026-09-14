@@ -119,26 +119,26 @@ void TvController::setChannelFilmPlaybackState(int channelNumber,
     saveState();
 }
 
-double TvController::adultPlaybackPosition(const QString &libraryId) const
+double TvController::myTvPlaybackPosition(const QString &libraryId) const
 {
-    return m_adultPlaybackPositions.value(libraryId, 0.0);
+    return m_myTvPlaybackPositions.value(libraryId, 0.0);
 }
 
-double TvController::adultPlaybackDuration(const QString &libraryId) const
+double TvController::myTvPlaybackDuration(const QString &libraryId) const
 {
-    return m_adultPlaybackDurations.value(libraryId, 0.0);
+    return m_myTvPlaybackDurations.value(libraryId, 0.0);
 }
 
-double TvController::adultPlaybackProgress(const QString &libraryId) const
+double TvController::myTvPlaybackProgress(const QString &libraryId) const
 {
-    const double duration = adultPlaybackDuration(libraryId);
+    const double duration = myTvPlaybackDuration(libraryId);
     if (duration < 10.0) {
         return 0.0;
     }
-    return std::clamp(adultPlaybackPosition(libraryId) / duration, 0.0, 1.0);
+    return std::clamp(myTvPlaybackPosition(libraryId) / duration, 0.0, 1.0);
 }
 
-void TvController::setAdultPlaybackPosition(const QString &libraryId,
+void TvController::setMyTvPlaybackPosition(const QString &libraryId,
                                             double positionSeconds)
 {
     const QString key = libraryId.trimmed();
@@ -147,23 +147,23 @@ void TvController::setAdultPlaybackPosition(const QString &libraryId,
     }
     const double position = std::max(0.0, positionSeconds);
     if (position < 2.0) {
-        if (m_adultPlaybackPositions.remove(key) > 0) {
-            m_adultPlaybackUpdatedUtcMs.remove(key);
+        if (m_myTvPlaybackPositions.remove(key) > 0) {
+            m_myTvPlaybackUpdatedUtcMs.remove(key);
             saveState();
-            emit adultPlaybackStateChanged();
+            emit myTvPlaybackStateChanged();
         }
         return;
     }
-    if (std::abs(m_adultPlaybackPositions.value(key, -1.0) - position) < 0.5) {
+    if (std::abs(m_myTvPlaybackPositions.value(key, -1.0) - position) < 0.5) {
         return;
     }
-    m_adultPlaybackPositions.insert(key, position);
-    m_adultPlaybackUpdatedUtcMs.insert(key, QDateTime::currentMSecsSinceEpoch());
+    m_myTvPlaybackPositions.insert(key, position);
+    m_myTvPlaybackUpdatedUtcMs.insert(key, QDateTime::currentMSecsSinceEpoch());
     saveState();
-    emit adultPlaybackStateChanged();
+    emit myTvPlaybackStateChanged();
 }
 
-void TvController::setAdultPlaybackDuration(const QString &libraryId,
+void TvController::setMyTvPlaybackDuration(const QString &libraryId,
                                             double durationSeconds)
 {
     const QString key = libraryId.trimmed();
@@ -171,12 +171,12 @@ void TvController::setAdultPlaybackDuration(const QString &libraryId,
         return;
     }
     const double duration = std::max(10.0, durationSeconds);
-    if (std::abs(m_adultPlaybackDurations.value(key, -1.0) - duration) < 1.0) {
+    if (std::abs(m_myTvPlaybackDurations.value(key, -1.0) - duration) < 1.0) {
         return;
     }
-    m_adultPlaybackDurations.insert(key, duration);
+    m_myTvPlaybackDurations.insert(key, duration);
     saveState();
-    emit adultPlaybackStateChanged();
+    emit myTvPlaybackStateChanged();
 }
 
 void TvController::toggleChannelEnabled(int channelNumber)
@@ -281,7 +281,7 @@ void TvController::requestParentCommand(const QString &command)
     if (m_parentAccessState != ParentOpen) {
         return;
     }
-    if (command == QStringLiteral("adult") || command == QStringLiteral("exit")
+    if (command == QStringLiteral("my_tv") || command == QStringLiteral("exit")
         || command == QStringLiteral("restart") || command == QStringLiteral("shutdown")) {
         qInfo().noquote() << "Parent command requested:" << command;
         saveState();

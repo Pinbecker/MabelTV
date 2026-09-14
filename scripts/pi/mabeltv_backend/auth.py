@@ -63,7 +63,7 @@ class AuthenticationMixin:
             child_name = child_name[:-2].rstrip()
         if not 1 <= len(child_name) <= 40 or any(ord(char) < 32 for char in child_name):
             raise ValueError("Enter the child's name, up to 40 characters")
-        return child_name, f"{child_name}TV"
+        return child_name, f"{child_name} TV"
 
     def tv_identity(self) -> tuple[str, str]:
         owner = self.owner()
@@ -135,9 +135,9 @@ class AuthenticationMixin:
         database = getattr(self, "state_database", None)
         revisions = database.revisions() if database is not None else {
             "library": 0,
-            "adult_viewing": 0,
+            "my_tv_viewing": 0,
             "viewing_insights": 0,
-            "adult_insights": 0,
+            "my_tv_insights": 0,
         }
         return {
             "schema_version": 1,
@@ -194,7 +194,7 @@ class AuthenticationMixin:
     def complete_setup(self, payload: dict[str, Any]) -> dict[str, Any]:
         with self.config_lock:
             if self.configured():
-                raise ValueError("Mabel TV has already been set up")
+                raise ValueError(f"{self.tv_identity()[1]} has already been set up")
             supplied_code = str(payload.get("setup_code", "")).strip()
             if not self.verify_setup_code(supplied_code):
                 raise ValueError("That setup code is not correct")
@@ -278,16 +278,19 @@ class AuthenticationMixin:
         with self.config_lock:
             if not self.configured():
                 raise ValueError("Finish first-time setup before naming this TV")
+            previous_child_name, previous_tv_name = self.tv_identity()
             self.merge_state_fields("owner", {
                 "child_name": child_name,
                 "tv_name": tv_name,
                 "tv_name_changed_at": int(time.time()),
             })
-        try:
-            self.admin_action("restart-player")
-            restarted = True
-        except ValueError:
-            restarted = False
+        restarted = False
+        if (child_name, tv_name) != (previous_child_name, previous_tv_name):
+            try:
+                self.admin_action("restart-player")
+                restarted = True
+            except ValueError:
+                pass
         return {"child_name": child_name, "tv_name": tv_name,
                 "player_restarted": restarted}
 

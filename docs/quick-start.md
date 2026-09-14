@@ -111,7 +111,7 @@ When creating or editing a channel, choose **Shows / episodes** or **Films / lon
 - `0`–`9`: channel number
 - `M`: mute; hold three seconds to lock/unlock other buttons
 
-For adult settings on the TV, hold `B` for 3.5 seconds, then press Enter three times. The browser PIN protects the dashboard; the physical adult shortcut is separate.
+For My TV settings on the TV, hold `B` for 3.5 seconds, then press Enter three times. The browser PIN protects the dashboard; the physical My TV shortcut is separate.
 
 ## If something does not look right
 

@@ -8,7 +8,7 @@ async function openPortal(page) {
   await page.evaluate(() => document.fonts?.ready)
 }
 
-test('MabelTV film More offers removal from Continue Watching', async ({ page }, testInfo) => {
+test('Mabel TV film More offers removal from Continue Watching', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One browser covers the shared menu action')
   await openPortal(page)
   await page.evaluate(() => {
@@ -34,7 +34,7 @@ test('MabelTV film More offers removal from Continue Watching', async ({ page },
   })
 })
 
-test('multi-line MabelTV film titles keep the heart beside their first line', async ({ page }, testInfo) => {
+test('multi-line Mabel TV film titles keep the heart beside their first line', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One phone covers title wrapping geometry')
   await openPortal(page)
   await page.evaluate(() => {
@@ -76,33 +76,33 @@ test('continued episodes offer View Series and direct progress removal', async (
       id: 'ludwig', title: 'Ludwig', metadata: { tmdb_id: 243360 },
       episodes: [episode], season_count: 1, episode_count: 1, watched_count: 0,
     }
-    library.adult_series = [series]
+    library.my_tv_series = [series]
     window.__viewedSeries = ''
     window.__clearRequests = []
-    window.openAdultSeriesViewing = value => { window.__viewedSeries = value.id }
+    window.openMyTvSeriesViewing = value => { window.__viewedSeries = value.id }
     window.api = async (path, options = {}) => {
       if (path !== '/api/remote/clear-position') throw new Error(`Unexpected request: ${path}`)
       window.__clearRequests.push(JSON.parse(options.body))
-      return { ok: true, kind: 'adult-series' }
+      return { ok: true, kind: 'my-tv-series' }
     }
-    openAdultEpisodeSheet(series, episode)
+    openMyTvEpisodeSheet(series, episode)
   })
 
-  await expect(page.locator('#adultEpisodeViewSeries')).toBeVisible()
-  await expect(page.locator('#adultEpisodeWatched')).toHaveCount(0)
-  await page.locator('#adultEpisodeViewSeries').click()
+  await expect(page.locator('#myTvEpisodeViewSeries')).toBeVisible()
+  await expect(page.locator('#myTvEpisodeWatched')).toHaveCount(0)
+  await page.locator('#myTvEpisodeViewSeries').click()
   await expect.poll(() => page.evaluate(() => window.__viewedSeries)).toBe('ludwig')
-  await page.evaluate(() => openAdultEpisodeSheet(library.adult_series[0],
-    library.adult_series[0].episodes[0]))
-  await expect(page.locator('#adultEpisodeRemoveProgress')).toBeVisible()
-  await page.locator('#adultEpisodeRemoveProgress').click()
+  await page.evaluate(() => openMyTvEpisodeSheet(library.my_tv_series[0],
+    library.my_tv_series[0].episodes[0]))
+  await expect(page.locator('#myTvEpisodeRemoveProgress')).toBeVisible()
+  await page.locator('#myTvEpisodeRemoveProgress').click()
   await expect.poll(() => page.evaluate(() => window.__clearRequests.length)).toBe(1)
   expect(await page.evaluate(() => ({
     request: window.__clearRequests[0],
-    position: library.adult_series[0].episodes[0].remote_position,
-    episodeOpen: document.querySelector('#adultEpisodeSheet').open,
+    position: library.my_tv_series[0].episodes[0].remote_position,
+    episodeOpen: document.querySelector('#myTvEpisodeSheet').open,
   }))).toEqual({
-    request: { kind: 'adult-series', series: 'ludwig',
+    request: { kind: 'my-tv-series', series: 'ludwig',
       file: 'Season 1/Ludwig S01E03.mp4', position: 420 },
     position: 0,
     episodeOpen: false,

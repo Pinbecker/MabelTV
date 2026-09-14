@@ -4,7 +4,7 @@
       overview: { view: 'overview', route: '#home', state: { primaryView: 'overview' } },
       watch: { view: 'watch', route: '#watch', state: { primaryView: 'watch', watchDomain: 'mabel' } },
       live: { view: 'live', route: '#live', state: { primaryView: 'live' } },
-      'adult-home': { view: 'adult-home', route: '#adult-tv', state: { primaryView: 'adult-home', adultHome: true } },
+      'my-tv-home': { view: 'my-tv-home', route: '#my-tv', state: { primaryView: 'my-tv-home', myTvHome: true } },
       system: { view: 'system', route: '#system', state: { primaryView: 'system', settings: true } },
     }
     const primarySectionLocations = new Map()
@@ -12,8 +12,8 @@
     let portalAppCacheStartup = Promise.resolve(false)
 
     function offlineSectionName(name, activeNavigation) {
-      if (activeNavigation === 'adult-home') return 'Adult TV'
-      if (activeNavigation === 'watch') return 'MabelTV'
+      if (activeNavigation === 'my-tv-home') return 'My TV'
+      if (activeNavigation === 'watch') return tvName()
       if (activeNavigation === 'live') return 'Remote'
       if (activeNavigation === 'system') return 'Settings'
       if (name === 'overview') return 'Home'
@@ -35,10 +35,10 @@
       $('#offlineUnavailableMessage').textContent = disconnected
         ? `Reconnect this iPhone to the network that can reach ${tvName()}, then try again.`
         : `${tvName()} may be starting up or this iPhone may be on another network. Your saved Downloads still work here.`
-      const adult = activeNavigation === 'adult-home'
-      $('#offlineOpenDownloads').dataset.domain = adult ? 'adult' : 'mabel'
-      $('#offlineOpenDownloads span').textContent = adult
-        ? 'Open Adult Downloads' : 'Open Downloads'
+      const my_tv = activeNavigation === 'my-tv-home'
+      $('#offlineOpenDownloads').dataset.domain = my_tv ? 'my_tv' : 'mabel'
+      $('#offlineOpenDownloads span').textContent = my_tv
+        ? 'Open My TV Downloads' : 'Open Downloads'
       return true
     }
 
@@ -139,8 +139,8 @@
         })
         return
       }
-      if (requested === 'mabel-downloads' || requested === 'adult-downloads') {
-        watchDomain = requested === 'adult-downloads' ? 'adult' : 'mabel'
+      if (requested === 'mabel-downloads' || requested === 'my-tv-downloads') {
+        watchDomain = requested === 'my-tv-downloads' ? 'my_tv' : 'mabel'
         downloadDomain = watchDomain
         remoteKind = 'downloads'
         renderRemoteViewing()
@@ -152,8 +152,8 @@
         remoteKind = 'channel'
       }
       const view = requested === 'home' ? 'overview'
-        : requested === 'adult-tv' ? 'adult-home' : requested
-      const allowed = new Set(['overview', 'live', 'lg-tv', 'channels', 'adult', 'watch', 'adult-home', 'adult-viewing', 'adult-explore', 'adult-ratings', 'adult-filmography', 'usb', 'system', 'appearance', 'insights'])
+        : requested === 'my-tv' ? 'my-tv-home' : requested
+      const allowed = new Set(['overview', 'live', 'lg-tv', 'channels', 'watch', 'my-tv-home', 'my-tv-viewing', 'my-tv-explore', 'my-tv-ratings', 'my-tv-filmography', 'usb', 'system', 'appearance', 'insights'])
       if (allowed.has(view)) {
         if (view === 'channels') {
           watchDomain = 'mabel'
@@ -161,11 +161,6 @@
           renderRemoteViewing()
           history.replaceState({ primaryView: 'watch' }, '', '#watch')
           openView('watch')
-          return
-        }
-        if (view === 'adult') {
-          history.replaceState({ primaryView: 'adult-home' }, '', '#adult-tv')
-          openView('adult-home')
           return
         }
         if (view === 'watch' && !offlineMode) {
@@ -189,23 +184,23 @@
     }
 
     function navigateDomainRoute(domain, section, { replace = false, resetScroll = true } = {}) {
-      const adult = domain === 'adult'
-      let route = adult ? 'adult-tv' : 'watch'
-      let view = adult ? 'adult-home' : 'watch'
+      const my_tv = domain === 'my_tv'
+      let route = my_tv ? 'my-tv' : 'watch'
+      let view = my_tv ? 'my-tv-home' : 'watch'
       if (section === 'insights') {
-        route = adult ? 'insights' : 'insights/mabeltv'
+        route = my_tv ? 'insights' : 'insights/mabeltv'
         const method = replace ? 'replaceState' : 'pushState'
-        history[method]({ insights: true, myInsightsMode: adult ? 'adult' : 'mabel' }, '', `#${route}`)
+        history[method]({ insights: true, myInsightsMode: my_tv ? 'my_tv' : 'mabel' }, '', `#${route}`)
         openInsightsRoute(route, null, { reset: resetScroll })
         return
       }
       if (section === 'downloads') {
-        watchDomain = adult ? 'adult' : 'mabel'
+        watchDomain = my_tv ? 'my_tv' : 'mabel'
         downloadDomain = watchDomain
         remoteKind = 'downloads'
-        route = adult ? 'adult-downloads' : 'mabel-downloads'
+        route = my_tv ? 'my-tv-downloads' : 'mabel-downloads'
         view = 'watch'
-      } else if (!adult) {
+      } else if (!my_tv) {
         watchDomain = 'mabel'
         remoteKind = 'channel'
       }
@@ -435,28 +430,28 @@
       // A status belongs to the action that created it, not every page the
       // parent subsequently visits. Clear it whenever navigation begins.
       notice('')
-      const leavingExplore = $('#view-adult-explore')?.classList.contains('active')
-        && name !== 'adult-explore'
-      if (leavingExplore && typeof endAdultExploreVisit === 'function') endAdultExploreVisit()
-      const resetExplore = name === 'adult-explore'
-        && typeof beginAdultExploreVisit === 'function' && beginAdultExploreVisit()
+      const leavingExplore = $('#view-my-tv-explore')?.classList.contains('active')
+        && name !== 'my-tv-explore'
+      if (leavingExplore && typeof endMyTvExploreVisit === 'function') endMyTvExploreVisit()
+      const resetExplore = name === 'my-tv-explore'
+        && typeof beginMyTvExploreVisit === 'function' && beginMyTvExploreVisit()
       rememberPortalView()
       const channelFromWatch = name === 'channels' && selectedManageChannel !== null && channelWorkspaceReturnToWatch
-      const consolidatedWatchView = name === 'channels' || name === 'adult'
-      const adultNavigation = name === 'adult-home' || name === 'adult-viewing'
-        || name === 'adult-explore' || name === 'adult-ratings'
-        || name === 'adult-filmography'
-        || (name === 'insights' && myInsightsMode === 'adult')
-        || (name === 'watch' && watchDomain === 'adult')
-      const activeNavigation = adultNavigation ? 'adult-home'
+      const consolidatedWatchView = name === 'channels'
+      const myTvNavigation = name === 'my-tv-home' || name === 'my-tv-viewing'
+        || name === 'my-tv-explore' || name === 'my-tv-ratings'
+        || name === 'my-tv-filmography'
+        || (name === 'insights' && myInsightsMode === 'my_tv')
+        || (name === 'watch' && watchDomain === 'my_tv')
+      const activeNavigation = myTvNavigation ? 'my-tv-home'
         : channelFromWatch || consolidatedWatchView
         || (name === 'insights' && myInsightsMode === 'mabel') ? 'watch'
         : name === 'lg-tv' ? 'live'
           : (name === 'usb' || name === 'activity' || name === 'appearance') ? 'system' : name
       rememberPrimarySectionLocation(name, activeNavigation)
       $$('.view').forEach(view => view.classList.toggle('active', view.id === `view-${name}`))
-      document.body.classList.toggle('watch-mode', name === 'watch' || name === 'adult-home' || name === 'adult-viewing'
-        || name === 'adult-explore' || name === 'adult-ratings' || name === 'adult-filmography'
+      document.body.classList.toggle('watch-mode', name === 'watch' || name === 'my-tv-home' || name === 'my-tv-viewing'
+        || name === 'my-tv-explore' || name === 'my-tv-ratings' || name === 'my-tv-filmography'
         || channelFromWatch || consolidatedWatchView)
       document.body.classList.toggle('tv-remote-mode', name === 'live' || name === 'lg-tv')
       document.body.classList.toggle('lg-tv-mode', name === 'lg-tv')
@@ -500,15 +495,15 @@
       if (name === 'usb') refreshUsb().catch(error => notice(error.message, true))
       if (name === 'watch' && remoteKind === 'downloads') renderDownloads().catch(showError)
       if (name === 'insights') loadMyInsights().catch(() => {})
-      if (name === 'adult-home') loadAdultHome().catch(showError)
+      if (name === 'my-tv-home') loadMyTvHome().catch(showError)
       if (name === 'activity') loadActivity().catch(error => notice(error.message, true))
-      if (name === 'adult-viewing') loadAdultViewing().catch(showError)
-      if (name === 'adult-explore') {
-        if (resetExplore || adultExplorePage === 0) loadAdultExplore({ reset: true }).catch(showError)
-        else renderAdultExploreGrid()
+      if (name === 'my-tv-viewing') loadMyTvViewing().catch(showError)
+      if (name === 'my-tv-explore') {
+        if (resetExplore || myTvExplorePage === 0) loadMyTvExplore({ reset: true }).catch(showError)
+        else renderMyTvExploreGrid()
       }
-      if (name === 'adult-ratings') loadAdultRatings().catch(showError)
-      if (name === 'adult-filmography') renderAdultFilmography()
+      if (name === 'my-tv-ratings') loadMyTvRatings().catch(showError)
+      if (name === 'my-tv-filmography') renderMyTvFilmography()
       const savedPosition = portalViewPositions.get(`view-${name}`)
       if (!options.restoreScroll && !options.resetScroll && savedPosition) settlePortalPosition(savedPosition)
     }

@@ -16,17 +16,17 @@ test('provider badges share one solid style, show two preferred services, and ob
         { provider_id: 8, name: 'Netflix', type: 'flatrate' },
       ],
     }
-    adultProviderSummaries[title.key] = {
+    myTvProviderSummaries[title.key] = {
       providers: title.providers, sources: [], checked: Date.now(),
     }
     const host = document.createElement('div')
-    const explore = adultExploreCard({ ...title })
-    adultViewingData = { items: [{ ...title, watchlisted: true }] }
-    adultViewingTab = 'watchlist'
-    const viewing = createAdultViewingRow(adultViewingData.items[0], 0, 1)
-    host.append(explore, adultDiscoveryCard({ ...title }), viewing)
+    const explore = myTvExploreCard({ ...title })
+    myTvViewingData = { items: [{ ...title, watchlisted: true }] }
+    myTvViewingTab = 'watchlist'
+    const viewing = createMyTvViewingRow(myTvViewingData.items[0], 0, 1)
+    host.append(explore, myTvDiscoveryCard({ ...title }), viewing)
     document.body.append(host)
-    const strips = [...host.querySelectorAll('.adult-provider-strip')]
+    const strips = [...host.querySelectorAll('.my-tv-provider-strip')]
     const shapes = strips.flatMap(strip => [...strip.children].map(child => {
       const box = child.getBoundingClientRect()
       return { width: box.width, height: box.height,
@@ -35,7 +35,7 @@ test('provider badges share one solid style, show two preferred services, and ob
     }))
     const primeSources = strips.map(strip => strip.querySelector('img[title="Prime Video"]')?.src)
     const lowerPriorityHost = document.createElement('span')
-    renderAdultProviderBadges(lowerPriorityHost, {
+    renderMyTvProviderBadges(lowerPriorityHost, {
       key: 'movie:8121', media_type: 'movie', tmdb_id: 8121,
       title: 'Priority fixture', providers: [
         { provider_id: 39, name: 'NOW', type: 'flatrate' },
@@ -46,12 +46,12 @@ test('provider badges share one solid style, show two preferred services, and ob
     })
     const visible = {
       strips: strips.length,
-      images: host.querySelectorAll('.adult-provider-icon').length,
+      images: host.querySelectorAll('.my-tv-provider-icon').length,
       titles: strips.map(strip => [...strip.querySelectorAll('img')].map(image => image.title)),
       shapes, primeSources,
-      priorityTitles: [...lowerPriorityHost.querySelectorAll('.adult-provider-strip img')]
+      priorityTitles: [...lowerPriorityHost.querySelectorAll('.my-tv-provider-strip img')]
         .map(image => image.title),
-      captions: [...host.querySelectorAll('.adult-explore-open-copy, .watch-card-copy, .adult-viewing-copy')]
+      captions: [...host.querySelectorAll('.my-tv-explore-open-copy, .watch-card-copy, .my-tv-viewing-copy')]
         .map(copy => {
           const titleNode = copy.querySelector('strong')
           const metaNode = copy.querySelector('small, span')
@@ -67,14 +67,14 @@ test('provider badges share one solid style, show two preferred services, and ob
           }
         }),
     }
-    library.adult_settings.provider_badges_enabled = false
-    renderAdultProviderBadgesSetting()
-    refreshAdultProviderBadges()
-    const hidden = host.querySelectorAll('.adult-provider-strip').length
-    library.adult_settings.provider_badges_enabled = true
-    renderAdultProviderBadgesSetting()
-    refreshAdultProviderBadges()
-    return { visible, hidden, restored: host.querySelectorAll('.adult-provider-strip').length }
+    library.my_tv_settings.provider_badges_enabled = false
+    renderMyTvProviderBadgesSetting()
+    refreshMyTvProviderBadges()
+    const hidden = host.querySelectorAll('.my-tv-provider-strip').length
+    library.my_tv_settings.provider_badges_enabled = true
+    renderMyTvProviderBadgesSetting()
+    refreshMyTvProviderBadges()
+    return { visible, hidden, restored: host.querySelectorAll('.my-tv-provider-strip').length }
   })
   expect(result.visible).toMatchObject({ strips: 3, images: 6 })
   expect(result.visible.shapes.every(shape => shape.width === 17 && shape.height === 17)).toBe(true)
@@ -89,5 +89,5 @@ test('provider badges share one solid style, show two preferred services, and ob
   expect(new Set(result.visible.primeSources).size).toBe(1)
   expect(result.hidden).toBe(0)
   expect(result.restored).toBe(3)
-  await expect(page.locator('#adultProviderBadgesToggle')).toHaveText('On')
+  await expect(page.locator('#myTvProviderBadgesToggle')).toHaveText('On')
 })

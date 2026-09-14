@@ -23,7 +23,7 @@
       <button id="watchFilmManage" type="button" class="card-settings-trigger hidden" aria-label="Film settings" title="Film settings">
         <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-cog" /></svg>
       </button>
-      <div id="watchFilmPersonalRating" class="adult-personal-rating-host"></div>
+      <div id="watchFilmPersonalRating" class="my-tv-personal-rating-host"></div>
     </div>
     <div class="watch-film-body">
       <div id="watchFilmProgress" class="watch-film-progress hidden">
@@ -37,7 +37,7 @@
       <p id="watchFilmOverview" class="watch-film-overview"></p>
       <button id="watchFilmOverviewExpand" type="button" class="watch-film-expand hidden" aria-controls="watchFilmOverview" aria-expanded="false"><span>More</span></button>
       <p id="watchFilmAvailability" class="watch-film-availability hidden"></p>
-      <div id="watchFilmViewingActions" class="adult-intent-actions hidden" data-viewing-intents="film"></div>
+      <div id="watchFilmViewingActions" class="my-tv-intent-actions hidden" data-viewing-intents="film"></div>
       <div class="watch-film-actions compact-film-playback">
         <button id="watchFilmTv" type="button" class="watch-film-play">
           <span class="watch-action-icon"
@@ -56,23 +56,23 @@
             ><small>Uses the shared film position</small></span
           ></button>
       </div>
-      <section id="watchFilmFranchise" class="adult-title-enrichment hidden" aria-labelledby="watchFilmFranchiseHeading">
+      <section id="watchFilmFranchise" class="my-tv-title-enrichment hidden" aria-labelledby="watchFilmFranchiseHeading">
         <header><h3 id="watchFilmFranchiseHeading"><span id="watchFilmFranchiseName">Film collection</span></h3></header>
-        <div id="watchFilmFranchiseRail" class="adult-franchise-rail"></div>
+        <div id="watchFilmFranchiseRail" class="my-tv-franchise-rail"></div>
       </section>
-      <section id="watchFilmCast" class="adult-title-enrichment hidden" aria-labelledby="watchFilmCastHeading">
+      <section id="watchFilmCast" class="my-tv-title-enrichment hidden" aria-labelledby="watchFilmCastHeading">
         <header><h3 id="watchFilmCastHeading" class="sr-only">Credits</h3></header>
-        <div id="watchFilmCastRail" class="adult-cast-rail adult-credit-rail"></div>
+        <div id="watchFilmCastRail" class="my-tv-cast-rail my-tv-credit-rail"></div>
       </section>
-      <section id="watchFilmProviders" class="adult-provider-section hidden" aria-labelledby="watchFilmProvidersHeading">
+      <section id="watchFilmProviders" class="my-tv-provider-section hidden" aria-labelledby="watchFilmProvidersHeading">
         <header>
           <div><p class="watch-section-kicker">Available in Great Britain</p><h3 id="watchFilmProvidersHeading">Where to watch</h3></div>
           <button id="watchFilmProviderRefresh" type="button">Refresh</button>
         </header>
-        <div id="watchFilmProviderList" class="adult-provider-list"><p>Checking services…</p></div>
-        <section id="watchFilmRentBuy" class="adult-rent-buy hidden" aria-labelledby="watchFilmRentBuyHeading">
-          <button id="watchFilmRentBuyToggle" type="button" class="adult-rent-toggle" aria-controls="watchFilmRentBuyList" aria-expanded="false"><span><strong id="watchFilmRentBuyHeading">Rent</strong><small class="adult-rent-summary"></small></span><svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-chevron-down" /></svg></button>
-          <div id="watchFilmRentBuyList" class="adult-rent-buy-list" hidden></div>
+        <div id="watchFilmProviderList" class="my-tv-provider-list"><p>Checking services…</p></div>
+        <section id="watchFilmRentBuy" class="my-tv-rent-buy hidden" aria-labelledby="watchFilmRentBuyHeading">
+          <button id="watchFilmRentBuyToggle" type="button" class="my-tv-rent-toggle" aria-controls="watchFilmRentBuyList" aria-expanded="false"><span><strong id="watchFilmRentBuyHeading">Rent</strong><small class="my-tv-rent-summary"></small></span><svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-chevron-down" /></svg></button>
+          <div id="watchFilmRentBuyList" class="my-tv-rent-buy-list" hidden></div>
         </section>
         <p class="provider-attribution">Availability by TMDB and JustWatch. Direct destinations and prices by Watchmode.</p>
       </section>
@@ -89,7 +89,7 @@
         aria-label="Close programme details"
       ></button>
     </div>
-    <p class="watch-film-eyebrow" id="watchProgrammeEyebrow">MabelTV</p>
+    <p class="watch-film-eyebrow" id="watchProgrammeEyebrow"><span data-tv-name>Your TV</span></p>
     <div class="portal-sheet-title-row">
       <h2 id="watchProgrammeTitle">Programme</h2>
       <button id="watchProgrammeFavourite" type="button" class="sheet-favourite hidden" aria-label="Add film to favourites"><svg class="icon"><use href="/portal/icons.svg#signal-heart" /></svg></button>
@@ -132,7 +132,7 @@
           ><small>Download, metadata and film management</small></span
         ></button>
     </div>
-    <div id="watchProgrammeViewingActions" class="adult-intent-actions hidden" data-viewing-intents="film"></div>
+    <div id="watchProgrammeViewingActions" class="my-tv-intent-actions hidden" data-viewing-intents="film"></div>
     <p class="watch-programme-note">
       Film progress is shared between the television and this device.
     </p>
@@ -246,7 +246,7 @@
             <use href="/portal/icons.svg#signal-arrow-right" /></svg></span
         ><span
           ><strong>Move to another channel</strong
-          ><small>Choose another MabelTV film channel</small></span
+          ><small>Choose another <span data-tv-name>Your TV</span> film channel</small></span
         >
       </button>
       <button id="watchProgrammeBin" type="button" class="watch-film-play watch-programme-danger">

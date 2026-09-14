@@ -451,10 +451,10 @@ class UsbMixin:
         series_name = ""
         series_id = ""
         season_number: int | None = None
-        adult_folder = ""
+        my_tv_folder = ""
         if target == "series":
             series_id = str(payload.get("series", ""))
-            series_root = self.adult_series_path(series_id)
+            series_root = self.my_tv_series_path(series_id)
             try:
                 season_number = int(payload.get("season"))
             except (TypeError, ValueError) as error:
@@ -462,30 +462,30 @@ class UsbMixin:
             if season_number < 1 or season_number > 99 \
                     or not (series_root / f"Season {season_number}").is_dir():
                 raise ValueError("Choose an existing series")
-            states = self.adult_series_states()
+            states = self.my_tv_series_states()
             series_state = states["series"].get(series_id, {})
             if not isinstance(series_state, dict):
-                raise ValueError("Choose an existing Adult TV series")
+                raise ValueError("Choose an existing My TV series")
             metadata = series_state.get("metadata", {})
             series_name = str(metadata.get("title", "")) \
                 if isinstance(metadata, dict) else ""
             series_name = series_name or str(series_state.get("title", "Series"))
             files = self._usb_selected_files(identity, selected)
             candidates = [(source, Path(source.name)) for source in files]
-        elif target in {"adult", "channel"}:
+        elif target in {"my_tv", "channel"}:
             files = self._usb_selected_files(identity, selected)
             candidates = [(source, Path(source.name)) for source in files]
-            if target == "adult":
+            if target == "my_tv":
                 requested_folder = str(payload.get("folder", "")).strip()
                 if requested_folder:
-                    adult_folder = self.normalise_adult_folder(requested_folder)
-                    if adult_folder not in self.adult_folders():
-                        raise ValueError("Choose an existing Adult TV collection")
+                    my_tv_folder = self.normalise_my_tv_folder(requested_folder)
+                    if my_tv_folder not in self.my_tv_folders():
+                        raise ValueError("Choose an existing My TV collection")
             else:
                 channel_number = int(payload.get("channel"))
                 self.channel(channel_number)
         else:
-            raise ValueError("Choose Adult TV or a children’s channel")
+            raise ValueError("Choose My TV or a children’s channel")
 
         volume = self._usb_volume(identity)
         root = self.usb_mount_path(identity)
@@ -496,7 +496,7 @@ class UsbMixin:
         for ordinal, (source, relative) in enumerate(candidates, start=1):
             size = source.stat().st_size
             if size <= 0 or size > MAX_UPLOAD_BYTES:
-                raise ValueError(f"{source.name} has a file size MabelTV cannot copy")
+                raise ValueError(f"{source.name} has a file size {self.tv_identity()[1]} cannot copy")
             clean_stem = SAFE_NAME.sub("", source.stem).strip(". ") or "USB video"
             clean_name = f"{clean_stem}{source.suffix.lower()}"
             specification: dict[str, Any] = {
@@ -504,17 +504,17 @@ class UsbMixin:
                 "size": size,
                 "kind": "channel",
             }
-            if target == "adult":
-                destination_root = self.adult_folder_path(adult_folder) \
-                    if adult_folder else self.adult_root
-                specification["kind"] = "adult"
-                if adult_folder:
-                    specification["folder"] = adult_folder
+            if target == "my_tv":
+                destination_root = self.my_tv_folder_path(my_tv_folder) \
+                    if my_tv_folder else self.my_tv_root
+                specification["kind"] = "my_tv"
+                if my_tv_folder:
+                    specification["folder"] = my_tv_folder
             elif target == "series":
-                destination_root = self.adult_series_root / series_id / \
+                destination_root = self.my_tv_series_root / series_id / \
                     f"Season {season_number}"
                 specification.update(
-                    kind="adult-series", series_id=series_id,
+                    kind="my-tv-series", series_id=series_id,
                     season=season_number)
             else:
                 channel = self.channel(int(channel_number))
@@ -534,11 +534,11 @@ class UsbMixin:
             total += size
 
         free = shutil.disk_usage(self.media_root).free
-        destination_label = (f"Adult TV films · {adult_folder} collection"
-                             if adult_folder else
-                             "Adult TV films · All films (no collection)") \
-            if target == "adult" else \
-            f"Adult TV series · {series_name} · Series {season_number}" \
+        destination_label = (f"My TV films · {my_tv_folder} collection"
+                             if my_tv_folder else
+                             "My TV films · All films (no collection)") \
+            if target == "my_tv" else \
+            f"My TV series · {series_name} · Series {season_number}" \
             if target == "series" else \
             str(self.channel(int(channel_number))["name"])
         plan = {
@@ -546,7 +546,7 @@ class UsbMixin:
             "source_label": str(volume.get("label") or "USB drive"),
             "target": target,
             "channel": channel_number,
-            "folder": adult_folder,
+            "folder": my_tv_folder,
             "series": series_id,
             "series_name": series_name,
             "season": season_number,

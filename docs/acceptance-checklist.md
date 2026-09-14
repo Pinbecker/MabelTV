@@ -11,7 +11,7 @@ Use this shorter checklist after every installation. The full release gate is [C
 - [ ] USB/IR control works for channel, programme, volume, mute, pause, and explicit MabelTV/TV standby and wake; Power never shuts down the Pi.
 - [ ] With the TV in standby, remote and portal Turn On wake it and select the Pi HDMI input; Turn Off puts the TV in standby while SSH stays reachable.
 - [ ] Missing/failed CEC leaves MabelTV's internal standby/wake usable and records a useful journal warning.
-- [ ] Adult shortcut opens the on-TV panel and the CRT appearance matches the accepted reference/settings.
+- [ ] My TV shortcut opens the on-TV panel and the CRT appearance matches the accepted reference/settings.
 - [ ] Both crop and fit channels render correctly at 720p.
 - [ ] HDMI audio uses the connector currently attached.
 - [ ] Ordinary MP4 upload publishes unchanged and appears without blocking playback.

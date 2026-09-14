@@ -66,7 +66,7 @@ def validate_current_settings(value: Any) -> dict[str, Any]:
     return settings
 
 
-def normalise_adult_viewing(value: Any) -> tuple[dict[str, Any], dict[str, int]]:
+def normalise_my_tv_viewing(value: Any) -> tuple[dict[str, Any], dict[str, int]]:
     """Remove legacy markers whose absence has the same relational meaning.
 
     Watchlist and Up Next membership are represented by rows in their canonical
@@ -194,9 +194,12 @@ class StateDatabase(ViewingRepositoryMixin):
         """
         if version >= 3:
             return {}
+        # Schema 1/2 predate the My TV rename. Read their immutable table name
+        # only at this compatibility boundary, before migration 9 renames it.
+        legacy_titles_table = "adult_titles"
         columns = {
             row["name"] for row in connection.execute(
-                "PRAGMA table_info(adult_titles)")
+                f"PRAGMA table_info({legacy_titles_table})")
         }
         required = {
             "watchlisted", "watchlist_updated", "up_next", "up_next_rank",
@@ -230,22 +233,22 @@ class StateDatabase(ViewingRepositoryMixin):
         """).fetchone()[0]
         if mismatches:
             raise RuntimeError(
-                "MabelTV database has conflicting legacy Adult relationship "
+                "MabelTV database has conflicting legacy My TV relationship "
                 f"state in {mismatches} title(s); refusing to discard a user choice")
         queries = {
-            "adult_viewing.watchlisted_false":
+            "my_tv_viewing.watchlisted_false":
                 "SELECT COUNT(*) FROM adult_titles WHERE watchlisted=0",
-            "adult_viewing.watchlist_updated_without_membership":
+            "my_tv_viewing.watchlist_updated_without_membership":
                 "SELECT COUNT(*) FROM adult_titles WHERE COALESCE(watchlisted,0)=0 "
                 "AND watchlist_updated IS NOT NULL",
-            "adult_viewing.up_next_false":
+            "my_tv_viewing.up_next_false":
                 "SELECT COUNT(*) FROM adult_titles WHERE up_next=0",
-            "adult_viewing.up_next_rank_without_membership":
+            "my_tv_viewing.up_next_rank_without_membership":
                 "SELECT COUNT(*) FROM adult_titles WHERE COALESCE(up_next,0)=0 "
                 "AND up_next_rank IS NOT NULL",
-            "adult_viewing.rating_zero":
+            "my_tv_viewing.rating_zero":
                 "SELECT COUNT(*) FROM adult_titles WHERE personal_rating=0",
-            "adult_viewing.rating_updated_without_rating":
+            "my_tv_viewing.rating_updated_without_rating":
                 "SELECT COUNT(*) FROM adult_titles "
                 "WHERE (personal_rating IS NULL OR personal_rating=0) "
                 "AND rating_updated IS NOT NULL",
@@ -369,14 +372,17 @@ class StateDatabase(ViewingRepositoryMixin):
         domains = {
             "channels": ("library",),
             "settings": ("settings",),
-            "owner": ("identity",),
+            # The portal library snapshot includes its public owner identity.
+            # Advance both revisions in this transaction so a renamed TV
+            # cannot be replaced by an older cached library snapshot.
+            "owner": ("identity", "library"),
             "player": ("player",),
             "channel_metadata": ("library",),
-            "adult_media": ("library",),
-            "adult_series": ("library",),
-            "adult_viewing": ("adult_viewing", "adult_insights"),
+            "my_tv_media": ("library",),
+            "my_tv_series": ("library",),
+            "my_tv_viewing": ("my_tv_viewing", "my_tv_insights"),
             "viewing": ("viewing_insights",),
-            "adult_insights": ("adult_insights",),
+            "my_tv_insights": ("my_tv_insights",),
         }
         return domains.get(kind, ())
 
@@ -391,22 +397,22 @@ class StateDatabase(ViewingRepositoryMixin):
             )
 
     def bump_revision(self, domain: str) -> None:
-        if domain not in {"library", "adult_viewing", "viewing_insights",
-                          "adult_insights", "settings", "identity", "player"}:
+        if domain not in {"library", "my_tv_viewing", "viewing_insights",
+                          "my_tv_insights", "settings", "identity", "player"}:
             raise ValueError(f"Unknown portal revision domain: {domain}")
         with self.transaction() as db:
             self._bump_revisions(db, {
                 "library": "channels",
-                "adult_viewing": "adult_viewing",
+                "my_tv_viewing": "my_tv_viewing",
                 "viewing_insights": "viewing",
-                "adult_insights": "adult_insights",
+                "my_tv_insights": "my_tv_insights",
                 "settings": "settings",
                 "identity": "owner",
                 "player": "player",
             }[domain])
 
     def revisions(self) -> dict[str, int]:
-        domains = ("library", "adult_viewing", "viewing_insights", "adult_insights",
+        domains = ("library", "my_tv_viewing", "viewing_insights", "my_tv_insights",
                    "settings", "identity", "player")
         db = self.connect()
         try:
@@ -577,7 +583,7 @@ class StateDatabase(ViewingRepositoryMixin):
         """Delete one channel and all number-keyed preferences atomically."""
         with self.transaction() as db:
             if int(db.execute("SELECT count(*) FROM channels").fetchone()[0]) <= 1:
-                raise ValueError("Mabel TV must keep at least one channel")
+                raise ValueError(f"{self.tv_identity()[1]} must keep at least one channel")
             channel = db.execute("SELECT id FROM channels WHERE number=?",
                                  (int(number),)).fetchone()
             if channel is None:
@@ -623,20 +629,20 @@ class StateDatabase(ViewingRepositoryMixin):
             if settings_changed:
                 self._bump_revisions(db, "settings")
 
-    def save_adult_titles(self, values: dict[str, dict[str, Any]]) -> None:
-        """Replace only the selected Adult title aggregates in one transaction."""
+    def save_my_tv_titles(self, values: dict[str, dict[str, Any]]) -> None:
+        """Replace only the selected My TV title aggregates in one transaction."""
         entries = []
         for key, value in values.items():
-            normalised = self._normalise_adult_title(key, value)
+            normalised = self._normalise_my_tv_title(key, value)
             if normalised is not None:
                 entries.append(normalised)
         if not entries:
             return
         with self.transaction() as db:
-            self._replace_adult_title_children(db, entries)
-            self._bump_revisions(db, "adult_viewing")
+            self._replace_my_tv_title_children(db, entries)
+            self._bump_revisions(db, "my_tv_viewing")
 
-    def save_adult_availability(self, title_key: str,
+    def save_my_tv_availability(self, title_key: str,
                                 payload: dict[str, Any]) -> None:
         with self.transaction() as db:
             db.execute(
@@ -645,7 +651,7 @@ class StateDatabase(ViewingRepositoryMixin):
                 "checked=excluded.checked,payload_json=excluded.payload_json",
                 (str(title_key), payload.get("checked"), _dump(payload)),
             )
-            self._bump_revisions(db, "adult_viewing")
+            self._bump_revisions(db, "my_tv_viewing")
 
     def save_explore_feedback(self, values: dict[str, dict[str, Any]],
                               *, retain_since: float | None = None) -> None:
@@ -673,13 +679,13 @@ class StateDatabase(ViewingRepositoryMixin):
                      max(0, min(50, int(item.get("impressions", 0) or 0))),
                      _dump(extra)),
                 )
-            self._bump_revisions(db, "adult_viewing")
+            self._bump_revisions(db, "my_tv_viewing")
 
-    def save_adult_insights(self, value: dict[str, Any]) -> None:
+    def save_my_tv_insights(self, value: dict[str, Any]) -> None:
         """Reconcile the derived insights cache without clearing valid rows."""
         with self.transaction() as db:
-            self._write_adult_insights(db, value)
-            self._bump_revisions(db, "adult_insights")
+            self._write_my_tv_insights(db, value)
+            self._bump_revisions(db, "my_tv_insights")
 
     @staticmethod
     def _replace_kv(db: sqlite3.Connection, table: str, value: dict[str, Any]) -> None:
@@ -768,9 +774,9 @@ class StateDatabase(ViewingRepositoryMixin):
     def _read_player(db: sqlite3.Connection) -> dict[str, Any]:
         root = StateDatabase._read_kv(db, "player_fields")
         root.setdefault("schema_version", 4)
-        for table, prefix in (("adult_resume", "adult"),
+        for table, prefix in (("my_tv_resume", "my_tv"),
                               ("channel_film_resume", "channel_film")):
-            key_name = "library_id" if table == "adult_resume" else "media_key"
+            key_name = "library_id" if table == "my_tv_resume" else "media_key"
             rows = list(db.execute(f"SELECT * FROM {table}"))
             root[f"{prefix}_positions"] = {row[key_name]: row["position_seconds"] for row in rows
                                              if row["position_present"]}
@@ -800,12 +806,12 @@ class StateDatabase(ViewingRepositoryMixin):
 
     def _write_player(self, db: sqlite3.Connection, value: Any) -> None:
         root = dict(value or {})
-        structured = {"adult_positions", "adult_durations", "adult_position_updated_utc_ms",
+        structured = {"my_tv_positions", "my_tv_durations", "my_tv_position_updated_utc_ms",
                       "channel_film_positions", "channel_film_durations",
                       "channel_film_position_updated_utc_ms", "channel_timelines"}
         self._replace_kv(db, "player_fields", {
             key: saved for key, saved in root.items() if key not in structured})
-        for table, prefix, key_name in (("adult_resume", "adult", "library_id"),
+        for table, prefix, key_name in (("my_tv_resume", "my_tv", "library_id"),
                                         ("channel_film_resume", "channel_film", "media_key")):
             db.execute(f"DELETE FROM {table}")
             positions = root.get(f"{prefix}_positions", {})
@@ -893,7 +899,7 @@ class StateDatabase(ViewingRepositoryMixin):
                     "INSERT OR IGNORE INTO viewing_items VALUES(?,?,?,?,?,?,?,?,?)",
                     (viewing_item_id, kind, int(channel["id"]) if channel is not None else None,
                      file_name, item_key, str(item.get("title") or "Untitled"),
-                     str(item.get("channel_name") or "MabelTV"), time.time(), time.time()),
+                     str(item.get("channel_name") or "TV"), time.time(), time.time()),
                 )
             extra = {key: saved for key, saved in item.items() if key not in known}
             db.execute("""INSERT INTO viewing_sessions(
@@ -1009,16 +1015,16 @@ class StateDatabase(ViewingRepositoryMixin):
         return value
 
     @staticmethod
-    def _read_adult_media(db: sqlite3.Connection) -> dict[str, Any]:
+    def _read_my_tv_media(db: sqlite3.Connection) -> dict[str, Any]:
         return {row["relative_path"]: StateDatabase._media_state(row) for row in db.execute(
-            "SELECT * FROM local_media WHERE domain='adult' ORDER BY relative_path")}
+            "SELECT * FROM local_media WHERE domain='my_tv' ORDER BY relative_path")}
 
     @staticmethod
-    def _write_adult_media(db: sqlite3.Connection, value: Any) -> None:
+    def _write_my_tv_media(db: sqlite3.Connection, value: Any) -> None:
         items = value if isinstance(value, dict) else {}
         desired = {str(path) for path in items}
         StateDatabase._delete_missing(
-            db, "local_media", "relative_path", desired, "domain='adult'")
+            db, "local_media", "relative_path", desired, "domain='my_tv'")
         for path, saved in items.items():
             relative_path = str(path)
             db.execute(
@@ -1033,7 +1039,7 @@ class StateDatabase(ViewingRepositoryMixin):
                 "remote_last_watched=excluded.remote_last_watched,"
                 "metadata_json=excluded.metadata_json,"
                 "metadata_present=excluded.metadata_present,extra_json=excluded.extra_json",
-                StateDatabase._split_media_state(relative_path, saved, "adult"),
+                StateDatabase._split_media_state(relative_path, saved, "my_tv"),
             )
             metadata = saved.get("metadata", {}) if isinstance(saved, dict) else {}
             StateDatabase._sync_title_link(
@@ -1042,7 +1048,7 @@ class StateDatabase(ViewingRepositoryMixin):
     @staticmethod
     def _sync_title_link(db: sqlite3.Connection, owner: str, owner_id: str,
                          media_type: str, metadata: Any) -> None:
-        table = "local_title_links" if owner == "local" else "adult_series_title_links"
+        table = "local_title_links" if owner == "local" else "my_tv_series_title_links"
         column = "relative_path" if owner == "local" else "series_id"
         db.execute(f"DELETE FROM {table} WHERE {column}=?", (owner_id,))
         if not isinstance(metadata, dict):
@@ -1075,15 +1081,15 @@ class StateDatabase(ViewingRepositoryMixin):
             )
         else:
             db.execute(
-                "INSERT INTO adult_series_title_links(series_id,media_type,tmdb_id) "
+                "INSERT INTO my_tv_series_title_links(series_id,media_type,tmdb_id) "
                 "VALUES(?,?,?)",
                 (owner_id, media_type, tmdb_id),
             )
 
     @staticmethod
-    def _read_adult_series(db: sqlite3.Connection) -> dict[str, Any]:
+    def _read_my_tv_series(db: sqlite3.Connection) -> dict[str, Any]:
         root: dict[str, Any] = {"series": {}, "episodes": {}}
-        for row in db.execute("SELECT * FROM adult_series ORDER BY id"):
+        for row in db.execute("SELECT * FROM my_tv_series ORDER BY id"):
             value = _load(row["extra_json"], {})
             if row["title"] is not None:
                 value["title"] = row["title"]
@@ -1093,29 +1099,29 @@ class StateDatabase(ViewingRepositoryMixin):
             if row["metadata_present"]:
                 value["metadata"] = metadata
             root["series"][row["id"]] = value
-        for row in db.execute("SELECT * FROM local_media WHERE domain='adult_episode'"):
+        for row in db.execute("SELECT * FROM local_media WHERE domain='my_tv_episode'"):
             root["episodes"][row["relative_path"]] = StateDatabase._media_state(row)
         state = {row["key"]: _load(row["value_json"]) for row in db.execute(
-            "SELECT * FROM adult_viewing_state WHERE key LIKE 'series_state:%'")}
+            "SELECT * FROM my_tv_viewing_state WHERE key LIKE 'series_state:%'")}
         for key, value in state.items():
             root[key.removeprefix("series_state:")] = value
         return root
 
     @staticmethod
-    def _write_adult_series(db: sqlite3.Connection, value: Any) -> None:
+    def _write_my_tv_series(db: sqlite3.Connection, value: Any) -> None:
         root = value if isinstance(value, dict) else {}
         series_items = root.get("series", {}) or {}
         episode_items = root.get("episodes", {}) or {}
         desired_episodes = {str(key) for key in episode_items}
         StateDatabase._delete_missing(
             db, "local_media", "relative_path", desired_episodes,
-            "domain='adult_episode'")
+            "domain='my_tv_episode'")
         for series_id, saved in series_items.items():
             item = dict(saved) if isinstance(saved, dict) else {}
             extra = {key: entry for key, entry in item.items()
                      if key not in {"title", "favourite", "metadata"}}
             db.execute(
-                "INSERT INTO adult_series VALUES(?,?,?,?,?,?,?) "
+                "INSERT INTO my_tv_series VALUES(?,?,?,?,?,?,?) "
                 "ON CONFLICT(id) DO UPDATE SET title=excluded.title,"
                 "favourite=excluded.favourite,favourite_present=excluded.favourite_present,"
                 "metadata_json=excluded.metadata_json,"
@@ -1130,7 +1136,7 @@ class StateDatabase(ViewingRepositoryMixin):
             compound = str(compound)
             series_id, _, relative = compound.partition("/")
             if not relative or not db.execute(
-                    "SELECT 1 FROM adult_series WHERE id=?", (series_id,)).fetchone():
+                    "SELECT 1 FROM my_tv_series WHERE id=?", (series_id,)).fetchone():
                 continue
             db.execute(
                 "INSERT INTO local_media VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) "
@@ -1145,32 +1151,32 @@ class StateDatabase(ViewingRepositoryMixin):
                 "metadata_json=excluded.metadata_json,"
                 "metadata_present=excluded.metadata_present,extra_json=excluded.extra_json",
                 StateDatabase._split_media_state(
-                    compound, saved, "adult_episode", series_id))
+                    compound, saved, "my_tv_episode", series_id))
             metadata = saved.get("metadata", {}) if isinstance(saved, dict) else {}
             try:
                 season = int(metadata.get("season_number", 0))
             except (TypeError, ValueError):
                 season = 0
             if season > 0:
-                db.execute("INSERT OR IGNORE INTO adult_seasons VALUES(?,?,0)",
+                db.execute("INSERT OR IGNORE INTO my_tv_seasons VALUES(?,?,0)",
                            (series_id, season))
                 desired_seasons.add((series_id, season))
-        for row in db.execute("SELECT series_id,season_number FROM adult_seasons"):
+        for row in db.execute("SELECT series_id,season_number FROM my_tv_seasons"):
             if (row["series_id"], row["season_number"]) not in desired_seasons:
-                db.execute("DELETE FROM adult_seasons WHERE series_id=? AND season_number=?",
+                db.execute("DELETE FROM my_tv_seasons WHERE series_id=? AND season_number=?",
                            (row["series_id"], row["season_number"]))
         StateDatabase._delete_missing(
-            db, "adult_series", "id", {str(key) for key in series_items})
+            db, "my_tv_series", "id", {str(key) for key in series_items})
 
         desired_state = {f"series_state:{key}": saved for key, saved in root.items()
                          if key not in {"series", "episodes"}}
         for key, saved in desired_state.items():
             db.execute(
-                "INSERT INTO adult_viewing_state VALUES(?,?) "
+                "INSERT INTO my_tv_viewing_state VALUES(?,?) "
                 "ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json",
                 (key, _dump(saved)))
         StateDatabase._delete_missing(
-            db, "adult_viewing_state", "key", set(desired_state),
+            db, "my_tv_viewing_state", "key", set(desired_state),
             "key LIKE 'series_state:%'")
 
     @staticmethod
@@ -1178,15 +1184,15 @@ class StateDatabase(ViewingRepositoryMixin):
         return f"{media_type}:{tmdb_id}"
 
     @staticmethod
-    def _read_adult_viewing(db: sqlite3.Connection) -> dict[str, Any]:
+    def _read_my_tv_viewing(db: sqlite3.Connection) -> dict[str, Any]:
         root = {row["key"]: _load(row["value_json"]) for row in db.execute(
-            "SELECT * FROM adult_viewing_state WHERE key NOT LIKE 'series_state:%'")}
+            "SELECT * FROM my_tv_viewing_state WHERE key NOT LIKE 'series_state:%'")}
         titles: dict[str, Any] = {}
-        for row in db.execute("""SELECT adult_titles.*,
+        for row in db.execute("""SELECT my_tv_titles.*,
                 external_titles.title,external_titles.year,
                 external_titles.poster_path,external_titles.overview,
                 external_titles.runtime,external_titles.updated
-            FROM adult_titles JOIN external_titles USING(media_type,tmdb_id)
+            FROM my_tv_titles JOIN external_titles USING(media_type,tmdb_id)
             ORDER BY media_type,tmdb_id"""):
             item = _load(row["extra_json"], {})
             for key in ("media_type", "tmdb_id", "title", "year", "poster_path", "overview",
@@ -1244,7 +1250,7 @@ class StateDatabase(ViewingRepositoryMixin):
         return root
 
     @staticmethod
-    def _normalise_adult_title(
+    def _normalise_my_tv_title(
             raw_key: str, saved: Any) -> tuple[str, int, dict[str, Any]] | None:
         item = dict(saved) if isinstance(saved, dict) else {}
         try:
@@ -1258,7 +1264,7 @@ class StateDatabase(ViewingRepositoryMixin):
         return media_type, tmdb_id, item
 
     @staticmethod
-    def _upsert_adult_title_core(
+    def _upsert_my_tv_title_core(
             db: sqlite3.Connection, media_type: str, tmdb_id: int,
             item: dict[str, Any]) -> None:
         core = {
@@ -1290,7 +1296,7 @@ class StateDatabase(ViewingRepositoryMixin):
              item.get("overview"), item.get("updated"), item.get("poster_path"),
              item.get("runtime")),
         )
-        db.execute("""INSERT INTO adult_titles(
+        db.execute("""INSERT INTO my_tv_titles(
             media_type,tmdb_id,manual_state,series_watching,viewing_updated,
             series_watching_updated,last_launched,last_provider,
             history_present,episodes_present,extra_json)
@@ -1306,7 +1312,7 @@ class StateDatabase(ViewingRepositoryMixin):
                    values)
 
     @staticmethod
-    def _replace_adult_title_children(
+    def _replace_my_tv_title_children(
             db: sqlite3.Connection,
             entries: list[tuple[str, int, dict[str, Any]]],
             *, clear_existing: bool = True) -> None:
@@ -1322,7 +1328,7 @@ class StateDatabase(ViewingRepositoryMixin):
                     )
         queue: list[tuple[str, int, int]] = []
         for media_type, tmdb_id, item in entries:
-            StateDatabase._upsert_adult_title_core(db, media_type, tmdb_id, item)
+            StateDatabase._upsert_my_tv_title_core(db, media_type, tmdb_id, item)
             for ordinal, watched_at in enumerate(item.get("history", []) or []):
                 db.execute("INSERT INTO title_watch_events VALUES(?,?,?,?)",
                            (media_type, tmdb_id, ordinal, _number(watched_at)))
@@ -1356,20 +1362,20 @@ class StateDatabase(ViewingRepositoryMixin):
                        (media_type, tmdb_id, rank))
 
     @staticmethod
-    def _write_adult_viewing(db: sqlite3.Connection, value: Any) -> None:
-        root, _ = normalise_adult_viewing(value)
+    def _write_my_tv_viewing(db: sqlite3.Connection, value: Any) -> None:
+        root, _ = normalise_my_tv_viewing(value)
         entries: list[tuple[str, int, dict[str, Any]]] = []
         for raw_key, saved in (root.get("titles", {}) or {}).items():
-            normalised = StateDatabase._normalise_adult_title(str(raw_key), saved)
+            normalised = StateDatabase._normalise_my_tv_title(str(raw_key), saved)
             if normalised is not None:
                 entries.append(normalised)
         desired = {(media_type, tmdb_id) for media_type, tmdb_id, _ in entries}
-        for row in db.execute("SELECT media_type,tmdb_id FROM adult_titles").fetchall():
+        for row in db.execute("SELECT media_type,tmdb_id FROM my_tv_titles").fetchall():
             identity = (row["media_type"], row["tmdb_id"])
             if identity not in desired:
                 db.execute(
-                    "DELETE FROM adult_titles WHERE media_type=? AND tmdb_id=?", identity)
-        StateDatabase._replace_adult_title_children(
+                    "DELETE FROM my_tv_titles WHERE media_type=? AND tmdb_id=?", identity)
+        StateDatabase._replace_my_tv_title_children(
             db, entries, clear_existing=True)
         availability_keys: set[str] = set()
         for key, saved in (root.get("availability", {}) or {}).items():
@@ -1413,56 +1419,56 @@ class StateDatabase(ViewingRepositoryMixin):
         for key, saved in root.items():
             if key not in {"titles", "availability", "explore"}:
                 db.execute(
-                    "INSERT INTO adult_viewing_state VALUES(?,?) "
+                    "INSERT INTO my_tv_viewing_state VALUES(?,?) "
                     "ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json",
                     (key, _dump(saved)))
         StateDatabase._delete_missing(
-            db, "adult_viewing_state", "key", set(desired_state),
+            db, "my_tv_viewing_state", "key", set(desired_state),
             "key NOT LIKE 'series_state:%'")
 
     @staticmethod
-    def _read_adult_insights(db: sqlite3.Connection) -> dict[str, Any]:
+    def _read_my_tv_insights(db: sqlite3.Connection) -> dict[str, Any]:
         root = {row["key"]: _load(row["value_json"]) for row in db.execute(
-            "SELECT * FROM adult_insights_state")}
+            "SELECT * FROM my_tv_insights_state")}
         root["titles"] = {row["title_key"]: _load(row["metadata_json"], {})
-                          for row in db.execute("SELECT * FROM adult_insights_titles")}
+                          for row in db.execute("SELECT * FROM my_tv_insights_titles")}
         root["failures"] = {row["title_key"]: row["failed_at"]
-                            for row in db.execute("SELECT * FROM adult_insights_failures")}
+                            for row in db.execute("SELECT * FROM my_tv_insights_failures")}
         root.setdefault("schema_version", 1)
         return root
 
     @staticmethod
-    def _write_adult_insights(db: sqlite3.Connection, value: Any) -> None:
+    def _write_my_tv_insights(db: sqlite3.Connection, value: Any) -> None:
         root = value if isinstance(value, dict) else {}
         title_keys: set[str] = set()
         for key, saved in (root.get("titles", {}) or {}).items():
             title_keys.add(str(key))
             checked = saved.get("checked") if isinstance(saved, dict) else None
             db.execute(
-                "INSERT INTO adult_insights_titles VALUES(?,?,?) "
+                "INSERT INTO my_tv_insights_titles VALUES(?,?,?) "
                 "ON CONFLICT(title_key) DO UPDATE SET "
                 "checked=excluded.checked,metadata_json=excluded.metadata_json",
                 (str(key), checked, _dump(saved)))
         StateDatabase._delete_missing(
-            db, "adult_insights_titles", "title_key", title_keys)
+            db, "my_tv_insights_titles", "title_key", title_keys)
         failure_keys: set[str] = set()
         for key, failed in (root.get("failures", {}) or {}).items():
             failure_keys.add(str(key))
             db.execute(
-                "INSERT INTO adult_insights_failures VALUES(?,?) "
+                "INSERT INTO my_tv_insights_failures VALUES(?,?) "
                 "ON CONFLICT(title_key) DO UPDATE SET failed_at=excluded.failed_at",
                 (str(key), _number(failed)))
         StateDatabase._delete_missing(
-            db, "adult_insights_failures", "title_key", failure_keys)
+            db, "my_tv_insights_failures", "title_key", failure_keys)
         state_keys = {str(key) for key in root if key not in {"titles", "failures"}}
         for key, saved in root.items():
             if key not in {"titles", "failures"}:
                 db.execute(
-                    "INSERT INTO adult_insights_state VALUES(?,?) "
+                    "INSERT INTO my_tv_insights_state VALUES(?,?) "
                     "ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json",
                     (key, _dump(saved)))
         StateDatabase._delete_missing(
-            db, "adult_insights_state", "key", state_keys)
+            db, "my_tv_insights_state", "key", state_keys)
 
     def integrity_report(self) -> dict[str, Any]:
         db = self.connect()

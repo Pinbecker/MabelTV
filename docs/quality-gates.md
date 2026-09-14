@@ -36,7 +36,7 @@ choices are:
 | Authentication, owner setup or API security | `test_library_auth_settings`, `test_library_http` and the PIN browser contract |
 | Downloads, service worker or offline security | `node --test tests/js/test-offline-service-worker.mjs` and `npm run test:offline` from `tests/browser` |
 | Portal route or component | its browser spec on `--project=iphone-webkit`; add Chromium when worker, cache or browser compatibility is involved |
-| Adult cards, cache revisions or warm rendering | `portal-explore.spec.mjs`, `portal-domain-navigation.spec.mjs` or the closest owned spec |
+| My TV cards, cache revisions or warm rendering | `portal-explore.spec.mjs`, `portal-domain-navigation.spec.mjs` or the closest owned spec |
 | Native controller or playback | `mabeltv_core_tests`, the relevant Python safety test and the native self-test |
 | Documentation or workflow only | architecture/quality contract tests; no browser or native build unless executable behaviour changed |
 
@@ -73,7 +73,7 @@ npm run test:core
 ```
 
 The core browser gate runs the security, offline, warm-cache, navigation,
-content-card, Adult viewing, artwork, playback and optimistic-action contracts
+content-card, My TV viewing, artwork, playback and optimistic-action contracts
 on iPhone WebKit and Chromium. Tests tagged `@visual` are excluded, avoiding
 brittle screenshot failures during ordinary functional work.
 

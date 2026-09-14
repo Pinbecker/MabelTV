@@ -9,7 +9,7 @@
     }
 
     function renderFilmFilters(films) {
-      const folders = [...new Set([...(library?.adult_folders || []), ...films.map(film => film.folder || '').filter(Boolean)])]
+      const folders = [...new Set([...(library?.my_tv_folders || []), ...films.map(film => film.folder || '').filter(Boolean)])]
         .sort((a, b) => a.localeCompare(b))
       const genres = [...new Set(films.flatMap(filmGenres))].sort((a, b) => a.localeCompare(b))
       if (watchFolder !== '*' && watchFolder !== '' && !folders.includes(watchFolder)) watchFolder = '*'
@@ -31,27 +31,27 @@
       }
     }
 
-    $('#watchCollectionFilter').onchange = event => { watchFolder = event.target.value; renderAdultWatch() }
-    $('#watchGenreFilter').onchange = event => { watchGenre = event.target.value; renderAdultWatch() }
+    $('#watchCollectionFilter').onchange = event => { watchFolder = event.target.value; renderMyTvWatch() }
+    $('#watchGenreFilter').onchange = event => { watchGenre = event.target.value; renderMyTvWatch() }
 
-    function renderAdultWatch() {
-      return preservePortalPosition(renderAdultFilmCatalogue, { anchor: false })
+    function renderMyTvWatch() {
+      return preservePortalPosition(renderMyTvFilmCatalogue, { anchor: false })
     }
 
-    function renderAdultFilmCatalogue() {
-      const adult = $('#remoteAdult')
-      const allFilms = [...(library?.adult_library || [])].sort((left, right) => watchFilmTitle(left).localeCompare(watchFilmTitle(right), undefined, { sensitivity: 'base' }))
+    function renderMyTvFilmCatalogue() {
+      const my_tv = $('#remoteMyTv')
+      const allFilms = [...(library?.my_tv_library || [])].sort((left, right) => watchFilmTitle(left).localeCompare(watchFilmTitle(right), undefined, { sensitivity: 'base' }))
       renderFilmFilters(allFilms)
       $('#watchSearch').value = watchSearchText
       $('#watchSearchClear').classList.toggle('hidden', !watchSearchText)
 
       const query = watchSearchText.trim().toLocaleLowerCase()
-      renderAdultSeries(watchSearchText)
+      renderMyTvSeries(watchSearchText)
       const resumableFilms = allFilms
         .filter(film => film.browser_ready !== false && watchFilmResumable(film))
-        .map(film => ({ ...adultFilmEntry(film),
+        .map(film => ({ ...myTvFilmEntry(film),
           lastWatched: Number(film.remote_last_watched || 0) }))
-      const resumable = [...resumableFilms, ...adultSeriesContinueEntries()]
+      const resumable = [...resumableFilms, ...myTvSeriesContinueEntries()]
         .sort((left, right) => Number(right.lastWatched || 0) - Number(left.lastWatched || 0))
         .slice(0, 10)
       const continueSection = $('#watchContinueSection')
@@ -73,12 +73,12 @@
       $('#watchLibraryCount').textContent = `${films.length} film${films.length === 1 ? '' : 's'}`
       const grid = document.createElement('div')
       grid.className = 'watch-poster-grid'
-      films.forEach(film => grid.append(adultWatchCard(film)))
+      films.forEach(film => grid.append(myTvWatchCard(film)))
       if (!films.length) {
         grid.append(portalEmptyState({
           className: 'watch-empty', title: allFilms.length ? 'No matching films' : 'No films yet',
           message: allFilms.length ? 'Choose another collection or genre, or clear your search.' : 'Add a film to start your library.',
         }))
       }
-      adult.replaceChildren(grid)
+      my_tv.replaceChildren(grid)
     }

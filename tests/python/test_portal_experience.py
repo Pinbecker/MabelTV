@@ -57,7 +57,7 @@ class PortalExperienceTests(unittest.TestCase):
             "experience-shell", "experience-home",
             "experience-remote", "experience-watch", "experience-library",
             "experience-viewing", "experience-title-metadata",
-            "experience-settings", "experience-insights", "experience-adult-insights",
+            "experience-settings", "experience-insights", "experience-my-tv-insights",
             "experience-responsive",
             "experience-overlays", "experience-playback-overlays",
             "lg-tv-remote", "experience-light",
@@ -72,7 +72,7 @@ class PortalExperienceTests(unittest.TestCase):
         fixture_script = mabeltv_library.load_portal_app_script(private_scope=False)
         self.assertTrue(fixture_script.startswith("'use strict'"))
         self.assertFalse(fixture_script.startswith("(() => {"))
-        self.assertIn("function openAdultTitle", fixture_script)
+        self.assertIn("function openMyTvTitle", fixture_script)
         fixture_server = (
             PROJECT_ROOT / "tests" / "browser" / "fixture_server.py"
         ).read_text(encoding="utf-8")
@@ -107,10 +107,10 @@ class PortalExperienceTests(unittest.TestCase):
         self.assertIn('portal-include:html/app-shell.html', source)
         self.assertLess(len(source), 5_000)
         self.assertNotIn('portal-include:', html)
-        for name in ("overview", "live", "lg-tv", "channels", "adult", "watch", "usb", "system"):
+        for name in ("overview", "live", "lg-tv", "channels", "watch", "usb", "system"):
             self.assertTrue((PORTAL_ROOT / "html" / "views" / f"{name}.html").is_file())
-        self.assertTrue((PORTAL_ROOT / "html" / "views" / "adult-viewing.html").is_file())
-        for retired in ("core.js", "library.js", "playback.js", "adult-viewing.js"):
+        self.assertTrue((PORTAL_ROOT / "html" / "views" / "my-tv-viewing.html").is_file())
+        for retired in ("core.js", "library.js", "playback.js", "my-tv-viewing.js"):
             self.assertFalse((PORTAL_ROOT / "js" / retired).exists())
         component_script = (PORTAL_ROOT / "js" / "ui-components.js").read_text(
             encoding="utf-8")
@@ -201,13 +201,15 @@ class PortalExperienceTests(unittest.TestCase):
         self.assertIn(".watch-native-select", styles)
         self.assertNotIn('id="watchCollectionSelect"', html)
         self.assertNotIn("renderWatchCollections", playback)
-        self.assertIn('id="view-adult-home"', html)
+        self.assertIn('id="view-my-tv-home"', html)
         self.assertIn('aria-label="New series"', html)
         self.assertIn('channel-upload-sheet', markup)
         self.assertIn('channel-upload-form', markup)
         self.assertIn('channel-page-title-row', channel_page)
         self.assertNotIn('id="watchCollectionSheet"', html)
         self.assertIn('id="watchMabelSearch"', html)
+        self.assertIn('data-tv-placeholder-template="Search {name} films"', html)
+        self.assertNotIn('placeholder="Search <span', html)
         self.assertIn('id="watchMabelContinueSection"', html)
         self.assertIn('id="homeFilmSearch"', html)
         self.assertIn('id="homeFavouritesSection"', html)
@@ -233,7 +235,7 @@ class PortalExperienceTests(unittest.TestCase):
         self.assertIn(".settings-disclosure", styles)
         self.assertNotIn('data-view-button="channels"', html)
         self.assertNotIn('data-view-button="usb"', html)
-        self.assertIn('data-view-button="adult-home"', html)
+        self.assertIn('data-view-button="my-tv-home"', html)
         self.assertIn('data-go="usb"', html)
         self.assertIn('<h1>USB</h1>', html)
         self.assertIn('class="library-switch"', html)
@@ -250,7 +252,7 @@ class PortalExperienceTests(unittest.TestCase):
         self.assertIn("if (!currentTitle) return null", core)
         self.assertIn("setHomeSpotlightArtwork(state)", core)
         self.assertIn("/api/channel/artwork/", core)
-        self.assertIn("/api/adult/artwork/", core)
+        self.assertIn("/api/my-tv/artwork/", core)
         self.assertIn("status.scrollIntoView", core)
         self.assertIn('class="remote-app"', html)
         self.assertIn('href="/portal/icons.svg#signal-tv"', html)
@@ -334,7 +336,7 @@ class PortalExperienceTests(unittest.TestCase):
         for favourite_id, title_id in (
                 ("watchFilmFavourite", "watchFilmTitle"),
                 ("watchProgrammeFavourite", "watchProgrammeTitle"),
-                ("adultSeriesFavourite", "adultSeriesSheetTitle"),
+                ("myTvSeriesFavourite", "myTvSeriesSheetTitle"),
                 ("watchChannelFavourite", "watchChannelTitle")):
             title_row = re.search(
                 rf'<div class="portal-sheet-title-row">.*?id="{title_id}".*?'
@@ -342,17 +344,17 @@ class PortalExperienceTests(unittest.TestCase):
             self.assertIsNotNone(title_row)
 
         episode_sheet_match = re.search(
-            r'<dialog\s+id="adultEpisodeSheet".*?</dialog>', markup, re.DOTALL)
+            r'<dialog\s+id="myTvEpisodeSheet".*?</dialog>', markup, re.DOTALL)
         self.assertIsNotNone(episode_sheet_match)
         episode_sheet = episode_sheet_match.group(0)
         self.assertNotIn("sheet-favourite", episode_sheet)
-        self.assertNotIn('id="adultEpisodeMore"', episode_sheet)
-        self.assertIn('id="adultEpisodeDownload"', episode_sheet)
-        self.assertIn('id="adultEpisodeDelete"', episode_sheet)
+        self.assertNotIn('id="myTvEpisodeMore"', episode_sheet)
+        self.assertIn('id="myTvEpisodeDownload"', episode_sheet)
+        self.assertIn('id="myTvEpisodeDelete"', episode_sheet)
         self.assertNotIn("watchProgrammeMoreReturn", playback)
-        self.assertNotIn("adultEpisodeMoreReturn", playback)
+        self.assertNotIn("myTvEpisodeMoreReturn", playback)
         self.assertIn("openWatchProgrammeMoreSheet(channel, programme, context, parentReturn)", playback)
-        self.assertIn("card.onclick = () => openAdultEpisodeSheet(series, episode)", playback)
+        self.assertIn("card.onclick = () => openMyTvEpisodeSheet(series, episode)", playback)
 
     def test_channel_detail_is_modular_watch_oriented_and_deep_linkable(self) -> None:
         html = mabeltv_library.INDEX
@@ -526,16 +528,16 @@ class PortalExperienceTests(unittest.TestCase):
         self.assertIn("webkitEnterFullscreen", player)
         self.assertIn("navigator.maxTouchPoints > 1", index)
         self.assertIn("body:has(.ios-watch-player:not(.hidden))", index)
-        self.assertIn("classList.toggle('adult', result.kind === 'adult')", player)
+        self.assertIn("classList.toggle('my-tv', result.kind === 'my_tv')", player)
         self.assertIn("set-remote-simultaneous", index)
         self.assertIn("/api/remote/start", player)
         self.assertIn("/api/remote/clear-position", index)
         self.assertNotIn('id="watchFilmRemoveProgress"', index)
-        self.assertIn('id="adultFilmRemoveProgress"', index)
+        self.assertIn('id="myTvFilmRemoveProgress"', index)
         self.assertIn("actionLabel.textContent = 'Removing…'", index)
         self.assertNotIn("Starting from beginning…", index)
         self.assertIn("film.remote_position = 0", index)
-        self.assertIn("renderAdultWatch()", index)
+        self.assertIn("renderMyTvWatch()", index)
         self.assertNotIn("setNotice(", index)
         self.assertNotIn("watch-continue-more", index)
         self.assertIn('class="dialog-close-bar"', index)
@@ -554,10 +556,11 @@ class PortalExperienceTests(unittest.TestCase):
         self.assertIn("function configureFilmPlaybackActions(film, context, controls)", index)
         self.assertIn("restartAction: () => playOnTvNow(0)", index)
         self.assertIn('id="watchProgrammeSheet"', index)
-        self.assertIn('id="watchManageAdult"', index)
+        self.assertIn('id="watchManageMyTv"', index)
         self.assertRegex(index, r'id="watchFilmManage"\s+type="button"\s+class="card-settings-trigger hidden"')
-        self.assertIn("openAdultFilmSheet(film)", index)
-        self.assertIn("openLibrarySheet($('#adultCollectionSheet'))", index)
+        self.assertIn(
+            "openMyTvFilmSheet(film, () => openWatchFilmSheet", index)
+        self.assertIn("openLibrarySheet($('#myTvCollectionSheet'))", index)
         self.assertNotIn('id="watchManageMabel"', index)
         self.assertNotIn('id="overviewChannels"', index)
         self.assertIn("identity.className = 'mabel-show-identity'", index)
@@ -590,7 +593,7 @@ class PortalExperienceTests(unittest.TestCase):
         self.assertIn(".remote-mode small", index)
         self.assertNotIn('data-view-button="channels"', index)
         self.assertNotIn('data-view-button="usb"', index)
-        self.assertIn('data-view-button="adult-home"', index)
+        self.assertIn('data-view-button="my-tv-home"', index)
         self.assertIn("const consolidatedWatchView", index)
 
     def test_global_notices_expire_and_do_not_follow_navigation(self) -> None:
@@ -659,26 +662,27 @@ class PortalExperienceTests(unittest.TestCase):
         self.assertNotIn("margin-top: 72px", portal)
         self.assertIn("calc(var(--space-3) + var(--safe-top))", head_styles)
 
-    def test_adult_organiser_uses_compact_accessible_components(self) -> None:
+    def test_my_tv_organiser_uses_compact_accessible_components(self) -> None:
         portal = PORTAL_SOURCE
 
-        self.assertIn('class="watch-film-sheet adult-film-sheet"', portal)
-        self.assertIn('class="watch-film-play adult-film-collection-action"', portal)
-        self.assertIn('aria-labelledby="adultFilmSheetTitle"', portal)
+        self.assertIn('class="watch-film-sheet my-tv-film-sheet"', portal)
+        self.assertIn('class="watch-film-play my-tv-film-collection-action"', portal)
+        self.assertIn('aria-labelledby="myTvFilmSheetTitle"', portal)
         self.assertIn("focus: sheet.querySelector('.watch-film-panel')", portal)
         self.assertIn('Refresh metadata &amp; subtitles', portal)
-        self.assertIn('id="adultFilmOptimise"', portal)
-        self.assertIn('id="adultFilmRemoveProgress"', portal)
-        self.assertIn('id="adultFilmRemove"', portal)
-        self.assertNotIn('id="adultFilmFavourite"', portal)
-        self.assertNotIn('id="adultFilmPlay"', portal)
-        self.assertIn("row.setAttribute('aria-label', `Open details for", portal)
+        self.assertIn('id="myTvFilmOptimise"', portal)
+        self.assertIn('id="myTvFilmRemoveProgress"', portal)
+        self.assertIn('id="myTvFilmRemove"', portal)
+        self.assertNotIn('id="myTvFilmFavourite"', portal)
+        self.assertNotIn('id="myTvFilmPlay"', portal)
+        self.assertIn("function openMyTvFilmSheet(film, returnTo = null)", portal)
         self.assertNotIn("more.textContent = 'Open'", portal)
         self.assertNotIn("!important", portal)
 
     def test_mabel_remote_player_restores_original_tv_and_locks_page_scroll(self) -> None:
         index = PORTAL_SOURCE
-        self.assertRegex(index, r'class="mabel-watch-icon-button"\s+aria-label="Back to Mabel TV programmes"')
+        self.assertRegex(index, r'class="mabel-watch-icon-button"\s+aria-label="Back to your TV programmes"')
+        self.assertIn('data-tv-aria-template="Back to {name} programmes"', index)
         self.assertNotIn('class="mabel-watch-icon-button mabel-watch-back"', index)
         self.assertRegex(index, r'</video>\s*<button\s+id="mabelWatchBack"')
         self.assertRegex(index, r'</button>\s*<div\s+id="mabelWatchControls"')
@@ -696,7 +700,7 @@ class PortalExperienceTests(unittest.TestCase):
         self.assertNotIn("$('#mabelWatchPlayer').onpointerdown", index)
         self.assertIn("shell.classList.remove('controls-visible'), 2800", index)
         self.assertNotIn(".mabel-watch-hud.visible", index)
-        self.assertNotIn('data-view-button="adult"', index)
+        self.assertNotIn('data-view-button="my_tv"', index)
         self.assertNotIn("api('/api/remote/stop-tv'", index)
         self.assertNotIn("document.getElementById('logout').click()", index)
 

@@ -17,13 +17,13 @@ SPEC = importlib.util.spec_from_file_location("mabeltv_browser_library", MODULE_
 assert SPEC and SPEC.loader
 mabeltv_library = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(mabeltv_library)
-FIXTURE_INSIGHTS_PATH = Path(__file__).with_name("fixture_adult_insights.py")
+FIXTURE_INSIGHTS_PATH = Path(__file__).with_name("fixture_my_tv_insights.py")
 FIXTURE_INSIGHTS_SPEC = importlib.util.spec_from_file_location(
-    "mabeltv_browser_adult_insights", FIXTURE_INSIGHTS_PATH)
+    "mabeltv_browser_my_tv_insights", FIXTURE_INSIGHTS_PATH)
 assert FIXTURE_INSIGHTS_SPEC and FIXTURE_INSIGHTS_SPEC.loader
-fixture_adult_insights = importlib.util.module_from_spec(FIXTURE_INSIGHTS_SPEC)
-FIXTURE_INSIGHTS_SPEC.loader.exec_module(fixture_adult_insights)
-adult_insights_fixture = fixture_adult_insights.adult_insights_fixture
+fixture_my_tv_insights = importlib.util.module_from_spec(FIXTURE_INSIGHTS_SPEC)
+FIXTURE_INSIGHTS_SPEC.loader.exec_module(fixture_my_tv_insights)
+my_tv_insights_fixture = fixture_my_tv_insights.my_tv_insights_fixture
 FIXTURE_DATA_PATH = Path(__file__).with_name("fixture_data.py")
 FIXTURE_DATA_SPEC = importlib.util.spec_from_file_location(
     "mabeltv_browser_fixture_data", FIXTURE_DATA_PATH)
@@ -54,12 +54,16 @@ class FixtureLibrary:
     def portal_pin_required(self) -> bool:
         return self.pin_required
 
+    @staticmethod
+    def tv_identity() -> tuple[str, str]:
+        return "Mabel", "Mabel TV"
+
     def public_setup(self) -> dict[str, Any]:
         return {
             "configured": True,
             "device_name": "MabelTV Fixture",
             "product_name": "Mabel TV",
-            "tv_name": "MabelTV",
+            "tv_name": "Mabel TV",
             "portal_pin_required": self.pin_required,
             "setup_code_required": True,
             "default_channels": [],
@@ -68,9 +72,9 @@ class FixtureLibrary:
 
     def portal_bootstrap(self) -> dict[str, Any]:
         return {
-            "schema_version": 1, "database_schema": 8,
+            "schema_version": 1, "database_schema": 9,
             "revisions": {domain: 1 for domain in (
-                "library", "adult_viewing", "viewing_insights", "adult_insights")},
+                "library", "my_tv_viewing", "viewing_insights", "my_tv_insights")},
         }
 
     def library(self) -> dict[str, Any]:
@@ -104,11 +108,11 @@ class FixtureLibrary:
         return {"id": job_id, "status": "error", "error": "Unavailable in fixture"}
 
     @staticmethod
-    def adult_artwork(_name: str) -> Path:
+    def my_tv_artwork(_name: str) -> Path:
         return PROJECT_ROOT / "scripts" / "pi" / "mabeltv-icon.png"
 
-    adult_series_artwork = adult_artwork
-    channel_artwork = adult_artwork
+    my_tv_series_artwork = my_tv_artwork
+    channel_artwork = my_tv_artwork
 
     @staticmethod
     def tmdb_artwork(_size: str, _name: str) -> Path:
@@ -139,7 +143,7 @@ class FixtureLibrary:
         return {
             "item_id": "channel:3", "item_key": "channel:3",
             "kind": "channel", "title": "Little Explorers",
-            "source": "MabelTV series channel", "channel_number": 3,
+            "source": "Mabel TV series channel", "channel_number": 3,
             "artwork": "", "available": True, "seconds": 300,
             "sessions": 1, "first_watched": 2_000_000_000,
             "last_watched": 2_000_000_300,
@@ -192,15 +196,15 @@ class FixtureLibrary:
                 "is_today": selected == today, "previous_date": "2026-09-12",
                 "next_date": None if selected == today else today, "periods": periods}
 
-    def adult_viewing(self) -> dict[str, Any]:
+    def my_tv_viewing(self) -> dict[str, Any]:
         return {"items": [copy.deepcopy(value) for value in self.viewing_titles.values()],
                 "watchmode_configured": False, "region": "GB"}
 
-    def adult_insights(self) -> dict[str, Any]:
-        return adult_insights_fixture()
+    def my_tv_insights(self) -> dict[str, Any]:
+        return my_tv_insights_fixture()
 
     @staticmethod
-    def adult_person_detail(tmdb_id: Any) -> dict[str, Any]:
+    def my_tv_person_detail(tmdb_id: Any) -> dict[str, Any]:
         return {
             "tmdb_id": int(tmdb_id), "name": "Michael Caine", "profile_path": "",
             "known_for_department": "Acting", "birthday": "1933-03-14",
@@ -209,7 +213,7 @@ class FixtureLibrary:
             "known_for": [], "filmography": [],
         }
 
-    def adult_explore(self, list_id: str, media_type: str, page: Any,
+    def my_tv_explore(self, list_id: str, media_type: str, page: Any,
                       available_only: bool = False, limit: Any = None) -> dict[str, Any]:
         page_number = int(page)
         kinds = ["movie", "tv"] if media_type == "all" else [media_type]
@@ -240,14 +244,14 @@ class FixtureLibrary:
                 "results": results[:result_limit], "region": "GB",
                 "available_only": available_only}
 
-    def adult_explore_feedback(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def my_tv_explore_feedback(self, payload: dict[str, Any]) -> dict[str, Any]:
         return {"ok": True, "recorded": len(payload.get("items", []))}
 
-    def adult_home_what_to_watch(self, page: Any, limit: Any = 12) -> dict[str, Any]:
-        return self.adult_explore("for-you", "all", page, True, limit)
+    def my_tv_home_what_to_watch(self, page: Any, limit: Any = 12) -> dict[str, Any]:
+        return self.my_tv_explore("for-you", "all", page, True, limit)
 
-    def adult_released_this_week(self, limit: Any = 16) -> dict[str, Any]:
-        result = self.adult_explore("popular", "all", 9, False, limit)
+    def my_tv_released_this_week(self, limit: Any = 16) -> dict[str, Any]:
+        result = self.my_tv_explore("popular", "all", 9, False, limit)
         for index, value in enumerate(result["results"]):
             value["release_label"] = "New film" if value["media_type"] == "movie" \
                 else ("New series" if index < 2 else "Series 2 starts")
@@ -255,7 +259,7 @@ class FixtureLibrary:
         return {"from": "2026-09-07", "to": "2026-09-13",
                 "results": result["results"], "attribution": "Release data from TMDB"}
 
-    def adult_home_availability(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def my_tv_home_availability(self, payload: dict[str, Any]) -> dict[str, Any]:
         return {"region": "GB", "items": [{
             "key": f"{value['media_type']}:{int(value['tmdb_id'])}",
             "providers": [] if int(value["tmdb_id"]) == 14001 else [
@@ -268,7 +272,7 @@ class FixtureLibrary:
             ], "sources": [], "available": True,
         } for value in payload.get("titles", [])]}
 
-    def adult_title_detail(self, media_type: str, tmdb_id: Any) -> dict[str, Any]:
+    def my_tv_title_detail(self, media_type: str, tmdb_id: Any) -> dict[str, Any]:
         identifier = int(tmdb_id)
         local = identifier == 6001
         return {
@@ -287,7 +291,7 @@ class FixtureLibrary:
             if local else None,
         }
 
-    def adult_title_season(self, tmdb_id: Any, season_number: Any) -> dict[str, Any]:
+    def my_tv_title_season(self, tmdb_id: Any, season_number: Any) -> dict[str, Any]:
         identifier = int(tmdb_id)
         season = int(season_number)
         count = 3 if season == 1 else 2
@@ -302,11 +306,11 @@ class FixtureLibrary:
             } for episode_number in range(1, count + 1)],
         }
 
-    def adult_streaming_links(self, media_type: str, tmdb_id: Any,
+    def my_tv_streaming_links(self, media_type: str, tmdb_id: Any,
                               refresh: bool = False) -> dict[str, Any]:
         return {"key": f"{media_type}:{int(tmdb_id)}", "sources": []}
 
-    def adult_viewing_update(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def my_tv_viewing_update(self, payload: dict[str, Any]) -> dict[str, Any]:
         key = f"{payload['media_type']}:{int(payload['tmdb_id'])}"
         current = self.viewing_titles.setdefault(key, {
             "key": key, "media_type": payload["media_type"],
@@ -346,7 +350,7 @@ class FixtureLibrary:
             current["rating_updated"] = 2_000_000_000
         return {"ok": True, "key": key, "viewing": copy.deepcopy(current)}
 
-    def adult_up_next_reorder(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def my_tv_up_next_reorder(self, payload: dict[str, Any]) -> dict[str, Any]:
         keys = [str(value) for value in payload.get("keys", [])]
         for index, key in enumerate(keys, start=1):
             if key in self.viewing_titles:
@@ -407,8 +411,8 @@ class FixtureHandler(mabeltv_library.Handler):
             # missing production-library method and polluting test output.
             self.json(503, {"error": "Live preview unavailable in fixture"})
             return
-        if self.path in ("/api/adult/series/artwork/bright.svg",
-                         "/api/adult/series/artwork/dark.svg"):
+        if self.path in ("/api/my-tv/series/artwork/bright.svg",
+                         "/api/my-tv/series/artwork/dark.svg"):
             colour = "#101820" if self.path.endswith("dark.svg") else "#ffffff"
             artwork = (f'<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400">'
                        f'<rect width="600" height="400" fill="{colour}"/></svg>').encode()
@@ -419,7 +423,7 @@ class FixtureHandler(mabeltv_library.Handler):
             self.wfile.write(artwork)
             return
         explore_artwork = re.search(
-            r"^/api/adult/tmdb-artwork/[^/]+/explore-(\d+)\.jpg$", self.path)
+            r"^/api/my-tv/tmdb-artwork/[^/]+/explore-(\d+)\.jpg$", self.path)
         if explore_artwork:
             value = int(explore_artwork.group(1))
             hue = value * 47 % 360
@@ -433,9 +437,9 @@ class FixtureHandler(mabeltv_library.Handler):
             self.end_headers()
             self.wfile.write(artwork)
             return
-        if self.path.startswith(("/api/adult/tmdb-artwork/",
-                                 "/api/adult/artwork/",
-                                 "/api/adult/series/artwork/",
+        if self.path.startswith(("/api/my-tv/tmdb-artwork/",
+                                 "/api/my-tv/artwork/",
+                                 "/api/my-tv/series/artwork/",
                                  "/api/channel/artwork/")):
             artwork = b'<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450"/>'
             self.send_response(200); self.send_header("Content-Type", "image/svg+xml"); self.send_header("Content-Length", str(len(artwork)))

@@ -1,4 +1,4 @@
-"""Atomic ordering for the private Adult TV Up Next queue."""
+"""Atomic ordering for the private My TV Up Next queue."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import Any
 class ViewingQueueMixin:
     """Persist a complete queue order without exposing partial moves."""
 
-    def adult_up_next_reorder(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def my_tv_up_next_reorder(self, payload: dict[str, Any]) -> dict[str, Any]:
         keys = payload.get("keys", [])
         if not isinstance(keys, list) or not keys or len(keys) > 500:
             raise ValueError("Choose a valid Up Next order")
@@ -17,7 +17,7 @@ class ViewingQueueMixin:
         if len(set(ordered)) != len(ordered):
             raise ValueError("Choose each Up Next title once")
         with self.config_lock:
-            store = self.adult_viewing_store()
+            store = self.my_tv_viewing_store()
             queued = {key for key, value in store["titles"].items()
                       if isinstance(value, dict) and value.get("up_next")}
             if set(ordered) != queued:
@@ -26,5 +26,5 @@ class ViewingQueueMixin:
             for rank, key in enumerate(ordered, start=1):
                 store["titles"][key]["up_next_rank"] = rank
                 store["titles"][key]["updated"] = now
-            self.save_adult_titles({key: store["titles"][key] for key in ordered})
+            self.save_my_tv_titles({key: store["titles"][key] for key in ordered})
         return {"ok": True, "keys": ordered}

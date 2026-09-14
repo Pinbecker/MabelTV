@@ -22,7 +22,7 @@ clearing it transactionally, and never treats retained `owner.json` as live.
 `database_schema.py` is the only schema and migration owner. `database.py`
 owns connections, transactions and the general relational projections;
 `repositories/viewing.py` owns targeted viewing identity/session operations and is
-composed into the same `StateDatabase`. Schema version 8 contains these main
+composed into the same `StateDatabase`. Schema version 9 contains these main
 relationships:
 
 - channels and favourites: `channels`, `channel_metadata`,
@@ -31,15 +31,15 @@ relationships:
   `player_fields`;
 - MabelTV history: stable `viewing_items` identities and targeted
   `viewing_sessions`, including exact programme snapshots;
-- local Adult media: `local_media`, `adult_series`, `adult_seasons` and their
+- local My TV media: `local_media`, `my_tv_series`, `my_tv_seasons` and their
   episode rows;
 - provider identity and descriptive metadata: `external_titles`, with
-  `local_title_links` and `adult_series_title_links` linking local media;
-- Adult viewing state: `adult_titles`, `title_watch_events`, `watchlist_entries`,
+  `local_title_links` and `my_tv_series_title_links` linking local media;
+- My TV viewing state: `my_tv_titles`, `title_watch_events`, `watchlist_entries`,
   `up_next_entries`, `title_ratings` and `title_episode_state`;
 - discovery/availability/insights: `explore_feedback`, `availability_cache`,
-  `adult_viewing_state`, `adult_insights_titles`, `adult_insights_failures` and
-  `adult_insights_state`;
+  `my_tv_viewing_state`, `my_tv_insights_titles`, `my_tv_insights_failures` and
+  `my_tv_insights_state`;
 - operations and cache coherency: `schema_migrations`, `imports` and
   `state_revisions`.
 
@@ -47,7 +47,7 @@ Stable external identities are `(media_type, tmdb_id)`. Local film identity is
 its existing media-root-relative path plus its preserved `library_id`. Episode
 paths are qualified by series ID, so identical season/episode filenames in two
 series cannot collide. `local_media.series_id` is a foreign key to
-`adult_series`. Explicit link tables connect local items to TMDB titles;
+`my_tv_series`. Explicit link tables connect local items to TMDB titles;
 provider IDs are not inferred only from opaque metadata JSON.
 
 Flexible upstream payloads and unknown imported fields remain in checked JSON
@@ -55,13 +55,13 @@ columns where normalizing them would lose data. They are extensions to a
 relational owner, not an alternate store.
 
 Descriptive title metadata has one relational owner in `external_titles`.
-`adult_titles` owns only personal viewing state and cannot exist without its
+`my_tv_titles` owns only personal viewing state and cannot exist without its
 external title. Watchlist membership, Up Next order and personal ratings each
 have exactly one physical owner in their dedicated child tables. The retired
 duplicate relationship columns were removed in schema 5, duplicate title
 metadata columns in schema 6, schema 7 rejects retired setting values, and
 schema 8 gives channels and films stable viewing identities so history survives
-supported channel renames, renumbering and film moves.
+supported channel renames, renumbering and film moves. Schema 9 renames the former media domain to My TV across authoritative tables, revision domains, settings and local-media kinds without changing stored identities or relationships.
 Reads reconstruct the established API
 dictionary shape from joins so the public API contract does not change.
 Explicit `false` membership flags and timestamps or ranks left behind by a
@@ -77,7 +77,7 @@ use `BEGIN IMMEDIATE`. Related state, relationship changes and their
 `state_revisions` increment commit together.
 
 Use targeted repository operations for hot or independently mutable state:
-field-level settings merges, channel insert/update/delete, selected Adult title
+field-level settings merges, channel insert/update/delete, selected My TV title
 updates, availability and Explore feedback. Whole-aggregate replacement remains
 valid for a single-writer coherent snapshot such as player runtime state, but it
 must still commit atomically with its revision. Never implement a cross-process
@@ -97,8 +97,8 @@ must never reconstruct and replace the complete history document. Calendar and
 Insights aggregates are read models computed from overlap with the requested
 timezone boundaries; they are neither stored state nor a second source of truth.
 
-The revision domains are `library`, `adult_viewing`, `viewing_insights`,
-`adult_insights`, `settings`, `identity` and `player`. Portal snapshots may paint
+The revision domains are `library`, `my_tv_viewing`, `viewing_insights`,
+`my_tv_insights`, `settings`, `identity` and `player`. Portal snapshots may paint
 only after authentication and only when their stored revision matches the
 bootstrap ledger. Rebuildable caches never advance or become authoritative.
 
@@ -106,7 +106,7 @@ bootstrap ledger. Rebuildable caches never advance or become authoritative.
 
 Migrations are append-only and checksummed. Never edit a released migration;
 add the next integer migration and update both Python and native maximum/minimum
-support in the same release. The current native release accepts schema 8 only,
+support in the same release. The current native release accepts schema 9 only,
 preventing an old binary from writing a database whose invariants it does not
 understand. Cross-language tests enforce the version match.
 

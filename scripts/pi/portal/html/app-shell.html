@@ -1,28 +1,28 @@
   <section id="app" class="app-shell hidden">
-    <aside class="rail" aria-label="MabelTV portal">
+    <aside class="rail" aria-label="TV portal">
       <div class="rail-brand">
         <img class="logo-mark" src="/mabeltv-icon.png" alt="">
-        <div><strong>MabelTV</strong><span id="topTvName">Your TV</span></div>
+        <div><strong id="topTvName" data-tv-name>Your TV</strong></div>
       </div>
       <nav id="mainNav" class="portal-nav" aria-label="Main navigation">
         <button class="active" data-view-button="overview" aria-current="page"><svg class="icon"><use href="/portal/icons.svg#signal-house"/></svg><span>Home</span></button>
-        <button data-view-button="watch"><svg class="icon"><use href="/portal/icons.svg#signal-clapperboard"/></svg><span>MabelTV</span></button>
+        <button data-view-button="watch"><svg class="icon"><use href="/portal/icons.svg#signal-clapperboard"/></svg><span data-tv-name>Your TV</span></button>
         <button class="nav-remote" data-view-button="live"><svg class="icon"><use href="/portal/icons.svg#signal-radio"/></svg><span>Remote</span></button>
-        <button data-view-button="adult-home"><svg class="icon"><use href="/portal/icons.svg#signal-film"/></svg><span>Adult TV</span></button>
+        <button data-view-button="my-tv-home"><svg class="icon"><use href="/portal/icons.svg#signal-film"/></svg><span>My TV</span></button>
         <button data-view-button="system"><svg class="icon"><use href="/portal/icons.svg#signal-settings"/></svg><span>Settings</span></button>
       </nav>
       <div class="rail-foot">
-        <span id="topHealth" class="health-pill">Checking MabelTV…</span>
+        <span id="topHealth" class="health-pill">Checking your TV…</span>
         <button id="logout" class="rail-lock"><svg class="icon"><use href="/portal/icons.svg#signal-lock"/></svg><span>Lock parent portal</span></button>
       </div>
     </aside>
 
     <header class="mobile-head">
-      <div class="mobile-brand"><img class="logo-mark" src="/mabeltv-icon.png" alt=""><strong>MabelTV</strong></div>
+      <div class="mobile-brand"><img class="logo-mark" src="/mabeltv-icon.png" alt=""><strong data-tv-name>Your TV</strong></div>
       <div class="mobile-head-actions">
-        <button id="openPortalPower" class="mobile-header-power" type="button" aria-label="MabelTV power options" title="MabelTV power options"><svg class="icon"><use href="/portal/icons.svg#signal-power"/></svg></button>
+        <button id="openPortalPower" class="mobile-header-power" type="button" aria-label="TV power options" title="TV power options"><svg class="icon"><use href="/portal/icons.svg#signal-power"/></svg></button>
         <nav class="mobile-remote-switcher tv-remote-switcher" aria-label="Choose remote control">
-          <button type="button" data-remote-switch="live" data-go="live">MabelTV</button>
+          <button type="button" data-remote-switch="live" data-go="live" data-tv-name>Your TV</button>
           <button type="button" data-remote-switch="lg-tv" data-go="lg-tv">LG TV</button>
         </nav>
       </div>
@@ -32,9 +32,9 @@
       <p id="notice" class="notice" role="status" aria-live="polite"></p>
       <section id="offlineUnavailable" class="offline-unavailable hidden" aria-live="polite">
         <span class="offline-unavailable-icon"><svg class="icon"><use href="/portal/icons.svg#signal-radio"/></svg></span>
-        <p id="offlineUnavailableEyebrow" class="eyebrow">MabelTV is offline</p>
+        <p id="offlineUnavailableEyebrow" class="eyebrow"><span data-tv-name>Your TV</span> is offline</p>
         <h1 id="offlineUnavailableTitle">Connect to open this section</h1>
-        <p id="offlineUnavailableMessage">Reconnect this iPhone to MabelTV, then try again.</p>
+        <p id="offlineUnavailableMessage">Reconnect this iPhone to your TV, then try again.</p>
         <div class="offline-unavailable-actions">
           <button id="offlineOpenDownloads" class="primary" type="button"><svg class="icon"><use href="/portal/icons.svg#signal-download"/></svg><span>Open Downloads</span></button>
           <button id="offlineRetry" type="button"><svg class="icon"><use href="/portal/icons.svg#signal-restart"/></svg><span>Try again</span></button>
@@ -44,13 +44,12 @@
       <!-- portal-include:html/views/live.html -->
       <!-- portal-include:html/views/lg-tv.html -->
       <!-- portal-include:html/views/channels.html -->
-      <!-- portal-include:html/views/adult.html -->
       <!-- portal-include:html/views/watch.html -->
-      <!-- portal-include:html/views/adult-home.html -->
-      <!-- portal-include:html/views/adult-viewing.html -->
-      <!-- portal-include:html/views/adult-explore.html -->
-      <!-- portal-include:html/views/adult-ratings.html -->
-      <!-- portal-include:html/views/adult-filmography.html -->
+      <!-- portal-include:html/views/my-tv-home.html -->
+      <!-- portal-include:html/views/my-tv-viewing.html -->
+      <!-- portal-include:html/views/my-tv-explore.html -->
+      <!-- portal-include:html/views/my-tv-ratings.html -->
+      <!-- portal-include:html/views/my-tv-filmography.html -->
       <!-- portal-include:html/views/usb.html -->
       <!-- portal-include:html/views/system.html -->
       <!-- portal-include:html/views/appearance.html -->
@@ -58,4 +57,3 @@
       <!-- portal-include:html/views/activity.html -->
     </main>
   </section>
-

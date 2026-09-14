@@ -268,7 +268,7 @@ class LiveStream:
     def preview(self) -> bytes:
         """Return the current frame from one shared Pi-owned preview encoder."""
         # The frame encoder mirrors the DRM/KMS output itself, so it can show
-        # Adult TV and overlays that have no children's-channel timeline.  A
+        # My TV and overlays that have no children's-channel timeline.  A
         # channel lookup here used to reject that perfectly valid picture and
         # made the portal report the active television as offline.
         state = self.library.read_state("player")

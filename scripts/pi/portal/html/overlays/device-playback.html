@@ -12,7 +12,7 @@
       ></button>
     </div>
     <p id="watchChannelEyebrow" class="watch-film-eyebrow">
-      MabelTV series channel
+      <span data-tv-name>Your TV</span> series channel
     </p>
     <div class="portal-sheet-title-row">
       <h2 id="watchChannelTitle">Channel</h2>
@@ -106,8 +106,8 @@
       <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-arrow-left" /></svg>
     </button>
     <div>
-      <strong id="iosWatchTitle">MabelTV</strong
-      ><small id="iosWatchContext">MabelTV remote viewing</small>
+      <strong id="iosWatchTitle"><span data-tv-name>Your TV</span></strong
+      ><small id="iosWatchContext"><span data-tv-name>Your TV</span> remote viewing</small>
     </div>
     <button id="iosWatchStartOver" type="button" class="hidden">
       Start over
@@ -127,7 +127,8 @@
 <section
   id="mabelWatchPlayer"
   class="mabel-watch-player hidden"
-  aria-label="Mabel TV remote player"
+  aria-label="Your TV remote player"
+  data-tv-aria-template="{name} remote player"
 >
   <div id="mabelWatchShell" class="mabel-watch-shell slim-black">
     <div id="mabelWatchCabinet" class="mabel-watch-cabinet slim-black">
@@ -141,7 +142,8 @@
           id="mabelWatchBack"
           type="button"
           class="mabel-watch-icon-button"
-          aria-label="Back to Mabel TV programmes"
+          aria-label="Back to your TV programmes"
+          data-tv-aria-template="Back to {name} programmes"
         >
           <svg class="icon" aria-hidden="true">
             <use href="/portal/icons.svg#signal-arrow-left" />
@@ -149,10 +151,10 @@
         </button><div id="mabelWatchControls" class="mabel-watch-hud">
           <div class="mabel-watch-topbar">
             <div class="mabel-watch-title">
-              <strong id="mabelWatchTitle">MabelTV</strong
-              ><small id="mabelWatchChannel">Remote Mabel TV</small>
+              <strong id="mabelWatchTitle"><span data-tv-name>Your TV</span></strong
+              ><small id="mabelWatchChannel">Remote TV</small>
             </div>
-            <span class="mabel-watch-live-badge">MabelTV</span>
+            <span class="mabel-watch-live-badge"><span data-tv-name>Your TV</span></span>
           </div>
           <div class="mabel-watch-bottom">
             <label class="mabel-watch-timeline"
@@ -220,7 +222,7 @@
         ><span class="mabel-watch-charcoal-control"></span>
       </div>
       <div class="mabel-watch-brand">
-        <span>MabelTV</span><span>Remote broadcast</span>
+        <span><span data-tv-name>Your TV</span></span><span>Remote broadcast</span>
       </div>
     </div>
     <p id="mabelWatchError" class="mabel-watch-error hidden"></p>

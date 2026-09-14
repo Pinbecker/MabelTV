@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 
 
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 
 SCHEMA = r"""
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -663,17 +663,172 @@ WHERE kind='film' AND programme_title IS NULL;
 CREATE INDEX viewing_sessions_stable_item_idx
 ON viewing_sessions(viewing_item_id, ended);
 """
+
+# Versions 1-8 are immutable because deployed databases record their exact
+# checksums. This migration is the single compatibility boundary from the old
+# domain name to My TV; all runtime code uses only the new names after it runs.
+MY_TV_DOMAIN_SCHEMA = r"""
+ALTER TABLE adult_resume RENAME TO my_tv_resume;
+ALTER TABLE adult_series RENAME TO my_tv_series;
+ALTER TABLE adult_seasons RENAME TO my_tv_seasons;
+ALTER TABLE adult_titles RENAME TO my_tv_titles;
+ALTER TABLE adult_series_title_links RENAME TO my_tv_series_title_links;
+ALTER TABLE adult_viewing_state RENAME TO my_tv_viewing_state;
+ALTER TABLE adult_insights_titles RENAME TO my_tv_insights_titles;
+ALTER TABLE adult_insights_failures RENAME TO my_tv_insights_failures;
+ALTER TABLE adult_insights_state RENAME TO my_tv_insights_state;
+
+DROP INDEX adult_series_title_links_title_idx;
+CREATE INDEX my_tv_series_title_links_title_idx
+    ON my_tv_series_title_links(media_type,tmdb_id);
+
+DROP TRIGGER adult_titles_require_external_insert;
+DROP TRIGGER adult_titles_require_external_update;
+DROP TRIGGER external_titles_restrict_adult_delete;
+CREATE TRIGGER my_tv_titles_require_external_insert
+BEFORE INSERT ON my_tv_titles
+WHEN NOT EXISTS (
+    SELECT 1 FROM external_titles
+    WHERE media_type=NEW.media_type AND tmdb_id=NEW.tmdb_id
+)
+BEGIN
+    SELECT RAISE(ABORT, 'My TV viewing state requires an external title');
+END;
+CREATE TRIGGER my_tv_titles_require_external_update
+BEFORE UPDATE OF media_type,tmdb_id ON my_tv_titles
+WHEN NOT EXISTS (
+    SELECT 1 FROM external_titles
+    WHERE media_type=NEW.media_type AND tmdb_id=NEW.tmdb_id
+)
+BEGIN
+    SELECT RAISE(ABORT, 'My TV viewing state requires an external title');
+END;
+CREATE TRIGGER external_titles_restrict_my_tv_delete
+BEFORE DELETE ON external_titles
+WHEN EXISTS (
+    SELECT 1 FROM my_tv_titles
+    WHERE media_type=OLD.media_type AND tmdb_id=OLD.tmdb_id
+)
+BEGIN
+    SELECT RAISE(ABORT, 'External title is still used by My TV viewing state');
+END;
+
+CREATE TABLE local_title_links_v9 AS
+SELECT relative_path,media_type,tmdb_id FROM local_title_links;
+DROP TABLE local_title_links;
+ALTER TABLE local_media RENAME TO local_media_v8;
+CREATE TABLE local_media (
+    relative_path TEXT PRIMARY KEY,
+    library_id TEXT UNIQUE,
+    domain TEXT NOT NULL CHECK(domain IN ('my_tv','my_tv_episode')),
+    series_id TEXT,
+    state TEXT,
+    message TEXT,
+    progress INTEGER,
+    favourite INTEGER NOT NULL DEFAULT 0 CHECK(favourite IN (0,1)),
+    favourite_present INTEGER NOT NULL DEFAULT 0 CHECK(favourite_present IN (0,1)),
+    watched INTEGER CHECK(watched IN (0,1)),
+    watched_present INTEGER NOT NULL DEFAULT 0 CHECK(watched_present IN (0,1)),
+    remote_position REAL,
+    remote_duration REAL,
+    remote_last_watched REAL,
+    metadata_json TEXT NOT NULL DEFAULT '{}' CHECK(json_valid(metadata_json)),
+    metadata_present INTEGER NOT NULL DEFAULT 0 CHECK(metadata_present IN (0,1)),
+    extra_json TEXT NOT NULL DEFAULT '{}' CHECK(json_valid(extra_json)),
+    CHECK((domain='my_tv' AND series_id IS NULL)
+       OR (domain='my_tv_episode' AND series_id IS NOT NULL)),
+    FOREIGN KEY(series_id) REFERENCES my_tv_series(id)
+        ON UPDATE CASCADE ON DELETE CASCADE
+);
+INSERT INTO local_media
+SELECT relative_path,library_id,
+       CASE domain WHEN 'adult' THEN 'my_tv' ELSE 'my_tv_episode' END,
+       series_id,state,message,progress,favourite,favourite_present,
+       watched,watched_present,remote_position,remote_duration,
+       remote_last_watched,metadata_json,metadata_present,extra_json
+FROM local_media_v8;
+DROP TABLE local_media_v8;
+CREATE INDEX local_media_series_idx ON local_media(series_id);
+CREATE TRIGGER local_media_require_series_qualified_path_insert
+BEFORE INSERT ON local_media
+WHEN NEW.domain='my_tv_episode'
+ AND NEW.relative_path NOT LIKE NEW.series_id || '/%'
+BEGIN
+    SELECT RAISE(ABORT, 'episode paths must include their series identity');
+END;
+CREATE TRIGGER local_media_require_series_qualified_path_update
+BEFORE UPDATE OF relative_path,domain,series_id ON local_media
+WHEN NEW.domain='my_tv_episode'
+ AND NEW.relative_path NOT LIKE NEW.series_id || '/%'
+BEGIN
+    SELECT RAISE(ABORT, 'episode paths must include their series identity');
+END;
+CREATE TABLE local_title_links (
+    relative_path TEXT PRIMARY KEY,
+    media_type TEXT NOT NULL CHECK(media_type IN ('movie','tv')),
+    tmdb_id INTEGER NOT NULL CHECK(tmdb_id > 0),
+    FOREIGN KEY(relative_path) REFERENCES local_media(relative_path) ON DELETE CASCADE,
+    FOREIGN KEY(media_type,tmdb_id) REFERENCES external_titles(media_type,tmdb_id)
+        ON DELETE RESTRICT
+);
+CREATE INDEX local_title_links_title_idx
+    ON local_title_links(media_type,tmdb_id);
+INSERT INTO local_title_links(relative_path,media_type,tmdb_id)
+SELECT relative_path,media_type,tmdb_id FROM local_title_links_v9;
+DROP TABLE local_title_links_v9;
+
+ALTER TABLE state_revisions RENAME TO state_revisions_v8;
+CREATE TABLE state_revisions (
+    domain TEXT PRIMARY KEY CHECK(domain IN (
+        'library','my_tv_viewing','viewing_insights','my_tv_insights',
+        'settings','identity','player'
+    )),
+    revision INTEGER NOT NULL DEFAULT 0 CHECK(revision >= 0),
+    updated_at REAL NOT NULL
+);
+INSERT INTO state_revisions(domain,revision,updated_at)
+SELECT CASE domain
+         WHEN 'adult_viewing' THEN 'my_tv_viewing'
+         WHEN 'adult_insights' THEN 'my_tv_insights'
+         ELSE domain END,
+       revision,updated_at
+FROM state_revisions_v8;
+DROP TABLE state_revisions_v8;
+
+UPDATE application_settings
+SET key='my_tv_provider_badges_enabled'
+WHERE key='adult_provider_badges_enabled';
+UPDATE viewing_sessions SET surface=replace(surface,'adult','my_tv')
+WHERE surface LIKE '%adult%';
+UPDATE viewing_sessions SET kind=replace(kind,'adult','my_tv')
+WHERE kind LIKE '%adult%';
+UPDATE viewing_sessions SET item_key=replace(item_key,'adult','my_tv')
+WHERE item_key LIKE '%adult%';
+UPDATE viewing_items SET current_key=replace(current_key,'adult','my_tv')
+WHERE current_key LIKE '%adult%';
+UPDATE viewing_items
+SET source_snapshot=replace(replace(source_snapshot,'Adult TV','My TV'),
+                            'Adult library','My TV library')
+WHERE source_snapshot LIKE '%Adult TV%'
+   OR source_snapshot LIKE '%Adult library%';
+UPDATE viewing_sessions
+SET channel_name=replace(replace(channel_name,'Adult TV','My TV'),
+                         'Adult library','My TV library')
+WHERE channel_name LIKE '%Adult TV%'
+   OR channel_name LIKE '%Adult library%';
+"""
 MIGRATIONS = (
     (1, "initial relational state", SCHEMA),
     (2, "portal cache revision ledger", REVISION_SCHEMA),
     (3, "canonical state ownership and relational media links", STATE_OWNERSHIP_SCHEMA),
     (4, "channel relationship integrity", CHANNEL_INTEGRITY_SCHEMA),
-    (5, "remove duplicate Adult relationship columns",
+    (5, "remove duplicate legacy viewing relationship columns",
      CANONICAL_ADULT_RELATIONSHIPS_SCHEMA),
     (6, "relational media and title ownership", RELATIONAL_MEDIA_OWNERSHIP_SCHEMA),
     (7, "reject retired setting values", CURRENT_SETTINGS_SCHEMA),
     (8, "stable MabelTV viewing identities and targeted history",
      VIEWING_IDENTITY_SCHEMA),
+    (9, "rename the legacy private domain to My TV", MY_TV_DOMAIN_SCHEMA),
 )
 MIGRATION_CHECKSUMS = {
     version: hashlib.sha256(sql.encode("utf-8")).hexdigest()

@@ -12,15 +12,15 @@ class FilmGenreTests(unittest.TestCase):
         fixture = LibraryFixture()
         self.addCleanup(fixture.close)
         library = fixture.library
-        film = library.adult_root / 'Film.mkv'
+        film = library.my_tv_root / 'Film.mkv'
         film.write_bytes(b'video')
         library.tmdb_request = mock.Mock(return_value={
             'title': 'Film', 'genres': [{'id': 12, 'name': 'Adventure'}, {'id': 14, 'name': 'Fantasy'}],
         })
         library.fetch_automatic_subtitle = mock.Mock(return_value={})
         library.tmdb_apply({'file': film.name, 'tmdb_id': 120})
-        self.assertEqual(library.adult_media_states()[film.name]['metadata']['genres'], ['Adventure', 'Fantasy'])
-        self.assertEqual(library.library()['adult_library'][0]['metadata']['genres'], ['Adventure', 'Fantasy'])
+        self.assertEqual(library.my_tv_media_states()[film.name]['metadata']['genres'], ['Adventure', 'Fantasy'])
+        self.assertEqual(library.library()['my_tv_library'][0]['metadata']['genres'], ['Adventure', 'Fantasy'])
 
 
 if __name__ == '__main__':

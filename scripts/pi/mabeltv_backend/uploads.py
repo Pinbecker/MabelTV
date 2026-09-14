@@ -228,7 +228,7 @@ class UploadConversionMixin:
                     "processing": False,
                     "status": "error",
                     "error": str(error) if isinstance(error, ValueError)
-                    else "Mabel TV could not check this video",
+                    else f"{self.tv_identity()[1]} could not check this video",
                     "finished": time.time(),
                 }
                 self.write_json(self.incoming / f"{upload_id}.result.json", result)
@@ -236,7 +236,7 @@ class UploadConversionMixin:
                 return
             metadata["status"] = "error"
             metadata["error"] = str(error) if isinstance(error, ValueError) \
-                else "Mabel TV could not prepare this video"
+                else f"{self.tv_identity()[1]} could not prepare this video"
             metadata["updated"] = time.time()
             self.write_json(manifest, metadata)
 
@@ -246,8 +246,8 @@ class UploadConversionMixin:
         with lock:
             metadata = self.upload_meta(upload_id)
             part = self.incoming / f"{upload_id}.part"
-            adult_film_upload = metadata.get("kind") == "adult"
-            adult_series_upload = metadata.get("kind") == "adult-series"
+            my_tv_film_upload = metadata.get("kind") == "my_tv"
+            my_tv_series_upload = metadata.get("kind") == "my-tv-series"
             source_name = str(metadata["file_name"])
             original_destination = self.upload_destination(metadata)
             previous_status = str(metadata.pop(
@@ -288,8 +288,8 @@ class UploadConversionMixin:
                 metadata["status"] = "processing"
                 metadata["updated"] = time.time()
                 self.write_json(self.incoming / f"{upload_id}.json", metadata)
-                if adult_film_upload:
-                    self.optimise_adult_for_playback(part, destination)
+                if my_tv_film_upload:
+                    self.optimise_my_tv_for_playback(part, destination)
                 else:
                     self.optimise_for_playback(part, destination)
             else:
@@ -301,10 +301,10 @@ class UploadConversionMixin:
             metadata["status"] = "finalising"
             metadata["updated"] = time.time()
             self.write_json(self.incoming / f"{upload_id}.json", metadata)
-            if adult_film_upload:
+            if my_tv_film_upload:
                 with self.config_lock:
-                    states = self.adult_media_states()
-                    relative = self.adult_relative_path(destination)
+                    states = self.my_tv_media_states()
+                    relative = self.my_tv_relative_path(destination)
                     current = states.get(relative, {})
                     if not isinstance(current, dict):
                         current = {}
@@ -312,21 +312,21 @@ class UploadConversionMixin:
                     current.setdefault("state", "original")
                     current.setdefault("message", "")
                     states[relative] = current
-                    self.write_adult_media_states(states)
-            elif adult_series_upload:
+                    self.write_my_tv_media_states(states)
+            elif my_tv_series_upload:
                 with self.config_lock:
-                    states = self.adult_series_states()
+                    states = self.my_tv_series_states()
                     series_id = str(metadata.get("series_id", ""))
                     relative = destination.relative_to(
-                        self.adult_series_root / series_id).as_posix()
+                        self.my_tv_series_root / series_id).as_posix()
                     key = f"{series_id}/{relative}"
                     current = states["episodes"].get(key, {})
                     if not isinstance(current, dict):
                         current = {}
                     current.setdefault("library_id", uuid.uuid4().hex)
                     states["episodes"][key] = current
-                    self.write_adult_series_states(states)
-            refreshed = True if adult_series_upload else self.refresh_tv()
+                    self.write_my_tv_series_states(states)
+            refreshed = True if my_tv_series_upload else self.refresh_tv()
             result = {
                 "id": upload_id,
                 "offset": int(metadata["size"]),
@@ -336,8 +336,8 @@ class UploadConversionMixin:
                 "status": "finalising",
                 "file_name": source_name,
                 "channel": metadata.get("channel"),
-                "kind": "adult-series" if adult_series_upload
-                else "adult" if adult_film_upload else "channel",
+                "kind": "my-tv-series" if my_tv_series_upload
+                else "my_tv" if my_tv_film_upload else "channel",
                 "series_id": metadata.get("series_id"),
                 "season": metadata.get("season"),
                 "source_kind": metadata.get("source_kind", "browser"),
@@ -382,9 +382,9 @@ class UploadConversionMixin:
                 offset = part.stat().st_size if part.exists() \
                     else (0 if status == "uploading" else size)
                 upload_kind = str(value.get("kind") or "channel")
-                adult = upload_kind == "adult"
-                adult_series = upload_kind == "adult-series"
-                number = -1 if adult or adult_series else int(value.get("channel", -1))
+                my_tv = upload_kind == "my_tv"
+                my_tv_series = upload_kind == "my-tv-series"
+                number = -1 if my_tv or my_tv_series else int(value.get("channel", -1))
             except (OSError, TypeError, ValueError):
                 continue
             transfer_state = str(value.get("transfer_state", "active" if status == "uploading" else "complete"))
@@ -396,11 +396,11 @@ class UploadConversionMixin:
                 "id": value["id"],
                 "file_name": str(value.get("file_name", "Video")),
                 "channel": number,
-                "channel_name": "Adult TV series" if adult_series else
-                (f"Adult TV · {value.get('folder')}" if value.get("folder")
-                 else "Adult TV · All films") if adult else
+                "channel_name": "My TV series" if my_tv_series else
+                (f"My TV · {value.get('folder')}" if value.get("folder")
+                 else "My TV · All films") if my_tv else
                 channel_names.get(number, f"CH {number}"),
-                "kind": "adult-series" if adult_series else "adult" if adult else "channel",
+                "kind": "my-tv-series" if my_tv_series else "my_tv" if my_tv else "channel",
                 "size": size,
                 "offset": offset,
                 "status": status,
@@ -425,19 +425,19 @@ class UploadConversionMixin:
                     "error", "refresh-error"}:
                 continue
             upload_kind = str(value.get("kind") or "channel")
-            adult = upload_kind == "adult"
-            adult_series = upload_kind == "adult-series"
-            number = -1 if adult or adult_series else int(value.get("channel", -1))
+            my_tv = upload_kind == "my_tv"
+            my_tv_series = upload_kind == "my-tv-series"
+            number = -1 if my_tv or my_tv_series else int(value.get("channel", -1))
             source_kind = str(value.get("source_kind") or "browser")
             jobs.append({
                 "id": value.get("id", result_path.name.removesuffix(".result.json")),
                 "file_name": str(value.get("file_name", "Video")),
                 "channel": number,
-                "channel_name": "Adult TV series" if adult_series else
-                (f"Adult TV · {value.get('folder')}" if value.get("folder")
-                 else "Adult TV · All films") if adult else
+                "channel_name": "My TV series" if my_tv_series else
+                (f"My TV · {value.get('folder')}" if value.get("folder")
+                 else "My TV · All films") if my_tv else
                 channel_names.get(number, f"CH {number}"),
-                "kind": "adult-series" if adult_series else "adult" if adult else "channel",
+                "kind": "my-tv-series" if my_tv_series else "my_tv" if my_tv else "channel",
                 "size": int(value.get("offset", 0)),
                 "offset": int(value.get("offset", 0)),
                 "status": str(value.get("status")),
@@ -521,15 +521,15 @@ class UploadConversionMixin:
         with self.config_lock:
             return self._upload_create(payload)
 
-    def adult_upload_create(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def my_tv_upload_create(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Reserve a resumable upload prepared for reliable Pi playback."""
         with self.config_lock:
             file_name = str(payload.get("file_name", ""))
             requested_folder = str(payload.get("folder", "")).strip()
-            folder = self.normalise_adult_folder(requested_folder) if requested_folder else ""
+            folder = self.normalise_my_tv_folder(requested_folder) if requested_folder else ""
             size = int(payload.get("size", 0))
             relative = f"{folder}/{file_name}" if folder else file_name
-            destination = self.safe_adult_path(relative, create_folder=bool(folder))
+            destination = self.safe_my_tv_path(relative, create_folder=bool(folder))
             if size <= 0 or size > MAX_UPLOAD_BYTES:
                 raise ValueError("That file size is not supported")
 
@@ -537,7 +537,7 @@ class UploadConversionMixin:
                 if manifest.name.endswith(".result.json"):
                     continue
                 value = self.read_json(manifest, {})
-                if (value.get("kind") != "adult" or value.get("file_name") != file_name
+                if (value.get("kind") != "my_tv" or value.get("file_name") != file_name
                         or str(value.get("folder", "")) != folder):
                     continue
                 if value.get("size") != size:
@@ -562,8 +562,8 @@ class UploadConversionMixin:
                         }, "status": value.get("status", "uploading")}
 
             if destination.exists() or destination.with_suffix(".mp4").exists():
-                raise ValueError("A film with that name already exists in Adult mode")
-            # Adult films arrive untouched. A later owner-approved conversion
+                raise ValueError("A film with that name already exists in My TV")
+            # My TV films arrive untouched. A later owner-approved conversion
             # reserves source-and-output space only if it is actually needed.
             reserve = size + 512 * 1024 * 1024
             if shutil.disk_usage(self.media_root).free < reserve:
@@ -571,7 +571,7 @@ class UploadConversionMixin:
             upload_id = uuid.uuid4().hex
             metadata = {
                 "id": upload_id,
-                "kind": "adult",
+                "kind": "my_tv",
                 "file_name": file_name,
                 "folder": folder,
                 "size": size,
@@ -581,11 +581,11 @@ class UploadConversionMixin:
             self.write_json(self.incoming / f"{upload_id}.json", metadata)
             return {"id": upload_id, "offset": 0, "transfer_state": metadata["transfer_state"]}
 
-    def adult_series_upload_create(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def my_tv_series_upload_create(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Reserve a resumable episode upload into one explicit series season."""
         with self.config_lock:
             series_id = str(payload.get("series", ""))
-            series_root = self.adult_series_path(series_id)
+            series_root = self.my_tv_series_path(series_id)
             try:
                 season = int(payload.get("season"))
             except (TypeError, ValueError) as error:
@@ -600,13 +600,13 @@ class UploadConversionMixin:
             if size <= 0 or size > MAX_UPLOAD_BYTES:
                 raise ValueError("That file size is not supported")
             season_name = f"Season {season}"
-            destination = self.adult_series_path(series_id, f"{season_name}/{file_name}")
+            destination = self.my_tv_series_path(series_id, f"{season_name}/{file_name}")
 
             for manifest in self.incoming.glob("*.json"):
                 if manifest.name.endswith(".result.json"):
                     continue
                 value = self.read_json(manifest, {})
-                if (value.get("kind") != "adult-series"
+                if (value.get("kind") != "my-tv-series"
                         or value.get("series_id") != series_id
                         or int(value.get("season", 0) or 0) != season
                         or value.get("file_name") != file_name):
@@ -643,7 +643,7 @@ class UploadConversionMixin:
             upload_id = uuid.uuid4().hex
             metadata = {
                 "id": upload_id,
-                "kind": "adult-series",
+                "kind": "my-tv-series",
                 "series_id": series_id,
                 "season": season,
                 "file_name": file_name,

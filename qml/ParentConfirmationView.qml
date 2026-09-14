@@ -47,7 +47,7 @@ Item {
                 font.family: "DejaVu Sans"
                 font.bold: true
                 font.pixelSize: 25 * host.uiScale
-                text: "MabelTV"
+                text: tvDisplayName
             }
         }
 
@@ -110,8 +110,8 @@ Item {
             color: "#c0c5c8"
             font.family: "DejaVu Sans"
             font.pixelSize: 22 * host.uiScale
-            text: host.adultShortcutFocused
-                  ? "Adult mode selected — press OK to open"
+            text: host.myTvShortcutFocused
+                  ? "My TV mode selected — press OK to open"
                   : "Press OK three times to open Parent Controls"
         }
 
@@ -122,17 +122,17 @@ Item {
             width: 430 * host.uiScale
             height: 62 * host.uiScale
             radius: 12 * host.uiScale
-            color: host.adultShortcutFocused ? "#fff0eb" : "#171c22"
-            border.color: host.adultShortcutFocused ? "#ff6b57" : "#4b535b"
-            border.width: host.adultShortcutFocused ? 3 : 1
+            color: host.myTvShortcutFocused ? "#fff0eb" : "#171c22"
+            border.color: host.myTvShortcutFocused ? "#ff6b57" : "#4b535b"
+            border.width: host.myTvShortcutFocused ? 3 : 1
 
             Text {
                 anchors.centerIn: parent
-                color: host.adultShortcutFocused ? "#20252a" : "#f8f5ef"
+                color: host.myTvShortcutFocused ? "#20252a" : "#f8f5ef"
                 font.family: "DejaVu Sans"
                 font.bold: true
                 font.pixelSize: 19 * host.uiScale
-                text: "↑  Adult mode     OK  Open"
+                text: "↑  My TV mode     OK  Open"
             }
         }
 

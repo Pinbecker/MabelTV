@@ -3,10 +3,10 @@ import { test, expect } from './test-fixtures.mjs'
 test.use({ serviceWorkers: 'block' })
 
 const liveState = {
-  available: false, standby: false, adult_mode: false, paused: false, muted: false,
+  available: false, standby: false, my_tv_mode: false, paused: false, muted: false,
   volume: 42, remote_locked: false, subtitles_available: true,
   subtitles_visible: false, widescreen_available: true, widescreen_enabled: false,
-  adult_handoff_available: false, connected_tv_available: true,
+  my_tv_handoff_available: false, connected_tv_available: true,
   connected_tv_power: 'standby', channel_number: 1,
   channel_name: 'Family Films', programme: 'Snowy Adventure',
 }
@@ -46,7 +46,7 @@ test('the global power control replaces Home actions but yields to either remote
   test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone header contract')
   await openPortal(page)
   await installLiveFixture(page)
-  await expect(page.locator('#openHeaderAdultTv')).toHaveCount(0)
+  await expect(page.locator('#openHeaderMyTvTv')).toHaveCount(0)
   await expect(page.locator('#openPortalPower')).toBeVisible()
   await expect(page.locator('.home-spotlight-actions')).toHaveCount(0)
   await page.locator('#openPortalPower').click()

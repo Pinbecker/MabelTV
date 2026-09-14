@@ -16,9 +16,9 @@ from urllib.parse import urlencode, urlsplit
 from urllib.request import Request
 
 from .constants import (
-    ADULT_METADATA_CACHE_SECONDS,
-    ADULT_PROVIDER_CACHE_SECONDS,
-    ADULT_PROVIDER_MAX_CACHE_SECONDS,
+    MY_TV_METADATA_CACHE_SECONDS,
+    MY_TV_PROVIDER_CACHE_SECONDS,
+    MY_TV_PROVIDER_MAX_CACHE_SECONDS,
     OPENSUBTITLES_API_BASE_URL,
     OPENSUBTITLES_USER_AGENT,
     SUBTITLE_EXTENSIONS,
@@ -239,19 +239,19 @@ class ProviderTransportMixin:
         except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as error:
             raise ValueError("Streaming services could not be reached. Try again later") from error
 
-    def adult_cached_tmdb_request(self, endpoint: str,
+    def my_tv_cached_tmdb_request(self, endpoint: str,
                                   parameters: dict[str, Any] | None = None) -> Any:
         """Cache catalogue metadata while keeping viewing and local state live."""
         marker = f"{endpoint}?{urlencode(sorted((parameters or {}).items()))}"
         now = time.time()
         with self.config_lock:
-            cache = getattr(self, "_adult_tmdb_cache", None)
+            cache = getattr(self, "_my_tv_tmdb_cache", None)
             if not isinstance(cache, dict):
                 cache = {}
-                self._adult_tmdb_cache = cache
+                self._my_tv_tmdb_cache = cache
             saved = cache.get(marker, {})
             if isinstance(saved, dict) and now - float(
-                    saved.get("checked", 0) or 0) < ADULT_METADATA_CACHE_SECONDS:
+                    saved.get("checked", 0) or 0) < MY_TV_METADATA_CACHE_SECONDS:
                 return deepcopy(saved.get("value"))
         value = self.tmdb_request(endpoint, parameters)
         with self.config_lock:

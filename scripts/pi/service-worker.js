@@ -2,16 +2,15 @@
 
 importScripts('/mabeltv-offline-schema.js')
 
-const SHELL_RELEASE = '235'
+const SHELL_RELEASE = '239'
 const SHELL_CACHE = `mabeltv-shell-v${SHELL_RELEASE}`
-const PREVIOUS_SHELL_CACHE = 'mabeltv-shell-v234'
+const PREVIOUS_SHELL_CACHE = 'mabeltv-shell-v238'
 const SHELL_CACHE_PREFIX = 'mabeltv-shell-v'
 const FAMILY_ARTWORK_CACHE = 'mabeltv-artwork-family-v1'
 const PROTECTED_ARTWORK_CACHE = 'mabeltv-artwork-protected-v1'
 const ARTWORK_LIMIT = 1000
 const SHELL_URLS = [
   '/',
-  '/manifest.webmanifest',
   '/mabeltv-icon.png',
   '/mabeltv-offline-schema.js',
   '/mabeltv-offline.js',
@@ -48,8 +47,8 @@ const SHELL_URLS = [
   '/portal/css/experience-appearance.css',
   '/portal/css/experience-settings.css',
   '/portal/css/experience-insights.css',
-  '/portal/css/experience-adult-insights.css',
-  '/portal/css/experience-adult-home.css',
+  '/portal/css/experience-my-tv-insights.css',
+  '/portal/css/experience-my-tv-home.css',
   '/portal/css/experience-responsive.css',
   '/portal/css/experience-overlays.css',
   '/portal/css/experience-card-navigation.css',
@@ -137,7 +136,7 @@ function parseRange(value, size) {
 
 function protectedDownload(manifest) {
   return manifest?.protected === true
-    || ['adult', 'adult-series'].includes(manifest?.source?.kind)
+    || ['my_tv', 'my-tv-series'].includes(manifest?.source?.kind)
 }
 
 async function offlineMediaResponse(request, id, authorised = false) {
@@ -313,9 +312,9 @@ self.addEventListener('fetch', event => {
     event.respondWith(artworkResponse(event.request, FAMILY_ARTWORK_CACHE))
     return
   }
-  if (url.pathname.startsWith('/api/adult/artwork/')
-      || url.pathname.startsWith('/api/adult/series/artwork/')
-      || url.pathname.startsWith('/api/adult/tmdb-artwork/')) {
+  if (url.pathname.startsWith('/api/my-tv/artwork/')
+      || url.pathname.startsWith('/api/my-tv/series/artwork/')
+      || url.pathname.startsWith('/api/my-tv/tmdb-artwork/')) {
     event.respondWith(artworkResponse(event.request, PROTECTED_ARTWORK_CACHE,
       offlineClientAuthorised(event)))
     return
@@ -323,14 +322,14 @@ self.addEventListener('fetch', event => {
   if (event.request.mode === 'navigate') {
     if (url.pathname === '/watch/player') {
       event.respondWith(fetch(event.request).catch(() => new Response(
-        'The MabelTV player needs a connection to the Pi', {
+        'Your TV player needs a connection to the Pi', {
           status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' },
         })))
       return
     }
     const response = caches.open(SHELL_CACHE).then(cache => cache.match('/'))
       .then(cached => cached || fetch(event.request))
-      .catch(() => new Response('MabelTV is not available offline yet', {
+      .catch(() => new Response('Your TV is not available offline yet', {
         status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' },
       }))
     event.respondWith(response)

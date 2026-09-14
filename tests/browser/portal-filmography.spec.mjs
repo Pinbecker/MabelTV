@@ -20,28 +20,28 @@ test('full filmography provides a four-wide timeline, search and A-Z mode', asyn
       release_date: index === 12 ? '' : `${2024 - Math.floor(index / 5)}-01-01`,
       poster_path: index % 2 ? 'dark.svg' : 'bright.svg', character: 'Actor',
     }))
-    renderAdultPersonDetail({
+    renderMyTvPersonDetail({
       tmdb_id: 1, name: 'Michael Caine', known_for_department: 'Acting',
       profile_path: 'bright.svg', biography: 'An actor.', known_for: filmography.slice(0, 10),
       filmography,
     })
-    portalSheets.open($('#adultPersonSheet'))
+    portalSheets.open($('#myTvPersonSheet'))
   })
 
-  await page.locator('#adultPersonFilmography').click()
-  await expect(page.locator('#view-adult-filmography')).toBeVisible()
-  await expect(page.locator('#adultFilmographyName')).toHaveText('Michael Caine')
-  await expect(page.locator('#adultFilmographyTimeline .adult-explore-card')).toHaveCount(13)
-  await expect(page.locator('#adultFilmographyTimeline .adult-filmography-year h2').first()).toHaveText('2024')
-  const firstRow = await page.locator('#adultFilmographyTimeline .adult-explore-card').evaluateAll(cards =>
+  await page.locator('#myTvPersonFilmography').click()
+  await expect(page.locator('#view-my-tv-filmography')).toBeVisible()
+  await expect(page.locator('#myTvFilmographyName')).toHaveText('Michael Caine')
+  await expect(page.locator('#myTvFilmographyTimeline .my-tv-explore-card')).toHaveCount(13)
+  await expect(page.locator('#myTvFilmographyTimeline .my-tv-filmography-year h2').first()).toHaveText('2024')
+  const firstRow = await page.locator('#myTvFilmographyTimeline .my-tv-explore-card').evaluateAll(cards =>
     cards.filter(card => Math.round(card.getBoundingClientRect().top)
       === Math.round(cards[0].getBoundingClientRect().top)).length)
   expect(firstRow).toBe(4)
-  const topGeometry = await page.locator('.adult-filmography-head').evaluate(head => {
+  const topGeometry = await page.locator('.my-tv-filmography-head').evaluate(head => {
     const back = head.querySelector('.view-back').getBoundingClientRect()
-    const person = head.querySelector('.adult-filmography-person').getBoundingClientRect()
-    const search = document.querySelector('#adultFilmographySearch').closest('.portal-search').getBoundingClientRect()
-    const mode = document.querySelector('#adultFilmographyMode').closest('.adult-viewing-select').getBoundingClientRect()
+    const person = head.querySelector('.my-tv-filmography-person').getBoundingClientRect()
+    const search = document.querySelector('#myTvFilmographySearch').closest('.portal-search').getBoundingClientRect()
+    const mode = document.querySelector('#myTvFilmographyMode').closest('.my-tv-viewing-select').getBoundingClientRect()
     return {
       backLeft: back.left,
       personLeft: person.left,
@@ -54,33 +54,33 @@ test('full filmography provides a four-wide timeline, search and A-Z mode', asyn
   expect(topGeometry.personGap).toBeLessThanOrEqual(6)
   expect(Math.abs(topGeometry.modeHeight - topGeometry.searchHeight)).toBeLessThanOrEqual(1)
   expect(topGeometry.searchHeight).toBeLessThanOrEqual(36)
-  await expect(page.locator('#adultFilmographyMeta')).toContainText('Screen credits')
-  await expect(page.locator('#adultFilmographyMeta')).toContainText('From 2022')
-  await expect(page.locator('#adultFilmographyMeta')).toContainText('Titles')
-  await expect(page.locator('#adultFilmographyMeta')).toContainText('13')
-  await expect(page.locator('#adultFilmographyMeta')).toContainText('Films')
-  await expect(page.locator('#adultFilmographyTimeline .adult-explore-role').first())
+  await expect(page.locator('#myTvFilmographyMeta')).toContainText('Screen credits')
+  await expect(page.locator('#myTvFilmographyMeta')).toContainText('From 2022')
+  await expect(page.locator('#myTvFilmographyMeta')).toContainText('Titles')
+  await expect(page.locator('#myTvFilmographyMeta')).toContainText('13')
+  await expect(page.locator('#myTvFilmographyMeta')).toContainText('Films')
+  await expect(page.locator('#myTvFilmographyTimeline .my-tv-explore-role').first())
     .toHaveText('Actor')
 
-  await page.locator('#adultFilmographySearch').fill('Prestige')
-  await expect(page.locator('#adultFilmographyTimeline .adult-explore-card')).toHaveCount(1)
-  await expect(page.locator('#adultFilmographyTimeline .adult-explore-open-copy strong'))
+  await page.locator('#myTvFilmographySearch').fill('Prestige')
+  await expect(page.locator('#myTvFilmographyTimeline .my-tv-explore-card')).toHaveCount(1)
+  await expect(page.locator('#myTvFilmographyTimeline .my-tv-explore-open-copy strong'))
     .toHaveText('The Prestige')
-  await page.locator('#adultFilmographySearchClear').click()
-  await page.locator('#adultFilmographyMode').selectOption('az')
-  await expect(page.locator('#adultFilmographyTimeline .adult-filmography-year h2').first()).toHaveText('A')
-  await expect(page.locator('#adultFilmographyTimeline .adult-filmography-year h2')).toContainText(['A', 'F', 'P'])
+  await page.locator('#myTvFilmographySearchClear').click()
+  await page.locator('#myTvFilmographyMode').selectOption('az')
+  await expect(page.locator('#myTvFilmographyTimeline .my-tv-filmography-year h2').first()).toHaveText('A')
+  await expect(page.locator('#myTvFilmographyTimeline .my-tv-filmography-year h2')).toContainText(['A', 'F', 'P'])
   await page.screenshot({ path: testInfo.outputPath('actor-filmography-az.png'), animations: 'disabled' })
 
   const started = Date.now()
   await page.goBack({ waitUntil: 'commit' })
-  await expect(page.locator('#adultPersonSheet')).toBeVisible()
+  await expect(page.locator('#myTvPersonSheet')).toBeVisible()
   expect(Date.now() - started).toBeLessThan(1000)
   await expect(page.locator('#view-watch')).toBeVisible()
   await expect(page.locator('#view-insights')).toBeHidden()
   await expect(page).toHaveURL(/#watch$/)
   await page.goBack({ waitUntil: 'commit' })
-  await expect(page.locator('#adultPersonSheet')).toBeHidden()
+  await expect(page.locator('#myTvPersonSheet')).toBeHidden()
   await expect(page.locator('#view-watch')).toBeVisible()
   await expect(page.locator('#view-insights')).toBeHidden()
   await expect(page).toHaveURL(/#watch$/)

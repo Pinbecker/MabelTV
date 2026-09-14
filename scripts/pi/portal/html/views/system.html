@@ -43,7 +43,7 @@
                   <label>Button sound effects<select id="tvSoundEffects"><option value="true">On</option><option value="false">Off</option></select><small>The navigation sounds heard on the television.</small></label>
                 </div></div>
               </details>
-              <div class="settings-save"><p>Changes apply to MabelTV straight away; the picture may refresh briefly.</p><button type="submit">Save TV settings</button></div>
+              <div class="settings-save"><p>Changes apply to <span data-tv-name>Your TV</span> straight away; the picture may refresh briefly.</p><button type="submit">Save TV settings</button></div>
             </form>
           </section>
 
@@ -73,7 +73,7 @@
               <div class="settings-toggle-row"><span class="settings-row-icon guide"><svg><use href="/portal/icons.svg#signal-guide"/></svg></span><div><strong>Show the TV guide</strong><small id="tvGuideState">Off</small><p>When on, hold OK / Select for 3.5 seconds to open it.</p></div><button id="tvGuideToggle" type="button" class="feature-toggle settings-switch" aria-label="Show the TV guide" aria-pressed="false">Off</button></div>
               <div class="settings-toggle-row"><span class="settings-row-icon remote"><svg><use href="/portal/icons.svg#signal-monitor-play"/></svg></span><div><strong>Allow TV and browser playback together</strong><small id="remoteConcurrentState">Off · one player at a time</small><p>Turn on only when deliberately testing two streams.</p></div><button id="remoteConcurrentToggle" type="button" class="feature-toggle settings-switch" aria-label="Allow TV and browser playback together" aria-pressed="false">Off</button></div>
               <div class="settings-toggle-row"><span class="settings-row-icon streaming"><svg><use href="/portal/icons.svg#signal-search"/></svg></span><div><strong>Where to watch and rent</strong><small id="watchmodeAvailabilityState">On · direct links and rental prices</small><p>Turn off while rapidly cataloguing watched titles to conserve Watchmode requests.</p></div><button id="watchmodeAvailabilityToggle" type="button" class="feature-toggle settings-switch" aria-label="Where to watch and rent lookups" aria-pressed="true">On</button></div>
-              <div class="settings-toggle-row"><span class="settings-row-icon streaming"><svg><use href="/portal/icons.svg#signal-tv"/></svg></span><div><strong>Streaming service icons</strong><small id="adultProviderBadgesState">On · shown on Adult TV artwork</small><p>Show small MabelTV and included streaming-service icons on title cards.</p></div><button id="adultProviderBadgesToggle" type="button" class="feature-toggle settings-switch" aria-label="Streaming service icons" aria-pressed="true">On</button></div>
+              <div class="settings-toggle-row"><span class="settings-row-icon streaming"><svg><use href="/portal/icons.svg#signal-tv"/></svg></span><div><strong>Streaming service icons</strong><small id="myTvProviderBadgesState">On · shown on My TV artwork</small><p>Show small <span data-tv-name>Your TV</span> and included streaming-service icons on title cards.</p></div><button id="myTvProviderBadgesToggle" type="button" class="feature-toggle settings-switch" aria-label="Streaming service icons" aria-pressed="true">On</button></div>
             </div>
           </section>
 

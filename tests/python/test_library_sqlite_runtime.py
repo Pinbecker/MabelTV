@@ -31,7 +31,7 @@ class LibrarySqliteRuntimeTests(unittest.TestCase):
             config_path = root / "library.conf"
             database_path = root / "mabeltv.db"
             channels = {"schema_version": 1, "channels": [{
-                "number": 1, "name": "MabelTV", "folder": "mabeltv",
+                "number": 1, "name": "Mabel TV", "folder": "mabeltv",
                 "aspect": "crop", "content_type": "shows",
             }]}
             channels_path.write_text(json.dumps(channels), encoding="utf-8")
@@ -49,15 +49,15 @@ class LibrarySqliteRuntimeTests(unittest.TestCase):
                 "settings": {"schema_version": 1, "display_resolution": "1080p"},
                 "owner": {"schema_version": 1, "setup_complete": True,
                           "pin_hash": "database", "pin_salt": "database",
-                          "child_name": "Mabel", "tv_name": "MabelTV"},
+                          "child_name": "Mabel", "tv_name": "Mabel TV"},
                 "player": {"schema_version": 4, "standby": True},
                 "viewing": {"schema_version": 2, "tracking_started": time.time(),
                             "sessions": []},
-                "channel_metadata": {}, "adult_media": {},
-                "adult_series": {"series": {}, "episodes": {}},
-                "adult_viewing": {"schema_version": 1, "titles": {},
+                "channel_metadata": {}, "my_tv_media": {},
+                "my_tv_series": {"series": {}, "episodes": {}},
+                "my_tv_viewing": {"schema_version": 1, "titles": {},
                                   "availability": {}, "explore": {}},
-                "adult_insights": {"schema_version": 1, "titles": {}, "failures": {}},
+                "my_tv_insights": {"schema_version": 1, "titles": {}, "failures": {}},
             }
             for kind, value in stores.items():
                 database.write(kind, value)

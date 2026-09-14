@@ -37,23 +37,23 @@ test('portal search clear controls stay compact with a full touch target', async
 })
 
 test('a local global-search film opens one rich card with playback controls', async ({ page }, testInfo) => {
-  await page.route(url => new URL(url).pathname === '/api/adult/discovery', route =>
+  await page.route(url => new URL(url).pathname === '/api/my-tv/discovery', route =>
     route.fulfill({ json: { query: 'Harry Potter', results: Array.from(
       { length: 8 }, (_, index) => index ? { ...titleDetail, key: `movie:${672 + index}`,
         tmdb_id: 672 + index, title: `Harry Potter film ${index + 1}`,
         on_mabeltv: false, local: null } : titleDetail) } }))
-  await page.route(url => new URL(url).pathname === '/api/adult/title', route =>
+  await page.route(url => new URL(url).pathname === '/api/my-tv/title', route =>
     route.fulfill({ json: titleDetail }))
-  await page.route(url => new URL(url).pathname === '/api/adult/providers', route =>
+  await page.route(url => new URL(url).pathname === '/api/my-tv/providers', route =>
     route.fulfill({ json: { key: titleDetail.key, sources: [] } }))
   await page.goto('/')
   await expect.poll(() => page.evaluate(() => Boolean(library))).toBe(true)
-  await page.evaluate(film => { library.adult_library = [{ ...film,
+  await page.evaluate(film => { library.my_tv_library = [{ ...film,
     remote_position: 600, remote_duration: 7200 }] }, localFilm)
-  await page.locator('[data-view-button="adult-home"]').click()
+  await page.locator('[data-view-button="my-tv-home"]').click()
   await page.locator('#watchSearch').fill('Harry Potter')
-  await expect(page.locator('#adultDiscoveryGrid .watch-card')).toHaveCount(8)
-  const grid = await page.locator('#adultDiscoveryGrid').evaluate(element => ({
+  await expect(page.locator('#myTvDiscoveryGrid .watch-card')).toHaveCount(8)
+  const grid = await page.locator('#myTvDiscoveryGrid').evaluate(element => ({
     columns: getComputedStyle(element).gridTemplateColumns.split(' ').length,
     contained: element.scrollWidth <= element.clientWidth + 1,
   }))
@@ -62,25 +62,25 @@ test('a local global-search film opens one rich card with playback controls', as
     contained: true,
   })
   await page.screenshot({ path: testInfo.outputPath('global-search-grid.png') })
-  await page.locator('#adultDiscoveryGrid .watch-card').first().click()
-  await expect(page.locator('#adultTitleSheet')).toBeVisible()
+  await page.locator('#myTvDiscoveryGrid .watch-card').first().click()
+  await expect(page.locator('#myTvTitleSheet')).toBeVisible()
   await expect(page.locator('#watchFilmSheet')).toBeHidden()
-  await expect(page.locator('#adultTitleFilmActions')).toBeVisible()
-  await expect(page.locator('#adultTitleFilmTv')).toContainText('Continue on TV')
-  await expect(page.locator('#adultTitleFilmHere')).toContainText('Continue on this device')
-  await expect(page.locator('#adultTitleLocal')).toBeHidden()
-  await expect(page.locator('#adultTitleMore')).toBeVisible()
-  const treatment = await page.locator('#adultTitleSheet').evaluate(sheet => {
-    const eyebrow = sheet.querySelector('#adultTitleEyebrow')
-    const settings = sheet.querySelector('#adultTitleMore')
+  await expect(page.locator('#myTvTitleFilmActions')).toBeVisible()
+  await expect(page.locator('#myTvTitleFilmTv')).toContainText('Continue on TV')
+  await expect(page.locator('#myTvTitleFilmHere')).toContainText('Continue on this device')
+  await expect(page.locator('#myTvTitleLocal')).toBeHidden()
+  await expect(page.locator('#myTvTitleMore')).toBeVisible()
+  const treatment = await page.locator('#myTvTitleSheet').evaluate(sheet => {
+    const eyebrow = sheet.querySelector('#myTvTitleEyebrow')
+    const settings = sheet.querySelector('#myTvTitleMore')
     const probe = document.createElement('span')
     probe.style.color = 'var(--experience-accent-ink)'
     document.body.append(probe)
     const accentInk = getComputedStyle(probe).color
     probe.remove()
-    const tv = sheet.querySelector('#adultTitleFilmTv').getBoundingClientRect()
-    const here = sheet.querySelector('#adultTitleFilmHere').getBoundingClientRect()
-    const close = sheet.querySelector('#adultTitleClose').getBoundingClientRect()
+    const tv = sheet.querySelector('#myTvTitleFilmTv').getBoundingClientRect()
+    const here = sheet.querySelector('#myTvTitleFilmHere').getBoundingClientRect()
+    const close = sheet.querySelector('#myTvTitleClose').getBoundingClientRect()
     const settingsBox = settings.getBoundingClientRect()
     return {
       eyebrowLocal: eyebrow.classList.contains('is-mabeltv'),
@@ -94,9 +94,9 @@ test('a local global-search film opens one rich card with playback controls', as
       playbackSameRow: Math.abs(tv.y - here.y) <= 1,
       playbackSameHeight: Math.abs(tv.height - here.height) <= 1,
       playbackHeight: tv.height,
-      playbackSubtextHidden: getComputedStyle(sheet.querySelector('#adultTitleFilmTv small')).display === 'none',
-      deviceLabelFits: sheet.querySelector('#adultTitleFilmHere strong').scrollWidth
-        <= sheet.querySelector('#adultTitleFilmHere strong').clientWidth + 1,
+      playbackSubtextHidden: getComputedStyle(sheet.querySelector('#myTvTitleFilmTv small')).display === 'none',
+      deviceLabelFits: sheet.querySelector('#myTvTitleFilmHere strong').scrollWidth
+        <= sheet.querySelector('#myTvTitleFilmHere strong').clientWidth + 1,
     }
   })
   expect(treatment).toEqual({
@@ -117,29 +117,29 @@ test('a local global-search film opens one rich card with playback controls', as
     playOnTv = () => { window.filmPlayedOnTv = true }
     openRemotePlayer = () => { window.filmPlayedHere = true }
   })
-  await page.locator('#adultTitleFilmTv').click()
-  await expect(page.locator('#adultTitleSheet')).toBeVisible()
+  await page.locator('#myTvTitleFilmTv').click()
+  await expect(page.locator('#myTvTitleSheet')).toBeVisible()
   expect(await page.evaluate(() => window.filmPlayedOnTv)).toBe(true)
-  await page.locator('#adultTitleFilmHere').click()
-  await expect(page.locator('#adultTitleSheet')).toBeVisible()
+  await page.locator('#myTvTitleFilmHere').click()
+  await expect(page.locator('#myTvTitleSheet')).toBeVisible()
   expect(await page.evaluate(() => window.filmPlayedHere)).toBe(true)
-  await expect(page.locator('#adultProviderList .provider-mabeltv')).toHaveCount(1)
-  await expect(page.locator('#adultProviderList .provider-mabeltv')).toHaveJSProperty('tagName', 'SPAN')
+  await expect(page.locator('#myTvProviderList .provider-mabeltv')).toHaveCount(1)
+  await expect(page.locator('#myTvProviderList .provider-mabeltv')).toHaveJSProperty('tagName', 'SPAN')
 })
 
 test('local film settings keep structured facts and compact collection controls', async ({ page }) => {
   await page.goto('/')
   await expect.poll(() => page.evaluate(() => Boolean(library))).toBe(true)
   await page.evaluate(film => {
-    library.adult_folders = ['Thrillers', 'Drama']
-    library.adult_library = [{ ...film, folder: 'Thrillers', size: 2300000000 }]
-    openAdultFilmSheet(library.adult_library[0])
+    library.my_tv_folders = ['Thrillers', 'Drama']
+    library.my_tv_library = [{ ...film, folder: 'Thrillers', size: 2300000000 }]
+    openMyTvFilmSheet(library.my_tv_library[0])
   }, localFilm)
-  await expect(page.locator('#adultFilmSheet')).toBeVisible()
-  await expect(page.locator('#adultFilmSheetMeta')).toHaveClass(/is-title-facts/)
-  await expect(page.locator('#adultFilmSheetMeta .adult-title-fact > small'))
+  await expect(page.locator('#myTvFilmSheet')).toBeVisible()
+  await expect(page.locator('#myTvFilmSheetMeta')).toHaveClass(/is-title-facts/)
+  await expect(page.locator('#myTvFilmSheetMeta .my-tv-title-fact > small'))
     .toHaveText(['Year', 'Collection', 'Size', 'Quality'])
-  const controls = await page.locator('.adult-film-collection-controls').evaluate(root => {
+  const controls = await page.locator('.my-tv-film-collection-controls').evaluate(root => {
     const select = root.querySelector('select').getBoundingClientRect()
     const button = root.querySelector('button').getBoundingClientRect()
     return { sameRow: Math.abs(select.y - button.y) <= 1, selectWidth: select.width,
@@ -149,7 +149,7 @@ test('local film settings keep structured facts and compact collection controls'
   expect(controls.selectWidth).toBeLessThanOrEqual(170)
   expect(controls.buttonWidth).toBeLessThan(90)
   expect(controls.height).toBeLessThanOrEqual(36)
-  const settingsMaxHeight = await page.locator('#adultFilmSheet .watch-film-panel')
+  const settingsMaxHeight = await page.locator('#myTvFilmSheet .watch-film-panel')
     .evaluate(panel => Number.parseFloat(getComputedStyle(panel).maxHeight))
   expect(settingsMaxHeight).toBeGreaterThan(await page.evaluate(() => innerHeight * 0.85))
 })
@@ -159,7 +159,7 @@ test('VLC launch leaves its film card ready underneath', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => Boolean(library))).toBe(true)
   await page.evaluate(film => {
     const local = { ...film, browser_ready: false }
-    library.adult_library = [local]
+    library.my_tv_library = [local]
     openInVlc = () => { window.filmOpenedInVlc = true }
     openWatchFilmSheet(local)
   }, localFilm)
@@ -169,23 +169,23 @@ test('VLC launch leaves its film card ready underneath', async ({ page }) => {
 })
 
 test('a matched local-library film uses the same rich card', async ({ page }) => {
-  await page.route(url => new URL(url).pathname === '/api/adult/title', route =>
+  await page.route(url => new URL(url).pathname === '/api/my-tv/title', route =>
     route.fulfill({ json: titleDetail }))
-  await page.route(url => new URL(url).pathname === '/api/adult/providers', route =>
+  await page.route(url => new URL(url).pathname === '/api/my-tv/providers', route =>
     route.fulfill({ json: { key: titleDetail.key, sources: [] } }))
   await page.goto('/')
   await expect.poll(() => page.evaluate(() => Boolean(library))).toBe(true)
   await page.evaluate(film => {
-    library.adult_library = [film]
-    openAdultFilmDetail(film)
+    library.my_tv_library = [film]
+    openMyTvFilmDetail(film)
   }, localFilm)
-  await expect(page.locator('#adultTitleSheet')).toBeVisible()
+  await expect(page.locator('#myTvTitleSheet')).toBeVisible()
   await expect(page.locator('#watchFilmSheet')).toBeHidden()
-  await expect(page.locator('#adultTitleFilmActions')).toBeVisible()
+  await expect(page.locator('#myTvTitleFilmActions')).toBeVisible()
 })
 
 test('each actor Known For section stays fixed at two rows of five', async ({ page }) => {
-  await page.route(url => new URL(url).pathname === '/api/adult/person', route => {
+  await page.route(url => new URL(url).pathname === '/api/my-tv/person', route => {
     const id = Number(new URL(route.request().url()).searchParams.get('tmdb_id'))
     route.fulfill({ json: { tmdb_id: id, name: id === 1 ? 'First actor' : 'Second actor',
       known_for_department: 'Acting', biography: '', known_for: Array.from(
@@ -193,16 +193,16 @@ test('each actor Known For section stays fixed at two rows of five', async ({ pa
           tmdb_id: 100 + index, title: `Film ${index + 1}`, year: '2000', poster_path: '' })) } })
   })
   await page.goto('/')
-  await page.evaluate(() => openAdultPerson({ tmdb_id: 1, name: 'First actor' }, 'First film'))
-  await expect(page.locator('#adultPersonCredits .adult-franchise-card')).toHaveCount(10)
-  const first = await page.locator('#adultPersonCredits').evaluate(element => ({
+  await page.evaluate(() => openMyTvPerson({ tmdb_id: 1, name: 'First actor' }, 'First film'))
+  await expect(page.locator('#myTvPersonCredits .my-tv-franchise-card')).toHaveCount(10)
+  const first = await page.locator('#myTvPersonCredits').evaluate(element => ({
     overflow: getComputedStyle(element).overflowX,
-    rows: new Set([...element.querySelectorAll('.adult-franchise-card')]
+    rows: new Set([...element.querySelectorAll('.my-tv-franchise-card')]
       .map(card => Math.round(card.getBoundingClientRect().top))).size,
     scrollable: element.scrollWidth > element.clientWidth + 1,
   }))
   expect(first).toMatchObject({ overflow: 'hidden', rows: 2, scrollable: false })
-  await page.evaluate(() => openAdultPerson({ tmdb_id: 2, name: 'Second actor' }, 'Second film'))
-  await expect(page.locator('#adultPersonName')).toHaveText('Second actor')
-  await expect(page.locator('#adultPersonCredits .adult-franchise-card')).toHaveCount(10)
+  await page.evaluate(() => openMyTvPerson({ tmdb_id: 2, name: 'Second actor' }, 'Second film'))
+  await expect(page.locator('#myTvPersonName')).toHaveText('Second actor')
+  await expect(page.locator('#myTvPersonCredits .my-tv-franchise-card')).toHaveCount(10)
 })

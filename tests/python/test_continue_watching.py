@@ -17,28 +17,28 @@ class ContinueWatchingTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.fixture.close()
 
-    def test_removal_clears_adult_series_episode(self) -> None:
-        series_id = self.fixture.library.create_adult_series("Ludwig")
-        episode = (self.fixture.library.adult_series_root / series_id /
+    def test_removal_clears_my_tv_series_episode(self) -> None:
+        series_id = self.fixture.library.create_my_tv_series("Ludwig")
+        episode = (self.fixture.library.my_tv_series_root / series_id /
                    "Season 1" / "Ludwig S01E01.mp4")
         episode.parent.mkdir(parents=True, exist_ok=True)
         episode.write_bytes(b"episode")
-        states = self.fixture.library.adult_series_states()
+        states = self.fixture.library.my_tv_series_states()
         key = f"{series_id}/Season 1/{episode.name}"
         states["episodes"][key] = {
             "library_id": "episode-1", "remote_position": 900,
             "remote_duration": 3600, "remote_last_watched": 12345,
             "pre_watched_resume": {"position": 600, "duration": 3600},
         }
-        self.fixture.library.write_adult_series_states(states)
+        self.fixture.library.write_my_tv_series_states(states)
 
         result = self.fixture.library.remote_clear_position({
-            "kind": "adult-series", "series": series_id,
+            "kind": "my-tv-series", "series": series_id,
             "file": f"Season 1/{episode.name}",
         })
 
-        saved = self.fixture.library.adult_series_states()["episodes"][key]
-        self.assertEqual(result["kind"], "adult-series")
+        saved = self.fixture.library.my_tv_series_states()["episodes"][key]
+        self.assertEqual(result["kind"], "my-tv-series")
         self.assertEqual(saved["remote_position"], 0)
         self.assertEqual(saved["remote_last_watched"], 0)
         self.assertNotIn("pre_watched_resume", saved)

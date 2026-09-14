@@ -45,7 +45,7 @@ private slots:
     void currentChannelSummaryIncludesArtworkMetadataAndFilmProgress();
     void controllerReloadPreservesPlaybackAndRuntimeVolume();
     void filmChannelBookmarksPersistAcrossTvAndPortalPlayback();
-    void adultLibraryIsSeparateAndParentOnly();
+    void myTvLibraryIsSeparateAndParentOnly();
     void sqliteStateIsReadableAndWritableByNativeController();
     void portalControlCommandsAreNewlineFramed();
 };
@@ -1258,24 +1258,24 @@ void CoreTests::filmChannelBookmarksPersistAcrossTvAndPortalPlayback()
              2400.0);
 }
 
-void CoreTests::adultLibraryIsSeparateAndParentOnly()
+void CoreTests::myTvLibraryIsSeparateAndParentOnly()
 {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
     QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/one")));
-    QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/.adult")));
-    QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/.adult/Harry Potter")));
+    QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/.my-tv")));
+    QVERIFY(QDir(directory.path()).mkpath(QStringLiteral("media/.my-tv/Harry Potter")));
 
     QFile configuration(directory.filePath(QStringLiteral("channels.json")));
     QVERIFY(configuration.open(QIODevice::WriteOnly));
     configuration.write(R"({"schema_version":1,"channels":[{"number":1,"name":"One","folder":"one"}]})");
     configuration.close();
-    QFile film(directory.filePath(QStringLiteral("media/.adult/Evening Film.mkv")));
+    QFile film(directory.filePath(QStringLiteral("media/.my-tv/Evening Film.mkv")));
     QVERIFY(film.open(QIODevice::WriteOnly));
     film.write("raw");
     film.close();
     QFile nestedFilm(directory.filePath(
-        QStringLiteral("media/.adult/Harry Potter/Philosophers Stone.mp4")));
+        QStringLiteral("media/.my-tv/Harry Potter/Philosophers Stone.mp4")));
     QVERIFY(nestedFilm.open(QIODevice::WriteOnly));
     nestedFilm.write("nested");
     nestedFilm.close();
@@ -1288,7 +1288,7 @@ void CoreTests::adultLibraryIsSeparateAndParentOnly()
                                       return MediaInspection{true, true, 42.0,
                                                              QStringLiteral("h264"), {}};
                                   }));
-    TestStateFixture::seedAdultMedia(TestStateFixture::databasePath(controller), QJsonObject{
+    TestStateFixture::seedMyTvMedia(TestStateFixture::databasePath(controller), QJsonObject{
         {QStringLiteral("Evening Film.mkv"), QJsonObject{
             {QStringLiteral("library_id"), QStringLiteral("evening-id")}}},
         {QStringLiteral("Harry Potter/Philosophers Stone.mp4"), QJsonObject{
@@ -1298,11 +1298,11 @@ void CoreTests::adultLibraryIsSeparateAndParentOnly()
                  QStringLiteral("Harry Potter and the Philosopher's Stone")},
                 {QStringLiteral("year"), QStringLiteral("2001")}}}}},
     });
-    const QVariantList adult = controller.adultLibrary();
-    QCOMPARE(adult.size(), 2);
-    QCOMPARE(adult.constFirst().toMap().value(QStringLiteral("name")).toString(),
+    const QVariantList my_tv = controller.myTvLibrary();
+    QCOMPARE(my_tv.size(), 2);
+    QCOMPARE(my_tv.constFirst().toMap().value(QStringLiteral("name")).toString(),
              QStringLiteral("Evening Film"));
-    const QVariantMap nested = adult.at(1).toMap();
+    const QVariantMap nested = my_tv.at(1).toMap();
     QCOMPARE(nested.value(QStringLiteral("id")).toString(), QStringLiteral("potter-id"));
     QCOMPARE(nested.value(QStringLiteral("folder")).toString(), QStringLiteral("Harry Potter"));
     QCOMPARE(nested.value(QStringLiteral("name")).toString(),
@@ -1311,18 +1311,18 @@ void CoreTests::adultLibraryIsSeparateAndParentOnly()
                  .value(QStringLiteral("programmeCount")).toInt(), 0);
 
     QSignalSpy commands(&controller, &TvController::parentCommandRequested);
-    controller.requestParentCommand(QStringLiteral("adult"));
+    controller.requestParentCommand(QStringLiteral("my_tv"));
     QCOMPARE(commands.count(), 0);
     controller.requestParentAccess();
     controller.parentConfirm();
     controller.parentConfirm();
     controller.parentConfirm();
-    controller.requestParentCommand(QStringLiteral("adult"));
+    controller.requestParentCommand(QStringLiteral("my_tv"));
     QCOMPARE(commands.count(), 1);
-    QCOMPARE(commands.constFirst().constFirst().toString(), QStringLiteral("adult"));
+    QCOMPARE(commands.constFirst().constFirst().toString(), QStringLiteral("my_tv"));
 
-    controller.setAdultPlaybackPosition(QStringLiteral("potter-id"), 842.5);
-    controller.setAdultPlaybackDuration(QStringLiteral("potter-id"), 10234.0);
+    controller.setMyTvPlaybackPosition(QStringLiteral("potter-id"), 842.5);
+    controller.setMyTvPlaybackDuration(QStringLiteral("potter-id"), 10234.0);
     TvController restored;
     QVERIFY(TestStateFixture::initializeController(restored, configuration.fileName(),
                                 directory.filePath(QStringLiteral("settings.json")),
@@ -1332,9 +1332,9 @@ void CoreTests::adultLibraryIsSeparateAndParentOnly()
                                     return MediaInspection{true, true, 42.0,
                                                            QStringLiteral("h264"), {}};
                                 }));
-    QCOMPARE(restored.adultPlaybackPosition(QStringLiteral("potter-id")), 842.5);
-    QCOMPARE(restored.adultPlaybackDuration(QStringLiteral("potter-id")), 10234.0);
-    QCOMPARE(restored.adultPlaybackProgress(QStringLiteral("potter-id")),
+    QCOMPARE(restored.myTvPlaybackPosition(QStringLiteral("potter-id")), 842.5);
+    QCOMPARE(restored.myTvPlaybackDuration(QStringLiteral("potter-id")), 10234.0);
+    QCOMPARE(restored.myTvPlaybackProgress(QStringLiteral("potter-id")),
              842.5 / 10234.0);
 }
 
@@ -1357,7 +1357,7 @@ void CoreTests::sqliteStateIsReadableAndWritableByNativeController()
         const QStringList schema{
             QStringLiteral("CREATE TABLE application_settings(key TEXT PRIMARY KEY,value_json TEXT,updated_at REAL)"),
             QStringLiteral("CREATE TABLE player_fields(key TEXT PRIMARY KEY,value_json TEXT,updated_at REAL)"),
-            QStringLiteral("CREATE TABLE adult_resume(library_id TEXT PRIMARY KEY,position_seconds REAL,duration_seconds REAL,updated_utc_ms INTEGER,position_present INTEGER,duration_present INTEGER,updated_present INTEGER)"),
+            QStringLiteral("CREATE TABLE my_tv_resume(library_id TEXT PRIMARY KEY,position_seconds REAL,duration_seconds REAL,updated_utc_ms INTEGER,position_present INTEGER,duration_present INTEGER,updated_present INTEGER)"),
             QStringLiteral("CREATE TABLE channel_film_resume(media_key TEXT PRIMARY KEY,position_seconds REAL,duration_seconds REAL,updated_utc_ms INTEGER,position_present INTEGER,duration_present INTEGER,updated_present INTEGER)"),
             QStringLiteral("CREATE TABLE channel_timelines(channel_number INTEGER PRIMARY KEY,episode_index INTEGER,episode_name TEXT,position_seconds REAL)"),
             QStringLiteral("CREATE TABLE channel_programme_positions(channel_number INTEGER,file_name TEXT,position_seconds REAL,PRIMARY KEY(channel_number,file_name))"),
@@ -1368,7 +1368,7 @@ void CoreTests::sqliteStateIsReadableAndWritableByNativeController()
         for (const QString &statement : schema) {
             QVERIFY2(query.exec(statement), qPrintable(query.lastError().text()));
         }
-        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version=8")));
+        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version=9")));
         QVERIFY(query.exec(QStringLiteral(
             "INSERT INTO channels VALUES(7,'Films','one','fit','films')")));
         database.close();
@@ -1391,9 +1391,9 @@ void CoreTests::sqliteStateIsReadableAndWritableByNativeController()
                                {QStringLiteral("failed_programmes"), QJsonObject{}}};
     const QJsonObject player{{QStringLiteral("schema_version"), 4},
                              {QStringLiteral("current_channel"), 7},
-                             {QStringLiteral("adult_positions"), QJsonObject{}},
-                             {QStringLiteral("adult_durations"), QJsonObject{}},
-                             {QStringLiteral("adult_position_updated_utc_ms"), QJsonObject{}},
+                             {QStringLiteral("my_tv_positions"), QJsonObject{}},
+                             {QStringLiteral("my_tv_durations"), QJsonObject{}},
+                             {QStringLiteral("my_tv_position_updated_utc_ms"), QJsonObject{}},
                              {QStringLiteral("channel_film_positions"), QJsonObject{}},
                              {QStringLiteral("channel_film_durations"), QJsonObject{}},
                              {QStringLiteral("channel_film_position_updated_utc_ms"),
@@ -1427,7 +1427,7 @@ void CoreTests::sqliteStateIsReadableAndWritableByNativeController()
         database.setDatabaseName(databasePath);
         QVERIFY2(database.open(), qPrintable(database.lastError().text()));
         QSqlQuery query(database);
-        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version=8")));
+        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version=9")));
         database.close();
     }
     QSqlDatabase::removeDatabase(currentVersionConnectionName);

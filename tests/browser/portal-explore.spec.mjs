@@ -4,14 +4,14 @@ async function openExplore(page) {
   await page.goto('/')
   await expect(page.locator('.app-shell')).toBeVisible()
   await page.evaluate(() => {
-    history.replaceState({ adultViewing: true }, '', '#adult-viewing')
-    openView('adult-viewing')
+    history.replaceState({ myTvViewing: true }, '', '#my-tv-viewing')
+    openView('my-tv-viewing')
   })
-  await expect(page.locator('#view-adult-viewing')).toBeVisible()
-  await page.locator('#adultViewingExplore').click()
-  await expect(page.locator('#view-adult-explore')).toBeVisible()
-  await expect(page.locator('.adult-explore-card').first()).toBeVisible()
-  await page.locator('.adult-explore-card img').evaluateAll(images => Promise.all(
+  await expect(page.locator('#view-my-tv-viewing')).toBeVisible()
+  await page.locator('#myTvViewingExplore').click()
+  await expect(page.locator('#view-my-tv-explore')).toBeVisible()
+  await expect(page.locator('.my-tv-explore-card').first()).toBeVisible()
+  await page.locator('.my-tv-explore-card img').evaluateAll(images => Promise.all(
     images.map(image => image.complete && image.naturalWidth > 0
       ? Promise.resolve()
       : new Promise((resolve, reject) => {
@@ -26,7 +26,7 @@ test('@visual Explore is a polished four-wide continuous catalogue with direct a
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One phone engine owns the Explore reference')
   await openExplore(page)
 
-  const layout = await page.locator('.adult-explore-card').evaluateAll(cards => ({
+  const layout = await page.locator('.my-tv-explore-card').evaluateAll(cards => ({
     firstRow: cards.filter(card => Math.round(card.getBoundingClientRect().top)
       === Math.round(cards[0].getBoundingClientRect().top)).length,
     right: Math.max(...cards.map(card => card.getBoundingClientRect().right)),
@@ -34,17 +34,17 @@ test('@visual Explore is a polished four-wide continuous catalogue with direct a
   }))
   expect(layout.firstRow).toBe(4)
   expect(layout.right).toBeLessThanOrEqual(layout.viewport)
-  await expect(page.locator('#adultExploreHeading')).toHaveText('Best guesses for you')
+  await expect(page.locator('#myTvExploreHeading')).toHaveText('Best guesses for you')
   await expect(page).toHaveScreenshot('explore-for-you.png')
 
-  const first = page.locator('.adult-explore-card[data-media-type="movie"]').first()
+  const first = page.locator('.my-tv-explore-card[data-media-type="movie"]').first()
   const actionSize = await first.locator('[data-explore-action="watched"]')
     .evaluate(button => button.getBoundingClientRect().width)
   expect(actionSize).toBeGreaterThanOrEqual(29)
   const iconStable = await first.evaluate(card => {
     const button = card.querySelector('[data-explore-action="watchlist"]')
     window.__exploreActionIcon = button.querySelector('svg')
-    refreshAdultArtworkStatuses()
+    refreshMyTvArtworkStatuses()
     return window.__exploreActionIcon === button.querySelector('svg')
   })
   expect(iconStable).toBe(true)
@@ -64,7 +64,7 @@ test('@visual Explore is a polished four-wide continuous catalogue with direct a
 
 test('a poster recovered in a title card repairs the matching Explore tile', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One browser covers artwork recovery')
-  await page.route('**/api/adult/title?*', async route => {
+  await page.route('**/api/my-tv/title?*', async route => {
     const response = await route.fetch()
     const detail = await response.json()
     await route.fulfill({ response, json: { ...detail, poster_path: '/explore-1001.jpg' } })
@@ -72,26 +72,26 @@ test('a poster recovered in a title card repairs the matching Explore tile', asy
   await page.goto('/')
   await expect(page.locator('.app-shell')).toBeVisible()
   await page.evaluate(() => {
-    history.replaceState({ adultViewing: true }, '', '#adult-viewing')
-    openView('adult-viewing')
+    history.replaceState({ myTvViewing: true }, '', '#my-tv-viewing')
+    openView('my-tv-viewing')
   })
-  await page.locator('#adultViewingExplore').click()
-  const card = page.locator('.adult-explore-card[data-explore-key="movie:1001"]')
-  const tileImage = card.locator('.adult-explore-art > img')
+  await page.locator('#myTvViewingExplore').click()
+  const card = page.locator('.my-tv-explore-card[data-explore-key="movie:1001"]')
+  const tileImage = card.locator('.my-tv-explore-art > img')
   const markedFailed = await tileImage.evaluate(image => {
     image.dispatchEvent(new Event('error'))
-    clearTimeout(image._adultArtworkRetryTimer)
-    return image.dataset.adultArtworkFailed
+    clearTimeout(image._myTvArtworkRetryTimer)
+    return image.dataset.myTvArtworkFailed
   })
   expect(markedFailed).toBe('true')
 
-  await card.locator('.adult-explore-open-art').click()
-  await expect(page.locator('#adultTitleSheet')).toBeVisible()
-  await expect(page.locator('#adultTitlePoster img')).toHaveJSProperty('complete', true)
-  await page.locator('#adultTitleClose').click()
+  await card.locator('.my-tv-explore-open-art').click()
+  await expect(page.locator('#myTvTitleSheet')).toBeVisible()
+  await expect(page.locator('#myTvTitlePoster img')).toHaveJSProperty('complete', true)
+  await page.locator('#myTvTitleClose').click()
 
   await expect.poll(() => tileImage.evaluate(image => image.naturalWidth)).toBeGreaterThan(0)
-  await expect(tileImage).not.toHaveAttribute('data-adult-artwork-failed', 'true')
+  await expect(tileImage).not.toHaveAttribute('data-my-tv-artwork-failed', 'true')
 })
 
 
@@ -113,28 +113,28 @@ test('all five My Viewing grids retain the watched and Watchlist quick actions',
       { key: 'movie:8105', media_type: 'movie', tmdb_id: 8105,
         title: 'Watched film', year: '2025', manual_state: 'watched' },
     ]
-    adultViewingData = { items }
-    adultViewingLoaded = true
+    myTvViewingData = { items }
+    myTvViewingLoaded = true
     const originalApi = window.api
     window.api = async (path, options = {}) => {
-      if (path === '/api/adult/viewing' && options.method === 'POST') {
+      if (path === '/api/my-tv/viewing' && options.method === 'POST') {
         const payload = JSON.parse(options.body)
         const key = `${payload.media_type}:${Number(payload.tmdb_id)}`
-        return { key, viewing: { ...adultViewingRecord({ key }), key,
+        return { key, viewing: { ...myTvViewingRecord({ key }), key,
           watchlisted: payload.action === 'watchlist' ? payload.enabled : undefined,
           manual_state: payload.action === 'not_watched' ? 'not_watched'
-            : payload.action === 'watched' ? 'watched' : adultViewingRecord({ key }).manual_state } }
+            : payload.action === 'watched' ? 'watched' : myTvViewingRecord({ key }).manual_state } }
       }
-      if (path === '/api/adult/viewing') return adultViewingData
+      if (path === '/api/my-tv/viewing') return myTvViewingData
       return originalApi(path, options)
     }
-    history.replaceState({ adultViewing: true }, '', '#adult-viewing')
-    openView('adult-viewing')
+    history.replaceState({ myTvViewing: true }, '', '#my-tv-viewing')
+    openView('my-tv-viewing')
   })
 
   for (const tab of ['watchlist', 'up-next', 'watching', 'part-watched', 'history']) {
     await page.locator(`[data-viewing-tab="${tab}"]`).click()
-    const card = page.locator('#adultViewingGrid > .adult-viewing-row').first()
+    const card = page.locator('#myTvViewingGrid > .my-tv-viewing-row').first()
     await expect(card).toBeVisible()
     if (tab === 'watching') {
       await page.locator('[data-viewing-key="tv:8104"]')
@@ -149,12 +149,12 @@ test('all five My Viewing grids retain the watched and Watchlist quick actions',
     .evaluate(row => window.__retainedViewingRow === row)).toBe(true)
 
   await page.locator('[data-viewing-tab="watchlist"]').click()
-  const saved = page.locator('#adultViewingGrid > .adult-viewing-row').first()
+  const saved = page.locator('#myTvViewingGrid > .my-tv-viewing-row').first()
   await expect(saved.locator('[data-explore-action="watchlist"]')).toHaveClass(/active/)
   await expect(saved.locator('[data-explore-action="watchlist"] use'))
     .toHaveAttribute('href', '/portal/icons.svg#signal-minus')
   const placement = await saved.evaluate(card => {
-    const art = card.querySelector('.adult-viewing-art').getBoundingClientRect()
+    const art = card.querySelector('.my-tv-viewing-art').getBoundingClientRect()
     const watched = card.querySelector('[data-explore-action="watched"]').getBoundingClientRect()
     const watchlist = card.querySelector('[data-explore-action="watchlist"]').getBoundingClientRect()
     return {
@@ -169,12 +169,12 @@ test('all five My Viewing grids retain the watched and Watchlist quick actions',
   expect(Math.abs(placement.watchedRight)).toBeLessThanOrEqual(3)
   expect(Math.abs(placement.watchlistRight)).toBeLessThanOrEqual(3)
   await saved.locator('[data-explore-action="watchlist"]').click()
-  await expect(page.locator('#adultViewingGrid > .adult-viewing-row')).toHaveCount(0)
+  await expect(page.locator('#myTvViewingGrid > .my-tv-viewing-row')).toHaveCount(0)
 
   await page.locator('[data-viewing-tab="history"]').click()
-  const watched = page.locator('#adultViewingGrid > .adult-viewing-row').first()
+  const watched = page.locator('#myTvViewingGrid > .my-tv-viewing-row').first()
   await watched.locator('[data-explore-action="watched"]').click()
-  await expect(page.locator('#adultViewingGrid > .adult-viewing-row')).toHaveCount(0)
+  await expect(page.locator('#myTvViewingGrid > .my-tv-viewing-row')).toHaveCount(0)
 })
 
 test('large Watched libraries paint one bounded batch and extend as the user approaches the end', async ({ page }, testInfo) => {
@@ -182,14 +182,14 @@ test('large Watched libraries paint one bounded batch and extend as the user app
   await page.goto('/')
   await expect(page.locator('.app-shell')).toBeVisible()
   await page.evaluate(() => {
-    adultViewingData = { items: Array.from({ length: 654 }, (_, index) => ({
+    myTvViewingData = { items: Array.from({ length: 654 }, (_, index) => ({
       key: `movie:${9000 + index}`, media_type: 'movie', tmdb_id: 9000 + index,
       title: `Watched film ${index + 1}`, year: '2025', manual_state: 'watched',
     })) }
-    adultViewingLoaded = true
-    adultViewingDataRevision += 1
-    history.replaceState({ adultViewing: true }, '', '#adult-viewing')
-    openView('adult-viewing')
+    myTvViewingLoaded = true
+    myTvViewingDataRevision += 1
+    history.replaceState({ myTvViewing: true }, '', '#my-tv-viewing')
+    openView('my-tv-viewing')
   })
 
   const initialPaintMs = await page.evaluate(() => new Promise(resolve => {
@@ -198,16 +198,16 @@ test('large Watched libraries paint one bounded batch and extend as the user app
     requestAnimationFrame(() => resolve(performance.now() - started))
   }))
   expect(initialPaintMs).toBeLessThan(250)
-  await expect(page.locator('#adultViewingCount')).toHaveText('654 titles')
-  await expect(page.locator('#adultViewingGrid > .adult-viewing-row')).toHaveCount(48)
-  const first = page.locator('#adultViewingGrid > .adult-viewing-row').first()
+  await expect(page.locator('#myTvViewingCount')).toHaveText('654 titles')
+  await expect(page.locator('#myTvViewingGrid > .my-tv-viewing-row')).toHaveCount(48)
+  const first = page.locator('#myTvViewingGrid > .my-tv-viewing-row').first()
   await first.evaluate(row => { window.__firstLongViewingRow = row })
-  await page.locator('#adultViewingGrid > .adult-viewing-load-more')
+  await page.locator('#myTvViewingGrid > .my-tv-viewing-load-more')
     .evaluate(button => button.click())
-  await expect(page.locator('#adultViewingGrid > .adult-viewing-row')).toHaveCount(96)
+  await expect(page.locator('#myTvViewingGrid > .my-tv-viewing-row')).toHaveCount(96)
   await page.locator('[data-viewing-tab="watchlist"]').click()
   await page.locator('[data-viewing-tab="history"]').click()
-  await expect(page.locator('#adultViewingGrid > .adult-viewing-row')).toHaveCount(96)
+  await expect(page.locator('#myTvViewingGrid > .my-tv-viewing-row')).toHaveCount(96)
   expect(await first.evaluate(row => window.__firstLongViewingRow === row)).toBe(true)
 })
 
@@ -215,20 +215,20 @@ test('large Watched libraries paint one bounded batch and extend as the user app
 test('Explore updates a film card instantly when its detail state changes', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One phone engine covers optimistic detail state')
   await openExplore(page)
-  await page.route('**/api/adult/viewing', async route => {
+  await page.route('**/api/my-tv/viewing', async route => {
     if (route.request().method() === 'POST') {
       await new Promise(resolve => setTimeout(resolve, 600))
     }
     await route.continue()
   })
 
-  const first = page.locator('.adult-explore-card[data-media-type="movie"]').first()
-  await first.locator('.adult-explore-open-art').click()
-  await expect(page.locator('#adultTitleSheet')).toBeVisible()
-  const watched = page.locator('#adultTitleIntents [data-viewing-action="watched"]')
+  const first = page.locator('.my-tv-explore-card[data-media-type="movie"]').first()
+  await first.locator('.my-tv-explore-open-art').click()
+  await expect(page.locator('#myTvTitleSheet')).toBeVisible()
+  const watched = page.locator('#myTvTitleIntents [data-viewing-action="watched"]')
   await watched.click()
   await expect(watched).toHaveClass(/active/, { timeout: 150 })
-  await page.locator('#adultTitleClose').click()
+  await page.locator('#myTvTitleClose').click()
   await expect(first.locator('[data-explore-action="watched"]'))
     .toHaveAttribute('data-status', 'watched', { timeout: 150 })
   await expect(page.locator('#notice')).toHaveText('')
@@ -239,9 +239,9 @@ test('Explore series opens a catalogue-only season checklist', async ({ page }, 
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One phone engine covers the catalogue-only title route')
   let watchmodeRequests = 0
   page.on('request', request => {
-    if (new URL(request.url()).pathname === '/api/adult/providers') watchmodeRequests += 1
+    if (new URL(request.url()).pathname === '/api/my-tv/providers') watchmodeRequests += 1
   })
-  await page.route('**/api/adult/title?*', async route => {
+  await page.route('**/api/my-tv/title?*', async route => {
     const response = await route.fetch()
     const detail = await response.json()
     detail.providers = [
@@ -252,28 +252,28 @@ test('Explore series opens a catalogue-only season checklist', async ({ page }, 
   })
   await openExplore(page)
 
-  const series = page.locator('.adult-explore-card[data-media-type="tv"]').first()
+  const series = page.locator('.my-tv-explore-card[data-media-type="tv"]').first()
   await series.locator('[data-explore-action="watched"]').click()
-  await expect(page.locator('#adultTitleSheet')).toBeVisible()
-  await expect(page.locator('#adultTitleSeriesLibrary')).toBeVisible()
-  await expect(page.locator('#adultTitleSheet .adult-provider-section')).toBeVisible()
-  await expect(page.locator('#adultProviderList .provider-netflix')).toBeVisible()
-  await expect(page.locator('#adultTitleRentBuy')).toBeVisible()
-  await expect(page.locator('#adultTitleRentBuyToggle')).toContainText('1 service')
-  await page.locator('#adultTitleRentBuyToggle').click()
-  await expect(page.locator('#adultTitleRentBuyList')).toContainText('Check price')
+  await expect(page.locator('#myTvTitleSheet')).toBeVisible()
+  await expect(page.locator('#myTvTitleSeriesLibrary')).toBeVisible()
+  await expect(page.locator('#myTvTitleSheet .my-tv-provider-section')).toBeVisible()
+  await expect(page.locator('#myTvProviderList .provider-netflix')).toBeVisible()
+  await expect(page.locator('#myTvTitleRentBuy')).toBeVisible()
+  await expect(page.locator('#myTvTitleRentBuyToggle')).toContainText('1 service')
+  await page.locator('#myTvTitleRentBuyToggle').click()
+  await expect(page.locator('#myTvTitleRentBuyList')).toContainText('Check price')
   expect(watchmodeRequests).toBe(0)
-  await expect(page.locator('#adultTitleFilmActions')).toBeHidden()
-  await page.locator('#adultTitleSeasons .adult-season-card').first().click()
-  await expect(page.locator('#adultTitleSeasonSheet')).toBeVisible()
-  await expect(page.locator('#adultTitleSeasonSettings')).toBeHidden()
-  const episode = page.locator('#adultTitleSeasonEpisodes .adult-streaming-episode-toggle').first()
-  await expect(page.locator('#adultTitleSeasonEpisodes .adult-streaming-episode-toggle')).toHaveCount(3)
+  await expect(page.locator('#myTvTitleFilmActions')).toBeHidden()
+  await page.locator('#myTvTitleSeasons .my-tv-season-card').first().click()
+  await expect(page.locator('#myTvTitleSeasonSheet')).toBeVisible()
+  await expect(page.locator('#myTvTitleSeasonSettings')).toBeHidden()
+  const episode = page.locator('#myTvTitleSeasonEpisodes .my-tv-streaming-episode-toggle').first()
+  await expect(page.locator('#myTvTitleSeasonEpisodes .my-tv-streaming-episode-toggle')).toHaveCount(3)
   await episode.click()
   await expect(episode).toHaveAttribute('aria-pressed', 'true')
   await episode.click()
   await expect(episode).toHaveAttribute('aria-pressed', 'false')
-  await expect(page.locator('#adultTitleSeasonEpisodes article[role="button"]')).toHaveCount(0)
+  await expect(page.locator('#myTvTitleSeasonEpisodes article[role="button"]')).toHaveCount(0)
 })
 
 test('viewing actions stay local and do not start a full background rebuild', async ({ page }) => {
@@ -281,56 +281,56 @@ test('viewing actions stay local and do not start a full background rebuild', as
   await expect(page.locator('.app-shell')).toBeVisible()
   const result = await page.evaluate(async () => {
     const originalApi = window.api
-    const originalLoad = window.loadAdultViewing
+    const originalLoad = window.loadMyTvViewing
     let refreshStarted = false
     const requests = []
     window.api = async (path, options = {}) => {
       requests.push([path, options.method || 'GET'])
-      if (path === '/api/bootstrap') return { revisions: { adult_viewing: 2 } }
+      if (path === '/api/bootstrap') return { revisions: { my_tv_viewing: 2 } }
       return { key: 'movie:123', viewing: { manual_state: 'watched' } }
     }
-    window.loadAdultViewing = () => {
+    window.loadMyTvViewing = () => {
       refreshStarted = true
     }
     try {
       const detail = { media_type: 'movie', tmdb_id: 123, title: 'Fast update', viewing: {} }
-      const viewing = await updateAdultViewing(detail, 'watched')
+      const viewing = await updateMyTvViewing(detail, 'watched')
       await new Promise(resolve => setTimeout(resolve, 0))
       return { refreshStarted, requests, returned: viewing.manual_state,
         detail: detail.viewing.manual_state }
     } finally {
       window.api = originalApi
-      window.loadAdultViewing = originalLoad
+      window.loadMyTvViewing = originalLoad
     }
   })
   expect(result.refreshStarted).toBe(false)
-  expect(result.requests.filter(([path]) => path === '/api/adult/viewing'))
-    .toEqual([['/api/adult/viewing', 'POST']])
+  expect(result.requests.filter(([path]) => path === '/api/my-tv/viewing'))
+    .toEqual([['/api/my-tv/viewing', 'POST']])
   expect(result.requests).toContainEqual(['/api/bootstrap', 'GET'])
   expect(result.returned).toBe('watched')
   expect(result.detail).toBe('watched')
 })
 
-test('Adult title controls paint from saved state while title enrichment is delayed', async ({ page }) => {
-  await page.route('**/api/adult/title?*', async route => {
+test('MyTv title controls paint from saved state while title enrichment is delayed', async ({ page }) => {
+  await page.route('**/api/my-tv/title?*', async route => {
     await new Promise(resolve => setTimeout(resolve, 1200))
     await route.continue()
   })
   await page.goto('/')
   await page.evaluate(() => {
-    adultViewingData = { items: [{
+    myTvViewingData = { items: [{
       key: 'movie:12', media_type: 'movie', tmdb_id: 12, title: 'Finding Nemo',
       overview: 'A saved summary.', watchlisted: true,
     }] }
-    adultViewingLoaded = true
-    openAdultTitle(adultViewingData.items[0])
+    myTvViewingLoaded = true
+    openMyTvTitle(myTvViewingData.items[0])
   })
 
-  await expect(page.locator('#adultTitleName')).toHaveText('Finding Nemo', { timeout: 300 })
-  await expect(page.locator('#adultTitleOverview')).toHaveText('A saved summary.', { timeout: 300 })
-  await expect(page.locator('#adultTitleIntents [data-viewing-action="watchlist"]'))
+  await expect(page.locator('#myTvTitleName')).toHaveText('Finding Nemo', { timeout: 300 })
+  await expect(page.locator('#myTvTitleOverview')).toHaveText('A saved summary.', { timeout: 300 })
+  await expect(page.locator('#myTvTitleIntents [data-viewing-action="watchlist"]'))
     .toHaveClass(/active/, { timeout: 300 })
-  await expect(page.locator('#adultTitleOverview')).toHaveText(
+  await expect(page.locator('#myTvTitleOverview')).toHaveText(
     'Series details opened successfully.', { timeout: 2500 })
 })
 
@@ -345,7 +345,7 @@ test('a saved title keeps its provider rows and DOM while background detail refr
     { source_id: 203, name: 'Netflix', type: 'sub',
       web_url: 'https://www.netflix.com/search?q=Finding%20Nemo' },
   ] }
-  await page.route('**/api/adult/title?*', async route => {
+  await page.route('**/api/my-tv/title?*', async route => {
     await new Promise(resolve => setTimeout(resolve, 900))
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
       key: 'movie:12', media_type: 'movie', tmdb_id: 12, title: 'Finding Nemo',
@@ -355,7 +355,7 @@ test('a saved title keeps its provider rows and DOM while background detail refr
       seasons: [], viewing: {}, availability_enabled: true, on_mabeltv: false,
     }) })
   })
-  await page.route('**/api/adult/providers?*', async route => {
+  await page.route('**/api/my-tv/providers?*', async route => {
     await new Promise(resolve => setTimeout(resolve, 900))
     await route.fulfill({ status: 200, contentType: 'application/json',
       body: JSON.stringify(providerResult) })
@@ -370,24 +370,24 @@ test('a saved title keeps its provider rows and DOM while background detail refr
       genres: ['Animation'], directors: [], seasons: [], viewing: {},
       availability_enabled: true, on_mabeltv: false,
     }
-    await window.MabelAppCache.write('adult-title-v1:movie:12', 0, cached)
-    adultViewingData = { items: [{
+    await window.MabelAppCache.write('my-tv-title-v1:movie:12', 0, cached)
+    myTvViewingData = { items: [{
       key: 'movie:12', media_type: 'movie', tmdb_id: 12, title: 'Finding Nemo',
       poster_path: '/explore-12.jpg', watchlisted: true,
     }] }
-    adultViewingLoaded = true
-    void openAdultTitle(adultViewingData.items[0])
+    myTvViewingLoaded = true
+    void openMyTvTitle(myTvViewingData.items[0])
   }, { providers, providerResult })
 
-  await expect(page.locator('#adultTitleOverview'))
+  await expect(page.locator('#myTvTitleOverview'))
     .toHaveText('Saved detail shown immediately.', { timeout: 300 })
-  await expect(page.locator('#adultProviderList .provider-netflix'))
+  await expect(page.locator('#myTvProviderList .provider-netflix'))
     .toBeVisible({ timeout: 300 })
-  await expect(page.locator('#adultTitleRentBuy')).toBeVisible({ timeout: 300 })
-  await page.evaluate(() => { window.__savedTitlePoster = $('#adultTitlePoster img') })
+  await expect(page.locator('#myTvTitleRentBuy')).toBeVisible({ timeout: 300 })
+  await page.evaluate(() => { window.__savedTitlePoster = $('#myTvTitlePoster img') })
   await page.waitForTimeout(2100)
-  expect(await page.evaluate(() => window.__savedTitlePoster === $('#adultTitlePoster img'))).toBe(true)
-  await expect(page.locator('#adultTitleOverview')).toHaveText('Saved detail shown immediately.')
+  expect(await page.evaluate(() => window.__savedTitlePoster === $('#myTvTitlePoster img'))).toBe(true)
+  await expect(page.locator('#myTvTitleOverview')).toHaveText('Saved detail shown immediately.')
 })
 
 test('an actor card paints its saved biography and filmography while fresh details load', async ({ page }) => {
@@ -402,32 +402,32 @@ test('an actor card paints its saved biography and filmography while fresh detai
       year: '2003', poster_path: '/explore-12.jpg',
     }],
   }
-  await page.route('**/api/adult/person?*', async route => {
+  await page.route('**/api/my-tv/person?*', async route => {
     requests += 1
     if (requests > 1) await new Promise(resolve => setTimeout(resolve, 1200))
     await route.fulfill({ status: 200, contentType: 'application/json',
       body: JSON.stringify(detail) })
   })
   await page.goto('/')
-  await page.evaluate(() => openAdultPerson({ tmdb_id: 500, name: 'Saved Actor' }, ''))
-  await expect(page.locator('#adultPersonBiography')).toHaveText('A saved actor biography.')
+  await page.evaluate(() => openMyTvPerson({ tmdb_id: 500, name: 'Saved Actor' }, ''))
+  await expect(page.locator('#myTvPersonBiography')).toHaveText('A saved actor biography.')
   await page.waitForFunction(async () => Boolean(
-    (await window.MabelAppCache?.read('adult-person-v1:500'))?.data,
+    (await window.MabelAppCache?.read('my-tv-person-v1:500'))?.data,
   ))
   await page.evaluate(() => {
-    adultPersonOpenRevision += 1
-    document.querySelector('#adultPersonSheet').close()
+    myTvPersonOpenRevision += 1
+    document.querySelector('#myTvPersonSheet').close()
   })
 
-  await page.evaluate(() => openAdultPerson({ tmdb_id: 500, name: 'Saved Actor' }, ''))
-  await expect(page.locator('#adultPersonBiography'))
+  await page.evaluate(() => openMyTvPerson({ tmdb_id: 500, name: 'Saved Actor' }, ''))
+  await expect(page.locator('#myTvPersonBiography'))
     .toHaveText('A saved actor biography.', { timeout: 300 })
-  await expect(page.locator('#adultPersonFilmography')).toBeVisible({ timeout: 300 })
+  await expect(page.locator('#myTvPersonFilmography')).toBeVisible({ timeout: 300 })
 })
 
 test('My Viewing paints loaded state without fetching the full catalogue again', async ({ page }) => {
   let viewingGets = 0
-  await page.route('**/api/adult/viewing', async route => {
+  await page.route('**/api/my-tv/viewing', async route => {
     if (route.request().method() !== 'GET') return route.continue()
     viewingGets += 1
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
@@ -439,9 +439,9 @@ test('My Viewing paints loaded state without fetching the full catalogue again',
   await expect(page.locator('.app-shell')).toBeVisible()
   const startupGets = viewingGets
 
-  await page.locator('[data-view-button="adult-home"]').click()
-  await page.locator('#adultMyViewing').click()
-  await expect(page.locator('#adultViewingGrid > .adult-viewing-row')).toHaveCount(1, {
+  await page.locator('[data-view-button="my-tv-home"]').click()
+  await page.locator('#myTvMyViewing').click()
+  await expect(page.locator('#myTvViewingGrid > .my-tv-viewing-row')).toHaveCount(1, {
     timeout: 400,
   })
   await page.waitForTimeout(150)
@@ -453,17 +453,17 @@ test('Explore refreshes from the top after a minute and then removes watched tit
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One phone engine covers freshness behaviour')
   await openExplore(page)
 
-  const first = page.locator('.adult-explore-card[data-media-type="movie"]').first()
+  const first = page.locator('.my-tv-explore-card[data-media-type="movie"]').first()
   const key = await first.getAttribute('data-explore-key')
   await first.locator('[data-explore-action="watched"]').click()
   await page.evaluate(() => setPortalScrollTop(520))
   expect(await page.evaluate(() => portalScrollTop())).toBeGreaterThan(100)
-  await page.locator('#adultExploreBack').click()
-  await expect(page.locator('#view-adult-viewing')).toBeVisible()
-  await page.evaluate(() => { adultExploreLeftAt = Date.now() - 61000 })
-  await page.locator('#adultViewingExplore').click()
-  await expect(page.locator('#view-adult-explore')).toBeVisible()
-  await expect(page.locator('.adult-explore-card').first()).toBeVisible()
+  await page.locator('#myTvExploreBack').click()
+  await expect(page.locator('#view-my-tv-viewing')).toBeVisible()
+  await page.evaluate(() => { myTvExploreLeftAt = Date.now() - 61000 })
+  await page.locator('#myTvViewingExplore').click()
+  await expect(page.locator('#view-my-tv-explore')).toBeVisible()
+  await expect(page.locator('.my-tv-explore-card').first()).toBeVisible()
   expect(await page.evaluate(() => portalScrollTop())).toBeLessThanOrEqual(5)
   await expect(page.locator(`[data-explore-key="${key}"]`)).toHaveCount(0)
 })

@@ -15,7 +15,7 @@ Item {
     property bool sidebarFocused: false
     property int sidebarSelection: 0
     property int restartSequenceStep: 0
-    property bool adultShortcutFocused: false
+    property bool myTvShortcutFocused: false
     readonly property real uiScale: Math.max(0.66, Math.min(width / 1920, height / 1080))
     readonly property var navPages: ["overview", "playback", "picture", "channels", "system"]
 
@@ -67,10 +67,10 @@ Item {
     }
 
     function pageSubtitle(value) {
-        if (value === "overview") return "Everything you need to manage MabelTV"
+        if (value === "overview") return "Everything you need to manage " + tvDisplayName
         if (value === "playback") return "Choose how programmes behave on this TV"
         if (value === "picture") return "Tune the television experience for this screen"
-        if (value === "channels") return "Choose exactly what appears on MabelTV"
+        if (value === "channels") return "Choose exactly what appears on " + tvDisplayName
         return "Library health, diagnostics and power controls"
     }
 
@@ -99,7 +99,7 @@ Item {
         case 11: return "Open library"
         case 12: return "Check now"
         case 13: return controller.libraryStatus.split("\n")[0].toUpperCase()
-        case 14: return controller.adultLibrary.length + " films"
+        case 14: return controller.myTvLibrary.length + " films"
         case 15: return "Relaunch"
         case 16: return Qt.platform.os === "windows" ? "Pi only" : "Safe power off"
         }
@@ -132,8 +132,8 @@ Item {
         case 11: return "Channels & programmes"
         case 12: return "Check library"
         case 13: return "Diagnostics"
-        case 14: return "Adult mode"
-        case 15: return "Restart MabelTV"
+        case 14: return "My TV mode"
+        case 15: return "Restart " + tvDisplayName
         case 16: return "Shut down Raspberry Pi"
         }
         return ""
@@ -143,13 +143,13 @@ Item {
         switch (index) {
         case 0: return "Channels continue playing in the background, just like live television."
         case 1: return "A partly watched episode can become unvisited again after a quiet period."
-        case 2: return "Choose whether MabelTV follows the channel's preferred picture shape."
+        case 2: return "Choose whether " + tvDisplayName + " follows the channel's preferred picture shape."
         case 3: return "Select the frame drawn around the television picture."
         case 4: return "Add a restrained curved-glass effect to the picture."
         case 5: return "Control the amount of deliberate analogue picture movement."
-        case 6: return "Choose the display resolution used after MabelTV relaunches."
+        case 6: return "Choose the display resolution used after " + tvDisplayName + " relaunches."
         case 7: return "Keep the television below the family's chosen maximum volume."
-        case 8: return "Set the loudest volume MabelTV is allowed to use."
+        case 8: return "Set the loudest volume " + tvDisplayName + " is allowed to use."
         case 9: return "Enable or silence the tuning and power sound effects."
         case 10: return "Allow left and right to move through the current programme."
         case 12: return "Reload the channel library and check that programmes are ready."
@@ -192,7 +192,7 @@ Item {
         } else if (index === 12) {
             controller.reloadLibrary()
         } else if (index === 14) {
-            controller.requestParentCommand("adult")
+            controller.requestParentCommand("my_tv")
         } else if (index === 15) {
             controller.requestParentCommand("restart")
         } else if (index === 16 && Qt.platform.os !== "windows") {
@@ -211,7 +211,7 @@ Item {
         if (index === 0) return "Programme behaviour, episode reset and scrubbing"
         if (index === 1) return "Picture shape, frame, effects and volume"
         if (index === 2) return "Choose the channels and programmes shown on TV"
-        return "Library checks, diagnostics, adult mode and power"
+        return "Library checks, diagnostics, My TV mode and power"
     }
 
     function openSidebar() {
@@ -288,18 +288,18 @@ Item {
         if (controller.parentAccessState === TvController.ParentConfirmation) {
             if (key === Qt.Key_Up) {
                 restartSequenceStep = 0
-                adultShortcutFocused = true
+                myTvShortcutFocused = true
             } else if (key === Qt.Key_Down) {
-                adultShortcutFocused = false
+                myTvShortcutFocused = false
             } else if (key === Qt.Key_Left) {
-                adultShortcutFocused = false
+                myTvShortcutFocused = false
                 restartSequenceStep = 1
             } else if (key === Qt.Key_Right) {
-                adultShortcutFocused = false
+                myTvShortcutFocused = false
                 restartSequenceStep = restartSequenceStep === 1 ? 2 : 0
             } else if (key === Qt.Key_Return || key === Qt.Key_Enter) {
-                if (adultShortcutFocused) {
-                    controller.requestAdultModeShortcut()
+                if (myTvShortcutFocused) {
+                    controller.requestMyTvModeShortcut()
                 } else if (restartSequenceStep === 2) {
                     controller.restartCurrentProgramme()
                     controller.closeParent()
@@ -309,7 +309,7 @@ Item {
                 }
             } else if (key === Qt.Key_Escape || key === Qt.Key_B) {
                 restartSequenceStep = 0
-                adultShortcutFocused = false
+                myTvShortcutFocused = false
                 controller.closeParent()
             } else {
                 restartSequenceStep = 0
@@ -418,7 +418,7 @@ Item {
 
         function onParentAccessStateChanged() {
             overlay.restartSequenceStep = 0
-            overlay.adultShortcutFocused = false
+            overlay.myTvShortcutFocused = false
             if (controller.parentAccessState !== TvController.ParentOpen) {
                 overlay.page = "overview"
                 overlay.selectedRow = 0

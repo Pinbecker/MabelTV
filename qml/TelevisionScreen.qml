@@ -396,11 +396,11 @@ Rectangle {
             objectName: "mabeltvPlayer"
 
             anchors.fill: parent
-            // A hidden adult overlay used to leave this framebuffer player
-            // rendering underneath the adult framebuffer player. On the Pi
+            // A hidden my_tv overlay used to leave this framebuffer player
+            // rendering underneath the my_tv framebuffer player. On the Pi
             // that can block Qt's render thread inside libmpv, freezing all
-            // remote input during an Adult Mode transition.
-            visible: !adultMode.active
+            // remote input during an MyTv Mode transition.
+            visible: !myTvMode.active
             volume: tvController.volume
             muted: tvController.muted
             aspectMode: tvController.currentAspectMode
@@ -419,8 +419,8 @@ Rectangle {
             }
 
             onStatusChanged: {
-                if (appRoot.restoreChildPauseAfterAdult && status === "Playing") {
-                    appRoot.restoreChildPauseAfterAdult = false
+                if (appRoot.restoreChildPauseAfterMyTv && status === "Playing") {
+                    appRoot.restoreChildPauseAfterMyTv = false
                     togglePause()
                 }
             }
@@ -438,8 +438,8 @@ Rectangle {
                     tvController.playbackFailed(message)
             }
             onPlaybackStopped: {
-                if (appRoot.openingAdultMode) {
-                    appRoot.openingAdultMode = false
+                if (appRoot.openingMyTvMode) {
+                    appRoot.openingMyTvMode = false
                     tvController.closeParent()
                     if (appRoot.pendingPowerAction.length > 0) {
                         appRoot.pendingPowerAction = ""
@@ -452,15 +452,15 @@ Rectangle {
                             appRoot.pendingExternalSource = ""
                             appRoot.pendingExternalTitle = ""
                             appRoot.pendingExternalPosition = 0
-                            adultMode.openExternal(source, title, position)
+                            myTvMode.openExternal(source, title, position)
                         } else {
-                            adultMode.open()
-                            if (appRoot.pendingAdultLibraryPath.length > 0) {
-                                const file = appRoot.pendingAdultLibraryPath
-                                const position = appRoot.pendingAdultLibraryPosition
-                                appRoot.pendingAdultLibraryPath = ""
-                                appRoot.pendingAdultLibraryPosition = 0
-                                adultMode.requestLibraryFilm(file, position)
+                            myTvMode.open()
+                            if (appRoot.pendingMyTvLibraryPath.length > 0) {
+                                const file = appRoot.pendingMyTvLibraryPath
+                                const position = appRoot.pendingMyTvLibraryPosition
+                                appRoot.pendingMyTvLibraryPath = ""
+                                appRoot.pendingMyTvLibraryPosition = 0
+                                myTvMode.requestLibraryFilm(file, position)
                             }
                         }
                     }

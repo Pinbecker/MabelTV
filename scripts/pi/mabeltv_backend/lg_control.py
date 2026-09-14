@@ -68,10 +68,12 @@ class LgControlMixin:
 
     def lg_tv_session(self) -> LgWebOsSocket:
         if not self.lg_tv_host:
-            raise ValueError("Connected TV control has not been configured for this MabelTV yet")
+            raise ValueError(f"Connected TV control has not been configured for {self.tv_identity()[1]} yet")
         session = LgWebOsSocket(self.lg_tv_host, self.lg_tv_client_key())
         session.connect()
         registration = json.loads(json.dumps(LG_WEBOS_REGISTRATION))
+        registration["payload"]["manifest"]["signed"]["localizedAppNames"][""] = \
+            self.tv_identity()[1]
         if session.client_key:
             registration["payload"]["client-key"] = session.client_key
         lg_webos_log(f"registration JSON sent; stored_client_key={'YES' if session.client_key else 'NO'}")
@@ -84,7 +86,7 @@ class LgControlMixin:
         if first.get("type") != "registered":
             lg_webos_log("registration did not reach registered state")
             session.close()
-            raise LgWebOsError("Approve MabelTV's control request on the LG TV, then try Netflix again")
+            raise LgWebOsError(f"Approve {self.tv_identity()[1]}'s control request on the LG TV, then try Netflix again")
         key = str(first.get("payload", {}).get("client-key") or "")
         lg_webos_log(f"registered message received; client_key={'YES' if key else 'NO'}")
         if key and key != session.client_key:
@@ -92,7 +94,7 @@ class LgControlMixin:
             session.client_key = key
         if not session.client_key:
             session.close()
-            raise LgWebOsError("Approve MabelTV's control request on the LG TV, then try Netflix again")
+            raise LgWebOsError(f"Approve {self.tv_identity()[1]}'s control request on the LG TV, then try Netflix again")
         return session
 
     @staticmethod
@@ -310,7 +312,7 @@ class LgControlMixin:
     def lg_tv_launch_shortcut(self, shortcut: str) -> dict[str, Any]:
         definition = LG_TV_APP_SHORTCUTS.get(shortcut)
         if not definition:
-            raise ValueError("That TV app is not available in MabelTV")
+            raise ValueError(f"That TV app is not available in {self.tv_identity()[1]}")
         mode = self.player_mode_status()
         waking = str(mode.get("connected_tv_power") or "").lower() not in {"on", "active"}
         if waking:
@@ -349,8 +351,15 @@ class LgControlMixin:
                 session = self.lg_tv_session()
                 catalog = self.lg_tv_catalog(session, force=True)
                 inputs = catalog.get("inputs", [])
+                tv_input_names = {
+                    self.lg_normalised_name(self.tv_identity()[1]),
+                    self.lg_normalised_name(self.tv_identity()[1]).replace(" ", ""),
+                    "mabeltv",  # Retain discovery of already-labelled installations.
+                }
                 selected = next((item for item in inputs
-                                 if "mabeltv" in self.lg_normalised_name(item.get("label"))), None)
+                                 if self.lg_normalised_name(item.get("label")) in tv_input_names
+                                 or self.lg_normalised_name(item.get("label")).replace(" ", "")
+                                 in tv_input_names), None)
                 selected = selected or next((item for item in inputs
                                              if str(item.get("inputId") or "").casefold()
                                              == preferred.casefold()), None)
@@ -358,7 +367,7 @@ class LgControlMixin:
                 self.lg_tv_session_request(
                     session, "ssap://tv/switchInput", {"inputId": input_id},
                     request_id="lg-mabeltv-input")
-                return {"ok": True, "message": "Switching to MabelTV…"}
+                return {"ok": True, "message": f"Switching to {self.tv_identity()[1]}…"}
             finally:
                 if session is not None:
                     session.close()
@@ -416,7 +425,7 @@ class LgControlMixin:
 
     def play_netflix_on_tv(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Wake the connected display when necessary, then launch one Netflix title."""
-        self.adult_title_key(str(payload.get("media_type", "")), payload.get("tmdb_id"))
+        self.my_tv_title_key(str(payload.get("media_type", "")), payload.get("tmdb_id"))
         content_id = self.netflix_content_id(payload.get("destination"))
         title = str(payload.get("title") or "this Netflix title").strip()[:180]
         mode = self.player_mode_status()

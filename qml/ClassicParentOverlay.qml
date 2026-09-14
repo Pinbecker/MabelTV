@@ -11,7 +11,7 @@ Item {
     property int selectedProgramme: 0
     property bool programmePane: false
     property int restartSequenceStep: 0
-    property bool adultShortcutFocused: false
+    property bool myTvShortcutFocused: false
     readonly property int rowCount: 17
 
     visible: controller.parentAccessState !== TvController.ParentClosed
@@ -53,7 +53,7 @@ Item {
         case 11: return "OPEN"
         case 12: return "RUN NOW"
         case 13: return controller.libraryStatus.split("\n")[0].toUpperCase()
-        case 14: return controller.adultLibrary.length + " FILMS"
+        case 14: return controller.myTvLibrary.length + " FILMS"
         case 15: return "RELAUNCH"
         case 16: return Qt.platform.os === "windows" ? "PI ONLY" : "SAFE POWEROFF"
         }
@@ -86,7 +86,7 @@ Item {
         } else if (index === 12) {
             controller.reloadLibrary()
         } else if (index === 14) {
-            controller.requestParentCommand("adult")
+            controller.requestParentCommand("my_tv")
         } else if (index === 15) {
             controller.requestParentCommand("restart")
         } else if (index === 16 && Qt.platform.os !== "windows") {
@@ -151,18 +151,18 @@ Item {
         if (controller.parentAccessState === TvController.ParentConfirmation) {
             if (key === Qt.Key_Up) {
                 restartSequenceStep = 0
-                adultShortcutFocused = true
+                myTvShortcutFocused = true
             } else if (key === Qt.Key_Down) {
-                adultShortcutFocused = false
+                myTvShortcutFocused = false
             } else if (key === Qt.Key_Left) {
-                adultShortcutFocused = false
+                myTvShortcutFocused = false
                 restartSequenceStep = 1
             } else if (key === Qt.Key_Right) {
-                adultShortcutFocused = false
+                myTvShortcutFocused = false
                 restartSequenceStep = restartSequenceStep === 1 ? 2 : 0
             } else if (key === Qt.Key_Return || key === Qt.Key_Enter) {
-                if (adultShortcutFocused) {
-                    controller.requestAdultModeShortcut()
+                if (myTvShortcutFocused) {
+                    controller.requestMyTvModeShortcut()
                 } else if (restartSequenceStep === 2) {
                     controller.restartCurrentProgramme()
                     controller.closeParent()
@@ -172,7 +172,7 @@ Item {
                 }
             } else if (key === Qt.Key_Escape || key === Qt.Key_B) {
                 restartSequenceStep = 0
-                adultShortcutFocused = false
+                myTvShortcutFocused = false
                 controller.closeParent()
             } else {
                 restartSequenceStep = 0
@@ -229,7 +229,7 @@ Item {
         }
         function onParentAccessStateChanged() {
             overlay.restartSequenceStep = 0
-            overlay.adultShortcutFocused = false
+            overlay.myTvShortcutFocused = false
             if (controller.parentAccessState !== TvController.ParentOpen) {
                 overlay.page = "settings"
                 overlay.programmePane = false
@@ -283,8 +283,8 @@ Item {
                 color: "#bdd0ad"
                 font.family: "Consolas"
                 font.pixelSize: 21
-                text: overlay.adultShortcutFocused
-                      ? "ADULT MODE SELECTED: PRESS OK"
+                text: overlay.myTvShortcutFocused
+                      ? "MY TV MODE SELECTED: PRESS OK"
                       : "PRESS OK THREE TIMES"
             }
 
@@ -294,17 +294,17 @@ Item {
                 anchors.verticalCenterOffset: -36
                 width: 360
                 height: 48
-                color: overlay.adultShortcutFocused ? "#334d34" : "#10180f"
-                border.color: overlay.adultShortcutFocused ? "#d4c78e" : "#547054"
-                border.width: overlay.adultShortcutFocused ? 2 : 1
+                color: overlay.myTvShortcutFocused ? "#334d34" : "#10180f"
+                border.color: overlay.myTvShortcutFocused ? "#d4c78e" : "#547054"
+                border.width: overlay.myTvShortcutFocused ? 2 : 1
 
                 Text {
                     anchors.centerIn: parent
-                    color: overlay.adultShortcutFocused ? "#f1e7b7" : "#bdd0ad"
+                    color: overlay.myTvShortcutFocused ? "#f1e7b7" : "#bdd0ad"
                     font.family: "Consolas"
                     font.bold: true
                     font.pixelSize: 18
-                    text: "↑  ADULT MODE     OK  OPEN"
+                    text: "↑  MY TV MODE     OK  OPEN"
                 }
             }
 
@@ -367,7 +367,7 @@ Item {
                     model: ["PLAYBACK MODE", "RESET UNVISITED EPISODES", "PICTURE MODE",
                             "TV BORDER", "CRT GLASS", "90s DISTORTION", "DISPLAY OUTPUT", "VOLUME LIMIT",
                             "MAXIMUM VOLUME", "TV SOUNDS", "PLAYBACK SCRUBBING",
-                            "CHANNELS & PROGRAMMES", "RELOAD LIBRARY", "DIAGNOSTICS", "ADULT MODE",
+                            "CHANNELS & PROGRAMMES", "RELOAD LIBRARY", "DIAGNOSTICS", "MY TV MODE",
                             "RESTART MABEL TV", "SHUT DOWN PI"]
 
                     Rectangle {

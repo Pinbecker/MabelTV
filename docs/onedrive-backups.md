@@ -62,7 +62,7 @@ as a rollback point, then restore the database, secrets, Matter data,
 configuration and IR keymap with their archived ownership and modes. Restore
 media separately at the same relative paths beneath `/srv/mabeltv/media`.
 Start the services and verify SQLite integrity and foreign keys, service restart
-counters, authentication, channels and settings, viewing state, Adult state,
+counters, authentication, channels and settings, viewing state, My TV state,
 LG/Matter control and playback. PWA caches rebuild automatically; device-local
 Downloads must be downloaded again.
 

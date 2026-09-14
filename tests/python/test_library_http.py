@@ -60,7 +60,7 @@ class LibraryHttpTests(unittest.TestCase):
         status, dashboard = self.request("/api/library")
         self.assertEqual(status, 200)
         self.assertEqual(dashboard["owner"]["name"], "Taylor")
-        self.assertEqual(dashboard["owner"]["tv_name"], "TaylorTV")
+        self.assertEqual(dashboard["owner"]["tv_name"], "Taylor TV")
         self.assertTrue(dashboard["owner"]["portal_pin_required"])
         status, security = self.request("/api/portal-security", {
             "current_pin": "8642", "required": False,
@@ -85,11 +85,11 @@ class LibraryHttpTests(unittest.TestCase):
         self.assertEqual(status, 200)
         status, state = self.request("/api/setup")
         self.assertEqual(status, 200)
-        self.assertEqual(state["tv_name"], "TaylorTV")
+        self.assertEqual(state["tv_name"], "Taylor TV")
         with mock.patch.object(self.server.library, "admin_action", return_value=""):
             status, identity = self.request("/api/identity", {"child_name": "Mabel"})
         self.assertEqual(status, 200)
-        self.assertEqual(identity["tv_name"], "MabelTV")
+        self.assertEqual(identity["tv_name"], "Mabel TV")
         self.assertEqual(len(dashboard["channels"]), 4)
         status, live = self.request("/api/status")
         self.assertEqual(status, 200)
@@ -104,11 +104,11 @@ class LibraryHttpTests(unittest.TestCase):
         self.assertIn("did not come from", body["error"])
 
     def test_external_stream_token_works_without_browser_cookie_and_supports_range(self) -> None:
-        movie = self.fixture.media / ".adult" / "VLC Film.mkv"
+        movie = self.fixture.media / ".my-tv" / "VLC Film.mkv"
         movie.parent.mkdir(parents=True, exist_ok=True)
         movie.write_bytes(b"0123456789")
         started = self.fixture.library.start_external_stream({
-            "kind": "adult", "file": "VLC Film.mkv",
+            "kind": "my_tv", "file": "VLC Film.mkv",
         })
         request = urllib.request.Request(self.base + started["stream_url"])
         request.add_header("Range", "bytes=2-5")

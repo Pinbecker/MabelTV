@@ -89,7 +89,7 @@ LG_WEBOS_REGISTRATION = {
         "manifest": {
             "manifestVersion": 1, "appVersion": "0.1.0",
             "signed": {"appId": "com.mabeltv.control", "created": "2026-09-03",
-                       "localizedAppNames": {"": "MabelTV"},
+                       "localizedAppNames": {"": "Your TV"},
                        "localizedVendorNames": {"": "MabelTV"},
                        "permissions": LG_WEBOS_PERMISSIONS},
             "permissions": LG_WEBOS_PERMISSIONS,
@@ -130,14 +130,14 @@ class LgWebOsSocket:
             response = self._read_headers(connection)
             if not response.startswith("HTTP/1.1 101"):
                 lg_webos_log(f"WebSocket upgrade rejected: {response.splitlines()[0] if response else 'empty response'}")
-                raise LgWebOsError("The connected TV rejected MabelTV's secure control connection")
+                raise LgWebOsError("The connected TV rejected the secure control connection")
             lg_webos_log("WebSocket upgrade complete")
             # Allow a person time to read and accept the television prompt.
             connection.settimeout(90)
             self.connection = connection
         except (OSError, ssl.SSLError) as error:
             lg_webos_log(f"connection exception: {type(error).__name__}: {error}")
-            raise LgWebOsError("MabelTV could not reach the connected LG TV") from error
+            raise LgWebOsError("The TV system could not reach the connected LG TV") from error
 
     @staticmethod
     def _read_headers(connection: socket.socket) -> str:
@@ -229,5 +229,4 @@ class LgWebOsSocket:
                 self.connection.close()
             finally:
                 self.connection = None
-
 

@@ -41,7 +41,7 @@ QString databaseFromJsonFixtures(const QString &channelsPath,
             QStringLiteral("CREATE TABLE application_settings(key TEXT PRIMARY KEY,value_json TEXT,updated_at REAL)"),
             QStringLiteral("CREATE TABLE owner_fields(key TEXT PRIMARY KEY,value_json TEXT,updated_at REAL)"),
             QStringLiteral("CREATE TABLE player_fields(key TEXT PRIMARY KEY,value_json TEXT,updated_at REAL)"),
-            QStringLiteral("CREATE TABLE adult_resume(library_id TEXT PRIMARY KEY,position_seconds REAL,duration_seconds REAL,updated_utc_ms INTEGER,position_present INTEGER,duration_present INTEGER,updated_present INTEGER)"),
+            QStringLiteral("CREATE TABLE my_tv_resume(library_id TEXT PRIMARY KEY,position_seconds REAL,duration_seconds REAL,updated_utc_ms INTEGER,position_present INTEGER,duration_present INTEGER,updated_present INTEGER)"),
             QStringLiteral("CREATE TABLE channel_film_resume(media_key TEXT PRIMARY KEY,position_seconds REAL,duration_seconds REAL,updated_utc_ms INTEGER,position_present INTEGER,duration_present INTEGER,updated_present INTEGER)"),
             QStringLiteral("CREATE TABLE channel_timelines(channel_number INTEGER PRIMARY KEY,episode_index INTEGER,episode_name TEXT,position_seconds REAL)"),
             QStringLiteral("CREATE TABLE channel_programme_positions(channel_number INTEGER,file_name TEXT,position_seconds REAL,PRIMARY KEY(channel_number,file_name))"),
@@ -54,7 +54,7 @@ QString databaseFromJsonFixtures(const QString &channelsPath,
         for (const QString &statement : schema) {
             if (!query.exec(statement)) return {};
         }
-        if (!query.exec(QStringLiteral("PRAGMA user_version=8"))) return {};
+        if (!query.exec(QStringLiteral("PRAGMA user_version=9"))) return {};
         const QJsonArray channels = readTestObject(channelsPath)
                                         .value(QStringLiteral("channels")).toArray();
         query.prepare(QStringLiteral("INSERT INTO channels VALUES(?,?,?,?,?)"));
@@ -155,7 +155,7 @@ void seedChannelMetadata(const QString &databasePath, const QJsonObject &root)
     QSqlDatabase::removeDatabase(connectionName);
 }
 
-void seedAdultMedia(const QString &databasePath, const QJsonObject &values)
+void seedMyTvMedia(const QString &databasePath, const QJsonObject &values)
 {
     const QString connectionName = QUuid::createUuid().toString(QUuid::WithoutBraces);
     {
@@ -166,7 +166,7 @@ void seedAdultMedia(const QString &databasePath, const QJsonObject &values)
             QSqlQuery query(database);
             query.prepare(QStringLiteral(
                 "INSERT OR REPLACE INTO local_media(relative_path,library_id,"
-                "favourite,favourite_present,metadata_json,domain) VALUES(?,?,0,0,?,'adult')"));
+                "favourite,favourite_present,metadata_json,domain) VALUES(?,?,0,0,?,'my_tv')"));
             for (auto item = values.constBegin(); item != values.constEnd(); ++item) {
                 const QJsonObject saved = item.value().toObject();
                 query.bindValue(0, item.key());

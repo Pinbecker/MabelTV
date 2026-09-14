@@ -129,19 +129,19 @@ test('@visual representative film menu fits the phone viewport', async ({ page }
   await page.getByRole('button', { name: 'Close programme details' }).click()
 })
 
-test('Home Continue contains MabelTV films only', async ({ page }) => {
+test('Home Continue contains Mabel TV films only', async ({ page }) => {
   await openPortal(page)
   await page.evaluate(() => {
-    library.adult_library = [{
-      path: 'adult-progress.mp4', display_name: 'Adult progress', browser_ready: true,
+    library.my_tv_library = [{
+      path: 'my-tv-progress.mp4', display_name: 'MyTv progress', browser_ready: true,
       remote_position: 180, remote_duration: 1800, remote_last_watched: Date.now() / 1000,
-      metadata: { title: 'Adult progress' },
+      metadata: { title: 'MyTv progress' },
     }]
     renderHomeLibrary()
   })
-  await expect(page.locator('#homeContinueRail [data-adult-path]')).toHaveCount(0)
+  await expect(page.locator('#homeContinueRail [data-my-tv-path]')).toHaveCount(0)
   await expect(page.locator('#homeContinueRail .watch-continue-card')).toHaveCount(8)
-  await expect(page.locator('#homeContinueRail')).not.toContainText('Adult progress')
+  await expect(page.locator('#homeContinueRail')).not.toContainText('MyTv progress')
 })
 
 
@@ -216,13 +216,13 @@ test('shared portal component contracts stay canonical', async ({ page }, testIn
     }
   })
 
-  expect(contract.searchCount).toBe(7)
+  expect(contract.searchCount).toBe(6)
   contract.searchStyles.forEach(style => {
     const browseSearch = style.id === 'viewingBrowseSearch'
     expect(style).toMatchObject({
       display: browseSearch ? 'flex' : 'grid',
-      minHeight: browseSearch || ['watchMabelSearch', 'watchSearch', 'adultViewingSearch'].includes(style.id)
-        ? '42px' : style.id === 'adultFilmographySearch' ? '34px' : '48px',
+      minHeight: browseSearch || ['watchMabelSearch', 'watchSearch', 'myTvViewingSearch'].includes(style.id)
+        ? '42px' : style.id === 'myTvFilmographySearch' ? '34px' : '48px',
       radius: browseSearch ? '12px' : '8px',
     })
   })
@@ -325,7 +325,7 @@ test('Experience icon controls and sheet headers keep their mobile contracts', a
     .toBeCloseTo(mabelStructure.chassis.top - mabelStructure.status.bottom, 0)
 
   const stickyClose = await page.evaluate(() => {
-    const dialog = document.querySelector('#adultSeasonSheet')
+    const dialog = document.querySelector('#myTvSeasonSheet')
     const panel = dialog.querySelector('.library-sheet-body')
     const close = dialog.querySelector('.portal-sheet-close')
     dialog.showModal()
@@ -341,15 +341,15 @@ test('Experience icon controls and sheet headers keep their mobile contracts', a
 })
 
 
-test('@visual MabelTV remote offers a contextual borderless Adult TV handoff', async ({ page }, testInfo) => {
+test('@visual Mabel TV remote offers a contextual borderless My TV handoff', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone remote contract')
   await openPortal(page)
   const liveFixture = {
-    available: true, standby: false, adult_mode: false, paused: false,
+    available: true, standby: false, my_tv_mode: false, paused: false,
     muted: false, volume: 42, remote_locked: false,
     subtitles_available: false, subtitles_visible: false,
     widescreen_available: true, widescreen_enabled: false,
-    adult_handoff_available: true, connected_tv_available: true,
+    my_tv_handoff_available: true, connected_tv_available: true,
     connected_tv_power: 'on', channel_number: 1,
     channel_name: 'Family Films', programme: 'Snowy Adventure',
   }
@@ -378,9 +378,9 @@ test('@visual MabelTV remote offers a contextual borderless Adult TV handoff', a
   await expect(page.locator('#view-live .tv-remote-transport-row button')).toHaveCount(4)
   await expect(page.locator('#view-live .remote-transport-context button')).toHaveCount(4)
   await expect(page.locator('#view-live #openLiveChannels')).toHaveCount(0)
-  await expect(page.locator('#remoteAdultAction')).toHaveText('Open Adult TV')
+  await expect(page.locator('#remoteMyTvAction')).toHaveText('Open My TV')
   await expect(page.locator('#remoteSubtitles')).toHaveText('Subtitles')
-  await expect(page.locator('#remoteAdultHandoff')).toHaveText('Open in Adult TV')
+  await expect(page.locator('#remoteMyTvHandoff')).toHaveText('Open in My TV')
   await expect(page.locator('#remoteWidescreen')).toBeVisible()
   await expect(page.locator('#remoteLock')).toHaveText('')
   await expect(page.locator('#remoteLock')).toHaveAttribute('aria-label', 'Lock kids’ physical remote')
@@ -394,7 +394,7 @@ test('@visual MabelTV remote offers a contextual borderless Adult TV handoff', a
   const transportAppearance = await page.locator('#view-live .tv-remote-transport-row button').evaluateAll(buttons =>
     buttons.map(button => ({ color: getComputedStyle(button).color, opacity: getComputedStyle(button).opacity })))
   transportAppearance.forEach(style => expect(style).toEqual({ color: 'rgb(244, 244, 247)', opacity: '1' }))
-  const shortcutIcon = await geometry(page, '#remoteAdultAction svg')
+  const shortcutIcon = await geometry(page, '#remoteMyTvAction svg')
   expect(shortcutIcon.width).toBeLessThanOrEqual(13.1)
   const mabelControls = await page.evaluate(() => {
     const rect = selector => {
@@ -432,15 +432,15 @@ test('@visual MabelTV remote offers a contextual borderless Adult TV handoff', a
   await expect(page.locator('#remoteMute')).toHaveAttribute('aria-pressed', 'true')
   await expect(page.locator('#remoteMute .tv-remote-volume-on')).toBeHidden()
   await expect(page.locator('#remoteMute .tv-remote-volume-off')).toBeVisible()
-  const handoff = page.locator('#remoteAdultHandoff')
+  const handoff = page.locator('#remoteMyTvHandoff')
   await expect(handoff).toBeVisible()
   await expect(handoff).toHaveAttribute(
-    'aria-label', 'Continue Snowy Adventure in Adult TV without the television frame')
+    'aria-label', 'Continue Snowy Adventure in My TV without the television frame')
   await handoff.click()
   await expect.poll(() => page.evaluate(() => window.__sentLiveCommands.at(-1)))
-    .toBe('continue-in-adult-mode')
+    .toBe('continue-in-my-tv-mode')
   await page.evaluate((fixture) => renderLiveTv({ ...fixture,
-    widescreen_available: false, adult_handoff_available: false }), liveFixture)
+    widescreen_available: false, my_tv_handoff_available: false }), liveFixture)
   await expect(page.locator('#remoteWidescreen')).toBeVisible()
   await expect(page.locator('#remoteWidescreen')).toBeDisabled()
   await expect(handoff).toBeVisible()

@@ -4,8 +4,8 @@
 // Capture immediately before changing DOM and restore synchronously: a delayed
 // restoration must never override a subsequent gesture or navigation.
 const portalViewPositions = new Map()
-const portalRailSelector = '.watch-channel-rail,.watch-continue-rail,.home-poster-rail,.adult-series-rail'
-const portalAnchorAttributes = ['data-adult-path', 'data-watch-channel-folder', 'data-usb-path', 'data-viewing-key']
+const portalRailSelector = '.watch-channel-rail,.watch-continue-rail,.home-poster-rail,.my-tv-series-rail'
+const portalAnchorAttributes = ['data-my-tv-path', 'data-watch-channel-folder', 'data-usb-path', 'data-viewing-key']
 let portalScrollSettlement = 0
 
 function cancelPortalScrollSettlement() { portalScrollSettlement += 1 }

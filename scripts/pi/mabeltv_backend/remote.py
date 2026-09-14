@@ -64,7 +64,7 @@ class RemotePlaybackMixin:
             pass
         player_state = self.read_state("player")
         if isinstance(player_state, dict):
-            positions = player_state.get("adult_positions", {})
+            positions = player_state.get("my_tv_positions", {})
             if isinstance(positions, dict):
                 try:
                     player_position = float(positions.get(library_id, 0) or 0)
@@ -73,7 +73,7 @@ class RemotePlaybackMixin:
                     # on-TV bookmark.  Accept that TV bookmark again as soon
                     # as the television genuinely moves to a different point.
                     if ignored < 0 or abs(player_position - ignored) > 5:
-                        updates = player_state.get("adult_position_updated_utc_ms", {})
+                        updates = player_state.get("my_tv_position_updated_utc_ms", {})
                         updated = float(updates.get(library_id, 0) or 0) / 1000.0 \
                             if isinstance(updates, dict) else 0.0
                         candidates.append((updated, player_position))
@@ -99,7 +99,7 @@ class RemotePlaybackMixin:
         except (TypeError, ValueError):
             browser_updated = 0.0
         player_state = self.read_state("player")
-        updates = player_state.get("adult_position_updated_utc_ms", {}) \
+        updates = player_state.get("my_tv_position_updated_utc_ms", {}) \
             if isinstance(player_state, dict) else {}
         try:
             tv_updated = max(0.0, float(updates.get(library_id, 0) or 0) / 1000.0) \
@@ -117,7 +117,7 @@ class RemotePlaybackMixin:
         except (TypeError, ValueError):
             pass
         player_state = self.read_state("player")
-        durations = player_state.get("adult_durations", {}) \
+        durations = player_state.get("my_tv_durations", {}) \
             if isinstance(player_state, dict) else {}
         if isinstance(durations, dict):
             try:
@@ -173,35 +173,35 @@ class RemotePlaybackMixin:
 
     def remote_source(self, payload: dict[str, Any]) -> tuple[str, Path, str, str | None, float]:
         kind = str(payload.get("kind", ""))
-        if kind == "adult":
-            source = self.safe_adult_path(str(payload.get("file", "")))
+        if kind == "my_tv":
+            source = self.safe_my_tv_path(str(payload.get("file", "")))
             if not source.is_file():
-                raise ValueError("That Adult film is no longer in the library")
-            relative = self.adult_relative_path(source)
-            state = self.adult_media_states().get(relative, {})
+                raise ValueError("That My TV film is no longer in the library")
+            relative = self.my_tv_relative_path(source)
+            state = self.my_tv_media_states().get(relative, {})
             library_id = state.get("library_id") if isinstance(state, dict) else None
             if not isinstance(library_id, str):
                 # Give old libraries a stable ID before opening a browser stream.
-                self.adult_library()
-                state = self.adult_media_states().get(relative, {})
+                self.my_tv_library()
+                state = self.my_tv_media_states().get(relative, {})
                 library_id = state.get("library_id") if isinstance(state, dict) else None
             resume = self.remote_resume_position(str(library_id or ""), state if isinstance(state, dict) else {})
             return kind, source, self.display_name(source.name), str(library_id or ""), resume
-        if kind == "adult-series":
+        if kind == "my-tv-series":
             series_id = str(payload.get("series", ""))
-            source = self.adult_series_path(series_id, str(payload.get("file", "")))
+            source = self.my_tv_series_path(series_id, str(payload.get("file", "")))
             if not source.is_file() or source.suffix.lower() not in SUPPORTED_EXTENSIONS:
-                raise ValueError("That Adult TV episode is no longer in the library")
-            relative = source.relative_to(self.adult_series_root / series_id).as_posix()
+                raise ValueError("That My TV episode is no longer in the library")
+            relative = source.relative_to(self.my_tv_series_root / series_id).as_posix()
             key = f"{series_id}/{relative}"
-            state = self.adult_series_states()["episodes"].get(key, {})
+            state = self.my_tv_series_states()["episodes"].get(key, {})
             if not isinstance(state, dict):
                 state = {}
             library_id = str(state.get("library_id") or "")
             resume = self.normalise_resume_position(
                 float(state.get("remote_position", 0) or 0),
                 float(state.get("remote_duration", 0) or 0))
-            parsed = self.adult_episode_identity(source)
+            parsed = self.my_tv_episode_identity(source)
             metadata = state.get("metadata", {})
             title = str(metadata.get("title") or parsed["title"]) \
                 if isinstance(metadata, dict) else parsed["title"]
@@ -210,10 +210,10 @@ class RemotePlaybackMixin:
             try:
                 channel = self.channel(int(payload.get("channel", 0)))
             except (TypeError, ValueError):
-                raise ValueError("Choose a valid Mabel TV programme") from None
+                raise ValueError(f"Choose a valid {self.tv_identity()[1]} programme") from None
             source = self.safe_media_path(channel, str(payload.get("file", "")))
             if not source.is_file():
-                raise ValueError("That Mabel TV programme is no longer in the library")
+                raise ValueError(f"That {self.tv_identity()[1]} programme is no longer in the library")
             if self.channel_content_type(channel) == "films":
                 channel_number = int(channel["number"])
                 resume = self.channel_film_resume_state(channel_number, source.name)
@@ -229,7 +229,7 @@ class RemotePlaybackMixin:
             if not source.is_file() or source.suffix.lower() not in SUPPORTED_EXTENSIONS:
                 raise ValueError("That USB video is no longer available")
             return kind, source, self.display_name(source.name), None, 0
-        raise ValueError("Choose an Adult film, Mabel TV programme or USB video")
+        raise ValueError(f"Choose a My TV film, {self.tv_identity()[1]} programme or USB video")
 
     @staticmethod
     def _source_fingerprint(source: Path) -> str:
@@ -261,11 +261,11 @@ class RemotePlaybackMixin:
             self._cleanup_external_streams_locked()
             self.external_streams[token] = stream
         content_type = mimetypes.guess_type(source.name)[0] or "application/octet-stream"
-        display_stem = SAFE_NAME.sub("", Path(title).stem).strip(". ") or "MabelTV video"
+        display_stem = SAFE_NAME.sub("", Path(title).stem).strip(". ") or "TV video"
         display_file_name = f"{display_stem}{source.suffix.lower()}"
         subtitle_url = None
         subtitles = None
-        if kind in {"adult", "adult-series"}:
+        if kind in {"my_tv", "my-tv-series"}:
             try:
                 caption_source = subtitle_source or source
                 if purpose == "vlc":
@@ -329,7 +329,7 @@ class RemotePlaybackMixin:
 
     def external_subtitles(self, token: str) -> bytes:
         stream = self.external_stream_session(token)
-        if stream.get("kind") not in {"adult", "adult-series"}:
+        if stream.get("kind") not in {"my_tv", "my-tv-series"}:
             raise ValueError("That video has no external subtitle track")
         return self.browser_subtitles_for_source(Path(stream["source"]))
 
@@ -342,11 +342,11 @@ class RemotePlaybackMixin:
                 check=False, capture_output=True, text=True, timeout=30)
             streams = json.loads(result.stdout).get("streams", [])
         except (OSError, subprocess.TimeoutExpired, TypeError, ValueError) as error:
-            raise ValueError("MabelTV could not inspect that video for offline playback") from error
+            raise ValueError(f"{self.tv_identity()[1]} could not inspect that video for offline playback") from error
         video = next((item for item in streams if item.get("codec_type") == "video"), None)
         audio = next((item for item in streams if item.get("codec_type") == "audio"), None)
         if result.returncode != 0 or not video:
-            raise ValueError("MabelTV could not find a playable picture in that file")
+            raise ValueError(f"{self.tv_identity()[1]} could not find a playable picture in that file")
         video_codec = str(video.get("codec_name", "")).lower()
         audio_codec = str(audio.get("codec_name", "")).lower() if audio else ""
         suffix = source.suffix.lower()
@@ -413,7 +413,7 @@ class RemotePlaybackMixin:
         temporary = self.offline_cache / f".{job_id}.part.mp4"
         log_path = self.offline_cache / f".{job_id}.ffmpeg.log"
         try:
-            with self.adult_optimisation_serial:
+            with self.my_tv_optimisation_serial:
                 if not source.is_file():
                     raise ValueError("The original video is no longer available")
                 if preparation == "convert":
@@ -430,7 +430,7 @@ class RemotePlaybackMixin:
                         result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=errors,
                                                 timeout=45 * 60, check=False)
                     if result.returncode != 0:
-                        raise ValueError("MabelTV could not prepare that video for iPhone")
+                        raise ValueError(f"{self.tv_identity()[1]} could not prepare that video for iPhone")
                     if self.offline_media_profile(temporary) != "direct":
                         raise ValueError("The prepared video did not pass its iPhone playback check")
                     os.replace(temporary, destination)
@@ -441,7 +441,7 @@ class RemotePlaybackMixin:
             with self.offline_preparation_lock:
                 job["status"] = "error"
                 job["message"] = (str(error) if isinstance(error, ValueError)
-                                  else "MabelTV could not prepare that video")
+                                  else f"{self.tv_identity()[1]} could not prepare that video")
         finally:
             temporary.unlink(missing_ok=True)
             log_path.unlink(missing_ok=True)
@@ -482,7 +482,7 @@ class RemotePlaybackMixin:
                 while process.poll() is None:
                     if time.monotonic() >= deadline:
                         os.killpg(process.pid, signal.SIGTERM)
-                        raise ValueError("MabelTV stopped this conversion because it took too long")
+                        raise ValueError(f"{self.tv_identity()[1]} stopped this conversion because it took too long")
                     line = process.stdout.readline() if process.stdout else ""
                     if not line.startswith(("out_time_us=", "out_time_ms=")) or duration <= 0:
                         continue
@@ -502,7 +502,7 @@ class RemotePlaybackMixin:
                     details = error_log.read_text(encoding="utf-8", errors="replace").strip()
                     if details:
                         print(details[-4000:], file=sys.stderr, flush=True)
-                    raise ValueError("MabelTV could not convert that video for offline playback")
+                    raise ValueError(f"{self.tv_identity()[1]} could not convert that video for offline playback")
             if self.offline_media_profile(temporary) != "direct":
                 raise ValueError("The converted video did not pass its iPhone playback check")
             os.replace(temporary, destination)
@@ -544,7 +544,7 @@ class RemotePlaybackMixin:
             raise ValueError("This file is not browser-ready. Use an MP4 or M4V version for remote viewing.")
         settings = self.remote_settings()
         if settings["tv_running"] and not settings["allow_simultaneous"]:
-            raise RemoteTvActiveError("Mabel TV is playing. Stop it first, or allow simultaneous playback in Settings.")
+            raise RemoteTvActiveError(f"{self.tv_identity()[1]} is playing. Stop it first, or allow simultaneous playback in Settings.")
         with self.remote_stream_lock:
             # The portal deliberately supports one remote viewer. Selecting a
             # different title in that viewer must replace its previous stream;
@@ -564,12 +564,13 @@ class RemotePlaybackMixin:
                 })
         base = urlencode({"stream": token})
         subtitle_url = None
-        if kind in {"adult", "adult-series"}:
+        if kind in {"my_tv", "my-tv-series"}:
             browser_sidecars = [path for path in self.subtitle_sidecars(source)
                                 if path.suffix.lower() in {".vtt", ".srt"}]
             if browser_sidecars:
                 subtitle_url = f"/api/remote/subtitles?{base}"
         return {"ok": True, "title": title, "kind": kind,
+                "tv_name": self.tv_identity()[1],
                 "resume_enabled": bool(library_id) or "position" in payload,
                 "resume_position": resume,
                 "stream_url": f"/api/remote/media?{base}",
@@ -595,9 +596,9 @@ class RemotePlaybackMixin:
 
     def remote_stop_tv(self) -> dict[str, Any]:
         if not self.remote_tv_running():
-            return {"ok": True, "message": "Mabel TV is already off"}
+            return {"ok": True, "message": f"{self.tv_identity()[1]} is already off"}
         self.live_tv_control({"command": "turn-off"})
-        return {"ok": True, "message": "Mabel TV has been stopped for remote viewing"}
+        return {"ok": True, "message": f"{self.tv_identity()[1]} has been stopped for remote viewing"}
 
     def remote_release(self, token: str) -> dict[str, Any]:
         with self.remote_stream_lock:
@@ -639,15 +640,15 @@ class RemotePlaybackMixin:
                                     + "\n").encode())
                     reply = client.recv(32).decode(errors="replace").strip()
             except OSError as error:
-                raise ValueError("Mabel TV could not save that film position") from error
+                raise ValueError(f"{self.tv_identity()[1]} could not save that film position") from error
             if reply != "ok":
-                raise ValueError("Mabel TV could not save that film position")
+                raise ValueError(f"{self.tv_identity()[1]} could not save that film position")
             return {"ok": True}
-        if session["kind"] == "adult-series":
+        if session["kind"] == "my-tv-series":
             with self.config_lock:
-                states = self.adult_series_states()
+                states = self.my_tv_series_states()
                 source = Path(session["source"])
-                relative = source.relative_to(self.adult_series_root).as_posix()
+                relative = source.relative_to(self.my_tv_series_root).as_posix()
                 state = states["episodes"].get(relative, {})
                 if not isinstance(state, dict):
                     state = {}
@@ -660,13 +661,13 @@ class RemotePlaybackMixin:
                 if duration > 0 and position >= duration * .92:
                     state["watched"] = True
                 states["episodes"][relative] = state
-                self.write_adult_series_states(states)
+                self.write_my_tv_series_states(states)
             return {"ok": True}
-        if session["kind"] != "adult":
+        if session["kind"] != "my_tv":
             return {"ok": True}
         with self.config_lock:
-            states = self.adult_media_states()
-            relative = self.adult_relative_path(session["source"])
+            states = self.my_tv_media_states()
+            relative = self.my_tv_relative_path(session["source"])
             state = states.get(relative, {})
             if not isinstance(state, dict): state = {}
             saved_position = self.normalise_resume_position(position, duration)
@@ -675,7 +676,7 @@ class RemotePlaybackMixin:
             state["remote_last_watched"] = time.time()
             if saved_position == 0:
                 player_state = self.read_state("player")
-                positions = player_state.get("adult_positions", {}) \
+                positions = player_state.get("my_tv_positions", {}) \
                     if isinstance(player_state, dict) else {}
                 try:
                     state["ignored_player_position"] = float(
@@ -685,7 +686,7 @@ class RemotePlaybackMixin:
             else:
                 state.pop("ignored_player_position", None)
             states[relative] = state
-            self.write_adult_media_states(states)
+            self.write_my_tv_media_states(states)
         return {"ok": True}
 
     def remote_clear_position(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -701,10 +702,10 @@ class RemotePlaybackMixin:
             try:
                 channel_number = int(payload.get("channel", 0))
             except (TypeError, ValueError):
-                raise ValueError("Choose a valid Mabel TV film") from None
+                raise ValueError(f"Choose a valid {self.tv_identity()[1]} film") from None
             channel = self.channel(channel_number)
             if self.channel_content_type(channel) != "films":
-                raise ValueError("Choose a Mabel TV film to clear")
+                raise ValueError(f"Choose a {self.tv_identity()[1]} film to clear")
             command = {
                 "command": "save-channel-film-position",
                 "channel": channel_number,
@@ -720,14 +721,14 @@ class RemotePlaybackMixin:
                                     + "\n").encode())
                     reply = client.recv(32).decode(errors="replace").strip()
             except OSError as error:
-                raise ValueError("Mabel TV could not clear that film position") from error
+                raise ValueError(f"{self.tv_identity()[1]} could not clear that film position") from error
             if reply != "ok":
-                raise ValueError("Mabel TV could not clear that film position")
+                raise ValueError(f"{self.tv_identity()[1]} could not clear that film position")
             return {"ok": True, "kind": kind}
-        if kind == "adult-series":
+        if kind == "my-tv-series":
             with self.config_lock:
-                states = self.adult_series_states()
-                relative = source.relative_to(self.adult_series_root).as_posix()
+                states = self.my_tv_series_states()
+                relative = source.relative_to(self.my_tv_series_root).as_posix()
                 state = states["episodes"].get(relative, {})
                 if not isinstance(state, dict):
                     state = {}
@@ -735,20 +736,20 @@ class RemotePlaybackMixin:
                 state["remote_last_watched"] = 0.0
                 state.pop("pre_watched_resume", None)
                 states["episodes"][relative] = state
-                self.write_adult_series_states(states)
+                self.write_my_tv_series_states(states)
             return {"ok": True, "kind": kind}
-        if kind != "adult" or not library_id:
+        if kind != "my_tv" or not library_id:
             raise ValueError("Choose a local film or episode to clear")
         with self.config_lock:
-            states = self.adult_media_states()
-            relative = self.adult_relative_path(source)
+            states = self.my_tv_media_states()
+            relative = self.my_tv_relative_path(source)
             state = states.get(relative, {})
             if not isinstance(state, dict):
                 state = {}
             state["remote_position"] = 0.0
             state["remote_last_watched"] = 0.0
             player_state = self.read_state("player")
-            positions = player_state.get("adult_positions", {}) \
+            positions = player_state.get("my_tv_positions", {}) \
                 if isinstance(player_state, dict) else {}
             try:
                 state["ignored_player_position"] = float(
@@ -756,7 +757,7 @@ class RemotePlaybackMixin:
             except (AttributeError, TypeError, ValueError):
                 state["ignored_player_position"] = 0.0
             states[relative] = state
-            self.write_adult_media_states(states)
+            self.write_my_tv_media_states(states)
         return {"ok": True, "kind": kind}
 
     def set_favourite(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -765,13 +766,13 @@ class RemotePlaybackMixin:
         if not isinstance(enabled, bool):
             raise ValueError("Choose whether this film is a favourite")
         kind = str(payload.get("kind", ""))
-        if kind == "adult":
-            source = self.safe_adult_path(str(payload.get("file", "")))
+        if kind == "my_tv":
+            source = self.safe_my_tv_path(str(payload.get("file", "")))
             if not source.is_file():
-                raise ValueError("That Adult film is no longer in the library")
-            relative = self.adult_relative_path(source)
+                raise ValueError("That My TV film is no longer in the library")
+            relative = self.my_tv_relative_path(source)
             with self.config_lock:
-                states = self.adult_media_states()
+                states = self.my_tv_media_states()
                 state = states.get(relative, {})
                 if not isinstance(state, dict):
                     state = {}
@@ -779,19 +780,19 @@ class RemotePlaybackMixin:
                     state["library_id"] = uuid.uuid4().hex
                 state["favourite"] = enabled
                 states[relative] = state
-                self.write_adult_media_states(states)
+                self.write_my_tv_media_states(states)
             return {"ok": True, "kind": kind, "file": relative,
                     "favourite": enabled}
         if kind == "channel":
             try:
                 channel = self.channel(int(payload.get("channel", 0)))
             except (TypeError, ValueError):
-                raise ValueError("Choose a valid Mabel TV film") from None
+                raise ValueError(f"Choose a valid {self.tv_identity()[1]} film") from None
             if self.channel_content_type(channel) != "films":
-                raise ValueError("Only Mabel TV films can be favourites")
+                raise ValueError(f"Only {self.tv_identity()[1]} films can be favourites")
             source = self.safe_media_path(channel, str(payload.get("file", "")))
             if not source.is_file():
-                raise ValueError("That Mabel TV film is no longer in the library")
+                raise ValueError(f"That {self.tv_identity()[1]} film is no longer in the library")
             key = self.channel_programme_key(int(channel["number"]), source.name)
             with self.config_lock:
                 states = self.channel_media_states()
@@ -812,9 +813,9 @@ class RemotePlaybackMixin:
             try:
                 channel = self.channel(int(payload.get("channel", 0)))
             except (TypeError, ValueError):
-                raise ValueError("Choose a valid Mabel TV channel") from None
+                raise ValueError(f"Choose a valid {self.tv_identity()[1]} channel") from None
             if self.channel_content_type(channel) != "shows":
-                raise ValueError("Only Mabel TV episode channels can be favourites")
+                raise ValueError(f"Only {self.tv_identity()[1]} episode channels can be favourites")
             number = int(channel["number"])
             with self.config_lock:
                 states = self.channel_media_states()
@@ -833,26 +834,26 @@ class RemotePlaybackMixin:
                 self.write_channel_media_states(states)
             return {"ok": True, "kind": kind, "channel": number,
                     "favourite": enabled}
-        if kind == "adult-series":
+        if kind == "my-tv-series":
             series_id = str(payload.get("series", ""))
-            self.adult_series_path(series_id)
+            self.my_tv_series_path(series_id)
             with self.config_lock:
-                states = self.adult_series_states()
+                states = self.my_tv_series_states()
                 series = states["series"].get(series_id)
                 if not isinstance(series, dict):
-                    raise ValueError("That Adult TV series is no longer available")
+                    raise ValueError("That My TV series is no longer available")
                 series["favourite"] = enabled
                 states["series"][series_id] = series
-                self.write_adult_series_states(states)
+                self.write_my_tv_series_states(states)
             return {"ok": True, "kind": kind, "series": series_id,
                     "favourite": enabled}
         raise ValueError(
-            "Choose an Adult TV film, Adult TV series, Mabel TV film, or episode channel")
+            f"Choose a My TV film, My TV series, {self.tv_identity()[1]} film, or episode channel")
 
     def remote_subtitles(self, token: str) -> bytes:
         session = self.remote_session(token)
-        if session["kind"] not in {"adult", "adult-series"}:
-            raise ValueError("This Mabel TV programme has no browser subtitle track")
+        if session["kind"] not in {"my_tv", "my-tv-series"}:
+            raise ValueError(f"This {self.tv_identity()[1]} programme has no browser subtitle track")
         return self.browser_subtitles_for_source(session["source"])
 
     def browser_subtitles_for_source(self, source: Path) -> bytes:
@@ -868,20 +869,20 @@ class RemotePlaybackMixin:
 
     def live_tv_status(self) -> dict[str, Any]:
         mode = self.player_mode_status()
-        adult_mode = mode.get("mode") == "adult"
-        status = self.live_stream.status(allow_screen_without_programme=adult_mode)
+        my_tv_mode = mode.get("mode") == "my_tv"
+        status = self.live_stream.status(allow_screen_without_programme=my_tv_mode)
         for field in ("volume", "muted", "remote_locked", "standby", "subtitles_available",
                       "subtitles_visible", "widescreen_available", "widescreen_enabled",
-                      "adult_handoff_available",
+                      "my_tv_handoff_available",
                       "connected_tv_available", "connected_tv_power"):
             if field in mode:
                 status[field] = mode[field]
-        if adult_mode:
+        if my_tv_mode:
             playing = mode.get("playing") is True
             status.update({
                 "available": mode.get("standby") is not True,
-                "adult_mode": True,
-                "adult_playing": playing,
+                "my_tv_mode": True,
+                "my_tv_playing": playing,
                 "programme": str(mode.get("programme") or "Film library")
                              if playing else "Film library",
                 "paused": mode.get("paused") is True,
@@ -939,7 +940,7 @@ class RemotePlaybackMixin:
                    "turn-on", "turn-off", "turn-on-mabel-only", "turn-off-mabel-only",
                    "toggle-power",
                    "open-parent-menu", "open-tv-guide", "open-channel-menu", "close-overlay", "restart-programme",
-                   "enter-adult-mode", "continue-in-adult-mode",
+                   "enter-my-tv-mode", "continue-in-my-tv-mode",
                    "navigate-up", "navigate-down", "navigate-left",
                    "navigate-right", "select", "return-to-mabeltv", "toggle-remote-lock",
                    "tune-channel"}
@@ -984,26 +985,26 @@ class RemotePlaybackMixin:
             if library_id or "position" in payload:
                 command["position"] = resume
             skip_film_countdown = self.channel_content_type(channel) == "films"
-        elif kind == "adult":
+        elif kind == "my_tv":
             _kind, source, title, _library_id, resume = self.remote_source(payload)
             if "position" in payload:
                 try:
                     resume = max(0.0, float(payload.get("position", 0)))
                 except (TypeError, ValueError) as error:
                     raise ValueError("That playback position is not valid") from error
-            command = {"command": "play-adult-film",
-                       "file": self.adult_relative_path(source),
+            command = {"command": "play-my-tv-film",
+                       "file": self.my_tv_relative_path(source),
                        "position": resume}
             skip_film_countdown = False
-        elif kind == "adult-series":
+        elif kind == "my-tv-series":
             _kind, source, title, _library_id, _resume = self.remote_source(payload)
             command = {"command": "play-external", "path": str(source),
                        "title": title}
             skip_film_countdown = False
         else:
-            raise ValueError("Choose a programme, Adult film, or episode to play")
+            raise ValueError("Choose a programme, My TV film, or episode to play")
         if not source.is_file():
-            raise ValueError("That video is no longer in the Mabel TV library")
+            raise ValueError(f"That video is no longer in the {self.tv_identity()[1]} library")
         state = self.read_state("player")
         woke_tv = False
         if isinstance(state, dict) and state.get("standby"):
@@ -1045,15 +1046,15 @@ class RemotePlaybackMixin:
                     client.sendall(b"select\n")
                     skip_reply = client.recv(32).decode(errors="replace").strip()
             except OSError as error:
-                raise ValueError("The film was selected, but Mabel TV could not start it immediately") from error
+                raise ValueError(f"The film was selected, but {self.tv_identity()[1]} could not start it immediately") from error
             if skip_reply != "ok":
-                raise ValueError("The film was selected, but Mabel TV could not start it immediately")
+                raise ValueError(f"The film was selected, but {self.tv_identity()[1]} could not start it immediately")
         verb = "Starting" if accepted_without_reply else "Playing"
         return {"ok": True,
-                "message": (f"Turned on Mabel TV and {verb.lower()} "
+                "message": (f"Turned on {self.tv_identity()[1]} and {verb.lower()} "
                             f"{title}"
                             if woke_tv else
-                            f"{verb} {title} on Mabel TV")}
+                            f"{verb} {title} on {self.tv_identity()[1]}")}
 
     def support_bundle(self) -> Path:
         self.admin_action("diagnostics")

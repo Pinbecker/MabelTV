@@ -18,11 +18,11 @@ def initialise_test_database(database_type: Any, path: Path,
         "viewing": {"schema_version": 2, "tracking_started": time.time(),
                     "sessions": []},
         "channel_metadata": {},
-        "adult_media": {},
-        "adult_series": {"series": {}, "episodes": {}},
-        "adult_viewing": {"schema_version": 1, "titles": {},
+        "my_tv_media": {},
+        "my_tv_series": {"series": {}, "episodes": {}},
+        "my_tv_viewing": {"schema_version": 1, "titles": {},
                           "availability": {}, "explore": {}},
-        "adult_insights": {"schema_version": 1, "titles": {}, "failures": {}},
+        "my_tv_insights": {"schema_version": 1, "titles": {}, "failures": {}},
     }
     for kind, value in stores.items():
         database.write(kind, value)

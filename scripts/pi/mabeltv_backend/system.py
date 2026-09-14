@@ -27,7 +27,7 @@ class SystemStatusMixin:
     def activity_status(self) -> dict[str, Any]:
         """Small, durable owner-facing queue for background media work."""
         uploads = self.upload_jobs()
-        optimisations = self.adult_optimisations()["items"]
+        optimisations = self.my_tv_optimisations()["items"]
         active_uploads = [item for item in uploads if item.get("status") not in {"error", "refresh-error"}]
         active_optimisations = [item for item in optimisations
                                 if item.get("state") in {"queued", "processing", "paused"}]
@@ -57,10 +57,11 @@ class SystemStatusMixin:
         # allowed to wake while SSAP keeps retrying the Netflix launch.
         device = configured or "/dev/cec0"
         if not Path(device).exists():
-            raise ValueError("MabelTV could not find the connected television's CEC adapter")
+            raise ValueError(f"{self.tv_identity()[1]} could not find the connected television's CEC adapter")
         try:
             process = subprocess.Popen(
-                ["cec-client", "-s", "-d", "1", "-t", "p", "-o", "MabelTV", device],
+                ["cec-client", "-s", "-d", "1", "-t", "p", "-o",
+                 self.tv_identity()[1], device],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
@@ -72,7 +73,7 @@ class SystemStatusMixin:
             process.stdin.write("on 0\n")
             process.stdin.close()
         except OSError as exc:
-            raise ValueError("MabelTV could not wake the connected television") from exc
+            raise ValueError(f"{self.tv_identity()[1]} could not wake the connected television") from exc
         lg_webos_log("CEC wake queued without Active Source")
 
     def system_status(self) -> dict[str, Any]:
@@ -135,8 +136,8 @@ class SystemStatusMixin:
                 ["sudo", "-n", "/usr/local/libexec/mabeltv-admin-action", action],
                 check=False, capture_output=True, text=True, timeout=timeout)
         except (OSError, subprocess.TimeoutExpired) as error:
-            raise ValueError("Mabel TV could not complete that system action") from error
+            raise ValueError(f"{self.tv_identity()[1]} could not complete that system action") from error
         if result.returncode != 0:
             details = result.stderr.strip()
-            raise ValueError(details or "Mabel TV could not complete that system action")
+            raise ValueError(details or f"{self.tv_identity()[1]} could not complete that system action")
         return result.stdout.strip()

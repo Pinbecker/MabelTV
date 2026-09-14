@@ -104,7 +104,7 @@ function Inspect-Media([string]$Path, [string]$Target) {
 
 function Get-OutputPath([string]$InputPath, [string]$Target, [string]$Folder) {
     $base = [IO.Path]::GetFileNameWithoutExtension($InputPath)
-    $suffix = if ($Target -eq 'Mabel TV') { 'MabelTV' } else { 'AdultTV' }
+    $suffix = if ($Target -eq 'Mabel TV') { 'MabelTV' } else { 'MyTV' }
     $candidate = Join-Path $Folder "$base - $suffix.mp4"
     $number = 2
     while (Test-Path -LiteralPath $candidate) { $candidate = Join-Path $Folder "$base - $suffix ($number).mp4"; $number++ }
@@ -279,7 +279,7 @@ function New-DropZone([string]$Target, [int]$X, [string]$Heading, [string]$Descr
 }
 
 $mabelDrop = New-DropZone 'Mabel TV' 26 'Mabel TV' '720p, efficient, safe for the Pi and browser streaming.' ([Drawing.Color]::FromArgb(130, 210, 167))
-$adultDrop = New-DropZone 'Adult TV' 552 'Adult TV' 'Keep 1080p where available, while making it Pi and browser safe.' ([Drawing.Color]::FromArgb(255, 150, 126))
+$myTvDrop = New-DropZone 'My TV' 552 'My TV' 'Keep 1080p where available, while making it Pi and browser safe.' ([Drawing.Color]::FromArgb(255, 150, 126))
 
 $outLabel = [Windows.Forms.Label]::new(); $outLabel.Text = 'Prepared files folder'; $outLabel.Location = [Drawing.Point]::new(28, 255); $outLabel.AutoSize = $true
 $outputBox = [Windows.Forms.TextBox]::new(); $outputBox.Location = [Drawing.Point]::new(28, 279); $outputBox.Size = [Drawing.Size]::new(890, 30); $outputBox.Text = Get-Settings
@@ -300,7 +300,7 @@ $recentList = [Windows.Forms.ListView]::new(); $recentList.Location = [Drawing.P
 $clearButton = [Windows.Forms.Button]::new(); $clearButton.Text = 'Clear recent'; $clearButton.Location = [Drawing.Point]::new(914, 770); $clearButton.Size = [Drawing.Size]::new(138, 28); $clearButton.FlatStyle = 'Flat'
 $startButton.Add_Click({ Start-Next }); $cancelButton.Add_Click({ Cancel-Current }); $clearButton.Add_Click({ $script:recent.Clear(); Refresh-Recent; Set-Controls })
 
-$form.Controls.AddRange(@($title,$subtitle,$mabelDrop,$adultDrop,$outLabel,$outputBox,$browse,$queueLabel,$list,$overall,$overallLabel,$startButton,$cancelButton,$recentLabel,$recentList,$clearButton))
+$form.Controls.AddRange(@($title,$subtitle,$mabelDrop,$myTvDrop,$outLabel,$outputBox,$browse,$queueLabel,$list,$overall,$overallLabel,$startButton,$cancelButton,$recentLabel,$recentList,$clearButton))
 $timer = [Windows.Forms.Timer]::new(); $timer.Interval = 450; $timer.Add_Tick({ Poll-Worker }); $timer.Start()
 $form.Add_FormClosing({ if ($script:currentJob) { $choice = [Windows.Forms.MessageBox]::Show('A conversion is still running. Cancel it and close?', $script:appName, 'YesNo', 'Warning'); if ($choice -eq 'Yes') { Cancel-Current } else { $_.Cancel = $true } } })
 Refresh-Queue; Refresh-Recent; Set-Controls
@@ -316,7 +316,7 @@ if ($SelfTest) {
         if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $selfTestInput)) { throw 'Could not create the self-test video.' }
 
         $outputBox.Text = $selfTestOutput
-        Add-Files 'Adult TV' @($selfTestInput)
+        Add-Files 'My TV' @($selfTestInput)
         $deadline = (Get-Date).AddMinutes(2)
         while (($script:currentJob -or $script:queue.Count -gt 0) -and (Get-Date) -lt $deadline) {
             Start-Sleep -Milliseconds 200

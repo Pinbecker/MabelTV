@@ -29,7 +29,7 @@ const QSet<QString> &allowedCommands()
         QStringLiteral("toggle-power"), QStringLiteral("open-parent-menu"),
         QStringLiteral("open-tv-guide"), QStringLiteral("open-channel-menu"),
         QStringLiteral("close-overlay"), QStringLiteral("restart-programme"),
-        QStringLiteral("enter-adult-mode"), QStringLiteral("continue-in-adult-mode"),
+        QStringLiteral("enter-my-tv-mode"), QStringLiteral("continue-in-my-tv-mode"),
         QStringLiteral("return-to-mabeltv"), QStringLiteral("toggle-remote-lock"),
         QStringLiteral("navigate-up"), QStringLiteral("navigate-down"),
         QStringLiteral("navigate-left"), QStringLiteral("navigate-right"),
@@ -154,9 +154,9 @@ void PortalControlServer::dispatch(QLocalSocket *socket, const QByteArray &rawCo
             finish(socket, "ok\n");
             return;
         }
-        if (request.isObject() && operation == QStringLiteral("play-adult-film")) {
+        if (request.isObject() && operation == QStringLiteral("play-my-tv-film")) {
             QMetaObject::invokeMethod(
-                m_rootObject, "portalPlayAdultFilm", Qt::QueuedConnection,
+                m_rootObject, "portalPlayMyTvFilm", Qt::QueuedConnection,
                 Q_ARG(QVariant, object.value(QStringLiteral("file")).toString()),
                 Q_ARG(QVariant, object.value(QStringLiteral("position")).toDouble(0.0)));
             finish(socket, "ok\n");
@@ -195,25 +195,25 @@ void PortalControlServer::dispatch(QLocalSocket *socket, const QByteArray &rawCo
              m_rootObject->property("portalWidescreenAvailable").toBool()},
             {QStringLiteral("widescreen_enabled"),
              m_rootObject->property("portalWidescreenEnabled").toBool()},
-            {QStringLiteral("adult_handoff_available"),
-             m_rootObject->property("portalAdultHandoffAvailable").toBool()},
+            {QStringLiteral("my_tv_handoff_available"),
+             m_rootObject->property("portalMyTvHandoffAvailable").toBool()},
         };
-        QObject *adultMode = m_rootObject->findChild<QObject *>(
-            QStringLiteral("mabeltvAdultMode"));
-        if (adultMode != nullptr && adultMode->property("active").toBool()) {
-            status.insert(QStringLiteral("mode"), QStringLiteral("adult"));
-            status.insert(QStringLiteral("playing"), adultMode->property("playing").toBool());
+        QObject *myTvMode = m_rootObject->findChild<QObject *>(
+            QStringLiteral("mabeltvMyTvMode"));
+        if (myTvMode != nullptr && myTvMode->property("active").toBool()) {
+            status.insert(QStringLiteral("mode"), QStringLiteral("my_tv"));
+            status.insert(QStringLiteral("playing"), myTvMode->property("playing").toBool());
             status.insert(QStringLiteral("programme"),
-                          adultMode->property("currentFilmName").toString());
-            QObject *adultPlayer = m_rootObject->findChild<QObject *>(
-                QStringLiteral("mabeltvAdultPlayer"));
-            status.insert(QStringLiteral("paused"), adultPlayer != nullptr
-                && adultPlayer->property("paused").toBool());
-            if (adultPlayer != nullptr) {
+                          myTvMode->property("currentFilmName").toString());
+            QObject *myTvPlayer = m_rootObject->findChild<QObject *>(
+                QStringLiteral("mabeltvMyTvPlayer"));
+            status.insert(QStringLiteral("paused"), myTvPlayer != nullptr
+                && myTvPlayer->property("paused").toBool());
+            if (myTvPlayer != nullptr) {
                 status.insert(QStringLiteral("playback_position"),
-                              adultPlayer->property("playbackPosition").toDouble());
+                              myTvPlayer->property("playbackPosition").toDouble());
                 status.insert(QStringLiteral("playback_duration"),
-                              adultPlayer->property("playbackDuration").toDouble());
+                              myTvPlayer->property("playbackDuration").toDouble());
             }
         }
         finish(socket, QJsonDocument(status).toJson(QJsonDocument::Compact) + '\n');

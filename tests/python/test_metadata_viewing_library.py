@@ -17,7 +17,7 @@ class MetadataViewingLibraryTests(unittest.TestCase):
         self.fixture.close()
 
     def test_tmdb_search_and_apply_cache_metadata_without_exposing_key(self) -> None:
-        movie = self.fixture.library.adult_root / "Fellowship of the Ring 2001.mkv"
+        movie = self.fixture.library.my_tv_root / "Fellowship of the Ring 2001.mkv"
         movie.write_bytes(b"video")
         self.fixture.library.tmdb_request = mock.Mock(side_effect=[
             {"results": [{"id": 120, "title": "The Lord of the Rings: The Fellowship of the Ring",
@@ -33,14 +33,14 @@ class MetadataViewingLibraryTests(unittest.TestCase):
         self.assertEqual(found["results"][0]["id"], 120)
         applied = self.fixture.library.tmdb_apply({"file": movie.name, "tmdb_id": 120})
         self.assertTrue(applied["refreshed"])
-        film = self.fixture.library.adult_library()[0]
+        film = self.fixture.library.my_tv_library()[0]
         self.assertEqual(film["metadata"]["runtime"], 179)
         self.assertEqual(film["metadata"]["provider"], "TMDB")
-        persisted = self.fixture.library.adult_media_states()[movie.name]
+        persisted = self.fixture.library.my_tv_media_states()[movie.name]
         self.assertNotIn("api_key", json.dumps(persisted))
 
     def test_tmdb_apply_automatically_fetches_one_matching_english_subtitle(self) -> None:
-        movie = self.fixture.library.adult_root / "Fellowship of the Ring 2001.mkv"
+        movie = self.fixture.library.my_tv_root / "Fellowship of the Ring 2001.mkv"
         movie.write_bytes(b"video")
         self.fixture.library.tmdb_request = mock.Mock(return_value={
             "id": 120, "title": "The Lord of the Rings: The Fellowship of the Ring",
@@ -71,10 +71,10 @@ class MetadataViewingLibraryTests(unittest.TestCase):
         self.assertEqual(self.fixture.library.opensubtitles_request.call_args_list[0].args[0],
                          "subtitles")
         self.assertNotIn("private-consumer-key",
-                         json.dumps(self.fixture.library.adult_media_states()))
+                         json.dumps(self.fixture.library.my_tv_media_states()))
 
     def test_tmdb_apply_keeps_existing_subtitles_and_does_not_contact_provider(self) -> None:
-        movie = self.fixture.library.adult_root / "Film.mkv"
+        movie = self.fixture.library.my_tv_root / "Film.mkv"
         movie.write_bytes(b"video")
         sidecar = movie.with_name("Film.en.srt")
         sidecar.write_text("1\n00:00:01,000 --> 00:00:02,000\nHello.\n", encoding="utf-8")
@@ -335,12 +335,12 @@ class MetadataViewingLibraryTests(unittest.TestCase):
         self.assertNotIn(f"5/{source.name}", metadata)
         self.assertEqual(metadata[f"5/{renamed.name}"]["tmdb_id"], 201)
 
-    def test_adult_playback_state_updates_preserve_cached_metadata(self) -> None:
-        self.fixture.library.write_adult_media_states({
+    def test_my_tv_playback_state_updates_preserve_cached_metadata(self) -> None:
+        self.fixture.library.write_my_tv_media_states({
             "Film.mkv": {"metadata": {"tmdb_id": 1, "title": "Film"}},
         })
-        self.fixture.library.set_adult_media_state("Film.mkv", "processing")
-        state = self.fixture.library.adult_media_states()["Film.mkv"]
+        self.fixture.library.set_my_tv_media_state("Film.mkv", "processing")
+        state = self.fixture.library.my_tv_media_states()["Film.mkv"]
         self.assertEqual(state["metadata"]["tmdb_id"], 1)
         self.assertEqual(state["state"], "processing")
 
@@ -430,7 +430,7 @@ class MetadataViewingLibraryTests(unittest.TestCase):
         self.assertEqual(len(sessions), 2)
         self.assertEqual(sorted(item["seconds"] for item in sessions), [120, 120])
 
-    def test_tv_viewing_identity_handles_channels_and_adult_mode(self) -> None:
+    def test_tv_viewing_identity_handles_channels_and_my_tv_mode(self) -> None:
         self.fixture.library.write_state("channels", {
             "schema_version": 1,
             "channels": [{"number": 5, "name": "Films", "folder": "films",
@@ -447,8 +447,8 @@ class MetadataViewingLibraryTests(unittest.TestCase):
         self.assertEqual(channel["channel_name"], "Films")
 
         self.fixture.library.player_mode_status.return_value = {
-            "mode": "adult", "standby": False, "playing": True,
-            "paused": False, "programme": "Adult Film",
+            "mode": "my_tv", "standby": False, "playing": True,
+            "paused": False, "programme": "MyTv Film",
         }
         self.assertIsNone(self.fixture.library.current_tv_viewing())
 

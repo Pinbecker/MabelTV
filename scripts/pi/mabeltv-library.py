@@ -28,8 +28,8 @@ if str(SERVICE_ROOT) not in sys.path:
     sys.path.insert(0, str(SERVICE_ROOT))
 
 from mabeltv_backend.auth import AuthenticationMixin
-from mabeltv_backend.adult_metadata import AdultMetadataMixin
-from mabeltv_backend.adult_insights import AdultInsightsMixin
+from mabeltv_backend.my_tv_metadata import MyTvMetadataMixin
+from mabeltv_backend.my_tv_insights import MyTvInsightsMixin
 from mabeltv_backend.artwork import ArtworkProxyMixin
 from mabeltv_backend.constants import (
     DEFAULT_CHANNELS,
@@ -38,7 +38,7 @@ from mabeltv_backend.constants import (
     USB_POWER_POLL_SECONDS,
     VIEWING_SAMPLE_SECONDS,
 )
-from mabeltv_backend.discovery import AdultExploreMixin
+from mabeltv_backend.discovery import MyTvExploreMixin
 from mabeltv_backend.database import StateDatabase
 from mabeltv_backend.http import Handler, LibraryServer
 from mabeltv_backend.lg import LgWebOsError, LgWebOsSocket, RemoteTvActiveError
@@ -98,9 +98,9 @@ class Library(ViewingMixin, UploadConversionMixin, TranscodingMixin, Authenticat
               ArtworkProxyMixin,
               MediaCatalogueMixin, ManagementMixin, RemotePlaybackMixin, LgControlMixin,
               UsbMixin,
-              ProviderTransportMixin, AdultMetadataMixin, ProviderMetadataMixin,
+              ProviderTransportMixin, MyTvMetadataMixin, ProviderMetadataMixin,
               ViewingQueueMixin,
-              AdultInsightsMixin, AdultExploreMixin,
+              MyTvInsightsMixin, MyTvExploreMixin,
               SystemStatusMixin):
     def __init__(self, args: argparse.Namespace) -> None:
         self.media_root = Path(args.media_root).resolve()
@@ -113,10 +113,20 @@ class Library(ViewingMixin, UploadConversionMixin, TranscodingMixin, Authenticat
         self.state_database.verify_ready()
         self.owner_recovery_path = self.database_path.with_name("owner-recovery-pending")
         self.incoming = self.media_root / ".incoming"
-        self.adult_root = self.media_root / ".adult"
-        self.adult_artwork_root = self.adult_root / ".metadata"
-        self.adult_series_root = self.adult_root / ".series"
-        self.adult_series_artwork_root = self.adult_root / ".series-metadata"
+        self.my_tv_root = self.media_root / ".my-tv"
+        legacy_my_tv_root = self.media_root / ".adult"
+        if os.name != "nt":
+            if legacy_my_tv_root.is_dir() and not legacy_my_tv_root.is_symlink():
+                if self.my_tv_root.exists():
+                    raise RuntimeError(
+                        "Both legacy and My TV media directories exist; refusing "
+                        "to choose between them")
+                os.replace(legacy_my_tv_root, self.my_tv_root)
+            if self.my_tv_root.exists() and not legacy_my_tv_root.exists():
+                legacy_my_tv_root.symlink_to(".my-tv", target_is_directory=True)
+        self.my_tv_artwork_root = self.my_tv_root / ".metadata"
+        self.my_tv_series_root = self.my_tv_root / ".series"
+        self.my_tv_series_artwork_root = self.my_tv_root / ".series-metadata"
         self.channel_artwork_root = self.media_root / ".channel-metadata"
         configured_usb_root = os.environ.get("MABELTV_USB_ROOT")
         self.usb_root = Path(configured_usb_root or "/media/mabeltv-usb").resolve()
@@ -153,10 +163,10 @@ class Library(ViewingMixin, UploadConversionMixin, TranscodingMixin, Authenticat
         self.queued_conversions: set[str] = set()
         self.deferred_retries: set[str] = set()
         self.cancelled_conversions: set[str] = set()
-        self.adult_optimisation_active: set[str] = set()
-        self.adult_optimisation_lock = threading.Lock()
-        self.adult_optimisation_serial = threading.Lock()
-        self.adult_optimisation_progress_callback: Any = None
+        self.my_tv_optimisation_active: set[str] = set()
+        self.my_tv_optimisation_lock = threading.Lock()
+        self.my_tv_optimisation_serial = threading.Lock()
+        self.my_tv_optimisation_progress_callback: Any = None
         self.remote_stream_lock = threading.RLock()
         self.remote_stream: dict[str, Any] | None = None
         self.viewing_lock = threading.RLock()
@@ -166,9 +176,9 @@ class Library(ViewingMixin, UploadConversionMixin, TranscodingMixin, Authenticat
         self.viewing_remote_samples: dict[str, tuple[float, float]] = {}
         self.viewing_pending: dict[tuple[str, str, str], dict[str, Any]] = {}
         self.viewing_tracking_started = self.state_database.ensure_viewing_tracking()
-        self.adult_insights_lock = threading.Lock()
-        self.adult_insights_closed = threading.Event()
-        self.adult_insights_worker: threading.Thread | None = None
+        self.my_tv_insights_lock = threading.Lock()
+        self.my_tv_insights_closed = threading.Event()
+        self.my_tv_insights_worker: threading.Thread | None = None
         self.external_stream_lock = threading.RLock()
         self.external_streams: dict[str, dict[str, Any]] = {}
         self.offline_cache = self.media_root / ".offline-prepared"
@@ -188,10 +198,10 @@ class Library(ViewingMixin, UploadConversionMixin, TranscodingMixin, Authenticat
         self.conversion_closed = threading.Event()
         self.media_root.mkdir(parents=True, exist_ok=True)
         self.incoming.mkdir(mode=0o750, exist_ok=True)
-        self.adult_root.mkdir(mode=0o750, exist_ok=True)
-        self.adult_artwork_root.mkdir(mode=0o750, exist_ok=True)
-        self.adult_series_root.mkdir(mode=0o750, exist_ok=True)
-        self.adult_series_artwork_root.mkdir(mode=0o750, exist_ok=True)
+        self.my_tv_root.mkdir(mode=0o750, exist_ok=True)
+        self.my_tv_artwork_root.mkdir(mode=0o750, exist_ok=True)
+        self.my_tv_series_root.mkdir(mode=0o750, exist_ok=True)
+        self.my_tv_series_artwork_root.mkdir(mode=0o750, exist_ok=True)
         self.channel_artwork_root.mkdir(mode=0o750, exist_ok=True)
         self.tmdb_artwork_cache_root.mkdir(mode=0o750, parents=True, exist_ok=True)
         self.offline_cache.mkdir(mode=0o750, exist_ok=True)
@@ -200,7 +210,7 @@ class Library(ViewingMixin, UploadConversionMixin, TranscodingMixin, Authenticat
         self.reconcile_recycle_items()
         self.cleanup_stale_temporary_files()
         self.cleanup_offline_prepared_cache()
-        self.recover_adult_optimisations()
+        self.recover_my_tv_optimisations()
         self.recover_final_results()
         self.resume_conversion_jobs()
         self.conversion_worker = threading.Thread(
@@ -238,15 +248,15 @@ class Library(ViewingMixin, UploadConversionMixin, TranscodingMixin, Authenticat
         self.conversion_closed.set()
         self.usb_power_closed.set()
         self.viewing_closed.set()
-        self.adult_insights_closed.set()
+        self.my_tv_insights_closed.set()
         self.conversion_queue.put(None)
         self.conversion_worker.join(timeout=timeout)
         if self.usb_power_worker:
             self.usb_power_worker.join(timeout=min(timeout, USB_POWER_POLL_SECONDS + 1))
         if self.viewing_worker:
             self.viewing_worker.join(timeout=min(timeout, VIEWING_SAMPLE_SECONDS + 1))
-        if self.adult_insights_worker:
-            self.adult_insights_worker.join(timeout=min(timeout, 2.0))
+        if self.my_tv_insights_worker:
+            self.my_tv_insights_worker.join(timeout=min(timeout, 2.0))
         if self.conversion_worker.is_alive():
             raise RuntimeError("The media worker did not stop cleanly")
         self.live_stream.stop()

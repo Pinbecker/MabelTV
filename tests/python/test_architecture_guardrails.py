@@ -160,7 +160,7 @@ class ArchitectureGuardrailTests(unittest.TestCase):
             if path.suffix in {".cpp", ".h"}
             and path.name != "media-check.cpp"
         )
-        for retired in (".mabeltv-channels.json", ".mabeltv-adult.json",
+        for retired in (".mabeltv-channels.json", ".mabeltv-my_tv.json",
                         "m_channelsPath", "m_settingsPath", "m_statePath"):
             self.assertNotIn(retired, sources)
         launcher = (PROJECT_ROOT / "scripts/pi/mabeltv-launch.sh").read_text(
@@ -227,8 +227,8 @@ class ArchitectureGuardrailTests(unittest.TestCase):
         )
         internal_names = (
             "attemptPortalReconnect", "openPrimarySection", "navigateDomainRoute",
-            "loadAdultHome", "bindUpNextReorder", "openInsightsRoute",
-            "openAdultInsightsRoute", "closeAdultInsightsRoute",
+            "loadMyTvHome", "bindUpNextReorder", "openInsightsRoute",
+            "openMyTvInsightsRoute", "closeMyTvInsightsRoute",
             "setMyInsightsMode", "loadMyInsights", "renderLgTvPowerState",
             "startLgTvRemote", "stopLgTvRemote", "MabelPortalLibrary", "liveHls",
         )

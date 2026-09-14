@@ -6,14 +6,14 @@ test('inline iOS player Back consumes its history layer and restores the launchi
   await page.goto('/')
   await expect(page.locator('.app-shell')).toBeVisible()
   await page.evaluate(() => {
-    library.adult_library = [{
+    library.my_tv_library = [{
       path: 'Fixture film.mp4', display_name: 'Fixture film', browser_ready: true,
       metadata: { title: 'Fixture film', year: '2024' },
     }]
     history.replaceState({ consolidatedWatch: true }, '', '#watch')
-    openWatchFilmSheet(library.adult_library[0])
+    openWatchFilmSheet(library.my_tv_library[0])
     closeWatchFilmSheet(false)
-    iosPlayerReturnTo = () => openWatchFilmSheet(library.adult_library[0])
+    iosPlayerReturnTo = () => openWatchFilmSheet(library.my_tv_library[0])
     openIosPlayerHistoryLayer()
     $('#iosWatchPlayer').classList.remove('hidden')
   })
@@ -26,7 +26,7 @@ test('inline iOS player Back consumes its history layer and restores the launchi
   expect(await page.evaluate(() => history.state?.mabelIosPlayer || false)).toBe(false)
 })
 
-test('MabelTV device player keeps taps and Back above the inline video layer', async ({ page }, testInfo) => {
+test('Mabel TV device player keeps taps and Back above the inline video layer', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone player interaction contract')
   await page.goto('/')
   await expect(page.locator('.app-shell')).toBeVisible()
@@ -53,7 +53,7 @@ test('MabelTV device player keeps taps and Back above the inline video layer', a
   await expect(page.locator('#mabelWatchPlayer')).toBeHidden()
 })
 
-test('MabelTV film playback closes its native dialog and restores it after Back', async ({ page }, testInfo) => {
+test('Mabel TV film playback closes its native dialog and restores it after Back', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone player interaction contract')
   await page.goto('/')
   await expect(page.locator('.app-shell')).toBeVisible()

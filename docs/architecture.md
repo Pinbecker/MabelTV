@@ -2,6 +2,8 @@
 
 Mabel TV is one native Qt 6 process. QML owns the television presentation and input handling; C++ owns channel policy, state, validation, logging, synthetic sounds, and the libmpv OpenGL render bridge. libmpv decodes only the current programme, while Qt ShaderTools supplies the lightweight CRT post-process.
 
+`MabelTV` remains the repository, executable, service, protocol and filesystem identifier. User-facing product identity comes from the configured child name and is normalised to `<child name> TV` throughout the native UI, portal, PWA manifest, LG pairing and CEC display name. The separate personal streaming and library domain is always called **My TV** in UI, APIs and current persistence names.
+
 The internal QML composition and controller implementation boundaries are
 documented in [Native television architecture](native-architecture.md).
 
@@ -26,7 +28,7 @@ Persistent Pi paths:
 | --- | --- | --- |
 | `/opt/mabeltv/releases/*` | immutable timestamped binaries | installer only |
 | `/opt/mabeltv/current` | atomically selected release link | installer/rollback |
-| `/var/lib/mabeltv/mabeltv.db` | authoritative channels, settings, owner/authentication fields, player state, viewing history, Adult catalogue/viewing/Insights state and portal revision counters | native player and Library service |
+| `/var/lib/mabeltv/mabeltv.db` | authoritative channels, settings, owner/authentication fields, player state, viewing history, My TV catalogue/viewing/Insights state and portal revision counters | native player and Library service |
 | `/var/lib/mabeltv/mabeltv.db-wal`, `mabeltv.db-shm` | live SQLite WAL coordination files; never back up independently | SQLite only |
 | `/var/lib/mabeltv/secrets/` | provider credentials and other root-controlled integration secrets | operator |
 | `/var/lib/mabeltv/matter/` | device-specific Matter fabric and commissioning state | Matter service |

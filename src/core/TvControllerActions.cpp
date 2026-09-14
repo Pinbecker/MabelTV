@@ -305,7 +305,7 @@ void TvController::prepareForPlaybackRestart(const QString &message)
     }
     // A frame/load watchdog detects a stuck decoder pipeline, not a proven bad
     // media file. Permanently quarantining the current episode here hid valid
-    // programmes after Adult Mode hand-off and after global V4L2 failures.
+    // programmes after MyTv Mode hand-off and after global V4L2 failures.
     // Move on when possible, but reserve persistent quarantine for an explicit
     // libmpv playback error handled by playbackFailed().
     runtime.currentEpisode = adjacentUsableEpisode(runtime, 1);
@@ -359,18 +359,18 @@ void TvController::parentConfirm()
                                     : QStringLiteral("Press OK two more times"));
 }
 
-void TvController::requestAdultModeShortcut()
+void TvController::requestMyTvModeShortcut()
 {
-    // Adult Mode deliberately has a short route from the first grown-up
+    // MyTv Mode deliberately has a short route from the first grown-up
     // screen. It remains unavailable during normal viewing: the shortcut is
     // only accepted while that initial parent-access screen is visible.
     if (m_parentAccessState != ParentConfirmation) {
         return;
     }
-    qInfo() << "Adult mode requested from parent-access shortcut";
+    qInfo() << "MyTv mode requested from parent-access shortcut";
     saveState();
     closeParent();
-    emit parentCommandRequested(QStringLiteral("adult"));
+    emit parentCommandRequested(QStringLiteral("my_tv"));
 }
 
 void TvController::closeParent()
@@ -522,7 +522,7 @@ void TvController::adjustMaximumVolume(int direction)
 
 void TvController::reloadLibrary()
 {
-    reloadAdultLibrary();
+    reloadMyTvLibrary();
     if (m_libraryReloadWatcher.isRunning()) {
         m_libraryReloadRequested = true;
         return;
@@ -548,9 +548,9 @@ void TvController::reloadLibrary()
         }));
 }
 
-void TvController::reloadAdultLibrary()
+void TvController::reloadMyTvLibrary()
 {
-    emit adultLibraryChanged();
+    emit myTvLibraryChanged();
 }
 
 void TvController::turnOn()

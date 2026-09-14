@@ -27,13 +27,13 @@ class OwnerRecoveryTests(unittest.TestCase):
             recovery = root / "recovery" / "owner-reset-test"
             recovery.mkdir(parents=True)
             (recovery / "owner.json").write_text(json.dumps({
-                "child_name": "Mabel", "tv_name": "MabelTV",
+                "child_name": "Mabel", "tv_name": "Mabel TV",
             }), encoding="utf-8")
             subject = RecoverySubject()
             subject.owner_recovery_path = root / "owner-recovery-pending"
             subject.owner_recovery_path.write_text(str(recovery), encoding="utf-8")
 
-            self.assertEqual(("Mabel", "MabelTV"), subject.recovery_tv_identity())
+            self.assertEqual(("Mabel", "Mabel TV"), subject.recovery_tv_identity())
 
     def test_recovery_snapshot_cannot_escape_recovery_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

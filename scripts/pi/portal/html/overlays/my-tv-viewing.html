@@ -1,0 +1,108 @@
+<dialog id="myTvTitleSheet" class="watch-film-sheet my-tv-title-sheet" data-card-sheet>
+  <article class="watch-film-panel">
+    <div class="dialog-close-bar"><button id="myTvTitleClose" type="button" class="portal-sheet-close watch-film-close dialog-close" aria-label="Close title details"></button></div>
+    <div id="myTvTitleBackdrop" class="watch-film-backdrop"></div>
+    <div class="watch-film-summary"><div id="myTvTitlePoster" class="watch-film-poster"></div><div class="watch-film-heading"><p id="myTvTitleEyebrow" class="watch-film-eyebrow">My TV</p><h2 id="myTvTitleName">Title</h2><div id="myTvTitleMeta" class="watch-film-meta"></div></div><button id="myTvTitleMore" type="button" class="card-settings-trigger hidden" aria-label="Title settings" title="Title settings"><svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-cog" /></svg></button><div id="myTvTitlePersonalRating" class="my-tv-personal-rating-host"></div></div>
+    <div class="watch-film-body">
+      <p id="myTvTitleOverview" class="watch-film-overview"></p>
+      <div id="myTvTitleIntents" class="my-tv-intent-actions" data-viewing-intents="series"></div>
+      <section id="myTvTitleSeriesLibrary" class="my-tv-title-series-library hidden" aria-labelledby="myTvTitleSeriesHeading"><button id="myTvTitleNextEpisode" type="button" class="my-tv-next-episode hidden"><svg class="icon"><use href="/portal/icons.svg#signal-play" /></svg><span><small>Next episode</small><strong>Continue this series</strong></span><svg class="icon my-tv-next-chevron"><use href="/portal/icons.svg#signal-chevron-right" /></svg></button><header class="my-tv-series-library-head"><div><p class="section-kicker">Series library</p><h3 id="myTvTitleSeriesHeading">Choose a series</h3></div><span id="myTvTitleSeasonCount"></span></header><div id="myTvTitleSeasons" class="my-tv-series-seasons"></div></section>
+      <div id="myTvTitleLocal" class="my-tv-title-local hidden"><span id="myTvTitleLocalCopy"></span></div>
+      <div id="myTvTitleFilmActions" class="watch-film-actions compact-film-playback hidden">
+        <button id="myTvTitleFilmTv" type="button" class="watch-film-play"><span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-monitor-play" /></svg></span><span><strong>Play on TV</strong><small>Replaces what is playing there</small></span></button>
+        <button id="myTvTitleFilmHere" type="button" class="watch-film-play"><span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-play" /></svg></span><span><strong>Play on this device</strong><small>Starts an independent stream</small></span></button>
+      </div>
+      <section id="myTvTitleFranchise" class="my-tv-title-enrichment hidden" aria-labelledby="myTvTitleFranchiseHeading">
+        <header><h3 id="myTvTitleFranchiseHeading"><span id="myTvTitleFranchiseName">Film collection</span></h3></header>
+        <div id="myTvTitleFranchiseRail" class="my-tv-franchise-rail"></div>
+      </section>
+      <section id="myTvTitleCast" class="my-tv-title-enrichment hidden" aria-labelledby="myTvTitleCastHeading">
+        <header><h3 id="myTvTitleCastHeading" class="sr-only">Credits</h3></header>
+        <div id="myTvTitleCastRail" class="my-tv-cast-rail my-tv-credit-rail"></div>
+      </section>
+      <section class="my-tv-provider-section">
+        <header><div><p class="watch-section-kicker">Available in Great Britain</p><h3>Where to watch</h3></div><button id="myTvProviderRefresh" type="button">Refresh</button></header>
+        <div id="myTvProviderList" class="my-tv-provider-list"><p>Checking services…</p></div>
+        <section id="myTvTitleRentBuy" class="my-tv-rent-buy hidden" aria-labelledby="myTvTitleRentBuyHeading">
+          <button id="myTvTitleRentBuyToggle" type="button" class="my-tv-rent-toggle" aria-controls="myTvTitleRentBuyList" aria-expanded="false"><span><strong id="myTvTitleRentBuyHeading">Rent</strong><small class="my-tv-rent-summary"></small></span><svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-chevron-down" /></svg></button>
+          <div id="myTvTitleRentBuyList" class="my-tv-rent-buy-list" hidden></div>
+        </section>
+        <p class="provider-attribution">Availability by TMDB and JustWatch. Direct destinations and prices by Watchmode.</p>
+      </section>
+    </div>
+  </article>
+</dialog>
+
+<dialog id="myTvPersonSheet" class="library-sheet my-tv-person-sheet" data-card-sheet>
+  <section class="library-sheet-panel">
+    <header class="library-sheet-head">
+      <div><h2 id="myTvPersonName">Cast member</h2><p id="myTvPersonContext"></p></div>
+      <button id="myTvPersonClose" type="button" class="portal-sheet-close library-sheet-close" aria-label="Close cast details"></button>
+    </header>
+    <div class="library-sheet-body">
+      <div class="my-tv-person-summary">
+        <span id="myTvPersonPhoto" class="my-tv-person-photo"></span>
+        <dl id="myTvPersonFacts" class="my-tv-person-facts"></dl>
+      </div>
+      <p id="myTvPersonBiography" class="my-tv-person-biography"></p>
+      <button id="myTvPersonBiographyExpand" type="button" class="watch-film-expand my-tv-person-biography-expand hidden" aria-controls="myTvPersonBiography" aria-expanded="false"><span>More</span></button>
+      <section id="myTvPersonKnownFor" class="my-tv-person-known-for hidden" aria-labelledby="myTvPersonKnownForHeading">
+        <header><h3 id="myTvPersonKnownForHeading">Known for</h3><button id="myTvPersonFilmography" type="button">Full filmography</button></header>
+        <div id="myTvPersonCredits" class="my-tv-person-credits"></div>
+      </section>
+    </div>
+  </section>
+</dialog>
+
+<dialog id="myTvTitleSeasonSheet" class="library-sheet my-tv-season-sheet my-tv-streaming-season-sheet" data-card-sheet>
+  <section class="library-sheet-panel wide">
+    <header class="my-tv-season-sheet-head">
+      <span id="myTvTitleSeasonArtwork" class="my-tv-season-sheet-art"></span>
+      <div>
+        <p id="myTvTitleSeasonEyebrow" class="section-kicker">Streaming TV series</p>
+        <h2 id="myTvTitleSeasonName">Series 1</h2>
+        <p id="myTvTitleSeasonMeta"></p>
+      </div>
+      <button id="myTvTitleSeasonSettings" type="button" class="card-settings-trigger" aria-label="Series settings" title="Series settings"><svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-cog" /></svg></button>
+      <button id="myTvTitleSeasonClose" type="button" class="portal-sheet-close library-sheet-close" aria-label="Close streaming series"></button>
+    </header>
+    <div class="library-sheet-body">
+      <p id="myTvTitleSeasonOverview" class="my-tv-series-overview hidden"></p>
+      <div class="my-tv-season-episode-head">
+        <div><p class="section-kicker">Episodes</p><h3 id="myTvTitleSeasonEpisodeHeading">Everything in this series</h3></div>
+        <span id="myTvTitleSeasonEpisodeCount"></span>
+      </div>
+      <button id="myTvTitleSeasonWatched" type="button" class="my-tv-season-bulk-action"></button>
+      <div id="myTvTitleSeasonEpisodes" class="my-tv-series-episodes"></div>
+    </div>
+  </section>
+</dialog>
+
+<dialog id="myTvTitleSeasonSettingsSheet" class="watch-programme-sheet my-tv-season-settings-sheet">
+  <article>
+    <div class="dialog-close-bar"><button id="myTvTitleSeasonSettingsClose" type="button" class="portal-sheet-close watch-film-close dialog-close" aria-label="Close series settings"></button></div>
+    <p id="myTvTitleSeasonSettingsEyebrow" class="watch-film-eyebrow">Series options</p>
+    <h2>Series settings</h2>
+    <div class="my-tv-season-tools my-tv-season-bottom-tools">
+      <button id="myTvTitleSeasonUpload" type="button"><svg class="icon"><use href="/portal/icons.svg#signal-upload" /></svg><span><strong>Add episodes</strong><small id="myTvTitleSeasonUploadHint">Add episodes to <span data-tv-name>Your TV</span></small></span></button>
+      <button id="myTvTitleSeasonMetadata" type="button" class="hidden"><svg class="icon"><use href="/portal/icons.svg#signal-panels-top-left" /></svg><span><strong>Refresh episode details</strong><small>Match titles, artwork and descriptions</small></span></button>
+      <button id="myTvTitleSeasonRestart" type="button" class="hidden"><svg class="icon"><use href="/portal/icons.svg#signal-restart" /></svg><span><strong>Restart this series</strong><small>Clear local watched and resume progress</small></span></button>
+      <button id="myTvTitleSeasonDelete" type="button" class="my-tv-series-danger hidden"><svg class="icon"><use href="/portal/icons.svg#signal-trash" /></svg><span><strong>Remove series from <span data-tv-name>Your TV</span></strong><small>Move every local episode in this series to the bin</small></span></button>
+    </div>
+  </article>
+</dialog>
+
+<dialog id="myTvNetflixLaunchSheet" class="library-sheet my-tv-netflix-launch-sheet">
+  <section class="library-sheet-panel">
+    <header class="library-sheet-head"><div><p class="section-kicker">Netflix</p><h2 id="myTvNetflixLaunchTitle">Where would you like to play it?</h2><p id="myTvNetflixLaunchCopy">Choose this device or the connected TV.</p></div><button id="myTvNetflixLaunchClose" type="button" class="portal-sheet-close library-sheet-close" aria-label="Close Netflix choices"></button></header>
+    <div class="library-sheet-body my-tv-netflix-launch-actions"><button id="myTvNetflixLaunchDevice" type="button" class="remote-power-confirm remote-power-mabel-only"><svg class="icon"><use href="/portal/icons.svg#signal-smartphone" /></svg><span><strong>Play on this device</strong><small>Open Netflix here</small></span></button><button id="myTvNetflixLaunchTv" type="button" class="remote-power-confirm remote-power-mabel-only"><svg class="icon"><use href="/portal/icons.svg#signal-tv" /></svg><span><strong>Play on TV</strong><small>Open Netflix on the connected television</small></span></button></div>
+    <p id="myTvNetflixLaunchStatus" class="my-tv-netflix-launch-status" aria-live="polite"></p>
+  </section>
+</dialog>
+
+<dialog id="myTvEpisodeLaunchSheet" class="library-sheet my-tv-episode-launch-sheet">
+  <section class="library-sheet-panel">
+    <header class="library-sheet-head"><div><p id="myTvEpisodeLaunchEyebrow" class="section-kicker">Choose where to watch</p><h2 id="myTvEpisodeLaunchTitle">Open this episode</h2><p id="myTvEpisodeLaunchCopy">Choose an available streaming service.</p></div><button id="myTvEpisodeLaunchClose" type="button" class="portal-sheet-close library-sheet-close" aria-label="Close streaming choices"></button></header>
+    <div class="library-sheet-body"><div id="myTvEpisodeProviderList" class="my-tv-provider-list"><p>Checking streaming destinations…</p></div><p class="provider-attribution">The service may open the series page rather than this exact episode.</p></div>
+  </section>
+</dialog>

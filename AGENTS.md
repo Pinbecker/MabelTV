@@ -27,7 +27,7 @@ instructions take precedence when they explicitly request a different action.
   a live database file by itself or edit live state directly.
 - Device downloads live in the PWA's `mabeltv-offline-v1` IndexedDB database.
   Keep them separate from disposable response snapshots and Cache Storage.
-  Adult downloads and artwork must remain locked until local PIN verification.
+  My TV downloads and artwork must remain locked until local PIN verification.
 - Service-worker shell releases are immutable. Add required assets to the
   correct shell manifest and increment `SHELL_RELEASE` for every delivered
   shell change. Never clear download storage during a shell/cache upgrade.

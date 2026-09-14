@@ -8,7 +8,7 @@ changing its appearance or remote-control behaviour.
 
 `Main.qml` is the application coordinator. It owns cross-cutting state such as
 power transitions, the film countdown, portal requests, and the hand-off
-between children's television and Adult Mode. Its visual and input-heavy
+between children's television and My TV Mode. Its visual and input-heavy
 sections are composed from focused components:
 
 | Component | Responsibility |
@@ -20,8 +20,8 @@ sections are composed from focused components:
 | `RemoteInputHandler.qml` | Physical key routing, holds, repeat throttling and overlay precedence. |
 | `ParentConfirmationView.qml` | Modern parent-access confirmation screen. |
 | `ParentDashboardView.qml` | Modern parent settings and channel-management screen. |
-| `AdultLibraryView.qml` | Adult collection navigation and film grid. |
-| `AdultPlaybackControls.qml` | Adult playback scrubber, subtitles and control hints. |
+| `MyTvLibraryView.qml` | My TV collection navigation and film grid. |
+| `MyTvPlaybackControls.qml` | My TV playback scrubber, subtitles and control hints. |
 
 The existing Classic and Modern parent designs intentionally remain separate.
 Shared coordination belongs in their host overlay or controller; the distinct
@@ -43,7 +43,7 @@ signals, properties and callable methods:
 | --- | --- |
 | `TvController.cpp` | Lifecycle, library application, read-only models and guide data. |
 | `TvControllerActions.cpp` | Remote actions, parent settings, volume/power commands and reload requests. |
-| `TvControllerPortal.cpp` | Authenticated portal playback, Adult progress and library enable/disable operations. |
+| `TvControllerPortal.cpp` | Authenticated portal playback, My TV progress and library enable/disable operations. |
 | `TvControllerPersistence.cpp` | Loading and atomically saving settings and runtime state. |
 | `StateDatabase.cpp` | Focused SQLite projections, field-level settings merges and atomic player snapshots; SQLite remains the single persistent authority. |
 | `ipc/PortalControlServer.cpp` | Buffered newline-framed local control socket and command dispatch into the controller. |
@@ -56,7 +56,7 @@ so a refactor cannot create competing channel, playback or standby state.
 
 ## Native invariants
 
-- Children's playback and Adult playback keep their serialised decoder hand-off.
+- Children's playback and My TV playback keep their serialised decoder hand-off.
 - Portal commands continue to bypass only the physical child-remote lock.
 - Power and standby remain explicit operations and continue to use the shared
   connected-TV control layer.

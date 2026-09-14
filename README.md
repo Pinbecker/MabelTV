@@ -1,6 +1,6 @@
 # KidsTV
 
-KidsTV turns a Raspberry Pi 4 into a calm, child-friendly television made from a family’s own video library. During first setup, the grown-up names it for the child — for example, `MabelTV` or `JohnTV` — while KidsTV remains the generic product name.
+KidsTV turns a Raspberry Pi 4 into a calm, child-friendly television made from a family’s own video library. During first setup, the grown-up names it for the child — for example, `Mabel TV` or `John TV` — while KidsTV remains the generic product name.
 
 The product has two deliberately simple surfaces:
 
@@ -64,8 +64,8 @@ A USB keyboard or keyboard-style USB remote works without mapping. The essential
 | Page Up / Page Down | next / previous channel |
 | `+` / `-` | volume up / down |
 | `M` | mute; hold three seconds to lock/unlock other controls |
-| `B` | previous channel; hold 3.5 seconds, then OK three times, for adult controls |
-| Enter | pause/play, direct-channel confirm, or adult-menu confirm |
+| `B` | previous channel; hold 3.5 seconds, then OK three times, for My TV controls |
+| Enter | pause/play, direct-channel confirm, or my-tv-menu confirm |
 | `P` | MabelTV + television standby / wake; the Pi stays running |
 | Left / Right | previous / next programme |
 | `0`–`9` | direct channel entry |

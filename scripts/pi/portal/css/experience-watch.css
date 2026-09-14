@@ -133,7 +133,7 @@ body.portal-v2 .watch-discovery {
 }
 
 body.portal-v2 .watch-tool,
-body.portal-v2 .adult-tool {
+body.portal-v2 .my-tv-tool {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -148,11 +148,11 @@ body.portal-v2 .adult-tool {
 }
 
 body.portal-v2 .watch-tool > span,
-body.portal-v2 .adult-tool > span { display: grid; min-width: 0; }
+body.portal-v2 .my-tv-tool > span { display: grid; min-width: 0; }
 body.portal-v2 .watch-tool small,
-body.portal-v2 .adult-tool small { color: var(--experience-dim); font-size: 9px; font-weight: 700; text-transform: uppercase; }
+body.portal-v2 .my-tv-tool small { color: var(--experience-dim); font-size: 9px; font-weight: 700; text-transform: uppercase; }
 body.portal-v2 .watch-tool strong,
-body.portal-v2 .adult-tool strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+body.portal-v2 .my-tv-tool strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 
 body.portal-v2 .watch-native-select {
   position: relative;
@@ -409,7 +409,7 @@ body.portal-v2 .watch-mabel-search-results {
 body.portal-v2 .watch-mabel-search-results.hidden { display: none; }
 
 body.portal-v2 .favourite-action.active,
-body.portal-v2 #adultFilmFavourite.active {
+body.portal-v2 #myTvFilmFavourite.active {
   border-color: color-mix(in srgb, var(--experience-favourite) 70%, transparent);
   background: color-mix(in srgb, var(--experience-favourite) 12%, transparent);
   color: var(--experience-favourite);
@@ -533,7 +533,7 @@ body.portal-v2 .watch-mabel-copy strong { overflow: hidden; font-size: 12px; tex
 body.portal-v2 .watch-mabel-copy small { color: var(--experience-dim); font-size: 10px; }
 body.portal-v2 .watch-mabel-film-art { display: block; width: 100%; aspect-ratio: 2 / 3; object-fit: cover; }
 
-body.portal-v2 .adult-series-section { margin: 0 0 10px; }
+body.portal-v2 .my-tv-series-section { margin: 0 0 10px; }
 
 body.portal-v2 .watch-film-filters {
   display: grid;
@@ -541,9 +541,9 @@ body.portal-v2 .watch-film-filters {
   gap: 6px;
   margin: 0 0 14px;
 }
-body.portal-v2 .adult-series-section .watch-library-head { justify-content: flex-start; }
-body.portal-v2 .adult-series-title-row { display: flex; align-items: center; gap: 8px; }
-body.portal-v2 .adult-series-create {
+body.portal-v2 .my-tv-series-section .watch-library-head { justify-content: flex-start; }
+body.portal-v2 .my-tv-series-title-row { display: flex; align-items: center; gap: 8px; }
+body.portal-v2 .my-tv-series-create {
   width: var(--experience-icon-control-size);
   min-width: var(--experience-icon-control-size);
   min-height: var(--experience-icon-control-size);
@@ -556,9 +556,9 @@ body.portal-v2 .adult-series-create {
   color: var(--experience-muted);
   padding: 0;
 }
-body.portal-v2 .adult-series-create .icon { width: var(--experience-icon-control-glyph); height: var(--experience-icon-control-glyph); color: var(--experience-orange); }
-body.portal-v2 .adult-series-create span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-body.portal-v2 .adult-series-rail {
+body.portal-v2 .my-tv-series-create .icon { width: var(--experience-icon-control-glyph); height: var(--experience-icon-control-glyph); color: var(--experience-orange); }
+body.portal-v2 .my-tv-series-create span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+body.portal-v2 .my-tv-series-rail {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(245px, 31%);
@@ -570,7 +570,7 @@ body.portal-v2 .adult-series-rail {
   scrollbar-width: thin;
   scrollbar-color: rgba(220,222,228,.22) transparent;
 }
-body.portal-v2 .adult-series-card {
+body.portal-v2 .my-tv-series-card {
   display: grid;
   grid-template-columns: 68px minmax(0, 1fr);
   align-items: center;
@@ -586,7 +586,7 @@ body.portal-v2 .adult-series-card {
   text-align: left;
   scroll-snap-align: start;
 }
-body.portal-v2 .adult-series-card-art {
+body.portal-v2 .my-tv-series-card-art {
   position: relative;
   display: block;
   align-self: stretch;
@@ -596,12 +596,12 @@ body.portal-v2 .adult-series-card-art {
   border-radius: 0;
   background: var(--experience-elevated);
 }
-body.portal-v2 .adult-series-card-art img,
-body.portal-v2 .adult-series-sheet-art img { width: 100%; height: 100%; object-fit: cover; }
-body.portal-v2 .adult-series-card > span:last-child { min-width: 0; display: grid; gap: 5px; }
-body.portal-v2 .adult-series-card strong,
-body.portal-v2 .adult-series-card small { overflow: hidden; text-overflow: ellipsis; }
-body.portal-v2 .adult-series-card > span:last-child > strong {
+body.portal-v2 .my-tv-series-card-art img,
+body.portal-v2 .my-tv-series-sheet-art img { width: 100%; height: 100%; object-fit: cover; }
+body.portal-v2 .my-tv-series-card > span:last-child { min-width: 0; display: grid; gap: 5px; }
+body.portal-v2 .my-tv-series-card strong,
+body.portal-v2 .my-tv-series-card small { overflow: hidden; text-overflow: ellipsis; }
+body.portal-v2 .my-tv-series-card > span:last-child > strong {
   min-height: 2.3em;
   display: -webkit-box;
   overflow: hidden;
@@ -610,25 +610,25 @@ body.portal-v2 .adult-series-card > span:last-child > strong {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
-body.portal-v2 .adult-series-card small { color: var(--experience-dim); font-size: 10px; line-height: 1.45; }
-body.portal-v2 .adult-series-card .watch-film-meta.adult-series-card-facts {
+body.portal-v2 .my-tv-series-card small { color: var(--experience-dim); font-size: 10px; line-height: 1.45; }
+body.portal-v2 .my-tv-series-card .watch-film-meta.my-tv-series-card-facts {
   grid-template-columns: repeat(2, max-content);
   justify-content: start;
   gap: 4px 24px;
   margin-top: 0;
 }
-body.portal-v2 .adult-series-card .adult-series-card-facts .adult-title-fact > small {
+body.portal-v2 .my-tv-series-card .my-tv-series-card-facts .my-tv-title-fact > small {
   font-size: 6px;
 }
-body.portal-v2 .adult-series-card .adult-series-card-facts .adult-title-fact > strong {
+body.portal-v2 .my-tv-series-card .my-tv-series-card-facts .my-tv-title-fact > strong {
   font-size: 9px;
 }
-body.portal-v2 .adult-series-card-progress { position: absolute; inset: auto 0 0; height: 3px; background: rgba(255,255,255,.15); }
-body.portal-v2 .adult-series-card-progress::after { display: block; width: var(--series-progress); height: 100%; background: var(--experience-orange); content: ""; }
-body.portal-v2 .adult-series-empty { min-width: min(360px, 100%); display: grid; gap: 4px; border: 1px dashed var(--experience-line); border-radius: 12px; color: var(--experience-dim); padding: 18px; }
-body.portal-v2 .adult-series-empty strong { color: var(--experience-ink); }
+body.portal-v2 .my-tv-series-card-progress { position: absolute; inset: auto 0 0; height: 3px; background: rgba(255,255,255,.15); }
+body.portal-v2 .my-tv-series-card-progress::after { display: block; width: var(--series-progress); height: 100%; background: var(--experience-orange); content: ""; }
+body.portal-v2 .my-tv-series-empty { min-width: min(360px, 100%); display: grid; gap: 4px; border: 1px dashed var(--experience-line); border-radius: 12px; color: var(--experience-dim); padding: 18px; }
+body.portal-v2 .my-tv-series-empty strong { color: var(--experience-ink); }
 
-body.portal-v2 .adult-series-sheet-head {
+body.portal-v2 .my-tv-series-sheet-head {
   position: sticky;
   z-index: 4;
   top: 0;
@@ -642,53 +642,53 @@ body.portal-v2 .adult-series-sheet-head {
   backdrop-filter: blur(20px) saturate(130%);
   padding: 16px 68px 16px 18px;
 }
-body.portal-v2 :is(.adult-series-sheet-head, .adult-season-sheet-head) > div { min-width: 0; overflow-wrap: anywhere; }
-body.portal-v2 .adult-series-sheet-head h2 { margin: 2px 0 3px; font-size: 28px; letter-spacing: -.04em; }
-body.portal-v2 .adult-series-sheet-head p:last-child { margin: 0; color: var(--experience-dim); font-size: 10px; }
-body.portal-v2 .adult-series-header-facts {
+body.portal-v2 :is(.my-tv-series-sheet-head, .my-tv-season-sheet-head) > div { min-width: 0; overflow-wrap: anywhere; }
+body.portal-v2 .my-tv-series-sheet-head h2 { margin: 2px 0 3px; font-size: 28px; letter-spacing: -.04em; }
+body.portal-v2 .my-tv-series-sheet-head p:last-child { margin: 0; color: var(--experience-dim); font-size: 10px; }
+body.portal-v2 .my-tv-series-header-facts {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 5px 9px;
   margin-top: 6px;
 }
-body.portal-v2 #adultSeriesMoreMeta.adult-series-header-facts {
+body.portal-v2 #myTvSeriesMoreMeta.my-tv-series-header-facts {
   grid-template-columns: repeat(2, minmax(0, 66px));
   gap: 16px;
 }
 body.portal-v2 .section-kicker.is-mabeltv { color: var(--experience-accent-ink); }
-body.portal-v2 .adult-series-header-facts .adult-title-fact > small { font-size: 6px; }
-body.portal-v2 .adult-series-header-facts .adult-title-fact > strong { font-size: 9px; }
-body.portal-v2 .adult-series-sheet-poster,
-body.portal-v2 .adult-series-sheet-art { display: block; width: 76px; aspect-ratio: 2 / 3; overflow: hidden; border-radius: 8px; background: var(--experience-elevated); }
-body.portal-v2 .adult-series-overview { margin: 0; color: var(--experience-muted); font-size: 11px; line-height: 1.55; }
-body.portal-v2 .adult-series-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 14px 0; }
-body.portal-v2 .adult-series-bottom-tools { margin: 14px 0 2px; }
-body.portal-v2 :is(.adult-series-tools, .adult-season-tools) button { min-height: 62px; display: grid; grid-template-columns: 32px minmax(0,1fr); align-items: center; gap: 9px; border: 1px solid var(--experience-line); background: var(--experience-raised); color: var(--experience-ink); padding: 10px; text-align: left; }
-body.portal-v2 :is(.adult-series-tools, .adult-season-tools) .icon { width: 20px; height: 20px; color: var(--experience-orange); }
-body.portal-v2 :is(.adult-series-tools, .adult-season-tools) span { display: grid; gap: 2px; }
-body.portal-v2 :is(.adult-series-tools, .adult-season-tools) strong { font-size: 11px; }
-body.portal-v2 :is(.adult-series-tools, .adult-season-tools) small { color: var(--experience-dim); font-size: 10px; }
-body.portal-v2 :is(.adult-series-tools, .adult-season-tools) .adult-series-danger { border-color: rgba(255, 90, 110, .3); background: rgba(255, 90, 110, .06); }
-body.portal-v2 :is(.adult-series-tools, .adult-season-tools) .adult-series-danger :is(.icon, strong) { color: #ff667b; }
-body.portal-v2 :is(.adult-series-library-head, .adult-season-episode-head) {
+body.portal-v2 .my-tv-series-header-facts .my-tv-title-fact > small { font-size: 6px; }
+body.portal-v2 .my-tv-series-header-facts .my-tv-title-fact > strong { font-size: 9px; }
+body.portal-v2 .my-tv-series-sheet-poster,
+body.portal-v2 .my-tv-series-sheet-art { display: block; width: 76px; aspect-ratio: 2 / 3; overflow: hidden; border-radius: 8px; background: var(--experience-elevated); }
+body.portal-v2 .my-tv-series-overview { margin: 0; color: var(--experience-muted); font-size: 11px; line-height: 1.55; }
+body.portal-v2 .my-tv-series-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 14px 0; }
+body.portal-v2 .my-tv-series-bottom-tools { margin: 14px 0 2px; }
+body.portal-v2 :is(.my-tv-series-tools, .my-tv-season-tools) button { min-height: 62px; display: grid; grid-template-columns: 32px minmax(0,1fr); align-items: center; gap: 9px; border: 1px solid var(--experience-line); background: var(--experience-raised); color: var(--experience-ink); padding: 10px; text-align: left; }
+body.portal-v2 :is(.my-tv-series-tools, .my-tv-season-tools) .icon { width: 20px; height: 20px; color: var(--experience-orange); }
+body.portal-v2 :is(.my-tv-series-tools, .my-tv-season-tools) span { display: grid; gap: 2px; }
+body.portal-v2 :is(.my-tv-series-tools, .my-tv-season-tools) strong { font-size: 11px; }
+body.portal-v2 :is(.my-tv-series-tools, .my-tv-season-tools) small { color: var(--experience-dim); font-size: 10px; }
+body.portal-v2 :is(.my-tv-series-tools, .my-tv-season-tools) .my-tv-series-danger { border-color: rgba(255, 90, 110, .3); background: rgba(255, 90, 110, .06); }
+body.portal-v2 :is(.my-tv-series-tools, .my-tv-season-tools) .my-tv-series-danger :is(.icon, strong) { color: #ff667b; }
+body.portal-v2 :is(.my-tv-series-library-head, .my-tv-season-episode-head) {
   display: flex;
   align-items: end;
   justify-content: space-between;
   gap: 14px;
   margin: 18px 0 10px;
 }
-body.portal-v2 :is(.adult-series-library-head, .adult-season-episode-head) h3 {
+body.portal-v2 :is(.my-tv-series-library-head, .my-tv-season-episode-head) h3 {
   margin: 2px 0 0;
   font-size: 18px;
   letter-spacing: -.025em;
 }
-body.portal-v2 :is(#adultSeriesSeasonCount, #adultSeasonEpisodeCount) {
+body.portal-v2 :is(#myTvSeriesSeasonCount, #myTvSeasonEpisodeCount) {
   color: var(--experience-dim);
   font-size: 9px;
   font-weight: 720;
 }
-body.portal-v2 .adult-series-seasons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-body.portal-v2 .adult-season-card {
+body.portal-v2 .my-tv-series-seasons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+body.portal-v2 .my-tv-season-card {
   --season-card-ink: #fff;
   --season-card-muted: rgba(255, 255, 255, .82);
   position: relative;
@@ -702,14 +702,14 @@ body.portal-v2 .adult-season-card {
   padding: 0;
   text-align: left;
 }
-body.portal-v2 .adult-season-card:has(.watch-card-placeholder) {
+body.portal-v2 .my-tv-season-card:has(.watch-card-placeholder) {
   --season-card-ink: var(--experience-ink);
   --season-card-muted: var(--experience-muted);
 }
-body.portal-v2 .adult-season-card:has(.watch-card-placeholder) .adult-season-card-shade { background: none; }
-body.portal-v2 .adult-season-card-art,
-body.portal-v2 .adult-season-card-art > img,
-body.portal-v2 .adult-season-card-art > .watch-card-placeholder {
+body.portal-v2 .my-tv-season-card:has(.watch-card-placeholder) .my-tv-season-card-shade { background: none; }
+body.portal-v2 .my-tv-season-card-art,
+body.portal-v2 .my-tv-season-card-art > img,
+body.portal-v2 .my-tv-season-card-art > .watch-card-placeholder {
   position: absolute;
   inset: 0;
   display: grid;
@@ -718,20 +718,20 @@ body.portal-v2 .adult-season-card-art > .watch-card-placeholder {
   place-items: center;
   object-fit: cover;
 }
-body.portal-v2 .adult-season-card-art > .watch-card-placeholder { font-size: 50px; }
-body.portal-v2 .adult-season-card-shade {
+body.portal-v2 .my-tv-season-card-art > .watch-card-placeholder { font-size: 50px; }
+body.portal-v2 .my-tv-season-card-shade {
   position: absolute;
   inset: 0;
   background: linear-gradient(180deg, rgba(6, 6, 10, .06) 16%, rgba(6, 6, 10, .88) 100%);
 }
-body.portal-v2 .adult-season-card-copy {
+body.portal-v2 .my-tv-season-card-copy {
   position: absolute;
   z-index: 2;
   inset: auto 38px 16px 16px;
   display: grid;
   gap: 3px;
 }
-body.portal-v2 .adult-season-card-copy > span {
+body.portal-v2 .my-tv-season-card-copy > span {
   overflow: hidden;
   color: var(--season-card-muted);
   font-size: 10px;
@@ -741,12 +741,12 @@ body.portal-v2 .adult-season-card-copy > span {
   text-transform: uppercase;
   white-space: nowrap;
 }
-body.portal-v2 .adult-season-card-copy strong { color: var(--season-card-ink); font-size: 23px; line-height: 1; letter-spacing: -.035em; }
-body.portal-v2 .adult-season-card-copy small { color: var(--season-card-muted); font-size: 10px; }
-body.portal-v2 .adult-season-card-chevron { position: absolute; z-index: 2; color: var(--season-card-ink); right: 15px; bottom: 19px; width: 17px; height: 17px; }
-body.portal-v2 .adult-season-card-progress { position: absolute; z-index: 3; inset: auto 0 0; height: 3px; background: rgba(255,255,255,.18); }
-body.portal-v2 .adult-season-card-progress::after { display: block; width: var(--season-progress); height: 100%; background: var(--experience-orange); content: ""; }
-body.portal-v2 .adult-season-add-card {
+body.portal-v2 .my-tv-season-card-copy strong { color: var(--season-card-ink); font-size: 23px; line-height: 1; letter-spacing: -.035em; }
+body.portal-v2 .my-tv-season-card-copy small { color: var(--season-card-muted); font-size: 10px; }
+body.portal-v2 .my-tv-season-card-chevron { position: absolute; z-index: 2; color: var(--season-card-ink); right: 15px; bottom: 19px; width: 17px; height: 17px; }
+body.portal-v2 .my-tv-season-card-progress { position: absolute; z-index: 3; inset: auto 0 0; height: 3px; background: rgba(255,255,255,.18); }
+body.portal-v2 .my-tv-season-card-progress::after { display: block; width: var(--season-progress); height: 100%; background: var(--experience-orange); content: ""; }
+body.portal-v2 .my-tv-season-add-card {
   min-height: 98px;
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr);
@@ -759,11 +759,11 @@ body.portal-v2 .adult-season-add-card {
   padding: 16px;
   text-align: left;
 }
-body.portal-v2 .adult-season-add-card > .icon { width: 28px; height: 28px; color: var(--experience-orange); }
-body.portal-v2 .adult-season-add-card > span { display: grid; gap: 3px; }
-body.portal-v2 .adult-season-add-card strong { font-size: 14px; }
-body.portal-v2 .adult-season-add-card small { color: var(--experience-dim); font-size: 9px; }
-body.portal-v2 .adult-season-sheet-head {
+body.portal-v2 .my-tv-season-add-card > .icon { width: 28px; height: 28px; color: var(--experience-orange); }
+body.portal-v2 .my-tv-season-add-card > span { display: grid; gap: 3px; }
+body.portal-v2 .my-tv-season-add-card strong { font-size: 14px; }
+body.portal-v2 .my-tv-season-add-card small { color: var(--experience-dim); font-size: 9px; }
+body.portal-v2 .my-tv-season-sheet-head {
   position: sticky;
   z-index: 4;
   top: 0;
@@ -777,26 +777,26 @@ body.portal-v2 .adult-season-sheet-head {
   backdrop-filter: blur(20px) saturate(130%);
   padding: 15px 68px 15px 18px;
 }
-body.portal-v2 .adult-season-sheet-art { width: 112px; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 9px; background: var(--experience-elevated); }
-body.portal-v2 .adult-season-sheet-artwork,
-body.portal-v2 .adult-season-sheet-artwork > img,
-body.portal-v2 .adult-season-sheet-artwork > .watch-card-placeholder { display: grid; width: 100%; height: 100%; place-items: center; object-fit: cover; }
-body.portal-v2 .adult-season-sheet-head h2 { margin: 2px 0 3px; font-size: 27px; letter-spacing: -.04em; }
-body.portal-v2 .adult-season-sheet-head p:last-child { margin: 0; color: var(--experience-dim); font-size: 10px; }
-body.portal-v2 .adult-season-management {
+body.portal-v2 .my-tv-season-sheet-art { width: 112px; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 9px; background: var(--experience-elevated); }
+body.portal-v2 .my-tv-season-sheet-artwork,
+body.portal-v2 .my-tv-season-sheet-artwork > img,
+body.portal-v2 .my-tv-season-sheet-artwork > .watch-card-placeholder { display: grid; width: 100%; height: 100%; place-items: center; object-fit: cover; }
+body.portal-v2 .my-tv-season-sheet-head h2 { margin: 2px 0 3px; font-size: 27px; letter-spacing: -.04em; }
+body.portal-v2 .my-tv-season-sheet-head p:last-child { margin: 0; color: var(--experience-dim); font-size: 10px; }
+body.portal-v2 .my-tv-season-management {
   display: grid;
   gap: 12px;
   margin-top: 24px;
   border-top: 1px solid var(--experience-line);
   padding-top: 20px;
 }
-body.portal-v2 .adult-season-management-head { display: flex; align-items: end; justify-content: space-between; gap: 14px; }
-body.portal-v2 .adult-season-management-head h3 { margin: 3px 0 0; font-size: 18px; letter-spacing: -.025em; }
-body.portal-v2 .adult-season-management-head > span { max-width: 150px; color: var(--experience-dim); font-size: 10px; line-height: 1.35; text-align: right; }
-body.portal-v2 .adult-season-tools { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
-body.portal-v2 .adult-season-bottom-tools { margin-top: 0; }
-body.portal-v2 .adult-series-episodes { display: grid; gap: 8px; }
-body.portal-v2 .adult-series-episode {
+body.portal-v2 .my-tv-season-management-head { display: flex; align-items: end; justify-content: space-between; gap: 14px; }
+body.portal-v2 .my-tv-season-management-head h3 { margin: 3px 0 0; font-size: 18px; letter-spacing: -.025em; }
+body.portal-v2 .my-tv-season-management-head > span { max-width: 150px; color: var(--experience-dim); font-size: 10px; line-height: 1.35; text-align: right; }
+body.portal-v2 .my-tv-season-tools { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+body.portal-v2 .my-tv-season-bottom-tools { margin-top: 0; }
+body.portal-v2 .my-tv-series-episodes { display: grid; gap: 8px; }
+body.portal-v2 .my-tv-series-episode {
   --episode-progress: 0%;
   position: relative;
   display: grid;
@@ -812,20 +812,20 @@ body.portal-v2 .adult-series-episode {
   padding: 7px 10px 7px 7px;
   text-align: left;
 }
-body.portal-v2 .adult-series-episode::after { position: absolute; right: 0; bottom: 0; left: 0; height: 2px; background: linear-gradient(90deg, var(--experience-orange) var(--episode-progress), rgba(255, 255, 255, .09) var(--episode-progress)); content: ''; opacity: 0; }
-body.portal-v2 .adult-series-episode.has-progress::after { opacity: 1; }
-body.portal-v2 .adult-series-episode-art { position: relative; display: grid; width: 76px; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 8px; background: linear-gradient(145deg, color-mix(in srgb, var(--experience-accent) 20%, transparent), rgba(255, 255, 255, .04)); place-items: end start; }
-body.portal-v2 .adult-series-episode-art > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-body.portal-v2 .adult-series-episode-number { position: relative; z-index: 1; margin: 5px; border-radius: 5px; background: rgba(8, 7, 12, .82); color: var(--experience-orange); padding: 3px 5px; font-size: 8px; font-weight: 850; letter-spacing: .04em; }
-body.portal-v2 .adult-series-episode-copy { min-width: 0; display: grid; gap: 4px; }
-body.portal-v2 .adult-series-episode strong,
-body.portal-v2 .adult-series-episode small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-body.portal-v2 .adult-series-episode strong { font-size: 11px; line-height: 1.25; }
-body.portal-v2 .adult-series-episode small { color: var(--experience-dim); font-size: 10px; line-height: 1.25; }
-body.portal-v2 .adult-series-episode > svg { width: 16px; height: 16px; color: var(--experience-dim); }
-body.portal-v2 .adult-series-episode.is-watched { background: rgba(255, 255, 255, .012); }
-body.portal-v2 .adult-series-episode.is-watched .adult-series-episode-art { filter: saturate(.3); opacity: .62; }
-body.portal-v2 .adult-series-episode.is-watched small { color: var(--experience-dim); }
+body.portal-v2 .my-tv-series-episode::after { position: absolute; right: 0; bottom: 0; left: 0; height: 2px; background: linear-gradient(90deg, var(--experience-orange) var(--episode-progress), rgba(255, 255, 255, .09) var(--episode-progress)); content: ''; opacity: 0; }
+body.portal-v2 .my-tv-series-episode.has-progress::after { opacity: 1; }
+body.portal-v2 .my-tv-series-episode-art { position: relative; display: grid; width: 76px; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 8px; background: linear-gradient(145deg, color-mix(in srgb, var(--experience-accent) 20%, transparent), rgba(255, 255, 255, .04)); place-items: end start; }
+body.portal-v2 .my-tv-series-episode-art > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+body.portal-v2 .my-tv-series-episode-number { position: relative; z-index: 1; margin: 5px; border-radius: 5px; background: rgba(8, 7, 12, .82); color: var(--experience-orange); padding: 3px 5px; font-size: 8px; font-weight: 850; letter-spacing: .04em; }
+body.portal-v2 .my-tv-series-episode-copy { min-width: 0; display: grid; gap: 4px; }
+body.portal-v2 .my-tv-series-episode strong,
+body.portal-v2 .my-tv-series-episode small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.portal-v2 .my-tv-series-episode strong { font-size: 11px; line-height: 1.25; }
+body.portal-v2 .my-tv-series-episode small { color: var(--experience-dim); font-size: 10px; line-height: 1.25; }
+body.portal-v2 .my-tv-series-episode > svg { width: 16px; height: 16px; color: var(--experience-dim); }
+body.portal-v2 .my-tv-series-episode.is-watched { background: rgba(255, 255, 255, .012); }
+body.portal-v2 .my-tv-series-episode.is-watched .my-tv-series-episode-art { filter: saturate(.3); opacity: .62; }
+body.portal-v2 .my-tv-series-episode.is-watched small { color: var(--experience-dim); }
 
 body.portal-v2 .watch-downloads-layout { display: grid; gap: 18px; }
 body.portal-v2 .watch-downloads-layout.hidden { display: none; }

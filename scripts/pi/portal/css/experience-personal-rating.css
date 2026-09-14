@@ -1,11 +1,11 @@
-body.portal-v2 .adult-personal-rating-host {
+body.portal-v2 .my-tv-personal-rating-host {
   grid-column: 1 / -1;
   width: 100%;
   min-width: 0;
   margin: -4px 0 -7px;
 }
 
-body.portal-v2 .adult-personal-rating {
+body.portal-v2 .my-tv-personal-rating {
   display: flex;
   width: 100%;
   min-height: 24px;
@@ -15,7 +15,7 @@ body.portal-v2 .adult-personal-rating {
   outline: 0;
 }
 
-body.portal-v2 .adult-rating-label {
+body.portal-v2 .my-tv-rating-label {
   flex: 0 0 auto;
   width: auto;
   min-width: 0;
@@ -32,16 +32,16 @@ body.portal-v2 .adult-rating-label {
   text-transform: uppercase;
 }
 
-body.portal-v2 .adult-rating-label.is-clearable {
+body.portal-v2 .my-tv-rating-label.is-clearable {
   color: var(--experience-accent-ink);
   cursor: pointer;
 }
 
-body.portal-v2 .adult-personal-rating.is-locked {
+body.portal-v2 .my-tv-personal-rating.is-locked {
   color: var(--experience-muted);
 }
 
-body.portal-v2 .adult-personal-rating.is-locked .adult-rating-label {
+body.portal-v2 .my-tv-personal-rating.is-locked .my-tv-rating-label {
   flex: 1 1 auto;
   justify-content: flex-start;
   font-size: 8px;
@@ -50,7 +50,7 @@ body.portal-v2 .adult-personal-rating.is-locked .adult-rating-label {
   text-transform: none;
 }
 
-body.portal-v2 .adult-rating-track {
+body.portal-v2 .my-tv-rating-track {
   display: grid;
   flex: 1 1 auto;
   grid-template-columns: repeat(10, minmax(0, 1fr));
@@ -63,7 +63,7 @@ body.portal-v2 .adult-rating-track {
   -webkit-user-select: none;
 }
 
-body.portal-v2 .adult-rating-star {
+body.portal-v2 .my-tv-rating-star {
   justify-self: center;
   width: 10px;
   height: 10px;
@@ -71,12 +71,12 @@ body.portal-v2 .adult-rating-star {
   stroke-width: 1.45;
 }
 
-body.portal-v2 .adult-rating-star.is-filled {
+body.portal-v2 .my-tv-rating-star.is-filled {
   fill: var(--experience-accent-ink);
   color: var(--experience-accent-ink);
 }
 
-body.portal-v2 .adult-rating-value {
+body.portal-v2 .my-tv-rating-value {
   min-width: 25px;
   color: var(--experience-muted);
   font-size: 8px;
@@ -85,19 +85,19 @@ body.portal-v2 .adult-rating-value {
   text-align: right;
 }
 
-body.portal-v2 .adult-personal-rating:focus-visible .adult-rating-track {
+body.portal-v2 .my-tv-personal-rating:focus-visible .my-tv-rating-track {
   border-radius: 5px;
   outline: 1px solid var(--experience-accent-ink);
   outline-offset: 1px;
 }
 
-body.portal-v2 .adult-series-sheet-head > .adult-personal-rating-host {
+body.portal-v2 .my-tv-series-sheet-head > .my-tv-personal-rating-host {
   margin-bottom: -8px;
 }
 
-body.portal-v2 .adult-ratings-grid .adult-explore-actions { display: none; }
-body.portal-v2 .adult-ratings-grid .watch-empty { grid-column: 1 / -1; }
+body.portal-v2 .my-tv-ratings-grid .my-tv-explore-actions { display: none; }
+body.portal-v2 .my-tv-ratings-grid .watch-empty { grid-column: 1 / -1; }
 
 @media (max-width: 370px) {
-  body.portal-v2 .adult-rating-label { display: none; }
+  body.portal-v2 .my-tv-rating-label { display: none; }
 }

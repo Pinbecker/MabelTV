@@ -1,6 +1,6 @@
 {
-  "name": "MabelTV",
-  "short_name": "MabelTV",
+  "name": "Your TV",
+  "short_name": "Your TV",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0b0a0d",

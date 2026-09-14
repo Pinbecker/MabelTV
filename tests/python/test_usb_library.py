@@ -250,7 +250,7 @@ class UsbLibraryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Stop watching"):
             self.fixture.library.usb_eject("TEST-USB")
 
-    def test_usb_folder_import_copies_atomically_into_adult_library(self) -> None:
+    def test_usb_folder_import_copies_atomically_into_my_tv_library(self) -> None:
         folder = self.volume / "Films"
         folder.mkdir()
         (folder / "One.mp4").write_bytes(b"one" * 1000)
@@ -261,7 +261,7 @@ class UsbLibraryTests(unittest.TestCase):
             "avg_frame_rate": "25/1",
         })
         job = self.fixture.library.start_usb_import({
-            "volume": "TEST-USB", "paths": ["Films"], "target": "adult",
+            "volume": "TEST-USB", "paths": ["Films"], "target": "my_tv",
         })
         deadline = time.time() + 5
         result = job
@@ -270,9 +270,9 @@ class UsbLibraryTests(unittest.TestCase):
             result = self.fixture.library.usb_import_status(job["id"])
         self.assertEqual(result["status"], "complete")
         self.assertEqual(result["files_done"], 2)
-        self.assertEqual((self.fixture.library.adult_root / "One.mp4").read_bytes(),
+        self.assertEqual((self.fixture.library.my_tv_root / "One.mp4").read_bytes(),
                          b"one" * 1000)
-        self.assertFalse(any(self.fixture.library.adult_root.glob("*.part")))
+        self.assertFalse(any(self.fixture.library.my_tv_root.glob("*.part")))
         self.assertEqual(self.fixture.library.video_info.call_count, 2)
         self.assertEqual(self.fixture.library.refresh_tv.call_count, 2)
 
@@ -286,8 +286,8 @@ class UsbLibraryTests(unittest.TestCase):
             "avg_frame_rate": "25/1",
         })
 
-        series_id = self.fixture.library.create_adult_series("Silicon Valley")
-        self.fixture.library.create_adult_season(series_id, 1)
+        series_id = self.fixture.library.create_my_tv_series("Silicon Valley")
+        self.fixture.library.create_my_tv_season(series_id, 1)
         job = self.fixture.library.start_usb_import({
             "volume": "TEST-USB",
             "paths": ["Silicon Valley/Season 1"],
@@ -302,12 +302,12 @@ class UsbLibraryTests(unittest.TestCase):
             result = self.fixture.library.usb_import_status(job["id"])
 
         self.assertEqual(result["status"], "complete")
-        imported = (self.fixture.library.adult_series_root / result["series"] /
+        imported = (self.fixture.library.my_tv_series_root / result["series"] /
                     "Season 1" / episode.name)
         self.assertEqual(imported.read_bytes(), b"episode" * 1000)
         self.fixture.library.video_info.assert_called_once()
         self.fixture.library.refresh_tv.assert_not_called()
-        series = self.fixture.library.adult_series_library()[0]
+        series = self.fixture.library.my_tv_series_library()[0]
         self.assertEqual(series["episodes"][0]["season"], 1)
         self.assertEqual(series["episodes"][0]["episode"], 6)
 
@@ -320,14 +320,16 @@ class UsbLibraryTests(unittest.TestCase):
         context.__exit__.return_value = False
         client.recv.return_value = b"ok\n"
         with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
-                mock.patch.object(mabeltv_library.socket, "socket", return_value=context):
+                mock.patch.object(mabeltv_library.socket, "socket", return_value=context), \
+                mock.patch.object(self.fixture.library, "tv_identity",
+                                  return_value=("Mabel", "Mabel TV")):
             result = self.fixture.library.usb_play("TEST-USB", "Movie.mp4")
         sent = json.loads(client.sendall.call_args.args[0].decode())
         self.assertEqual(sent["command"], "play-external")
         self.assertEqual(Path(sent["path"]), movie.resolve())
         self.assertTrue(result["ok"])
 
-    def test_portal_play_on_tv_resolves_channel_and_adult_library_items(self) -> None:
+    def test_portal_play_on_tv_resolves_channel_and_my_tv_library_items(self) -> None:
         self.fixture.library.complete_setup({
             "setup_code": "135790", "pin": "2468",
             "channels": mabeltv_library.DEFAULT_CHANNELS,
@@ -335,17 +337,17 @@ class UsbLibraryTests(unittest.TestCase):
         channel_movie = self.fixture.media / "kids-tv" / "Episode.mp4"
         channel_movie.parent.mkdir(parents=True, exist_ok=True)
         channel_movie.write_bytes(b"video")
-        adult_movie = self.fixture.library.adult_root / "Films" / "Film.mkv"
-        adult_movie.parent.mkdir(parents=True, exist_ok=True)
-        adult_movie.write_bytes(b"film")
-        self.fixture.library.adult_library()
-        adult_states = self.fixture.library.adult_media_states()
-        adult_states["Films/Film.mkv"].update({
+        my_tv_movie = self.fixture.library.my_tv_root / "Films" / "Film.mkv"
+        my_tv_movie.parent.mkdir(parents=True, exist_ok=True)
+        my_tv_movie.write_bytes(b"film")
+        self.fixture.library.my_tv_library()
+        my_tv_states = self.fixture.library.my_tv_media_states()
+        my_tv_states["Films/Film.mkv"].update({
             "remote_position": 842.5,
             "remote_duration": 7200,
             "remote_last_watched": 200,
         })
-        self.fixture.library.write_adult_media_states(adult_states)
+        self.fixture.library.write_my_tv_media_states(my_tv_states)
         client = mock.MagicMock()
         context = mock.MagicMock()
         context.__enter__.return_value = client
@@ -357,18 +359,18 @@ class UsbLibraryTests(unittest.TestCase):
             channel_result = self.fixture.library.play_on_tv({
                 "kind": "channel", "channel": 1, "file": "Episode.mp4",
             })
-            adult_result = self.fixture.library.play_on_tv({
-                "kind": "adult", "file": "Films/Film.mkv",
+            my_tv_result = self.fixture.library.play_on_tv({
+                "kind": "my_tv", "file": "Films/Film.mkv",
             })
         channel_command = json.loads(client.sendall.call_args_list[0].args[0].decode())
-        adult_command = json.loads(client.sendall.call_args_list[1].args[0].decode())
+        my_tv_command = json.loads(client.sendall.call_args_list[1].args[0].decode())
         self.assertEqual(channel_command,
                          {"command": "play-programme", "channel": 1, "file": "Episode.mp4"})
-        self.assertEqual(adult_command,
-                         {"command": "play-adult-film", "file": "Films/Film.mkv",
+        self.assertEqual(my_tv_command,
+                         {"command": "play-my-tv-film", "file": "Films/Film.mkv",
                           "position": 842.5})
         self.assertTrue(channel_result["ok"])
-        self.assertTrue(adult_result["ok"])
+        self.assertTrue(my_tv_result["ok"])
         sleep.assert_not_called()
 
         channels = self.fixture.library.channels()
@@ -398,12 +400,12 @@ class UsbLibraryTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "no longer"):
             self.fixture.library.play_on_tv({
-                "kind": "adult", "file": "Films/Missing.mkv",
+                "kind": "my_tv", "file": "Films/Missing.mkv",
             })
 
     def test_portal_play_on_tv_treats_a_sent_command_as_accepted_if_ack_is_late(self) -> None:
-        adult_movie = self.fixture.library.adult_root / "Passengers (2016).mp4"
-        adult_movie.write_bytes(b"film")
+        my_tv_movie = self.fixture.library.my_tv_root / "Passengers (2016).mp4"
+        my_tv_movie.write_bytes(b"film")
         client = mock.MagicMock()
         context = mock.MagicMock()
         context.__enter__.return_value = client
@@ -411,9 +413,11 @@ class UsbLibraryTests(unittest.TestCase):
         client.recv.side_effect = mabeltv_library.socket.timeout("late acknowledgement")
 
         with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
-                mock.patch.object(mabeltv_library.socket, "socket", return_value=context):
+                mock.patch.object(mabeltv_library.socket, "socket", return_value=context), \
+                mock.patch.object(self.fixture.library, "tv_identity",
+                                  return_value=("Mabel", "Mabel TV")):
             result = self.fixture.library.play_on_tv({
-                "kind": "adult", "file": adult_movie.name,
+                "kind": "my_tv", "file": my_tv_movie.name,
             })
 
         self.assertTrue(result["ok"])
@@ -421,8 +425,8 @@ class UsbLibraryTests(unittest.TestCase):
         client.sendall.assert_called_once()
 
     def test_portal_play_on_tv_wakes_standby_and_honours_start_position(self) -> None:
-        adult_movie = self.fixture.library.adult_root / "Film.mp4"
-        adult_movie.write_bytes(b"film")
+        my_tv_movie = self.fixture.library.my_tv_root / "Film.mp4"
+        my_tv_movie.write_bytes(b"film")
         self.fixture.library.write_state("player", json.loads(json.dumps({
             "standby": True,
         })))
@@ -435,9 +439,11 @@ class UsbLibraryTests(unittest.TestCase):
             return_value={"ok": True, "message": "Command sent"})
 
         with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
-                mock.patch.object(mabeltv_library.socket, "socket", return_value=context):
+                mock.patch.object(mabeltv_library.socket, "socket", return_value=context), \
+                mock.patch.object(self.fixture.library, "tv_identity",
+                                  return_value=("Mabel", "Mabel TV")):
             result = self.fixture.library.play_on_tv({
-                "kind": "adult", "file": adult_movie.name, "position": 0,
+                "kind": "my_tv", "file": my_tv_movie.name, "position": 0,
             })
 
         self.fixture.library.live_tv_control.assert_called_once_with({
@@ -445,7 +451,7 @@ class UsbLibraryTests(unittest.TestCase):
         })
         command = json.loads(client.sendall.call_args.args[0].decode())
         self.assertEqual(command, {
-            "command": "play-adult-film", "file": adult_movie.name,
+            "command": "play-my-tv-film", "file": my_tv_movie.name,
             "position": 0.0,
         })
         self.assertTrue(result["ok"])
@@ -453,8 +459,8 @@ class UsbLibraryTests(unittest.TestCase):
                          "Turned on Mabel TV and playing Film")
 
     def test_portal_play_on_tv_still_reports_a_real_connection_failure(self) -> None:
-        adult_movie = self.fixture.library.adult_root / "Film.mp4"
-        adult_movie.write_bytes(b"film")
+        my_tv_movie = self.fixture.library.my_tv_root / "Film.mp4"
+        my_tv_movie.write_bytes(b"film")
         client = mock.MagicMock()
         context = mock.MagicMock()
         context.__enter__.return_value = client
@@ -465,7 +471,7 @@ class UsbLibraryTests(unittest.TestCase):
                 mock.patch.object(mabeltv_library.socket, "socket", return_value=context), \
                 self.assertRaisesRegex(ValueError, "not ready to start"):
             self.fixture.library.play_on_tv({
-                "kind": "adult", "file": adult_movie.name,
+                "kind": "my_tv", "file": my_tv_movie.name,
             })
 
 

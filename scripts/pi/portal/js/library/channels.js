@@ -102,7 +102,7 @@
       channelWorkspaceReturnToWatch = returnToWatch
       programmeSearch = ''
       programmePage = 1
-      $('#backToChannels span').textContent = returnToWatch ? 'Back to MabelTV' : 'All channels'
+      $('#backToChannels span').textContent = returnToWatch ? `Back to ${tvName()}` : 'All channels'
       if (options.updateHistory !== false) {
         const parentHash = returnToWatch ? '#watch' : '#channels'
         const parentState = returnToWatch
@@ -282,7 +282,7 @@
       const watchButton = $('#channelWatchTv')
       watchButton.disabled = !channel.enabled
       watchButton.querySelector('strong').textContent = channel.enabled ? 'Open on TV' : 'Channel hidden'
-      watchButton.querySelector('small').textContent = channel.enabled ? 'Switch MabelTV to this channel' : 'Show it in Manage to play it'
+      watchButton.querySelector('small').textContent = channel.enabled ? `Switch ${tvName()} to this channel` : 'Show it in Manage to play it'
       watchButton.onclick = () => sendLiveCommand('tune-channel', watchButton, { channel: channel.number })
       $('#channel').value = String(channel.number)
       $('#uploadDestination').textContent = channel.name

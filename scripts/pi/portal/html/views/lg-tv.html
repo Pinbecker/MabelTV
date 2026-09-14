@@ -3,7 +3,7 @@
     <h1 class="sr-only">Connected LG TV remote</h1>
     <div class="tv-remote-toolbar">
       <nav class="tv-remote-switcher" aria-label="Choose remote control">
-        <button type="button" data-go="live">MabelTV</button>
+        <button type="button" data-go="live"><span data-tv-name>Your TV</span></button>
         <button type="button" class="active" data-go="lg-tv" aria-current="page">LG TV</button>
       </nav>
     </div>
@@ -17,7 +17,7 @@
         <h2 id="lgTvHeading">Checking television…</h2>
         <p id="lgTvDetail" class="tv-remote-status-detail">Looking for its control session</p>
         <div class="tv-remote-status-facts">
-          <span><i id="lgMabelTvLed" class="portal-power-status-dot is-unknown"></i><b>MabelTV</b> <em id="lgMabelTvText">Checking…</em></span>
+          <span><i id="lgMabelTvLed" class="portal-power-status-dot is-unknown"></i><b><span data-tv-name>Your TV</span></b> <em id="lgMabelTvText">Checking…</em></span>
           <span><i id="lgTvConnectionLed" class="portal-power-status-dot is-unknown"></i><b>Connected TV</b> <em id="lgTvConnectionText">Checking…</em></span>
         </div>
       </div>
@@ -78,7 +78,7 @@
         <button data-lg-launch="appletv" data-lg-requires-tv type="button"><img src="/portal/assets/providers/apple-tv-app.jpg" alt="" loading="lazy" decoding="async"><span>Apple TV</span></button>
         <button data-lg-launch="paramount" data-lg-requires-tv type="button"><img src="/portal/assets/providers/paramount-plus-app.jpg" alt="" loading="lazy" decoding="async"><span>Paramount+</span></button>
         <button class="lg-app-system" data-lg-launch="live-tv" data-lg-requires-tv type="button"><span class="lg-app-icon"><svg><use href="/portal/icons.svg#signal-tv"/></svg></span><span>Live TV</span></button>
-        <button class="lg-app-system" data-lg-launch="mabeltv" data-lg-requires-tv type="button"><span class="lg-app-icon"><img src="/mabeltv-icon.png" alt=""></span><span>MabelTV</span></button>
+        <button class="lg-app-system" data-lg-launch="mabeltv" data-lg-requires-tv type="button"><span class="lg-app-icon"><img src="/mabeltv-icon.png" alt=""></span><span><span data-tv-name>Your TV</span></span></button>
       </div>
     </section>
   </div>

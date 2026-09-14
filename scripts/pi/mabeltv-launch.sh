@@ -34,7 +34,7 @@ if [[ -z "${MABELTV_HWDEC:-}" ]]; then
     model="$(tr -d '\0' < /proc/device-tree/model 2>/dev/null || true)"
     if [[ "$model" == *"Raspberry Pi 4"* ]]; then
         # bcm2835-codec can acknowledge stream-off before its MMAL buffers are
-        # actually returned. Rapid programme and Adult Mode hand-offs then
+        # actually returned. Rapid programme and MyTv Mode hand-offs then
         # wedge the kernel with sync timeouts until the whole Pi is rebooted.
         # Decode H.264 in software (well within Pi 4 headroom) and retain the
         # separate, reliable DRM Prime hardware path for HD/Main 10 HEVC films.
@@ -66,7 +66,7 @@ PY
 # the highest EDID match and can silently select 1080p120 on capable TVs.
 case "$display_mode" in
     # MabelTV media is deliberately prepared at 25/30 fps.  A 30 Hz 1080p
-    # canvas keeps the Adult Library natively sharp without spending a full
+    # canvas keeps the My TV Library natively sharp without spending a full
     # extra display cycle on frames the player does not have.
     1080p) kms_mode="1920x1080@30" ;;
     native) kms_mode="preferred" ;;

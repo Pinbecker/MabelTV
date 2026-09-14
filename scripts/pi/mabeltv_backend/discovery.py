@@ -1,4 +1,4 @@
-"""Curated TMDB catalogue browsing for the private Adult TV organiser."""
+"""Curated TMDB catalogue browsing for the private My TV organiser."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from datetime import date, timedelta
 import time
 from typing import Any
 
-from .constants import ADULT_PROVIDER_CACHE_SECONDS
+from .constants import MY_TV_PROVIDER_CACHE_SECONDS
 
 
 EXPLORE_LISTS = (
@@ -54,21 +54,21 @@ EXPLORE_GENRE_NAMES = {
 
 # Providers represented by the portal's UK streaming destinations. Recommendation
 # shelves use only included, free or ad-supported availability from this set.
-ADULT_STREAMING_PROVIDER_IDS = frozenset({
+MY_TV_STREAMING_PROVIDER_IDS = frozenset({
     8, 9, 29, 38, 39, 41, 103, 337, 350, 531, 591, 1796, 1825, 1899, 2300,
 })
 
 
-class AdultExploreMixin:
+class MyTvExploreMixin:
     """Build read-only catalogue pages without consulting Watchmode."""
 
     @staticmethod
-    def adult_explore_parameters(list_id: str, media_type: str,
+    def my_tv_explore_parameters(list_id: str, media_type: str,
                                   page: int,
                                   available_only: bool = False) -> dict[str, Any]:
         today = date.today()
         parameters: dict[str, Any] = {
-            "include_adult": "false", "language": "en-GB", "page": page,
+            "include_my_tv": "false", "language": "en-GB", "page": page,
             "sort_by": "popularity.desc", "vote_count.gte": 20 if media_type == "tv" else 50,
         }
         date_prefix = "first_air_date" if media_type == "tv" else "primary_release_date"
@@ -93,13 +93,13 @@ class AdultExploreMixin:
                 "watch_region": "GB",
                 "with_watch_monetization_types": "flatrate|free|ads",
                 "with_watch_providers": "|".join(
-                    str(value) for value in sorted(ADULT_STREAMING_PROVIDER_IDS)),
+                    str(value) for value in sorted(MY_TV_STREAMING_PROVIDER_IDS)),
             })
         return parameters
 
-    def adult_explore_has_included_provider(self, media_type: str,
+    def my_tv_explore_has_included_provider(self, media_type: str,
                                             tmdb_id: Any) -> bool:
-        response = self.adult_cached_tmdb_request(
+        response = self.my_tv_cached_tmdb_request(
             f"{media_type}/{int(tmdb_id)}/watch/providers")
         region = response.get("results", {}).get("GB", {}) \
             if isinstance(response, dict) else {}
@@ -109,12 +109,12 @@ class AdultExploreMixin:
             for provider in region.get(group, []):
                 if isinstance(provider, dict) and int(
                         provider.get("provider_id", 0) or 0) in \
-                        ADULT_STREAMING_PROVIDER_IDS:
+                        MY_TV_STREAMING_PROVIDER_IDS:
                     return True
         return False
 
     @staticmethod
-    def adult_explore_is_watched(value: Any) -> bool:
+    def my_tv_explore_is_watched(value: Any) -> bool:
         if not isinstance(value, dict):
             return False
         state = value.get("manual_state")
@@ -122,10 +122,10 @@ class AdultExploreMixin:
                                       and bool(value.get("history")))
 
     @staticmethod
-    def adult_explore_seed_titles(store: dict[str, Any], media_type: str,
+    def my_tv_explore_seed_titles(store: dict[str, Any], media_type: str,
                                   page: int) -> list[dict[str, Any]]:
         watched = [value for value in store.get("titles", {}).values()
-                   if AdultExploreMixin.adult_explore_is_watched(value)
+                   if MyTvExploreMixin.my_tv_explore_is_watched(value)
                    and value.get("media_type") in {"movie", "tv"}
                    and (media_type == "all" or value.get("media_type") == media_type)]
         if not watched:
@@ -145,7 +145,7 @@ class AdultExploreMixin:
         start = ((page - 1) * count) % len(pool)
         return [pool[(start + index) % len(pool)] for index in range(count)]
 
-    def adult_home_saved_title(self, key: str, value: dict[str, Any],
+    def my_tv_home_saved_title(self, key: str, value: dict[str, Any],
                                local: dict[str, dict[str, Any]]) \
             -> dict[str, Any] | None:
         try:
@@ -165,7 +165,7 @@ class AdultExploreMixin:
             "viewing": deepcopy(value),
         }
 
-    def adult_home_what_to_watch(self, page: Any, limit: Any = 12) -> dict[str, Any]:
+    def my_tv_home_what_to_watch(self, page: Any, limit: Any = 12) -> dict[str, Any]:
         """Mix familiar choices with popular unseen titles for the Watch page."""
         try:
             page_number = max(1, min(50, int(page or 1)))
@@ -176,17 +176,17 @@ class AdultExploreMixin:
         except (TypeError, ValueError):
             result_limit = 12
 
-        store = self.adult_viewing_store()
-        local = self.adult_local_title_index()
+        store = self.my_tv_viewing_store()
+        local = self.my_tv_local_title_index()
         familiar: list[tuple[tuple[float, ...], dict[str, Any]]] = []
         excluded = set()
         for key, value in store.get("titles", {}).items():
             if not isinstance(value, dict) or value.get("up_next") is True:
                 continue
-            if not (self.adult_explore_is_watched(value)
+            if not (self.my_tv_explore_is_watched(value)
                     or value.get("watchlisted") is True):
                 continue
-            item = self.adult_home_saved_title(key, value, local)
+            item = self.my_tv_home_saved_title(key, value, local)
             if item is None:
                 continue
             excluded.add(key)
@@ -203,7 +203,7 @@ class AdultExploreMixin:
             familiar_values = familiar_values[offset:] + familiar_values[:offset]
 
         available = self.settings().get("watchmode_availability_enabled") is not False
-        popular = self.adult_explore(
+        popular = self.my_tv_explore(
             "popular", "all", page_number, available, max(18, result_limit * 2))
         blockbusters = [item for item in popular.get("results", [])
                         if item.get("key") not in excluded
@@ -224,13 +224,13 @@ class AdultExploreMixin:
                 "attribution": "Catalogue and UK availability data from TMDB"}
 
     @staticmethod
-    def adult_home_release_date(value: Any) -> date | None:
+    def my_tv_home_release_date(value: Any) -> date | None:
         try:
             return date.fromisoformat(str(value or "")[:10])
         except ValueError:
             return None
 
-    def adult_released_this_week(self, limit: Any = 16) -> dict[str, Any]:
+    def my_tv_released_this_week(self, limit: Any = 16) -> dict[str, Any]:
         """Return popular films, new series and season premieres from the last week."""
         try:
             result_limit = max(1, min(24, int(limit or 16)))
@@ -238,30 +238,30 @@ class AdultExploreMixin:
             result_limit = 16
         today = date.today()
         start = today - timedelta(days=6)
-        movie_parameters = self.adult_explore_parameters("popular", "movie", 1)
+        movie_parameters = self.my_tv_explore_parameters("popular", "movie", 1)
         movie_parameters.update({
             "region": "GB", "release_date.gte": start.isoformat(),
             "release_date.lte": today.isoformat(),
             "with_release_type": "2|3|4|5|6", "vote_count.gte": 5,
         })
-        tv_parameters = self.adult_explore_parameters("popular", "tv", 1)
+        tv_parameters = self.my_tv_explore_parameters("popular", "tv", 1)
         tv_parameters.update({
             "air_date.gte": start.isoformat(), "air_date.lte": today.isoformat(),
             "timezone": "Europe/London", "vote_count.gte": 5,
         })
-        movie_response = self.adult_cached_tmdb_request("discover/movie", movie_parameters)
-        tv_response = self.adult_cached_tmdb_request("discover/tv", tv_parameters)
+        movie_response = self.my_tv_cached_tmdb_request("discover/movie", movie_parameters)
+        tv_response = self.my_tv_cached_tmdb_request("discover/tv", tv_parameters)
         candidates: list[tuple[float, int, str, str, bool, dict[str, Any]]] = []
         movie_values = [value for value in movie_response.get("results", [])
                         if isinstance(value, dict) and value.get("id")] \
             if isinstance(movie_response, dict) else []
 
         def movie_release(value: dict[str, Any]) -> tuple[dict[str, Any], bool]:
-            released = self.adult_home_release_date(value.get("release_date"))
+            released = self.my_tv_home_release_date(value.get("release_date"))
             if not released or not start <= released <= today:
                 return value, False
             try:
-                detail = self.adult_cached_tmdb_request(
+                detail = self.my_tv_cached_tmdb_request(
                     f"movie/{int(value['id'])}/release_dates")
             except (OSError, TypeError, ValueError):
                 return value, False
@@ -272,7 +272,7 @@ class AdultExploreMixin:
             release_types = {
                 int(item.get("type", 0) or 0) for item in gb_releases
                 if isinstance(item, dict)
-                and (release_date := self.adult_home_release_date(
+                and (release_date := self.my_tv_home_release_date(
                     item.get("release_date"))) is not None
                 and start <= release_date <= today
             }
@@ -281,7 +281,7 @@ class AdultExploreMixin:
             if not theatrical_only:
                 return value, False
             try:
-                provider_result = self.adult_title_provider_groups(
+                provider_result = self.my_tv_title_provider_groups(
                     "movie", int(value["id"]))
             except (OSError, TypeError, ValueError):
                 return value, False
@@ -295,7 +295,7 @@ class AdultExploreMixin:
         with ThreadPoolExecutor(max_workers=min(6, max(1, len(movie_values)))) as pool:
             movie_releases = list(pool.map(movie_release, movie_values))
         for value, cinema_only in movie_releases:
-            released = self.adult_home_release_date(value.get("release_date"))
+            released = self.my_tv_home_release_date(value.get("release_date"))
             if not released or not start <= released <= today:
                 continue
             candidates.append((float(value.get("popularity", 0) or 0),
@@ -309,15 +309,15 @@ class AdultExploreMixin:
 
         def television_release(value: dict[str, Any]) \
                 -> tuple[dict[str, Any], str]:
-            first_air = self.adult_home_release_date(value.get("first_air_date"))
+            first_air = self.my_tv_home_release_date(value.get("first_air_date"))
             if first_air and start <= first_air <= today:
                 return value, "New series"
-            detail = self.adult_cached_tmdb_request(
+            detail = self.my_tv_cached_tmdb_request(
                 f"tv/{int(value['id'])}", {"language": "en-GB"})
             premieres = [season for season in detail.get("seasons", [])
                          if isinstance(season, dict)
                          and int(season.get("season_number", 0) or 0) > 0
-                         and (air_date := self.adult_home_release_date(
+                         and (air_date := self.my_tv_home_release_date(
                              season.get("air_date"))) is not None
                          and start <= air_date <= today] \
                 if isinstance(detail, dict) else []
@@ -335,15 +335,15 @@ class AdultExploreMixin:
                                    int(value.get("vote_count", 0) or 0),
                                    "tv", label, False, value))
         candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
-        local = self.adult_local_title_index()
-        store = self.adult_viewing_store()
+        local = self.my_tv_local_title_index()
+        store = self.my_tv_viewing_store()
         results = []
         seen = set()
         for _, _, media_type, label, cinema_only, value in candidates:
-            item = self.adult_title_summary(value, media_type)
+            item = self.my_tv_title_summary(value, media_type)
             if not item["tmdb_id"] or not item["title"] or not item["poster_path"]:
                 continue
-            key = self.adult_title_key(media_type, item["tmdb_id"])
+            key = self.my_tv_title_key(media_type, item["tmdb_id"])
             if key in seen:
                 continue
             seen.add(key)
@@ -357,7 +357,7 @@ class AdultExploreMixin:
         return {"from": start.isoformat(), "to": today.isoformat(),
                 "results": results, "attribution": "Release data from TMDB"}
 
-    def adult_home_availability(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def my_tv_home_availability(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Fetch small streaming-only provider summaries for homepage cards.
 
         TMDB supplies the broad provider list without spending Watchmode
@@ -374,7 +374,7 @@ class AdultExploreMixin:
             if not isinstance(value, dict):
                 continue
             try:
-                key = self.adult_title_key(value.get("media_type"), value.get("tmdb_id"))
+                key = self.my_tv_title_key(value.get("media_type"), value.get("tmdb_id"))
             except ValueError:
                 continue
             if key in seen:
@@ -383,7 +383,7 @@ class AdultExploreMixin:
             media_type, identifier = key.split(":", 1)
             titles.append((key, media_type, int(identifier)))
 
-        availability = self.adult_viewing_store().get("availability", {})
+        availability = self.my_tv_viewing_store().get("availability", {})
 
         def providers_for_title(title: tuple[str, str, int]) -> dict[str, Any]:
             key, media_type, identifier = title
@@ -394,7 +394,7 @@ class AdultExploreMixin:
                     isinstance(cached, dict)
                     and cached.get("link_schema") == 3
                     and time.time() - float(cached.get("checked", 0) or 0)
-                    < ADULT_PROVIDER_CACHE_SECONDS
+                    < MY_TV_PROVIDER_CACHE_SECONDS
                 )
             except (TypeError, ValueError):
                 cache_is_fresh = False
@@ -407,7 +407,7 @@ class AdultExploreMixin:
                     in {"sub", "free", "tve", "ads"}
                 ]
             try:
-                result = self.adult_title_provider_groups(media_type, identifier)
+                result = self.my_tv_title_provider_groups(media_type, identifier)
                 providers = [provider for provider in result["providers"]
                              if provider.get("type") in {"flatrate", "free", "ads"}]
             except (OSError, TypeError, ValueError):
@@ -422,13 +422,13 @@ class AdultExploreMixin:
             items = list(pool.map(providers_for_title, titles))
         return {"items": items, "region": "GB"}
 
-    def adult_explore_genre_profile(self, store: dict[str, Any]) -> dict[str, float]:
-        cache_reader = getattr(self, "adult_insights_cache", None)
+    def my_tv_explore_genre_profile(self, store: dict[str, Any]) -> dict[str, float]:
+        cache_reader = getattr(self, "my_tv_insights_cache", None)
         cache = cache_reader() if callable(cache_reader) else {"titles": {}}
         metadata = cache.get("titles", {}) if isinstance(cache, dict) else {}
         profile: dict[str, float] = {}
         for key, item in store.get("titles", {}).items():
-            if not self.adult_explore_is_watched(item):
+            if not self.my_tv_explore_is_watched(item):
                 continue
             try:
                 rating = int(item.get("personal_rating", 0) or 0)
@@ -441,17 +441,17 @@ class AdultExploreMixin:
                 profile[name] = profile.get(name, 0.0) + weight
         return profile
 
-    def adult_personal_explore_results(self, store: dict[str, Any], media_type: str,
+    def my_tv_personal_explore_results(self, store: dict[str, Any], media_type: str,
                                        page: int,
                                        available_only: bool = False) \
             -> tuple[list[tuple[str, dict[str, Any]]], bool]:
         ranked: dict[tuple[str, int], dict[str, Any]] = {}
         has_more = False
         recommendation_page = (page - 1) % 3 + 1
-        seeds = self.adult_explore_seed_titles(store, media_type, page)
+        seeds = self.my_tv_explore_seed_titles(store, media_type, page)
         for seed_index, seed in enumerate(seeds):
             kind = str(seed.get("media_type"))
-            response = self.adult_cached_tmdb_request(
+            response = self.my_tv_cached_tmdb_request(
                 f"{kind}/{int(seed.get('tmdb_id', 0))}/recommendations",
                 {"language": "en-GB", "page": recommendation_page})
             values = response.get("results", []) if isinstance(response, dict) else []
@@ -473,7 +473,7 @@ class AdultExploreMixin:
                 has_more = has_more or recommendation_page < int(
                     response.get("total_pages", 1) or 1)
 
-        genre_profile = self.adult_explore_genre_profile(store)
+        genre_profile = self.my_tv_explore_genre_profile(store)
 
         def score(value: dict[str, Any]) -> tuple[float, ...]:
             candidate = value["value"]
@@ -488,20 +488,20 @@ class AdultExploreMixin:
         ordered = sorted(ranked.values(), key=score, reverse=True)[:36]
         return [(value["kind"], value["value"]) for value in ordered], has_more
 
-    def adult_explore_feedback(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def my_tv_explore_feedback(self, payload: dict[str, Any]) -> dict[str, Any]:
         values = payload.get("items", [])
         if not isinstance(values, list):
             raise ValueError("Choose valid Explore feedback")
         now = time.time()
         recorded = 0
         with self.config_lock:
-            store = self.adult_viewing_store()
+            store = self.my_tv_viewing_store()
             feedback = store.get("explore", {})
             if not isinstance(feedback, dict):
                 feedback = {}
             for value in values[:100]:
                 try:
-                    key = self.adult_title_key(value.get("media_type"), value.get("tmdb_id"))
+                    key = self.my_tv_title_key(value.get("media_type"), value.get("tmdb_id"))
                 except (AttributeError, ValueError):
                     continue
                 saved = feedback.get(key, {})
@@ -518,7 +518,7 @@ class AdultExploreMixin:
             self.save_explore_feedback(retained, retain_since=cutoff)
         return {"ok": True, "recorded": recorded}
 
-    def adult_explore(self, list_id: str, media_type: str, page: Any,
+    def my_tv_explore(self, list_id: str, media_type: str, page: Any,
                       available_only: bool = False, limit: Any = None) -> dict[str, Any]:
         lists = {value["id"]: value for value in EXPLORE_LISTS}
         list_id = str(list_id or "for-you").strip().lower()
@@ -537,10 +537,10 @@ class AdultExploreMixin:
         except (TypeError, ValueError):
             result_limit = default_limit
 
-        store = self.adult_viewing_store()
-        local = self.adult_local_title_index()
+        store = self.my_tv_viewing_store()
+        local = self.my_tv_local_title_index()
         watched_keys = {key for key, value in store["titles"].items()
-                        if self.adult_explore_is_watched(value)}
+                        if self.my_tv_explore_is_watched(value)}
         source: list[tuple[str, dict[str, Any]]] = []
         has_more = False
         personal_source = list_id == "for-you"
@@ -553,7 +553,7 @@ class AdultExploreMixin:
                 "attribution": "Catalogue and UK availability data from TMDB",
             }
         if list_id == "for-you":
-            source, has_more = self.adult_personal_explore_results(
+            source, has_more = self.my_tv_personal_explore_results(
                 store, media_type, page_number, available_only)
             if not source:
                 list_id = "popular"
@@ -562,8 +562,8 @@ class AdultExploreMixin:
             kinds = ("movie", "tv") if media_type == "all" else (media_type,)
             ranked = []
             for kind in kinds:
-                response = self.adult_cached_tmdb_request(
-                    f"discover/{kind}", self.adult_explore_parameters(
+                response = self.my_tv_cached_tmdb_request(
+                    f"discover/{kind}", self.my_tv_explore_parameters(
                         list_id, kind, page_number, available_only))
                 if not isinstance(response, dict):
                     continue
@@ -599,16 +599,16 @@ class AdultExploreMixin:
         results = []
         seen = set()
         for kind, value in source:
-            if value.get("adult") is True:
+            if value.get("my_tv") is True:
                 continue
-            item = self.adult_title_summary(value, kind)
+            item = self.my_tv_title_summary(value, kind)
             if not item["tmdb_id"] or not item["title"]:
                 continue
-            key = self.adult_title_key(kind, item["tmdb_id"])
+            key = self.my_tv_title_key(kind, item["tmdb_id"])
             if key in watched_keys or key in seen:
                 continue
             if available_only and personal_source and not \
-                    self.adult_explore_has_included_provider(kind, item["tmdb_id"]):
+                    self.my_tv_explore_has_included_provider(kind, item["tmdb_id"]):
                 continue
             seen.add(key)
             viewing = store["titles"].get(key, {})

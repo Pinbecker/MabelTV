@@ -3,7 +3,7 @@
 const $ = selector => document.querySelector(selector)
     const $$ = selector => [...document.querySelectorAll(selector)]
     const portalSheets = window.MabelPortalUI?.dialogs
-    if (!portalSheets) throw new Error('MabelTV portal UI components are unavailable')
+    if (!portalSheets) throw new Error('TV portal UI components are unavailable')
     const portalEmptyState = window.MabelPortalUI.emptyState
     const portalButton = window.MabelPortalUI.button
     const portalIcon = window.MabelPortalUI.icon
@@ -15,19 +15,19 @@ const $ = selector => document.querySelector(selector)
     let channelReturnPosition = null
     let programmeSearch = ''
     let programmePage = 1
-    let adultOptimisationRefresh = null
-    let adultOptimisationWasActive = false
-    let adultFolderFilter = '*'
-    let adultSearchText = ''
-    let selectedAdultFilm = null
-    let selectedAdultFilmReturnTo = null
-    let selectedAdultSeries = null
-    let selectedAdultSeason = null
-    let selectedAdultEpisode = null
-    let adultSeriesUploadTarget = null
-    let adultSeriesSourcePickerOpen = false
-    let adultSeriesRestartTarget = null
-    let selectedAdultSeriesFiles = []
+    let myTvOptimisationRefresh = null
+    let myTvOptimisationWasActive = false
+    let myTvFolderFilter = '*'
+    let myTvSearchText = ''
+    let selectedMyTvFilm = null
+    let selectedMyTvFilmReturnTo = null
+    let selectedMyTvSeries = null
+    let selectedMyTvSeason = null
+    let selectedMyTvEpisode = null
+    let myTvSeriesUploadTarget = null
+    let myTvSeriesSourcePickerOpen = false
+    let myTvSeriesRestartTarget = null
+    let selectedMyTvSeriesFiles = []
     const PROGRAMMES_PER_PAGE = 12
     let setupStep = 1
     let setupChannels = []
@@ -51,7 +51,7 @@ const $ = selector => document.querySelector(selector)
     let selectedUsbEntry = null
     let usbImportPlan = null
     let tmdbConfigured = false
-    // Watch opens on the family MabelTV library. Adult TV and downloads remain
+    // Watch opens on the family MabelTV library. My TV and downloads remain
     // explicit choices rather than carrying over from an earlier visit.
     let remoteKind = 'channel'
     let watchDomain = 'mabel'
@@ -90,7 +90,7 @@ const $ = selector => document.querySelector(selector)
       const acknowledgement = window.MabelOffline?.setMediaAccess(offlineProtectedAccess)
       if (offlineProtectedAccess) Promise.resolve(acknowledgement).then(confirmed => {
         if (confirmed !== false) window.dispatchEvent(
-          new CustomEvent('mabeltv:adult-artwork-access'))
+          new CustomEvent('mabeltv:my-tv-artwork-access'))
       }).catch(() => {})
     }
 
@@ -114,7 +114,7 @@ const $ = selector => document.querySelector(selector)
         setOfflineProtectedAccess(true)
         return true
       }
-      const pin = window.prompt('Enter the parent PIN to watch this Adult download offline.')
+      const pin = window.prompt('Enter the parent PIN to watch this My TV download offline.')
       if (pin === null) return false
       await window.MabelOffline.verifyPin(pin)
       offlineProtectedAccess = true
@@ -212,6 +212,15 @@ const $ = selector => document.querySelector(selector)
       $('#topTvName').textContent = name
       $('#mainNav').setAttribute('aria-label', `${name} sections`)
       $$('[data-tv-name]').forEach(element => { element.textContent = name })
+      $$('[data-tv-text-template]').forEach(element => {
+        element.textContent = element.dataset.tvTextTemplate.replace('{name}', name)
+      })
+      $$('[data-tv-placeholder-template]').forEach(element => {
+        element.setAttribute('placeholder', element.dataset.tvPlaceholderTemplate.replace('{name}', name))
+      })
+      $$('[data-tv-aria-template]').forEach(element => {
+        element.setAttribute('aria-label', element.dataset.tvAriaTemplate.replace('{name}', name))
+      })
       $('#tvNameChild').value = library?.owner?.child_name || ''
     }
 
@@ -236,11 +245,11 @@ const $ = selector => document.querySelector(selector)
     }
 
     function offlineSetupMarkup() {
-      const message = offlineStorageError || 'Offline downloads are not ready in this copy of MabelTV.'
+      const message = offlineStorageError || `Offline downloads are not ready in this copy of ${tvName()}.`
       if (window.isSecureContext) {
-        return `<div class="downloads-empty offline-setup"><strong>Finish offline setup</strong><p>${escapeHtml(message)}</p><p>Close MabelTV completely, reopen it while online, then return to Downloads.</p></div>`
+        return `<div class="downloads-empty offline-setup"><strong>Finish offline setup</strong><p>${escapeHtml(message)}</p><p>Close ${escapeHtml(tvName())} completely, reopen it while online, then return to Downloads.</p></div>`
       }
-      return `<div class="downloads-empty offline-setup"><strong>Open the secure MabelTV app</strong><p>Offline downloads work in the Home Screen app installed from MabelTV's HTTPS address.</p><small>${escapeHtml(message)}</small></div>`
+      return `<div class="downloads-empty offline-setup"><strong>Open the secure ${escapeHtml(tvName())} app</strong><p>Offline downloads work in the Home Screen app installed from ${escapeHtml(tvName())}'s HTTPS address.</p><small>${escapeHtml(message)}</small></div>`
     }
 
     function slug(value) {

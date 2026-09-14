@@ -16,9 +16,9 @@ from urllib.parse import urlencode, urlsplit
 from urllib.request import Request
 
 from .constants import (
-    ADULT_METADATA_CACHE_SECONDS,
-    ADULT_PROVIDER_CACHE_SECONDS,
-    ADULT_PROVIDER_MAX_CACHE_SECONDS,
+    MY_TV_METADATA_CACHE_SECONDS,
+    MY_TV_PROVIDER_CACHE_SECONDS,
+    MY_TV_PROVIDER_MAX_CACHE_SECONDS,
     OPENSUBTITLES_API_BASE_URL,
     OPENSUBTITLES_USER_AGENT,
     SUBTITLE_EXTENSIONS,
@@ -53,7 +53,7 @@ class ProviderMetadataMixin:
         """Return selectable TMDB matches for one MabelTV film."""
         title, year = self.tmdb_title_query(self.display_name(item.name))
         parameters: dict[str, Any] = {
-            "query": title, "include_adult": "false", "language": "en-GB",
+            "query": title, "include_my_tv": "false", "language": "en-GB",
         }
         if year:
             parameters["year"] = year
@@ -122,7 +122,7 @@ class ProviderMetadataMixin:
         """Return parent-selectable TMDB matches for one series channel."""
         query = str(channel.get("name", "")).strip()
         response = self.tmdb_request("search/tv", {
-            "query": query, "include_adult": "false", "language": "en-GB",
+            "query": query, "include_my_tv": "false", "language": "en-GB",
         })
         matches = response.get("results", []) if isinstance(response, dict) else []
         results = []
@@ -157,10 +157,10 @@ class ProviderMetadataMixin:
             "updated": time.time(), "provider": "TMDB",
         }
 
-    def cache_adult_series_artwork(self, remote_path: str, file_name: str,
+    def cache_my_tv_series_artwork(self, remote_path: str, file_name: str,
                                    *, backdrop: bool = False) -> str:
         if not remote_path or not re.fullmatch(
-                r"adult-(?:series-[a-f0-9]{32}-[0-9]+|episode-[a-f0-9]{32}-[0-9]+-[0-9]+)\.jpg",
+                r"my-tv-(?:series-[a-f0-9]{32}-[0-9]+|episode-[a-f0-9]{32}-[0-9]+-[0-9]+)\.jpg",
                 file_name):
             return ""
         try:
@@ -169,7 +169,7 @@ class ProviderMetadataMixin:
                               headers={"User-Agent": "MabelTV/0.2.5"})
             with self._open_url(request, timeout=15) as response:
                 data = response.read(10 * 1024 * 1024)
-            destination = self.adult_series_artwork_root / file_name
+            destination = self.my_tv_series_artwork_root / file_name
             temporary = destination.with_suffix(".jpg.new")
             temporary.write_bytes(data)
             os.replace(temporary, destination)
@@ -177,15 +177,15 @@ class ProviderMetadataMixin:
         except (HTTPError, URLError, TimeoutError, OSError):
             return ""
 
-    def adult_series_search(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def my_tv_series_search(self, payload: dict[str, Any]) -> dict[str, Any]:
         series_id = str(payload.get("series", ""))
-        states = self.adult_series_states()
+        states = self.my_tv_series_states()
         series = states["series"].get(series_id)
         if not isinstance(series, dict):
-            raise ValueError("That Adult TV series no longer exists")
+            raise ValueError("That My TV series no longer exists")
         query = str(payload.get("title") or series.get("title") or "").strip()
         response = self.tmdb_request("search/tv", {
-            "query": query, "include_adult": "false", "language": "en-GB",
+            "query": query, "include_my_tv": "false", "language": "en-GB",
         })
         results = []
         for value in response.get("results", [])[:12]:
@@ -201,7 +201,7 @@ class ProviderMetadataMixin:
         return {"ok": True, "series": series_id, "query": query,
                 "results": results}
 
-    def adult_series_apply(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def my_tv_series_apply(self, payload: dict[str, Any]) -> dict[str, Any]:
         series_id = str(payload.get("series", ""))
         try:
             tmdb_id = int(payload.get("tmdb_id", 0))
@@ -209,17 +209,17 @@ class ProviderMetadataMixin:
             tmdb_id = 0
         if tmdb_id <= 0:
             raise ValueError("Choose a TMDB series match")
-        states = self.adult_series_states()
+        states = self.my_tv_series_states()
         series = states["series"].get(series_id)
         if not isinstance(series, dict):
-            raise ValueError("That Adult TV series no longer exists")
+            raise ValueError("That My TV series no longer exists")
         details = self.tmdb_request(f"tv/{tmdb_id}", {"language": "en-GB"})
-        poster = self.cache_adult_series_artwork(
+        poster = self.cache_my_tv_series_artwork(
             str(details.get("poster_path") or ""),
-            f"adult-series-{series_id}-{tmdb_id}.jpg")
-        backdrop = self.cache_adult_series_artwork(
+            f"my-tv-series-{series_id}-{tmdb_id}.jpg")
+        backdrop = self.cache_my_tv_series_artwork(
             str(details.get("backdrop_path") or ""),
-            f"adult-series-{series_id}-{tmdb_id}.jpg", backdrop=True) \
+            f"my-tv-series-{series_id}-{tmdb_id}.jpg", backdrop=True) \
             if not poster else ""
         series["metadata"] = {
             "tmdb_id": tmdb_id,
@@ -229,10 +229,10 @@ class ProviderMetadataMixin:
             "poster": poster or backdrop,
             "updated": time.time(), "provider": "TMDB",
         }
-        root = self.adult_series_root / series_id
+        root = self.my_tv_series_root / series_id
         files = [item for item in root.rglob("*") if item.is_file()
                  and item.suffix.lower() in SUPPORTED_EXTENSIONS]
-        seasons = sorted({self.adult_episode_identity(item)["season"] for item in files})
+        seasons = sorted({self.my_tv_episode_identity(item)["season"] for item in files})
         episode_details: dict[tuple[int, int], dict[str, Any]] = {}
         for season_number in seasons:
             response = self.tmdb_request(
@@ -243,9 +243,9 @@ class ProviderMetadataMixin:
                 number = int(episode.get("episode_number") or 0)
                 if number <= 0:
                     continue
-                still = self.cache_adult_series_artwork(
+                still = self.cache_my_tv_series_artwork(
                     str(episode.get("still_path") or ""),
-                    f"adult-episode-{series_id}-{season_number}-{number}.jpg",
+                    f"my-tv-episode-{series_id}-{season_number}-{number}.jpg",
                     backdrop=True)
                 episode_details[(season_number, number)] = {
                     "title": str(episode.get("name") or f"Episode {number}"),
@@ -257,16 +257,16 @@ class ProviderMetadataMixin:
                 }
         episode_updates: dict[str, dict[str, Any]] = {}
         for ordinal, source in enumerate(sorted(files), 1):
-            parsed = self.adult_episode_identity(source, ordinal)
+            parsed = self.my_tv_episode_identity(source, ordinal)
             metadata = episode_details.get((parsed["season"], parsed["episode"]))
             if metadata:
                 relative = source.relative_to(root).as_posix()
                 episode_updates[f"{series_id}/{relative}"] = metadata
         with self.config_lock:
-            latest = self.adult_series_states()
+            latest = self.my_tv_series_states()
             current_series = latest["series"].get(series_id)
             if not isinstance(current_series, dict):
-                raise ValueError("That Adult TV series no longer exists")
+                raise ValueError("That My TV series no longer exists")
             current_series["metadata"] = series["metadata"]
             latest["series"][series_id] = current_series
             for key, metadata in episode_updates.items():
@@ -275,17 +275,17 @@ class ProviderMetadataMixin:
                     episode_state = {}
                 episode_state["metadata"] = metadata
                 latest["episodes"][key] = episode_state
-            self.write_adult_series_states(latest)
+            self.write_my_tv_series_states(latest)
         return {"ok": True, "series": series_id,
                 "metadata": series["metadata"],
                 "episodes_matched": len(episode_details)}
 
-    def adult_series_artwork(self, name: str) -> Path:
+    def my_tv_series_artwork(self, name: str) -> Path:
         if not re.fullmatch(
-                r"adult-(?:series-[a-f0-9]{32}-[0-9]+|episode-[a-f0-9]{32}-[0-9]+-[0-9]+)\.jpg",
+                r"my-tv-(?:series-[a-f0-9]{32}-[0-9]+|episode-[a-f0-9]{32}-[0-9]+-[0-9]+)\.jpg",
                 name):
             raise ValueError("Series artwork not found")
-        path = self.adult_series_artwork_root / name
+        path = self.my_tv_series_artwork_root / name
         if not path.is_file():
             raise ValueError("Series artwork not found")
         return path
@@ -409,7 +409,7 @@ class ProviderMetadataMixin:
 
     def tmdb_search(self, payload: dict[str, Any]) -> dict[str, Any]:
         file_name = str(payload.get("file", ""))
-        source = self.safe_adult_path(file_name)
+        source = self.safe_my_tv_path(file_name)
         if not source.is_file():
             raise ValueError("Film not found")
         title = str(payload.get("title", "")).strip()
@@ -422,7 +422,7 @@ class ProviderMetadataMixin:
         year = int(year_match.group(1)) if year_match else None
         if year:
             title = title.replace(str(year), "").strip(" .-()[]")
-        parameters: dict[str, Any] = {"query": title, "include_adult": "false", "language": "en-GB"}
+        parameters: dict[str, Any] = {"query": title, "include_my_tv": "false", "language": "en-GB"}
         if year:
             parameters["year"] = year
         response = self.tmdb_request("search/movie", parameters)
@@ -439,7 +439,7 @@ class ProviderMetadataMixin:
 
     def tmdb_apply(self, payload: dict[str, Any]) -> dict[str, Any]:
         file_name = str(payload.get("file", ""))
-        source = self.safe_adult_path(file_name)
+        source = self.safe_my_tv_path(file_name)
         if not source.is_file():
             raise ValueError("Film not found")
         tmdb_id = int(payload.get("tmdb_id", 0))
@@ -450,7 +450,7 @@ class ProviderMetadataMixin:
         poster_name = ""
         if poster_path:
             poster_name = f"tmdb-{tmdb_id}.jpg"
-            destination = self.adult_artwork_root / poster_name
+            destination = self.my_tv_artwork_root / poster_name
             try:
                 request = Request(TMDB_IMAGE_BASE_URL + poster_path,
                                   headers={"User-Agent": "MabelTV/0.2.5"})
@@ -473,21 +473,21 @@ class ProviderMetadataMixin:
         }
         metadata["subtitles"] = self.fetch_automatic_subtitle(source, tmdb_id)
         with self.config_lock:
-            states = self.adult_media_states()
+            states = self.my_tv_media_states()
             current = states.get(file_name, {})
             if not isinstance(current, dict):
                 current = {}
             current["metadata"] = metadata
             states[file_name] = current
-            self.write_adult_media_states(states)
+            self.write_my_tv_media_states(states)
         refreshed = self.refresh_tv()
         return {"ok": True, "file": file_name, "metadata": metadata,
                 "refreshed": refreshed}
 
-    def adult_artwork(self, name: str) -> Path:
-        if not re.fullmatch(r"(?:tmdb-[1-9][0-9]*|adult-series-[a-f0-9]{32}-[1-9][0-9]*)\.jpg", name):
+    def my_tv_artwork(self, name: str) -> Path:
+        if not re.fullmatch(r"(?:tmdb-[1-9][0-9]*|my-tv-series-[a-f0-9]{32}-[1-9][0-9]*)\.jpg", name):
             raise ValueError("Artwork not found")
-        root = self.adult_series_artwork_root if name.startswith("adult-series-") else self.adult_artwork_root
+        root = self.my_tv_series_artwork_root if name.startswith("my-tv-series-") else self.my_tv_artwork_root
         path = root / name
         if not path.is_file():
             raise ValueError("Artwork not found")

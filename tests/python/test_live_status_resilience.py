@@ -10,18 +10,18 @@ class LiveStatusResilienceTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.fixture.close()
 
-    def test_adult_mode_is_an_allowed_parent_portal_command(self) -> None:
+    def test_my_tv_mode_is_an_allowed_parent_portal_command(self) -> None:
         with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True):
             with mock.patch.object(mabeltv_library.socket, "socket") as socket_type:
                 client = socket_type.return_value.__enter__.return_value
                 client.recv.return_value = b"ok\n"
                 self.assertEqual(
-                    self.fixture.library.live_tv_control({"command": "enter-adult-mode"}),
+                    self.fixture.library.live_tv_control({"command": "enter-my-tv-mode"}),
                     {"ok": True, "message": "Command sent"})
-                client.sendall.assert_called_once_with(b"enter-adult-mode\n")
+                client.sendall.assert_called_once_with(b"enter-my-tv-mode\n")
 
         with self.assertRaisesRegex(ValueError, "Unknown live TV control"):
-            self.fixture.library.live_tv_control({"command": "leave-adult-mode"})
+            self.fixture.library.live_tv_control({"command": "leave-my-tv-mode"})
 
     def test_live_tv_navigation_shortcuts_are_forwarded_to_the_player(self) -> None:
         commands = ("open-parent-menu", "open-tv-guide", "open-channel-menu", "close-overlay",
@@ -66,13 +66,13 @@ class LiveStatusResilienceTests(unittest.TestCase):
                 "command": "tune-channel", "channel": "not-a-channel",
             })
 
-    def test_live_tv_status_reports_adult_mode_instead_of_hidden_kids_playback(self) -> None:
+    def test_live_tv_status_reports_my_tv_mode_instead_of_hidden_kids_playback(self) -> None:
         self.fixture.library.live_stream.status = mock.Mock(return_value={
             "available": False, "reason": "Waiting for the TV programme",
             "channel_number": 5, "channel_name": "Films",
         })
         self.fixture.library.player_mode_status = mock.Mock(return_value={
-            "mode": "adult", "playing": True,
+            "mode": "my_tv", "playing": True,
             "programme": "The Fellowship of the Ring", "paused": True,
             "volume": 48, "muted": False, "remote_locked": True,
             "subtitles_available": True, "subtitles_visible": True,
@@ -85,8 +85,8 @@ class LiveStatusResilienceTests(unittest.TestCase):
             allow_screen_without_programme=True)
         self.assertTrue(status["available"])
         self.assertNotIn("reason", status)
-        self.assertTrue(status["adult_mode"])
-        self.assertTrue(status["adult_playing"])
+        self.assertTrue(status["my_tv_mode"])
+        self.assertTrue(status["my_tv_playing"])
         self.assertEqual(status["programme"], "The Fellowship of the Ring")
         self.assertTrue(status["paused"])
         self.assertEqual(status["channel_name"], "Films")
@@ -170,7 +170,7 @@ class LiveStatusResilienceTests(unittest.TestCase):
         self.assertIn("if (message)", portal)
         self.assertIn("bad ? 7000 : 3500", portal)
         self.assertNotIn("message.endsWith('…')", portal)
-        self.assertIn("state.adult_mode ? 'ADULT TV · PRIVATE LIBRARY'", portal)
+        self.assertIn("state.my_tv_mode ? 'MY TV · PRIVATE LIBRARY'", portal)
 
     def test_worker_survives_failure_while_persisting_an_error(self) -> None:
         self.fixture.library.unexpected_conversion_error = mock.Mock(

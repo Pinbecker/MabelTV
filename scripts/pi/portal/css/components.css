@@ -257,7 +257,7 @@
 
   .health-pill,
   .count-badge,
-  .adult-count,
+  .my-tv-count,
   .watch-library-count,
   .programme-library-count,
   .downloads-storage,
@@ -535,7 +535,7 @@
   }
 
   .library-sheet-actions,
-  .adult-film-action-grid,
+  .my-tv-film-action-grid,
   .programme-action-grid,
   .download-card-actions,
   .usb-file-actions {
@@ -545,7 +545,7 @@
   }
 
   .library-sheet-actions button,
-  .adult-film-action-grid button,
+  .my-tv-film-action-grid button,
   .programme-action-grid button,
   .download-card-actions button,
   .usb-file-actions button {

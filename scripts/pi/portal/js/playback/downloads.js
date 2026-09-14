@@ -20,9 +20,9 @@
 
     function downloadBelongsHere(value) {
       const source = value?.source || value?.manifest?.source || {}
-      const adult = ['adult', 'adult-series'].includes(source.kind)
+      const my_tv = ['my_tv', 'my-tv-series'].includes(source.kind)
         || value?.protected === true || value?.manifest?.protected === true
-      return downloadDomain === 'adult' ? adult : !adult
+      return downloadDomain === 'my_tv' ? my_tv : !my_tv
     }
 
     async function renderDownloads() {
@@ -141,9 +141,9 @@
       if (!root.children.length) root.append(portalEmptyState({
         className: 'downloads-empty',
         title: 'No downloads yet',
-        message: downloadDomain === 'adult'
-          ? 'Download an Adult TV film or episode to see it here.'
-          : 'Download a MabelTV programme or USB video to see it here.',
+        message: downloadDomain === 'my_tv'
+          ? 'Download a My TV film or episode to see it here.'
+          : `Download a ${tvName()} programme or USB video to see it here.`,
       }))
       preservePortalPosition(() => target.replaceChildren(...root.childNodes))
     }

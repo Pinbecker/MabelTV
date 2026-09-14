@@ -76,7 +76,7 @@ test('version-one downloads survive the PWA database and worker upgrade', async 
 })
 
 
-test('the real worker serves family media and PIN-locks Adult media', async ({ page }, testInfo) => {
+test('the real worker serves family media and PIN-locks MyTv media', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One authoritative service-worker run')
   await page.request.get('/__fixture/pin-required?value=1')
   await page.goto('/')
@@ -91,12 +91,12 @@ test('the real worker serves family media and PIN-locks Adult media', async ({ p
         const transaction = database.transaction(['downloads', 'chunks'], 'readwrite')
         for (const [id, kind, data] of [
           ['family-film', 'channel', 'safe'],
-          ['adult-film', 'adult', 'grown'],
+          ['my-tv-film', 'my_tv', 'grown'],
         ]) {
           transaction.objectStore('downloads').put({
             id, title: id, status: 'complete', size: data.length, chunks: 1,
             chunkSize: 4 * 1024 * 1024, mimeType: 'video/mp4',
-            protected: kind === 'adult', source: { kind },
+            protected: kind === 'my_tv', source: { kind },
           })
           transaction.objectStore('chunks').put({
             key: `${id}:0`, downloadId: id, index: 0, data: new Blob([data]),
@@ -111,7 +111,7 @@ test('the real worker serves family media and PIN-locks Adult media', async ({ p
   expect(locked).toBe(true)
 
   await expect.poll(() => page.evaluate(async () => (await fetch('/offline-media/family-film')).status)).toBe(200)
-  await expect.poll(() => page.evaluate(async () => (await fetch('/offline-media/adult-film')).status)).toBe(401)
+  await expect.poll(() => page.evaluate(async () => (await fetch('/offline-media/my-tv-film')).status)).toBe(401)
 
   const unlocked = await page.evaluate(async () => {
     await window.MabelOffline.rememberSecurity(true, '2468')
@@ -131,7 +131,7 @@ test('the real worker serves family media and PIN-locks Adult media', async ({ p
   })
   expect(unlocked.serialised).not.toContain('2468')
   expect(unlocked.stored.digest).toHaveLength(32)
-  await expect.poll(() => page.evaluate(async () => (await fetch('/offline-media/adult-film')).status)).toBe(200)
+  await expect.poll(() => page.evaluate(async () => (await fetch('/offline-media/my-tv-film')).status)).toBe(200)
 })
 
 
@@ -177,8 +177,8 @@ test('warm startup uses the authorised snapshot and loads charts only on demand'
     await page.unroute('**/api/bootstrap')
   }
 
-  await page.locator('[data-view-button="adult-home"]').click()
-  await page.locator('#adultHomeInsightsTab').click()
+  await page.locator('[data-view-button="my-tv-home"]').click()
+  await page.locator('#myTvHomeInsightsTab').click()
   await expect.poll(() => page.evaluate(() => typeof window.Chart)).toBe('function')
 })
 
@@ -202,13 +202,13 @@ test('cached shell keeps every section reachable offline and Downloads functiona
   await expect(page.locator('#offlineUnavailable')).toBeVisible()
   await expect(page.locator('#offlineUnavailableTitle')).toContainText('Home')
 
-  await page.locator('[data-view-button="adult-home"]').click()
-  await expect(page.locator('#offlineUnavailableTitle')).toContainText('Adult TV')
-  await expect(page.locator('#offlineOpenDownloads span')).toHaveText('Open Adult Downloads')
+  await page.locator('[data-view-button="my-tv-home"]').click()
+  await expect(page.locator('#offlineUnavailableTitle')).toContainText('My TV')
+  await expect(page.locator('#offlineOpenDownloads span')).toHaveText('Open My TV Downloads')
   await page.locator('#offlineOpenDownloads').click()
   await expect(page.locator('#offlineUnavailable')).toBeHidden()
   await expect(page.locator('#watchDownloadsLayout')).toBeVisible()
-  await expect(page).toHaveURL(/#adult-downloads$/)
+  await expect(page).toHaveURL(/#my-tv-downloads$/)
 
   await page.locator('[data-view-button="system"]').click()
   await expect(page.locator('#offlineUnavailableTitle')).toContainText('Settings')

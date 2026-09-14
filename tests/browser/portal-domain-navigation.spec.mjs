@@ -3,7 +3,7 @@ import { test, expect } from './test-fixtures.mjs'
 test.use({ serviceWorkers: 'block' })
 
 async function openPortal(page) {
-  await page.route('**/api/adult/tmdb-artwork/**', route => route.fulfill({
+  await page.route('**/api/my-tv/tmdb-artwork/**', route => route.fulfill({
     status: 200,
     contentType: 'image/svg+xml',
     body: '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450"><defs><linearGradient id="g" x2="1" y2="1"><stop stop-color="#217f76"/><stop offset="1" stop-color="#17263b"/></linearGradient></defs><rect width="300" height="450" fill="url(#g)"/><circle cx="210" cy="110" r="76" fill="rgba(255,255,255,.16)"/><path d="M0 360L300 180v270H0z" fill="rgba(0,0,0,.28)"/></svg>',
@@ -49,7 +49,7 @@ async function expectCompactSearch(page, inputSelector) {
   })
 }
 
-test('MabelTV and Adult TV keep compact icon tabs across every section', async ({ page }) => {
+test('Mabel TV and My TV keep compact icon tabs across every section', async ({ page }) => {
   await openPortal(page)
 
   await page.locator('[data-view-button="watch"]').click()
@@ -62,77 +62,77 @@ test('MabelTV and Adult TV keep compact icon tabs across every section', async (
   await expect(page.locator('#watchDownloadsLayout')).toBeVisible()
   await expectCompactDomainTabs(page, '#view-watch')
 
-  await page.locator('[data-view-button="adult-home"]').click()
-  await expectCompactDomainTabs(page, '#view-adult-home')
+  await page.locator('[data-view-button="my-tv-home"]').click()
+  await expectCompactDomainTabs(page, '#view-my-tv-home')
   await expectCompactSearch(page, '#watchSearch')
-  await expect(page.locator('#adultHomeReleased .adult-release-cinema-tag'))
+  await expect(page.locator('#myTvHomeReleased .my-tv-release-cinema-tag'))
     .toHaveText('Cinema')
-  await expect(page.locator('#adultHomeReleased .adult-explore-card').first()
-    .locator('.adult-provider-strip')).toHaveCount(0)
+  await expect(page.locator('#myTvHomeReleased .my-tv-explore-card').first()
+    .locator('.my-tv-provider-strip')).toHaveCount(0)
   const releaseMeta = await page.locator(
-    '#adultHomeReleased .adult-explore-open-copy small',
+    '#myTvHomeReleased .my-tv-explore-open-copy small',
   ).allTextContents()
   expect(releaseMeta.every(value => value && !value.includes(' · '))).toBe(true)
   await expect(page.locator(
-    '#adultHomeForYou .adult-release-cinema-tag, #adultHomeDifferent .adult-release-cinema-tag',
+    '#myTvHomeForYou .my-tv-release-cinema-tag, #myTvHomeDifferent .my-tv-release-cinema-tag',
   )).toHaveCount(0)
-  await page.locator('#adultHomeInsightsTab').click()
-  await expect(page.locator('#adultInsightsDashboard')).toBeVisible()
+  await page.locator('#myTvHomeInsightsTab').click()
+  await expect(page.locator('#myTvInsightsDashboard')).toBeVisible()
   await expectCompactDomainTabs(page, '#view-insights')
   await page.locator('#insightsDownloadsTab').click()
   await expect(page.locator('#watchDownloadsLayout')).toBeVisible()
   await expectCompactDomainTabs(page, '#view-watch')
 })
 
-test('@visual MabelTV and Adult TV each keep the same three-section structure', async ({ page }, testInfo) => {
+test('@visual Mabel TV and My TV each keep the same three-section structure', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone navigation contract')
   await openPortal(page)
 
   await expect(page.locator('#mainNav [data-view-button] span')).toHaveText([
-    'Home', 'MabelTV', 'Remote', 'Adult TV', 'Settings',
+    'Home', 'Mabel TV', 'Remote', 'My TV', 'Settings',
   ])
 
   await page.locator('[data-view-button="watch"]').click()
-  await expect(page.locator('#watchDomainTitle')).toHaveText('MabelTV')
+  await expect(page.locator('#watchDomainTitle')).toHaveText('Mabel TV')
   await expect(page.locator('#view-watch .watch-tabs button span')).toHaveText([
     'Watch', 'Insights', 'Downloads',
   ])
   await expect(page.locator('#watchMabelLayout')).toBeVisible()
   const mabelWatchTitle = await page.locator('#view-watch .watch-title').boundingBox()
   await page.locator('#watchMabelInsightsTab').click()
-  await expect(page.locator('#insightsDomainTitle')).toHaveText('MabelTV')
+  await expect(page.locator('#insightsDomainTitle')).toHaveText('Mabel TV')
   await expect(page.locator('#mabelInsightsDashboard')).toBeVisible()
   const mabelInsightsTitle = await page.locator('#view-insights .watch-title').boundingBox()
   expect(Math.abs(mabelInsightsTitle.height - mabelWatchTitle.height)).toBeLessThan(1)
   await page.locator('#insightsDownloadsTab').click()
-  await expect(page.locator('#watchDomainTitle')).toHaveText('MabelTV')
+  await expect(page.locator('#watchDomainTitle')).toHaveText('Mabel TV')
   await expect(page.locator('#watchDownloadsLayout')).toBeVisible()
 
-  await page.locator('[data-view-button="adult-home"]').click()
-  await expect(page.locator('#view-adult-home h1')).toHaveText('Adult TV')
-  await expect(page.locator('#view-adult-home .watch-tabs button span')).toHaveText([
+  await page.locator('[data-view-button="my-tv-home"]').click()
+  await expect(page.locator('#view-my-tv-home h1')).toHaveText('My TV')
+  await expect(page.locator('#view-my-tv-home .watch-tabs button span')).toHaveText([
     'Watch', 'Insights', 'Downloads',
   ])
   await expect(page.locator('#watchSearch')).toHaveAttribute('placeholder', 'Search anything')
-  await expect(page.locator('#adultMyViewing')).toBeVisible()
-  await expect(page.locator('#openHeaderAdultTv')).toHaveCount(0)
-  const adultWatchTitle = await page.locator('#view-adult-home .watch-title').boundingBox()
-  expect(Math.abs(adultWatchTitle.height - mabelWatchTitle.height)).toBeLessThan(1)
-  const sectionOrder = await page.locator('#view-adult-home').evaluate(view => [
-    'adultHomeContinueSection', 'adultHomeUpNextSection',
-    'adultHomeReleasedSection', 'adultHomeForYouSection', 'adultHomeDifferentSection',
+  await expect(page.locator('#myTvMyViewing')).toBeVisible()
+  await expect(page.locator('#openHeaderMyTvTv')).toHaveCount(0)
+  const myTvWatchTitle = await page.locator('#view-my-tv-home .watch-title').boundingBox()
+  expect(Math.abs(myTvWatchTitle.height - mabelWatchTitle.height)).toBeLessThan(1)
+  const sectionOrder = await page.locator('#view-my-tv-home').evaluate(view => [
+    'myTvHomeContinueSection', 'myTvHomeUpNextSection',
+    'myTvHomeReleasedSection', 'myTvHomeForYouSection', 'myTvHomeDifferentSection',
   ].map(id => [...view.querySelectorAll('section')].indexOf(view.querySelector(`#${id}`))))
   expect(sectionOrder).toEqual([...sectionOrder].sort((left, right) => left - right))
-  await expect(page.locator('#adultHomeForYou .adult-explore-card')).toHaveCount(8)
-  await expect(page.locator('#adultHomeReleased .adult-explore-card')).toHaveCount(16)
-  await expect(page.locator('#adultHomeReleasedSection')).toHaveClass(/adult-home-release-card/)
-  await expect(page.locator('#adultHomeReleasedSection .adult-home-swipe-cue')).toBeVisible()
-  await expect(page.locator('#adultHomeReleased')).toHaveCSS('overflow-x', 'auto')
-  const releasedWidths = await page.locator('#adultHomeReleased .adult-explore-card')
+  await expect(page.locator('#myTvHomeForYou .my-tv-explore-card')).toHaveCount(8)
+  await expect(page.locator('#myTvHomeReleased .my-tv-explore-card')).toHaveCount(16)
+  await expect(page.locator('#myTvHomeReleasedSection')).toHaveClass(/my-tv-home-release-card/)
+  await expect(page.locator('#myTvHomeReleasedSection .my-tv-home-swipe-cue')).toBeVisible()
+  await expect(page.locator('#myTvHomeReleased')).toHaveCSS('overflow-x', 'auto')
+  const releasedWidths = await page.locator('#myTvHomeReleased .my-tv-explore-card')
     .evaluateAll(cards => cards.slice(0, 5).map(card => card.getBoundingClientRect().width))
   expect(releasedWidths.every(width => width > 70)).toBe(true)
-  await expect(page.locator('#adultHomeDifferent .adult-explore-card')).toHaveCount(8)
-  const caption = await page.locator('#adultHomeForYou .adult-explore-open-copy').first()
+  await expect(page.locator('#myTvHomeDifferent .my-tv-explore-card')).toHaveCount(8)
+  const caption = await page.locator('#myTvHomeForYou .my-tv-explore-open-copy').first()
     .evaluate(copy => {
       const title = copy.querySelector('strong')
       const copyBox = copy.getBoundingClientRect()
@@ -146,30 +146,30 @@ test('@visual MabelTV and Adult TV each keep the same three-section structure', 
       }
     })
   expect(caption).toEqual({ leftOffset: 0, textAlign: 'left', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })
-  const continueCard = page.locator('#adultHomeContinueRail .watch-continue-card').first()
+  const continueCard = page.locator('#myTvHomeContinueRail .watch-continue-card').first()
   if (await continueCard.count()) {
     expect((await continueCard.boundingBox()).width).toBeLessThanOrEqual(225)
     await expect(continueCard.locator('.watch-continue-copy i')).toHaveCount(0)
   }
-  await expect(page.locator('#adultHomeForYou .adult-provider-strip').first()).toBeVisible()
-  await expect(page.locator('#adultHomeForYou .adult-provider-strip img').first())
+  await expect(page.locator('#myTvHomeForYou .my-tv-provider-strip').first()).toBeVisible()
+  await expect(page.locator('#myTvHomeForYou .my-tv-provider-strip img').first())
     .toHaveAttribute('src', /apple-touch-icon|providers/)
-  await expect(page.locator('#adultHomeForYou .adult-provider-strip img').first())
+  await expect(page.locator('#myTvHomeForYou .my-tv-provider-strip img').first())
     .toHaveCSS('width', '17px')
-  await expect(page.locator('#view-adult-home')).not.toContainText('Tonight')
-  await expect(page.locator('#view-adult-home')).not.toContainText('Ready on MabelTV')
-  await expect(page.locator('#view-adult-home')).not.toContainText('Your history balanced')
+  await expect(page.locator('#view-my-tv-home')).not.toContainText('Tonight')
+  await expect(page.locator('#view-my-tv-home')).not.toContainText('Ready on Mabel TV')
+  await expect(page.locator('#view-my-tv-home')).not.toContainText('Your history balanced')
   await page.waitForTimeout(250)
   await page.evaluate(() => window.scrollTo(0, 0))
-  await expect(page).toHaveScreenshot('adult-tv-watch.png')
+  await expect(page).toHaveScreenshot('my-tv-watch.png')
 
-  await page.locator('#adultHomeInsightsTab').click()
-  await expect(page.locator('#insightsDomainTitle')).toHaveText('Adult TV')
-  await expect(page.locator('#adultInsightsDashboard')).toBeVisible()
-  const adultInsightsTitle = await page.locator('#view-insights .watch-title').boundingBox()
-  expect(Math.abs(adultInsightsTitle.height - adultWatchTitle.height)).toBeLessThan(1)
+  await page.locator('#myTvHomeInsightsTab').click()
+  await expect(page.locator('#insightsDomainTitle')).toHaveText('My TV')
+  await expect(page.locator('#myTvInsightsDashboard')).toBeVisible()
+  const myTvInsightsTitle = await page.locator('#view-insights .watch-title').boundingBox()
+  expect(Math.abs(myTvInsightsTitle.height - myTvWatchTitle.height)).toBeLessThan(1)
   await page.locator('#insightsDownloadsTab').click()
-  await expect(page.locator('#watchDomainTitle')).toHaveText('Adult TV')
+  await expect(page.locator('#watchDomainTitle')).toHaveText('My TV')
   await expect(page.locator('#watchDownloadsLayout')).toBeVisible()
 })
 
@@ -181,18 +181,18 @@ test('Up Next cards reorder with a deliberate press and drag', async ({ page }, 
     { key: 'movie:703', media_type: 'movie', tmdb_id: 703, title: 'Third film', year: '2022', poster_path: '/third.jpg', up_next: true, up_next_rank: 3 },
   ]
   let savedOrder = []
-  await page.route('**/api/adult/viewing', route => route.fulfill({
+  await page.route('**/api/my-tv/viewing', route => route.fulfill({
     status: 200, contentType: 'application/json', body: JSON.stringify({ items, region: 'GB' }),
   }))
-  await page.route('**/api/adult/viewing/reorder', async route => {
+  await page.route('**/api/my-tv/viewing/reorder', async route => {
     savedOrder = (await route.request().postDataJSON()).keys
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, keys: savedOrder }) })
   })
   await openPortal(page)
-  await page.locator('[data-view-button="adult-home"]').click()
-  await page.locator('#adultMyViewing').click()
+  await page.locator('[data-view-button="my-tv-home"]').click()
+  await page.locator('#myTvMyViewing').click()
   await page.locator('[data-viewing-tab="up-next"]').click()
-  const cards = page.locator('#adultViewingGrid > .adult-viewing-row')
+  const cards = page.locator('#myTvViewingGrid > .my-tv-viewing-row')
   await expect(cards).toHaveCount(3)
   const first = await cards.nth(0).boundingBox()
   const third = await cards.nth(2).boundingBox()
@@ -219,10 +219,10 @@ test('Up Next cards reorder with a deliberate press and drag', async ({ page }, 
 
 test('Watch and Insights retain their completed screens without rebuilding them', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'Phone persistence contract')
-  const requests = { adult: 0, mabel: 0 }
+  const requests = { my_tv: 0, mabel: 0 }
   page.on('request', request => {
     const url = new URL(request.url())
-    if (url.pathname === '/api/adult/insights') requests.adult += 1
+    if (url.pathname === '/api/my-tv/insights') requests.my_tv += 1
     if (url.pathname === '/api/viewing-insights/overview') requests.mabel += 1
   })
   await openPortal(page)
@@ -235,21 +235,21 @@ test('Watch and Insights retain their completed screens without rebuilding them'
   await page.locator('#viewingTimelineChart > *').first().evaluate(node => { node.dataset.persistenceProbe = 'mabel-insights' })
   const firstMabelRequests = requests.mabel
 
-  await page.locator('[data-view-button="adult-home"]').click()
-  await expect(page.locator('#adultHomeForYou .adult-explore-card')).toHaveCount(8)
-  await page.locator('#adultHomeForYou .adult-explore-card').first()
-    .evaluate(node => { node.dataset.persistenceProbe = 'adult-watch' })
-  await page.locator('#adultHomeInsightsTab').click()
-  await expect(page.locator('#adultInsightWatched')).not.toHaveText('0')
-  await page.locator('#adultInsightRatingChart > *').first()
-    .evaluate(node => { node.dataset.persistenceProbe = 'adult-insights' })
-  const firstAdultRequests = requests.adult
+  await page.locator('[data-view-button="my-tv-home"]').click()
+  await expect(page.locator('#myTvHomeForYou .my-tv-explore-card')).toHaveCount(8)
+  await page.locator('#myTvHomeForYou .my-tv-explore-card').first()
+    .evaluate(node => { node.dataset.persistenceProbe = 'my-tv-watch' })
+  await page.locator('#myTvHomeInsightsTab').click()
+  await expect(page.locator('#myTvInsightWatched')).not.toHaveText('0')
+  await page.locator('#myTvInsightRatingChart > *').first()
+    .evaluate(node => { node.dataset.persistenceProbe = 'my-tv-insights' })
+  const firstMyTvRequests = requests.my_tv
 
   await page.locator('#insightsWatchTab').click()
-  await expect(page.locator('[data-persistence-probe="adult-watch"]')).toBeVisible()
-  await page.locator('#adultHomeInsightsTab').click()
-  await expect(page.locator('[data-persistence-probe="adult-insights"]')).toBeVisible()
-  expect(requests.adult).toBe(firstAdultRequests)
+  await expect(page.locator('[data-persistence-probe="my-tv-watch"]')).toBeVisible()
+  await page.locator('#myTvHomeInsightsTab').click()
+  await expect(page.locator('[data-persistence-probe="my-tv-insights"]')).toBeVisible()
+  expect(requests.my_tv).toBe(firstMyTvRequests)
 
   await page.locator('[data-view-button="watch"]').click()
   await expect(page.locator('[data-persistence-probe="mabel-insights"]')).toBeVisible()
@@ -267,10 +267,10 @@ test('stored Insights paint immediately while an old view refreshes behind them'
   await expect.poll(() => page.evaluate(() => Boolean(
     viewingResource('overview', '7')))).toBe(true)
   const mabelTotal = await page.locator('#viewingRangeTotal').textContent()
-  await page.locator('[data-view-button="adult-home"]').click()
-  await page.locator('#adultHomeInsightsTab').click()
-  await expect(page.locator('#adultInsightWatched')).not.toHaveText('0')
-  const adultTotal = await page.locator('#adultInsightWatched').textContent()
+  await page.locator('[data-view-button="my-tv-home"]').click()
+  await page.locator('#myTvHomeInsightsTab').click()
+  await expect(page.locator('#myTvInsightWatched')).not.toHaveText('0')
+  const myTvTotal = await page.locator('#myTvInsightWatched').textContent()
   await page.evaluate(async () => {
     const database = await new Promise((resolve, reject) => {
       const request = indexedDB.open(window.MabelAppCache.databaseName)
@@ -279,7 +279,7 @@ test('stored Insights paint immediately while an old view refreshes behind them'
     })
     const transaction = database.transaction('snapshots', 'readwrite')
     const store = transaction.objectStore('snapshots')
-    for (const key of ['mabel-insights-v2-overview-7', 'adult-insights-v1']) {
+    for (const key of ['mabel-insights-v2-overview-7', 'my-tv-insights-v1']) {
       const cached = await new Promise((resolve, reject) => {
         const request = store.get(key)
         request.onsuccess = () => resolve(request.result)
@@ -299,16 +299,16 @@ test('stored Insights paint immediately while an old view refreshes behind them'
     await new Promise(resolve => setTimeout(resolve, 1200))
     await route.continue()
   })
-  await page.route('**/api/adult/insights', async route => {
+  await page.route('**/api/my-tv/insights', async route => {
     await new Promise(resolve => setTimeout(resolve, 1200))
     await route.continue()
   })
   await page.reload()
   await expect(page.locator('.app-shell')).toBeVisible()
 
-  await page.locator('[data-view-button="adult-home"]').click()
-  await page.locator('#adultHomeInsightsTab').click()
-  await expect(page.locator('#adultInsightWatched')).toHaveText(adultTotal, { timeout: 400 })
+  await page.locator('[data-view-button="my-tv-home"]').click()
+  await page.locator('#myTvHomeInsightsTab').click()
+  await expect(page.locator('#myTvInsightWatched')).toHaveText(myTvTotal, { timeout: 400 })
   await page.locator('[data-view-button="watch"]').click()
   await page.locator('#watchMabelInsightsTab').click()
   await expect(page.locator('#viewingRangeTotal')).toHaveText(mabelTotal, { timeout: 400 })
@@ -316,7 +316,7 @@ test('stored Insights paint immediately while an old view refreshes behind them'
 
 test('Search anything includes people and opens their reusable card', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone search contract')
-  await page.route('**/api/adult/discovery?*', route => route.fulfill({
+  await page.route('**/api/my-tv/discovery?*', route => route.fulfill({
     status: 200,
     contentType: 'application/json',
     body: JSON.stringify({ query: 'Jane', results: [{
@@ -325,7 +325,7 @@ test('Search anything includes people and opens their reusable card', async ({ p
       known_for_department: 'Directing',
     }] }),
   }))
-  await page.route('**/api/adult/person?*', route => route.fulfill({
+  await page.route('**/api/my-tv/person?*', route => route.fulfill({
     status: 200,
     contentType: 'application/json',
     body: JSON.stringify({
@@ -335,13 +335,13 @@ test('Search anything includes people and opens their reusable card', async ({ p
   }))
   await openPortal(page)
 
-  await page.locator('[data-view-button="adult-home"]').click()
+  await page.locator('[data-view-button="my-tv-home"]').click()
   await page.locator('#watchSearch').fill('Jane')
-  const result = page.locator('#adultDiscoveryGrid .watch-card')
+  const result = page.locator('#myTvDiscoveryGrid .watch-card')
   await expect(result).toHaveCount(1)
   await expect(result).toContainText('Jane Director')
   await expect(result).toContainText('Directing')
   await result.click()
-  await expect(page.locator('#adultPersonSheet')).toBeVisible()
-  await expect(page.locator('#adultPersonName')).toHaveText('Jane Director')
+  await expect(page.locator('#myTvPersonSheet')).toBeVisible()
+  await expect(page.locator('#myTvPersonName')).toHaveText('Jane Director')
 })

@@ -24,7 +24,7 @@ class ViewingIntentTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.fixture.close()
 
-    def test_channel_films_are_separate_from_adult_tv_viewing(self) -> None:
+    def test_channel_films_are_separate_from_myTv_viewing(self) -> None:
         self.fixture.library.write_state("channels", json.loads(json.dumps({
             "schema_version": 1,
             "channels": [{"number": 5, "name": "Films", "folder": "films",
@@ -44,57 +44,57 @@ class ViewingIntentTests(unittest.TestCase):
             "channel_film_durations": {"5/The Matrix.mp4": 8100},
         })))
 
-        self.assertNotIn("movie:603", self.fixture.library.adult_local_title_index())
+        self.assertNotIn("movie:603", self.fixture.library.my_tv_local_title_index())
         self.assertFalse(any(item["key"] == "movie:603"
-                             for item in self.fixture.library.adult_viewing()["items"]))
+                             for item in self.fixture.library.my_tv_viewing()["items"]))
 
-        self.fixture.library.adult_viewing_update({
+        self.fixture.library.my_tv_viewing_update({
             "action": "watchlist", "enabled": True,
             "media_type": "movie", "tmdb_id": 603,
             "title": "The Matrix", "year": "1999",
         })
-        saved = self.fixture.library.adult_viewing_update({
+        saved = self.fixture.library.my_tv_viewing_update({
             "action": "up_next", "enabled": True,
             "media_type": "movie", "tmdb_id": 603,
             "title": "The Matrix", "year": "1999",
         })
         self.assertTrue(saved["viewing"]["watchlisted"])
         self.assertTrue(saved["viewing"]["up_next"])
-        matches = [item for item in self.fixture.library.adult_viewing()["items"]
+        matches = [item for item in self.fixture.library.my_tv_viewing()["items"]
                    if item["key"] == "movie:603"]
         self.assertEqual(len(matches), 1)
         self.assertFalse(matches[0]["on_mabeltv"])
         self.assertIsNone(matches[0]["local"])
 
-        store = self.fixture.library.adult_viewing_store()
+        store = self.fixture.library.my_tv_viewing_store()
         store["titles"]["movie:603"]["local_progress"] = {
             "kind": "channel-film", "position": 1200,
         }
-        self.fixture.library.write_state("adult_viewing", store)
-        migrated = next(item for item in self.fixture.library.adult_viewing()["items"]
+        self.fixture.library.write_state("my_tv_viewing", store)
+        migrated = next(item for item in self.fixture.library.my_tv_viewing()["items"]
                         if item["key"] == "movie:603")
         self.assertNotIn("local_progress", migrated)
         self.assertTrue(migrated["watchlisted"])
 
-        adult_copy = self.fixture.library.adult_root / "Films" / "The Matrix 4K.mkv"
-        adult_copy.parent.mkdir(parents=True)
-        adult_copy.write_bytes(b"adult-film")
-        self.fixture.library.adult_library()
-        adult_states = self.fixture.library.adult_media_states()
-        adult_states["Films/The Matrix 4K.mkv"]["metadata"] = {
+        my_tv_copy = self.fixture.library.my_tv_root / "Films" / "The Matrix 4K.mkv"
+        my_tv_copy.parent.mkdir(parents=True)
+        my_tv_copy.write_bytes(b"my-tv-film")
+        self.fixture.library.my_tv_library()
+        my_tv_states = self.fixture.library.my_tv_media_states()
+        my_tv_states["Films/The Matrix 4K.mkv"]["metadata"] = {
             "tmdb_id": 603, "title": "The Matrix", "year": "1999",
         }
-        self.fixture.library.write_adult_media_states(adult_states)
-        local_adult = self.fixture.library.adult_local_title_index()["movie:603"]
-        self.assertEqual(local_adult["kind"], "film")
-        self.assertEqual(local_adult["path"], "Films/The Matrix 4K.mkv")
+        self.fixture.library.write_my_tv_media_states(my_tv_states)
+        local_my_tv = self.fixture.library.my_tv_local_title_index()["movie:603"]
+        self.assertEqual(local_my_tv["kind"], "film")
+        self.assertEqual(local_my_tv["path"], "Films/The Matrix 4K.mkv")
 
-    def test_only_adult_film_sheets_use_shared_viewing_intent_component(self) -> None:
-        self.assertIn('id="adultTitleIntents"', PORTAL_OVERLAY_MARKUP)
+    def test_only_my_tv_film_sheets_use_shared_viewing_intent_component(self) -> None:
+        self.assertIn('id="myTvTitleIntents"', PORTAL_OVERLAY_MARKUP)
         self.assertIn('id="watchFilmViewingActions"', PORTAL_OVERLAY_MARKUP)
         self.assertIn('id="watchProgrammeViewingActions"', PORTAL_OVERLAY_MARKUP)
         self.assertIn("function decorateViewingIntentActions()", PORTAL_SCRIPT)
-        self.assertIn("function wireAdultTitleIntentActions", PORTAL_SCRIPT)
+        self.assertIn("function wireMyTvTitleIntentActions", PORTAL_SCRIPT)
         self.assertNotIn("wireLocalFilmViewingActions(viewingActions, programme)",
                          PORTAL_SCRIPT)
         self.assertIn("wireLocalFilmViewingActions(viewingActions, film)",
@@ -102,9 +102,9 @@ class ViewingIntentTests(unittest.TestCase):
 
     def test_part_watched_series_is_a_progress_fact_not_a_list_intent(self) -> None:
         title = {"media_type": "tv", "tmdb_id": 243360, "title": "Ludwig"}
-        self.fixture.library.adult_viewing_update(
+        self.fixture.library.my_tv_viewing_update(
             title | {"action": "watched"})
-        saved = self.fixture.library.adult_viewing_update(
+        saved = self.fixture.library.my_tv_viewing_update(
             title | {"action": "part_watched"})["viewing"]
 
         self.assertEqual(saved["manual_state"], "part_watched")
@@ -116,16 +116,16 @@ class ViewingIntentTests(unittest.TestCase):
     def test_personal_rating_requires_watched_and_can_be_cleared(self) -> None:
         title = {"media_type": "movie", "tmdb_id": 603, "title": "The Matrix"}
         with self.assertRaises(ValueError):
-            self.fixture.library.adult_viewing_update(
+            self.fixture.library.my_tv_viewing_update(
                 title | {"action": "rating", "rating": 9})
-        self.fixture.library.adult_viewing_update(title | {"action": "watched"})
-        saved = self.fixture.library.adult_viewing_update(
+        self.fixture.library.my_tv_viewing_update(title | {"action": "watched"})
+        saved = self.fixture.library.my_tv_viewing_update(
             title | {"action": "rating", "rating": 9})["viewing"]
         self.assertEqual(saved["personal_rating"], 9)
         self.assertGreater(saved["rating_updated"], 0)
         self.assertEqual(saved["manual_state"], "watched")
 
-        cleared = self.fixture.library.adult_viewing_update(
+        cleared = self.fixture.library.my_tv_viewing_update(
             title | {"action": "rating", "rating": 0})["viewing"]
         self.assertNotIn("personal_rating", cleared)
 
@@ -134,7 +134,7 @@ class ViewingIntentTests(unittest.TestCase):
                  "action": "rating"}
         for rating in (-1, 11, 7.5, True, "bad"):
             with self.subTest(rating=rating), self.assertRaises(ValueError):
-                self.fixture.library.adult_viewing_update(title | {"rating": rating})
+                self.fixture.library.my_tv_viewing_update(title | {"rating": rating})
 
     def test_up_next_order_can_be_saved_atomically(self) -> None:
         titles = [
@@ -143,72 +143,72 @@ class ViewingIntentTests(unittest.TestCase):
             {"media_type": "tv", "tmdb_id": 603, "title": "Third"},
         ]
         for title in titles:
-            self.fixture.library.adult_viewing_update(
+            self.fixture.library.my_tv_viewing_update(
                 title | {"action": "up_next", "enabled": True})
 
-        result = self.fixture.library.adult_up_next_reorder({
+        result = self.fixture.library.my_tv_up_next_reorder({
             "keys": ["tv:603", "movie:601", "movie:602"],
         })
         self.assertEqual(result["keys"], ["tv:603", "movie:601", "movie:602"])
-        store = self.fixture.library.adult_viewing_store()["titles"]
+        store = self.fixture.library.my_tv_viewing_store()["titles"]
         self.assertEqual(store["tv:603"]["up_next_rank"], 1)
         self.assertEqual(store["movie:601"]["up_next_rank"], 2)
         self.assertEqual(store["movie:602"]["up_next_rank"], 3)
 
         with self.assertRaisesRegex(ValueError, "changed"):
-            self.fixture.library.adult_up_next_reorder({
+            self.fixture.library.my_tv_up_next_reorder({
                 "keys": ["movie:601", "movie:602"],
             })
 
     def test_empty_series_container_is_not_on_mabeltv(self) -> None:
-        series_id = self.fixture.library.create_adult_series("Ludwig")
-        states = self.fixture.library.adult_series_states()
+        series_id = self.fixture.library.create_my_tv_series("Ludwig")
+        states = self.fixture.library.my_tv_series_states()
         states["series"][series_id]["metadata"] = {
             "tmdb_id": 243360, "title": "Ludwig",
         }
-        self.fixture.library.write_adult_series_states(states)
+        self.fixture.library.write_my_tv_series_states(states)
 
-        self.assertNotIn("tv:243360", self.fixture.library.adult_local_title_index())
+        self.assertNotIn("tv:243360", self.fixture.library.my_tv_local_title_index())
 
-    def test_reading_adult_viewing_does_not_rewrite_unchanged_local_progress(self) -> None:
-        self.fixture.library.adult_local_title_index = lambda: {"movie:603": {
+    def test_reading_my_tv_viewing_does_not_rewrite_unchanged_local_progress(self) -> None:
+        self.fixture.library.my_tv_local_title_index = lambda: {"movie:603": {
             "kind": "film", "path": "Films/The Matrix.mkv", "position": 420,
             "duration": 8100, "title": "The Matrix",
         }}
         writes = 0
-        original_write = self.fixture.library.save_adult_titles
+        original_write = self.fixture.library.save_my_tv_titles
 
         def count_write(value):
             nonlocal writes
             writes += 1
             original_write(value)
 
-        self.fixture.library.save_adult_titles = count_write
+        self.fixture.library.save_my_tv_titles = count_write
 
-        self.fixture.library.adult_viewing()
+        self.fixture.library.my_tv_viewing()
         first = writes
-        self.fixture.library.adult_viewing()
+        self.fixture.library.my_tv_viewing()
         second = writes
 
         self.assertEqual(first, 1)
         self.assertEqual(first, second)
 
     def test_series_restart_clears_all_progress_but_preserves_manual_lists(self) -> None:
-        series_id = self.fixture.library.create_adult_series("Ludwig")
-        root = self.fixture.library.adult_series_root / series_id / "Season 1"
+        series_id = self.fixture.library.create_my_tv_series("Ludwig")
+        root = self.fixture.library.my_tv_series_root / series_id / "Season 1"
         root.mkdir()
         episode = root / "Ludwig.S01E01.mp4"
         episode.write_bytes(b"episode")
-        self.fixture.library.adult_series_library()
-        states = self.fixture.library.adult_series_states()
+        self.fixture.library.my_tv_series_library()
+        states = self.fixture.library.my_tv_series_states()
         states["series"][series_id]["metadata"] = {
             "tmdb_id": 243360, "title": "Ludwig",
         }
         saved_episode = next(iter(states["episodes"].values()))
         saved_episode.update({"watched": True, "remote_position": 420.0,
                               "remote_last_watched": 1234.0})
-        self.fixture.library.write_adult_series_states(states)
-        store = self.fixture.library.adult_viewing_store()
+        self.fixture.library.write_my_tv_series_states(states)
+        store = self.fixture.library.my_tv_viewing_store()
         store["titles"]["tv:243360"] = {
             "media_type": "tv", "tmdb_id": 243360, "title": "Ludwig",
             "manual_state": "watched", "history": [1234.0],
@@ -217,11 +217,11 @@ class ViewingIntentTests(unittest.TestCase):
             },
             "watchlisted": True, "up_next": True, "series_watching": True,
         }
-        self.fixture.library.write_state("adult_viewing", store)
+        self.fixture.library.write_state("my_tv_viewing", store)
 
-        result = self.fixture.library.restart_adult_series_progress(series_id, "series")
-        refreshed = self.fixture.library.adult_series_library()[0]["episodes"][0]
-        viewing = self.fixture.library.adult_viewing_store()["titles"]["tv:243360"]
+        result = self.fixture.library.restart_my_tv_series_progress(series_id, "series")
+        refreshed = self.fixture.library.my_tv_series_library()[0]["episodes"][0]
+        viewing = self.fixture.library.my_tv_viewing_store()["titles"]["tv:243360"]
 
         self.assertFalse(result["preserved_watched"])
         self.assertEqual(result["episodes_reset"], 2)

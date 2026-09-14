@@ -64,14 +64,14 @@ class ViewingMixin:
             "source": activity.get("channel_name"),
         }])
         if not values:
-            raise ValueError("Viewing item is no longer in the MabelTV library")
+            raise ValueError(f"Viewing item is no longer in the {self.tv_identity()[1]} library")
         return {**activity, "viewing_item_id": values[0]["item_id"],
                 "item_key": values[0]["item_key"]}
 
     def current_tv_viewing(self, mode: dict[str, Any] | None = None) -> dict[str, Any] | None:
         """Return one active programme with aggregate and exact programme identity."""
         mode = self.player_mode_status() if mode is None else mode
-        if mode.get("standby") is True or mode.get("mode") == "adult":
+        if mode.get("standby") is True or mode.get("mode") == "my_tv":
             return None
         state = self.read_state("player")
         if (not isinstance(state, dict) or state.get("standby") is True
@@ -158,7 +158,7 @@ class ViewingMixin:
             channel = self.channel(number)
         except (TypeError, ValueError):
             return
-        channel_name = str(channel.get("name") or "MabelTV")
+        channel_name = str(channel.get("name") or self.tv_identity()[1])
         file_name = str(session.get("file") or Path(str(
             session.get("source", "Video"))).name)
         programme_title = str(session.get("title") or self.display_name(file_name))
@@ -230,7 +230,8 @@ class ViewingMixin:
                 metadata = channel_metadata.get(str(number), {}) \
                     if isinstance(channel_metadata, dict) else {}
                 entries.append({"kind": "channel", "channel_number": number,
-                                "title": source, "source": "MabelTV series channel",
+                                "title": source,
+                                "source": f"{self.tv_identity()[1]} series channel",
                                 "file_name": None,
                                 "artwork": str(metadata.get("artwork") or "")
                                 if isinstance(metadata, dict) else "", "available": True})

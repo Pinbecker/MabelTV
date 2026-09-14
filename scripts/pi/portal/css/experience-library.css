@@ -231,18 +231,18 @@ body.portal-v2 .library-actions strong { font-size: 13px; }
 body.portal-v2 .library-actions small { color: var(--experience-dim); font-size: 10px; }
 body.portal-v2 .count-badge { display: grid; place-items: center; min-width: 25px; height: 25px; border-radius: 999px; background: var(--experience-soft); color: var(--experience-muted); font-size: 10px; }
 
-/* Adult library management */
-body.portal-v2 .adult-library-head { align-items: center; }
+/* MyTv library management */
+body.portal-v2 .my-tv-library-head { align-items: center; }
 
-body.portal-v2 .adult-total {
+body.portal-v2 .my-tv-total {
   display: grid;
   justify-items: end;
 }
 
-body.portal-v2 .adult-total strong { font-size: 28px; letter-spacing: -0.05em; }
-body.portal-v2 .adult-total span { color: var(--experience-dim); font-size: 9px; text-transform: uppercase; }
+body.portal-v2 .my-tv-total strong { font-size: 28px; letter-spacing: -0.05em; }
+body.portal-v2 .my-tv-total span { color: var(--experience-dim); font-size: 9px; text-transform: uppercase; }
 
-body.portal-v2 .adult-discovery {
+body.portal-v2 .my-tv-discovery {
   display: grid;
   grid-template-columns: minmax(240px, 1fr) 190px;
   gap: 10px;
@@ -255,13 +255,13 @@ body.portal-v2 .tmdb-state {
   font-size: 10px;
 }
 
-body.portal-v2 .adult-film-list {
+body.portal-v2 .my-tv-film-list {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 24px 12px;
 }
 
-body.portal-v2 .adult-film {
+body.portal-v2 .my-tv-film {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -276,7 +276,7 @@ body.portal-v2 .adult-film {
   text-align: left;
 }
 
-body.portal-v2 .adult-film-poster {
+body.portal-v2 .my-tv-film-poster {
   display: grid;
   place-items: center;
   width: 100%;
@@ -289,7 +289,7 @@ body.portal-v2 .adult-film-poster {
   object-fit: cover;
 }
 
-body.portal-v2 .adult-optimisation-badge {
+body.portal-v2 .my-tv-optimisation-badge {
   position: absolute;
   z-index: 3;
   top: 8px;
@@ -309,42 +309,42 @@ body.portal-v2 .adult-optimisation-badge {
   backdrop-filter: blur(8px);
 }
 
-body.portal-v2 .watch-card-art > .adult-optimisation-badge,
-body.portal-v2 .watch-continue-art > .adult-optimisation-badge {
+body.portal-v2 .watch-card-art > .my-tv-optimisation-badge,
+body.portal-v2 .watch-continue-art > .my-tv-optimisation-badge {
   top: 7px;
   left: 7px;
 }
 
-body.portal-v2 .adult-film.is-optimising .adult-film-poster,
+body.portal-v2 .my-tv-film.is-optimising .my-tv-film-poster,
 body.portal-v2 .watch-card.is-optimising .watch-card-art {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--experience-orange) 62%, transparent);
 }
 
-body.portal-v2 .adult-film-copy {
+body.portal-v2 .my-tv-film-copy {
   display: grid;
   min-width: 0;
   gap: 2px;
   padding: 8px 22px 0 0;
 }
 
-body.portal-v2 .adult-film-copy strong,
-body.portal-v2 .adult-film-copy small {
+body.portal-v2 .my-tv-film-copy strong,
+body.portal-v2 .my-tv-film-copy small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-body.portal-v2 .adult-film-copy strong { font-size: 12px; }
-body.portal-v2 .adult-film-copy small { color: var(--experience-dim); font-size: 9px; }
+body.portal-v2 .my-tv-film-copy strong { font-size: 12px; }
+body.portal-v2 .my-tv-film-copy small { color: var(--experience-dim); font-size: 9px; }
 
-body.portal-v2 .adult-film-more {
+body.portal-v2 .my-tv-film-more {
   position: absolute;
   right: 1px;
   bottom: 1px;
   color: var(--experience-dim);
 }
 
-body.portal-v2 .adult-film-more svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; }
+body.portal-v2 .my-tv-film-more svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; }
 
 /* USB is a calm choose, browse, review and transfer workflow. */
 body.portal-v2 .usb-flow { margin-top: 0; }

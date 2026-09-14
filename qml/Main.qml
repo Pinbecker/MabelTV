@@ -32,15 +32,15 @@ Window {
     property double lastVolumeRepeatMs: 0
     property bool okHeldForGuide: false
     property bool homeHeldForChannelSummary: false
-    property bool childWasPausedBeforeAdult: false
-    property bool restoreChildPauseAfterAdult: false
-    property bool openingAdultMode: false
+    property bool childWasPausedBeforeMyTv: false
+    property bool restoreChildPauseAfterMyTv: false
+    property bool openingMyTvMode: false
     property string currentProgrammeTitle: ""
     property url pendingExternalSource: ""
     property string pendingExternalTitle: ""
     property real pendingExternalPosition: 0
-    property string pendingAdultLibraryPath: ""
-    property real pendingAdultLibraryPosition: 0
+    property string pendingMyTvLibraryPath: ""
+    property real pendingMyTvLibraryPosition: 0
     property int pendingPortalChannel: -1
     property string pendingPortalProgramme: ""
     property real pendingPortalProgrammePosition: 0
@@ -61,18 +61,18 @@ Window {
     readonly property bool portalMuted: tvController.muted
     readonly property bool portalRemoteLocked: tvController.remoteLocked
     readonly property bool portalStandby: tvController.standby
-    readonly property bool portalSubtitlesAvailable: adultMode.active
-        && adultMode.subtitlesAvailable
-    readonly property bool portalSubtitlesVisible: adultMode.active
-        && adultMode.subtitlesVisible
+    readonly property bool portalSubtitlesAvailable: myTvMode.active
+        && myTvMode.subtitlesAvailable
+    readonly property bool portalSubtitlesVisible: myTvMode.active
+        && myTvMode.subtitlesVisible
     readonly property bool widescreenContentAvailable: !directMediaMode
         && !introPlaying && player.videoAspectRatio >= 1.70
     readonly property bool portalWidescreenAvailable: widescreenContentAvailable
     readonly property bool portalWidescreenEnabled: widescreenMode
         && widescreenContentAvailable
-    readonly property bool portalAdultHandoffAvailable: !directMediaMode
-        && !introPlaying && !filmCountdownActive && !openingAdultMode
-        && !adultMode.active && !poweringOff && pendingPowerAction.length === 0
+    readonly property bool portalMyTvHandoffAvailable: !directMediaMode
+        && !introPlaying && !filmCountdownActive && !openingMyTvMode
+        && !myTvMode.active && !poweringOff && pendingPowerAction.length === 0
         && !tvController.standby && player.source.toString().length > 0
         && (player.status === "Playing" || player.paused)
 
@@ -176,10 +176,10 @@ Window {
         }
         cancelFilmCountdown()
         pendingPowerAction = "standby"
-        if (openingAdultMode)
+        if (openingMyTvMode)
             return
-        if (adultMode.active) {
-            adultMode.close()
+        if (myTvMode.active) {
+            myTvMode.close()
             return
         }
         pendingPowerAction = ""
@@ -243,7 +243,7 @@ Window {
     function finishFilmCountdown() {
         if (!filmCountdownActive)
             return
-        if (adultMode.active || openingAdultMode || poweringOff
+        if (myTvMode.active || openingMyTvMode || poweringOff
                 || pendingPowerAction.length > 0 || tvController.standby) {
             cancelFilmCountdown()
             return
@@ -262,8 +262,8 @@ Window {
     // only to physical IR input: the portal must remain available so a parent
     // can control the TV and unlock that remote again.
     function portalNavigate(key) {
-        if (adultMode.active) {
-            adultMode.handleKey(key, false)
+        if (myTvMode.active) {
+            myTvMode.handleKey(key, false)
         } else if (channelSummaryOverlay.visible) {
             channelSummaryOverlay.handleKey(key, false)
         } else if (guideOverlay.visible) {
@@ -290,9 +290,9 @@ Window {
             return
         guideOverlay.close()
         tvController.closeParent()
-        if (adultMode.active) {
+        if (myTvMode.active) {
             pendingPortalTuneChannel = Number(channel)
-            adultMode.close()
+            myTvMode.close()
             return
         }
         tvController.tunePortalChannel(Number(channel))
@@ -309,31 +309,31 @@ Window {
         if (command === "return-to-mabeltv") {
             guideOverlay.close()
             tvController.closeParent()
-            if (adultMode.active)
-                adultMode.close()
+            if (myTvMode.active)
+                myTvMode.close()
         } else if (command === "open-parent-menu") {
-            if (adultMode.active)
-                adultMode.close()
+            if (myTvMode.active)
+                myTvMode.close()
             guideOverlay.close()
             if (tvController.parentAccessState === TvController.ParentClosed)
                 tvController.requestPortalParentAccess()
             while (tvController.parentAccessState === TvController.ParentConfirmation)
                 tvController.parentConfirm()
         } else if (command === "open-tv-guide") {
-            if (adultMode.active)
-                adultMode.close()
+            if (myTvMode.active)
+                myTvMode.close()
             tvController.closeParent()
             guideOverlay.open()
         } else if (command === "open-channel-menu") {
-            if (adultMode.active)
-                adultMode.close()
+            if (myTvMode.active)
+                myTvMode.close()
             guideOverlay.close()
             tvController.closeParent()
             syncPlaybackPosition()
             channelSummaryOverlay.open()
         } else if (command === "close-overlay") {
-            if (adultMode.active)
-                adultMode.back(false)
+            if (myTvMode.active)
+                myTvMode.back(false)
             else if (channelSummaryOverlay.visible)
                 channelSummaryOverlay.close()
             else if (guideOverlay.visible)
@@ -341,57 +341,57 @@ Window {
             else
                 tvController.closeParent()
         } else if (command === "restart-programme") {
-            if (adultMode.active) {
-                adultMode.restartFilm()
+            if (myTvMode.active) {
+                myTvMode.restartFilm()
             } else {
                 syncPlaybackPosition()
                 tvController.restartPortalProgramme()
             }
-        } else if (command === "enter-adult-mode") {
-            if (!adultMode.active) {
+        } else if (command === "enter-my-tv-mode") {
+            if (!myTvMode.active) {
                 guideOverlay.close()
-                enterAdultMode()
+                enterMyTvMode()
             }
-        } else if (command === "continue-in-adult-mode") {
-            continueCurrentInAdultMode()
+        } else if (command === "continue-in-my-tv-mode") {
+            continueCurrentInMyTvMode()
         } else if (command === "channel-up") {
-            if (adultMode.active)
-                adultMode.selectRelative(-1)
+            if (myTvMode.active)
+                myTvMode.selectRelative(-1)
             else {
                 syncPlaybackPosition()
                 tvController.dispatchPortal(TvController.ChannelUp)
             }
         } else if (command === "channel-down") {
-            if (adultMode.active)
-                adultMode.selectRelative(1)
+            if (myTvMode.active)
+                myTvMode.selectRelative(1)
             else {
                 syncPlaybackPosition()
                 tvController.dispatchPortal(TvController.ChannelDown)
             }
         } else if (command === "previous-programme") {
-            if (adultMode.active)
-                adultMode.selectRelative(-1)
+            if (myTvMode.active)
+                myTvMode.selectRelative(-1)
             else {
                 syncPlaybackPosition()
                 tvController.dispatchPortal(TvController.PreviousProgramme)
             }
         } else if (command === "next-programme") {
-            if (adultMode.active)
-                adultMode.selectRelative(1)
+            if (myTvMode.active)
+                myTvMode.selectRelative(1)
             else {
                 syncPlaybackPosition()
                 tvController.dispatchPortal(TvController.NextProgramme)
             }
         } else if (command === "toggle-pause") {
-            if (adultMode.active)
-                adultMode.togglePause()
+            if (myTvMode.active)
+                myTvMode.togglePause()
             else
                 togglePlaybackPause()
         } else if (command === "toggle-subtitles") {
-            if (adultMode.active)
-                adultMode.toggleSubtitles()
+            if (myTvMode.active)
+                myTvMode.toggleSubtitles()
         } else if (command === "toggle-widescreen-mode") {
-            if (!adultMode.active && widescreenContentAvailable) {
+            if (!myTvMode.active && widescreenContentAvailable) {
                 widescreenMode = !widescreenMode
                 showProgramme(widescreenMode ? "WIDESCREEN MODE ON"
                                              : "WIDESCREEN MODE OFF")
@@ -438,27 +438,27 @@ Window {
         remoteLockOsdTimer.restart()
     }
 
-    function enterAdultMode() {
-        if (openingAdultMode || adultMode.active)
+    function enterMyTvMode() {
+        if (openingMyTvMode || myTvMode.active)
             return
         cancelFilmCountdown()
         syncPlaybackPosition()
-        childWasPausedBeforeAdult = player.paused
-        openingAdultMode = true
+        childWasPausedBeforeMyTv = player.paused
+        openingMyTvMode = true
         player.stop()
     }
 
-    function leaveAdultMode() {
-        restoreChildPauseAfterAdult = pendingPowerAction.length === 0
-                && childWasPausedBeforeAdult
-        adultResumeTimer.restart()
+    function leaveMyTvMode() {
+        restoreChildPauseAfterMyTv = pendingPowerAction.length === 0
+                && childWasPausedBeforeMyTv
+        myTvResumeTimer.restart()
     }
 
-    // MPV's end-file event means the adult decoder has stopped. Give the Pi's
+    // MPV's end-file event means the my_tv decoder has stopped. Give the Pi's
     // V4L2 device one final render turn to release its buffers before the
     // children's player asks for the same hardware decoder again.
     Timer {
-        id: adultResumeTimer
+        id: myTvResumeTimer
         interval: 400
         repeat: false
         onTriggered: {
@@ -489,18 +489,18 @@ Window {
             return
         guideOverlay.close()
         tvController.closeParent()
-        if (adultMode.active) {
-            adultMode.requestExternal(source, title)
+        if (myTvMode.active) {
+            myTvMode.requestExternal(source, title)
             return
         }
         pendingExternalSource = source
         pendingExternalTitle = title
         pendingExternalPosition = 0
-        enterAdultMode()
+        enterMyTvMode()
     }
 
-    function continueCurrentInAdultMode() {
-        if (!portalAdultHandoffAvailable)
+    function continueCurrentInMyTvMode() {
+        if (!portalMyTvHandoffAvailable)
             return
         const source = player.source
         const title = currentProgrammeTitle.length > 0
@@ -509,7 +509,7 @@ Window {
         pendingExternalSource = source
         pendingExternalTitle = title
         pendingExternalPosition = position
-        enterAdultMode()
+        enterMyTvMode()
     }
 
     function portalPlayChannelProgramme(channel, file, position) {
@@ -517,11 +517,11 @@ Window {
             return
         guideOverlay.close()
         tvController.closeParent()
-        if (adultMode.active) {
+        if (myTvMode.active) {
             pendingPortalChannel = Number(channel)
             pendingPortalProgramme = String(file)
             pendingPortalProgrammePosition = Math.max(0, Number(position) || 0)
-            adultMode.close()
+            myTvMode.close()
             return
         }
         tvController.playPortalProgramme(Number(channel), String(file),
@@ -534,19 +534,19 @@ Window {
             Math.max(0, Number(duration) || 0))
     }
 
-    function portalPlayAdultFilm(file, position) {
+    function portalPlayMyTvFilm(file, position) {
         if (poweringOff || pendingPowerAction.length > 0)
             return
         const startPosition = Math.max(0, Number(position) || 0)
         guideOverlay.close()
         tvController.closeParent()
-        if (adultMode.active) {
-            adultMode.requestLibraryFilm(String(file), startPosition)
+        if (myTvMode.active) {
+            myTvMode.requestLibraryFilm(String(file), startPosition)
             return
         }
-        pendingAdultLibraryPath = String(file)
-        pendingAdultLibraryPosition = startPosition
-        enterAdultMode()
+        pendingMyTvLibraryPath = String(file)
+        pendingMyTvLibraryPosition = startPosition
+        enterMyTvMode()
     }
 
     // The generated power click and programme audio both use the Pi's
@@ -615,11 +615,11 @@ Window {
         controller: tvController
     }
 
-    AdultModeOverlay {
-        id: adultMode
+    MyTvModeOverlay {
+        id: myTvMode
         anchors.fill: parent
         controller: tvController
-        onClosed: root.leaveAdultMode()
+        onClosed: root.leaveMyTvMode()
         onPowerRequested: root.beginPowerOff()
     }
 
@@ -684,7 +684,7 @@ Window {
         }
     }
 
-    // Match Adult TV's ten-second bookmark cadence, but only for film
+    // Match My TV's ten-second bookmark cadence, but only for film
     // channels. This makes a film already playing on the television appear at
     // its current point when the portal is opened, without turning ordinary
     // episode channels into resumable items.
@@ -742,7 +742,7 @@ Window {
 
     Timer {
         id: muteHoldTimer
-        // Mute is only mute; Adult playback now exposes subtitles directly in
+        // Mute is only mute; MyTv playback now exposes subtitles directly in
         // its scrubber, so no hidden long-press subtitle gesture remains.
         interval: 3000
         onTriggered: {
@@ -756,7 +756,7 @@ Window {
         interval: 900
         onTriggered: {
             if (!directMediaMode && !tvController.standby && !root.introPlaying
-                    && !root.filmCountdownActive && !adultMode.active
+                    && !root.filmCountdownActive && !myTvMode.active
                     && !guideOverlay.visible && !parentOverlay.visible
                     && !channelSummaryOverlay.visible) {
                 root.homeHeldForChannelSummary = true
@@ -868,7 +868,7 @@ Window {
         target: tvController
 
         function onPlaybackRequested(source, startPositionSeconds) {
-            if (!adultMode.active && !root.openingAdultMode
+            if (!myTvMode.active && !root.openingMyTvMode
                     && !root.poweringOff && root.pendingPowerAction.length === 0
                     && !tvController.standby) {
                 if (tvController.currentContentType === "films"
@@ -910,15 +910,15 @@ Window {
             root.showRemoteLockState()
         }
         function onParentCommandRequested(command) {
-            if (command === "adult")
-                root.enterAdultMode()
+            if (command === "my_tv")
+                root.enterMyTvMode()
         }
     }
 
     RemoteInputHandler {
         appRoot: root
         controllerObject: tvController
-        adultOverlay: adultMode
+        myTvOverlay: myTvMode
         channelOverlay: channelSummaryOverlay
         guide: guideOverlay
         parentMenu: parentOverlay

@@ -6,7 +6,7 @@ import MabelTV 1.0
 Item {
     required property var appRoot
     required property var controllerObject
-    required property var adultOverlay
+    required property var myTvOverlay
     required property var channelOverlay
     required property var guide
     required property var parentMenu
@@ -30,11 +30,11 @@ Item {
             event.accepted = true
         } else if (controllerObject.remoteLocked) {
             event.accepted = true
-        } else if (adultOverlay.active) {
+        } else if (myTvOverlay.active) {
             if (event.key === Qt.Key_P) {
                 event.accepted = true
             } else {
-                event.accepted = adultOverlay.handleKey(event.key, event.isAutoRepeat)
+                event.accepted = myTvOverlay.handleKey(event.key, event.isAutoRepeat)
             }
         } else if (channelOverlay.visible
                    && appRoot.homeHeldForChannelSummary
@@ -175,8 +175,8 @@ Item {
     }
 
     Keys.onReleased: event => {
-        if (adultOverlay.active
-                && adultOverlay.handleKeyReleased(event.key, event.isAutoRepeat)) {
+        if (myTvOverlay.active
+                && myTvOverlay.handleKeyReleased(event.key, event.isAutoRepeat)) {
             event.accepted = true
         } else if (event.key === Qt.Key_M && !event.isAutoRepeat) {
             if (muteHold.running) {

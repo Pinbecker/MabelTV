@@ -65,7 +65,7 @@ A person unfamiliar with Linux must complete these without help beyond the suppl
 3. find the TV welcome screen and open either URL;
 4. pair, choose a PIN, and configure channels;
 5. upload and watch one ordinary MP4 and one video requiring preparation;
-6. understand the remote/adult shortcut;
+6. understand the remote/My TV shortcut;
 7. respond to a heat/storage warning;
 8. restart the player and download a support bundle;
 9. recover a forgotten PIN using the boot-partition marker;
