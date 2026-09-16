@@ -14,6 +14,8 @@ library_was_enabled="false"
 library_was_active="false"
 matter_was_enabled="false"
 matter_was_active="false"
+tv_matter_was_enabled="false"
+tv_matter_was_active="false"
 bluetooth_was_enabled="false"
 bluetooth_was_active="false"
 systemctl is-enabled --quiet mabeltv.service 2>/dev/null && player_was_enabled="true"
@@ -26,6 +28,10 @@ systemctl is-enabled --quiet mabeltv-matter.service 2>/dev/null \
     && matter_was_enabled="true"
 systemctl is-active --quiet mabeltv-matter.service 2>/dev/null \
     && matter_was_active="true"
+systemctl is-enabled --quiet mabeltv-tv-matter.service 2>/dev/null \
+    && tv_matter_was_enabled="true"
+systemctl is-active --quiet mabeltv-tv-matter.service 2>/dev/null \
+    && tv_matter_was_active="true"
 systemctl is-enabled --quiet bluetooth.service 2>/dev/null \
     && bluetooth_was_enabled="true"
 systemctl is-active --quiet bluetooth.service 2>/dev/null \
@@ -119,6 +125,9 @@ if [[ -x "$target/appliance/scripts/pi/activate-assets.sh" ]]; then
     if [[ -f "$target/appliance/packaging/linux/mabeltv-matter.service" ]]; then
         verification_units+=(mabeltv-matter.service)
     fi
+    if [[ -f "$target/appliance/packaging/linux/mabeltv-tv-matter.service" ]]; then
+        verification_units+=(mabeltv-tv-matter.service)
+    fi
     for unit in "${verification_units[@]}"; do
         sed "s|/opt/mabeltv/current|$target|g" \
             "$target/appliance/packaging/linux/$unit" > "$verify_dir/$unit"
@@ -141,6 +150,13 @@ else
     # Releases before the local Library did not ship its server.  Do not leave
     # a failed helper service behind when returning to one of those releases.
     systemctl disable --now mabeltv-library.service || true
+fi
+if [[ -f "$target/appliance/packaging/linux/mabeltv-tv-matter.service" \
+      && -f "$target/appliance/integrations/matter/mabeltv-tv-matter.mjs" ]]; then
+    systemctl enable mabeltv-tv-matter.service || activation_ok="false"
+    systemctl restart mabeltv-tv-matter.service || activation_ok="false"
+else
+    systemctl disable --now mabeltv-tv-matter.service 2>/dev/null || true
 fi
 systemctl restart mabeltv.service || activation_ok="false"
 if [[ -f "$target/appliance/packaging/linux/mabeltv-matter.service" \
@@ -181,7 +197,9 @@ if [[ "$activation_ok" != "true" ]] \
     || { [[ -x "$target/mabeltv-library" ]] \
          && ! wait_for_stable_service mabeltv-library.service 30 3; } \
     || { [[ -f "$target/appliance/integrations/matter/mabeltv-matter.mjs" ]] \
-         && ! wait_for_stable_service mabeltv-matter.service 30 8; }; then
+         && ! wait_for_stable_service mabeltv-matter.service 30 8; } \
+    || { [[ -f "$target/appliance/integrations/matter/mabeltv-tv-matter.mjs" ]] \
+         && ! wait_for_stable_service mabeltv-tv-matter.service 30 8; }; then
     printf 'Rollback selected %s, but the service is not healthy.\n' "$target" >&2
     touch "$target/.failed"
     if [[ -n "$asset_snapshot" ]]; then
@@ -203,6 +221,8 @@ if [[ "$activation_ok" != "true" ]] \
         "$bluetooth_was_enabled" "$bluetooth_was_active"
     restore_service_state mabeltv-matter.service \
         "$matter_was_enabled" "$matter_was_active"
+    restore_service_state mabeltv-tv-matter.service \
+        "$tv_matter_was_enabled" "$tv_matter_was_active"
     restore_service_state mabeltv.service "$player_was_enabled" "$player_was_active"
     exit 1
 fi

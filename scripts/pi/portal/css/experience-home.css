@@ -146,7 +146,7 @@ body.portal-v2 .home-feed {
   z-index: 3;
   width: min(100%, var(--experience-page));
   margin: 0 auto;
-  padding: 24px var(--experience-gutter) 0;
+  padding: 18px var(--experience-gutter) 0;
 }
 
 body.portal-v2 .home-library {

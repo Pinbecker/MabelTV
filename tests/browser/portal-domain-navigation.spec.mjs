@@ -115,6 +115,19 @@ test('Mabel TV groups compact episode channels ahead of unchanged film channels'
   await expect(page.locator('.watch-mabel-episode')).toHaveCount(0)
   await expect(page.locator('.mabel-film-channels-heading h2')).toHaveText('Film channels')
   await expect(page.locator('.mabel-film-channel .watch-mabel-film-card')).toHaveCount(1)
+  const channelDivider = await page.evaluate(() => {
+    const episodes = document.querySelector('.mabel-episode-channel-section').getBoundingClientRect()
+    const films = document.querySelector('.mabel-film-channels-heading')
+    const filmBounds = films.getBoundingClientRect()
+    const style = getComputedStyle(films)
+    return {
+      gap: Math.round(filmBounds.top - episodes.bottom),
+      borderWidth: style.borderTopWidth,
+      borderStyle: style.borderTopStyle,
+    }
+  })
+  expect(channelDivider.gap).toBeGreaterThanOrEqual(18)
+  expect(channelDivider).toMatchObject({ borderWidth: '1px', borderStyle: 'solid' })
   await expect(page.locator('.watch-mabel-series-channel-card').last().locator('img'))
     .toHaveAttribute('src', /mabel-show-10-0\.jpg$/)
   const columns = await page.locator('.mabel-episode-channel-grid').evaluate(grid =>

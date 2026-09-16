@@ -1,0 +1,32 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "mabel tv",
+      "intents": [
+        {"name":"PlayTitleIntent","slots":[{"name":"title","type":"AMAZON.SearchQuery"}],"samples":["play {title}","put on {title}","find {title}"]},
+        {"name":"TuneChannelIntent","slots":[{"name":"channel","type":"AMAZON.SearchQuery"}],"samples":["change to {channel}","switch to {channel}","go to {channel}"]},
+        {"name":"OpenMyTvIntent","samples":["open my tv","show my tv"]},
+        {"name":"ReturnToMabelTvIntent","samples":["return to mabel tv","go back to mabel tv"]},
+        {"name":"ShowTvGuideIntent","samples":["show the tv guide","open the tv guide"]},
+        {"name":"ShowChannelMenuIntent","samples":["show channels","open channels"]},
+        {"name":"OpenMenuIntent","samples":["open the menu","show the menu"]},
+        {"name":"CloseIntent","samples":["go back","close this"]},
+        {"name":"NextChannelIntent","samples":["next channel","channel up"]},
+        {"name":"PreviousChannelIntent","samples":["previous channel","channel down"]},
+        {"name":"NextProgrammeIntent","samples":["next programme","next show"]},
+        {"name":"PreviousProgrammeIntent","samples":["previous programme","previous show"]},
+        {"name":"VolumeUpIntent","samples":["volume up","turn the volume up"]},
+        {"name":"VolumeDownIntent","samples":["volume down","turn the volume down"]},
+        {"name":"MuteIntent","samples":["mute","unmute"]},
+        {"name":"AMAZON.PauseIntent","samples":[]},
+        {"name":"AMAZON.ResumeIntent","samples":[]},
+        {"name":"AMAZON.NextIntent","samples":[]},
+        {"name":"AMAZON.PreviousIntent","samples":[]},
+        {"name":"AMAZON.HelpIntent","samples":[]},
+        {"name":"AMAZON.StopIntent","samples":[]},
+        {"name":"AMAZON.CancelIntent","samples":[]}
+      ],
+      "types": []
+    }
+  }
+}

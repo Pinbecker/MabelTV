@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-
 enable_service="false"
 configure_boot="false"
 skip_packages="false"
@@ -9,11 +8,9 @@ product_install="false"
 preserve_player="false"
 prebuilt_dir=""
 source_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
-
 usage() {
     printf 'Usage: sudo bash scripts/pi/install.sh [--product-install] [--prebuilt DIR] [--enable-service] [--preserve-player] [--configure-boot] [--enable-ir] [--skip-packages]\n'
 }
-
 while (($#)); do
     case "$1" in
         --product-install) product_install="true"; enable_service="true"; configure_boot="true"; shift ;;
@@ -27,7 +24,6 @@ while (($#)); do
         *) printf 'Unknown option: %s\n' "$1" >&2; usage >&2; exit 2 ;;
     esac
 done
-
 if [[ $EUID -ne 0 ]]; then
     printf 'Run this installer with sudo.\n' >&2
     exit 1
@@ -56,7 +52,7 @@ if systemctl is-enabled --quiet mabeltv-library.service 2>/dev/null; then
     library_was_enabled="true"
 fi
 transaction_units=(
-    mabeltv.service mabeltv-library.service mabeltv-matter.service mabeltv-ir.service
+    mabeltv.service mabeltv-library.service mabeltv-matter.service mabeltv-tv-matter.service mabeltv-alexa-bridge.service mabeltv-ir.service
     mabeltv-health.timer mabeltv-boot-audit.service
     mabeltv-retention.timer mabeltv-onedrive-backup.timer \
     mabeltv-owner-recovery.service
@@ -72,14 +68,13 @@ for unit in "${transaction_units[@]}"; do
     systemctl is-active --quiet "$unit" 2>/dev/null \
         && unit_was_active["$unit"]="true"
 done
-
 if [[ "$skip_packages" != "true" ]]; then
     apt-get update
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         qt6-qpa-plugins qml6-module-qtquick qml6-module-qtquick-window libqt6sql6-sqlite \
         libqt6opengl6 libmpv-dev ffmpeg ir-keytable cec-utils python3 sudo logrotate avahi-daemon \
         alsa-utils ca-certificates curl util-linux psmisc qrencode udisks2 sg3-utils \
-        nodejs npm rclone
+        nodejs npm rclone python3-paho-mqtt
     if [[ -z "$prebuilt_dir" ]]; then
         DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             build-essential cmake ninja-build pkg-config \
@@ -88,7 +83,6 @@ if [[ "$skip_packages" != "true" ]]; then
             libsystemd-dev
     fi
 fi
-
 if [[ -n "$prebuilt_dir" ]] \
     && { [[ ! -x "$prebuilt_dir/mabeltv" ]] \
          || [[ ! -x "$prebuilt_dir/mabeltv_media_check" ]]; }; then
@@ -126,7 +120,6 @@ for name in ("mabeltv", "mabeltv_media_check"):
         raise SystemExit(f"Release integrity check failed for {name}")
 PY
 fi
-
 if ! id mabeltv >/dev/null 2>&1; then
     useradd --system --home-dir /var/lib/mabeltv --create-home --shell /usr/sbin/nologin mabeltv
 fi
@@ -135,14 +128,12 @@ for group_name in audio video render input gpio bluetooth; do
         usermod -a -G "$group_name" mabeltv
     fi
 done
-
 install -d -o root -g root -m 0755 /opt/mabeltv/releases /usr/local/libexec
 install -d -o mabeltv -g mabeltv -m 0750 \
-    /var/lib/mabeltv /var/lib/mabeltv/matter \
+    /var/lib/mabeltv /var/lib/mabeltv/matter /var/lib/mabeltv/matter-tv /var/lib/mabeltv/alexa \
     /var/cache/mabeltv /var/log/mabeltv /srv/mabeltv/media
 install -d -o root -g root -m 0755 /etc/rc_keymaps /usr/share/doc/mabeltv
 install -d -o root -g mabeltv -m 0750 /etc/mabeltv
-
 # Keep an operator-restorable snapshot of the mutable appliance state before
 # this installer changes services or configuration.  Media files are never
 # copied here: releases are atomic and the media library has its own recycle
@@ -168,15 +159,15 @@ else
 fi
 [[ -f /etc/systemd/system/mabeltv-library.service ]] && backup_paths+=(etc/systemd/system/mabeltv-library.service)
 [[ -f /etc/systemd/system/mabeltv-matter.service ]] && backup_paths+=(etc/systemd/system/mabeltv-matter.service)
+[[ -f /etc/systemd/system/mabeltv-tv-matter.service ]] && backup_paths+=(etc/systemd/system/mabeltv-tv-matter.service)
+[[ -f /etc/systemd/system/mabeltv-alexa-bridge.service ]] && backup_paths+=(etc/systemd/system/mabeltv-alexa-bridge.service)
 [[ -f /etc/systemd/system/mabeltv-health.service ]] && backup_paths+=(etc/systemd/system/mabeltv-health.service)
 [[ -f /etc/systemd/system/mabeltv-health.timer ]] && backup_paths+=(etc/systemd/system/mabeltv-health.timer)
 [[ -f /etc/systemd/system/mabeltv-boot-audit.service ]] && backup_paths+=(etc/systemd/system/mabeltv-boot-audit.service)
-[[ -f /etc/mabeltv/library.conf ]] && backup_paths+=(etc/mabeltv/library.conf)
-[[ -f /etc/mabeltv/matter.conf ]] && backup_paths+=(etc/mabeltv/matter.conf)
+for config in library.conf matter.conf alexa-bridge.conf; do [[ -f "/etc/mabeltv/$config" ]] && backup_paths+=("etc/mabeltv/$config"); done
 [[ -f /etc/sudoers.d/mabeltv ]] && backup_paths+=(etc/sudoers.d/mabeltv)
 tar -C / -czf "$preinstall_backup" --ignore-failed-read "${backup_paths[@]}"
 chmod 0600 "$preinstall_backup"
-
 build_dir=""
 incoming_dir=""
 verify_dir=""
@@ -196,7 +187,6 @@ cleanup() {
     fi
 }
 trap cleanup EXIT
-
 version="$(sed -nE 's/^[[:space:]]*VERSION[[:space:]]+([0-9.]+).*/\1/p' "$source_root/CMakeLists.txt" | head -n1)"
 [[ -n "$version" ]] || version=development
 if [[ -z "$prebuilt_dir" ]]; then
@@ -294,7 +284,6 @@ for path in paths:
 PY
 mv "$incoming_dir" "$release_dir"
 incoming_dir=""
-
 if [[ ! -e /var/lib/mabeltv/mabeltv.db ]]; then
     "$release_dir/mabeltv-state-migrate" bootstrap \
         --database /var/lib/mabeltv/mabeltv.db \
@@ -304,7 +293,6 @@ if [[ ! -e /var/lib/mabeltv/mabeltv.db ]]; then
 fi
 chown mabeltv:mabeltv /var/lib/mabeltv/mabeltv.db
 chmod 0640 /var/lib/mabeltv/mabeltv.db
-
 if [[ ! -e /etc/mabeltv/library.conf ]]; then
     setup_code_number="$(( $(od -An -N4 -tu4 /dev/urandom) % 1000000 ))"
     printf 'MABELTV_SETUP_CODE=%06d\n' "$setup_code_number" > /etc/mabeltv/library.conf
@@ -330,10 +318,7 @@ chmod 0640 /etc/mabeltv/matter.conf
 install -d -o root -g mabeltv -m 0750 /media/mabeltv-usb
 install -d -o root -g mabeltv -m 0750 /var/lib/mabeltv/secrets
 
-# Capture every live unit/helper immediately before activation. This snapshot
-# is intentionally separate from the owner-data backup: it lets a failed
-# service check restore an older pre-product installation exactly, even when
-# that old release did not yet version its appliance assets.
+# Capture live units immediately before activation; this restores failed checks.
 asset_snapshot="$(mktemp -d /tmp/mabeltv-assets-before.XXXXXX)"
 bash "$release_dir/appliance/scripts/pi/activate-assets.sh" --snapshot "$asset_snapshot"
 
@@ -455,7 +440,7 @@ if [[ "$database_existed_before" == "true" ]]; then
         database_migration_backup="$(
             bash "$release_dir/appliance/scripts/pi/backup-config.sh" "$backup_dir"
         )"
-        database_restore_required="true"
+    database_restore_required="true"
         "$release_dir/mabeltv-state-migrate" upgrade \
             --database /var/lib/mabeltv/mabeltv.db
     fi
@@ -466,7 +451,7 @@ bash "$release_dir/appliance/scripts/pi/activate-assets.sh" "$release_dir"
 # transactionally installed helpers exist, then restore the snapshot on error.
 verify_dir="$(mktemp -d /tmp/mabeltv-units.XXXXXX)"
 for unit in mabeltv.service mabeltv-ir.service mabeltv-recovery.service \
-    mabeltv-library.service mabeltv-matter.service \
+    mabeltv-library.service mabeltv-matter.service mabeltv-tv-matter.service mabeltv-alexa-bridge.service \
     mabeltv-health.service mabeltv-health.timer \
     mabeltv-boot-audit.service mabeltv-retention.service \
     mabeltv-retention.timer mabeltv-onedrive-backup.service \
@@ -534,6 +519,21 @@ if [[ "$player_should_run" == "true" ]]; then
             restore_failed_release "$release_dir"
             exit 1
         fi
+    fi
+    if [[ "$preserve_player" != "true" ]]; then
+        systemctl enable mabeltv-tv-matter.service
+        if ! systemctl restart mabeltv-tv-matter.service \
+            || ! wait_for_stable_service mabeltv-tv-matter.service 30 8; then
+            printf 'The connected TV Matter accessory did not start; restoring the previous release.\n' >&2; restore_failed_release "$release_dir"; exit 1
+        fi
+    fi
+fi
+if systemctl is-enabled --quiet mabeltv-alexa-bridge.service 2>/dev/null; then
+    if ! systemctl restart mabeltv-alexa-bridge.service \
+        || ! wait_for_stable_service mabeltv-alexa-bridge.service 30 8; then
+        printf 'The Alexa command bridge did not start; restoring the previous release.\n' >&2
+        restore_failed_release "$release_dir"
+        exit 1
     fi
 fi
 systemctl enable mabeltv-health.timer

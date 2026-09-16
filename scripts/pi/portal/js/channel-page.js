@@ -10,49 +10,51 @@ const ChannelPageComponents = (() => {
     root.dataset.mounted = 'true'
     root.classList.add('channel-page')
     root.innerHTML = `
-      <nav class="channel-page-nav" aria-label="Channel navigation">
-        <button id="backToChannels" type="button" class="workspace-back channel-page-back">
-          <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-arrow-left"/></svg>
-          <span>All channels</span>
-        </button>
-      </nav>
-      <section id="channelPageHero" class="channel-page-hero" aria-labelledby="workspaceChannelName">
-        <div class="channel-page-hero-art" aria-hidden="true"></div>
-        <div class="channel-page-hero-shade" aria-hidden="true"></div>
-        <div class="channel-page-hero-content">
-          <div class="channel-page-identity">
-            <span id="workspaceChannelBadge" class="channel-page-badge">CH</span>
-            <div>
-              <p id="workspaceEyebrow" class="channel-page-eyebrow">${escapeHtml(tvName())} channel</p>
-              <div class="channel-page-title-row">
-                <h1 id="workspaceChannelName">Channel</h1>
-                <button id="workspaceFavourite" type="button" class="channel-page-favourite hidden" aria-label="Add channel to favourites">
-                  <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-heart"/></svg>
-                </button>
+      <div class="channel-page-fixed-head">
+        <nav class="channel-page-nav" aria-label="Channel navigation">
+          <button id="backToChannels" type="button" class="workspace-back channel-page-back">
+            <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-arrow-left"/></svg>
+            <span>All channels</span>
+          </button>
+        </nav>
+        <section id="channelPageHero" class="channel-page-hero" aria-labelledby="workspaceChannelName">
+          <div class="channel-page-hero-art" aria-hidden="true"></div>
+          <div class="channel-page-hero-shade" aria-hidden="true"></div>
+          <div class="channel-page-hero-content">
+            <div class="channel-page-identity">
+              <span id="workspaceChannelBadge" class="channel-page-badge">CH</span>
+              <div>
+                <p id="workspaceEyebrow" class="channel-page-eyebrow">${escapeHtml(tvName())} channel</p>
+                <div class="channel-page-title-row">
+                  <h1 id="workspaceChannelName">Channel</h1>
+                  <button id="workspaceFavourite" type="button" class="channel-page-favourite hidden" aria-label="Add channel to favourites">
+                    <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-heart"/></svg>
+                  </button>
+                </div>
               </div>
             </div>
+            <p id="workspaceChannelStatus" class="channel-page-overview"></p>
+            <div class="channel-page-facts" aria-label="Channel details">
+              <span><strong id="workspaceProgrammeCount">0</strong> <span id="workspaceProgrammeLabel">programmes</span></span>
+              <span><strong id="workspaceVisibleCount">0</strong> on TV</span>
+              <span><strong id="workspacePictureMode">Fill screen</strong></span>
+            </div>
+            <div class="channel-page-actions">
+              <button id="channelWatchTv" type="button" class="channel-page-primary">
+                <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-monitor-play"/></svg>
+                <span><strong>Open on TV</strong><small>Switch ${escapeHtml(tvName())} to this channel</small></span>
+              </button>
+              <button id="workspaceAddMedia" type="button" class="channel-page-secondary" aria-label="Add videos">
+                <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-plus"/></svg>
+                <span>Add videos</span>
+              </button>
+              <button id="workspaceSettings" type="button" class="channel-page-icon" aria-label="Manage channel">
+                <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-settings"/></svg>
+              </button>
+            </div>
           </div>
-          <p id="workspaceChannelStatus" class="channel-page-overview"></p>
-          <div class="channel-page-facts" aria-label="Channel details">
-            <span><strong id="workspaceProgrammeCount">0</strong> <span id="workspaceProgrammeLabel">programmes</span></span>
-            <span><strong id="workspaceVisibleCount">0</strong> on TV</span>
-            <span><strong id="workspacePictureMode">Fill screen</strong></span>
-          </div>
-          <div class="channel-page-actions">
-            <button id="channelWatchTv" type="button" class="channel-page-primary">
-              <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-monitor-play"/></svg>
-              <span><strong>Open on TV</strong><small>Switch ${escapeHtml(tvName())} to this channel</small></span>
-            </button>
-            <button id="workspaceAddMedia" type="button" class="channel-page-secondary" aria-label="Add videos">
-              <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-plus"/></svg>
-              <span>Add videos</span>
-            </button>
-            <button id="workspaceSettings" type="button" class="channel-page-icon" aria-label="Manage channel">
-              <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-settings"/></svg>
-            </button>
-          </div>
-        </div>
-      </section>
+        </section>
+      </div>
       <section class="channel-page-library" aria-labelledby="channelLibraryTitle">
         <header class="channel-page-library-head">
           <div>

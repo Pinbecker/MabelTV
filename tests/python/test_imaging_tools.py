@@ -160,6 +160,8 @@ class ImagerManifestTests(unittest.TestCase):
         for bluetooth_package in ("rfkill", "bluez", "libbluetooth-dev"):
             self.assertNotIn(bluetooth_package, packages.splitlines())
         self.assertIn("mabeltv-matter.service", activation)
+        self.assertIn("mabeltv-tv-matter.service", activation)
+        self.assertIn("mabeltv-tv-pairing", activation)
         self.assertIn("User=mabeltv", service)
         self.assertNotIn("AF_BLUETOOTH", service)
         self.assertIn("AF_NETLINK", service)
@@ -168,6 +170,12 @@ class ImagerManifestTests(unittest.TestCase):
         self.assertIn('on ? "turn-on" : "turn-off"', socket_bridge)
         self.assertIn("getMabelTvPower", bridge)
         self.assertIn("discoveryCapabilities: { onIpNetwork: true, ble: false }", bridge)
+        tv_bridge = (ROOT / "integrations/matter/mabeltv-tv-matter.mjs").read_text(encoding="utf-8")
+        tv_service = (ROOT / "packaging/linux/mabeltv-tv-matter.service").read_text(encoding="utf-8")
+        tv_socket = (ROOT / "integrations/matter/mabeltv-tv-power-socket.mjs").read_text(encoding="utf-8")
+        self.assertIn("setConnectedTvPower", tv_bridge)
+        self.assertIn("turn-on-tv-only", tv_socket)
+        self.assertIn("EnvironmentFile=/etc/mabeltv/matter.conf", tv_service)
 
     def test_laptop_only_builder_uses_local_arm64_docker_bundle_then_image_recipe(self):
         builder = (ROOT / "scripts" / "imaging" / "build-local-pi-image.sh").read_text(

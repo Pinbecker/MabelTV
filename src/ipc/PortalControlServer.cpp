@@ -25,6 +25,7 @@ const QSet<QString> &allowedCommands()
         QStringLiteral("toggle-widescreen-mode"), QStringLiteral("volume-up"),
         QStringLiteral("volume-down"), QStringLiteral("toggle-mute"),
         QStringLiteral("turn-on"), QStringLiteral("turn-off"),
+        QStringLiteral("turn-on-tv-only"), QStringLiteral("turn-off-tv-only"),
         QStringLiteral("turn-on-mabel-only"), QStringLiteral("turn-off-mabel-only"),
         QStringLiteral("toggle-power"), QStringLiteral("open-parent-menu"),
         QStringLiteral("open-tv-guide"), QStringLiteral("open-channel-menu"),
@@ -231,6 +232,25 @@ void PortalControlServer::dispatch(QLocalSocket *socket, const QByteArray &rawCo
             }
         }
         finish(socket, QJsonDocument(status).toJson(QJsonDocument::Compact) + '\n');
+        return;
+    }
+
+    if (command == QStringLiteral("turn-on-tv-only")) {
+        if (m_tvControl == nullptr || !m_tvControl->available()) {
+            finish(socket, "unsupported\n");
+            return;
+        }
+        m_tvControl->turnOn();
+        finish(socket, "ok\n");
+        return;
+    }
+    if (command == QStringLiteral("turn-off-tv-only")) {
+        if (m_tvControl == nullptr || !m_tvControl->available()) {
+            finish(socket, "unsupported\n");
+            return;
+        }
+        m_tvControl->turnOff();
+        finish(socket, "ok\n");
         return;
     }
 

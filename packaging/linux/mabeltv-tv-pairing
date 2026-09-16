@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+pairing_file=/var/lib/mabeltv/matter-tv/pairing.json
+if [[ $EUID -ne 0 ]]; then
+    printf 'Run with sudo: sudo mabeltv-tv-pairing\n' >&2
+    exit 1
+fi
+if [[ ! -r "$pairing_file" ]]; then
+    printf 'TV pairing details are not ready. Check: systemctl status mabeltv-tv-matter.service\n' >&2
+    exit 1
+fi
+readarray -t pairing < <(python3 - "$pairing_file" <<'PY'
+import json, pathlib, sys
+details = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+print(details["manualPairingCode"])
+print(details["qrPairingCode"])
+PY
+)
+printf 'Connected TV Matter pairing\n\nManual setup code: %s\n\n' "${pairing[0]}"
+printf 'Scan this QR code in the Alexa app:\n'
+qrencode -t ANSIUTF8 "${pairing[1]}"

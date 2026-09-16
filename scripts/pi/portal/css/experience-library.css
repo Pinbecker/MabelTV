@@ -435,6 +435,7 @@ body.portal-v2 .channel-page {
 }
 
 body.portal-v2 .channel-page-nav { margin-bottom: 4px; }
+body.portal-v2 .channel-page-fixed-head { width: 100%; min-width: 0; }
 body.portal-v2 .channel-page-back { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; background: transparent; color: var(--experience-orange); padding: 0; font-size: 11px; font-weight: 750; }
 body.portal-v2 .channel-page-back svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; }
 
@@ -469,11 +470,11 @@ body.portal-v2 .channel-page-hero-art {
   border: 1px solid var(--experience-line);
   border-radius: 12px;
   background: var(--channel-page-art) center 32% / cover no-repeat, linear-gradient(145deg, #201e24, #111014);
-  box-shadow: 0 14px 34px rgba(0,0,0,.24);
+  box-shadow: none;
   transform: none;
 }
 body.portal-v2 .channel-page-hero-shade { display: none; }
-body.portal-v2 .channel-page-hero-content { position: relative; z-index: 1; display: grid; width: 100%; max-width: 100%; align-content: center; min-width: 0; min-height: 0; padding: 0; }
+body.portal-v2 .channel-page-hero-content { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr); width: 100%; max-width: 100%; align-content: center; justify-content: stretch; justify-items: stretch; min-width: 0; min-height: 0; padding: 0; }
 body.portal-v2 .channel-page-identity { display: block; min-width: 0; }
 body.portal-v2 .channel-page-badge { display: none; }
 body.portal-v2 .channel-page-eyebrow { margin: 0; color: var(--experience-orange); font-size: 9px; font-weight: 800; text-transform: uppercase; }
@@ -533,7 +534,7 @@ body.portal-v2 .channel-page-secondary { width: 42px; min-width: 42px; padding: 
 body.portal-v2 .channel-page-secondary span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 body.portal-v2 .channel-page-icon { width: 42px; min-width: 42px; padding: 0; }
 
-body.portal-v2 .channel-page-library { width: 100%; max-width: 100%; min-width: 0; padding-top: 30px; }
+body.portal-v2 .channel-page-library { width: 100%; max-width: 100%; min-width: 0; padding-top: 18px; }
 body.portal-v2 .channel-page-library-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
 body.portal-v2 .channel-page-library-head h2 { margin: 0; font-size: 30px; letter-spacing: -0.04em; }
 body.portal-v2 .channel-page-library-head p:not(.channel-page-kicker) { margin: 5px 0 0; color: var(--experience-muted); font-size: 12px; }

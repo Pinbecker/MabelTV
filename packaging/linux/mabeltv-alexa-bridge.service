@@ -1,0 +1,44 @@
+[Unit]
+Description=Mabel TV private Alexa command bridge
+After=network-online.target mabeltv.service
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=mabeltv
+Group=mabeltv
+WorkingDirectory=/var/lib/mabeltv/alexa
+Environment=HOME=/var/lib/mabeltv
+EnvironmentFile=/etc/mabeltv/alexa-bridge.conf
+ExecStart=/usr/bin/python3 /opt/mabeltv/current/appliance/integrations/alexa/mabeltv_alexa_bridge.py
+Restart=on-failure
+RestartSec=3
+TimeoutStartSec=30
+TimeoutStopSec=8
+UMask=0027
+CapabilityBoundingSet=
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectProc=invisible
+ProcSubset=pid
+ReadWritePaths=/var/lib/mabeltv/alexa
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+LockPersonality=true
+MemoryDenyWriteExecute=true
+MemoryHigh=80M
+MemoryMax=140M
+TasksMax=32
+LimitNOFILE=1024
+
+[Install]
+WantedBy=multi-user.target

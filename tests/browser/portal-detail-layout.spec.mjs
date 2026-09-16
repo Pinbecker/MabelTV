@@ -164,6 +164,63 @@ for (const theme of ['light', 'dark']) {
     }
   })
 
+  test(`${theme} phone channel headers stay fixed above compact three-column film grids`, async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'iphone-chromium', 'One phone engine covers channel geometry')
+    await openPortal(page, theme)
+    await page.evaluate(() => {
+      library.channels.find(channel => channel.number === 1).metadata.title = 'Disney Films'
+      openChannel(1, true)
+    })
+
+    const header = page.locator('.channel-page-fixed-head')
+    const artwork = page.locator('.channel-page-hero-art')
+    await expect(header).toHaveCSS('position', 'fixed')
+    await expect(artwork).toHaveCSS('box-shadow', 'none')
+    expect(await page.evaluate(() => {
+      const art = document.querySelector('.channel-page-hero-art').getBoundingClientRect()
+      const eyebrow = document.querySelector('.channel-page-eyebrow').getBoundingClientRect()
+      const actions = document.querySelector('.channel-page-actions').getBoundingClientRect()
+      return [Math.round(eyebrow.left - art.right), Math.round(actions.left - art.right)]
+    })).toEqual([8, 8])
+
+    const firstHeaderTop = await header.evaluate(element => element.getBoundingClientRect().top)
+    await page.evaluate(() => window.scrollTo(0, 400))
+    await expect.poll(() => header.evaluate(element => element.getBoundingClientRect().top))
+      .toBeCloseTo(firstHeaderTop, 0)
+
+    const posters = await page.locator('.channel-page-film-card').evaluateAll(cards => cards.slice(0, 4).map(card => {
+      const rect = card.getBoundingClientRect()
+      return { left: rect.left, top: rect.top }
+    }))
+    expect(posters[0].top).toBeCloseTo(posters[1].top, 0)
+    expect(posters[1].top).toBeCloseTo(posters[2].top, 0)
+    expect(posters[3].top).toBeGreaterThan(posters[0].top)
+
+    await page.evaluate(() => {
+      library.channels.find(channel => channel.number === 3).metadata.title = 'Zog'
+      openChannel(3, true)
+    })
+    const seriesGeometry = await page.evaluate(() => {
+      const head = document.querySelector('.channel-page-fixed-head').getBoundingClientRect()
+      const art = document.querySelector('.channel-page-hero-art').getBoundingClientRect()
+      const copy = document.querySelector('.channel-page-hero-content').getBoundingClientRect()
+      const eyebrow = document.querySelector('.channel-page-eyebrow').getBoundingClientRect()
+      const actions = document.querySelector('.channel-page-actions').getBoundingClientRect()
+      const library = document.querySelector('.channel-page-library').getBoundingClientRect()
+      return {
+        artworkGap: Math.round(copy.left - art.right),
+        eyebrowGap: Math.round(eyebrow.left - art.right),
+        actionsGap: Math.round(actions.left - art.right),
+        libraryGap: Math.round(library.top - head.bottom),
+      }
+    })
+    expect(seriesGeometry.artworkGap).toBe(8)
+    expect(seriesGeometry.eyebrowGap).toBe(8)
+    expect(seriesGeometry.actionsGap).toBe(8)
+    expect(seriesGeometry.libraryGap).toBeGreaterThanOrEqual(4)
+    expect(seriesGeometry.libraryGap).toBeLessThanOrEqual(20)
+  })
+
   test(`${theme} series headers reserve close space and cover scrolling ticks`, async ({ page }, testInfo) => {
     await openPortal(page, theme)
     await page.evaluate(() => {

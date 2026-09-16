@@ -96,7 +96,7 @@ if [[ -e "$edid_hook" || -e "$edid_firmware" ]]; then
     fi
 fi
 
-systemctl disable --now mabeltv.service mabeltv-library.service mabeltv-matter.service \
+systemctl disable --now mabeltv.service mabeltv-library.service mabeltv-matter.service mabeltv-tv-matter.service \
     mabeltv-ir.service mabeltv-health.timer mabeltv-boot-audit.service \
     mabeltv-retention.timer mabeltv-onedrive-backup.timer \
     mabeltv-onedrive-backup.service mabeltv-owner-recovery.service \
@@ -105,7 +105,7 @@ systemctl disable --now mabeltv.service mabeltv-library.service mabeltv-matter.s
 unit_paths=(
     /etc/systemd/system/mabeltv.service
     /etc/systemd/system/mabeltv-library.service
-    /etc/systemd/system/mabeltv-matter.service
+    /etc/systemd/system/mabeltv-matter.service /etc/systemd/system/mabeltv-tv-matter.service
     /etc/systemd/system/mabeltv-ir.service
     /etc/systemd/system/mabeltv-recovery.service
     /etc/systemd/system/mabeltv-health.service

@@ -140,6 +140,13 @@
       "max_lines": 400
     },
     {
+      "area": "Alexa integration",
+      "patterns": [
+        "integrations/alexa/*.py"
+      ],
+      "max_lines": 500
+    },
+    {
       "area": "Test package marker",
       "patterns": [
         "tests/*.py"

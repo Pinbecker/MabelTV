@@ -55,7 +55,10 @@ test('phone shell keeps the frozen header, rail, gutters and Continue layout', a
 
   const head = await geometry(page, '.mobile-head')
   const rail = await geometry(page, '.rail')
+  const spotlight = await geometry(page, '.home-spotlight')
+  const spotlightArt = await geometry(page, '.home-spotlight-art')
   const library = await geometry(page, '.home-library')
+  const homeSearch = await geometry(page, '.home-global-search')
   const continuing = await geometry(page, '#homeContinueSection')
   expect(head.position).toBe('fixed')
   expect(head.y).toBeCloseTo(0, 0)
@@ -65,10 +68,18 @@ test('phone shell keeps the frozen header, rail, gutters and Continue layout', a
   expect(rail.height).toBeCloseTo(72, 0)
   expect(library.x).toBeCloseTo(18, 0)
   expect(library.width).toBeCloseTo(pageSize.clientWidth - 36, 0)
+  expect(spotlight.position).toBe('fixed')
+  expect(spotlightArt.width).toBeCloseTo(92, 0)
+  expect(homeSearch.height).toBeCloseTo(42, 0)
+  expect(homeSearch.y - (spotlight.y + spotlight.height)).toBeCloseTo(12, 0)
+  expect(continuing.y - (homeSearch.y + homeSearch.height)).toBeCloseTo(10, 0)
   expect(continuing.x).toBeCloseTo(18, 0)
   expect(continuing.width).toBeCloseTo(pageSize.clientWidth - 36, 0)
-  expect(continuing.height).toBeGreaterThanOrEqual(180)
-  expect(continuing.height).toBeLessThanOrEqual(183)
+  expect(continuing.height).toBeGreaterThanOrEqual(143)
+  expect(continuing.height).toBeLessThanOrEqual(146)
+  const homeContinueCard = await geometry(page, '#homeContinueRail .watch-continue-item:first-child .watch-continue-card')
+  expect(homeContinueCard.width).toBeGreaterThanOrEqual(183)
+  expect(homeContinueCard.width).toBeLessThanOrEqual(185)
   const nowPlayingMarker = await page.locator('.home-now-playing').evaluate(element => ({
     border: parseFloat(getComputedStyle(element).borderLeftWidth),
     padding: parseFloat(getComputedStyle(element).paddingLeft),
@@ -76,6 +87,9 @@ test('phone shell keeps the frozen header, rail, gutters and Continue layout', a
   expect(nowPlayingMarker.border).toBe(2)
   expect(nowPlayingMarker.padding).toBeGreaterThanOrEqual(14)
   await expect(page.locator('#homeContinueRail .watch-continue-card')).toHaveCount(8)
+  await page.evaluate(() => window.scrollTo(0, 320))
+  await expect.poll(async () => (await geometry(page, '.home-spotlight')).y)
+    .toBeCloseTo(head.y + head.height, 0)
 })
 
 test('@visual primary screens stay full-width and match their visual references', async ({ page }) => {

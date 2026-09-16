@@ -20,6 +20,8 @@ unit_names=(
     mabeltv-onedrive-backup.timer
     mabeltv-owner-recovery.service
     mabeltv-matter.service
+    mabeltv-tv-matter.service
+    mabeltv-alexa-bridge.service
 )
 linux_helper_names=(
     mabeltv-recovery
@@ -61,6 +63,7 @@ for mapping in "${sbin_mappings[@]}"; do asset_targets+=("usr/local/sbin/${mappi
 asset_targets+=(
     usr/local/libexec/mabeltv-activate-assets
     usr/local/sbin/mabeltv-alexa-pairing
+    usr/local/sbin/mabeltv-tv-pairing
     etc/logrotate.d/mabeltv
     etc/systemd/journald.conf.d/mabeltv.conf
     etc/sudoers.d/mabeltv
@@ -158,6 +161,7 @@ for mapping in "${sbin_mappings[@]}"; do
 done
 # The pairing helper is a packaged Linux asset rather than a general Pi script.
 stage_file "$linux/mabeltv-matter-pairing" usr/local/sbin/mabeltv-alexa-pairing 0755
+stage_file "$linux/mabeltv-tv-pairing" usr/local/sbin/mabeltv-tv-pairing 0755
 stage_file "$scripts/activate-assets.sh" usr/local/libexec/mabeltv-activate-assets 0755
 stage_file "$linux/mabeltv-logrotate" etc/logrotate.d/mabeltv 0644
 stage_file "$linux/mabeltv-journald.conf" etc/systemd/journald.conf.d/mabeltv.conf 0644

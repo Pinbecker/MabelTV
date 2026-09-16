@@ -18,11 +18,15 @@ stamp="$(date -u +%Y-%m-%dT%H%M%SZ)"
 archive="$backup_root/MabelTV-Backup-$stamp.tar.gz"
 staging="$(mktemp -d "$backup_root/.mabeltv-backup-$stamp.XXXXXX")"
 matter_was_active="false"
+tv_matter_was_active="false"
 cleanup() {
     local status=$?
     rm -rf -- "$staging"
     if [[ "$matter_was_active" == "true" ]]; then
         systemctl start mabeltv-matter.service >/dev/null 2>&1 || true
+    fi
+    if [[ "$tv_matter_was_active" == "true" ]]; then
+        systemctl start mabeltv-tv-matter.service >/dev/null 2>&1 || true
     fi
     return "$status"
 }
@@ -59,6 +63,10 @@ if [[ "$database_only" != "--database-only" ]]; then
         systemctl stop mabeltv-matter.service
         matter_was_active="true"
     fi
+    if systemctl is-active --quiet mabeltv-tv-matter.service 2>/dev/null; then
+        systemctl stop mabeltv-tv-matter.service
+        tv_matter_was_active="true"
+    fi
     paths=(var/lib/mabeltv/secrets var/lib/mabeltv/matter etc/mabeltv
         etc/rc_keymaps/mabeltv.toml)
 fi
@@ -73,10 +81,13 @@ for relative in "${paths[@]}"; do
     fi
 done
 
-if [[ "$matter_was_active" == "true" ]]; then
-    systemctl start mabeltv-matter.service
-    matter_was_active="false"
-fi
+    if [[ "$matter_was_active" == "true" ]]; then
+        systemctl start mabeltv-matter.service
+        matter_was_active="false"
+    fi
+    if [[ "${tv_matter_was_active:-false}" == "true" ]]; then
+        systemctl start mabeltv-tv-matter.service
+    fi
 
 {
     printf 'created_utc=%s\n' "$stamp"

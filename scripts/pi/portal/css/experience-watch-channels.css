@@ -50,5 +50,7 @@ body.portal-v2 .watch-mabel-channel-copy small {
 }
 
 body.portal-v2 .mabel-film-channels-heading {
-  margin-bottom: -4px;
+  margin: 8px 0 0;
+  border-top: 1px solid var(--experience-line);
+  padding-top: 18px;
 }

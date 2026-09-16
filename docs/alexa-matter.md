@@ -5,6 +5,27 @@ It talks to the player through `/run/mabeltv/portal-control.sock`, so Alexa,
 the kids' remote, and the portal all use the same `TvController` standby path.
 No Alexa skill, cloud webhook, or Raspberry Pi shutdown command is involved.
 
+## Private Alexa command skill
+
+The optional private **Mabel TV** custom skill uses AWS IoT only as an outbound
+encrypted relay: the Pi subscribes to `mabeltv/alexa/commands` using its own
+certificate, and the Lambda skill can publish only to that topic. There is no
+open inbound port, database access from AWS, or remote Pi shell access.
+
+The skill supports channel names and numbers, My TV title search, guide and
+menu navigation, programme/channel movement, sound controls and playback
+controls. A title matching a family channel tunes it directly; any other title
+opens My TV and fills its existing on-screen search.
+
+Its certificate, private key and configuration live only on the Pi in
+`/var/lib/mabeltv/alexa` and `/etc/mabeltv/alexa-bridge.conf`. They must never
+be committed or copied into an image. Check its local status with:
+
+```bash
+systemctl status mabeltv-alexa-bridge.service --no-pager
+journalctl -u mabeltv-alexa-bridge.service -b --no-pager -n 100
+```
+
 ## Pair with Alexa
 
 The Raspberry Pi and a Matter-capable Echo must be on the same normal home
@@ -52,6 +73,13 @@ ordinary Pi boot from unexpectedly waking the television. It does not disable
 runtime CEC. Matter ON reaches `TvController::turnOn()`, which wakes the LG TV
 and selects the Pi source; Matter OFF reaches `TvController::turnOff()`, which
 places MabelTV and the TV in standby while the Pi keeps running.
+
+The connected television is also available as a separate local Matter
+accessory. It uses the same HDMI-CEC control path but sends only the TV power
+command, so it does not change MabelTV's standby state. Display its setup code
+with `sudo mabeltv-tv-pairing`, then add it in Alexa with the device name **TV**
+(or another name you choose) for commands such as “turn the TV on” and “turn
+the TV off”.
 
 If the local player socket or CEC command fails, the Matter service logs the
 error. CEC failures remain non-fatal to MabelTV's own standby state, just as
