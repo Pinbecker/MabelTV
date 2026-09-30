@@ -10,6 +10,23 @@
 }
 
 @media (max-width: 860px) {
+  html:has(body.portal-v2 #view-live.active),
+  html:has(body.portal-v2 #view-lg-tv.active),
+  body.portal-v2:has(#view-live.active),
+  body.portal-v2:has(#view-lg-tv.active) {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body.portal-v2 #view-live.active,
+  body.portal-v2 #view-lg-tv.active {
+    position: fixed;
+    inset: calc(54px + env(safe-area-inset-top)) 0 calc(72px + env(safe-area-inset-bottom));
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
   html:has(body.portal-v2 #view-insights.active),
   html:has(body.portal-v2 #view-my-tv-home.active #myTvInsightsDashboard:not(.hidden)),
   body.portal-v2:has(#view-insights.active),
@@ -583,6 +600,7 @@
   }
 
   body.portal-v2 .remote-transport button { min-height: 58px; }
+  body.portal-v2 .remote-transport-context button { min-height: 46px; }
 
   body.portal-v2 .settings-device-card { margin-bottom: 30px; }
   body.portal-v2 .settings-fields,

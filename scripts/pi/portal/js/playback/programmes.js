@@ -103,6 +103,16 @@
       $('#watchProgrammeMoreEyebrow').textContent = `CH ${channel.number} · ${channel.name}`
       $('#watchProgrammeMoreTitle').textContent = title
       $('#watchProgrammeMoreMeta').textContent = [metadata.year, 'More film options'].filter(Boolean).join(' · ')
+      const metadataButton = $('#watchProgrammeMetadata')
+      metadataButton.disabled = !tmdbConfigured
+      metadataButton.querySelector('small').textContent = tmdbConfigured
+        ? 'Search TMDB and choose the correct film'
+        : 'Connect TMDB in Settings to search films'
+      metadataButton.onclick = tmdbConfigured ? () => {
+        closeWatchProgrammeMoreSheet(false)
+        scanProgrammeTmdb(channel, programme, () =>
+          openWatchProgrammeMoreSheet(channel, programme, context, returnTo))
+      } : null
       portalSheets.open($('#watchProgrammeMoreSheet'), {
         returnTo: () => openWatchProgrammeSheet(channel, programme, context, returnTo),
       })
@@ -268,18 +278,11 @@
       }
 
       const moreButton = $('#watchProgrammeMore')
-      moreButton.onclick = filmChannel ? () => {
+      moreButton.onclick = filmChannel ? async () => {
         const parentReturn = selectedWatchProgramme?.returnTo || returnTo
+        if (!tmdbConfigured) await refreshTmdbStatus().catch(() => {})
         closeWatchProgrammeSheet(false)
         openWatchProgrammeMoreSheet(channel, programme, context, parentReturn)
-      } : null
-
-      const metadataButton = $('#watchProgrammeMetadata')
-      metadataButton.disabled = !tmdbConfigured
-      metadataButton.onclick = filmChannel && tmdbConfigured ? () => {
-        closeWatchProgrammeMoreSheet(false)
-        scanProgrammeTmdb(channel, programme, () =>
-          openWatchProgrammeMoreSheet(channel, programme, context, returnTo))
       } : null
 
       const favouriteButton = $('#watchProgrammeFavourite')

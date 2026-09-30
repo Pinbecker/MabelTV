@@ -49,6 +49,14 @@ void TvController::requestTune(int channelIndex,
 
     m_currentChannelIndex = channelIndex;
     ChannelRuntime &targetRuntime = m_channels[m_currentChannelIndex];
+    if (!m_channelFilmDismissedKey.isEmpty() && targetRuntime.currentEpisode >= 0
+        && targetRuntime.currentEpisode < targetRuntime.channel.episodes.size()) {
+        const QString key = QStringLiteral("%1/%2")
+            .arg(targetRuntime.channel.number)
+            .arg(QFileInfo(targetRuntime.channel.episodes[targetRuntime.currentEpisode].path)
+                     .fileName());
+        if (key != m_channelFilmDismissedKey) m_channelFilmDismissedKey.clear();
+    }
     if (changingChannel) {
         prepareCurrentEpisodeForVisit(targetRuntime);
     }

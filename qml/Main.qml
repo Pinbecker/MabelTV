@@ -68,6 +68,7 @@ Window {
     readonly property bool widescreenContentAvailable: !directMediaMode
         && !introPlaying && player.videoAspectRatio >= 1.70
     readonly property bool portalWidescreenAvailable: widescreenContentAvailable
+        || widescreenMode
     readonly property bool portalWidescreenEnabled: widescreenMode
         && widescreenContentAvailable
     readonly property bool portalMyTvHandoffAvailable: !directMediaMode
@@ -396,7 +397,7 @@ Window {
             if (myTvMode.active)
                 myTvMode.toggleSubtitles()
         } else if (command === "toggle-widescreen-mode") {
-            if (!myTvMode.active && widescreenContentAvailable) {
+            if (!myTvMode.active && (widescreenContentAvailable || widescreenMode)) {
                 widescreenMode = !widescreenMode
                 showProgramme(widescreenMode ? "WIDESCREEN MODE ON"
                                              : "WIDESCREEN MODE OFF")

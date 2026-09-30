@@ -352,6 +352,8 @@ void TvController::loadState()
             m_channelFilmPlaybackUpdatedUtcMs.insert(iterator.key(), updated);
         }
     }
+    m_channelFilmDismissedKey = object.value(
+        QStringLiteral("channel_film_dismissed_key")).toString();
     const QJsonObject timelines = object.value(QStringLiteral("channel_timelines")).toObject();
 
     for (ChannelRuntime &runtime : m_channels) {
@@ -480,6 +482,8 @@ void TvController::saveState() const
     }
     object.insert(QStringLiteral("channel_film_position_updated_utc_ms"),
                   channelFilmUpdates);
+    object.insert(QStringLiteral("channel_film_dismissed_key"),
+                  m_channelFilmDismissedKey);
 
     QJsonObject timelines;
     const qint64 elapsedNow = m_broadcastClock.isValid() ? m_broadcastClock.elapsed() : 0;

@@ -196,7 +196,8 @@
       $('#watchMabelSearchClear').classList.toggle('hidden', !mabelSearchText)
 
       const continuing = sorted
-        .filter(entry => watchFilmResumable(entry.film))
+        .filter(entry => entry.channel.enabled && entry.film.enabled !== false
+          && watchFilmResumable(entry.film))
         .sort((left, right) => Number(right.film.remote_last_watched || 0) - Number(left.film.remote_last_watched || 0))
         .slice(0, 10)
       $('#watchMabelContinueSection').classList.toggle(

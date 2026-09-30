@@ -146,13 +146,15 @@ void PortalControlServer::dispatch(QLocalSocket *socket, const QByteArray &rawCo
         }
         if (request.isObject()
             && operation == QStringLiteral("save-channel-film-position")) {
-            QMetaObject::invokeMethod(
-                m_rootObject, "portalSetChannelFilmPosition", Qt::QueuedConnection,
+            // The caller must not refresh Continue Watching before the clear
+            // or save has actually reached the single native state writer.
+            const bool applied = QMetaObject::invokeMethod(
+                m_rootObject, "portalSetChannelFilmPosition", Qt::DirectConnection,
                 Q_ARG(QVariant, object.value(QStringLiteral("channel")).toInt()),
                 Q_ARG(QVariant, object.value(QStringLiteral("file")).toString()),
                 Q_ARG(QVariant, object.value(QStringLiteral("position")).toDouble(0.0)),
                 Q_ARG(QVariant, object.value(QStringLiteral("duration")).toDouble(0.0)));
-            finish(socket, "ok\n");
+            finish(socket, applied ? "ok\n" : "error\n");
             return;
         }
         if (request.isObject() && operation == QStringLiteral("play-my-tv-film")) {
@@ -209,7 +211,7 @@ void PortalControlServer::dispatch(QLocalSocket *socket, const QByteArray &rawCo
             {QStringLiteral("widescreen_available"),
              m_rootObject->property("portalWidescreenAvailable").toBool()},
             {QStringLiteral("widescreen_enabled"),
-             m_rootObject->property("portalWidescreenEnabled").toBool()},
+             m_rootObject->property("widescreenMode").toBool()},
             {QStringLiteral("my_tv_handoff_available"),
              m_rootObject->property("portalMyTvHandoffAvailable").toBool()},
         };

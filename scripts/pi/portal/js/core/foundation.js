@@ -173,6 +173,10 @@ const $ = selector => document.querySelector(selector)
     }
 
     function portalRevision(domain) {
+      // The library response includes film bookmarks from the native player.
+      // A player-only update must invalidate the cached library snapshot too.
+      if (domain === 'library') return Number(portalBootstrapState?.revisions?.library || 0)
+        + Number(portalBootstrapState?.revisions?.player || 0)
       return Number(portalBootstrapState?.revisions?.[domain] || 0)
     }
 

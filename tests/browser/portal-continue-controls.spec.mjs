@@ -8,6 +8,27 @@ async function openPortal(page) {
   await page.evaluate(() => document.fonts?.ready)
 }
 
+test('Mabel TV film metadata works without opening Settings first', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'iphone-chromium', 'One phone covers the metadata action')
+  await page.route('**/api/tmdb/status', route =>
+    route.fulfill({ json: { configured: true, provider: 'TMDB' } }))
+  let searchedFilm = null
+  await page.route('**/api/tmdb/programme', async route => {
+    searchedFilm = route.request().postDataJSON()
+    await route.fulfill({ json: { ok: true, query: 'Snowy Adventure', results: [] } })
+  })
+  await openPortal(page)
+  await page.evaluate(() => {
+    const channel = library.channels.find(value => value.content_type === 'films')
+    openWatchProgrammeSheet(channel, channel.programmes[0])
+  })
+  await page.locator('#watchProgrammeMore').click()
+  await expect(page.locator('#watchProgrammeMetadata')).toBeEnabled()
+  await page.locator('#watchProgrammeMetadata').click()
+  await expect(page.locator('#tmdbDialogTitle')).toHaveText('Match “Snowy Adventure”')
+  expect(searchedFilm).toEqual({ channel: 1, file: 'Snowy Adventure.mp4' })
+})
+
 test('Mabel TV film More offers removal from Continue Watching', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One browser covers the shared menu action')
   await openPortal(page)
@@ -19,12 +40,17 @@ test('Mabel TV film More offers removal from Continue Watching', async ({ page }
       return { ok: true, kind: 'channel' }
     }
     const channel = library.channels.find(value => value.content_type === 'films')
+    renderMabelDiscovery(mabelFilmEntries())
     openWatchProgrammeSheet(channel, channel.programmes[0], 'continue')
   })
+  const beforeRemoval = await page.locator('#watchMabelContinueRail .watch-continue-item').count()
+  expect(beforeRemoval).toBeGreaterThan(0)
   await page.locator('#watchProgrammeMore').click()
   await expect(page.locator('#watchProgrammeRemoveProgress')).toBeVisible()
   await page.locator('#watchProgrammeRemoveProgress').click()
   await expect.poll(() => page.evaluate(() => window.__clearRequests.length)).toBe(1)
+  await expect(page.locator('#watchMabelContinueRail .watch-continue-item'))
+    .toHaveCount(beforeRemoval - 1)
   expect(await page.evaluate(() => ({
     request: window.__clearRequests[0],
     position: library.channels[0].programmes[0].remote_position,
@@ -32,6 +58,21 @@ test('Mabel TV film More offers removal from Continue Watching', async ({ page }
     request: { kind: 'channel', channel: 1, file: 'Snowy Adventure.mp4' },
     position: 0,
   })
+})
+
+test('native playback revision invalidates a saved MabelTV library snapshot', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'iphone-chromium', 'One browser covers the cache contract')
+  await openPortal(page)
+  const result = await page.evaluate(async () => {
+    const oldRevision = portalRevision('library')
+    await window.MabelAppCache.write('library-v1', oldRevision, library)
+    portalBootstrapState.revisions.player = Number(
+      portalBootstrapState.revisions.player || 0) + 1
+    const cached = await readPortalDataCache('library-v1', 'library')
+    return { oldRevision, newRevision: portalRevision('library'), stale: cached.stale }
+  })
+  expect(result.newRevision).toBe(result.oldRevision + 1)
+  expect(result.stale).toBe(true)
 })
 
 test('multi-line Mabel TV film titles keep the heart beside their first line', async ({ page }, testInfo) => {

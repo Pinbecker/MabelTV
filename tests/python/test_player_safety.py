@@ -287,6 +287,11 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("tubeWidth * (widescreen ? 9 / 16 : 3 / 4)", main_qml)
         self.assertIn('command === "toggle-widescreen-mode"', main_qml)
         self.assertIn('QStringLiteral("toggle-widescreen-mode")', application)
+        television = (PROJECT_ROOT / "qml" / "TelevisionScreen.qml").read_text(
+            encoding="utf-8")
+        self.assertNotIn("onSourceChanged: appRoot.widescreenMode = false", television)
+        self.assertNotIn("appRoot.widescreenMode = false", television)
+        self.assertIn("|| widescreenMode", main_qml)
 
     def test_my_tv_back_returns_to_library_before_leaving_my_tv_mode(self) -> None:
         my_tv_qml = MY_TV_QML_SOURCE

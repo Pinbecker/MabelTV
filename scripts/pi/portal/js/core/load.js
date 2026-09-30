@@ -180,6 +180,7 @@
 
     async function loadInitialPortalData(bootstrap) {
       applyPortalBootstrap(bootstrap)
+      refreshTmdbStatus().catch(() => {})
       const [cachedLibrary, cachedMyTvViewing] = await Promise.all([
         readPortalDataCache('library-v1'),
         readPortalDataCache('my-tv-viewing-v1'),

@@ -631,6 +631,10 @@ class RemotePlaybackMixin:
         if not session.get("library_id"):
             return {"ok": True}
         if session["kind"] == "channel":
+            # A player already open when its card is dismissed must not
+            # recreate that bookmark with its next ten-second update.
+            if session.get("continue_dismissed"):
+                return {"ok": True}
             command = {
                 "command": "save-channel-film-position",
                 "channel": int(session["channel"]),
@@ -638,15 +642,20 @@ class RemotePlaybackMixin:
                 "position": self.normalise_resume_position(position, duration),
                 "duration": duration,
             }
-            try:
-                with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
-                    client.settimeout(2)
-                    client.connect("/run/mabeltv/portal-control.sock")
-                    client.sendall((json.dumps(command, separators=(",", ":"))
-                                    + "\n").encode())
-                    reply = client.recv(32).decode(errors="replace").strip()
-            except OSError as error:
-                raise ValueError(f"{self.tv_identity()[1]} could not save that film position") from error
+            with self.remote_stream_lock:
+                active = self.remote_stream
+                if (not active or active.get("token") != token
+                        or active.get("continue_dismissed")):
+                    return {"ok": True}
+                try:
+                    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+                        client.settimeout(2)
+                        client.connect("/run/mabeltv/portal-control.sock")
+                        client.sendall((json.dumps(command, separators=(",", ":"))
+                                        + "\n").encode())
+                        reply = client.recv(32).decode(errors="replace").strip()
+                except OSError as error:
+                    raise ValueError(f"{self.tv_identity()[1]} could not save that film position") from error
             if reply != "ok":
                 raise ValueError(f"{self.tv_identity()[1]} could not save that film position")
             return {"ok": True}
@@ -719,17 +728,23 @@ class RemotePlaybackMixin:
                 "position": 0.0,
                 "duration": 0.0,
             }
-            try:
-                with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
-                    client.settimeout(2)
-                    client.connect("/run/mabeltv/portal-control.sock")
-                    client.sendall((json.dumps(command, separators=(",", ":"))
-                                    + "\n").encode())
-                    reply = client.recv(32).decode(errors="replace").strip()
-            except OSError as error:
-                raise ValueError(f"{self.tv_identity()[1]} could not clear that film position") from error
-            if reply != "ok":
-                raise ValueError(f"{self.tv_identity()[1]} could not clear that film position")
+            with self.remote_stream_lock:
+                try:
+                    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+                        client.settimeout(2)
+                        client.connect("/run/mabeltv/portal-control.sock")
+                        client.sendall((json.dumps(command, separators=(",", ":"))
+                                        + "\n").encode())
+                        reply = client.recv(32).decode(errors="replace").strip()
+                except OSError as error:
+                    raise ValueError(f"{self.tv_identity()[1]} could not clear that film position") from error
+                if reply != "ok":
+                    raise ValueError(f"{self.tv_identity()[1]} could not clear that film position")
+                active = self.remote_stream
+                if (active and active.get("kind") == "channel"
+                        and active.get("channel") == channel_number
+                        and active.get("file") == source.name):
+                    active["continue_dismissed"] = True
             return {"ok": True, "kind": kind}
         if kind == "my-tv-series":
             with self.config_lock:

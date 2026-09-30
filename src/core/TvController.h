@@ -313,6 +313,7 @@ private:
     QHash<QString, double> m_channelFilmPlaybackPositions;
     QHash<QString, double> m_channelFilmPlaybackDurations;
     QHash<QString, qint64> m_channelFilmPlaybackUpdatedUtcMs;
+    QString m_channelFilmDismissedKey;
     int m_currentChannelIndex = -1;
     int m_initialChannelNumber = -1;
     int m_previousChannelNumber = -1;

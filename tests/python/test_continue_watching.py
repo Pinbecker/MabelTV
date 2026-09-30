@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 import unittest
 from unittest import mock
 
@@ -60,12 +61,22 @@ class ContinueWatchingTests(unittest.TestCase):
         context.__enter__.return_value = client
         context.__exit__.return_value = False
         client.recv.return_value = b"ok\n"
+        self.fixture.library.remote_stream = {
+            "token": "active-film", "kind": "channel", "source": film,
+            "title": "Family Film", "library_id": "1/Family Film.mp4",
+            "channel": 1, "file": film.name, "expires": time.time() + 60,
+        }
 
         with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
                 mock.patch.object(mabeltv_library.socket, "socket", return_value=context):
             result = self.fixture.library.remote_clear_position({
                 "kind": "channel", "channel": 1, "file": film.name,
             })
+            with mock.patch.object(self.fixture.library, "record_remote_viewing"):
+                self.fixture.library.remote_save_position({
+                    "stream": "active-film", "position": 120,
+                    "duration": 600,
+                })
 
         command = json.loads(client.sendall.call_args.args[0].decode())
         self.assertEqual(result["kind"], "channel")
@@ -73,6 +84,8 @@ class ContinueWatchingTests(unittest.TestCase):
             "command": "save-channel-film-position", "channel": 1,
             "file": film.name, "position": 0.0, "duration": 0.0,
         })
+        self.assertTrue(self.fixture.library.remote_stream["continue_dismissed"])
+        self.assertEqual(client.sendall.call_count, 1)
 
 
 if __name__ == "__main__":

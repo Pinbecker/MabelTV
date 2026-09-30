@@ -166,7 +166,7 @@ class LibraryHttpTests(unittest.TestCase):
                              ("/portal/js/experience-theme.js", b"mabeltv-experience-theme"),
                              ("/portal/assets/providers/bbc-iplayer-app.jpg", b"\xff\xd8\xff"),
                              ("/portal/js/actions.js", b"managementBusy"),
-                             ("/portal/js/lg-tv-remote.js", b"POINTER_INTERVAL_MS")):
+                             ("/portal/js/lg-tv-remote.js", b"STATUS_INTERVAL_MS")):
             with urllib.request.urlopen(self.base + path, timeout=5) as response:
                 self.assertEqual(response.status, 200)
                 self.assertEqual(response.headers.get("Connection"), "close")

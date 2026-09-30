@@ -560,7 +560,11 @@ let managementBusy = false
       setRemoteFeedback(`Opening channel ${channel}`, 'success')
     }
 
-      $$('[data-live-command]').forEach(button => button.onclick = () => sendLiveCommand(button.dataset.liveCommand, button))
+      $$('[data-live-command]').forEach(button => button.onclick = () => {
+        const command = button.dataset.liveCommand
+        if (command === 'restart-programme' && !confirm('Restart this programme from the beginning?')) return
+        sendLiveCommand(command, button)
+      })
       const remoteKeyboard = $('#remoteKeyboard')
       const remoteKeyboardText = $('#remoteKeyboardText')
       remoteKeyboard?.addEventListener('submit', async event => {
@@ -579,6 +583,7 @@ let managementBusy = false
       card.classList.toggle('is-preview-expanded', expanded)
       livePreviewToggle.setAttribute('aria-expanded', String(expanded))
       livePreviewToggle.setAttribute('aria-label', `${expanded ? 'Collapse' : 'Expand'} live TV preview`)
+      if (!expanded) $('#view-live').scrollTo(0, 0)
     }
     if ($('#openLiveChannels')) {
       $('#openLiveChannels').onclick = () => {

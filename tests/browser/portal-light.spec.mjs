@@ -207,7 +207,7 @@ test('@visual light remote pages keep one cohesive dark control surface', async 
   expect(lgColours.chassis).not.toBe('rgb(255, 255, 255)')
   expect(lgColours.utility).not.toBe('rgb(255, 255, 255)')
   expect(lgColours.apps).not.toBe('rgb(255, 255, 255)')
-  await expect(page).toHaveScreenshot('light-remote-lg-tv.png')
+  await expect(page).toHaveScreenshot('light-remote-lg-tv.png', { maxDiffPixelRatio: 0 })
 })
 
 

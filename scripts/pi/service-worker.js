@@ -2,7 +2,7 @@
 
 importScripts('/mabeltv-offline-schema.js')
 
-const SHELL_RELEASE = '252'
+const SHELL_RELEASE = '258'
 const SHELL_CACHE = `mabeltv-shell-v${SHELL_RELEASE}`
 const PREVIOUS_SHELL_CACHE = 'mabeltv-shell-v251'
 const SHELL_CACHE_PREFIX = 'mabeltv-shell-v'

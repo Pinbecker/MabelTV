@@ -1256,6 +1256,19 @@ void CoreTests::filmChannelBookmarksPersistAcrossTvAndPortalPlayback()
     QCOMPARE(saved.value(QStringLiteral("channel_film_positions")).toObject()
                  .value(QStringLiteral("5/Film.mp4")).toDouble(),
              2400.0);
+
+    controller.setChannelFilmPlaybackState(5, QStringLiteral("Film.mp4"), 0.0, 0.0);
+    controller.updatePlaybackPosition(2500.0, false);
+    saved = mabeltv::state::player(TestStateFixture::databasePath(controller));
+    QVERIFY(!saved.value(QStringLiteral("channel_film_positions")).toObject()
+                 .contains(QStringLiteral("5/Film.mp4")));
+
+    controller.playPortalProgramme(5, QStringLiteral("Film.mp4"), 0.0);
+    QTRY_COMPARE_WITH_TIMEOUT(playbackRequests.count(), 2, 1500);
+    controller.updatePlaybackPosition(45.0, false);
+    saved = mabeltv::state::player(TestStateFixture::databasePath(controller));
+    QCOMPARE(saved.value(QStringLiteral("channel_film_positions")).toObject()
+                 .value(QStringLiteral("5/Film.mp4")).toDouble(), 45.0);
 }
 
 void CoreTests::myTvLibraryIsSeparateAndParentOnly()

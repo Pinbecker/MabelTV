@@ -37,13 +37,11 @@
 
           <div class="tv-remote-rocker tv-remote-volume-rocker" aria-label="Volume controls"><button data-lg-action="volume-up" data-lg-requires-tv type="button" aria-label="Volume up"><svg><use href="/portal/icons.svg#signal-plus"/></svg></button><button id="lgMute" class="tv-remote-rocker-state tv-remote-mute" data-lg-action="mute" data-lg-requires-tv type="button" aria-label="Mute connected TV" aria-pressed="false"><svg class="tv-remote-volume-on"><use href="/portal/icons.svg#signal-volume"/></svg><svg class="tv-remote-volume-off"><use href="/portal/icons.svg#signal-volume-x"/></svg></button><button data-lg-action="volume-down" data-lg-requires-tv type="button" aria-label="Volume down"><svg><use href="/portal/icons.svg#signal-minus"/></svg></button></div>
         </div>
-        <button class="tv-remote-back" data-lg-action="back" data-lg-requires-tv type="button"><svg><use href="/portal/icons.svg#signal-arrow-left"/></svg><span>Back</span></button>
-
         <div class="tv-remote-utility-row" aria-label="Navigation shortcuts">
-          <button data-lg-action="home" data-lg-requires-tv type="button"><svg><use href="/portal/icons.svg#signal-house"/></svg><span>Home</span></button>
+          <button data-lg-action="back" data-lg-requires-tv type="button"><svg><use href="/portal/icons.svg#signal-arrow-left"/></svg><span>Back</span></button>
           <button data-lg-action="guide" data-lg-requires-tv type="button"><svg><use href="/portal/icons.svg#signal-guide"/></svg><span>Guide</span></button>
           <button data-lg-action="settings" data-lg-requires-tv type="button"><svg><use href="/portal/icons.svg#settings"/></svg><span>Settings</span></button>
-          <button data-lg-action="info" data-lg-requires-tv type="button"><svg><use href="/portal/icons.svg#signal-circle-info"/></svg><span>Info</span></button>
+          <button data-lg-action="home" data-lg-requires-tv type="button"><svg><use href="/portal/icons.svg#signal-house"/></svg><span>Home</span></button>
         </div>
       </div>
 
@@ -56,18 +54,10 @@
         <button data-lg-action="fast-forward" data-lg-requires-tv type="button" aria-label="Fast forward"><svg><use href="/portal/icons.svg#signal-fast-forward"/></svg></button>
       </div>
 
-      <section class="lg-trackpad-wrap" aria-labelledby="lgTrackpadTitle">
-        <div id="lgTrackpad" class="lg-trackpad" role="button" tabindex="0" data-lg-requires-tv aria-describedby="lgTrackpadHelp">
-          <span class="lg-trackpad-glow" aria-hidden="true"></span>
-          <svg aria-hidden="true"><use href="/portal/icons.svg#signal-pointer"/></svg>
-          <strong id="lgTrackpadTitle">Swipe to move pointer</strong>
-          <span id="lgTrackpadHelp">Tap to click · use two fingers to scroll</span>
-        </div>
-      </section>
     </section>
 
     <section class="lg-apps-card" aria-labelledby="lgQuickAppsTitle">
-      <header><div><p>Quick apps</p><h2 id="lgQuickAppsTitle">Open on connected TV</h2></div><button data-lg-action="refresh" type="button" aria-label="Refresh connected TV status"><svg><use href="/portal/icons.svg#signal-restart"/></svg></button></header>
+      <header><div><p>Quick apps</p><h2 id="lgQuickAppsTitle">Open on connected TV</h2></div></header>
       <div class="lg-app-strip">
         <button data-lg-launch="netflix" data-lg-requires-tv type="button"><img src="/portal/assets/providers/netflix-app.jpg" alt="" loading="lazy" decoding="async"><span>Netflix</span></button>
         <button data-lg-launch="iplayer" data-lg-requires-tv type="button"><img src="/portal/assets/providers/bbc-iplayer-app.jpg" alt="" loading="lazy" decoding="async"><span>iPlayer</span></button>

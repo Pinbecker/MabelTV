@@ -63,6 +63,11 @@ void TvController::playPortalProgramme(int channelNumber,
 
     m_currentChannelIndex = channelIndex;
     target.currentEpisode = episodeIndex;
+    if (target.channel.contentType == QStringLiteral("films")) {
+        const QString key = QStringLiteral("%1/%2")
+            .arg(target.channel.number).arg(fileName);
+        if (m_channelFilmDismissedKey == key) m_channelFilmDismissedKey.clear();
+    }
     target.anchorMilliseconds = m_broadcastClock.elapsed();
     const double startPosition = target.channel.contentType == QStringLiteral("films")
         ? clampPlaybackPosition(target, episodeIndex, positionSeconds)
@@ -109,8 +114,16 @@ void TvController::setChannelFilmPlaybackState(int channelNumber,
     const double position = std::max(0.0, positionSeconds);
     if (position < 2.0) {
         m_channelFilmPlaybackPositions.remove(key);
+        if (channelIndex == m_currentChannelIndex
+            && runtime.currentEpisode >= 0
+            && runtime.currentEpisode < runtime.channel.episodes.size()
+            && QFileInfo(runtime.channel.episodes[runtime.currentEpisode].path).fileName()
+                == fileName) {
+            m_channelFilmDismissedKey = key;
+        }
     } else {
         m_channelFilmPlaybackPositions.insert(key, position);
+        if (m_channelFilmDismissedKey == key) m_channelFilmDismissedKey.clear();
     }
     if (durationSeconds >= 10.0) {
         m_channelFilmPlaybackDurations.insert(key, durationSeconds);

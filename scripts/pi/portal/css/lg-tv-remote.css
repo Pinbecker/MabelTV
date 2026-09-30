@@ -23,8 +23,7 @@ body.portal-v2 .lg-remote-page button:active:not(:disabled) {
   transform: scale(.97);
 }
 
-body.portal-v2 .lg-remote-page button:disabled,
-body.portal-v2 .lg-trackpad[aria-disabled="true"] {
+body.portal-v2 .lg-remote-page button:disabled {
   cursor: not-allowed;
   opacity: .38;
 }
@@ -97,68 +96,17 @@ body.portal-v2 .lg-control-card {
   padding: 0;
 }
 
-body.portal-v2 .lg-trackpad-wrap {
-  margin-top: 10px;
+body.portal-v2 .lg-remote-page .tv-remote-utility-row button {
+  flex-direction: column;
+  gap: 3px;
+  padding: 0 3px;
+  font-size: 9px;
+  white-space: nowrap;
 }
 
-body.portal-v2 .lg-trackpad {
-  position: relative;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  height: 116px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, .09);
-  border-radius: 15px;
-  background-color: #15151a;
-  background-image: radial-gradient(rgba(255, 255, 255, .12) .75px, transparent .75px);
-  background-size: 12px 12px;
-  color: #8d8d97;
-  touch-action: none;
-}
-
-body.portal-v2 .lg-trackpad-glow {
-  position: absolute;
-  inset: -40%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--experience-accent) 10%, transparent), transparent 46%);
-  pointer-events: none;
-}
-
-body.portal-v2 .lg-trackpad svg {
-  position: relative;
-  width: 28px;
-  height: 28px;
-  margin-bottom: 6px;
-  fill: none;
-  stroke: #a5a5ae;
-  stroke-width: 1.45;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-body.portal-v2 .lg-trackpad strong,
-body.portal-v2 .lg-trackpad > span:last-child {
-  position: relative;
-  color: #c0c0c7;
-  font-size: 10px;
-  font-weight: 650;
-}
-
-body.portal-v2 .lg-trackpad > span:last-child {
-  margin-top: 2px;
-  color: #777781;
-  font-size: 10px;
-  font-weight: 550;
-}
-
-body.portal-v2 .lg-trackpad.is-active {
-  border-color: color-mix(in srgb, var(--experience-accent) 32%, transparent);
-}
-
-body.portal-v2 .lg-trackpad.is-active svg,
-body.portal-v2 .lg-trackpad.is-active strong {
-  color: var(--experience-orange);
-  stroke: var(--experience-orange);
+body.portal-v2 .lg-remote-page .tv-remote-utility-row svg {
+  width: 13px;
+  height: 13px;
 }
 
 body.portal-v2 .lg-apps-card {
@@ -167,7 +115,7 @@ body.portal-v2 .lg-apps-card {
   border: 1px solid rgba(255, 255, 255, .1);
   border-radius: 17px;
   background: linear-gradient(180deg, #141419, #0f0f13);
-  padding: 14px 0 12px;
+  padding: 8px 0 10px;
 }
 
 body.portal-v2 .lg-apps-card header {
@@ -175,7 +123,7 @@ body.portal-v2 .lg-apps-card header {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 0 14px 10px;
+  padding: 0 14px 7px;
 }
 
 body.portal-v2 .lg-apps-card header p {
@@ -189,30 +137,6 @@ body.portal-v2 .lg-apps-card header h2 {
   margin: 1px 0 0;
   font-size: 15px;
   letter-spacing: -.025em;
-}
-
-body.portal-v2 .lg-apps-card header button {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  min-width: 44px;
-  padding: 0;
-  height: 44px;
-  min-height: 44px;
-  border: 1px solid rgba(255, 255, 255, .1);
-  border-radius: 50%;
-  background: #19191f;
-  color: #aaaab2;
-}
-
-body.portal-v2 .lg-apps-card header svg {
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 body.portal-v2 .lg-app-strip {
@@ -307,10 +231,7 @@ body.portal-v2 .lg-remote-page .is-sending {
 }
 
 @media (max-width: 430px) {
-  body.portal-v2 .lg-trackpad-wrap { margin-top: 6px; }
-  body.portal-v2 .lg-trackpad { height: 64px; }
-  body.portal-v2 .lg-trackpad svg { width: 20px; height: 20px; margin-bottom: 2px; }
-  body.portal-v2 .lg-apps-card { padding-top: 10px; padding-bottom: 8px; }
+  body.portal-v2 .lg-apps-card { padding-top: 6px; padding-bottom: 8px; }
   body.portal-v2 .lg-apps-card header { padding-bottom: 7px; }
   body.portal-v2 .lg-apps-card header h2 { font-size: 13px; }
   body.portal-v2 .lg-app-strip { grid-auto-columns: 62px; gap: 7px; }

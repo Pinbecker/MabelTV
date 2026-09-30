@@ -718,7 +718,7 @@ body.portal-v2 .tv-remote-transport-row svg {
   body.portal-v2 .tv-remote-status-copy h2 { font-size: 17px; }
   body.portal-v2 .tv-remote-status-kicker { font-size: 11px; }
   body.portal-v2 .tv-remote-status-facts { gap: 3px; margin-top: 9px; font-size: 10px; }
-  body.portal-v2 .tv-remote-utility-row button { height: 44px; min-height: 44px; }
+  body.portal-v2 .tv-remote-utility-row button { height: 46px; min-height: 46px; }
   body.portal-v2 .tv-remote-utility-row svg { width: 15px; height: 15px; }
   body.portal-v2 .tv-remote-transport-row { height: 46px; margin-top: 5px; }
   body.portal-v2 .tv-remote-play-pause button { min-height: 44px; }

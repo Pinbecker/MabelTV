@@ -405,13 +405,6 @@ Rectangle {
             muted: tvController.muted
             aspectMode: tvController.currentAspectMode
 
-            onSourceChanged: appRoot.widescreenMode = false
-
-            onVideoAspectRatioChanged: {
-                if (!appRoot.widescreenContentAvailable)
-                    appRoot.widescreenMode = false
-            }
-
             onPausedChanged: {
                 if (!appRoot.introPlaying && !directMediaMode
                         && (status === "Playing" || status === "Paused"))

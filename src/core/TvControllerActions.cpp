@@ -213,12 +213,19 @@ void TvController::updatePlaybackPosition(double positionSeconds, bool paused)
             const QString key = QStringLiteral("%1/%2")
                                     .arg(runtime.channel.number)
                                     .arg(QFileInfo(episode.path).fileName());
-            m_channelFilmPlaybackPositions.insert(key, runtime.anchorPositionSeconds);
-            if (episode.durationSeconds >= 10.0) {
-                m_channelFilmPlaybackDurations.insert(key, episode.durationSeconds);
+            const QString tvPower = m_tvControl ? m_tvControl->lastPowerStatus() : QString();
+            // The Pi may keep playing while the connected television is off.
+            // That background playback is not a Continue Watching intent.
+            if (key != m_channelFilmDismissedKey
+                && tvPower != QStringLiteral("standby")
+                && tvPower != QStringLiteral("off")) {
+                m_channelFilmPlaybackPositions.insert(key, runtime.anchorPositionSeconds);
+                if (episode.durationSeconds >= 10.0) {
+                    m_channelFilmPlaybackDurations.insert(key, episode.durationSeconds);
+                }
+                m_channelFilmPlaybackUpdatedUtcMs.insert(
+                    key, QDateTime::currentMSecsSinceEpoch());
             }
-            m_channelFilmPlaybackUpdatedUtcMs.insert(
-                key, QDateTime::currentMSecsSinceEpoch());
         }
     }
     m_playbackPaused = paused;
@@ -247,6 +254,7 @@ void TvController::restartCurrentProgrammeInternal(bool parentPortalAuthorized)
         return;
     }
     runtime.programmePositions[runtime.currentEpisode] = 0.0;
+    m_channelFilmDismissedKey.clear();
     runtime.programmeLastLeftMilliseconds[runtime.currentEpisode] = -1;
     runtime.anchorPositionSeconds = 0.0;
     runtime.anchorMilliseconds = m_broadcastClock.elapsed();

@@ -1,5 +1,7 @@
 import { test, expect } from './test-fixtures.mjs'
 
+test.use({ serviceWorkers: 'block' })
+
 
 async function openPortal(page) {
   await page.goto('/')
@@ -105,6 +107,12 @@ test('@visual primary screens stay full-width and match their visual references'
   for (const screen of screens) {
     await page.locator(screen.trigger).click()
     await expect(page.locator(screen.selector)).toBeVisible()
+    if (screen.selector === '#view-live') {
+      await expect(page.locator('#view-live .tv-remote-utility-row button').first()).toHaveAttribute('id', 'remoteBack')
+    }
+    if (screen.selector === '#view-lg-tv') {
+      await expect(page.locator('#view-lg-tv .tv-remote-utility-row button').first()).toHaveAttribute('data-lg-action', 'back')
+    }
     await expectInsideViewport(page, screen.selector)
     const widths = await page.evaluate(() => ({
       client: document.documentElement.clientWidth,
@@ -112,7 +120,10 @@ test('@visual primary screens stay full-width and match their visual references'
     }))
     expect(widths.scroll).toBe(widths.client)
     await expect(page.locator(screen.selector)).toHaveCSS('opacity', '1')
-    await expect(page).toHaveScreenshot(screen.snapshot, { fullPage: false })
+    await expect(page).toHaveScreenshot(screen.snapshot, {
+      fullPage: false,
+      maxDiffPixelRatio: screen.selector === '#view-lg-tv' ? 0 : 0.01,
+    })
   }
 })
 
@@ -235,7 +246,7 @@ test('shared portal component contracts stay canonical', async ({ page }, testIn
     const browseSearch = style.id === 'viewingBrowseSearch'
     expect(style).toMatchObject({
       display: browseSearch ? 'flex' : 'grid',
-      minHeight: browseSearch || ['watchMabelSearch', 'watchSearch', 'myTvViewingSearch'].includes(style.id)
+      minHeight: browseSearch || ['homeFilmSearch', 'watchMabelSearch', 'watchSearch', 'myTvViewingSearch'].includes(style.id)
         ? '42px' : style.id === 'myTvFilmographySearch' ? '34px' : '48px',
       radius: browseSearch ? '12px' : '8px',
     })
@@ -305,11 +316,10 @@ test('Experience icon controls and sheet headers keep their mobile contracts', a
   expect(await page.locator('#lgTvConnectionLed').evaluate(node => getComputedStyle(node).backgroundColor))
     .toBe('rgb(255, 90, 110)')
   const cardPower = await geometry(page, '#lgCardPower')
-  const quickRefresh = await geometry(page, '.lg-apps-card header button')
   expect(cardPower.width).toBeGreaterThanOrEqual(43.9)
   expect(cardPower.height).toBeGreaterThanOrEqual(43.9)
-  expect(quickRefresh.width).toBeGreaterThanOrEqual(43.9)
-  expect(quickRefresh.height).toBeGreaterThanOrEqual(43.9)
+  await expect(page.locator('.lg-apps-card header button')).toHaveCount(0)
+  await expect(page.locator('#lgTrackpad')).toHaveCount(0)
   const sharedControls = await page.evaluate(() => {
     const rect = selector => {
       const value = document.querySelector(selector).getBoundingClientRect()
@@ -323,7 +333,7 @@ test('Experience icon controls and sheet headers keep their mobile contracts', a
       channel: rect('#view-lg-tv .tv-remote-channel-rocker'),
       dpad: rect('#view-lg-tv .tv-remote-dpad'),
       volume: rect('#view-lg-tv .tv-remote-volume-rocker'),
-      back: rect('#view-lg-tv .tv-remote-back'),
+      back: rect('#view-lg-tv [data-lg-action="back"]'),
     }
   })
   expect(sharedControls.channel.right).toBeLessThan(sharedControls.dpad.left)
@@ -355,7 +365,7 @@ test('Experience icon controls and sheet headers keep their mobile contracts', a
 })
 
 
-test('@visual Mabel TV remote offers a contextual borderless My TV handoff', async ({ page }, testInfo) => {
+test('@visual Mabel TV remote keeps its controls on one screen', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.startsWith('iphone-'), 'Phone remote contract')
   await openPortal(page)
   const liveFixture = {
@@ -392,7 +402,7 @@ test('@visual Mabel TV remote offers a contextual borderless My TV handoff', asy
   await expect(page.locator('#view-live .tv-remote-transport-row button')).toHaveCount(4)
   await expect(page.locator('#view-live .remote-transport-context button')).toHaveCount(4)
   await expect(page.locator('#view-live #openLiveChannels')).toHaveCount(0)
-  await expect(page.locator('#remoteMyTvAction')).toHaveText('Open My TV')
+  await expect(page.locator('#remoteMyTvAction')).toHaveCount(0)
   await expect(page.locator('#remoteSubtitles')).toHaveText('Subtitles')
   await expect(page.locator('#remoteMyTvHandoff')).toHaveText('Open in My TV')
   await expect(page.locator('#remoteWidescreen')).toBeVisible()
@@ -408,8 +418,8 @@ test('@visual Mabel TV remote offers a contextual borderless My TV handoff', asy
   const transportAppearance = await page.locator('#view-live .tv-remote-transport-row button').evaluateAll(buttons =>
     buttons.map(button => ({ color: getComputedStyle(button).color, opacity: getComputedStyle(button).opacity })))
   transportAppearance.forEach(style => expect(style).toEqual({ color: 'rgb(244, 244, 247)', opacity: '1' }))
-  const shortcutIcon = await geometry(page, '#remoteMyTvAction svg')
-  expect(shortcutIcon.width).toBeLessThanOrEqual(13.1)
+  const shortcutIcon = await geometry(page, '#remoteMyTvHandoff svg')
+  expect(shortcutIcon.width).toBeGreaterThan(13)
   const mabelControls = await page.evaluate(() => {
     const rect = selector => {
       const value = document.querySelector(selector).getBoundingClientRect()
@@ -419,7 +429,7 @@ test('@visual Mabel TV remote offers a contextual borderless My TV handoff', asy
       channel: rect('#view-live .tv-remote-channel-rocker'),
       dpad: rect('#view-live .tv-remote-dpad'),
       volume: rect('#view-live .tv-remote-volume-rocker'),
-      back: rect('#view-live .tv-remote-back'),
+      back: rect('#view-live #remoteBack'),
     }
   })
   expect(mabelControls.channel.right).toBeLessThan(mabelControls.dpad.left)
