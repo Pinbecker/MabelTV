@@ -26,6 +26,7 @@ secondary service objects.
   revision counters and supported backup/integrity operations.
 - `repositories/viewing.py`: the targeted relational repository for stable MabelTV
   viewing identities and session CRUD; it composes into `StateDatabase`.
+- `repositories/mabel_queue.py`: the independent ordered Mabel TV playback queue.
 - `auth.py`: first-time setup, owner identity, PIN verification, login limits
   and session lifetime.
 - `media.py`: read models for channels, programmes, My TV media and safe media
@@ -42,6 +43,7 @@ secondary service objects.
 - `viewing_analytics.py`: pure timezone-aware calendar allocation and aggregate
   builders. It has no database, HTTP or runtime-state ownership.
 - `viewing_queue.py`: validation and atomic persistence of My TV Up Next order.
+- `mabel_queue.py`: authenticated Mabel TV queue actions and validated programme selection.
 - `provider_transport.py`: API-key reads, bounded HTTP transport, response
   caching and OpenSubtitles transport.
 - `my_tv_metadata.py`: My TV TMDB titles, series, people, collections,

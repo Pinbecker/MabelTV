@@ -24,6 +24,7 @@ PORTAL_APP_SOURCES = (
     "playback/my-tv-series.js",
     "playback/film-catalogue.js",
     "playback/programmes.js",
+    "playback/mabel-queue.js",
     "playback/downloads.js",
     "playback/view.js",
     "my-tv-viewing/catalogue.js",

@@ -153,7 +153,7 @@
       }
       const view = requested === 'home' ? 'overview'
         : requested === 'my-tv' ? 'my-tv-home' : requested
-      const allowed = new Set(['overview', 'live', 'lg-tv', 'channels', 'watch', 'my-tv-home', 'my-tv-viewing', 'my-tv-explore', 'my-tv-ratings', 'my-tv-filmography', 'usb', 'system', 'appearance', 'insights'])
+      const allowed = new Set(['overview', 'live', 'lg-tv', 'channels', 'watch', 'mabel-queue', 'my-tv-home', 'my-tv-viewing', 'my-tv-explore', 'my-tv-ratings', 'my-tv-filmography', 'usb', 'system', 'appearance', 'insights'])
       if (allowed.has(view)) {
         if (view === 'channels') {
           watchDomain = 'mabel'
@@ -444,13 +444,13 @@
         || (name === 'insights' && myInsightsMode === 'my_tv')
         || (name === 'watch' && watchDomain === 'my_tv')
       const activeNavigation = myTvNavigation ? 'my-tv-home'
-        : channelFromWatch || consolidatedWatchView
+        : name === 'mabel-queue' || channelFromWatch || consolidatedWatchView
         || (name === 'insights' && myInsightsMode === 'mabel') ? 'watch'
         : name === 'lg-tv' ? 'live'
           : (name === 'usb' || name === 'activity' || name === 'appearance') ? 'system' : name
-      rememberPrimarySectionLocation(name, activeNavigation)
+      if (name !== 'mabel-queue') rememberPrimarySectionLocation(name, activeNavigation)
       $$('.view').forEach(view => view.classList.toggle('active', view.id === `view-${name}`))
-      document.body.classList.toggle('watch-mode', name === 'watch' || name === 'my-tv-home' || name === 'my-tv-viewing'
+      document.body.classList.toggle('watch-mode', name === 'watch' || name === 'mabel-queue' || name === 'my-tv-home' || name === 'my-tv-viewing'
         || name === 'my-tv-explore' || name === 'my-tv-ratings' || name === 'my-tv-filmography'
         || channelFromWatch || consolidatedWatchView)
       document.body.classList.toggle('tv-remote-mode', name === 'live' || name === 'lg-tv')
@@ -476,6 +476,8 @@
         return
       }
       renderLibraryView(name)
+      if (name === 'overview' || name === 'watch' || name === 'mabel-queue')
+        loadMabelQueue().catch(() => {})
       const restoredScroll = options.restoreScroll
         ? restoreViewScroll(options.restoreScroll) : false
       if (!restoredScroll) {

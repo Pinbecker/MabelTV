@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 
 
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 
 SCHEMA = r"""
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -817,6 +817,28 @@ SET channel_name=replace(replace(channel_name,'Adult TV','My TV'),
 WHERE channel_name LIKE '%Adult TV%'
    OR channel_name LIKE '%Adult library%';
 """
+MABEL_QUEUE_SCHEMA = """
+CREATE TABLE mabel_queue_entries (
+    id TEXT PRIMARY KEY,
+    position INTEGER NOT NULL UNIQUE CHECK(position >= 0),
+    channel_number INTEGER NOT NULL REFERENCES channels(number)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    file_name TEXT NOT NULL,
+    title TEXT NOT NULL,
+    artwork TEXT NOT NULL DEFAULT '',
+    channel_name TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE mabel_queue_state (
+    id INTEGER PRIMARY KEY CHECK(id = 1),
+    ending TEXT NOT NULL DEFAULT 'all_done'
+        CHECK(ending IN ('all_done','keep_playing')),
+    active INTEGER NOT NULL DEFAULT 0 CHECK(active IN (0,1)),
+    completed INTEGER NOT NULL DEFAULT 0 CHECK(completed IN (0,1)),
+    current_title TEXT NOT NULL DEFAULT ''
+);
+INSERT INTO mabel_queue_state(id) VALUES(1);
+"""
+
 MIGRATIONS = (
     (1, "initial relational state", SCHEMA),
     (2, "portal cache revision ledger", REVISION_SCHEMA),
@@ -829,6 +851,7 @@ MIGRATIONS = (
     (8, "stable MabelTV viewing identities and targeted history",
      VIEWING_IDENTITY_SCHEMA),
     (9, "rename the legacy private domain to My TV", MY_TV_DOMAIN_SCHEMA),
+    (10, "persistent Mabel TV playback queue", MABEL_QUEUE_SCHEMA),
 )
 MIGRATION_CHECKSUMS = {
     version: hashlib.sha256(sql.encode("utf-8")).hexdigest()

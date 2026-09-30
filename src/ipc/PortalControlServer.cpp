@@ -256,6 +256,13 @@ void PortalControlServer::dispatch(QLocalSocket *socket, const QByteArray &rawCo
         return;
     }
 
+    if (command == QStringLiteral("start-mabel-queue")) {
+        QMetaObject::invokeMethod(m_rootObject, "portalStartMabelQueue",
+                                  Qt::QueuedConnection);
+        finish(socket, "ok\n");
+        return;
+    }
+
     if (allowedCommands().contains(command)) {
         QMetaObject::invokeMethod(m_rootObject, "portalCommand", Qt::QueuedConnection,
                                   Q_ARG(QVariant, command));

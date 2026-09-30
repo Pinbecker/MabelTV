@@ -20,6 +20,7 @@ from typing import Any, Iterator
 
 
 from .repositories.viewing import ViewingRepositoryMixin
+from .repositories.mabel_queue import MabelQueueRepositoryMixin
 from .database_schema import (
     MIGRATIONS,
     MIGRATION_CHECKSUMS,
@@ -119,7 +120,7 @@ def normalise_my_tv_viewing(value: Any) -> tuple[dict[str, Any], dict[str, int]]
     return root, {key: count for key, count in normalisations.items() if count}
 
 
-class StateDatabase(ViewingRepositoryMixin):
+class StateDatabase(MabelQueueRepositoryMixin, ViewingRepositoryMixin):
     """Own MabelTV's authoritative relational SQLite state."""
 
     schema_version = SCHEMA_VERSION

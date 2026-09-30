@@ -10,8 +10,8 @@
 
 namespace
 {
-    constexpr int minimumSupportedSchemaVersion = 9;
-    constexpr int maximumSupportedSchemaVersion = 9;
+    constexpr int minimumSupportedSchemaVersion = 10;
+    constexpr int maximumSupportedSchemaVersion = 10;
 
 class Connection
 {
@@ -302,6 +302,78 @@ bool mergeSettings(const QString &path, const QJsonObject &value, QString *error
 {
     return mergeKeyValues(path, QStringLiteral("application_settings"),
                           QStringLiteral("settings"), value, error);
+}
+
+MabelQueueAdvance advanceMabelQueue(const QString &path, bool start, QString *error)
+{
+    Connection connection(path);
+    MabelQueueAdvance result;
+    if (!ready(connection, error)) return result;
+    QSqlDatabase &database = connection.database();
+    QSqlQuery begin(database);
+    if (!run(begin, QStringLiteral("BEGIN IMMEDIATE"), error)) return result;
+    const auto fail = [&database, error](const QSqlQuery &query) {
+        database.rollback();
+        setError(error, query.lastError().text());
+    };
+    QSqlQuery state(database);
+    if (!run(state, QStringLiteral(
+            "SELECT active,ending FROM mabel_queue_state WHERE id=1"), error)) {
+        database.rollback();
+        return result;
+    }
+    if (!state.next() || (!start && !state.value(0).toBool())) {
+        database.rollback();
+        return result;
+    }
+    QSqlQuery next(database);
+    if (!run(next, QStringLiteral(
+            "SELECT id,channel_number,file_name,title FROM mabel_queue_entries "
+            "ORDER BY position LIMIT 1"), error)) {
+        database.rollback();
+        return result;
+    }
+    if (next.next()) {
+        result.item = QJsonObject{
+            {QStringLiteral("channel"), next.value(1).toInt()},
+            {QStringLiteral("file"), next.value(2).toString()},
+            {QStringLiteral("title"), next.value(3).toString()},
+        };
+        QSqlQuery remove(database);
+        remove.prepare(QStringLiteral("DELETE FROM mabel_queue_entries WHERE id=?"));
+        remove.addBindValue(next.value(0));
+        if (!remove.exec()) { fail(remove); return {}; }
+        QSqlQuery update(database);
+        update.prepare(QStringLiteral(
+            "UPDATE mabel_queue_state SET active=1,completed=0,current_title=? WHERE id=1"));
+        update.addBindValue(next.value(3));
+        if (!update.exec()) { fail(update); return {}; }
+    } else if (start) {
+        database.rollback();
+        return result;
+    } else {
+        result.allDone = state.value(1).toString() == QStringLiteral("all_done");
+        QSqlQuery update(database);
+        update.prepare(QStringLiteral(
+            "UPDATE mabel_queue_state SET active=0,completed=?,current_title='' WHERE id=1"));
+        update.addBindValue(result.allDone ? 1 : 0);
+        if (!update.exec()) { fail(update); return {}; }
+    }
+    if (!database.commit()) {
+        setError(error, database.lastError().text());
+        return {};
+    }
+    result.claimed = true;
+    return result;
+}
+
+bool stopMabelQueue(const QString &path, QString *error)
+{
+    Connection connection(path);
+    if (!ready(connection, error)) return false;
+    QSqlQuery query(connection.database());
+    return run(query, QStringLiteral(
+        "UPDATE mabel_queue_state SET active=0,current_title='' WHERE id=1"), error);
 }
 
 bool savePlayerSnapshot(const QString &path, const QJsonObject &value, QString *error)

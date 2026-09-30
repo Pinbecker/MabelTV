@@ -20,7 +20,7 @@ class StateDomainMigrationTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temporary.cleanup()
 
-    def test_schema_eight_to_nine_renames_my_tv_state_without_data_loss(self) -> None:
+    def test_schema_eight_to_current_renames_my_tv_state_without_data_loss(self) -> None:
         self.database.path.unlink()
         connection = self.database.connect()
         try:
@@ -83,7 +83,7 @@ class StateDomainMigrationTests(unittest.TestCase):
 
         report = self.database.upgrade()
 
-        self.assertEqual(9, report["schema_version"])
+        self.assertEqual(database_module.SCHEMA_VERSION, report["schema_version"])
         connection = self.database.connect()
         try:
             self.assertEqual("watched", connection.execute(
@@ -116,6 +116,8 @@ class StateDomainMigrationTests(unittest.TestCase):
                 "PRAGMA integrity_check").fetchone()[0])
             self.assertEqual([], connection.execute(
                 "PRAGMA foreign_key_check").fetchall())
+            self.assertEqual("all_done", connection.execute(
+                "SELECT ending FROM mabel_queue_state WHERE id=1").fetchone()[0])
         finally:
             connection.close()
 

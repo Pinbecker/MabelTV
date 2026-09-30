@@ -133,6 +133,7 @@ public:
     Q_INVOKABLE void enterDigit(int digit);
     Q_INVOKABLE void confirmNumericEntry();
     Q_INVOKABLE void playbackEnded();
+    Q_INVOKABLE void startMabelQueue();
     Q_INVOKABLE void playbackFailed(const QString &message);
     Q_INVOKABLE void prepareForPlaybackRestart(const QString &message);
     Q_INVOKABLE void updatePlaybackPosition(double positionSeconds, bool paused);
@@ -209,6 +210,8 @@ signals:
     void myTvPlaybackStateChanged();
 
     void playbackRequested(const QUrl &source, double startPositionSeconds);
+    void queueItemStarted();
+    void queueAllDoneRequested();
     void stopPlaybackRequested();
     void channelDisplayRequested(int channelNumber, const QString &channelName);
     void programmeDisplayRequested(const QString &programmeName);
@@ -281,6 +284,8 @@ private:
     void updateLibraryStatus();
     void enterNoChannelsState();
     bool applyLibrary(ChannelLibraryResult library);
+
+    bool m_queueTransition = false;
 
     QVector<ChannelRuntime> m_channels;
     QTimer m_tuningTimer;

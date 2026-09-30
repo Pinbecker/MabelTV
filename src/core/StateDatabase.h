@@ -6,6 +6,15 @@
 
 namespace mabeltv::state
 {
+struct MabelQueueAdvance {
+    bool claimed = false;
+    bool allDone = false;
+    QJsonObject item;
+};
+
+MabelQueueAdvance advanceMabelQueue(const QString &databasePath, bool start,
+                                    QString *error = nullptr);
+bool stopMabelQueue(const QString &databasePath, QString *error = nullptr);
 QJsonArray channels(const QString &databasePath, QString *error = nullptr);
 QJsonObject settings(const QString &databasePath, QString *error = nullptr);
 QJsonObject owner(const QString &databasePath, QString *error = nullptr);

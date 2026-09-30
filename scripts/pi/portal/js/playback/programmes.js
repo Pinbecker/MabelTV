@@ -68,6 +68,10 @@
         if (browserReady) openRemotePlayer(source, position)
         else openInVlc(source, title)
       } : null
+      const queue = $('#watchChannelQueue')
+      queue.disabled = !programme || !channel.enabled
+      queue.onclick = programme ? () => addToMabelQueue(
+        channel, programme, queue, () => closeWatchChannelSheet(false)) : null
 
       const favourite = $('#watchChannelFavourite')
       favourite.classList.toggle('active', channel.favourite === true)
@@ -179,6 +183,10 @@
           : resumable ? `Continue from ${watchTimeLabel(programme.remote_position)}`
             : 'Starts an independent stream'
       const source = { kind: 'channel', channel: channel.number, file: programme.name }
+      const queueButton = $('#watchProgrammeQueue')
+      queueButton.disabled = !channel.enabled || programme.enabled === false
+      queueButton.onclick = () => addToMabelQueue(
+        channel, programme, queueButton, () => closeWatchProgrammeSheet(false))
       if (filmChannel) source.position = Number(programme.remote_position || 0)
       const reopenProgramme = () => openWatchProgrammeSheet(
         channel, programme, context, returnTo)

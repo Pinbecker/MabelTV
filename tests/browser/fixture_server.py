@@ -10,8 +10,14 @@ from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from typing import Any
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+FIXTURE_QUEUE_PATH = Path(__file__).with_name("fixture_mabel_queue.py")
+FIXTURE_QUEUE_SPEC = importlib.util.spec_from_file_location(
+    "mabeltv_browser_queue_fixture", FIXTURE_QUEUE_PATH)
+assert FIXTURE_QUEUE_SPEC and FIXTURE_QUEUE_SPEC.loader
+fixture_mabel_queue = importlib.util.module_from_spec(FIXTURE_QUEUE_SPEC)
+FIXTURE_QUEUE_SPEC.loader.exec_module(fixture_mabel_queue)
+MabelQueueFixtureMixin = fixture_mabel_queue.MabelQueueFixtureMixin
 MODULE_PATH = PROJECT_ROOT / "scripts" / "pi" / "mabeltv-library.py"
 SPEC = importlib.util.spec_from_file_location("mabeltv_browser_library", MODULE_PATH)
 assert SPEC and SPEC.loader
@@ -34,11 +40,12 @@ LIBRARY_PAYLOAD = fixture_data.LIBRARY_PAYLOAD
 LIVE_PAYLOAD = fixture_data.LIVE_PAYLOAD
 
 
-class FixtureLibrary:
+class FixtureLibrary(MabelQueueFixtureMixin):
     def __init__(self) -> None:
         self.pin_required = False
         self.sessions: set[str] = set()
         self.viewing_titles: dict[str, dict[str, Any]] = {}
+        self.reset_mabel_queue()
 
     def start_viewing_tracker(self) -> None:
         pass
@@ -47,6 +54,7 @@ class FixtureLibrary:
         self.pin_required = False
         self.sessions.clear()
         self.viewing_titles.clear()
+        self.reset_mabel_queue()
 
     def configured(self) -> bool:
         return True
@@ -72,7 +80,7 @@ class FixtureLibrary:
 
     def portal_bootstrap(self) -> dict[str, Any]:
         return {
-            "schema_version": 1, "database_schema": 9,
+            "schema_version": 1, "database_schema": 10,
             "revisions": {domain: 1 for domain in (
                 "library", "my_tv_viewing", "viewing_insights", "my_tv_insights")},
         }

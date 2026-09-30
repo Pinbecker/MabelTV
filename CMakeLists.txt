@@ -93,6 +93,7 @@ qt_add_resources(mabeltv "mabeltv_qml"
     FILES
         qml/Main.qml
         qml/TelevisionScreen.qml
+        qml/MabelQueueDoneScreen.qml
         qml/DinosaurDenSurround.qml
         qml/FindingNemo.qml
         qml/FindingNemoBubbles.qml

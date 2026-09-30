@@ -50,11 +50,14 @@ QString databaseFromJsonFixtures(const QString &channelsPath,
             QStringLiteral("CREATE TABLE state_revisions(domain TEXT PRIMARY KEY,revision INTEGER,updated_at REAL)"),
             QStringLiteral("CREATE TABLE channel_metadata(entity_kind TEXT,entity_key TEXT,metadata_json TEXT,PRIMARY KEY(entity_kind,entity_key))"),
             QStringLiteral("CREATE TABLE local_media(relative_path TEXT PRIMARY KEY,library_id TEXT,state TEXT,message TEXT,progress INTEGER,favourite INTEGER,favourite_present INTEGER,remote_position REAL,remote_duration REAL,remote_last_watched REAL,metadata_json TEXT,domain TEXT)"),
+            QStringLiteral("CREATE TABLE mabel_queue_entries(id TEXT PRIMARY KEY,position INTEGER NOT NULL UNIQUE,channel_number INTEGER NOT NULL REFERENCES channels(number),file_name TEXT NOT NULL,title TEXT NOT NULL,artwork TEXT NOT NULL DEFAULT '',channel_name TEXT NOT NULL DEFAULT '')"),
+            QStringLiteral("CREATE TABLE mabel_queue_state(id INTEGER PRIMARY KEY,ending TEXT NOT NULL DEFAULT 'all_done',active INTEGER NOT NULL DEFAULT 0,completed INTEGER NOT NULL DEFAULT 0,current_title TEXT NOT NULL DEFAULT '')"),
         };
         for (const QString &statement : schema) {
             if (!query.exec(statement)) return {};
         }
-        if (!query.exec(QStringLiteral("PRAGMA user_version=9"))) return {};
+        if (!query.exec(QStringLiteral("INSERT INTO mabel_queue_state(id) VALUES(1)"))) return {};
+        if (!query.exec(QStringLiteral("PRAGMA user_version=10"))) return {};
         const QJsonArray channels = readTestObject(channelsPath)
                                         .value(QStringLiteral("channels")).toArray();
         query.prepare(QStringLiteral("INSERT INTO channels VALUES(?,?,?,?,?)"));

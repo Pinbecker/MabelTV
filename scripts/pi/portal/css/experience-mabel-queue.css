@@ -1,0 +1,123 @@
+body.portal-v2 .mabel-queue-heading { border: 0; background: none; color: var(--experience-ink); padding: 0; text-align: left; }
+body.portal-v2 .mabel-queue-heading h2 { margin: 0; }
+body.portal-v2 .mabel-queue-rail-card .home-poster-copy strong,
+body.portal-v2 .mabel-queue-rail-card .home-poster-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.portal-v2 .mabel-queue-rank { position: absolute; top: 6px; left: 6px; border-radius: 6px; background: #07352ddd; color: #fff; padding: 5px 6px; font-size: 10px; font-weight: 850; }
+body.portal-v2 .mabel-queue-ending-art { display: grid; place-items: center; border: 1px solid var(--experience-line); background: var(--experience-soft); color: var(--experience-orange); font-size: 38px; }
+body.portal-v2 .mabel-queue-watch { padding-inline: var(--experience-gutter); }
+body.portal-v2 .mabel-queue-page { width: min(100%, 760px); margin: 0 auto; padding: 18px var(--experience-gutter) 110px; }
+body.portal-v2 .mabel-queue-back { display: inline-flex; align-items: center; gap: 7px; border: 0; background: none; color: var(--experience-orange); font: inherit; font-size: 13px; font-weight: 760; padding: 5px 0; }
+body.portal-v2 .mabel-queue-back .icon { width: 18px; height: 18px; }
+body.portal-v2 .mabel-queue-page-head { display: flex; align-items: center; gap: 12px; margin: 12px 0 14px; }
+body.portal-v2 .mabel-queue-mini-art { flex: 0 0 50px; width: 50px; height: 57px; border-radius: 8px; background: linear-gradient(140deg, #0ebaa7, #194d64 65%, #182b3c); }
+body.portal-v2 .mabel-queue-page-head .eyebrow { margin: 0 0 3px; font-size: 10px; }
+body.portal-v2 .mabel-queue-page-head h1 { margin: 0; font-size: clamp(29px, 7vw, 38px); line-height: 1; letter-spacing: -.05em; }
+body.portal-v2 .mabel-queue-page-head p:last-child { margin: 5px 0 0; color: var(--experience-muted); font-size: 11px; }
+body.portal-v2 .mabel-queue-page-actions { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; }
+body.portal-v2 .mabel-queue-start { min-height: 42px; flex: 1; border: 0; border-radius: 11px; background: var(--experience-orange); color: #06362f; font: inherit; font-size: 13px; font-weight: 850; }
+body.portal-v2 .mabel-queue-start:disabled, body.portal-v2 .mabel-queue-clear:disabled { opacity: .42; }
+body.portal-v2 .mabel-queue-clear { border: 0; background: none; color: var(--experience-muted); font: inherit; font-size: 12px; font-weight: 700; }
+body.portal-v2 .mabel-queue-list-head { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--experience-line); padding: 0 0 7px; color: var(--experience-muted); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+body.portal-v2 .mabel-queue-row { display: grid; grid-template-columns: 64px minmax(0,1fr); align-items: center; gap: 12px; border-bottom: 1px solid var(--experience-line); background: var(--experience-canvas); padding: 9px 0; }
+body.portal-v2 .mabel-queue-row > .mabel-queue-art { width: 64px; aspect-ratio: 2 / 3; }
+body.portal-v2 .mabel-queue-art img { width: 100%; height: 100%; object-fit: cover; }
+body.portal-v2 .mabel-queue-row-copy { min-width: 0; }
+body.portal-v2 .mabel-queue-row-copy > * { display: block; }
+body.portal-v2 .mabel-queue-row-number { color: var(--experience-orange); font-size: 10px; font-weight: 850; letter-spacing: .07em; }
+body.portal-v2 .mabel-queue-row-copy > strong { overflow: hidden; margin-top: 3px; font-size: 15px; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
+body.portal-v2 .mabel-queue-row-copy > span { overflow: hidden; margin-top: 4px; color: var(--experience-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+body.portal-v2 .mabel-queue-row-controls { display: flex; gap: 2px; margin: 4px 0 -4px -7px; }
+body.portal-v2 .mabel-queue-row-controls button { display: grid; place-items: center; width: 39px; height: 34px; border: 0; border-radius: 8px; background: transparent; color: var(--experience-ink); padding: 0; }
+body.portal-v2 .mabel-queue-row-controls button:disabled { opacity: .3; }
+body.portal-v2 .mabel-queue-row-controls button:active { background: color-mix(in srgb, var(--experience-orange) 15%, transparent); }
+body.portal-v2 .mabel-queue-row-controls .icon { width: 20px; height: 20px; }
+body.portal-v2 .mabel-queue-row-controls .mabel-queue-row-remove { margin-left: auto; color: var(--experience-muted); }
+body.portal-v2 .mabel-queue-empty { margin: 16px 0 5px; color: var(--experience-muted); font-size: 13px; }
+body.portal-v2 .mabel-queue-ending { margin-top: 16px; border: 1px solid var(--experience-line); border-radius: 15px; background: var(--experience-soft); padding: 13px; }
+body.portal-v2 .mabel-queue-ending-head { display: flex; align-items: center; gap: 10px; }
+body.portal-v2 .mabel-queue-end-icon { display: grid; place-items: center; width: 39px; height: 39px; border-radius: 10px; background: color-mix(in srgb, var(--experience-orange) 18%, transparent); color: var(--experience-orange); font-size: 23px; }
+body.portal-v2 .mabel-queue-ending-head small, body.portal-v2 .mabel-queue-ending-head strong { display: block; }
+body.portal-v2 .mabel-queue-ending-head small { color: var(--experience-orange); font-size: 10px; font-weight: 850; letter-spacing: .07em; text-transform: uppercase; }
+body.portal-v2 .mabel-queue-ending-head strong { margin-top: 2px; font-size: 15px; }
+body.portal-v2 .mabel-queue-ending-toggle { display: grid; grid-template-columns: repeat(2,1fr); gap: 3px; margin-top: 12px; border-radius: 11px; background: color-mix(in srgb, var(--experience-ink) 8%, transparent); padding: 3px; }
+body.portal-v2 .mabel-queue-ending-toggle button { min-height: 39px; border: 0; border-radius: 8px; background: transparent; color: var(--experience-muted); font: inherit; font-size: 11px; font-weight: 760; }
+body.portal-v2 .mabel-queue-ending-toggle button[aria-pressed="true"] { background: var(--experience-canvas); color: var(--experience-orange); box-shadow: 0 1px 5px #0002; }
+body.portal-v2 .mabel-queue-ending p { margin: 9px 1px 0; color: var(--experience-muted); font-size: 11px; line-height: 1.4; }
+body.portal-v2 .mabel-queue-add { width: 100%; margin-top: 8px; }
+.mabel-queue-flyer { position: fixed; z-index: 99999; border-radius: 10px; background-color: #12baa6; background-position: center; background-size: cover; box-shadow: 0 10px 25px #0004; pointer-events: none; }
+.mabel-queue-nav-pulse { animation: mabel-queue-nav-pulse .55s ease-out; }
+@keyframes mabel-queue-nav-pulse { 50% { transform: scale(1.18); } }
+@media (prefers-reduced-motion: reduce) { .mabel-queue-nav-pulse { animation: none; } }
+
+/* Up Next follows the same gutters and poster rhythm as the Home and Watch rails. */
+body.portal-v2 .mabel-queue-manage { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 2px; min-height: 32px; border: 0; background: transparent; color: var(--experience-orange); padding: 0; font: inherit; font-size: 11px; font-weight: 800; white-space: nowrap; }
+body.portal-v2 .mabel-queue-manage .icon,
+body.portal-v2 .mabel-queue-empty-preview .icon { width: 15px; height: 15px; }
+body.portal-v2 #homeMabelQueueSection { gap: 5px; }
+body.portal-v2 #homeMabelQueueSection > header { align-items: center; }
+body.portal-v2 #homeMabelQueueSection .mabel-queue-manage { min-height: 24px; }
+body.portal-v2 #homeContinueRail.home-continue-rail { padding-bottom: 3px; }
+body.portal-v2 .mabel-queue-section-meta { min-width: 0; margin: 0 0 2px; color: var(--experience-dim); font-size: 10px; line-height: 1.2; }
+body.portal-v2 .mabel-queue-rail { align-items: start; }
+body.portal-v2 .mabel-queue-rail-card { grid-template-columns: minmax(0, 1fr); width: 100%; }
+body.portal-v2 .mabel-queue-rail.hidden { display: none; }
+body.portal-v2 .mabel-queue-rail .mabel-queue-ending-art { width: 100%; aspect-ratio: 2 / 3; place-items: center; }
+body.portal-v2 .mabel-queue-ending-art > span { font-size: 38px; line-height: 1; }
+body.portal-v2 .mabel-queue-empty-preview { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; width: 100%; border: 1px solid var(--experience-line); border-radius: 10px; background: var(--experience-raised); color: var(--experience-muted); padding: 0 12px; font: inherit; font-size: 11px; font-weight: 700; text-align: left; }
+body.portal-v2 .mabel-queue-empty-preview.hidden { display: none; }
+body.portal-v2 .mabel-queue-empty-preview .icon { color: var(--experience-orange); }
+body.portal-v2 .mabel-queue-watch { min-width: 0; margin: 0 0 10px; padding: 0; }
+body.portal-v2 .mabel-queue-watch .watch-section-head { align-items: flex-end; min-width: 0; margin-bottom: 4px; }
+body.portal-v2 .mabel-queue-watch .watch-section-head > div { min-width: 0; }
+body.portal-v2 .mabel-queue-watch .watch-section-kicker { margin: 0 0 3px; }
+body.portal-v2 .mabel-queue-watch .mabel-queue-manage { margin-bottom: 1px; }
+body.portal-v2 .mabel-queue-watch .mabel-queue-section-meta { margin-bottom: 9px; }
+body.portal-v2 .mabel-queue-watch .mabel-queue-rail { grid-auto-columns: 104px; gap: 10px; min-width: 0; margin-right: calc(var(--experience-gutter) * -1); padding: 0 var(--experience-gutter) 3px 0; }
+
+/* The queue detail uses the channel-page back and primary action patterns. */
+body.portal-v2 .page.mabel-queue-page { width: min(100%, 760px); padding: 8px var(--experience-gutter) 110px; }
+body.portal-v2 .mabel-queue-fixed-head { background: var(--experience-canvas); }
+body.portal-v2 .mabel-queue-fixed-head .channel-page-nav { min-height: 32px; margin: 0; }
+body.portal-v2 .mabel-queue-fixed-head .mabel-queue-back { min-height: 32px; font-size: 11px; }
+body.portal-v2 .mabel-queue-page-head { display: block; margin: 0 0 11px; }
+body.portal-v2 .mabel-queue-page-head .eyebrow { margin: 1px 0 4px; font-size: 10px; }
+body.portal-v2 .mabel-queue-page-head p:last-child { margin: 5px 0 0; }
+body.portal-v2 .mabel-queue-page-actions { align-items: stretch; gap: 8px; margin-bottom: 12px; }
+body.portal-v2 .mabel-queue-start { display: inline-flex; flex: 1 1 auto; justify-content: center; align-items: center; gap: 8px; min-width: 0; min-height: 44px; border-radius: 10px; background: var(--experience-orange); color: var(--experience-on-orange); padding: 0 12px; }
+body.portal-v2 .mabel-queue-start .icon { width: 19px; height: 19px; }
+body.portal-v2 .mabel-queue-start strong { color: inherit; font-size: 11px; white-space: nowrap; }
+body.portal-v2 .mabel-queue-clear { flex: 0 0 auto; min-height: 44px; border: 1px solid var(--experience-line); border-radius: 10px; background: var(--experience-raised); padding: 0 12px; font-size: 11px; }
+body.portal-v2 .mabel-queue-list-head { padding-bottom: 6px; }
+body.portal-v2 .mabel-queue-row { grid-template-columns: 64px minmax(0, 1fr) 32px; grid-template-rows: minmax(0, 1fr) 34px; gap: 0 10px; min-width: 0; padding: 9px 0; }
+body.portal-v2 .mabel-queue-row-open { display: grid; grid-column: 1 / 3; grid-row: 1 / 3; grid-template-columns: 64px minmax(0, 1fr); align-items: start; gap: 10px; min-width: 0; border: 0; background: transparent; color: var(--experience-ink); padding: 0; text-align: left; }
+body.portal-v2 .mabel-queue-row-open .mabel-queue-art { width: 64px; aspect-ratio: 2 / 3; }
+body.portal-v2 .mabel-queue-row-copy { display: grid; min-width: 0; gap: 3px; padding-top: 3px; padding-bottom: 28px; }
+body.portal-v2 .mabel-queue-row-number { font-size: 9px; text-transform: uppercase; }
+body.portal-v2 .mabel-queue-row-copy > strong { margin: 0; font-size: 14px; }
+body.portal-v2 .mabel-queue-row-copy > span { margin: 0; font-size: 10px; }
+body.portal-v2 .mabel-queue-row-controls { grid-column: 2; grid-row: 2; z-index: 1; align-self: end; align-items: center; gap: 2px; margin: 0; }
+body.portal-v2 .mabel-queue-row-controls button { width: 31px; height: 34px; min-height: 34px; }
+body.portal-v2 .mabel-queue-row-controls .icon { width: 18px; height: 18px; }
+body.portal-v2 .mabel-queue-row > .mabel-queue-row-remove { display: grid; grid-column: 3; grid-row: 1 / 3; place-items: center; align-self: center; width: 32px; height: 32px; min-height: 32px; border: 1px solid var(--experience-line); border-radius: 50%; background: var(--experience-raised); color: var(--experience-muted); padding: 0; }
+body.portal-v2 .mabel-queue-row-remove .icon { width: 14px; height: 14px; }
+body.portal-v2 .mabel-queue-ending { margin-top: 15px; padding: 12px; }
+body.portal-v2 .mabel-queue-browse { display: flex; align-items: center; justify-content: center; gap: 3px; width: 100%; min-height: 44px; margin-top: 10px; border: 0; background: transparent; color: var(--experience-orange); font: inherit; font-size: 11px; font-weight: 800; }
+body.portal-v2 .mabel-queue-browse .icon { width: 15px; height: 15px; }
+html[data-experience-theme="light"] body.portal-v2 .mabel-queue-ending { border-color: var(--experience-accent-line); background: var(--experience-raised); }
+
+body.portal-v2 dialog.mabel-queue-confirm { width: min(420px, calc(100vw - 36px)); max-width: none; border: 0; border-radius: 18px; background: var(--experience-raised); color: var(--experience-ink); padding: 0; box-shadow: 0 20px 70px #0007; }
+body.portal-v2 dialog.mabel-queue-confirm::backdrop { background: #0009; backdrop-filter: blur(6px); }
+body.portal-v2 .mabel-queue-confirm-panel { padding: 22px; }
+body.portal-v2 .mabel-queue-confirm-panel .eyebrow { margin: 0 0 7px; }
+body.portal-v2 .mabel-queue-confirm-panel h2 { margin: 0; font-size: 21px; }
+body.portal-v2 .mabel-queue-confirm-panel > p:not(.eyebrow) { margin: 9px 0 20px; color: var(--experience-muted); font-size: 13px; line-height: 1.45; }
+body.portal-v2 .mabel-queue-confirm-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+body.portal-v2 .mabel-queue-confirm-actions button { min-height: 44px; border: 1px solid var(--experience-line); border-radius: 10px; background: var(--experience-soft); color: var(--experience-ink); font: inherit; font-size: 12px; font-weight: 800; }
+body.portal-v2 #mabelQueueConfirmAccept { border-color: transparent; background: var(--experience-danger); color: #fff; }
+body.portal-v2 #mabelQueueConfirmAccept:disabled { opacity: .5; }
+
+@media (max-width: 860px) {
+  body.portal-v2 .page.mabel-queue-page { padding-top: 0; }
+  body.portal-v2 .mabel-queue-fixed-head { position: fixed; z-index: 50; top: calc(54px + env(safe-area-inset-top)); left: 0; right: 0; box-sizing: border-box; border-bottom: 1px solid var(--experience-line); padding: 0 var(--experience-gutter) 3px; }
+  body.portal-v2 .mabel-queue-page-body { padding-top: calc(var(--mabel-queue-header-height, 158px) + 12px); }
+}

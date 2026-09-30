@@ -46,7 +46,7 @@ LIBRARY_SCRIPTS = (
 )
 PLAYBACK_SCRIPTS = (
     "players.js", "film-library.js", "my-tv-series.js", "film-catalogue.js",
-    "programmes.js", "downloads.js", "view.js",
+    "programmes.js", "mabel-queue.js", "downloads.js", "view.js",
 )
 MY_TV_VIEWING_SCRIPTS = (
     "catalogue.js", "seasons.js", "details.js", "grid.js",

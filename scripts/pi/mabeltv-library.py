@@ -46,6 +46,7 @@ from mabeltv_backend.lg_control import LgControlMixin
 from mabeltv_backend.live_stream import LiveStream
 from mabeltv_backend.media import MediaCatalogueMixin
 from mabeltv_backend.management import ManagementMixin
+from mabeltv_backend.mabel_queue import MabelQueueMixin
 from mabeltv_backend.portal import (
     INDEX,
     PORTAL_APP_SCRIPT,
@@ -94,7 +95,7 @@ __all__ = [
     "urlopen",
 ]
 
-class Library(ViewingMixin, UploadConversionMixin, TranscodingMixin, AuthenticationMixin,
+class Library(MabelQueueMixin, ViewingMixin, UploadConversionMixin, TranscodingMixin, AuthenticationMixin,
               ArtworkProxyMixin,
               MediaCatalogueMixin, ManagementMixin, RemotePlaybackMixin, LgControlMixin,
               UsbMixin,

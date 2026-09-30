@@ -41,6 +41,7 @@ PORTAL_ASSET_TYPES = {
 }
 
 GET_JSON_ROUTES = {
+    "/api/mabel-queue": "mabel_queue",
     "/api/bootstrap": "portal_bootstrap",
     "/api/live": "live_tv_status",
     "/api/lg-tv/status": "lg_tv_status",
@@ -55,6 +56,7 @@ GET_JSON_ROUTES = {
 }
 
 POST_JSON_ROUTES = {
+    "/api/mabel-queue": ("mabel_queue_action", 200),
     "/api/live/control": ("live_tv_control", 200),
     "/api/lg-tv/action": ("lg_tv_action", 200),
     "/api/play-on-tv": ("play_on_tv", 200),

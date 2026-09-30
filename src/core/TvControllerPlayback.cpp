@@ -1,4 +1,5 @@
 #include "TvController.h"
+#include "StateDatabase.h"
 
 #include "TvControllerFormatting.h"
 #include "hardware/CecTvControl.h"
@@ -33,6 +34,8 @@ void TvController::requestTune(int channelIndex,
         || !m_channels[channelIndex].enabled) {
         return;
     }
+
+    if (updatePreviousChannel) mabeltv::state::stopMabelQueue(m_databasePath);
 
     const bool changingChannel = channelIndex != m_currentChannelIndex;
 

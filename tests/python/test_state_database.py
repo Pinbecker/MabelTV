@@ -382,7 +382,7 @@ class StateDatabaseTests(unittest.TestCase):
         report = self.database.upgrade()
 
         self.assertEqual(7, report["previous_schema_version"])
-        self.assertEqual(9, report["schema_version"])
+        self.assertEqual(database_module.SCHEMA_VERSION, report["schema_version"])
         rows = self.database.viewing_sessions()
         self.assertEqual(2, len(rows))
         by_id = {row["id"]: row for row in rows}

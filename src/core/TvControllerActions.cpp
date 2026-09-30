@@ -1,4 +1,5 @@
 #include "TvController.h"
+#include "StateDatabase.h"
 
 #include "TvControllerFormatting.h"
 #include "hardware/CecTvControl.h"
@@ -186,6 +187,39 @@ void TvController::playbackEnded()
     ChannelRuntime &runtime = m_channels[m_currentChannelIndex];
     freezeTimeline(runtime);
     markCurrentEpisodeLeft(runtime);
+    QString queueError;
+    for (int attempt = 0; attempt < 100; ++attempt) {
+        const auto queued = mabeltv::state::advanceMabelQueue(
+            m_databasePath, false, &queueError);
+        if (!queueError.isEmpty()) {
+            qWarning().noquote() << "Could not advance Mabel queue:" << queueError;
+            break;
+        }
+        if (!queued.claimed) break;
+        if (queued.allDone) {
+            emit stopPlaybackRequested();
+            emit queueAllDoneRequested();
+            saveState();
+            return;
+        }
+        if (queued.item.isEmpty()) break;
+        const int number = queued.item.value(QStringLiteral("channel")).toInt();
+        const QString file = queued.item.value(QStringLiteral("file")).toString();
+        const int channelIndex = findChannelByNumber(number, true);
+        if (channelIndex < 0) continue;
+        const ChannelRuntime &target = m_channels[channelIndex];
+        const bool available = std::any_of(target.channel.episodes.cbegin(),
+            target.channel.episodes.cend(), [&file](const Episode &episode) {
+                return QFileInfo(episode.path).fileName() == file
+                    && QFileInfo(episode.path).isFile();
+            });
+        if (!available) continue;
+        emit queueItemStarted();
+        m_queueTransition = true;
+        playPortalProgramme(number, file, 0);
+        m_queueTransition = false;
+        return;
+    }
     runtime.currentEpisode = takeUsableEpisode(runtime);
     prepareCurrentEpisodeForVisit(runtime);
     runtime.anchorMilliseconds = m_broadcastClock.elapsed();
@@ -193,6 +227,43 @@ void TvController::playbackEnded()
         ? runtime.programmePositions[runtime.currentEpisode]
         : 0.0;
     requestTune(m_currentChannelIndex, false, false);
+}
+
+void TvController::startMabelQueue()
+{
+    if (m_standby) return;
+    QString error;
+    for (int attempt = 0; attempt <= 100; ++attempt) {
+        const auto queued = mabeltv::state::advanceMabelQueue(
+            m_databasePath, attempt == 0, &error);
+        if (!error.isEmpty()) {
+            qWarning().noquote() << "Could not start Mabel queue:" << error;
+            return;
+        }
+        if (queued.allDone) {
+            emit stopPlaybackRequested();
+            emit queueAllDoneRequested();
+            saveState();
+            return;
+        }
+        if (!queued.claimed || queued.item.isEmpty()) return;
+        const int number = queued.item.value(QStringLiteral("channel")).toInt();
+        const QString file = queued.item.value(QStringLiteral("file")).toString();
+        const int channelIndex = findChannelByNumber(number, true);
+        if (channelIndex < 0) continue;
+        const ChannelRuntime &target = m_channels[channelIndex];
+        const bool available = std::any_of(target.channel.episodes.cbegin(),
+            target.channel.episodes.cend(), [&file](const Episode &episode) {
+                return QFileInfo(episode.path).fileName() == file
+                    && QFileInfo(episode.path).isFile();
+            });
+        if (!available) continue;
+        emit queueItemStarted();
+        m_queueTransition = true;
+        playPortalProgramme(number, file, 0);
+        m_queueTransition = false;
+        return;
+    }
 }
 
 void TvController::updatePlaybackPosition(double positionSeconds, bool paused)

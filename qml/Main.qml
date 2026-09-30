@@ -45,10 +45,13 @@ Window {
     property string pendingPortalProgramme: ""
     property real pendingPortalProgrammePosition: 0
     property int pendingPortalTuneChannel: -1
+    property bool pendingQueueStart: false
     property string pendingPowerAction: ""
     property bool pendingPowerOnWake: false
     property bool filmCountdownActive: false
     property bool widescreenMode: false
+    property bool queueAllDone: false
+    property bool queueTransitionPending: false
     property int filmCountdownValue: 10
     property real filmCountdownSpin: 0
     property real filmCountdownFlicker: 1
@@ -475,6 +478,9 @@ Window {
                 const channel = root.pendingPortalTuneChannel
                 root.pendingPortalTuneChannel = -1
                 tvController.tunePortalChannel(channel)
+            } else if (root.pendingQueueStart) {
+                root.pendingQueueStart = false
+                tvController.startMabelQueue()
             } else if (root.pendingPortalChannel >= 0
                        && root.pendingPortalProgramme.length > 0) {
                 const channel = root.pendingPortalChannel
@@ -534,6 +540,36 @@ Window {
                                          Math.max(0, Number(position) || 0))
     }
 
+    function portalStartMabelQueue() {
+        if (poweringOff || pendingPowerAction.length > 0)
+            return
+        guideOverlay.close()
+        tvController.closeParent()
+        if (myTvMode.active) {
+            myTvMode.close()
+            // A queue starts on the child player after My TV has closed.
+            pendingQueueStart = true
+            return
+        }
+        if (tvController.standby || introPlaying || warmingUp) {
+            pendingQueueStart = true
+            return
+        }
+        tvController.startMabelQueue()
+    }
+
+    Timer {
+        interval: 250
+        repeat: true
+        running: root.pendingQueueStart && !myTvMode.active
+        onTriggered: {
+            if (tvController.standby || root.introPlaying || root.warmingUp)
+                return
+            root.pendingQueueStart = false
+            tvController.startMabelQueue()
+        }
+    }
+
     function portalSetChannelFilmPosition(channel, file, position, duration) {
         tvController.setChannelFilmPlaybackState(
             Number(channel), String(file), Math.max(0, Number(position) || 0),
@@ -588,6 +624,12 @@ Window {
     TelevisionScreen {
         id: television
         appRoot: root
+    }
+
+    MabelQueueDoneScreen {
+        anchors.fill: parent
+        z: 80
+        visible: root.queueAllDone && !tvController.standby
     }
 
     Rectangle {
@@ -874,16 +916,19 @@ Window {
         target: tvController
 
         function onPlaybackRequested(source, startPositionSeconds) {
+            root.queueAllDone = false
             if (!myTvMode.active && !root.openingMyTvMode
                     && !root.poweringOff && root.pendingPowerAction.length === 0
                     && !tvController.standby) {
-                if (tvController.currentContentType === "films"
+                if (!root.queueTransitionPending
+                        && tvController.currentContentType === "films"
                         && startPositionSeconds < 1)
                     root.beginFilmCountdown(source, startPositionSeconds)
                 else {
                     root.cancelFilmCountdown()
                     player.play(source, startPositionSeconds)
                 }
+                root.queueTransitionPending = false
             }
         }
         function onStopPlaybackRequested() {
@@ -904,6 +949,8 @@ Window {
         function onStandbyChanged() {
             if (tvController.standby)
                 root.cancelFilmCountdown()
+            if (tvController.standby)
+                root.queueAllDone = false
             if (tvController.soundEffectsEnabled && !tvController.standby)
                 soundEffects.playPowerClick()
             if (!tvController.standby) {
@@ -914,6 +961,13 @@ Window {
         }
         function onRemoteLockedChanged() {
             root.showRemoteLockState()
+        }
+        function onQueueItemStarted() {
+            root.queueTransitionPending = true
+            root.queueAllDone = false
+        }
+        function onQueueAllDoneRequested() {
+            root.queueAllDone = true
         }
         function onParentCommandRequested(command) {
             if (command === "my_tv")

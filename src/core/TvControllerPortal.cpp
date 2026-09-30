@@ -1,4 +1,5 @@
 #include "TvController.h"
+#include "StateDatabase.h"
 
 #include "TvControllerFormatting.h"
 #include "hardware/CecTvControl.h"
@@ -51,6 +52,8 @@ void TvController::playPortalProgramme(int channelNumber,
     if (episodeIndex < 0 || !QFileInfo(target.channel.episodes[episodeIndex].path).isFile()) {
         return;
     }
+
+    if (!m_queueTransition) mabeltv::state::stopMabelQueue(m_databasePath);
 
     const bool changingChannel = channelIndex != m_currentChannelIndex;
     if (changingChannel && m_currentChannelIndex >= 0) {
