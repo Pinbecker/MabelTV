@@ -16,6 +16,8 @@ Item {
             return "M3 11 L12 2 L21 11 M5 10 V21 H19 V10 M9 21 V15 H15 V21"
         case "play":
             return "M6 4 L20 12 L6 20 Z"
+        case "sound":
+            return "M3 9 H7 L12 4 V20 L7 15 H3 Z M16 8 A6 6 0 0 1 16 16 M19 4 A11 11 0 0 1 19 20"
         case "picture":
             return "M5 3 H19 A2 2 0 0 1 21 5 V19 A2 2 0 0 1 19 21 H5 A2 2 0 0 1 3 19 V5 A2 2 0 0 1 5 3 M8.5 7 A1.5 1.5 0 1 1 8.49 7 M21 15 L16 10 L5 21"
         case "list":

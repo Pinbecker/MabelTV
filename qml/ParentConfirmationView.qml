@@ -1,213 +1,53 @@
 pragma ComponentBehavior: Bound
-
 import QtQuick
 import MabelTV 1.0
+
 Item {
+    id: access
     required property var host
     required property var tvController
-
+    readonly property real s: host.uiScale
     anchors.fill: parent
     visible: tvController.parentAccessState === TvController.ParentConfirmation
-
+    FontLoader { source: "qrc:/fonts/inter/InterVariable.ttf" }
     Rectangle {
-        id: confirmationPanel
         anchors.centerIn: parent
-        width: Math.min(parent.width - 100 * host.uiScale, 1380 * host.uiScale)
-        height: Math.min(parent.height - 92 * host.uiScale, 830 * host.uiScale)
-        radius: 22 * host.uiScale
-        color: "#f2171b20"
-        border.color: "#555e66"
-        border.width: 1
-
-        Row {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.top: parent.top
-            anchors.topMargin: 42 * host.uiScale
-            spacing: 12 * host.uiScale
-
+        width: 940 * access.s; height: 680 * access.s; radius: 34 * access.s
+        color: "#f7fbfa"; border.color: "#d0e9e3"
+        Column {
+            x: 64 * access.s; y: 48 * access.s; width: parent.width - 128 * access.s
+            spacing: 18 * access.s
             Rectangle {
-                width: 38 * host.uiScale
-                height: 31 * host.uiScale
-                radius: 7 * host.uiScale
-                color: "#ff6b57"
-
-                Text {
-                    anchors.centerIn: parent
-                    color: "#15181d"
-                    font.family: "DejaVu Sans"
-                    font.bold: true
-                    font.pixelSize: 20 * host.uiScale
-                    text: "M"
+                width: 72 * access.s; height: width; radius: 24 * access.s; color: "#dff4ee"
+                SignalIcon { anchors.centerIn: parent; width: 34 * access.s; height: width; color: "#008b79"; icon: "settings" }
+            }
+            MyTvText { font.pixelSize: 17 * access.s; font.weight: Font.DemiBold; font.letterSpacing: 2 * access.s; color: "#008b79"; text: "A MOMENT FOR THE GROWN-UPS" }
+            MyTvText { font.pixelSize: 42 * access.s; font.weight: Font.Bold; text: "Make it yours" }
+            MyTvText { width: parent.width; font.pixelSize: 23 * access.s; color: "#647580"; text: "Press OK three times to open settings." }
+            Row {
+                spacing: 12 * access.s
+                Repeater {
+                    model: 3
+                    Rectangle {
+                        required property int index
+                        width: 48 * access.s; height: 9 * access.s; radius: height / 2
+                        color: index < access.tvController.parentConfirmationCount ? "#04c6a8" : "#d8e5e1"
+                        Behavior on color { ColorAnimation { duration: 100 } }
+                    }
                 }
             }
-
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                color: "#f8f5ef"
-                font.family: "DejaVu Sans"
-                font.bold: true
-                font.pixelSize: 25 * host.uiScale
-                text: tvDisplayName
+            MyTvControl {
+                width: parent.width; height: 76 * access.s; uiScale: access.s
+                primary: true; highlighted: !access.host.myTvShortcutFocused
+                MyTvText { anchors.centerIn: parent; font.pixelSize: 24 * access.s; font.weight: Font.DemiBold; text: access.tvController.parentConfirmationCount === 2 ? "OK · One more press" : "OK · Open settings" }
             }
-        }
-
-        Item {
-            id: lockIcon
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.top: parent.top
-            anchors.topMargin: 110 * host.uiScale
-            width: 88 * host.uiScale
-            height: 88 * host.uiScale
-
-            Rectangle {
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.bottom: parent.bottom
-                width: 64 * host.uiScale
-                height: 50 * host.uiScale
-                radius: 11 * host.uiScale
-                color: "transparent"
-                border.color: "#ff7562"
-                border.width: 3
+            MyTvControl {
+                width: parent.width; height: 70 * access.s; uiScale: access.s
+                highlighted: access.host.myTvShortcutFocused
+                MyTvText { anchors.centerIn: parent; font.pixelSize: 23 * access.s; font.weight: Font.DemiBold; text: "Up · Open My TV" }
             }
-
-            Rectangle {
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.top: parent.top
-                width: 42 * host.uiScale
-                height: 48 * host.uiScale
-                radius: 21 * host.uiScale
-                color: "transparent"
-                border.color: "#f3efe8"
-                border.width: 3
-            }
-
-            Rectangle {
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.verticalCenterOffset: 20 * host.uiScale
-                width: 7 * host.uiScale
-                height: 14 * host.uiScale
-                radius: width / 2
-                color: "#f3efe8"
-            }
-        }
-
-        Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.top: lockIcon.bottom
-            anchors.topMargin: 22 * host.uiScale
-            color: "#f8f5ef"
-            font.family: "DejaVu Sans"
-            font.bold: true
-            font.pixelSize: 47 * host.uiScale
-            text: "GROWN-UPS ONLY"
-        }
-
-        Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.top: lockIcon.bottom
-            anchors.topMargin: 87 * host.uiScale
-            color: "#c0c5c8"
-            font.family: "DejaVu Sans"
-            font.pixelSize: 22 * host.uiScale
-            text: host.myTvShortcutFocused
-                  ? "My TV mode selected — press OK to open"
-                  : "Press OK three times to open Parent Controls"
-        }
-
-        Rectangle {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.verticalCenterOffset: 4 * host.uiScale
-            width: 430 * host.uiScale
-            height: 62 * host.uiScale
-            radius: 12 * host.uiScale
-            color: host.myTvShortcutFocused ? "#fff0eb" : "#171c22"
-            border.color: host.myTvShortcutFocused ? "#ff6b57" : "#4b535b"
-            border.width: host.myTvShortcutFocused ? 3 : 1
-
-            Text {
-                anchors.centerIn: parent
-                color: host.myTvShortcutFocused ? "#20252a" : "#f8f5ef"
-                font.family: "DejaVu Sans"
-                font.bold: true
-                font.pixelSize: 19 * host.uiScale
-                text: "↑  My TV mode     OK  Open"
-            }
-        }
-
-        Row {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.verticalCenterOffset: 88 * host.uiScale
-            spacing: 18 * host.uiScale
-
-            Repeater {
-                model: 3
-
-                Rectangle {
-                    required property int index
-                    width: 36 * host.uiScale
-                    height: 36 * host.uiScale
-                    radius: width / 2
-                    color: index < tvController.parentConfirmationCount
-                           ? "#ff6b57" : "transparent"
-                    border.color: index < tvController.parentConfirmationCount
-                                  ? "#ff8a78" : "#646c73"
-                    border.width: 2
-                }
-            }
-
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                color: "#7dd4ca"
-                font.family: "DejaVu Sans"
-                font.bold: true
-                font.pixelSize: 20 * host.uiScale
-                text: tvController.parentConfirmationCount + " of 3"
-            }
-        }
-
-        Rectangle {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 114 * host.uiScale
-            width: 430 * host.uiScale
-            height: 72 * host.uiScale
-            radius: 12 * host.uiScale
-            color: "#171c22"
-            border.color: "#ff6b57"
-            border.width: 3
-
-            Text {
-                anchors.centerIn: parent
-                color: "#f8f5ef"
-                font.family: "DejaVu Sans"
-                font.bold: true
-                font.pixelSize: 22 * host.uiScale
-                text: tvController.parentConfirmationCount === 2
-                      ? "OK   Press once more" : "OK   Confirm"
-            }
-        }
-
-        Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 65 * host.uiScale
-            color: "#aeb5b9"
-            font.family: "DejaVu Sans"
-            font.pixelSize: 16 * host.uiScale
-            text: "Back   Cancel"
-        }
-
-        Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 25 * host.uiScale
-            color: host.restartSequenceStep > 0 ? "#ff8a78" : "#7dd4ca"
-            font.family: "DejaVu Sans"
-            font.pixelSize: 15 * host.uiScale
-            text: "Restart this programme   ←  →  OK"
+            MyTvText { width: parent.width; font.pixelSize: 18 * access.s; color: "#647580"; text: access.host.restartSequenceStep ? "Restart selected · Right, then OK" : "Restart this programme: Left, Right, OK" }
+            MyTvText { font.pixelSize: 18 * access.s; color: "#647580"; text: "Back to television" }
         }
     }
 }

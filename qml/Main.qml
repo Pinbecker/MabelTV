@@ -636,7 +636,9 @@ Window {
 
     TvGuideOverlay {
         id: guideOverlay
-        anchors.fill: parent
+        x: television.x + television.screenSurface.x
+        y: television.y + television.screenSurface.y
+        width: television.screenWidth; height: television.screenHeight
         z: 190
         controller: tvController
     }

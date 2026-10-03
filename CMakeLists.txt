@@ -110,11 +110,13 @@ qt_add_resources(mabeltv "mabeltv_qml"
         qml/RemoteInputHandler.qml
         qml/ChannelSummaryOverlay.qml
         qml/TvGuideOverlay.qml
+        qml/MabelChannelArtwork.qml
         qml/ParentOverlay.qml
         qml/ClassicParentOverlay.qml
         qml/ModernParentOverlay.qml
         qml/ParentConfirmationView.qml
         qml/ParentDashboardView.qml
+        qml/ParentChannelSettings.qml
         qml/SignalIcon.qml
         qml/MyTvModeOverlay.qml
         qml/MyTvLibraryView.qml
@@ -207,7 +209,7 @@ if(BUILD_TESTING)
 
     add_test(NAME mabeltv_core_tests COMMAND mabeltv_core_tests)
     qt_add_executable(mabeltv_native_ui_tests tests/unit/NativeMyTvTests.cpp)
-    target_link_libraries(mabeltv_native_ui_tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml)
+    target_link_libraries(mabeltv_native_ui_tests PRIVATE mabeltv_core Qt6::Test Qt6::Quick Qt6::Qml)
     target_compile_definitions(mabeltv_native_ui_tests PRIVATE TEST_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml")
     qt_add_shaders(mabeltv_native_ui_tests "my_tv_test_shaders"
         PREFIX "/shaders" BASE "shaders" FILES shaders/my-tv-rounded.frag)

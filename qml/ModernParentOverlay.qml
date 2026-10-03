@@ -7,17 +7,17 @@ Item {
     id: overlay
 
     required property var controller
-    property string page: "overview"
+    property string page: "playback"
     property int selectedRow: 0
     property int selectedChannel: 0
     property int selectedProgramme: 0
     property bool programmePane: false
-    property bool sidebarFocused: false
+    property bool sidebarFocused: true
     property int sidebarSelection: 0
     property int restartSequenceStep: 0
     property bool myTvShortcutFocused: false
     readonly property real uiScale: Math.max(0.66, Math.min(width / 1920, height / 1080))
-    readonly property var navPages: ["overview", "playback", "picture", "channels", "system"]
+    readonly property var navPages: ["playback", "picture", "sound", "channels", "system"]
 
     visible: controller.parentAccessState !== TvController.ParentClosed
 
@@ -45,7 +45,8 @@ Item {
     function pageLabel(value) {
         if (value === "overview") return "Overview"
         if (value === "playback") return "Playback"
-        if (value === "picture") return "Picture & sound"
+        if (value === "picture") return "Picture"
+        if (value === "sound") return "Sound"
         if (value === "channels") return "Channels"
         return "System"
     }
@@ -54,6 +55,7 @@ Item {
         if (value === "overview") return "home"
         if (value === "playback") return "play"
         if (value === "picture") return "picture"
+        if (value === "sound") return "sound"
         if (value === "channels") return "list"
         return "settings"
     }
@@ -61,7 +63,8 @@ Item {
     function pageTitle(value) {
         if (value === "overview") return "Parent Controls"
         if (value === "playback") return "Playback"
-        if (value === "picture") return "Picture & sound"
+        if (value === "picture") return "Picture"
+        if (value === "sound") return "Sound"
         if (value === "channels") return "Channels & programmes"
         return "System"
     }
@@ -154,7 +157,7 @@ Item {
         case 10: return "Allow left and right to move through the current programme."
         case 12: return "Reload the channel library and check that programmes are ready."
         case 13: return "View the latest library and player health information."
-        case 14: return "Open the separate grown-up film library."
+        case 14: return "Browse your films and series in My TV."
         case 15: return "Safely relaunch the television player without rebooting the Pi."
         case 16: return "Safely power off the Raspberry Pi and television player."
         }
@@ -163,8 +166,9 @@ Item {
 
     function rowsForPage(value) {
         if (value === "playback") return [0, 1, 10]
-        if (value === "picture") return [2, 3, 4, 5, 7, 8, 9]
-        if (value === "system") return [12, 13, 14, 15, 16]
+        if (value === "picture") return [2, 3, 4, 5]
+        if (value === "sound") return [7, 8, 9]
+        if (value === "system") return [6, 12, 13, 14, 15, 16]
         return []
     }
 
@@ -198,20 +202,6 @@ Item {
         } else if (index === 16 && Qt.platform.os !== "windows") {
             controller.requestParentCommand("shutdown")
         }
-    }
-
-    function overviewValue(index) {
-        if (index === 0) return pretty(controller.playbackMode)
-        if (index === 1) return pretty(controller.pictureMode)
-        if (index === 2) return controller.parentLibrary.length + " channels"
-        return controller.libraryStatus.split("\n")[0]
-    }
-
-    function overviewDescription(index) {
-        if (index === 0) return "Programme behaviour, episode reset and scrubbing"
-        if (index === 1) return "Picture shape, frame, effects and volume"
-        if (index === 2) return "Choose the channels and programmes shown on TV"
-        return "Library checks, diagnostics, My TV mode and power"
     }
 
     function openSidebar() {
@@ -276,14 +266,6 @@ Item {
                                                 programmes[selectedProgramme].fileName)
     }
 
-    function moveOverview(horizontal, vertical) {
-        const column = selectedRow % 2
-        const row = Math.floor(selectedRow / 2)
-        const nextColumn = (column + horizontal + 2) % 2
-        const nextRow = (row + vertical + 2) % 2
-        selectedRow = nextRow * 2 + nextColumn
-    }
-
     function handleKey(key, modifiers) {
         if (controller.parentAccessState === TvController.ParentConfirmation) {
             if (key === Qt.Key_Up) {
@@ -319,19 +301,15 @@ Item {
         }
 
         if (sidebarFocused) {
-            if (key === Qt.Key_Up) {
-                sidebarSelection = (sidebarSelection + navPages.length - 1) % navPages.length
-            } else if (key === Qt.Key_Down) {
-                sidebarSelection = (sidebarSelection + 1) % navPages.length
-            } else if (key === Qt.Key_Right || key === Qt.Key_Return
-                       || key === Qt.Key_Enter) {
-                activateSidebarSelection()
-            } else if (key === Qt.Key_Escape || key === Qt.Key_Backspace
-                       || key === Qt.Key_B) {
+            if (key === Qt.Key_Left || key === Qt.Key_Right) {
+                sidebarSelection = (sidebarSelection + (key === Qt.Key_Left ? -1 : 1) + navPages.length) % navPages.length
+                page = navPages[sidebarSelection]; selectedRow = 0; programmePane = false
+                if (page === "channels") clampLibrarySelection()
+            } else if (key === Qt.Key_Down || key === Qt.Key_Return || key === Qt.Key_Enter) {
                 sidebarFocused = false
-            } else {
-                return false
-            }
+            } else if (key === Qt.Key_Escape || key === Qt.Key_Backspace || key === Qt.Key_B) {
+                controller.closeParent()
+            } else if (key !== Qt.Key_Up) return false
             return true
         }
 
@@ -352,30 +330,7 @@ Item {
                 activateLibrarySelection()
             } else if (key === Qt.Key_Escape || key === Qt.Key_Backspace
                        || key === Qt.Key_B) {
-                setPage("overview")
-            } else {
-                return false
-            }
-            return true
-        }
-
-        if (page === "overview") {
-            if (key === Qt.Key_Up) {
-                moveOverview(0, -1)
-            } else if (key === Qt.Key_Down) {
-                moveOverview(0, 1)
-            } else if (key === Qt.Key_Left) {
-                if (selectedRow % 2 === 0)
-                    openSidebar()
-                else
-                    moveOverview(-1, 0)
-            } else if (key === Qt.Key_Right) {
-                moveOverview(1, 0)
-            } else if (key === Qt.Key_Return || key === Qt.Key_Enter) {
-                setPage(["playback", "picture", "channels", "system"][selectedRow])
-            } else if (key === Qt.Key_Escape || key === Qt.Key_Backspace
-                       || key === Qt.Key_B) {
-                controller.closeParent()
+                openSidebar()
             } else {
                 return false
             }
@@ -384,25 +339,23 @@ Item {
 
         const rows = rowsForPage(page)
         if (key === Qt.Key_Up) {
-            if (rows.length > 0)
-                selectedRow = (selectedRow + rows.length - 1) % rows.length
+            if (selectedRow === 0) openSidebar()
+            else if (rows.length > 0) selectedRow--
         } else if (key === Qt.Key_Down) {
             if (rows.length > 0)
                 selectedRow = (selectedRow + 1) % rows.length
         } else if (key === Qt.Key_Left) {
-            if (page === "system")
-                openSidebar()
-            else if (rows.length > 0)
+            if (rows.length > 0 && rows[selectedRow] <= 10)
                 adjustRow(rows[selectedRow], -1)
         } else if (key === Qt.Key_Right) {
-            if (page !== "system" && rows.length > 0)
+            if (rows.length > 0 && rows[selectedRow] <= 10)
                 adjustRow(rows[selectedRow], 1)
         } else if (key === Qt.Key_Return || key === Qt.Key_Enter) {
             if (rows.length > 0)
                 activateRow(rows[selectedRow])
         } else if (key === Qt.Key_Escape || key === Qt.Key_Backspace
                    || key === Qt.Key_B) {
-            setPage("overview")
+            openSidebar()
         } else {
             return false
         }
@@ -420,18 +373,18 @@ Item {
             overlay.restartSequenceStep = 0
             overlay.myTvShortcutFocused = false
             if (controller.parentAccessState !== TvController.ParentOpen) {
-                overlay.page = "overview"
+                overlay.page = "playback"
                 overlay.selectedRow = 0
                 overlay.programmePane = false
-                overlay.sidebarFocused = false
+                overlay.sidebarFocused = true; overlay.sidebarSelection = 0
             }
         }
     }
 
     Rectangle {
         anchors.fill: parent
-        color: "#020407"
-        opacity: controller.parentAccessState === TvController.ParentConfirmation ? 0.76 : 0.94
+        color: "#142d35"
+        opacity: controller.parentAccessState === TvController.ParentConfirmation ? 0.55 : 1
     }
 
     ParentConfirmationView {

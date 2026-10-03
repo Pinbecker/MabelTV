@@ -7,6 +7,7 @@ Rectangle {
 
     required property var appRoot
     readonly property var playerObject: player
+    readonly property var screenSurface: screen
     readonly property real screenWidth: screen.width
     readonly property real screenHeight: screen.height
     readonly property var channelNumberLabel: channelNumber

@@ -19,7 +19,8 @@ sections are composed from focused components:
 | `FindingNemo.qml` and `FindingNemoBubbles.qml` | Supplied Finding Nemo cabinet and embedded character artwork, with bubble decoration in a focused component; preserves charcoal screen geometry. |
 | `RemoteInputHandler.qml` | Physical key routing, holds, repeat throttling and overlay precedence. |
 | `ParentConfirmationView.qml` | Modern parent-access confirmation screen. |
-| `ParentDashboardView.qml` | Modern parent settings and channel-management screen. |
+| `ParentDashboardView.qml` and `ParentChannelSettings.qml` | Light/teal settings categories, focused setting controls and channel/programme visibility management. |
+| `TvGuideOverlay.qml` and `MabelChannelArtwork.qml` | Floating child-friendly channel picker inside the actual picture bounds; optional cached artwork never blocks tuning. |
 | `MyTvLibraryView.qml` | Transient browse/search state, bounded cancellable requests and exact playback selection. |
 | `MyTvMabelBrowse.qml` | Prefetched family-channel directory, short-lived channel payloads, cancellable transitions and saved browse focus. Episode detail returns directly to the directory. |
 | `MyTvBrowseRow.qml` and `MyTvCard.qml` | Virtualised shelves and six-column Films/Series grid rows, without provider badges. |
@@ -138,3 +139,21 @@ player and detail controls without the cabinet. Family-film bookmarks retain
 their existing channel owner. Borrowed episodes have separate native bookmarks
 and may advance within their channel without writing private-series watched
 state. Open My TV always returns to the library, including from active playback.
+
+## Native channel picker and settings
+
+The channel picker uses the actual TelevisionScreen picture surface, outside its
+CRT shader, with an inset floating panel in standard, widescreen and full-screen
+presentation. It never replaces the cabinet or covers the whole display. The
+virtualised grid has two columns for 4:3 and three for wide pictures; arrows select
+channels, OK tunes the current programme and Back closes. Schedule refresh retains
+the channel number. Artwork uses the existing read-only native directory, a short
+cache and a bounded download queue; missing artwork cannot delay selection.
+
+Modern parent settings have one horizontal category bar: Playback, Picture, Sound,
+Channels and System. Down enters the selected category; Back returns to categories
+and then closes. Setting values retain the controller's existing persistence and
+parent-access gate. Channel visibility keeps separate channel/programme focus.
+Display quality is available under System. The confirmation screen retains the
+three-press access gate, My TV shortcut and restart sequence. Native menu tests use
+a mock controller and never connect to live state, CEC or playback.

@@ -1,4 +1,6 @@
 #include <QBuffer>
+#include <QQmlContext>
+#include "core/TvController.h"
 #include <QGuiApplication>
 #include <QFontDatabase>
 #include <QImage>
@@ -12,6 +14,150 @@
 class NativeMyTvTests : public QObject {
     Q_OBJECT
 private slots:
+
+    void floatingChannelMenuAndSettingsNavigation() {
+        qmlRegisterUncreatableType<TvController>("MabelTV", 1, 0, "TvController", "Enums only in this isolated fixture");
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty("tvDisplayName", "Mabel TV");
+        QStringList warnings;
+        connect(&engine, &QQmlEngine::warnings, this, [&](const QList<QQmlError>& errors) {
+            for (const auto& error : errors) warnings.append(error.toString());
+        });
+        const QByteArray fixture = R"MENU(
+pragma ComponentBehavior: Bound
+import QtQuick
+import MabelTV 1.0
+
+Item {
+    id: fixture
+    width: 1920; height: 1080
+    property int parentAccessState: TvController.ParentOpen
+    property int parentConfirmationCount: 0
+    property string parentMessage: ""
+    property string playbackMode: "continuous"
+    property int episodeResetMinutes: 60
+    property string pictureMode: "channel"
+    property string tvBorderStyle: "dinosaur-den"
+    property int crtGlass: 0
+    property int videoDistortion: 0
+    property string displayResolution: "1080p"
+    property bool volumeLimitEnabled: true
+    property int configuredMaximumVolume: 65
+    property bool soundEffectsEnabled: true
+    property bool scrubbingEnabled: false
+    property string libraryStatus: "Library ready\nAll programmes available"
+    property var myTvLibrary: []
+    property bool tvGuideEnabled: true
+    property int tuned: -1
+    property bool portalTune: false
+    property int changedChannel: -1
+    property string changedProgramme: ""
+    property int adjustments: 0
+    property var schedule: [
+        {number:1,name:"Postman Pat",current:false,programmes:[{name:"Pat's Special Delivery",now:true,progress:0.28},{name:"The Big Balloon",now:false}]},
+        {number:2,name:"Puffin Rock",current:false,programmes:[{name:"The Little Bird",now:true,progress:0.54}]},
+        {number:3,name:"Teletubbies",current:true,programmes:[{name:"Time for Teletubbies",now:true,progress:0.16}]},
+        {number:4,name:"Waffle the Wonder Dog",current:false,programmes:[{name:"Waffle Explores",now:true,progress:0.43}]},
+        {number:5,name:"Disney Films",current:false,programmes:[{name:"Alice in Wonderland",now:true,progress:0.2}]},
+        {number:6,name:"Julia Donaldson",current:false,programmes:[{name:"Room on the Broom",now:true,progress:0.62}]},
+        {number:9,name:"Zog",current:false,programmes:[{name:"Zog's Huge Roar",now:true,progress:0.3}]}
+    ]
+    property var parentLibrary: [
+        {number:1,name:"Postman Pat",enabled:true,programmeCount:3,enabledProgrammeCount:2,programmes:[{fileName:"pat1.mp4",name:"Pat's Special Delivery",enabled:true},{fileName:"pat2.mp4",name:"The Big Balloon",enabled:true},{fileName:"pat3.mp4",name:"Pat's Picnic",enabled:false}]},
+        {number:2,name:"Puffin Rock",enabled:true,programmeCount:1,enabledProgrammeCount:1,programmes:[{fileName:"puffin.mp4",name:"The Little Bird",enabled:true}]},
+        {number:3,name:"Teletubbies",enabled:false,programmeCount:1,enabledProgrammeCount:1,programmes:[{fileName:"tubbies.mp4",name:"Time for Teletubbies",enabled:true}]}
+    ]
+    function guideSchedule() { return schedule }
+    function tuneGuideChannel(number) { tuned = number; portalTune = false }
+    function tunePortalChannel(number) { tuned = number; portalTune = true }
+    function cyclePlaybackMode(direction) { adjustments += direction }
+    function cycleEpisodeResetMinutes(direction) { adjustments += direction }
+    function cyclePictureMode(direction) { adjustments += direction }
+    function cycleTvBorderStyle(direction) { adjustments += direction }
+    function adjustCrtGlass(direction) { adjustments += direction }
+    function adjustVideoDistortion(direction) { adjustments += direction }
+    function cycleDisplayResolution(direction) { adjustments += direction }
+    function toggleVolumeLimit() { volumeLimitEnabled = !volumeLimitEnabled }
+    function adjustMaximumVolume(direction) { configuredMaximumVolume += direction }
+    function toggleSoundEffects() { soundEffectsEnabled = !soundEffectsEnabled }
+    function toggleScrubbing() { scrubbingEnabled = !scrubbingEnabled }
+    function toggleChannelEnabled(number) { changedChannel = number }
+    function toggleProgrammeEnabled(number, file) { changedChannel = number; changedProgramme = file }
+    function closeParent() { parentAccessState = TvController.ParentClosed }
+    function parentConfirm() { parentConfirmationCount++; if (parentConfirmationCount === 3) parentAccessState = TvController.ParentOpen }
+    function requestParentCommand(command) { parentMessage = command }
+    function requestMyTvModeShortcut() { parentMessage = "my_tv" }
+    function restartCurrentProgramme() { parentMessage = "restart" }
+    function reloadLibrary() { parentMessage = "Library checked" }
+    Rectangle { anchors.fill: parent; color: "#314a46" }
+    ModernParentOverlay { id: settings; objectName:"settings"; anchors.fill:parent; controller:fixture }
+    TvGuideOverlay { id: guide; objectName:"guide"; width:1280; height:960; anchors.centerIn:parent; controller:fixture }
+}
+)MENU";
+        QQmlComponent component(&engine);
+        component.setData(fixture, QUrl::fromLocalFile(QStringLiteral(TEST_QML_DIR "/MenuTest.qml")));
+        QScopedPointer<QObject> root(component.create());
+        QVERIFY2(root, qPrintable(component.errorString()));
+        auto* guide = root->findChild<QQuickItem*>("guide");
+        auto* settings = root->findChild<QObject*>("settings");
+        auto* panel = root->findChild<QQuickItem*>("channelMenuPanel");
+        auto* artwork = root->findChild<QObject*>("channelArtworkDirectory");
+        QVERIFY(guide && settings && panel && artwork);
+        artwork->setProperty("updated", double(QDateTime::currentMSecsSinceEpoch())); // no network in tests
+        auto key = [](QObject* object, int code) {
+            return QMetaObject::invokeMethod(object, "handleKey", Q_ARG(QVariant, code), Q_ARG(QVariant, false));
+        };
+        for (const auto& size : {QSize(1280,960), QSize(1600,900), QSize(1920,1080)}) {
+            guide->setWidth(size.width()); guide->setHeight(size.height());
+            QVERIFY(QMetaObject::invokeMethod(guide, "open"));
+            QCoreApplication::processEvents();
+            QVERIFY(panel->x() > 0 && panel->y() > 0);
+            QVERIFY(panel->x() + panel->width() < guide->width());
+            QVERIFY(panel->y() + panel->height() < guide->height());
+            QCOMPARE(guide->property("columns").toInt(), size.width() == 1280 ? 2 : 3);
+            QCOMPARE(guide->property("selectedRow").toInt(), 2); // starts on current channel
+        }
+        QVERIFY(key(guide, Qt::Key_Right));
+        QCOMPARE(guide->property("selectedRow").toInt(), 3);
+        QVERIFY(QMetaObject::invokeMethod(guide, "refresh"));
+        QCOMPARE(guide->property("selectedRow").toInt(), 3); // refresh preserves focus
+        QVERIFY(key(guide, Qt::Key_Return));
+        QCOMPARE(root->property("tuned").toInt(), 4);
+        QVERIFY(!root->property("portalTune").toBool());
+        QVERIFY(!guide->isVisible());
+        QVERIFY(QMetaObject::invokeMethod(guide, "open"));
+        QVERIFY(QMetaObject::invokeMethod(guide, "handleKey", Q_ARG(QVariant, int(Qt::Key_Return)), Q_ARG(QVariant, true)));
+        QVERIFY(root->property("portalTune").toBool());
+        QVERIFY(key(settings, Qt::Key_Down));
+        QVERIFY(!settings->property("sidebarFocused").toBool());
+        QVERIFY(key(settings, Qt::Key_Right));
+        QCOMPARE(root->property("adjustments").toInt(), 1);
+        QVERIFY(key(settings, Qt::Key_Escape));
+        QVERIFY(settings->property("sidebarFocused").toBool());
+        QVERIFY(key(settings, Qt::Key_Right)); // Picture
+        QVERIFY(key(settings, Qt::Key_Right)); // Sound
+        QCOMPARE(settings->property("page").toString(), QString("sound"));
+        QVERIFY(key(settings, Qt::Key_Down));
+        QVERIFY(key(settings, Qt::Key_Return));
+        QVERIFY(!root->property("volumeLimitEnabled").toBool());
+        QVERIFY(key(settings, Qt::Key_Escape));
+        QVERIFY(key(settings, Qt::Key_Right)); // Channels
+        QVERIFY(key(settings, Qt::Key_Down));
+        QVERIFY(key(settings, Qt::Key_Return));
+        QCOMPARE(root->property("changedChannel").toInt(), 1);
+        QVERIFY(key(settings, Qt::Key_Right));
+        QVERIFY(key(settings, Qt::Key_Return));
+        QCOMPARE(root->property("changedProgramme").toString(), QString("pat1.mp4"));
+        QVERIFY(key(settings, Qt::Key_Escape));
+        QVERIFY(key(settings, Qt::Key_Right)); // System includes previously unreachable display quality
+        QVERIFY(key(settings, Qt::Key_Down));
+        QVERIFY(key(settings, Qt::Key_Right));
+        QCOMPARE(root->property("adjustments").toInt(), 2);
+        root->setProperty("parentAccessState", TvController::ParentConfirmation);
+        for (int i = 0; i < 3; ++i) QVERIFY(key(settings, Qt::Key_Return));
+        QCOMPARE(root->property("parentAccessState").toInt(), int(TvController::ParentOpen));
+        QVERIFY2(warnings.isEmpty(), qPrintable(warnings.join('\n')));
+    }
 
     void familyChannelsKeepFocusAndHaveOneBackStep() {
         QQmlEngine engine;
