@@ -71,7 +71,7 @@ done
 if [[ "$skip_packages" != "true" ]]; then
     apt-get update
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        qt6-qpa-plugins qml6-module-qtquick qml6-module-qtquick-window libqt6sql6-sqlite \
+        qt6-qpa-plugins qt6-image-formats-plugins qt6-svg-plugins qml6-module-qtquick qml6-module-qtquick-window libqt6sql6-sqlite \
         libqt6opengl6 libmpv-dev ffmpeg ir-keytable cec-utils python3 sudo logrotate avahi-daemon \
         alsa-utils ca-certificates curl util-linux psmisc qrencode udisks2 sg3-utils \
         nodejs npm rclone python3-paho-mqtt

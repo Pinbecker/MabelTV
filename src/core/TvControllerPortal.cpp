@@ -72,7 +72,7 @@ void TvController::playPortalProgramme(int channelNumber,
         if (m_channelFilmDismissedKey == key) m_channelFilmDismissedKey.clear();
     }
     target.anchorMilliseconds = m_broadcastClock.elapsed();
-    const double startPosition = target.channel.contentType == QStringLiteral("films")
+    const double startPosition = (m_queueTransition || target.channel.contentType == QStringLiteral("films"))
         ? clampPlaybackPosition(target, episodeIndex, positionSeconds)
         : 0.0;
     target.anchorPositionSeconds = startPosition;

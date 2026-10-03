@@ -1,12 +1,14 @@
 pragma ComponentBehavior: Bound
-
 import QtQuick
 
 Item {
     id: view
     required property var host
     required property var tvController
-    property color accent: "#10cfb2"
+    property color accent: "#04c6a8"
+    readonly property real uiScale: host.uiScale
+    readonly property string nativeBase: "http://127.0.0.1:8080"
+    property string tvDisplayName: "Mabel TV"
     property bool loading: false
     property string errorMessage: ""
     property string query: ""
@@ -15,462 +17,426 @@ Item {
     property int selectedZone: 1
     property int selectedRow: 0
     property int selectedCard: 0
-    property var homeData: ({ "continue": [], "up_next": [], "recommended": [], "library": [] })
-    property var searchResults: []
+    property int selectedShortcut: 0
+    property var rowSelections: ({})
+    property var sectionSelections: ({})
+    property var backdrops: ({})
+    property var attemptedBackdrops: ({})
+    property var activeBackdropRequest: null
+    property bool mabelVisible: false
+    property var mabelChannel: null
+    property var mabelChannels: []
+    property var mabelItems: []
+    readonly property var shortcuts: mabelVisible ? ["My TV", tvDisplayName]
+        : rows.filter(row => row.title).map(row => row.title).concat([tvDisplayName])
+    property var homeData: ({ "continue": [], "up_next": [], "library": [] })
     property var rows: []
-    property var currentDetail: ({})
+    property var searchResults: []
     property var selectedPlayback: null
     property var activeSearchRequest: null
     property var activeDetailRequest: null
+    property var activeHomeRequest: null
     property int searchGeneration: 0
     property int detailGeneration: 0
     property int homeGeneration: 0
-    readonly property real uiScale: host.uiScale
-    readonly property string nativeBase: "http://127.0.0.1:8080"
-
-    onSelectedRowChanged: Qt.callLater(ensureSelectedRowVisible)
-
+    property var pendingRequests: []
+    property alias artworkQueue: artworkQueue
     anchors.fill: parent
     visible: !host.playing
 
-    Rectangle {
-        anchors.fill: parent
-        color: "#f2f4f7"
-        gradient: Gradient {
-            GradientStop { position: 0; color: "#ffffff" }
-            GradientStop { position: 0.58; color: "#f5f7f9" }
-            GradientStop { position: 1; color: "#edf0f4" }
+    Rectangle { anchors.fill: parent; color: "#f3f5f7" }
+    FontLoader { source: "qrc:/fonts/inter/InterVariable.ttf" }
+    MyTvArtworkQueue { id: artworkQueue }
+    Row {
+        id: heading
+        x: 60 * view.uiScale; y: 38 * view.uiScale
+        width: parent.width - 120 * view.uiScale; height: 86 * view.uiScale
+        spacing: 30 * view.uiScale
+        Column {
+            width: parent.width * 0.52 - parent.spacing
+            spacing: 3 * view.uiScale
+            MyTvText { color: "#008b79"; font.weight: Font.DemiBold; font.letterSpacing: 2 * view.uiScale; font.pixelSize: 18 * view.uiScale; text: view.mabelVisible ? "YOUR CHANNELS · WITHOUT THE TV FRAME" : "YOUR FILMS AND SERIES" }
+            MyTvText { width: parent.width; elide: Text.ElideRight; color: "#142029"; font.weight: Font.Bold; font.letterSpacing: -1 * view.uiScale; font.pixelSize: 52 * view.uiScale; text: view.mabelVisible ? view.mabelChannel?.title || view.tvDisplayName : "My TV" }
         }
-    }
-    Rectangle {
-        anchors.right: parent.right
-        anchors.top: parent.top
-        width: parent.width * 0.46
-        height: parent.height * 0.38
-        radius: width
-        color: "#1810cfb2"
-    }
-
-    Column {
-        id: page
-        anchors.fill: parent
-        anchors.leftMargin: 58 * view.uiScale
-        anchors.rightMargin: 58 * view.uiScale
-        anchors.topMargin: 34 * view.uiScale
-        anchors.bottomMargin: 30 * view.uiScale
-        spacing: 18 * view.uiScale
-
-        Row {
-            width: parent.width
-            height: 76 * view.uiScale
-            Column {
-                width: parent.width * 0.55
-                spacing: 2 * view.uiScale
-                Text {
-                    color: view.accent
-                    font.family: "DejaVu Sans"
-                    font.bold: true
-                    font.letterSpacing: 2.3 * view.uiScale
-                    font.pixelSize: 13 * view.uiScale
-                    text: "YOUR FILMS AND SERIES"
-                }
-                Text {
-                    color: "#11151d"
-                    font.family: "DejaVu Sans"
-                    font.bold: true
-                    font.pixelSize: 38 * view.uiScale
-                    text: "What do you want to watch?"
-                }
+        MyTvControl {
+            width: parent.width * 0.48; height: 68 * view.uiScale
+            anchors.verticalCenter: parent.verticalCenter
+            uiScale: view.uiScale; highlighted: view.selectedZone === 0
+            MyTvText {
+                anchors.left: parent.left; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                anchors.leftMargin: 65 * view.uiScale; anchors.rightMargin: 20 * view.uiScale
+                verticalAlignment: Text.AlignVCenter
+                color: view.query ? "#142029" : "#697984"
+                font.pixelSize: 24 * view.uiScale
+                elide: Text.ElideRight
+                text: view.query || (view.mabelVisible ? view.mabelChannel ? "Search this channel" : "Search channels" : "Search films and series")
             }
-            Rectangle {
-                width: parent.width * 0.45
-                height: 58 * view.uiScale
-                anchors.verticalCenter: parent.verticalCenter
-                radius: 13 * view.uiScale
-                color: "white"
-                border.width: view.selectedZone === 0 ? 4 * view.uiScale : 1
-                border.color: view.selectedZone === 0 ? view.accent : "#d5dbe1"
-                Row {
-                    anchors.fill: parent
-                    anchors.leftMargin: 18 * view.uiScale
-                    anchors.rightMargin: 18 * view.uiScale
-                    spacing: 13 * view.uiScale
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        color: view.accent
-                        font.pixelSize: 26 * view.uiScale
-                        text: "⌕"
-                    }
-                    Text {
-                        width: parent.width - 45 * view.uiScale
-                        anchors.verticalCenter: parent.verticalCenter
-                        color: view.query.length ? "#161b22" : "#737c88"
-                        elide: Text.ElideRight
-                        font.family: "DejaVu Sans"
-                        font.pixelSize: 16 * view.uiScale
-                        text: view.query.length ? view.query : "Search films and series"
-                    }
-                }
-            }
-        }
-
-        Flickable {
-            id: shelves
-            width: parent.width
-            height: parent.height - 112 * view.uiScale
-            contentHeight: shelfColumn.implicitHeight
-            clip: true
-
-            Column {
-                id: shelfColumn
-                width: parent.width
-                spacing: 22 * view.uiScale
-                Repeater {
-                    id: shelfRepeater
-                    model: view.rows
-                    delegate: Column {
-                        id: shelfDelegate
-                        required property int index
-                        required property var modelData
-                        readonly property int rowIndex: index
-                        readonly property var rowData: modelData
-                        width: shelfColumn.width
-                        spacing: 10 * view.uiScale
-                        Row {
-                            width: parent.width
-                            Text {
-                                width: parent.width * 0.78
-                                color: "#151922"
-                                font.family: "DejaVu Sans"
-                                font.bold: true
-                                font.pixelSize: 24 * view.uiScale
-                                text: modelData.title
-                            }
-                            Text {
-                                width: parent.width * 0.22
-                                horizontalAlignment: Text.AlignRight
-                                color: "#747d89"
-                                font.family: "DejaVu Sans"
-                                font.pixelSize: 13 * view.uiScale
-                                text: modelData.items.length + (modelData.wide ? " in progress" : " titles")
-                            }
-                        }
-                        ListView {
-                            id: cardList
-                            property int shelfIndex: shelfDelegate.rowIndex
-                            property bool shelfWide: Boolean(shelfDelegate.rowData.wide)
-                            width: parent.width
-                            height: shelfWide ? 190 * view.uiScale : 310 * view.uiScale
-                            orientation: ListView.Horizontal
-                            spacing: 15 * view.uiScale
-                            clip: false
-                            model: shelfDelegate.rowData.items
-                            currentIndex: shelfIndex === view.selectedRow ? view.selectedCard : 0
-                            onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
-                            delegate: MyTvCard {
-                                required property int index
-                                host: view
-                                modelData: cardList.model[index]
-                                wide: cardList.shelfWide
-                                selected: view.selectedZone === 1
-                                    && cardList.shelfIndex === view.selectedRow
-                                    && index === view.selectedCard
-                            }
-                        }
-                    }
-                }
-                Text {
-                    visible: !view.loading && view.rows.length === 0
-                    width: parent.width
-                    color: "#68717d"
-                    horizontalAlignment: Text.AlignHCenter
-                    font.family: "DejaVu Sans"
-                    font.pixelSize: 18 * view.uiScale
-                    text: view.errorMessage || "There is nothing to show here yet."
-                }
+            MyTvIcon {
+                x: 23 * view.uiScale; anchors.verticalCenter: parent.verticalCenter
+                width: 27 * view.uiScale; height: width; name: "search"
             }
         }
     }
-
-    Rectangle {
-        visible: view.loading
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        anchors.margins: 34 * view.uiScale
-        width: loadingText.implicitWidth + 28 * view.uiScale
-        height: 42 * view.uiScale
-        radius: height / 2
-        color: "#e8ffffff"
-        border.width: 1
-        border.color: "#d5dbe1"
-        Text {
-            id: loadingText
-            anchors.centerIn: parent
-            color: view.accent
-            font.family: "DejaVu Sans"
-            font.bold: true
-            font.pixelSize: 13 * view.uiScale
-            text: "Loading My TV…"
+    Row {
+        id: shortcutsBar
+        x: 60 * view.uiScale; y: 138 * view.uiScale
+        spacing: 16 * view.uiScale; visible: !view.query.trim()
+        Repeater {
+            model: view.shortcuts
+            delegate: MyTvControl {
+                required property var modelData
+                required property int index
+                width: shortcutLabel.implicitWidth + 48 * view.uiScale; height: 52 * view.uiScale
+                radius: height / 2
+                uiScale: view.uiScale; highlighted: view.selectedZone === 2 && view.selectedShortcut === index
+                checked: highlighted; accent: view.accent
+                MyTvText { id: shortcutLabel; anchors.centerIn: parent; color: "#142a31"; font.weight: Font.DemiBold; font.pixelSize: 22 * view.uiScale; text: modelData }
+            }
         }
     }
-
-    MyTvDetailView {
-        id: detailView
-        host: view
-        visible: view.detailVisible
-        z: 10
-        onClosed: view.detailVisible = false
+    ListView {
+        id: browse
+        x: 60 * view.uiScale; y: view.query.trim() ? 154 * view.uiScale : 216 * view.uiScale
+        width: parent.width - 120 * view.uiScale
+        height: parent.height - y - 30 * view.uiScale
+        clip: true; spacing: 14 * view.uiScale
+        cacheBuffer: 180 * view.uiScale
+        model: view.rows
+        currentIndex: view.selectedRow
+        onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
+        delegate: MyTvBrowseRow {
+            required property int index
+            required property var modelData
+            host: view; rowData: modelData; rowIndex: index
+            width: browse.width
+        }
     }
-    Rectangle {
-        visible: view.keyboardVisible
-        anchors.fill: parent
-        z: 19
-        color: "#66070a0d"
+    MyTvText {
+        anchors.centerIn: browse
+        visible: !view.rows.length
+        color: "#647680"; font.pixelSize: 27 * view.uiScale
+        text: view.loading ? "Loading your library…" : view.query ? "No matching titles" : "Your library is empty"
     }
+    MyTvDetailView { id: detailView; host: view; visible: view.detailVisible; z: 10; onClosed: view.closeDetail() }
+    Rectangle { visible: view.keyboardVisible; anchors.fill: parent; z: 19; color: "#660e1b23" }
     MyTvKeyboard {
-        id: keyboard
-        host: view
-        visible: view.keyboardVisible
-        z: 20
+        id: keyboard; host: view; visible: view.keyboardVisible; z: 20
         onAccepted: value => view.appendSearch(value)
-        onClosed: view.keyboardVisible = false
+        onClosed: { view.keyboardVisible = false; view.selectedZone = view.rows.length ? 1 : 0 }
     }
-
+    Rectangle {
+        visible: Boolean(view.errorMessage); z: 30
+        anchors.horizontalCenter: parent.horizontalCenter; anchors.bottom: parent.bottom
+        anchors.bottomMargin: 50 * view.uiScale
+        width: Math.min(parent.width - 120 * view.uiScale, message.implicitWidth + 50 * view.uiScale)
+        height: message.implicitHeight + 28 * view.uiScale
+        radius: 10 * view.uiScale; color: "#142c34"
+        MyTvText { id: message; anchors.centerIn: parent; width: parent.width - 40 * view.uiScale; color: "white"; font.pixelSize: 23 * view.uiScale; wrapMode: Text.WordWrap; text: view.errorMessage }
+    }
+    Timer { id: messageTimer; interval: 7000; onTriggered: view.errorMessage = "" }
+    Timer { interval: 700; repeat: true; running: !view.host.playing && !view.detailVisible && !view.query.trim(); onTriggered: view.loadNextBackdrop() }
+    Timer {
+        interval: 1000; running: view.pendingRequests.length > 0; repeat: true
+        onTriggered: {
+            const now = Date.now()
+            for (const pending of view.pendingRequests.slice()) {
+                if (now > pending.deadline) pending.timeout()
+                else if (pending.retryAt && now >= pending.retryAt) { pending.retryAt = 0; pending.resend() }
+            }
+        }
+    }
+    function notify(message) { errorMessage = message; messageTimer.restart() }
     function request(path, method, payload, success, failure) {
         const xhr = new XMLHttpRequest()
-        xhr.open(method || "GET", nativeBase + path)
-        xhr.setRequestHeader("X-MabelTV-Native", "1")
-        if (payload !== null) xhr.setRequestHeader("Content-Type", "application/json")
+        const pending = { xhr: xhr, deadline: Date.now() + (path.includes("/launch") ? 25000 : 15000) }
+        let finished = false
+        let attempts = 0
+        function remove() { view.pendingRequests = view.pendingRequests.filter(value => value !== pending) }
+        pending.timeout = function() {
+            if (finished) return
+            finished = true; remove(); xhr.abort()
+            if (failure) failure("Taking too long. Press OK to try again.")
+        }
+        pendingRequests = pendingRequests.concat([pending])
+        function send() {
+            if (finished) return
+            xhr.open(method || "GET", nativeBase + path)
+            xhr.setRequestHeader("X-MabelTV-Native", "1")
+            if (payload !== null) xhr.setRequestHeader("Content-Type", "application/json")
+            xhr.send(payload === null ? null : JSON.stringify(payload))
+        }
+        pending.resend = send
         xhr.onreadystatechange = function() {
-            if (xhr.readyState !== XMLHttpRequest.DONE) return
+            if (xhr.readyState !== XMLHttpRequest.DONE || finished) return
+            if (xhr.status === 0 && (method || "GET") === "GET" && attempts++ < 1) {
+                pending.retryAt = Date.now() + 400; return
+            }
+            finished = true; remove()
             if (xhr.status >= 200 && xhr.status < 300) {
-                try { success(JSON.parse(xhr.responseText)) }
-                catch (error) { if (failure) failure("My TV returned invalid data") }
+                let data
+                try { data = JSON.parse(xhr.responseText) }
+                catch (error) { if (failure) failure("My TV returned invalid data"); return }
+                success(data)
             } else if (failure) {
-                try { failure(JSON.parse(xhr.responseText).error || "My TV is unavailable") }
-                catch (error) { failure("My TV is unavailable") }
+                let message = "My TV is unavailable. Press OK to retry."
+                try { message = JSON.parse(xhr.responseText).error || message } catch (error) {}
+                failure(message)
             }
         }
-        xhr.send(payload === null ? null : JSON.stringify(payload))
-        return xhr
+        send()
+        return { abort: function() { if (!finished) { finished = true; remove(); xhr.abort() } } }
     }
-
     function open() {
-        detailVisible = false
-        keyboardVisible = false
-        selectedZone = 1
-        selectedRow = 0
-        selectedCard = 0
-        query = ""
-        loadHome()
+        mabelVisible = false; mabelChannel = null
+        closeDetail(); keyboardVisible = false; selectedPlayback = null
+        selectedZone = 1; selectedRow = 0; selectedCard = 0; query = ""
+        rowSelections = {}; sectionSelections = {}; selectedShortcut = 0
+        browse.contentY = 0; loadHome()
     }
     function loadHome() {
+        if (mabelVisible) { loadMabel(mabelChannel); return }
         const generation = ++homeGeneration
+        if (activeHomeRequest) activeHomeRequest.abort()
         loading = true
-        errorMessage = ""
-        request("/api/native/my-tv/home", "GET", null, result => {
+        activeHomeRequest = request("/api/native/my-tv/home", "GET", null, result => {
             if (generation !== homeGeneration) return
-            homeData = result; rebuildRows(); loading = false
-            recommendationTimer.restart()
-        }, message => { errorMessage = message; loading = false; rebuildRows() })
+            homeData = result; tvDisplayName = result.tv_name || "Mabel TV"
+            rebuildRows(); loading = false; activeHomeRequest = null
+            if (detailVisible && detailView.detail.on_mabeltv) {
+                const detailToken = detailGeneration
+                request("/api/native/my-tv/local-title?key=" + encodeURIComponent(detailView.detail.key), "GET", null, value => {
+                    if (detailToken === detailGeneration && detailVisible) detailView.updatePlayback(value)
+                })
+            }
+        }, message => { if (generation !== homeGeneration) return; loading = false; notify(message) })
+    }
+    function gridRows(next, title, values) {
+        for (let index = 0; index < values.length; index += 6)
+            next.push({ title: index === 0 ? title : "", wide: false, items: values.slice(index, index + 6) })
+    }
+    function loadMabel(channel) {
+        const generation = ++homeGeneration
+        if (activeHomeRequest) activeHomeRequest.abort()
+        const previous = mabelChannel?.channel_number
+        mabelChannel = channel; loading = true
+        if (previous !== channel?.channel_number) { selectedRow = 0; selectedCard = 0; browse.contentY = 0 }
+        const path = channel ? "/api/native/my-tv/mabel-channel?number=" + channel.channel_number : "/api/native/my-tv/mabel-channels"
+        activeHomeRequest = request(path, "GET", null, result => {
+            if (generation !== homeGeneration || !mabelVisible) return
+            if (channel) mabelItems = result.items || []; else mabelChannels = result.channels || []
+            loading = false; activeHomeRequest = null; selectedZone = 1; rebuildRows()
+            if (channel && result.content_type !== "films") {
+                const resume = mabelItems.filter(value => value.remote_position >= 30)[0] || mabelItems[0]
+                const detail = Object.assign({}, channel, { borrowed: true, on_mabeltv: true, media_type: "tv",
+                    overview: result.overview || "Choose an episode to watch without the television frame.",
+                    local: { id: channel.channel_number, kind: "mabel" }, local_episodes: mabelItems,
+                    next_playable: resume, progress: { episode: resume, position: resume?.remote_position || 0 },
+                    seasons: [...new Set(mabelItems.map(value => value.season))].map(number => ({ number: number, name: "Season " + number })) })
+                detailVisible = true; detailView.open(detail); detailView.updateDetail(detail)
+            } else if (detailVisible) {
+                const value = mabelItems.find(item => item.key === detailView.detail.key)
+                if (value) detailView.updatePlayback(value)
+            }
+        }, message => { if (generation === homeGeneration) { loading = false; notify(message) } })
     }
     function rebuildRows() {
-        if (query.length) {
-            rows = searchResults.length ? [{ title: "Search results", items: searchResults, wide: false }] : []
-        } else {
-            const next = []
-            if ((homeData.continue || []).length) next.push({ title: "Continue watching", items: homeData.continue, wide: true })
-            if ((homeData.up_next || []).length) next.push({ title: "Up next", items: homeData.up_next, wide: false })
-            if ((homeData.recommended || []).length) next.push({ title: "What to watch", items: homeData.recommended, wide: false })
-            if ((homeData.library || []).length) next.push({ title: "From your library", items: homeData.library, wide: false })
-            rows = next
+        const oldKey = currentItem()?.key, oldTitle = sectionTitle(selectedRow)
+        const next = []
+        if (mabelVisible) {
+            const needle = query.trim().toLowerCase()
+            const values = (mabelChannel ? mabelItems : mabelChannels).filter(value => !needle || value.title.toLowerCase().includes(needle))
+            if (mabelChannel) gridRows(next, mabelChannel.content_type === "films" ? "Films in this channel" : "Episodes in this channel", values)
+            else {
+                gridRows(next, "Episode channels", values.filter(value => value.content_type !== "films"))
+                gridRows(next, "Film channels", values.filter(value => value.content_type === "films"))
+            }
+        } else if (query.trim()) gridRows(next, "Search results · " + searchResults.length, searchResults)
+        else {
+            if ((homeData.continue || []).length) next.push({ title: "Continue watching", wide: true, items: homeData.continue })
+            if ((homeData.up_next || []).length) next.push({ title: "Up next", wide: false, items: homeData.up_next })
+            gridRows(next, "Films", (homeData.library || []).filter(value => value.media_type === "movie"))
+            gridRows(next, "Series", (homeData.library || []).filter(value => value.media_type === "tv"))
+        }
+        rows = next
+        if (!query.trim() && oldKey && oldTitle) {
+            const first = rows.findIndex(row => row.title === oldTitle)
+            for (let index = first; index >= 0 && index < rows.length && (index === first || !rows[index].title); index++) {
+                const card = rows[index].items.findIndex(item => item.key === oldKey)
+                if (card >= 0) { selectedRow = index; selectedCard = card; break }
+            }
         }
         selectedRow = Math.max(0, Math.min(selectedRow, rows.length - 1))
         selectedCard = Math.max(0, Math.min(selectedCard, currentItems().length - 1))
     }
-    function currentItems() { return rows.length > selectedRow ? rows[selectedRow].items : [] }
-    function currentItem() { const values = currentItems(); return values.length > selectedCard ? values[selectedCard] : null }
-    function ensureSelectedRowVisible() {
-        const row = shelfRepeater.itemAt(selectedRow)
-        if (!row) return
-        const top = row.y
-        const bottom = row.y + row.height
-        if (top < shelves.contentY) shelves.contentY = top
-        else if (bottom > shelves.contentY + shelves.height)
-            shelves.contentY = Math.min(shelves.contentHeight - shelves.height,
-                                        bottom - shelves.height)
+    function currentItems() { return rows[selectedRow]?.items || [] }
+    function currentItem() { return currentItems()[selectedCard] || null }
+    function sectionTitle(index) {
+        while (index > 0 && !rows[index]?.title) index--
+        return rows[index]?.title || ""
+    }
+    function rememberSelection() {
+        rowSelections = Object.assign({}, rowSelections, { [selectedRow]: selectedCard })
+        let headingRow = selectedRow
+        while (headingRow > 0 && !rows[headingRow]?.title) headingRow--
+        const title = rows[headingRow]?.title
+        if (title) sectionSelections = Object.assign({}, sectionSelections, { [title]: { offset: selectedRow - headingRow, card: selectedCard, key: currentItem()?.key } })
+    }
+    function selectRow(index) {
+        rememberSelection(); selectedRow = index
+        selectedCard = Math.max(0, Math.min(rowSelections[index] || 0, currentItems().length - 1))
+    }
+    function jumpToSection() {
+        const title = shortcuts[selectedShortcut], index = rows.findIndex(row => row.title === title)
+        if (!mabelVisible && title === tvDisplayName) { mabelVisible = true; selectedShortcut = 1; query = ""; loadMabel(null); return }
+        if (mabelVisible) {
+            query = ""
+            if (title === "My TV") { mabelVisible = false; mabelChannel = null; loadHome() }
+            else loadMabel(null)
+            return
+        }
+        if (index < 0) return
+        rememberSelection()
+        const saved = sectionSelections[title]
+        let last = index
+        while (last + 1 < rows.length && !rows[last + 1].title) last++
+        selectedRow = Math.min(last, index + (saved?.offset || 0))
+        selectedCard = Math.max(0, Math.min(saved?.card || 0, currentItems().length - 1))
+        if (saved?.key) for (let row = index; row <= last; row++) {
+            const card = rows[row].items.findIndex(item => item.key === saved.key)
+            if (card >= 0) { selectedRow = row; selectedCard = card; break }
+        }
+        selectedZone = 1; browse.positionViewAtIndex(selectedRow, ListView.Beginning)
+    }
+    function focusShortcuts() {
+        rememberSelection()
+        selectedShortcut = Math.max(0, shortcuts.indexOf(sectionTitle(selectedRow)))
+        selectedZone = 2
+    }
+    function loadNextBackdrop() {
+        if (activeBackdropRequest || loading) return
+        const item = (homeData.continue || []).find(value => value.tmdb_id && !value.backdrop_path
+            && !Object.prototype.hasOwnProperty.call(backdrops, value.key) && !attemptedBackdrops[value.key])
+        if (!item) return
+        attemptedBackdrops = Object.assign({}, attemptedBackdrops, { [item.key]: true })
+        activeBackdropRequest = request("/api/native/my-tv/backdrop?media_type=" + item.media_type + "&tmdb_id=" + item.tmdb_id, "GET", null,
+            value => { backdrops = Object.assign({}, backdrops, { [value.key]: value.backdrop_path }); activeBackdropRequest = null },
+            () => { activeBackdropRequest = null })
     }
     function artworkUrl(item, backdrop) {
-        const path = backdrop && item.backdrop_path ? item.backdrop_path : item.poster_path
-        return path ? nativeBase + "/api/native/my-tv/artwork/" + (backdrop ? "w780" : "w342")
+        const landscape = item.backdrop_path || backdrops[item.key]
+        const path = backdrop && landscape ? landscape : item.poster_path
+        if ((!backdrop || !landscape) && item.poster_url) return nativeBase + item.poster_url
+        return path ? nativeBase + "/api/native/my-tv/artwork/" + (backdrop ? "w780" : width >= 1800 ? "w500" : "w342")
             + "/" + encodeURIComponent(String(path).replace(/^\//, "")) : ""
     }
-    function providerPriority(name) {
-        const value = String(name || "").toLowerCase()
-        if (value.includes("mabel")) return 0
-        if (value.includes("netflix")) return 1
-        if (value.includes("prime") || value.includes("amazon")) return 2
-        if (value.includes("iplayer") || value.includes("bbc")) return 3
-        if (value.includes("channel 4") || value.includes("all 4")) return 4
-        if (value.includes("itv")) return 5
-        if (value.includes("sky")) return 6
-        if (value.includes("now") || value.includes("max")) return 1000
-        return 100
-    }
-    function providerEntry(value) {
-        const name = String(value.name || "Streaming service")
-        const lowered = name.toLowerCase()
-        let localAsset = ""
-        if (lowered.includes("netflix")) localAsset = "netflix-app.jpg"
-        else if (lowered.includes("prime") || lowered.includes("amazon")) localAsset = "prime-video-app.jpg"
-        else if (lowered.includes("iplayer") || lowered.includes("bbc")) localAsset = "bbc-iplayer-app.jpg"
-        else if (lowered.includes("channel 4") || lowered.includes("all 4")) localAsset = "channel-4-app.jpg"
-        else if (lowered.includes("itv")) localAsset = "itvx-app.jpg"
-        else if (lowered.includes("sky")) localAsset = "sky-go-app.jpg"
-        else if (lowered.includes("disney")) localAsset = "disney-plus-app.jpg"
-        else if (lowered.includes("paramount")) localAsset = "paramount-plus-app.jpg"
-        else if (lowered.includes("apple")) localAsset = "apple-tv-app.jpg"
-        else if (lowered.includes("now")) localAsset = "now-app.jpg"
-        return { name: name, asset: localAsset ? nativeBase + "/portal/assets/providers/" + localAsset
-            : (value.logo_path ? nativeBase + "/api/native/my-tv/artwork/w92/"
-                + encodeURIComponent(String(value.logo_path).replace(/^\//, "")) : ""),
-            destination: value.android_url || value.web_url || "", raw: value }
-    }
-    function providerBadges(item) {
-        const values = []
-        if (item.on_mabeltv) values.push({ name: tvDisplayName, asset: nativeBase + "/apple-touch-icon.png", local: true })
-        for (const provider of item.providers || []) {
-            if (!["flatrate", "free", "ads"].includes(String(provider.type || "").toLowerCase())) continue
-            if (!values.some(value => value.name === provider.name)) values.push(providerEntry(provider))
+    function artworkFocus(item) {
+        // Manually framed against the actual channel artwork, matching a 2:3 card.
+        if (item.family_channel || item.borrowed) {
+            const positions = { "postman pat": 0.79, "puffin rock": 0.85,
+                "zog": 0.85, "waffle dog": 0.53, "waffle the wonder dog": 0.53 }
+            const x = positions[String(item.title || "").trim().toLowerCase()]
+            if (x !== undefined) return { x: x, y: 0.5 }
         }
-        for (const source of item.provider_sources || []) {
-            if (!["sub", "free", "tve", "ads"].includes(String(source.type || "").toLowerCase())) continue
-            if (!values.some(value => String(value.name).toLowerCase() === String(source.name).toLowerCase()))
-                values.push(providerEntry(source))
-        }
-        values.sort((left, right) => providerPriority(left.name) - providerPriority(right.name))
-        return values.slice(0, 2)
+        return { x: 0.5, y: 0.5 }
     }
-    function detailProviders(item) {
-        const values = []
-        if (item.on_mabeltv)
-            values.push({ name: tvDisplayName, asset: nativeBase + "/apple-touch-icon.png", local: true })
-        for (const provider of item.providers || []) {
-            if (["flatrate", "free", "ads"].includes(String(provider.type || "").toLowerCase())
-                    && !values.some(value => value.name === provider.name))
-                values.push(providerEntry(provider))
-        }
-        for (const source of item.provider_result?.sources || []) {
-            if (!["sub", "free", "tve", "ads"].includes(String(source.type || "").toLowerCase())) continue
-            if (!values.some(value => String(value.name).toLowerCase() === String(source.name).toLowerCase())) values.push(providerEntry(source))
-        }
-        values.sort((left, right) => providerPriority(left.name) - providerPriority(right.name))
-        return values
-    }
-    function progressRatio(item) {
-        const progress = item.progress || item.local_progress || {}
-        const duration = Number(progress.duration || 0)
-        return duration > 0 ? Math.min(1, Number(progress.position || 0) / duration) : 0
-    }
+    function progressRatio(item) { const value = item.progress || {}; return value.duration > 0 ? Math.min(1, value.position / value.duration) : 0 }
     function progressLabel(item) {
+        if (item.series_progress?.state === "next") {
+            const next = item.series_progress.next_episode
+            return "NEXT · S" + next.season + " E" + next.number
+        }
         const episode = item.progress?.episode
-        return episode ? "Continue · S" + String(episode.season).padStart(2, "0")
-            + " E" + String(episode.episode).padStart(2, "0") : "Continue"
+        return episode ? "CONTINUE · S" + episode.season + " E" + (episode.number || episode.episode) : "CONTINUE"
+    }
+    function remainingLabel(playable) {
+        const position = Number(playable?.remote_position ?? playable?.position ?? 0)
+        const duration = Number(playable?.remote_duration ?? playable?.duration ?? 0)
+        return duration > position && position >= 30 ? Math.ceil((duration - position) / 60) + " min left" : ""
     }
     function appendSearch(value) {
         if (value === "\b") query = query.slice(0, -1)
+        else if (value === "CLEAR") query = ""
         else query += value
         beginSearch()
     }
     function appendRemoteText(value) {
-        selectedZone = 0; keyboardVisible = true
-        if (value === "\b") appendSearch(value)
-        else { query += value; beginSearch() }
-    }
-    function localSearchResults(value) {
-        const needle = String(value || "").trim().toLowerCase()
-        if (!needle.length) return []
-        const found = []
-        const seen = ({})
-        const pools = [homeData.continue || [], homeData.up_next || [],
-                       homeData.recommended || [], homeData.library || []]
-        for (const pool of pools) for (const item of pool) {
-            const key = item.key || item.media_type + ":" + item.tmdb_id
-            if (seen[key]) continue
-            if ((String(item.title || "") + " " + String(item.year || "")).toLowerCase().includes(needle)) {
-                seen[key] = true
-                found.push(item)
-            }
-        }
-        return found
+        if (detailVisible) closeDetail()
+        selectedZone = 0; appendSearch(value)
     }
     function beginSearch() {
         searchGeneration++
-        if (activeSearchRequest) { activeSearchRequest.abort(); activeSearchRequest = null }
-        searchResults = localSearchResults(query)
-        selectedRow = 0; selectedCard = 0; rebuildRows()
-        if (query.trim().length >= 3) searchTimer.restart()
-        else searchTimer.stop()
+        if (activeSearchRequest) activeSearchRequest.abort()
+        activeSearchRequest = null; loading = false
+        const needle = query.trim().toLowerCase()
+        if (mabelVisible) { selectedRow = 0; selectedCard = 0; rebuildRows(); searchTimer.stop(); return }
+        const found = {}; searchResults = []
+        for (const item of (homeData.library || []).concat(homeData.up_next || []))
+            if (needle && !found[item.key] && String(item.title).toLowerCase().includes(needle)) {
+                found[item.key] = true; searchResults.push(item)
+            }
+        selectedRow = 0; selectedCard = 0; rebuildRows(); browse.contentY = 0
+        if (needle.length >= 3) searchTimer.restart(); else searchTimer.stop()
     }
     function openSelected() {
         const item = currentItem()
-        if (!item) return
-        if (!Number(item.tmdb_id || 0)) {
-            currentDetail = item; detailView.open(item); detailVisible = true; return
-        }
+        if (!item) { loadHome(); return }
+        if (item.family_channel) { loadMabel(item); return }
+        rememberSelection()
+        if (activeBackdropRequest) { activeBackdropRequest.abort(); activeBackdropRequest = null }
+        closeDetail()
         const generation = ++detailGeneration
-        if (activeDetailRequest) activeDetailRequest.abort()
-        currentDetail = item; detailView.open(item); detailVisible = true
-        activeDetailRequest = request("/api/native/my-tv/title?media_type=" + item.media_type + "&tmdb_id=" + item.tmdb_id,
-                "GET", null, result => {
+        detailVisible = true; detailView.open(item)
+        if (item.borrowed) { detailView.updateDetail(item); return }
+        const path = item.tmdb_id ? "/api/native/my-tv/title?media_type=" + item.media_type + "&tmdb_id=" + item.tmdb_id
+            : "/api/native/my-tv/local-title?key=" + encodeURIComponent(item.key)
+        activeDetailRequest = request(path, "GET", null, result => {
             if (generation !== detailGeneration || !detailVisible) return
-            if (item.local) result.local = item.local
-            result.on_mabeltv = item.on_mabeltv || result.on_mabeltv
-            currentDetail = result; detailView.open(result)
-            if (generation === detailGeneration) activeDetailRequest = null
-        }, message => {
-            if (generation === detailGeneration && detailVisible) errorMessage = message
-            if (generation === detailGeneration) activeDetailRequest = null
-        })
+            detailView.updateDetail(result); activeDetailRequest = null
+        }, message => { if (generation === detailGeneration && detailVisible) { detailView.loading = false; detailView.loadFailed = true; notify(message) } })
     }
-    function detailActions(item) {
-        const actions = []
-        if (item.on_mabeltv && item.local) actions.push({ id: "play", label: item.media_type === "tv" ? "▶ Play next episode" : "▶ Play" })
-        return actions
+    function closeDetail() {
+        detailGeneration++; if (activeDetailRequest) activeDetailRequest.abort()
+        activeDetailRequest = null; detailView.cancel(); detailVisible = false
     }
-    function runDetailAction(action, item) {
-        if (action.id !== "play") return
-        let playable = item
-        if (item.media_type === "tv") {
-            const episodes = item.local?.episodes || []
-            playable = episodes.find(value => !value.watched) || episodes[0]
-        }
-        if (playable?.source) {
-            selectedPlayback = { name: item.title, source: playable.source,
-                id: playable.library_id || item.local?.library_id || item.key }
-            host.startNativePlayback(selectedPlayback, Number(playable.remote_position || 0))
-        }
+    function playItem(item, episode, fromStart) {
+        const playable = episode || (item.media_type === "tv" ? item.next_playable : item)
+        if (!playable?.source) { notify("Choose a streaming service below"); return }
+        selectedPlayback = { name: item.title + (item.media_type === "tv" ? " · S" + playable.season + " E" + playable.number : ""),
+            source: playable.source, id: playable.library_id || item.local?.library_id }
+        if (item.media_type === "tv") selectedPlayback = Object.assign({}, selectedPlayback, {
+            season: playable.season, number: playable.number, episodeTitle: playable.name,
+            series: { id: item.local?.id, key: item.key, title: item.title, domain: item.borrowed ? "mabel" : "my-tv",
+                episodes: item.local_episodes || [] } })
+        if (item.borrowed) selectedPlayback = Object.assign({}, selectedPlayback, { mabel: playable.mabel || item.mabel })
+        if (!selectedPlayback.id) { notify("This title has no playback identity"); return }
+        const position = fromStart ? 0 : episode || item.media_type === "tv"
+            ? Number(playable.remote_position || 0) : Number(item.progress?.position || 0)
+        host.startNativePlayback(selectedPlayback, position)
+    }
+    function detailProviders(item) {
+        return (item.services || []).map(value => Object.assign({}, value, {
+            asset: value.asset ? nativeBase + "/portal/assets/providers/" + value.asset
+                : value.logo_path ? artworkUrl({ poster_path: value.logo_path }, false) : ""
+        }))
     }
     function launchProvider(provider, item) {
-        if (provider.local) { runDetailAction({ id: "play" }, item); return }
-        loading = true
+        if (!provider?.shortcut) { notify("That service is not available on the connected TV"); return }
+        notify("Opening " + provider.name + "…")
         request("/api/native/my-tv/launch", "POST", { provider: provider.name,
-            destination: provider.destination, title: item.title,
-            media_type: item.media_type, tmdb_id: item.tmdb_id }, result => {
-            errorMessage = result.message || "Opening " + provider.name; loading = false
-        }, message => { errorMessage = message; loading = false })
+            destination: provider.destination, title: item.title, media_type: item.media_type, tmdb_id: item.tmdb_id },
+            result => notify(result.message || "Opened " + provider.name), message => notify(message))
     }
     function back() {
         if (keyboardVisible) { keyboardVisible = false; return true }
-        if (detailVisible) {
-            detailGeneration++; if (activeDetailRequest) activeDetailRequest.abort()
-            activeDetailRequest = null; detailVisible = false; return true
+        if (detailVisible) { closeDetail(); return true }
+        if (mabelVisible) {
+            query = ""
+            if (mabelChannel) loadMabel(null)
+            else { mabelVisible = false; loadHome() }
+            return true
         }
-        if (query.length) {
-            searchGeneration++; if (activeSearchRequest) activeSearchRequest.abort()
-            activeSearchRequest = null; query = ""; searchResults = []; rebuildRows(); return true
-        }
-        if (selectedZone === 1) { selectedZone = 0; return true }
+        if (query) { query = ""; beginSearch(); selectedZone = 1; return true }
+        if (selectedZone === 1 && selectedRow > 0) { focusShortcuts(); return true }
         return false
     }
     function handleKey(key) {
@@ -478,56 +444,42 @@ Item {
         if (detailVisible) return detailView.handleKey(key)
         if (key === Qt.Key_Escape || key === Qt.Key_Backspace || key === Qt.Key_B) return false
         if (selectedZone === 0) {
-            if (key === Qt.Key_Down && rows.length) selectedZone = 1
+            if (key === Qt.Key_Down && rows.length) selectedZone = query.trim() ? 1 : 2
             else if (key === Qt.Key_Return || key === Qt.Key_Enter) keyboardVisible = true
+            else return false
+            return true
+        }
+        if (selectedZone === 2) {
+            if (key === Qt.Key_Left) selectedShortcut = Math.max(0, selectedShortcut - 1)
+            else if (key === Qt.Key_Right) selectedShortcut = Math.min(shortcuts.length - 1, selectedShortcut + 1)
+            else if (key === Qt.Key_Up) selectedZone = 0
+            else if (key === Qt.Key_Down || key === Qt.Key_Return || key === Qt.Key_Enter) jumpToSection()
             else return false
             return true
         }
         if (key === Qt.Key_Left) selectedCard = Math.max(0, selectedCard - 1)
         else if (key === Qt.Key_Right) selectedCard = Math.min(currentItems().length - 1, selectedCard + 1)
         else if (key === Qt.Key_Up) {
-            if (selectedRow > 0) { selectedRow--; selectedCard = Math.min(selectedCard, currentItems().length - 1) }
-            else selectedZone = 0
+            if (selectedRow > 0) selectRow(selectedRow - 1)
+            else if (query.trim()) selectedZone = 0
+            else focusShortcuts()
         } else if (key === Qt.Key_Down && selectedRow + 1 < rows.length) {
-            selectedRow++; selectedCard = Math.min(selectedCard, currentItems().length - 1)
+            selectRow(selectedRow + 1)
         } else if (key === Qt.Key_Return || key === Qt.Key_Enter) openSelected()
         else return false
         return true
     }
-
     Timer {
-        id: searchTimer
-        interval: 650
-        repeat: false
+        id: searchTimer; interval: 350
         onTriggered: {
-            const submitted = view.query.trim()
-            if (submitted.length < 3) return
-            const generation = view.searchGeneration
-            view.activeSearchRequest = view.request(
-                "/api/native/my-tv/search?q=" + encodeURIComponent(submitted), "GET", null,
-                result => {
-                    if (generation !== view.searchGeneration || submitted !== view.query.trim()) return
-                    view.searchResults = result.results || []; view.selectedRow = 0; view.selectedCard = 0
-                    view.rebuildRows(); view.activeSearchRequest = null
-                }, message => {
-                    if (generation === view.searchGeneration) view.errorMessage = message
-                    if (generation === view.searchGeneration) view.activeSearchRequest = null
-                })
-        }
-    }
-    Timer {
-        id: recommendationTimer
-        interval: 120
-        repeat: false
-        onTriggered: {
-            const generation = view.homeGeneration
-            view.request("/api/native/my-tv/recommendations", "GET", null, result => {
-                if (generation !== view.homeGeneration) return
-                const updated = Object.assign({}, view.homeData)
-                updated.recommended = result.results || []
-                view.homeData = updated
-                if (!view.query.length) view.rebuildRows()
-            })
+            const submitted = view.query.trim(), generation = view.searchGeneration
+            view.loading = true
+            view.activeSearchRequest = view.request("/api/native/my-tv/search?q=" + encodeURIComponent(submitted), "GET", null, result => {
+                if (generation !== view.searchGeneration || submitted !== view.query.trim()) return
+                const seen = {}, merged = []
+                for (const item of view.searchResults.concat(result.results || [])) if (!seen[item.key]) { seen[item.key] = true; merged.push(item) }
+                view.searchResults = merged; view.rebuildRows(); view.loading = false; view.activeSearchRequest = null
+            }, message => { if (generation === view.searchGeneration) { view.loading = false; view.notify(message) } })
         }
     }
 }

@@ -30,6 +30,7 @@ Rectangle {
     readonly property bool isNemo: styleName === "finding-nemo"
     readonly property bool usesDecorativeSurround: isDinosaur || isOcean || isNemo
     readonly property bool usesCharcoalGeometry: isCharcoal || usesDecorativeSurround
+    readonly property bool fullscreen: appRoot.portalFullScreenEnabled
     readonly property bool widescreen: appRoot.portalWidescreenEnabled
     // Keep Slim Black's original proportions exactly. The three physical
     // sets have a smaller tube so there is room for their real cabinet
@@ -51,29 +52,29 @@ Rectangle {
     readonly property real fasciaTop: tubeTop + tubeHeight + lipWidth
 
     anchors.centerIn: parent
-    width: widescreen
+    width: fullscreen ? appRoot.width : widescreen
         ? Math.min(appRoot.width - 48, (appRoot.height - 48) / 0.64)
         : Math.min(appRoot.width - 48, (appRoot.height - 48) * 4 / 3)
-    height: width * (widescreen ? 0.64 : 3 / 4)
+    height: fullscreen ? appRoot.height : width * (widescreen ? 0.64 : 3 / 4)
     radius: isSlim ? Math.max(38, width * 0.055)
         : Math.max(44, width * 0.067)
-    color: usesDecorativeSurround ? "transparent" : "#151a16"
-    border.color: usesDecorativeSurround ? "transparent" : (isSlim ? "#454c46"
+    color: fullscreen || usesDecorativeSurround ? "transparent" : "#151a16"
+    border.color: fullscreen || usesDecorativeSurround ? "transparent" : (isSlim ? "#454c46"
         : (isSilver ? "#f5f3eb"
            : (isCharcoal ? "#555a55" : "#333632")))
-    border.width: 2
+    border.width: fullscreen ? 0 : 2
     antialiasing: true
 
     gradient: Gradient {
         GradientStop {
             position: 0
-            color: cabinet.usesDecorativeSurround ? "transparent" : (cabinet.isSlim ? "#252a26"
+            color: cabinet.fullscreen || cabinet.usesDecorativeSurround ? "transparent" : (cabinet.isSlim ? "#252a26"
                 : (cabinet.isSilver ? "#deded7"
                    : (cabinet.isCharcoal ? "#3f433f" : "#2d302d")))
         }
         GradientStop {
             position: 1
-            color: cabinet.usesDecorativeSurround ? "transparent" : (cabinet.isSlim ? "#0d100e"
+            color: cabinet.fullscreen || cabinet.usesDecorativeSurround ? "transparent" : (cabinet.isSlim ? "#0d100e"
                 : (cabinet.isSilver ? "#979992"
                    : (cabinet.isCharcoal ? "#171a18" : "#101210")))
         }
@@ -82,7 +83,7 @@ Rectangle {
     Rectangle {
         anchors.fill: parent
         anchors.margins: 3
-        visible: !cabinet.usesDecorativeSurround
+        visible: !cabinet.usesDecorativeSurround && !cabinet.fullscreen
         radius: Math.max(0, cabinet.radius - 3)
         color: "transparent"
         border.color: cabinet.isSilver ? "#70ffffff" : "#36ffffff"
@@ -95,7 +96,7 @@ Rectangle {
     Item {
         id: silverFascia
 
-        visible: cabinet.isSilver
+        visible: cabinet.isSilver && !cabinet.fullscreen
         x: cabinet.width * 0.11
         y: cabinet.fasciaTop + cabinet.width * 0.016
         width: cabinet.width * 0.78
@@ -164,7 +165,7 @@ Rectangle {
     Item {
         id: charcoalFascia
 
-        visible: cabinet.isCharcoal
+        visible: cabinet.isCharcoal && !cabinet.fullscreen
         x: cabinet.width * 0.095
         y: cabinet.fasciaTop + cabinet.width * 0.012
         width: cabinet.width * 0.81
@@ -249,7 +250,7 @@ Rectangle {
     Item {
         id: vintageFascia
 
-        visible: cabinet.isVintage
+        visible: cabinet.isVintage && !cabinet.fullscreen
         x: cabinet.width * 0.12
         y: cabinet.fasciaTop + cabinet.width * 0.012
         width: cabinet.width * 0.76
@@ -323,7 +324,7 @@ Rectangle {
     }
 
     Rectangle {
-        visible: cabinet.isVintage
+        visible: cabinet.isVintage && !cabinet.fullscreen
         x: cabinet.width * 0.16
         y: cabinet.height - height * 0.35
         width: cabinet.width * 0.10
@@ -333,7 +334,7 @@ Rectangle {
     }
 
     Rectangle {
-        visible: cabinet.isVintage
+        visible: cabinet.isVintage && !cabinet.fullscreen
         x: cabinet.width * 0.74
         y: cabinet.height - height * 0.35
         width: cabinet.width * 0.10
@@ -345,7 +346,7 @@ Rectangle {
     Rectangle {
         id: bezelLip
 
-        visible: !cabinet.usesDecorativeSurround
+        visible: !cabinet.usesDecorativeSurround && !cabinet.fullscreen
         x: screen.x - cabinet.lipWidth
         y: screen.y - cabinet.lipWidth
         width: screen.width + cabinet.lipWidth * 2
@@ -361,10 +362,10 @@ Rectangle {
         id: screen
 
         x: (cabinet.width - width) / 2
-        y: cabinet.tubeTop
-        width: cabinet.tubeWidth
-        height: cabinet.tubeHeight
-        radius: cabinet.isSlim ? Math.max(38, width * 0.065)
+        y: cabinet.fullscreen ? 0 : cabinet.tubeTop
+        width: cabinet.fullscreen ? cabinet.width : cabinet.tubeWidth
+        height: cabinet.fullscreen ? cabinet.height : cabinet.tubeHeight
+        radius: cabinet.fullscreen ? 0 : cabinet.isSlim ? Math.max(38, width * 0.065)
             : Math.max(42, width * 0.075)
         color: "#010201"
         clip: true
@@ -374,9 +375,9 @@ Rectangle {
         // has explicitly turned both effects off and playback is not
         // paused; the normal KidsTV picture remains pixel-for-pixel the
         // same as before this optimisation.
-        layer.enabled: tvController.crtGlass > 0
+        layer.enabled: !cabinet.fullscreen && (tvController.crtGlass > 0
                        || tvController.videoDistortion > 0
-                       || player.paused
+                       || player.paused)
         layer.smooth: true
         layer.effect: ShaderEffect {
             property variant source
@@ -403,7 +404,7 @@ Rectangle {
             visible: !myTvMode.active
             volume: tvController.volume
             muted: tvController.muted
-            aspectMode: tvController.currentAspectMode
+            aspectMode: cabinet.fullscreen ? "fit" : tvController.currentAspectMode
 
             onPausedChanged: {
                 if (!appRoot.introPlaying && !directMediaMode
@@ -412,6 +413,8 @@ Rectangle {
             }
 
             onStatusChanged: {
+                if (status === "Playing" && !appRoot.introPlaying && !directMediaMode)
+                    tvController.queuePlaybackStarted(source)
                 if (appRoot.restoreChildPauseAfterMyTv && status === "Playing") {
                     appRoot.restoreChildPauseAfterMyTv = false
                     togglePause()
@@ -676,7 +679,7 @@ Rectangle {
         Rectangle {
             anchors.fill: parent
             color: "transparent"
-            opacity: tvController.crtGlass / 100
+            opacity: cabinet.fullscreen ? 0 : tvController.crtGlass / 100
 
             gradient: Gradient {
                 GradientStop { position: 0.0; color: "#60ffffff" }
@@ -694,7 +697,7 @@ Rectangle {
             y: screen.height * 0.055
             rotation: -10
             transformOrigin: Item.Center
-            opacity: 0.72 * Math.pow(tvController.crtGlass / 100, 1.3)
+            opacity: cabinet.fullscreen ? 0 : 0.72 * Math.pow(tvController.crtGlass / 100, 1.3)
             color: "transparent"
 
             gradient: Gradient {
@@ -712,7 +715,7 @@ Rectangle {
             anchors.leftMargin: appRoot.playbackOsdInsetX
             anchors.topMargin: appRoot.playbackOsdInsetY
             z: 70
-            visible: player.paused && !appRoot.introPlaying && !appRoot.poweringOff
+            visible: player.paused && !appRoot.introPlaying && !appRoot.poweringOff && !cabinet.fullscreen
             color: "#e8e4d0"
             style: Text.Outline
             styleColor: "#5f5360"
@@ -952,7 +955,7 @@ Rectangle {
 
     Loader {
         anchors.fill: parent
-        active: cabinet.isDinosaur
+        active: cabinet.isDinosaur && !cabinet.fullscreen
         visible: active
         z: 10
 
@@ -965,7 +968,7 @@ Rectangle {
 
     Loader {
         anchors.fill: parent
-        active: cabinet.isOcean || cabinet.isNemo
+        active: (cabinet.isOcean || cabinet.isNemo) && !cabinet.fullscreen
         visible: active
         z: 10
 

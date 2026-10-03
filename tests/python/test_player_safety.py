@@ -15,6 +15,8 @@ MY_TV_QML_SOURCE = "\n".join(
         "MyTvModeOverlay.qml",
         "MyTvLibraryView.qml",
         "MyTvCard.qml",
+        "MyTvBrowseRow.qml",
+        "MyTvArtwork.qml",
         "MyTvDetailView.qml",
         "MyTvKeyboard.qml",
         "MyTvProviderIcon.qml",
@@ -309,26 +311,31 @@ class PlayerSafetyTests(unittest.TestCase):
         main_qml = MAIN_QML_SOURCE
         application = NATIVE_APPLICATION_SOURCE
 
-        self.assertIn('text: "What do you want to watch?"', my_tv_qml)
+        self.assertIn('text: view.mabelVisible ? view.mabelChannel?.title || view.tvDisplayName : "My TV"', my_tv_qml)
         self.assertIn('title: "Continue watching"', my_tv_qml)
         self.assertIn('title: "Up next"', my_tv_qml)
-        self.assertIn('title: "What to watch"', my_tv_qml)
-        self.assertIn('title: "From your library"', my_tv_qml)
+        self.assertIn('gridRows(next, "Films"', my_tv_qml)
+        self.assertIn('gridRows(next, "Series"', my_tv_qml)
         self.assertIn("id: detailView", my_tv_qml)
         self.assertIn("id: keyboard", my_tv_qml)
         self.assertIn("orientation: ListView.Horizontal", my_tv_qml)
-        self.assertIn("function providerBadges(item)", my_tv_qml)
-        self.assertIn("return values.slice(0, 2)", my_tv_qml)
+        self.assertNotIn("providerBadges", (QML_ROOT / "MyTvCard.qml").read_text())
+        self.assertIn("function detailProviders(item)", my_tv_qml)
         self.assertIn("anchors.right: parent.right", my_tv_qml)
-        self.assertIn("fillMode: Image.PreserveAspectCrop", my_tv_qml)
+        artwork = (QML_ROOT / "MyTvArtwork.qml").read_text(encoding="utf-8")
+        self.assertIn("clip: true", artwork)
+        self.assertIn("Math.max(artwork.width, artwork.height * imageAspect)", artwork)
+        self.assertIn("Math.max(artwork.height, artwork.width / imageAspect)", artwork)
+        self.assertIn("Math.max(0, Math.min(1, artwork.focalX))", artwork)
+        self.assertIn("Math.max(0, Math.min(1, artwork.focalY))", artwork)
         self.assertIn("function openSelected()", my_tv_qml)
         self.assertIn("function appendRemoteText(value)", my_tv_qml)
         self.assertIn("function beginSearch()", my_tv_qml)
         self.assertIn("activeSearchRequest.abort()", my_tv_qml)
         self.assertIn("generation !== view.searchGeneration", my_tv_qml)
-        self.assertIn('interval: 650', my_tv_qml)
+        self.assertIn('interval: 350', my_tv_qml)
         self.assertIn('/api/native/my-tv/artwork/', my_tv_qml)
-        self.assertIn('/api/native/my-tv/recommendations', my_tv_qml)
+        self.assertIn('/api/native/my-tv/providers', my_tv_qml)
         self.assertIn("function launchProvider(provider, item)", my_tv_qml)
         self.assertIn('operation == QStringLiteral("text-input")', application)
         self.assertIn('"portalTextInput"', application)

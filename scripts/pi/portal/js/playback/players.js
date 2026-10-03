@@ -109,6 +109,7 @@ function remoteTime(value) {
       clearInterval(iosRemotePositionTimer); clearInterval(iosRemoteHeartbeatTimer)
       iosRemotePositionTimer = null; iosRemoteHeartbeatTimer = null; iosRemoteSession = null
       iosOfflineDownloadId = null
+      video._mabelQueue = null
       video.style.pointerEvents = ''; video.controls = true
       video.pause(); video.removeAttribute('src'); video.replaceChildren(); video.load()
         $('#iosWatchPlayer').classList.add('hidden')
@@ -151,6 +152,8 @@ function remoteTime(value) {
       try {
         let result
         result = await startRemoteStream(payload)
+        video.onpause = null; video.onplaying = null; video.onended = null
+        video._mabelQueue = null
         iosRemoteSession = new URL(result.stream_url, location.origin).searchParams.get('stream')
         $('#iosWatchTitle').textContent = result.title
         $('#iosWatchContext').textContent = result.kind === 'usb' ? 'Playing directly from USB' : `${tvName()} remote viewing`
@@ -181,7 +184,7 @@ function remoteTime(value) {
         // received the video and text track together. Once canplay fires, the
         // movie is already accepted and the native AVPlayer can safely add CC.
         video.oncanplay = attachNativeCaptions
-        video.onerror = () => { setNativeVideoBackdrop(false); error.textContent = `This video could not be played (media error ${video.error?.code || 'unknown'}).`; error.classList.remove('hidden'); video.classList.add('hidden') }
+        video.onerror = () => { setNativeVideoBackdrop(false); error.textContent = `This video could not be played (media error ${video.error?.code || 'unknown'}).`; error.classList.remove('hidden'); video.classList.add('hidden'); failMabelQueueDevice(video, error.textContent) }
         video.onwebkitendfullscreen = () => {
           nativeFullscreen = false
           restoreIosInlineVideoControls(video)
@@ -198,9 +201,11 @@ function remoteTime(value) {
         // retry only once the media becomes ready. This avoids the old inline
         // hand-off before the Liquid Glass player opens.
         video.onplay = requestNativeFullscreen
+        if (payload.kind === 'channel')
+          bindMabelQueuePlayer(video, payload, result, next => startIosRemotePlayer(next, 0))
         video.onpause = () => saveIosRemotePosition(false, true)
         video.onseeked = () => saveIosRemotePosition(false, true)
-        video.onended = () => saveIosRemotePosition(true)
+        video.onended = () => saveIosRemotePosition(true).then(() => finishMabelQueueDevice(video))
         $('#iosWatchStartOver').classList.toggle('hidden', resume <= 10)
         iosRemoteLastSaved = 0
         clearInterval(iosRemotePositionTimer); iosRemotePositionTimer = setInterval(saveIosRemotePosition, 15000)
@@ -220,6 +225,9 @@ function remoteTime(value) {
       const shell = $('#iosWatchPlayer'); const video = $('#iosWatchVideo'); const error = $('#iosWatchError')
       iosRemoteSession = null
       iosOfflineDownloadId = manifest.id
+      video._mabelQueue = null
+      video.onplaying = null
+      video.onended = null
       shell.classList.remove('hidden'); error.classList.add('hidden'); video.classList.remove('hidden')
       openIosPlayerHistoryLayer()
       lockPortalPlayerScroll(false)
@@ -297,6 +305,7 @@ function remoteTime(value) {
       mabelControlsTimer = null
       mabelRemoteSession = null
       mabelRemoteTracksPosition = false
+      video._mabelQueue = null
       video.pause(); video.removeAttribute('src'); video.load()
       $('#mabelWatchPlayer').classList.add('hidden')
       $('#mabelWatchPlayer').classList.remove('controls-visible')
@@ -335,6 +344,8 @@ function remoteTime(value) {
       try {
         let result
         result = await startRemoteStream(payload)
+        video.onpause = null; video.onplaying = null; video.onended = null
+        video._mabelQueue = null
         mabelRemoteSession = new URL(result.stream_url, location.origin).searchParams.get('stream')
         mabelRemoteTracksPosition = result.resume_enabled === true
         mabelRemoteLastSaved = 0
@@ -364,14 +375,15 @@ function remoteTime(value) {
           $('#mabelWatchSeek').value = String(video.duration ? Math.round(video.currentTime / video.duration * 1000) : 0)
         }
         video.onplay = () => { $('[data-mabel-watch-action="play"]').classList.add('playing'); showMabelWatchControls() }
+        bindMabelQueuePlayer(video, payload, result, startMabelWatchPlayer)
         video.onpause = () => {
           $('[data-mabel-watch-action="play"]').classList.remove('playing')
           showMabelWatchControls(true)
           saveMabelRemotePosition(false, true)
         }
         video.onseeked = () => saveMabelRemotePosition(false, true)
-        video.onended = () => saveMabelRemotePosition(true, true)
-        video.onerror = () => { error.textContent = `This programme could not be played (media error ${video.error?.code || 'unknown'}).`; error.classList.remove('hidden') }
+        video.onended = () => saveMabelRemotePosition(true, true).then(() => finishMabelQueueDevice(video))
+        video.onerror = () => { error.textContent = `This programme could not be played (media error ${video.error?.code || 'unknown'}).`; error.classList.remove('hidden'); failMabelQueueDevice(video, error.textContent) }
         video.src = result.stream_url
         video.load()
         clearInterval(mabelRemoteHeartbeatTimer)
@@ -404,7 +416,7 @@ function remoteTime(value) {
     }
 
     async function startRemoteStream(payload) {
-      await allowIndependentViewing()
+      if (!payload.queue_id) await allowIndependentViewing()
       return api('/api/remote/start', { method: 'POST', body: JSON.stringify(payload) })
     }
 
@@ -463,7 +475,7 @@ function remoteTime(value) {
       // the eventual player window for an unsolicited popup.
       const playerWindow = desktopMyTv ? window.open('about:blank', '_blank') : null
       try {
-        await allowIndependentViewing()
+        if (!payload.queue_id) await allowIndependentViewing()
         if (payload.kind === 'channel') {
           mabelPlayerReturnTo = returnTo
           await startMabelWatchPlayer({ ...payload, position: Math.max(0, Number(position) || 0) })

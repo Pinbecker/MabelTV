@@ -49,7 +49,11 @@ Window {
     property string pendingPowerAction: ""
     property bool pendingPowerOnWake: false
     property bool filmCountdownActive: false
-    property bool widescreenMode: false
+    readonly property bool widescreenMode: presentation.mode === "widescreen"
+    readonly property var mabelPresentation: presentation
+    readonly property bool portalFullScreenEnabled: presentation.mode === "fullscreen"
+        && !myTvMode.active && !openingMyTvMode && !introPlaying && !directMediaMode
+    readonly property string portalPresentationMode: presentation.mode
     property bool queueAllDone: false
     property bool queueTransitionPending: false
     property int filmCountdownValue: 10
@@ -65,12 +69,12 @@ Window {
     readonly property bool portalRemoteLocked: tvController.remoteLocked
     readonly property bool portalStandby: tvController.standby
     readonly property bool portalSubtitlesAvailable: myTvMode.active
-        && myTvMode.subtitlesAvailable
+        && myTvMode.subtitlesAvailable || portalFullScreenEnabled && player.subtitlesAvailable
     readonly property bool portalSubtitlesVisible: myTvMode.active
-        && myTvMode.subtitlesVisible
+        && myTvMode.subtitlesVisible || portalFullScreenEnabled && player.subtitlesVisible
     readonly property bool widescreenContentAvailable: !directMediaMode
         && !introPlaying && player.videoAspectRatio >= 1.70
-    readonly property bool portalWidescreenAvailable: widescreenContentAvailable
+    readonly property bool portalWidescreenAvailable: presentation.available
         || widescreenMode
     readonly property bool portalWidescreenEnabled: widescreenMode
         && widescreenContentAvailable
@@ -274,6 +278,8 @@ Window {
             guideOverlay.handleKey(key, true)
         } else if (parentOverlay.visible) {
             parentOverlay.handleKey(key, Qt.NoModifier)
+        } else if (presentation.handleKey(key, false)) {
+            return
         } else if (key === Qt.Key_Up) {
             syncPlaybackPosition()
             tvController.dispatchPortal(TvController.PreviousProgramme)
@@ -347,6 +353,7 @@ Window {
                 channelSummaryOverlay.close()
             else if (guideOverlay.visible)
                 guideOverlay.close()
+            else if (presentation.visible) presentation.back()
             else
                 tvController.closeParent()
         } else if (command === "restart-programme") {
@@ -360,7 +367,7 @@ Window {
             if (!myTvMode.active) {
                 guideOverlay.close()
                 enterMyTvMode()
-            }
+            } else myTvMode.showLibrary()
         } else if (command === "continue-in-my-tv-mode") {
             continueCurrentInMyTvMode()
         } else if (command === "channel-up") {
@@ -399,12 +406,9 @@ Window {
         } else if (command === "toggle-subtitles") {
             if (myTvMode.active)
                 myTvMode.toggleSubtitles()
+            else if (presentation.visible) presentation.toggleSubtitles()
         } else if (command === "toggle-widescreen-mode") {
-            if (!myTvMode.active && (widescreenContentAvailable || widescreenMode)) {
-                widescreenMode = !widescreenMode
-                showProgramme(widescreenMode ? "WIDESCREEN MODE ON"
-                                             : "WIDESCREEN MODE OFF")
-            }
+            if (!myTvMode.active) presentation.cycle()
         } else if (command === "volume-up") {
             tvController.dispatchPortal(TvController.VolumeUp)
         } else if (command === "volume-down") {
@@ -453,6 +457,7 @@ Window {
         cancelFilmCountdown()
         syncPlaybackPosition()
         childWasPausedBeforeMyTv = player.paused
+        tvController.pauseMabelQueue()
         openingMyTvMode = true
         player.stop()
     }
@@ -540,34 +545,16 @@ Window {
                                          Math.max(0, Number(position) || 0))
     }
 
-    function portalStartMabelQueue() {
-        if (poweringOff || pendingPowerAction.length > 0)
-            return
-        guideOverlay.close()
-        tvController.closeParent()
-        if (myTvMode.active) {
-            myTvMode.close()
-            // A queue starts on the child player after My TV has closed.
-            pendingQueueStart = true
-            return
-        }
-        if (tvController.standby || introPlaying || warmingUp) {
-            pendingQueueStart = true
-            return
-        }
-        tvController.startMabelQueue()
-    }
+    function portalStartMabelQueue() { queueCoordinator.start() }
 
-    Timer {
-        interval: 250
-        repeat: true
-        running: root.pendingQueueStart && !myTvMode.active
-        onTriggered: {
-            if (tvController.standby || root.introPlaying || root.warmingUp)
-                return
-            root.pendingQueueStart = false
-            tvController.startMabelQueue()
-        }
+    function portalPauseMabelQueue() { tvController.pauseQueuePlaybackForTransfer() }
+
+    MabelQueueCoordinator {
+        id: queueCoordinator
+        appRoot: root
+        controller: tvController
+        guide: guideOverlay
+        myTvOverlay: myTvMode
     }
 
     function portalSetChannelFilmPosition(channel, file, position, duration) {
@@ -624,6 +611,11 @@ Window {
     TelevisionScreen {
         id: television
         appRoot: root
+    }
+
+    MabelPresentation {
+        id: presentation; anchors.fill: parent
+        appRoot: root; controller: tvController; mediaPlayer: root.player
     }
 
     MabelQueueDoneScreen {

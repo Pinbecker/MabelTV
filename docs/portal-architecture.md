@@ -1,5 +1,11 @@
 # Portal architecture
 
+The Mabel TV remote's **Open My TV** shortcut opens the native library directly.
+Its picture control cycles Standard, Widescreen and Full screen, labels the
+next mode, and exposes the current mode in its accessible description. Full
+screen stays in Mabel TV and shares the native playback controls, including
+subtitles, without transferring playback ownership or navigating into My TV.
+
 The installed iOS PWA is MabelTV's primary portal. Its frozen visual and
 behavioural contract is documented in [ios-pwa-baseline.md](ios-pwa-baseline.md).
 This map describes where portal work belongs without changing that contract.
@@ -24,6 +30,13 @@ strict size ceiling. Page markup lives under
 
 Include order is functional. Shared nodes and dialogs must exist before the
 ordered scripts initialise.
+
+Mabel TV Up Next retains the playing entry at position one with an artwork
+overlay. Programme sheets carry its queue identity to the chosen player;
+ordinary library playback remains separate. `playback/mabel-queue.js` owns the
+queue display and browser completion handoff. Only the confirmed current owner
+may advance it. Browser-incompatible files remain available on TV; external
+players do not expose reliable completion events and cannot consume a queue.
 
 ## CSS ownership and cascade
 

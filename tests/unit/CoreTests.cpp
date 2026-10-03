@@ -19,36 +19,7 @@
 
 #include <cmath>
 
-class CoreTests final : public QObject
-{
-    Q_OBJECT
-
-private slots:
-    void shuffleBagVisitsEveryItemBeforeRepeating();
-    void shuffleBagAvoidsImmediateRepeatAcrossRefill();
-    void channelLibraryLoadsAndSortsValidChannels();
-    void channelLibraryKeepsMissingFoldersAsNoSignalChannels();
-    void controllerTunesNumericChannelsAndHonoursVolumeLimit();
-    void controllerClearsNoSignalWhenReturningToPopulatedChannel();
-    void controllerSkipsAnEpisodeAfterPlaybackFailure();
-    void controllerDoesNotPersistWatchdogQuarantine();
-    void controllerMovesBetweenProgrammesInFilenameOrder();
-    void controllerRestartsStaleShowsButNeverFilms();
-    void controllerDisplaysSeasonEpisodeOrFilmNameWhenProgrammeChanges();
-    void controllerRestoresCorruptFilmPositionWithoutChangingFilm();
-    void standbyWakeWaitsForWelcomeBeforeResumingPlayback();
-    void cecFailureDoesNotBlockMabelTvStandbyOrWake();
-    void remoteLockBlocksActionsAndPersists();
-    void parentControlsRequireThreeConfirmationsAndPersistSettings();
-    void tvGuideBuildsOrderedScheduleAndTunesChannels();
-    void parentLibraryControlsPersistAndAffectPlayback();
-    void currentChannelSummaryIncludesArtworkMetadataAndFilmProgress();
-    void controllerReloadPreservesPlaybackAndRuntimeVolume();
-    void filmChannelBookmarksPersistAcrossTvAndPortalPlayback();
-    void myTvLibraryIsSeparateAndParentOnly();
-    void sqliteStateIsReadableAndWritableByNativeController();
-    void portalControlCommandsAreNewlineFramed();
-};
+#include "CoreTests.h"
 
 void CoreTests::shuffleBagVisitsEveryItemBeforeRepeating()
 {
@@ -1378,12 +1349,13 @@ void CoreTests::sqliteStateIsReadableAndWritableByNativeController()
             QStringLiteral("CREATE TABLE channels(number INTEGER PRIMARY KEY,name TEXT,folder TEXT,aspect TEXT,content_type TEXT)"),
             QStringLiteral("CREATE TABLE state_revisions(domain TEXT PRIMARY KEY,revision INTEGER,updated_at REAL)"),
             QStringLiteral("CREATE TABLE mabel_queue_entries(id TEXT PRIMARY KEY,position INTEGER NOT NULL UNIQUE,channel_number INTEGER NOT NULL REFERENCES channels(number),file_name TEXT NOT NULL,title TEXT NOT NULL,artwork TEXT NOT NULL DEFAULT '',channel_name TEXT NOT NULL DEFAULT '')"),
-            QStringLiteral("CREATE TABLE mabel_queue_state(id INTEGER PRIMARY KEY,ending TEXT NOT NULL DEFAULT 'all_done',active INTEGER NOT NULL DEFAULT 0,completed INTEGER NOT NULL DEFAULT 0,current_title TEXT NOT NULL DEFAULT '')"),
+            QStringLiteral("CREATE TABLE mabel_queue_history(sequence INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT,channel_number INTEGER,file_name TEXT,title TEXT,artwork TEXT,channel_name TEXT)"),
+            QStringLiteral("CREATE TABLE mabel_queue_state(id INTEGER PRIMARY KEY,ending TEXT NOT NULL DEFAULT 'all_done',active INTEGER NOT NULL DEFAULT 0,completed INTEGER NOT NULL DEFAULT 0,current_title TEXT NOT NULL DEFAULT '',current_id TEXT NOT NULL DEFAULT '',owner TEXT NOT NULL DEFAULT '',paused INTEGER NOT NULL DEFAULT 0,phase TEXT NOT NULL DEFAULT 'waiting',position_seconds REAL NOT NULL DEFAULT 0,error TEXT NOT NULL DEFAULT '')"),
         };
         for (const QString &statement : schema) {
             QVERIFY2(query.exec(statement), qPrintable(query.lastError().text()));
         }
-        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version=10")));
+        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version=11")));
         QVERIFY(query.exec(QStringLiteral("INSERT INTO mabel_queue_state(id) VALUES(1)")));
         QVERIFY(query.exec(QStringLiteral(
             "INSERT INTO channels VALUES(7,'Films','one','fit','films')")));
@@ -1402,14 +1374,20 @@ void CoreTests::sqliteStateIsReadableAndWritableByNativeController()
              qPrintable(error));
     QCOMPARE(mabeltv::state::settings(databasePath), settings);
 
-    const auto firstQueued = mabeltv::state::advanceMabelQueue(databasePath, true, &error);
+    // Finishing ordinary playback claims a waiting item without starting the queue.
+    const auto firstQueued = mabeltv::state::advanceMabelQueue(databasePath, false, &error);
     QVERIFY2(firstQueued.claimed, qPrintable(error));
     QCOMPARE(firstQueued.item.value(QStringLiteral("channel")).toInt(), 7);
     QCOMPARE(firstQueued.item.value(QStringLiteral("file")).toString(),
              QStringLiteral("Episode.mp4"));
+    QVERIFY(mabeltv::state::markMabelQueuePlaying(databasePath, 7,
+                                                QStringLiteral("Episode.mp4"), &error));
     const auto queueEnd = mabeltv::state::advanceMabelQueue(databasePath, false, &error);
     QVERIFY2(queueEnd.claimed, qPrintable(error));
+    QVERIFY(queueEnd.item.isEmpty());
     QVERIFY(queueEnd.allDone);
+    // An empty inactive queue must leave ordinary channel autoplay alone.
+    QVERIFY(!mabeltv::state::advanceMabelQueue(databasePath, false, &error).claimed);
 
     const QJsonObject timeline{{QStringLiteral("episode_index"), 0},
                                {QStringLiteral("episode_name"), QStringLiteral("Episode.mp4")},
@@ -1455,7 +1433,7 @@ void CoreTests::sqliteStateIsReadableAndWritableByNativeController()
         database.setDatabaseName(databasePath);
         QVERIFY2(database.open(), qPrintable(database.lastError().text()));
         QSqlQuery query(database);
-        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version=10")));
+        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version=11")));
         database.close();
     }
     QSqlDatabase::removeDatabase(currentVersionConnectionName);
@@ -1486,5 +1464,5 @@ void CoreTests::portalControlCommandsAreNewlineFramed()
     QVERIFY(buffer.isEmpty());
 }
 
+
 QTEST_MAIN(CoreTests)
-#include "CoreTests.moc"

@@ -44,19 +44,17 @@ body.portal-v2 .mabel-queue-ending-toggle button { min-height: 39px; border: 0; 
 body.portal-v2 .mabel-queue-ending-toggle button[aria-pressed="true"] { background: var(--experience-canvas); color: var(--experience-orange); box-shadow: 0 1px 5px #0002; }
 body.portal-v2 .mabel-queue-ending p { margin: 9px 1px 0; color: var(--experience-muted); font-size: 11px; line-height: 1.4; }
 body.portal-v2 .mabel-queue-add { width: 100%; margin-top: 8px; }
-.mabel-queue-flyer { position: fixed; z-index: 99999; border-radius: 10px; background-color: #12baa6; background-position: center; background-size: cover; box-shadow: 0 10px 25px #0004; pointer-events: none; }
-.mabel-queue-nav-pulse { animation: mabel-queue-nav-pulse .55s ease-out; }
-@keyframes mabel-queue-nav-pulse { 50% { transform: scale(1.18); } }
-@media (prefers-reduced-motion: reduce) { .mabel-queue-nav-pulse { animation: none; } }
 
 /* Up Next follows the same gutters and poster rhythm as the Home and Watch rails. */
-body.portal-v2 .mabel-queue-manage { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 2px; min-height: 32px; border: 0; background: transparent; color: var(--experience-orange); padding: 0; font: inherit; font-size: 11px; font-weight: 800; white-space: nowrap; }
+body.portal-v2 .mabel-queue-manage { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 2px; min-height: 24px; border: 0; background: transparent; color: var(--experience-orange); padding: 0; font: inherit; font-size: 11px; font-weight: 800; white-space: nowrap; }
 body.portal-v2 .mabel-queue-manage .icon,
 body.portal-v2 .mabel-queue-empty-preview .icon { width: 15px; height: 15px; }
 body.portal-v2 #homeMabelQueueSection { gap: 5px; }
-body.portal-v2 #homeMabelQueueSection > header { align-items: center; }
+body.portal-v2 #homeMabelQueueSection > header { align-items: flex-end; }
 body.portal-v2 #homeMabelQueueSection .mabel-queue-manage { min-height: 24px; }
-body.portal-v2 #homeContinueRail.home-continue-rail { padding-bottom: 3px; }
+body.portal-v2 #homeMabelQueueSection .watch-section-kicker { margin-bottom: 3px; }
+body.portal-v2 #homeMabelQueueRail { grid-auto-columns: 104px; gap: 10px; }
+body.portal-v2 #homeContinueRail.home-continue-rail { padding-bottom: 0; }
 body.portal-v2 .mabel-queue-section-meta { min-width: 0; margin: 0 0 2px; color: var(--experience-dim); font-size: 10px; line-height: 1.2; }
 body.portal-v2 .mabel-queue-rail { align-items: start; }
 body.portal-v2 .mabel-queue-rail-card { grid-template-columns: minmax(0, 1fr); width: 100%; }
@@ -70,7 +68,7 @@ body.portal-v2 .mabel-queue-watch { min-width: 0; margin: 0 0 10px; padding: 0; 
 body.portal-v2 .mabel-queue-watch .watch-section-head { align-items: flex-end; min-width: 0; margin-bottom: 4px; }
 body.portal-v2 .mabel-queue-watch .watch-section-head > div { min-width: 0; }
 body.portal-v2 .mabel-queue-watch .watch-section-kicker { margin: 0 0 3px; }
-body.portal-v2 .mabel-queue-watch .mabel-queue-manage { margin-bottom: 1px; }
+body.portal-v2 .mabel-queue-watch .mabel-queue-manage { margin-bottom: 0; }
 body.portal-v2 .mabel-queue-watch .mabel-queue-section-meta { margin-bottom: 9px; }
 body.portal-v2 .mabel-queue-watch .mabel-queue-rail { grid-auto-columns: 104px; gap: 10px; min-width: 0; margin-right: calc(var(--experience-gutter) * -1); padding: 0 var(--experience-gutter) 3px 0; }
 
@@ -121,3 +119,6 @@ body.portal-v2 #mabelQueueConfirmAccept:disabled { opacity: .5; }
   body.portal-v2 .mabel-queue-fixed-head { position: fixed; z-index: 50; top: calc(54px + env(safe-area-inset-top)); left: 0; right: 0; box-sizing: border-box; border-bottom: 1px solid var(--experience-line); padding: 0 var(--experience-gutter) 3px; }
   body.portal-v2 .mabel-queue-page-body { padding-top: calc(var(--mabel-queue-header-height, 158px) + 12px); }
 }
+
+body.portal-v2 .mabel-queue-playing { position: absolute; inset: auto 0 0; display: block; padding: 7px 4px; background: rgba(0, 36, 33, .88); color: #fff; text-align: center; font-size: 11px; font-weight: 800; }
+body.portal-v2 .mabel-queue-row-remove:disabled { opacity: .3; }

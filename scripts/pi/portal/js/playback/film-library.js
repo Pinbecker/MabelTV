@@ -499,8 +499,18 @@
       $('#homeContinueCount').textContent = continuing.length
         ? `${continuing.length} in progress` : ''
       const continueRail = $('#homeContinueRail')
-      continueRail.innerHTML = ''
-      continuing.forEach(entry => continueRail.append(continueWatchCard(entry)))
+      const signature = JSON.stringify(continuing.map(entry => [
+        entry.kind, entry.channel.number, entry.channel.name, entry.channel.metadata, entry.film,
+      ]))
+      if (continueRail.dataset.renderSignature !== signature) {
+        continueRail.replaceChildren(...continuing.map(continueWatchCard))
+        continueRail.dataset.renderSignature = signature
+      } else {
+        continuing.forEach((entry, index) => {
+          continueRail.children[index].querySelector('button').onclick =
+            () => openFilmEntry(entry, 'continue')
+        })
+      }
     }
 
     async function setFilmFavourite(entry, enabled) {

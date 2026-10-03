@@ -511,7 +511,7 @@ let managementBusy = false
       'navigate-right': 'Right', select: 'Selected', 'previous-programme': 'Previous programme',
       'next-programme': 'Next programme', 'restart-programme': 'Restarting programme',
       'toggle-pause': 'Playback changed', 'toggle-subtitles': 'Subtitles changed',
-      'toggle-widescreen-mode': 'Widescreen mode changed',
+      'toggle-widescreen-mode': 'Picture mode changed',
       'toggle-remote-lock': 'Remote lock changed', 'turn-on': 'Turning TV on',
       'turn-off': 'Turning TV off', 'turn-on-mabel-only': `Turning ${tvName()} on`,
       'turn-off-mabel-only': `Putting ${tvName()} in standby`, 'toggle-power': 'Power command sent'

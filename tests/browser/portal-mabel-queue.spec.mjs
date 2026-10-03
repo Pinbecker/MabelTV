@@ -2,6 +2,45 @@ import { test, expect } from './test-fixtures.mjs'
 
 test.use({ serviceWorkers: 'block' })
 
+test('The playing entry stays first with an artwork overlay and queue identity in its menu', async ({ page }) => {
+  page.on('dialog', dialog => dialog.accept())
+  for (const file of ['Snowy Adventure.mp4', 'Ocean Friends.mp4'])
+    await page.request.post('/api/mabel-queue', { data: { action: 'add', channel: 1, file } })
+  const queued = await (await page.request.get('/api/mabel-queue')).json()
+  const selected = queued.items[1]
+  let playbackRequest
+  await page.route('**/api/play-on-tv', async route => {
+    playbackRequest = route.request().postDataJSON()
+    await page.request.post('/api/mabel-queue', { data: { action: 'start', id: playbackRequest.queue_id } })
+    await route.fulfill({ json: { ok: true, message: 'Playing queued item' } })
+  })
+  await page.goto('/')
+  await page.locator('#homeMabelQueueRail .mabel-queue-rail-card').nth(1).click()
+  await page.locator('#watchProgrammeTv').click()
+  await expect.poll(() => playbackRequest?.queue_id).toBe(selected.id)
+  await page.evaluate(() => loadMabelQueue())
+  const cards = page.locator('#homeMabelQueueRail .mabel-queue-rail-card')
+  await expect(cards).toHaveCount(3)
+  await expect(cards.first()).toContainText('Ocean Friends')
+  await expect(cards.first().locator('.mabel-queue-playing')).toHaveText('Playing')
+  await page.evaluate(() => closeWatchProgrammeSheet(false))
+  await page.locator('#homeMabelQueueOpen').click()
+  const rows = page.locator('#mabelQueueList .mabel-queue-row')
+  await expect(rows).toHaveCount(2)
+  await expect(rows.first().locator('.mabel-queue-playing')).toHaveText('Playing')
+  await expect(rows.first().locator('.mabel-queue-row-remove')).toBeDisabled()
+})
+
+test('Adding to Up Next closes its menu without flying artwork into navigation', async ({ page }) => {
+  await page.goto('/')
+  await page.waitForFunction(() => library?.channels?.length)
+  await page.evaluate(() => openWatchProgrammeSheet(library.channels[0], library.channels[0].programmes[0]))
+  await page.locator('#watchProgrammeQueue').click()
+  await expect(page.locator('#watchProgrammeSheet')).not.toBeVisible()
+  await expect(page.locator('#homeMabelQueueRail .mabel-queue-rail-card')).toHaveCount(2)
+  await expect(page.locator('.mabel-queue-flyer, .mabel-queue-nav-pulse')).toHaveCount(0)
+})
+
 test('Mabel TV Up Next appears on Home and reorders through arrow controls', async ({ page }) => {
   await page.request.post('/api/mabel-queue', {
     data: { action: 'add', channel: 1, file: 'Snowy Adventure.mp4' },

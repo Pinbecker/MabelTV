@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import mimetypes
 import os
 import re
@@ -549,7 +550,15 @@ class RemotePlaybackMixin:
         if not self.remote_browser_ready(source):
             raise ValueError("This file is not browser-ready. Use an MP4 or M4V version for remote viewing.")
         settings = self.remote_settings()
-        if settings["tv_running"] and not settings["allow_simultaneous"]:
+        queue_id = str(payload.get("queue_id") or "")
+        queued = self.queue_programme(queue_id) if queue_id else None
+        from_stream = str(payload.get("queue_from_stream") or "")
+        if queued and payload.get("queue_auto"):
+            self.remote_session(from_stream)
+        if queued and (kind != "channel" or queued["channel_number"] != int(payload.get("channel", 0))
+                       or queued["file_name"] != source.name):
+            raise ValueError("That queue entry does not match the selected programme")
+        if settings["tv_running"] and not settings["allow_simultaneous"] and not queued:
             raise RemoteTvActiveError(f"{self.tv_identity()[1]} is playing. Stop it first, or allow simultaneous playback in Settings.")
         with self.remote_stream_lock:
             # The portal deliberately supports one remote viewer. Selecting a
@@ -557,9 +566,27 @@ class RemotePlaybackMixin:
             # otherwise a missed pagehide/sendBeacon leaves the entire Watch
             # section locked until the session timeout expires.
             token = secrets.token_urlsafe(24)
+            if queued:
+                old_owner = self.mabel_queue()["owner"]
+                if old_owner == "tv":
+                    if payload.get("queue_auto"):
+                        raise ValueError("The queue is playing somewhere else")
+                    self.queue_socket_command(b"pause-mabel-queue-transfer")
+                selected = self.state_database.mabel_queue_select(
+                    queue_id, "device:" + token, automatic=bool(payload.get("queue_auto")),
+                    expected_owner="device:" + from_stream)
+                resume = selected["position_seconds"]
+            elif self.remote_stream and self.remote_stream.get("queue_id"):
+                old = self.remote_stream
+                try:
+                    self.state_database.mabel_queue_event("pause", "device:" + old["token"], old["queue_id"])
+                except ValueError:
+                    pass  # The queue may already have been transferred to the TV.
             self.remote_stream = {"token": token, "kind": kind, "source": source,
                                   "title": title, "library_id": library_id,
                                   "expires": time.time() + REMOTE_SESSION_SECONDS}
+            if queued:
+                self.remote_stream["queue_id"] = queue_id
             if kind == "channel":
                 channel_number = int(payload.get("channel", 0))
                 channel = self.channel(channel_number)
@@ -612,6 +639,12 @@ class RemotePlaybackMixin:
                     str(self.remote_stream.get("token", "")), token):
                 usb_identity = self._usb_identity_for_source(
                     Path(self.remote_stream.get("source", "")))
+                if self.remote_stream.get("queue_id"):
+                    try:
+                        self.state_database.mabel_queue_event("pause", "device:" + token,
+                                                              self.remote_stream["queue_id"])
+                    except ValueError:
+                        pass
                 self.remote_stream = None
                 if usb_identity:
                     self.usb_touch(usb_identity)
@@ -622,6 +655,15 @@ class RemotePlaybackMixin:
     def remote_save_position(self, payload: dict[str, Any]) -> dict[str, Any]:
         token = str(payload.get("stream", ""))
         session = self.remote_session(token)
+        if session.get("queue_id"):
+            try:
+                queued_position = float(payload.get("position") or 0)
+                if not math.isfinite(queued_position):
+                    raise ValueError("Invalid queue position")
+                self.state_database.mabel_queue_event(
+                    "position", "device:" + token, session["queue_id"], position=queued_position)
+            except ValueError:
+                pass  # Late samples must not change a transferred/completed queue entry.
         try:
             position = max(0.0, float(payload.get("position", 0)))
             duration = max(0.0, float(payload.get("duration", 0)))
@@ -893,7 +935,7 @@ class RemotePlaybackMixin:
         my_tv_mode = mode.get("mode") == "my_tv"
         status = self.live_stream.status(allow_screen_without_programme=my_tv_mode)
         for field in ("volume", "muted", "remote_locked", "standby", "subtitles_available",
-                      "subtitles_visible", "widescreen_available", "widescreen_enabled",
+                      "subtitles_visible", "widescreen_available", "widescreen_enabled", "presentation_mode",
                       "my_tv_handoff_available",
                       "connected_tv_available", "connected_tv_power"):
             if field in mode:
@@ -999,6 +1041,12 @@ class RemotePlaybackMixin:
     def play_on_tv(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Start a known library item through the private player socket."""
         kind = str(payload.get("kind", ""))
+        if payload.get("queue_id"):
+            queued = self.queue_programme(str(payload["queue_id"]))
+            if kind != "channel" or queued["channel_number"] != int(payload.get("channel", 0)) \
+                    or queued["file_name"] != str(payload.get("file") or ""):
+                raise ValueError("That queue entry does not match the selected programme")
+            return self.play_queue_on_tv(queued["id"])
         if kind == "channel":
             _kind, source, title, library_id, resume = self.remote_source(payload)
             if "position" in payload:

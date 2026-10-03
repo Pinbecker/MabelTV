@@ -58,6 +58,8 @@ Item {
             event.accepted = true
         } else if (parentMenu.visible) {
             event.accepted = parentMenu.handleKey(event.key, event.modifiers)
+        } else if (appRoot.mabelPresentation.handleKey(event.key, event.isAutoRepeat)) {
+            event.accepted = true
         } else if (Qt.platform.os === "windows"
                    && event.key === Qt.Key_G
                    && (event.modifiers & Qt.ControlModifier) !== 0

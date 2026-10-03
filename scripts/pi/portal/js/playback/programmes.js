@@ -144,6 +144,7 @@
 
     function openWatchProgrammeSheet(channel, programme, context = 'library', returnTo = null) {
       selectedWatchProgramme = { channel, programme, context, returnTo }
+      const queueId = typeof context === 'object' ? context.queueId : ''
       const metadata = programme.metadata || {}
       const title = metadata.title || programme.display_name
       const filmChannel = channel.content_type === 'films'
@@ -170,10 +171,11 @@
         })
       } : () => {
         playOnTv({ kind: 'channel', channel: channel.number, file: programme.name,
+          ...(queueId ? { queue_id: queueId } : {}),
           position: filmChannel ? Number(programme.remote_position || 0) : undefined }, title)
       }
       const here = $('#watchProgrammeHere')
-      here.disabled = false
+      here.disabled = !!queueId && programme.browser_ready === false
       here.querySelector('strong').textContent = programme.browser_ready === false
         ? 'Play in VLC' : favouriteResumeChoice ? 'Play on this device'
           : resumable ? 'Continue on this device' : 'Play on this device'
@@ -183,11 +185,14 @@
           : resumable ? `Continue from ${watchTimeLabel(programme.remote_position)}`
             : 'Starts an independent stream'
       const source = { kind: 'channel', channel: channel.number, file: programme.name }
+      if (queueId) source.queue_id = queueId
       const queueButton = $('#watchProgrammeQueue')
       queueButton.disabled = !channel.enabled || programme.enabled === false
       queueButton.onclick = () => addToMabelQueue(
         channel, programme, queueButton, () => closeWatchProgrammeSheet(false))
       if (filmChannel) source.position = Number(programme.remote_position || 0)
+      if (queueId) here.querySelector('small').textContent = programme.browser_ready === false
+        ? 'Use Play on TV for this queued file' : 'Plays this queue, replacing its current player'
       const reopenProgramme = () => openWatchProgrammeSheet(
         channel, programme, context, returnTo)
       here.onclick = favouriteResumeChoice && programme.browser_ready !== false ? () => {

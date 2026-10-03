@@ -31,6 +31,12 @@
       rank.className = 'mabel-queue-rank'
       rank.textContent = String(index + 1).padStart(2, '0')
       art.append(rank)
+      if (item.playing || item.starting) {
+        const badge = document.createElement('span')
+        badge.className = 'mabel-queue-playing'
+        badge.textContent = item.playing ? 'Playing' : 'Starting…'
+        art.append(badge)
+      }
       const copy = document.createElement('span')
       copy.className = 'home-poster-copy'
       const title = document.createElement('strong')
@@ -64,7 +70,7 @@
         showError(new Error('That programme is no longer in the TV library.'))
         return
       }
-      openWatchProgrammeSheet(channel, programme)
+      openWatchProgrammeSheet(channel, programme, { queueId: item.id })
     }
 
     function mabelQueueSummary(items) {
@@ -118,7 +124,7 @@
       copy.className = 'mabel-queue-row-copy'
       const number = document.createElement('small')
       number.className = 'mabel-queue-row-number'
-      number.textContent = `${String(index + 1).padStart(2, '0')} · ${index === 0 ? 'First up' : 'Then'}`
+      number.textContent = `${String(index + 1).padStart(2, '0')} · ${item.playing ? 'Playing' : item.starting ? 'Starting…' : index === 0 ? 'First up' : 'Then'}`
       const title = document.createElement('strong')
       title.textContent = item.title
       const channel = document.createElement('span')
@@ -127,16 +133,24 @@
       const duration = mabelQueueDuration(item)
       detail.textContent = `${duration > 0 ? `${watchTimeLabel(duration)} · ` : ''}CH ${item.channel_number}`
       copy.append(number, title, channel, detail)
-      open.append(mabelQueueArtwork(item), copy)
+      const art = mabelQueueArtwork(item)
+      if (item.playing || item.starting) {
+        const badge = document.createElement('span')
+        badge.className = 'mabel-queue-playing'
+        badge.textContent = item.playing ? 'Playing' : 'Starting…'
+        art.append(badge)
+      }
+      open.append(art, copy)
       const controls = document.createElement('div')
       controls.className = 'mabel-queue-row-controls'
       for (const [action, icon, disabled] of [
-        ['up', 'signal-chevron-up', index === 0],
+        ['up', 'signal-chevron-up', index === 0 || !!mabelQueue.items[index - 1]?.playing || !!mabelQueue.items[index - 1]?.starting],
         ['down', 'signal-chevron-down', index === count - 1],
       ]) {
         const button = document.createElement('button')
         button.type = 'button'
         button.disabled = disabled
+        if (item.playing || item.starting) button.disabled = true
         button.setAttribute('aria-label', `Move ${item.title} ${action}`)
         button.append(portalIcon(icon))
         button.onclick = () => moveMabelQueueItem(item.id, action).catch(showError)
@@ -147,6 +161,7 @@
       remove.className = 'mabel-queue-row-remove'
       remove.setAttribute('aria-label', `Remove ${item.title} from Up Next`)
       remove.append(portalIcon('signal-x'))
+      remove.disabled = item.playing || item.starting
       remove.onclick = () => confirmMabelQueueChange(
         `Remove “${item.title}”?`, 'This takes it out of Up Next. The film or episode stays in your library.',
         'Remove', 'remove', { id: item.id })
@@ -159,8 +174,10 @@
       const items = mabelQueue.items || []
       const count = mabelQueueSummary(items)
       $('#mabelQueuePageCount').textContent = mabelQueue.active
-        ? `${mabelQueue.current_title || 'A programme'} is playing · ${count}` : count
-      $('#mabelQueueStart').disabled = !items.length
+        ? `${mabelQueue.current_title || 'A programme'} is playing · ${count}`
+        : mabelQueue.error || (mabelQueue.paused ? `Queue paused · ${count}` : count)
+      $('#mabelQueueStart strong').textContent = mabelQueue.paused ? 'Resume queue on TV' : 'Start queue on TV'
+      $('#mabelQueueStart').disabled = !items.length || (mabelQueue.owner === 'tv' && mabelQueue.phase === 'playing' && !mabelQueue.paused)
       $('#mabelQueueClear').disabled = !items.length && !mabelQueue.active
       const list = $('#mabelQueueList')
       list.replaceChildren()
@@ -191,8 +208,10 @@
       if (offlineMode) return
       if (mabelQueueLoading) return mabelQueueLoading
       mabelQueueLoading = api('/api/mabel-queue').then(value => {
+        const changed = JSON.stringify(value) !== JSON.stringify(mabelQueue)
         mabelQueue = value
-        renderMabelQueue()
+        if (changed) renderMabelQueue()
+        checkMabelQueuePlayerOwnership()
         return value
       }).finally(() => { mabelQueueLoading = null })
       return mabelQueueLoading
@@ -244,38 +263,86 @@
       portalSheets.open(dialog)
     }
 
-    function animateMabelQueueAddition(rect, artwork) {
-      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
-      const destination = document.querySelector('[data-view-button="watch"]')?.getBoundingClientRect()
-      if (!destination || !rect) return
-      const flyer = document.createElement('span')
-      flyer.className = 'mabel-queue-flyer'
-      if (artwork) flyer.style.backgroundImage =
-        `url('/api/channel/artwork/${encodeURIComponent(artwork)}')`
-      Object.assign(flyer.style, { left: `${rect.left}px`, top: `${rect.top}px`,
-        width: `${Math.min(rect.width, 110)}px`, height: `${Math.min(rect.height, 76)}px` })
-      document.body.append(flyer)
-      const motion = flyer.animate([
-        { transform: 'translate(0,0) scale(1)', opacity: 1 },
-        { transform: `translate(${destination.left - rect.left}px,${destination.top - rect.top}px) scale(.25)`, opacity: .2 },
-      ], { duration: 520, easing: 'cubic-bezier(.19,1,.22,1)' })
-      motion.onfinish = () => {
-        flyer.remove()
-        const nav = document.querySelector('[data-view-button="watch"]')
-        nav?.classList.add('mabel-queue-nav-pulse')
-        setTimeout(() => nav?.classList.remove('mabel-queue-nav-pulse'), 600)
-      }
-    }
-
     async function addToMabelQueue(channel, programme, trigger, close) {
-      const rect = trigger.getBoundingClientRect()
-      const artwork = programme.metadata?.poster || channel.metadata?.artwork || ''
+      if (trigger.disabled) return
+      trigger.disabled = true
       try {
         await changeMabelQueue('add', { channel: channel.number, file: programme.name })
         close()
-        animateMabelQueueAddition(rect, artwork)
         notice('Added to Up Next')
       } catch (error) { showError(error) }
+      finally { trigger.disabled = false }
+    }
+
+    function bindMabelQueuePlayer(video, payload, result, start) {
+      const stream = new URL(result.stream_url, location.origin).searchParams.get('stream')
+      const binding = { id: payload.queue_id || '', stream, payload, start, started: false, ending: false }
+      video._mabelQueue = binding
+      video.onplaying = () => {
+        if (!binding.id || binding.started) return
+        binding.started = true
+        binding.confirmed = api('/api/mabel-queue', { method: 'POST', body: JSON.stringify({ action: 'started',
+          id: binding.id, stream }) }).then(value => { mabelQueue = value; renderMabelQueue() })
+          .catch(error => { if (video._mabelQueue === binding) { video.pause(); showError(error) } })
+      }
+    }
+
+    function checkMabelQueuePlayerOwnership() {
+      for (const video of [$('#iosWatchVideo'), $('#mabelWatchVideo')]) {
+        const binding = video?._mabelQueue
+        if (binding?.id && binding.started && !binding.ending && mabelQueue
+            && (mabelQueue.owner !== `device:${binding.stream}` || mabelQueue.current_id !== binding.id)) {
+          video._mabelQueue = null
+          video.pause()
+          notice('Queue playback has moved to another player')
+        }
+      }
+    }
+
+    async function finishMabelQueueDevice(video) {
+      const binding = video._mabelQueue
+      if (!binding || binding.ending) return
+      binding.ending = true
+      try {
+        if (binding.confirmed) await binding.confirmed
+        const state = binding.id ? await api('/api/mabel-queue', { method: 'POST',
+          body: JSON.stringify({ action: 'finish', id: binding.id, stream: binding.stream }) })
+          : await api('/api/mabel-queue')
+        mabelQueue = state; renderMabelQueue()
+        if (state.paused) return
+        const next = state.items?.[0]
+        if (next && (!state.owner || state.owner === `device:${binding.stream}`)) {
+          const { programme } = mabelQueueProgramme(next)
+          if (!programme || programme.browser_ready === false)
+            throw new Error('The next queued programme cannot play in this browser. Choose Play on TV instead.')
+          await binding.start({ kind: 'channel', channel: next.channel_number, file: next.file_name,
+            queue_id: next.id, queue_auto: true, queue_from_stream: binding.stream })
+        } else if (binding.id && !state.items?.length && state.completed) {
+          notice('All done — time to switch the telly off')
+          video._mabelQueue = null
+          if (video === $('#iosWatchVideo')) closeIosRemotePlayer()
+          else closeMabelWatchPlayer()
+        } else if (binding.id && !state.items?.length && state.ending === 'keep_playing') {
+          const channel = library?.channels?.find(value => value.number === binding.payload.channel)
+          const programmes = channel?.programmes?.filter(value => value.enabled !== false) || []
+          const index = programmes.findIndex(value => value.name === binding.payload.file)
+          const programme = programmes.length ? programmes[(index + 1) % programmes.length] : null
+          if (programme?.browser_ready !== false && programme)
+            await binding.start({ kind: 'channel', channel: channel.number, file: programme.name, position: 0 })
+        }
+      } catch (error) {
+        if (binding.id) await api('/api/mabel-queue', { method: 'POST', body: JSON.stringify({
+          action: 'failed', id: mabelQueue?.current_id || binding.id, stream: binding.stream,
+          error: error.message }) }).catch(() => {})
+        showError(error)
+      }
+    }
+
+    function failMabelQueueDevice(video, message) {
+      const binding = video._mabelQueue
+      if (!binding?.id) return
+      api('/api/mabel-queue', { method: 'POST', body: JSON.stringify({ action: 'failed',
+        id: binding.id, stream: binding.stream, error: message }) }).then(loadMabelQueue).catch(() => {})
     }
 
     $('#homeMabelQueueOpen').onclick = openMabelQueuePage
@@ -304,6 +371,8 @@
       'ending', { ending: 'keep_playing' }).catch(showError)
     setInterval(() => {
       const active = document.querySelector('.view.active')?.id
-      if (!offlineMode && (mabelQueue?.active || active === 'view-mabel-queue'))
+      if (!offlineMode && !document.hidden
+          && ['view-overview', 'view-watch', 'view-mabel-queue'].includes(active)
+          && (mabelQueue?.active || mabelQueue?.items?.length || active === 'view-mabel-queue'))
         loadMabelQueue().catch(() => {})
-    }, 12000)
+    }, 2500)

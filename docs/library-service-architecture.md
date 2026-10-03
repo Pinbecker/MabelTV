@@ -165,3 +165,24 @@ online backup before upgrade. A rollback must restore a release compatible with
 the restored database snapshot; never point old code at a newer unsupported
 schema. Portal-only work may use the scoped portal deploy after explicit
 authorization. See `quality-gates.md` and `state-database.md`.
+
+## Native My TV projections
+
+`native_my_tv.py` owns the loopback-only TV card, title, season and app-launch
+contract. Home and search return compact cards; episodes and cast are loaded
+only for a selected title. Local artwork URLs retain the filenames already
+stored in SQLite, while playback carries the exact film or episode library ID.
+Native resume uses the same TV/browser bookmark reconciliation as the portal.
+The series projection keeps current, last-watched and next episode identities
+separate. A completed episode with a following episode remains in Continue
+watching even without a resume bookmark. The loopback-only episode-complete
+action validates the series and library ID, then delegates to the existing
+episode watched-state owner; it accepts no client-supplied filesystem path.
+Family browsing uses the shared `channel_library()` projection without scanning
+the private catalogue, recycle bin or uploads. Its native directory and selected
+channel routes return enabled channels and programmes with exact local playback
+identity. Private artwork remains loopback scoped.
+Availability is loaded for the selected title through the existing provider TTL,
+independently of its basic details. The native artwork routes remain loopback
+only; JSON requests also require the native header. They do not change parent
+PIN protection on the portal's private routes.

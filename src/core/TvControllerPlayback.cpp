@@ -132,6 +132,18 @@ void TvController::changeProgramme(int direction)
         return;
     }
 
+    if (direction > 0) {
+        freezeTimeline(m_channels[m_currentChannelIndex]);
+        markCurrentEpisodeLeft(m_channels[m_currentChannelIndex]);
+        if (playQueuedProgramme(false)) return;
+    }
+    if (direction < 0 && mabeltv::state::ownsMabelQueue(m_databasePath)) {
+        if (m_channels[m_currentChannelIndex].anchorPositionSeconds <= 3
+                && playQueuedProgramme(true, true)) return;
+        restartPortalProgramme();
+        return;
+    }
+
     ChannelRuntime &runtime = m_channels[m_currentChannelIndex];
     freezeTimeline(runtime);
     markCurrentEpisodeLeft(runtime);

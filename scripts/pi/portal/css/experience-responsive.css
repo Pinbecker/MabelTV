@@ -241,8 +241,21 @@
   }
 
   body.portal-v2 .watch-mabel-layout {
-    gap: 12px;
+    gap: 16px;
   }
+
+  /* Match Home's 164px top section and its search/rail spacing on phones. */
+  body.portal-v2 #view-watch .watch-page { padding-top: 34px; }
+  body.portal-v2 #view-watch .watch-title { min-height: 64px; margin-bottom: 21px; }
+  body.portal-v2 #view-watch .watch-title .eyebrow { margin-bottom: 22px; }
+  body.portal-v2 #view-watch .watch-switch-wrap { margin-bottom: 12px; }
+  body.portal-v2 #view-watch .watch-mabel-discovery { margin-bottom: -6px; }
+  body.portal-v2 #watchMabelContinueSection { margin-bottom: 0; }
+  body.portal-v2 #watchMabelContinueSection .watch-section-head { margin-bottom: 9px; }
+  body.portal-v2 #watchMabelContinueRail { padding-bottom: 0; }
+  body.portal-v2 #watchMabelQueueSection { display: grid; gap: 5px; }
+  body.portal-v2 #watchMabelQueueSection .watch-section-head { margin-bottom: 0; }
+  body.portal-v2 #watchMabelQueueCount { margin-bottom: 2px; }
 
   body.portal-v2 .watch-search input,
   body.portal-v2 .my-tv-search input,

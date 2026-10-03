@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 
 
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
 
 SCHEMA = r"""
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -839,6 +839,22 @@ CREATE TABLE mabel_queue_state (
 INSERT INTO mabel_queue_state(id) VALUES(1);
 """
 
+MABEL_QUEUE_PLAYBACK_SCHEMA = """
+ALTER TABLE mabel_queue_state ADD COLUMN current_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE mabel_queue_state ADD COLUMN owner TEXT NOT NULL DEFAULT '';
+ALTER TABLE mabel_queue_state ADD COLUMN paused INTEGER NOT NULL DEFAULT 0 CHECK(paused IN (0,1));
+ALTER TABLE mabel_queue_state ADD COLUMN phase TEXT NOT NULL DEFAULT 'waiting'
+    CHECK(phase IN ('waiting','starting','playing'));
+ALTER TABLE mabel_queue_state ADD COLUMN position_seconds REAL NOT NULL DEFAULT 0;
+ALTER TABLE mabel_queue_state ADD COLUMN error TEXT NOT NULL DEFAULT '';
+CREATE TABLE mabel_queue_history (
+    sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT NOT NULL, channel_number INTEGER NOT NULL, file_name TEXT NOT NULL,
+    title TEXT NOT NULL, artwork TEXT NOT NULL, channel_name TEXT NOT NULL
+);
+UPDATE mabel_queue_state SET paused=active,active=0,current_title='';
+"""
+
 MIGRATIONS = (
     (1, "initial relational state", SCHEMA),
     (2, "portal cache revision ledger", REVISION_SCHEMA),
@@ -852,6 +868,8 @@ MIGRATIONS = (
      VIEWING_IDENTITY_SCHEMA),
     (9, "rename the legacy private domain to My TV", MY_TV_DOMAIN_SCHEMA),
     (10, "persistent Mabel TV playback queue", MABEL_QUEUE_SCHEMA),
+    (11, "tracked queue playback ownership and retained current entry",
+     MABEL_QUEUE_PLAYBACK_SCHEMA),
 )
 MIGRATION_CHECKSUMS = {
     version: hashlib.sha256(sql.encode("utf-8")).hexdigest()

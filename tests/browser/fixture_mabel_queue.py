@@ -10,10 +10,19 @@ class MabelQueueFixtureMixin:
     def reset_mabel_queue(self) -> None:
         self.queue_items: list[dict[str, Any]] = []
         self.queue_ending = "all_done"
+        self.queue_current = ""
+        self.queue_phase = "waiting"
 
     def mabel_queue(self) -> dict[str, Any]:
-        return {"items": copy.deepcopy(self.queue_items), "ending": self.queue_ending,
-                "active": False, "completed": False, "current_title": ""}
+        items = copy.deepcopy(self.queue_items)
+        for item in items:
+            item["playing"] = item["id"] == self.queue_current and self.queue_phase == "playing"
+        return {"items": items, "ending": self.queue_ending,
+                "active": self.queue_phase == "playing", "completed": False,
+                "current_id": self.queue_current, "phase": self.queue_phase,
+                "owner": "tv" if self.queue_current else "", "paused": False,
+                "current_title": next((item["title"] for item in items
+                                       if item["id"] == self.queue_current), "")}
 
     def mabel_queue_action(self, payload: dict[str, Any]) -> dict[str, Any]:
         action = payload.get("action")
@@ -52,7 +61,14 @@ class MabelQueueFixtureMixin:
             self.queue_ending = payload["ending"]
         elif action == "clear":
             self.queue_items.clear()
+            self.queue_current = ""
+            self.queue_phase = "waiting"
         elif action == "start":
+            current = payload.get("id") or self.queue_items[0]["id"]
+            selected = next(item for item in self.queue_items if item["id"] == current)
+            self.queue_items = [selected] + [item for item in self.queue_items if item["id"] != current]
+            self.queue_current = current
+            self.queue_phase = "playing"
             return {"ok": True}
         else:
             raise ValueError("Unknown queue action")

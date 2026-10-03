@@ -22,7 +22,7 @@ clearing it transactionally, and never treats retained `owner.json` as live.
 `database_schema.py` is the only schema and migration owner. `database.py`
 owns connections, transactions and the general relational projections;
 `repositories/viewing.py` owns targeted viewing identity/session operations and is
-composed into the same `StateDatabase`. Schema version 10 contains these main
+composed into the same `StateDatabase`. Schema version 11 contains these main
 relationships:
 
 - channels and favourites: `channels`, `channel_metadata`,
@@ -37,7 +37,7 @@ relationships:
   `local_title_links` and `my_tv_series_title_links` linking local media;
 - My TV viewing state: `my_tv_titles`, `title_watch_events`, `watchlist_entries`,
   `up_next_entries`, `title_ratings` and `title_episode_state`;
-- Mabel TV playback queue: `mabel_queue_entries` and `mabel_queue_state`;
+- Mabel TV playback queue: `mabel_queue_entries`, `mabel_queue_state` and the bounded `mabel_queue_history`;
 - discovery/availability/insights: `explore_feedback`, `availability_cache`,
   `my_tv_viewing_state`, `my_tv_insights_titles`, `my_tv_insights_failures` and
   `my_tv_insights_state`;
@@ -63,6 +63,12 @@ duplicate relationship columns were removed in schema 5, duplicate title
 metadata columns in schema 6, schema 7 rejects retired setting values, and
 schema 8 gives channels and films stable viewing identities so history survives
 supported channel renames, renumbering and film moves. Schema 9 renames the former media domain to My TV across authoritative tables, revision domains, settings and local-media kinds without changing stored identities or relationships. Schema 10 adds the independent Mabel TV playback queue without changing My TV Up Next.
+Schema 11 retains the current entry until completion, records its identity,
+player ownership, phase and resume position, and pauses interrupted legacy
+queues without deleting their waiting entries. A start reservation is not proof
+of playback: the native Playing signal or browser playing event confirms it.
+Owner and entry identity must match before a completion or progress event can
+mutate the queue. Explicit player transfers change ownership atomically.
 Reads reconstruct the established API
 dictionary shape from joins so the public API contract does not change.
 Explicit `false` membership flags and timestamps or ranks left behind by a
@@ -107,7 +113,7 @@ bootstrap ledger. Rebuildable caches never advance or become authoritative.
 
 Migrations are append-only and checksummed. Never edit a released migration;
 add the next integer migration and update both Python and native maximum/minimum
-support in the same release. The current native release accepts schema 10 only,
+support in the same release. The current native release accepts schema 11 only,
 preventing an old binary from writing a database whose invariants it does not
 understand. Cross-language tests enforce the version match.
 

@@ -8,6 +8,33 @@ async function openPortal(page) {
   await page.evaluate(() => document.fonts?.ready)
 }
 
+test('Home retains Continue watching cards when returning from Mabel TV', async ({ page }) => {
+  await openPortal(page)
+  await expect(page.locator('#homeContinueTitle')).toHaveText('Continue watching')
+  await page.locator('#homeContinueRail .watch-continue-card').first().waitFor()
+  await page.evaluate(() => {
+    window.__homeContinueCard = document.querySelector('#homeContinueRail .watch-continue-card')
+  })
+  const home = await page.locator('#homeMabelQueueOpen').evaluate(button => ({
+    rect: button.getBoundingClientRect().toJSON(), font: getComputedStyle(button).fontSize,
+    countFont: getComputedStyle(document.querySelector('#homeContinueCount')).fontSize,
+  }))
+  await page.locator('[data-view-button="watch"]').click()
+  const watch = await page.locator('#watchMabelQueueOpen').evaluate(button => ({
+    rect: button.getBoundingClientRect().toJSON(), font: getComputedStyle(button).fontSize,
+    countFont: getComputedStyle(document.querySelector('#watchMabelContinueCount')).fontSize,
+  }))
+  expect(watch).toEqual(home)
+  await page.locator('[data-view-button="overview"]').click()
+  expect(await page.evaluate(() => window.__homeContinueCard ===
+    document.querySelector('#homeContinueRail .watch-continue-card'))).toBe(true)
+  await page.evaluate(() => {
+    library.channels[0].programmes[0].remote_position = 900
+    renderHomeLibrary()
+  })
+  await expect(page.locator('#homeContinueRail').getByRole('button', { name: 'Resume Snowy Adventure at 15m' })).toBeVisible()
+})
+
 test('Mabel TV film metadata works without opening Settings first', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-chromium', 'One phone covers the metadata action')
   await page.route('**/api/tmdb/status', route =>

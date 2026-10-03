@@ -29,6 +29,7 @@ if str(SERVICE_ROOT) not in sys.path:
 
 from mabeltv_backend.auth import AuthenticationMixin
 from mabeltv_backend.my_tv_metadata import MyTvMetadataMixin
+from mabeltv_backend.native_my_tv import NativeMyTvMixin
 from mabeltv_backend.my_tv_insights import MyTvInsightsMixin
 from mabeltv_backend.artwork import ArtworkProxyMixin
 from mabeltv_backend.constants import (
@@ -99,7 +100,7 @@ class Library(MabelQueueMixin, ViewingMixin, UploadConversionMixin, TranscodingM
               ArtworkProxyMixin,
               MediaCatalogueMixin, ManagementMixin, RemotePlaybackMixin, LgControlMixin,
               UsbMixin,
-              ProviderTransportMixin, MyTvMetadataMixin, ProviderMetadataMixin,
+              ProviderTransportMixin, NativeMyTvMixin, MyTvMetadataMixin, ProviderMetadataMixin,
               ViewingQueueMixin,
               MyTvInsightsMixin, MyTvExploreMixin,
               SystemStatusMixin):

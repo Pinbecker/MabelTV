@@ -2,6 +2,30 @@ import { test, expect } from './test-fixtures.mjs'
 
 test.use({ serviceWorkers: 'block' })
 
+test('remote opens the My TV library and clearly cycles picture modes', async ({ page }, testInfo) => {
+  await openPortal(page)
+  const state = { ...liveState, available: true, presentation_mode: 'standard', subtitles_available: true }
+  await installLiveFixture(page, state)
+  await page.getByRole('button', { name: 'Remote', exact: true }).click()
+  const open = page.locator('#remoteMyTvHandoff')
+  await expect(open).toHaveText('Open My TV')
+  await expect(open).toBeEnabled()
+  await open.click()
+  await expect.poll(() => page.evaluate(() => window.__liveCommand)).toBe('enter-my-tv-mode')
+  const picture = page.locator('#remoteWidescreen')
+  await expect(picture).toHaveText('Widescreen')
+  await picture.click()
+  await expect.poll(() => page.evaluate(() => window.__liveCommand)).toBe('toggle-widescreen-mode')
+  await page.evaluate(state => { window.__remoteFixtureState = { ...state, presentation_mode: 'widescreen' }; renderLiveTv(window.__remoteFixtureState) }, state)
+  await expect(picture).toHaveText('Full screen')
+  await expect(picture).toHaveAttribute('aria-pressed', 'true')
+  await page.evaluate(state => { window.__remoteFixtureState = { ...state, presentation_mode: 'fullscreen' }; renderLiveTv(window.__remoteFixtureState) }, state)
+  await expect(picture).toHaveText('Standard')
+  await expect(picture).toHaveAttribute('aria-label', /Cycles Standard, Widescreen, Full screen/)
+  await expect(page.locator('#remoteSubtitles')).toBeEnabled()
+  await page.screenshot({ path: testInfo.outputPath('remote-picture-cycle.png') })
+})
+
 const liveState = {
   available: false, standby: false, my_tv_mode: false, paused: false, muted: false,
   volume: 42, remote_locked: false, subtitles_available: true,
@@ -20,11 +44,12 @@ async function installLiveFixture(page, state = liveState, delayLgStatus = 0) {
   await page.evaluate(async ({ state, delay }) => {
     const originalFetch = window.fetch.bind(window)
     window.__liveRequests = 0
+    window.__remoteFixtureState = state
     window.fetch = async (input, init) => {
       const url = new URL(String(input), location.href)
       if (url.pathname === '/api/live') {
         window.__liveRequests += 1
-        return new Response(JSON.stringify(state), { headers: { 'Content-Type': 'application/json' } })
+        return new Response(JSON.stringify(window.__remoteFixtureState), { headers: { 'Content-Type': 'application/json' } })
       }
       if (url.pathname === '/api/live/control') {
         window.__liveCommand = JSON.parse(String(init?.body || '{}')).command
@@ -117,7 +142,7 @@ test('both phone remotes fit above the bottom navigation without vertical scroll
   await expect(page.locator('#view-live .tv-remote-utility-row button').first()).toHaveAttribute('id', 'remoteBack')
   await expect(page.locator('#view-live .tv-remote-utility-row button').last()).toHaveAttribute('id', 'remoteMabelAction')
   await expect(page.locator('#view-live #remoteBack')).toHaveAttribute('data-live-command', 'close-overlay')
-  await expect(page.locator('#remoteMyTvHandoff')).toHaveAttribute('data-live-command', 'continue-in-my-tv-mode')
+  await expect(page.locator('#remoteMyTvHandoff')).toHaveAttribute('data-live-command', 'enter-my-tv-mode')
   await page.screenshot({ path: testInfo.outputPath('mabel-remote.png') })
 
   await page.locator('[data-remote-switch="lg-tv"]').first().click()

@@ -135,6 +135,18 @@ class LibraryHttpTests(unittest.TestCase):
             self.assertEqual(response.read(), b"poster")
             self.assertIn("immutable", response.headers["Cache-Control"])
 
+    def test_native_local_artwork_reports_webp_and_uses_its_private_resolver(self) -> None:
+        image = self.fixture.root / "saved-poster.jpg"
+        image.write_bytes(b"RIFFxxxxWEBPimage")
+        library = self.server.library
+        library.native_my_tv_local_artwork = mock.Mock(return_value=image)
+        with urllib.request.urlopen(
+                self.base + "/api/native/my-tv/local-artwork/series/saved-poster.jpg",
+                timeout=5) as response:
+            self.assertEqual(response.headers["Content-Type"], "image/webp")
+            self.assertEqual(response.read(), image.read_bytes())
+        library.native_my_tv_local_artwork.assert_called_once_with("series", "saved-poster.jpg")
+
     def test_external_stream_token_works_without_browser_cookie_and_supports_range(self) -> None:
         movie = self.fixture.media / ".my-tv" / "VLC Film.mkv"
         movie.parent.mkdir(parents=True, exist_ok=True)

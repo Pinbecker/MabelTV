@@ -597,6 +597,7 @@ class MediaCatalogueMixin:
                         "size": item.stat().st_size,
                         "browser_ready": self.remote_browser_ready(item),
                         "watched": episode_state.get("watched") is True,
+                        "watched_updated": float(episode_state.get("watched_updated", 0) or 0),
                         "remote_position": position,
                         "remote_duration": float(episode_state.get("remote_duration", 0) or 0),
                         "remote_last_watched": float(episode_state.get("remote_last_watched", 0) or 0),
@@ -959,7 +960,7 @@ class MediaCatalogueMixin:
             "scrubbing_enabled": settings.get("scrubbing_enabled") is True,
         }
 
-    def library(self) -> dict[str, Any]:
+    def channel_library(self) -> list[dict[str, Any]]:
         settings = self.settings()
         rules = settings.get("library", {})
         disabled_channels = set(rules.get("disabled_channels", []))
@@ -1031,6 +1032,11 @@ class MediaCatalogueMixin:
                              "enabled_programmes": sum(p["enabled"] for p in programmes),
                              "metadata": channel_metadata.get(
                                  str(channel["number"]), {})})
+        return response
+
+    def library(self) -> dict[str, Any]:
+        settings = self.settings()
+        response = self.channel_library()
         disk = shutil.disk_usage(self.media_root)
         owner = self.owner()
         return {

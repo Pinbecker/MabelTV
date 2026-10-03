@@ -20,6 +20,35 @@ class StateDomainMigrationTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temporary.cleanup()
 
+    def test_schema_ten_queue_upgrade_preserves_order_and_ending(self) -> None:
+        self.database.path.unlink()
+        connection = self.database.connect()
+        try:
+            for version, description, sql in database_module.MIGRATIONS[:10]:
+                connection.executescript(sql)
+                connection.execute("INSERT INTO schema_migrations VALUES(?,?,?,?)",
+                    (version, description, database_module.MIGRATION_CHECKSUMS[version], 1.0))
+                connection.execute(f"PRAGMA user_version={version}")
+            connection.execute("INSERT INTO channels(number,name,folder,aspect,content_type) "
+                               "VALUES(7,'Films','films','fit','films')")
+            connection.execute("INSERT INTO mabel_queue_entries VALUES('kept',0,7,'First.mp4','First','','Films')")
+            connection.execute("UPDATE mabel_queue_state SET active=1,current_title='Old current',ending='keep_playing'")
+            connection.commit()
+        finally:
+            connection.close()
+        self.database.upgrade()
+        queued = self.database.mabel_queue()
+        self.assertEqual([item['id'] for item in queued['items']], ['kept'])
+        self.assertEqual(queued['ending'], 'keep_playing')
+        self.assertTrue(queued['paused'])
+        self.assertFalse(queued['active'])
+        connection = self.database.connect()
+        try:
+            self.assertEqual(connection.execute('PRAGMA integrity_check').fetchone()[0], 'ok')
+            self.assertEqual(connection.execute('PRAGMA foreign_key_check').fetchall(), [])
+        finally:
+            connection.close()
+
     def test_schema_eight_to_current_renames_my_tv_state_without_data_loss(self) -> None:
         self.database.path.unlink()
         connection = self.database.connect()

@@ -51,6 +51,8 @@ add_library(mabeltv_core STATIC
     src/core/TvControllerPlayback.cpp
     src/core/TvControllerPortal.cpp
     src/core/StateDatabase.cpp
+    src/core/MabelQueueState.cpp
+    src/core/TvControllerQueue.cpp
     src/core/StateDatabase.h
     src/ipc/PortalControlServer.cpp
     src/ipc/PortalControlServer.h
@@ -94,6 +96,7 @@ qt_add_resources(mabeltv "mabeltv_qml"
         qml/Main.qml
         qml/TelevisionScreen.qml
         qml/MabelQueueDoneScreen.qml
+        qml/MabelQueueCoordinator.qml
         qml/DinosaurDenSurround.qml
         qml/FindingNemo.qml
         qml/FindingNemoBubbles.qml
@@ -115,11 +118,34 @@ qt_add_resources(mabeltv "mabeltv_qml"
         qml/SignalIcon.qml
         qml/MyTvModeOverlay.qml
         qml/MyTvLibraryView.qml
+        qml/MyTvArtwork.qml
+        qml/MyTvRoundedClip.qml
+        qml/MyTvText.qml
+        qml/MyTvControl.qml
+        qml/MyTvIcon.qml
+        qml/MyTvHint.qml
+        qml/MyTvArtworkQueue.qml
+        qml/MyTvBrowseRow.qml
         qml/MyTvCard.qml
         qml/MyTvProviderIcon.qml
         qml/MyTvDetailView.qml
         qml/MyTvKeyboard.qml
+        qml/MabelPresentation.qml
         qml/MyTvPlaybackControls.qml
+        qml/MyTvEpisodePlayback.qml
+        qml/MyTvNextEpisode.qml
+)
+
+qt_add_resources(mabeltv "my_tv_visual_assets"
+    PREFIX "/" BASE "assets" FILES
+        assets/fonts/inter/InterVariable.ttf
+        assets/fonts/inter/LICENSE.txt
+        assets/icons/my-tv/play.svg
+        assets/icons/my-tv/restart.svg
+        assets/icons/my-tv/back.svg
+        assets/icons/my-tv/search.svg
+        assets/icons/my-tv/chevron.svg
+        assets/icons/my-tv/subtitles.svg
 )
 
 qt_add_shaders(mabeltv "mabeltv_shaders"
@@ -127,6 +153,7 @@ qt_add_shaders(mabeltv "mabeltv_shaders"
     BASE "shaders"
     FILES
         shaders/crt.frag
+        shaders/my-tv-rounded.frag
 )
 
 target_link_libraries(mabeltv PRIVATE
@@ -170,12 +197,31 @@ if(BUILD_TESTING)
 
     qt_add_executable(mabeltv_core_tests
         tests/unit/CoreTests.cpp
+        tests/unit/CoreTests.h
+        tests/unit/QueueTests.cpp
         tests/unit/TestStateFixture.cpp
         tests/unit/TestStateFixture.h
     )
     target_link_libraries(mabeltv_core_tests PRIVATE mabeltv_core Qt6::Test)
 
     add_test(NAME mabeltv_core_tests COMMAND mabeltv_core_tests)
+    qt_add_executable(mabeltv_native_ui_tests tests/unit/NativeMyTvTests.cpp)
+    target_link_libraries(mabeltv_native_ui_tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml)
+    target_compile_definitions(mabeltv_native_ui_tests PRIVATE TEST_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml")
+    qt_add_shaders(mabeltv_native_ui_tests "my_tv_test_shaders"
+        PREFIX "/shaders" BASE "shaders" FILES shaders/my-tv-rounded.frag)
+    qt_add_resources(mabeltv_native_ui_tests "my_tv_test_assets"
+        PREFIX "/" BASE "assets" FILES
+            assets/fonts/inter/InterVariable.ttf
+            assets/icons/my-tv/play.svg
+            assets/icons/my-tv/restart.svg
+            assets/icons/my-tv/back.svg
+            assets/icons/my-tv/search.svg
+            assets/icons/my-tv/chevron.svg
+            assets/icons/my-tv/subtitles.svg)
+    add_test(NAME mabeltv_native_ui_tests COMMAND mabeltv_native_ui_tests)
+    set_tests_properties(mabeltv_native_ui_tests PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software" TIMEOUT 30)
     add_test(
         NAME mabeltv_library_service_tests
         COMMAND "${Python3_EXECUTABLE}" -m unittest discover

@@ -6,42 +6,49 @@ Rectangle {
     property int selectedIndex: 0
     property var keys: ["Q","W","E","R","T","Y","U","I","O","P",
                         "A","S","D","F","G","H","J","K","L","⌫",
-                        "Z","X","C","V","B","N","M","-","'","DONE"]
+                        "Z","X","C","V","B","N","M","SPACE","CLEAR","DONE",
+                        "1","2","3","4","5","6","7","8","9","0"]
     signal accepted(string value)
     signal closed()
     width: Math.min(parent.width * 0.76, 1320 * host.uiScale)
-    height: 270 * host.uiScale
+    height: 410 * host.uiScale
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.bottom: parent.bottom
     anchors.bottomMargin: 34 * host.uiScale
-    radius: 20 * host.uiScale
+    radius: 24 * host.uiScale
     color: "#f9fafb"
     border.width: 1
     border.color: "#cfd6dd"
 
+    MyTvText {
+        x: 24 * keyboard.host.uiScale; y: 20 * keyboard.host.uiScale
+        font.weight: Font.DemiBold; font.pixelSize: 25 * keyboard.host.uiScale; text: "Search My TV"
+    }
+    MyTvText {
+        anchors.right: parent.right; anchors.rightMargin: 24 * keyboard.host.uiScale
+        y: 24 * keyboard.host.uiScale; color: "#667780"; font.pixelSize: 17 * keyboard.host.uiScale
+        text: "OK to select · Back to close"
+    }
     Grid {
-        anchors.fill: parent
-        anchors.margins: 18 * host.uiScale
+        x: 20 * host.uiScale; y: 68 * host.uiScale
+        width: keyboard.width - 40 * host.uiScale; height: keyboard.height - 88 * host.uiScale
         columns: 10
         spacing: 8 * host.uiScale
         Repeater {
             model: keyboard.keys
-            delegate: Rectangle {
+            delegate: MyTvControl {
                 required property int index
                 required property string modelData
-                width: (keyboard.width - 36 * host.uiScale - 9 * parent.spacing) / 10
-                height: (keyboard.height - 36 * host.uiScale - 2 * parent.spacing) / 3
-                radius: 9 * host.uiScale
-                color: index === keyboard.selectedIndex ? host.accent : "#e4e8ed"
-                border.width: index === keyboard.selectedIndex ? 3 * host.uiScale : 0
-                border.color: "white"
-                Text {
+                width: (parent.width - 9 * parent.spacing) / 10
+                height: (parent.height - 3 * parent.spacing) / 4
+                uiScale: keyboard.host.uiScale; radius: 13 * uiScale
+                highlighted: index === keyboard.selectedIndex; checked: highlighted; accent: keyboard.host.accent
+                MyTvText {
                     anchors.centerIn: parent
                     color: "#152029"
-                    font.family: "DejaVu Sans"
-                    font.bold: true
-                    font.pixelSize: 19 * host.uiScale
-                    text: modelData
+                    font.weight: Font.DemiBold
+                    font.pixelSize: (modelData.length > 1 ? 16 : 21) * keyboard.host.uiScale
+                    text: modelData === "SPACE" ? "Space" : modelData === "CLEAR" ? "Clear" : modelData === "DONE" ? "Done" : modelData
                 }
             }
         }
@@ -51,7 +58,7 @@ Rectangle {
         const value = keys[selectedIndex]
         if (value === "DONE") closed()
         else if (value === "⌫") accepted("\b")
-        else accepted(value)
+        else accepted(value === "SPACE" ? " " : value)
     }
 
     function handleKey(key) {

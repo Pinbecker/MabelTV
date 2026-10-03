@@ -1,153 +1,104 @@
 pragma ComponentBehavior: Bound
-
 import QtQuick
+
 Rectangle {
     id: playbackControls
-
     required property var host
     required property var mediaPlayer
-    anchors.left: parent.left
-    anchors.right: parent.right
-    anchors.bottom: parent.bottom
+    readonly property real uiScale: host.uiScale
+    anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
+    anchors.leftMargin: 42 * uiScale; anchors.rightMargin: 42 * uiScale
+    anchors.bottomMargin: 28 * uiScale
     visible: host.playing
-    height: Math.max(112, parent.height * 0.155)
-    opacity: mediaPlayer.paused ? 1 : host.controlsOpacity
-    color: "#ed0d131a"
-    border.color: "#3b4652"
-    border.width: 1
-
+    height: 262 * uiScale
+    opacity: host.controlsHidden === true ? 0 : mediaPlayer.paused ? 1 : host.controlsOpacity
+    radius: 22 * uiScale; color: "#f2141e27"; border.color: "#35424c"
     Behavior on opacity { NumberAnimation { duration: 180 } }
 
     Column {
-        anchors.fill: parent
-        anchors.margins: Math.max(14, parent.height * 0.022)
-        spacing: Math.max(6, 8 * host.uiScale)
-
-        Row {
-            width: parent.width
-            height: Math.max(30, 36 * host.uiScale)
-            spacing: Math.max(10, 12 * host.uiScale)
-
-            Text {
-                width: parent.width - (subtitleAction.visible
-                                        ? subtitleAction.width + parent.spacing
-                                        : (noSubtitlesMessage.visible
-                                           ? noSubtitlesMessage.width + parent.spacing : 0))
-                anchors.verticalCenter: parent.verticalCenter
-                color: "#f4f1eb"
+        anchors.fill: parent; anchors.margins: 22 * playbackControls.uiScale
+        spacing: 8 * playbackControls.uiScale
+        Column {
+            width: parent.width; height: 50 * playbackControls.uiScale; spacing: 4 * playbackControls.uiScale
+            MyTvText {
+                width: parent.width; color: "#ffffff"; font.weight: Font.DemiBold
+                font.pixelSize: 27 * playbackControls.uiScale; elide: Text.ElideRight
+                text: playbackControls.host.currentFilm()?.series?.title || playbackControls.host.currentFilm()?.name || ""
+            }
+            MyTvText {
+                width: parent.width; color: "#c1ccd4"; font.pixelSize: 19 * playbackControls.uiScale
                 elide: Text.ElideRight
-                font.family: "DejaVu Sans"
-                font.bold: true
-                font.pixelSize: Math.max(17, host.height * 0.026)
-                text: host.currentFilm() ? host.currentFilm().name : ""
-            }
-
-            Rectangle {
-                id: subtitleAction
-                anchors.verticalCenter: parent.verticalCenter
-                // Keep the status visible as soon as the scrubber opens.
-                // Up/Down only moves selection; it must not make this
-                // control suddenly appear.
-                visible: host.scrubberActive && mediaPlayer.subtitlesAvailable
-                width: subtitleActionLabel.implicitWidth + Math.max(30, 36 * host.uiScale)
-                height: Math.max(28, 34 * host.uiScale)
-                radius: height / 2
-                color: host.scrubberFocus === 1 ? "#f1eee7" : "#28323d"
-                border.width: host.scrubberFocus === 1 ? 2 : 1
-                border.color: host.scrubberFocus === 1 ? "#ffffff" : "#596675"
-
-                Text {
-                    id: subtitleActionLabel
-                    anchors.centerIn: parent
-                    color: host.scrubberFocus === 1 ? "#131920" : "#edf1ec"
-                    font.family: "DejaVu Sans"
-                    font.bold: true
-                    font.pixelSize: Math.max(9, 11 * host.uiScale)
-                    text: "SUBTITLES " + (mediaPlayer.subtitlesVisible ? "ON" : "OFF")
-                }
-            }
-
-            Text {
-                id: noSubtitlesMessage
-                anchors.verticalCenter: parent.verticalCenter
-                visible: host.scrubberActive && !mediaPlayer.subtitlesAvailable
-                color: "#aeb8c1"
-                font.family: "DejaVu Sans"
-                font.bold: true
-                font.pixelSize: Math.max(9, 11 * host.uiScale)
-                text: "NO SUBTITLES AVAILABLE"
+                text: playbackControls.host.episodeLabel || (playbackControls.mediaPlayer.paused ? "Paused" : "Playing on My TV")
             }
         }
-
         Item {
-            width: parent.width
-            height: Math.max(22, 28 * host.uiScale)
-
+            width: parent.width; height: 25 * playbackControls.uiScale
             Rectangle {
                 id: timelineTrack
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                height: Math.max(8, 11 * host.uiScale)
-                radius: height / 2
-                color: "#3b4753"
-                border.width: host.scrubberActive && host.scrubberFocus === 0 ? 2 : 0
-                border.color: "#d6b36a"
-
-                Rectangle {
-                    width: parent.width * Math.min(1, host.playbackDuration > 0
-                                                   ? host.playbackPosition / host.playbackDuration : 0)
-                    height: parent.height
-                    radius: parent.radius
-                    color: "#d56d50"
-                }
+                anchors.left: parent.left; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                height: 8 * playbackControls.uiScale; radius: height / 2; color: "#43505c"
+                border.width: playbackControls.host.scrubberActive && playbackControls.host.scrubberFocus === 0 ? 2 : 0
+                border.color: "#b5f3e9"
+                readonly property real ratio: playbackControls.host.playbackDuration > 0
+                    ? Math.min(1, Math.max(0, playbackControls.host.playbackPosition / playbackControls.host.playbackDuration)) : 0
+                Rectangle { width: parent.width * timelineTrack.ratio; height: parent.height; radius: parent.radius; color: "#04c6a8" }
                 Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
-                    x: Math.max(0, Math.min(parent.width - width,
-                                             parent.width * Math.min(1, host.playbackDuration > 0
-                                                                      ? host.playbackPosition / host.playbackDuration : 0) - width / 2))
-                    width: Math.max(12, 16 * host.uiScale)
-                    height: width
-                    radius: width / 2
-                    color: "#f5f1e9"
-                    visible: host.scrubberActive
+                    x: Math.max(0, Math.min(parent.width - width, parent.width * timelineTrack.ratio - width / 2))
+                    width: 18 * playbackControls.uiScale; height: width; radius: width / 2; color: "#ffffff"
+                    visible: playbackControls.host.scrubberActive
                 }
             }
         }
-
         Row {
-            width: parent.width
-            Text {
-                width: parent.width * 0.25
-                color: "#dce3dd"
-                font.family: "DejaVu Sans"
-                font.bold: true
-                font.pixelSize: Math.max(11, 14 * host.uiScale)
-                text: host.formatTime(host.playbackPosition)
+            width: parent.width; height: 22 * playbackControls.uiScale
+            MyTvText { width: parent.width / 2; color: "#e4ecf1"; font.pixelSize: 18 * playbackControls.uiScale; text: playbackControls.host.formatTime(playbackControls.host.playbackPosition) }
+            MyTvText { width: parent.width / 2; horizontalAlignment: Text.AlignRight; color: "#c1ccd4"; font.pixelSize: 18 * playbackControls.uiScale; text: "−" + playbackControls.host.formatTime(Math.max(0, playbackControls.host.playbackDuration - playbackControls.host.playbackPosition)) + " remaining" }
+        }
+        Row {
+            width: parent.width; height: 48 * playbackControls.uiScale; spacing: 14 * playbackControls.uiScale
+            MyTvControl {
+                width: 184 * playbackControls.uiScale; height: parent.height
+                uiScale: playbackControls.uiScale; primary: true
+                highlighted: playbackControls.host.scrubberActive && playbackControls.host.scrubberFocus === 2
+                MyTvText { anchors.centerIn: parent; font.pixelSize: 20 * playbackControls.uiScale; font.weight: Font.DemiBold; text: playbackControls.mediaPlayer.paused ? "▶  Play" : "Ⅱ  Pause" }
             }
-            Text {
-                width: parent.width * 0.5
-                color: "#aeb8c1"
-                horizontalAlignment: Text.AlignHCenter
-                font.family: "DejaVu Sans"
-                font.pixelSize: Math.max(10, 12 * host.uiScale)
-                text: host.scrubberActive
-                      ? (host.scrubberFocus === 1
-                         ? "OK  TOGGLE SUBTITLES     ↓  TIMELINE     BACK  CLOSE"
-                         : (mediaPlayer.subtitlesAvailable
-                            ? "↑  SUBTITLES     ← →  15 SEC     OK  PAUSE"
-                            : "NO SUBTITLES AVAILABLE     ← →  15 SEC     OK  PAUSE"))
-                      : "↑ / ↓  CONTROLS     ← →  15 SEC     OK  PAUSE"
+            MyTvControl {
+                id: subtitleAction
+                readonly property var host: playbackControls.host
+                readonly property var mediaPlayer: playbackControls.mediaPlayer
+                visible: host.scrubberActive && mediaPlayer.subtitlesAvailable
+                width: 238 * playbackControls.uiScale; height: parent.height
+                uiScale: playbackControls.uiScale; checked: mediaPlayer.subtitlesVisible
+                highlighted: host.scrubberFocus === 1
+                Row {
+                    anchors.centerIn: parent; spacing: 10 * playbackControls.uiScale
+                    MyTvIcon { name: "subtitles"; width: 24 * playbackControls.uiScale; height: width; anchors.verticalCenter: parent.verticalCenter }
+                    MyTvText { font.pixelSize: 19 * playbackControls.uiScale; font.weight: Font.DemiBold; text: "Subtitles " + (subtitleAction.mediaPlayer.subtitlesVisible ? "on" : "off") }
+                }
             }
-            Text {
-                width: parent.width * 0.25
-                color: "#dce3dd"
-                horizontalAlignment: Text.AlignRight
-                font.family: "DejaVu Sans"
-                font.bold: true
-                font.pixelSize: Math.max(11, 14 * host.uiScale)
-                text: host.formatTime(host.playbackDuration)
+            MyTvText {
+                id: noSubtitlesMessage
+                anchors.verticalCenter: parent.verticalCenter
+                visible: playbackControls.host.scrubberActive && !playbackControls.mediaPlayer.subtitlesAvailable
+                color: "#aeb8c1"; font.pixelSize: 16 * playbackControls.uiScale; text: "NO SUBTITLES AVAILABLE"
             }
+            MyTvControl {
+                visible: Boolean(playbackControls.host.nextEpisode)
+                width: 232 * playbackControls.uiScale; height: parent.height
+                uiScale: playbackControls.uiScale
+                highlighted: playbackControls.host.scrubberActive && playbackControls.host.scrubberFocus === 3
+                MyTvText { anchors.centerIn: parent; font.pixelSize: 19 * playbackControls.uiScale; font.weight: Font.DemiBold; text: "Next episode  →" }
+            }
+        }
+        Rectangle { width: parent.width; height: 1; color: "#394954" }
+        Row {
+            spacing: 32 * playbackControls.uiScale
+            readonly property bool choosing: playbackControls.host.scrubberActive && playbackControls.host.scrubberFocus > 0
+            MyTvHint { keys: "← / →"; label: parent.choosing ? "Choose action" : "Seek 15 sec"; dark: true; uiScale: playbackControls.uiScale }
+            MyTvHint { keys: parent.choosing ? "↓" : "↑"; label: parent.choosing ? "Timeline" : "Actions"; dark: true; uiScale: playbackControls.uiScale }
+            MyTvHint { keys: "OK"; label: parent.choosing ? "Select" : "Play / Pause"; dark: true; uiScale: playbackControls.uiScale }
+            MyTvHint { keys: "Back"; label: playbackControls.host.backActionLabel || "Close controls"; dark: true; uiScale: playbackControls.uiScale }
         }
     }
 }

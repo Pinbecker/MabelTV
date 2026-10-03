@@ -210,6 +210,7 @@ void PortalControlServer::dispatch(QLocalSocket *socket, const QByteArray &rawCo
              m_rootObject->property("portalSubtitlesVisible").toBool()},
             {QStringLiteral("widescreen_available"),
              m_rootObject->property("portalWidescreenAvailable").toBool()},
+            {QStringLiteral("presentation_mode"), m_rootObject->property("portalPresentationMode").toString()},
             {QStringLiteral("widescreen_enabled"),
              m_rootObject->property("widescreenMode").toBool()},
             {QStringLiteral("my_tv_handoff_available"),
@@ -259,6 +260,12 @@ void PortalControlServer::dispatch(QLocalSocket *socket, const QByteArray &rawCo
     if (command == QStringLiteral("start-mabel-queue")) {
         QMetaObject::invokeMethod(m_rootObject, "portalStartMabelQueue",
                                   Qt::QueuedConnection);
+        finish(socket, "ok\n");
+        return;
+    }
+
+    if (command == QStringLiteral("pause-mabel-queue-transfer")) {
+        QMetaObject::invokeMethod(m_rootObject, "portalPauseMabelQueue", Qt::QueuedConnection);
         finish(socket, "ok\n");
         return;
     }

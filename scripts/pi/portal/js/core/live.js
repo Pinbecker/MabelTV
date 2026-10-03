@@ -161,14 +161,17 @@
       $('#remoteSubtitles').classList.toggle('active', state.subtitles_visible === true)
       $('#remoteSubtitles').setAttribute('aria-pressed', String(state.subtitles_visible === true))
       const widescreenAvailable = !my_tv && state.widescreen_available === true
-      const widescreenEnabled = widescreenAvailable && state.widescreen_enabled === true
-      $('#remoteWidescreen').classList.toggle('active', widescreenEnabled)
-      $('#remoteWidescreen').setAttribute('aria-pressed', String(widescreenEnabled))
-      $('#remoteWidescreen').setAttribute('aria-label', widescreenEnabled
-        ? 'Turn widescreen mode off' : 'Turn widescreen mode on')
+      const presentationMode = state.presentation_mode || (state.widescreen_enabled ? 'widescreen' : 'standard')
+      const nextPresentation = presentationMode === 'widescreen' ? 'Full screen'
+        : presentationMode === 'fullscreen' ? 'Standard' : 'Widescreen'
+      const presentationButton = $('#remoteWidescreen')
+      presentationButton.querySelector('span').textContent = nextPresentation
+      presentationButton.classList.toggle('active', widescreenAvailable && presentationMode !== 'standard')
+      presentationButton.setAttribute('aria-pressed', String(widescreenAvailable && presentationMode !== 'standard'))
+      presentationButton.setAttribute('aria-label', `Picture mode: ${presentationMode === 'fullscreen' ? 'Full screen' : presentationMode}. Switch to ${nextPresentation}. Cycles Standard, Widescreen, Full screen.`)
       const myTvHandoffAvailable = available && !my_tv
         && state.my_tv_handoff_available === true
-      $('#remoteMyTvHandoff').setAttribute('aria-label', `Continue ${state.programme || 'this programme'} in My TV without the television frame`)
+      $('#remoteMyTvHandoff').setAttribute('aria-label', 'Open the My TV library')
       const channelPickerLabel = $('#remoteChannelPickerLabel')
       if (channelPickerLabel) channelPickerLabel.textContent = my_tv
         ? 'My TV is open' : (available ? `CH ${state.channel_number} · ${state.channel_name}` : 'Choose a channel')
@@ -179,7 +182,7 @@
       lockButton.setAttribute('aria-label', locked ? 'Unlock kids’ physical remote' : 'Lock kids’ physical remote')
       $$('[data-live-command]').forEach(button => {
         const myTvSubtitles = button.dataset.liveCommand !== 'toggle-subtitles'
-          || (my_tv && state.subtitles_available !== false)
+          || ((my_tv || presentationMode === 'fullscreen') && state.subtitles_available !== false)
         const widescreenControl = button.dataset.liveCommand !== 'toggle-widescreen-mode'
           || widescreenAvailable
         const myTvHandoffControl = button.dataset.liveCommand !== 'continue-in-my-tv-mode'

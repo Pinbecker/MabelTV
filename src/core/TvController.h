@@ -134,6 +134,9 @@ public:
     Q_INVOKABLE void confirmNumericEntry();
     Q_INVOKABLE void playbackEnded();
     Q_INVOKABLE void startMabelQueue();
+    Q_INVOKABLE void queuePlaybackStarted(const QUrl &source);
+    Q_INVOKABLE void pauseQueuePlaybackForTransfer();
+    Q_INVOKABLE void pauseMabelQueue();
     Q_INVOKABLE void playbackFailed(const QString &message);
     Q_INVOKABLE void prepareForPlaybackRestart(const QString &message);
     Q_INVOKABLE void updatePlaybackPosition(double positionSeconds, bool paused);
@@ -286,6 +289,8 @@ private:
     bool applyLibrary(ChannelLibraryResult library);
 
     bool m_queueTransition = false;
+    bool playQueuedProgramme(bool start, bool previous = false);
+    double m_queueLastSavedPosition = -10;
 
     QVector<ChannelRuntime> m_channels;
     QTimer m_tuningTimer;

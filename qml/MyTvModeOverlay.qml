@@ -21,11 +21,17 @@ Item {
     property var visibleFilms: []
     readonly property real playbackPosition: myTvPlayer.playbackPosition
     readonly property real playbackDuration: myTvPlayer.playbackDuration
+    readonly property bool paused: myTvPlayer.paused
+    readonly property var nextEpisode: episodePlayback.nextEpisode
+    readonly property string episodeLabel: episodePlayback.episodeLabel
     readonly property bool subtitlesAvailable: myTvPlayer.subtitlesAvailable
     readonly property bool subtitlesVisible: myTvPlayer.subtitlesVisible
     readonly property string currentFilmName: currentFilm() ? currentFilm().name : ""
     readonly property real uiScale: Math.max(0.62, Math.min(width / 1920, height / 1080))
     property real controlsOpacity: 1
+    property bool controlsHidden: false
+    readonly property string backActionLabel: scrubberActive ? "Close controls" : "Return to library"
+    onControlsOpacityChanged: if (controlsOpacity > 0) controlsHidden = false
     property real selectedSavedPosition: 0
     property bool playChoiceVisible: false
     property int playChoiceIndex: 0
@@ -46,11 +52,13 @@ Item {
     signal powerRequested()
 
     onSelectedIndexChanged: refreshSelectedFilmPosition()
+    onPlayingChanged: if (!playing && active && !closing) libraryView.loadHome()
 
     visible: active
     z: 180
 
     function open() {
+        episodePlayback.cancel()
         rebuildCollections()
         libraryFilmStartTimer.stop()
         queuedLibraryFilmPath = ""
@@ -80,6 +88,7 @@ Item {
     }
 
     function requestExternal(source, title, startPosition) {
+        episodePlayback.cancel()
         queuedExternalSource = source
         queuedExternalTitle = title
         queuedExternalPosition = Math.max(0, Number(startPosition) || 0)
@@ -91,6 +100,7 @@ Item {
     }
 
     function requestLibraryFilm(filePath, startPosition) {
+        episodePlayback.cancel()
         queuedLibraryFilmPath = filePath
         queuedLibraryFilmPosition = Math.max(0, Number(startPosition) || 0)
         if (playing || stopping) {
@@ -101,6 +111,7 @@ Item {
     }
 
     function playLibraryFilm(filePath, startPosition) {
+        libraryView.selectedPlayback = null
         rebuildCollections()
         selectedCollectionIndex = 0
         applySelectedCollection()
@@ -115,6 +126,7 @@ Item {
     }
 
     function playExternal(source, title, startPosition) {
+        episodePlayback.cancel()
         externalSession = true
         externalSource = source
         externalTitle = title || "USB video"
@@ -135,6 +147,7 @@ Item {
         if (closing)
             return
         closing = true
+        episodePlayback.cancel()
         controlsOpacity = 1
         stopFilm()
     }
@@ -175,9 +188,11 @@ Item {
             scrubberFocus = 0
             controlsTimer.stop()
             controlsOpacity = 0
+            controlsHidden = true
             return
         }
         if (playing || stopping) {
+            episodePlayback.cancel()
             backPressHeld = waitForRelease
             ignoreLibraryBackBeforeMs = Date.now() + 750
             controlsOpacity = 1
@@ -188,10 +203,6 @@ Item {
             return
         if (libraryView.back())
             return
-        if (navigationZone === 1) {
-            navigationZone = 0
-            return
-        }
         close()
     }
 
@@ -315,6 +326,7 @@ Item {
     }
 
     function startSelectedFilm(startPosition) {
+        episodePlayback.cancel()
         const film = currentFilm()
         if (!film)
             return
@@ -336,6 +348,7 @@ Item {
         if (!item || !item.source)
             return
         libraryView.selectedPlayback = item
+        episodePlayback.begin(item)
         errorMessage = ""
         externalSession = false
         playing = true
@@ -344,12 +357,20 @@ Item {
         scrubberActive = false
         scrubberFocus = 0
         myTvPlayer.play(item.source, Math.max(0, Number(startPosition) || 0))
+        selectedSavedPosition = Math.max(0, Number(startPosition) || 0)
         controlsTimer.restart()
     }
 
     function appendRemoteText(value) {
         if (!playing)
             libraryView.appendRemoteText(value)
+    }
+
+    function showLibrary() {
+        episodePlayback.cancel(); externalStartTimer.stop(); libraryFilmStartTimer.stop()
+        queuedExternalSource = ""; queuedLibraryFilmPath = ""; playChoiceVisible = false
+        if (playing && !stopping) stopFilm()
+        libraryView.open()
     }
 
     function playSelected() {
@@ -383,7 +404,9 @@ Item {
         const film = currentFilm()
         if (!film || myTvPlayer.playbackPosition < 2)
             return
-        controller.setMyTvPlaybackPosition(film.id, myTvPlayer.playbackPosition)
+        if (film.mabel?.kind === "films")
+            controller.setChannelFilmPlaybackState(film.mabel.channel, film.mabel.file, myTvPlayer.playbackPosition, myTvPlayer.playbackDuration)
+        else controller.setMyTvPlaybackPosition(film.id, myTvPlayer.playbackPosition)
         selectedSavedPosition = myTvPlayer.playbackPosition
     }
 
@@ -396,17 +419,20 @@ Item {
     }
 
     function showControls() {
+        controlsHidden = false
         controlsOpacity = 1
         controlsTimer.restart()
     }
 
     function openScrubber() {
+        episodePlayback.promptSelected = false
         scrubberActive = true
         scrubberFocus = 0
         showControls()
     }
 
     function selectRelative(offset) {
+        if (playing && offset > 0 && nextEpisode) { episodePlayback.skip(); return }
         const count = visibleFilms.length
         if (playing || stopping || count === 0)
             return
@@ -497,6 +523,22 @@ Item {
         if (stopping)
             return true
 
+        if (episodePlayback.handleKey(key, isAutoRepeat)) return true
+        if (key === Qt.Key_MediaNext && !isAutoRepeat) { episodePlayback.skip(); return true }
+        if (scrubberActive && scrubberFocus > 0 && !isAutoRepeat) {
+            if (key === Qt.Key_Left || key === Qt.Key_Right) {
+                const actions = [2].concat(myTvPlayer.subtitlesAvailable ? [1] : []).concat(nextEpisode ? [3] : [])
+                scrubberFocus = actions[Math.max(0, Math.min(actions.length - 1,
+                    actions.indexOf(scrubberFocus) + (key === Qt.Key_Right ? 1 : -1)))]
+                showControls(); return true
+            }
+            if ((key === Qt.Key_Return || key === Qt.Key_Enter) && scrubberFocus === 2) {
+                togglePause(); scrubberFocus = 2; return true
+            }
+            if ((key === Qt.Key_Return || key === Qt.Key_Enter) && scrubberFocus === 3)
+                return episodePlayback.skip()
+        }
+
         if (scrubberActive && scrubberFocus === 1
                 && (key === Qt.Key_Return || key === Qt.Key_Enter) && !isAutoRepeat) {
             toggleSubtitles()
@@ -504,8 +546,11 @@ Item {
                    && myTvPlayer.subtitlesAvailable) {
             scrubberFocus = 1
             showControls()
+        } else if (scrubberActive && key === Qt.Key_Up && !isAutoRepeat) {
+            scrubberFocus = 2
+            showControls()
         } else if (scrubberActive && key === Qt.Key_Down && !isAutoRepeat
-                   && scrubberFocus === 1) {
+                   && scrubberFocus > 0) {
             scrubberFocus = 0
             showControls()
         } else if (scrubberActive && key === Qt.Key_Down && !isAutoRepeat) {
@@ -551,9 +596,11 @@ Item {
         subtitleDefaultOn: true
 
         onPlaybackFinished: {
+            if (episodePlayback.finished()) return
             const film = overlay.currentFilm()
             if (film && !overlay.externalSession) {
-                controller.setMyTvPlaybackPosition(film.id, 0)
+                if (film.mabel?.kind === "films") controller.setChannelFilmPlaybackState(film.mabel.channel, film.mabel.file, 0, myTvPlayer.playbackDuration)
+                else controller.setMyTvPlaybackPosition(film.id, 0)
                 overlay.selectedSavedPosition = 0
             }
             if (overlay.closing)
@@ -576,6 +623,7 @@ Item {
             }
         }
         onPlaybackStopped: {
+            if (episodePlayback.stopped()) return
             if (overlay.closing)
                 overlay.finishClose()
             else if (overlay.queuedExternalSource.toString().length > 0) {
@@ -596,7 +644,9 @@ Item {
             }
         }
         onPlaybackFailed: message => {
+            episodePlayback.cancel()
             overlay.errorMessage = message
+            libraryView.notify(message)
             if (overlay.closing)
                 overlay.finishClose()
             else if (overlay.queuedExternalSource.toString().length > 0) {
@@ -619,8 +669,10 @@ Item {
         onPausedChanged: overlay.showControls()
         onPlaybackDurationChanged: {
             const film = overlay.currentFilm()
-            if (film && !overlay.externalSession && myTvPlayer.playbackDuration >= 10)
-                controller.setMyTvPlaybackDuration(film.id, myTvPlayer.playbackDuration)
+            if (film && !overlay.externalSession && myTvPlayer.playbackDuration >= 10) {
+                if (film.mabel?.kind === "films") controller.setChannelFilmPlaybackState(film.mabel.channel, film.mabel.file, Math.max(myTvPlayer.playbackPosition, overlay.selectedSavedPosition), myTvPlayer.playbackDuration)
+                else controller.setMyTvPlaybackDuration(film.id, myTvPlayer.playbackDuration)
+            }
         }
     }
 
@@ -642,30 +694,28 @@ Item {
             width: Math.min(parent.width * 0.48, 760)
             height: Math.min(parent.height * 0.52, 520)
             radius: Math.max(18, 24 * overlay.uiScale)
-            color: "#171d24"
+            color: "#f3f5f7"
             border.width: 1
-            border.color: "#3a4654"
+            border.color: "#d8e1e6"
 
             Column {
                 anchors.fill: parent
                 anchors.margins: Math.max(28, 36 * overlay.uiScale)
                 spacing: Math.max(12, 16 * overlay.uiScale)
 
-                Text {
+                MyTvText {
                     width: parent.width
-                    color: "#87919d"
-                    font.family: "DejaVu Sans"
-                    font.bold: true
+                    color: "#008b79"
+                    font.weight: Font.DemiBold
                     font.letterSpacing: 1.6
                     font.pixelSize: Math.max(10, 13 * overlay.uiScale)
                     text: "CONTINUE WATCHING"
                 }
 
-                Text {
+                MyTvText {
                     width: parent.width
-                    color: "#f3f0ea"
-                    font.family: "DejaVu Sans"
-                    font.bold: true
+                    color: "#17242d"
+                    font.weight: Font.DemiBold
                     maximumLineCount: 2
                     elide: Text.ElideRight
                     wrapMode: Text.Wrap
@@ -677,15 +727,13 @@ Item {
 
                 Repeater {
                     model: 2
-                    delegate: Rectangle {
+                    delegate: MyTvControl {
                         required property int index
                         readonly property bool selected: index === overlay.playChoiceIndex
                         width: parent.width
                         height: Math.max(64, 82 * overlay.uiScale)
                         radius: Math.max(10, 14 * overlay.uiScale)
-                        color: selected ? "#f0ede6" : "#202831"
-                        border.width: selected ? 2 : 1
-                        border.color: selected ? "#ffffff" : "#35404c"
+                        uiScale: overlay.uiScale; highlighted: selected; checked: selected
 
                         Column {
                             anchors.verticalCenter: parent.verticalCenter
@@ -693,16 +741,14 @@ Item {
                             anchors.right: parent.right
                             anchors.margins: Math.max(16, 21 * overlay.uiScale)
                             spacing: 2
-                            Text {
-                                color: selected ? "#151a20" : "#edf0ec"
-                                font.family: "DejaVu Sans"
-                                font.bold: true
+                            MyTvText {
+                                color: "#17242d"
+                                font.weight: Font.DemiBold
                                 font.pixelSize: Math.max(15, 19 * overlay.uiScale)
                                 text: index === 0 ? "Resume" : "Play from start"
                             }
-                            Text {
-                                color: selected ? "#58636e" : "#9aa5b1"
-                                font.family: "DejaVu Sans"
+                            MyTvText {
+                                color: "#667780"
                                 font.pixelSize: Math.max(11, 14 * overlay.uiScale)
                                 text: index === 0
                                       ? "Continue at " + overlay.formatTime(overlay.selectedSavedPosition)
@@ -713,10 +759,9 @@ Item {
                 }
 
                 Item { width: 1; height: 1 }
-                Text {
+                MyTvText {
                     width: parent.width
-                    color: "#89939f"
-                    font.family: "DejaVu Sans"
+                    color: "#667780"
                     horizontalAlignment: Text.AlignHCenter
                     font.pixelSize: Math.max(10, 13 * overlay.uiScale)
                     text: "↑ ↓  CHOOSE OPTION     OK  CONFIRM     BACK  CANCEL"
@@ -753,9 +798,13 @@ Item {
     }
 
     MyTvPlaybackControls {
+        id: playbackControls
         host: overlay
         mediaPlayer: myTvPlayer
     }
+
+    MyTvEpisodePlayback { id: episodePlayback; host: overlay; library: libraryView }
+    MyTvNextEpisode { host: overlay; sequence: episodePlayback }
 
     Rectangle {
         // A distinct MyTv volume rail: available while the controls are up,
@@ -764,7 +813,7 @@ Item {
         anchors.left: parent.left
         anchors.leftMargin: Math.max(22, 30 * overlay.uiScale)
         anchors.verticalCenter: parent.verticalCenter
-        visible: overlay.playing && (myTvPlayer.paused || overlay.controlsOpacity > 0)
+        visible: overlay.playing && !overlay.controlsHidden && (myTvPlayer.paused || overlay.controlsOpacity > 0)
         z: 3
         width: Math.max(52, 62 * overlay.uiScale)
         height: Math.max(172, parent.height * 0.30)
@@ -779,12 +828,11 @@ Item {
             anchors.bottomMargin: Math.max(10, 13 * overlay.uiScale)
             spacing: Math.max(5, 7 * overlay.uiScale)
 
-            Text {
+            MyTvText {
                 width: parent.width
                 horizontalAlignment: Text.AlignHCenter
                 color: "#aeb8c2"
-                font.family: "DejaVu Sans"
-                font.bold: true
+                font.weight: Font.DemiBold
                 font.letterSpacing: 1.1
                 font.pixelSize: Math.max(8, 10 * overlay.uiScale)
                 text: "VOL"
@@ -805,7 +853,7 @@ Item {
                         width: parent.width
                         height: parent.height * (controller.muted ? 0 : controller.volume / 100)
                         radius: parent.radius
-                        color: "#d6b36a"
+                        color: "#04c6a8"
                     }
                     Rectangle {
                         anchors.horizontalCenter: parent.horizontalCenter
@@ -818,13 +866,12 @@ Item {
                     }
                 }
             }
-            Text {
+            MyTvText {
                 id: volumeLabel
                 width: parent.width
                 horizontalAlignment: Text.AlignHCenter
                 color: "#f4f1eb"
-                font.family: "DejaVu Sans"
-                font.bold: true
+                font.weight: Font.DemiBold
                 font.pixelSize: Math.max(10, 12 * overlay.uiScale)
                 text: controller.muted ? "MUTE" : controller.volume + "%"
             }
