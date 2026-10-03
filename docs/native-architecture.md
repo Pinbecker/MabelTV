@@ -21,6 +21,7 @@ sections are composed from focused components:
 | `ParentConfirmationView.qml` | Modern parent-access confirmation screen. |
 | `ParentDashboardView.qml` | Modern parent settings and channel-management screen. |
 | `MyTvLibraryView.qml` | Transient browse/search state, bounded cancellable requests and exact playback selection. |
+| `MyTvMabelBrowse.qml` | Prefetched family-channel directory, short-lived channel payloads, cancellable transitions and saved browse focus. Episode detail returns directly to the directory. |
 | `MyTvBrowseRow.qml` and `MyTvCard.qml` | Virtualised shelves and six-column Films/Series grid rows, without provider badges. |
 | `MyTvArtwork.qml` and `MyTvArtworkQueue.qml` | Size-bounded image decode, a maximum of four artwork downloads, placeholder and one retry. |
 | `MyTvRoundedClip.qml` and `my-tv-rounded.frag` | One-pass GPU clipping for rounded artwork and circular cast portraits; focus rings stay outside the image layer to avoid resizing or re-decoding artwork. |

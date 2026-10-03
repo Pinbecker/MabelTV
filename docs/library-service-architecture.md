@@ -186,3 +186,7 @@ Availability is loaded for the selected title through the existing provider TTL,
 independently of its basic details. The native artwork routes remain loopback
 only; JSON requests also require the native header. They do not change parent
 PIN protection on the portal's private routes.
+
+The native family-channel directory omits resume hydration. A selected channel
+projects only that channel through `channel_library(channel_number)`; the portal
+keeps the complete projection and shared bookmark semantics.

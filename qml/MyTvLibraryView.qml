@@ -41,12 +41,14 @@ Item {
     property int homeGeneration: 0
     property var pendingRequests: []
     property alias artworkQueue: artworkQueue
+    property alias browseContentY: browse.contentY
     anchors.fill: parent
     visible: !host.playing
 
     Rectangle { anchors.fill: parent; color: "#f3f5f7" }
     FontLoader { source: "qrc:/fonts/inter/InterVariable.ttf" }
     MyTvArtworkQueue { id: artworkQueue }
+    MyTvMabelBrowse { id: family; host: view; objectName: "familyBrowse" }
     Row {
         id: heading
         x: 60 * view.uiScale; y: 38 * view.uiScale
@@ -101,6 +103,7 @@ Item {
         height: parent.height - y - 30 * view.uiScale
         clip: true; spacing: 14 * view.uiScale
         cacheBuffer: 180 * view.uiScale
+        visible: !view.detailVisible
         model: view.rows
         currentIndex: view.selectedRow
         onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
@@ -117,7 +120,7 @@ Item {
         color: "#647680"; font.pixelSize: 27 * view.uiScale
         text: view.loading ? "Loading your library…" : view.query ? "No matching titles" : "Your library is empty"
     }
-    MyTvDetailView { id: detailView; host: view; visible: view.detailVisible; z: 10; onClosed: view.closeDetail() }
+    MyTvDetailView { id: detailView; host: view; visible: view.detailVisible; z: 10; onClosed: view.back() }
     Rectangle { visible: view.keyboardVisible; anchors.fill: parent; z: 19; color: "#660e1b23" }
     MyTvKeyboard {
         id: keyboard; host: view; visible: view.keyboardVisible; z: 20
@@ -187,6 +190,7 @@ Item {
         return { abort: function() { if (!finished) { finished = true; remove(); xhr.abort() } } }
     }
     function open() {
+        family.cancelChannel()
         mabelVisible = false; mabelChannel = null
         closeDetail(); keyboardVisible = false; selectedPlayback = null
         selectedZone = 1; selectedRow = 0; selectedCard = 0; query = ""
@@ -194,7 +198,7 @@ Item {
         browse.contentY = 0; loadHome()
     }
     function loadHome() {
-        if (mabelVisible) { loadMabel(mabelChannel); return }
+        if (mabelVisible) { if (mabelChannel) family.openChannel(mabelChannel, true); else family.showDirectory(); return }
         const generation = ++homeGeneration
         if (activeHomeRequest) activeHomeRequest.abort()
         loading = true
@@ -202,6 +206,7 @@ Item {
             if (generation !== homeGeneration) return
             homeData = result; tvDisplayName = result.tv_name || "Mabel TV"
             rebuildRows(); loading = false; activeHomeRequest = null
+            family.prefetch()
             if (detailVisible && detailView.detail.on_mabeltv) {
                 const detailToken = detailGeneration
                 request("/api/native/my-tv/local-title?key=" + encodeURIComponent(detailView.detail.key), "GET", null, value => {
@@ -215,30 +220,15 @@ Item {
             next.push({ title: index === 0 ? title : "", wide: false, items: values.slice(index, index + 6) })
     }
     function loadMabel(channel) {
-        const generation = ++homeGeneration
-        if (activeHomeRequest) activeHomeRequest.abort()
-        const previous = mabelChannel?.channel_number
-        mabelChannel = channel; loading = true
-        if (previous !== channel?.channel_number) { selectedRow = 0; selectedCard = 0; browse.contentY = 0 }
-        const path = channel ? "/api/native/my-tv/mabel-channel?number=" + channel.channel_number : "/api/native/my-tv/mabel-channels"
-        activeHomeRequest = request(path, "GET", null, result => {
-            if (generation !== homeGeneration || !mabelVisible) return
-            if (channel) mabelItems = result.items || []; else mabelChannels = result.channels || []
-            loading = false; activeHomeRequest = null; selectedZone = 1; rebuildRows()
-            if (channel && result.content_type !== "films") {
-                const resume = mabelItems.filter(value => value.remote_position >= 30)[0] || mabelItems[0]
-                const detail = Object.assign({}, channel, { borrowed: true, on_mabeltv: true, media_type: "tv",
-                    overview: result.overview || "Choose an episode to watch without the television frame.",
-                    local: { id: channel.channel_number, kind: "mabel" }, local_episodes: mabelItems,
-                    next_playable: resume, progress: { episode: resume, position: resume?.remote_position || 0 },
-                    seasons: [...new Set(mabelItems.map(value => value.season))].map(number => ({ number: number, name: "Season " + number })) })
-                detailVisible = true; detailView.open(detail); detailView.updateDetail(detail)
-            } else if (detailVisible) {
-                const value = mabelItems.find(item => item.key === detailView.detail.key)
-                if (value) detailView.updatePlayback(value)
-            }
-        }, message => { if (generation === homeGeneration) { loading = false; notify(message) } })
+        if (channel) family.openChannel(channel, false); else family.showDirectory()
     }
+    function openFamilyDetail(value) { detailView.open(value) }
+    function updateFamilyDetail(value, preserve) {
+        if (preserve) detailView.updatePlayback(value); else detailView.updateDetail(value)
+    }
+    function familyDetailKey() { return detailView.detail.key }
+    function familyDetailLoading() { return detailView.loading || detailView.loadFailed }
+    function failFamilyDetail(message) { detailView.loading = false; detailView.loadFailed = true; notify(message) }
     function rebuildRows() {
         const oldKey = currentItem()?.key, oldTitle = sectionTitle(selectedRow)
         const next = []
@@ -287,10 +277,10 @@ Item {
     }
     function jumpToSection() {
         const title = shortcuts[selectedShortcut], index = rows.findIndex(row => row.title === title)
-        if (!mabelVisible && title === tvDisplayName) { mabelVisible = true; selectedShortcut = 1; query = ""; loadMabel(null); return }
+        if (!mabelVisible && title === tvDisplayName) { family.enter(); return }
         if (mabelVisible) {
             query = ""
-            if (title === "My TV") { mabelVisible = false; mabelChannel = null; loadHome() }
+            if (title === "My TV") family.leave()
             else loadMabel(null)
             return
         }
@@ -313,7 +303,7 @@ Item {
         selectedZone = 2
     }
     function loadNextBackdrop() {
-        if (activeBackdropRequest || loading) return
+        if (mabelVisible || activeBackdropRequest || loading) return
         const item = (homeData.continue || []).find(value => value.tmdb_id && !value.backdrop_path
             && !Object.prototype.hasOwnProperty.call(backdrops, value.key) && !attemptedBackdrops[value.key])
         if (!item) return
@@ -428,11 +418,15 @@ Item {
     }
     function back() {
         if (keyboardVisible) { keyboardVisible = false; return true }
-        if (detailVisible) { closeDetail(); return true }
+        if (detailVisible) {
+            if (mabelVisible && mabelChannel?.content_type !== "films") family.showDirectory()
+            else closeDetail()
+            return true
+        }
         if (mabelVisible) {
             query = ""
             if (mabelChannel) loadMabel(null)
-            else { mabelVisible = false; loadHome() }
+            else family.leave()
             return true
         }
         if (query) { query = ""; beginSearch(); selectedZone = 1; return true }
@@ -443,6 +437,7 @@ Item {
         if (keyboardVisible) return keyboard.handleKey(key)
         if (detailVisible) return detailView.handleKey(key)
         if (key === Qt.Key_Escape || key === Qt.Key_Backspace || key === Qt.Key_B) return false
+        if (mabelVisible && loading) return true
         if (selectedZone === 0) {
             if (key === Qt.Key_Down && rows.length) selectedZone = query.trim() ? 1 : 2
             else if (key === Qt.Key_Return || key === Qt.Key_Enter) keyboardVisible = true

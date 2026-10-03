@@ -960,7 +960,8 @@ class MediaCatalogueMixin:
             "scrubbing_enabled": settings.get("scrubbing_enabled") is True,
         }
 
-    def channel_library(self) -> list[dict[str, Any]]:
+    def channel_library(self, channel_number: int | None = None, *,
+                        include_resume: bool = True) -> list[dict[str, Any]]:
         settings = self.settings()
         rules = settings.get("library", {})
         disabled_channels = set(rules.get("disabled_channels", []))
@@ -983,6 +984,8 @@ class MediaCatalogueMixin:
             programme_metadata = {}
         response = []
         for channel in self.channels():
+            if channel_number is not None and channel["number"] != channel_number:
+                continue
             folder = self.media_root / str(channel["folder"])
             programmes = []
             is_film_channel = self.channel_content_type(channel) == "films"
@@ -1004,7 +1007,7 @@ class MediaCatalogueMixin:
                         "favourite": self.channel_programme_key(
                             channel["number"], item.name) in channel_favourites,
                     }
-                    if is_film_channel:
+                    if is_film_channel and include_resume:
                         resume = self.channel_film_resume_state(
                             int(channel["number"]), item.name)
                         programme.update({
@@ -1014,7 +1017,7 @@ class MediaCatalogueMixin:
                         })
                     programmes.append(programme)
             series_resume = self.channel_series_resume_state(
-                int(channel["number"]), programmes) if not is_film_channel else {}
+                int(channel["number"]), programmes) if include_resume and not is_film_channel else {}
             response.append({"number": channel["number"], "name": channel["name"],
                              "folder": channel["folder"],
                              "aspect": channel.get("aspect", "crop"),

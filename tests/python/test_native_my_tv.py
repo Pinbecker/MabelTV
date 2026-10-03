@@ -110,9 +110,11 @@ class NativeMyTvTests(unittest.TestCase):
             "content_type": "episodes", "metadata": {"artwork": "channel.jpg"}, "programmes": []}])
         library.my_tv_library = mock.Mock(side_effect=AssertionError("private catalogue must not be scanned"))
         channels = library.native_my_tv_mabel_channels()["channels"]
+        library.channel_library.assert_called_once_with(include_resume=False)
         self.assertEqual([value["channel_number"] for value in channels], [1, 5])
         self.assertEqual(channels[1]["poster_url"], "/api/native/my-tv/local-artwork/channel/film-poster.jpg")
         detail = library.native_my_tv_mabel_channel(5)
+        library.channel_library.assert_called_with(5)
         item = detail["items"][0]
         self.assertTrue(item["borrowed"])
         self.assertEqual(item["mabel"], {"channel": 5, "file": "Example.mp4", "kind": "films"})
@@ -120,6 +122,26 @@ class NativeMyTvTests(unittest.TestCase):
         self.assertTrue(item["source"].endswith("/Films/Example.mp4"))
         with self.assertRaises(ValueError):
             library.native_my_tv_mabel_channel(999)
+
+    def test_family_directory_skips_bookmarks_and_selected_channel_skips_other_folders(self) -> None:
+        library = self.fixture.library
+        library.channels = mock.Mock(return_value=[
+            {"number": 1, "name": "Films", "folder": "films", "content_type": "films"},
+            {"number": 2, "name": "Episodes", "folder": "episodes", "content_type": "episodes"}])
+        for folder in ("films", "episodes"):
+            (library.media_root / folder).mkdir(exist_ok=True)
+            (library.media_root / folder / "S01E01.mp4").write_bytes(b"fixture")
+        library.channel_film_resume_state = mock.Mock(side_effect=AssertionError("unrelated film bookmark"))
+        library.channel_series_resume_state = mock.Mock(return_value={})
+        self.assertEqual(len(library.native_my_tv_mabel_channels()["channels"]), 2)
+        library.channel_film_resume_state.assert_not_called()
+        library.channel_series_resume_state.assert_not_called()
+        selected = library.native_my_tv_mabel_channel(2)
+        self.assertEqual(len(selected["items"]), 1)
+        self.assertEqual(selected["items"][0]["mabel"]["channel"], 2)
+        library.channel_film_resume_state.assert_not_called()
+        self.assertEqual(library.channel_series_resume_state.call_args.args[0], 2)
+        self.assertEqual(library.channel_series_resume_state.call_count, 1)
 
     def test_native_search_preserves_local_artwork_and_playback_without_rescan(self) -> None:
         library = self.fixture.library

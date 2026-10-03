@@ -336,7 +336,7 @@ class NativeMyTvMixin:
     def native_my_tv_mabel_channels(self) -> dict[str, Any]:
         """Browse family channels without loading the private My TV catalogue."""
         cards = []
-        for channel in sorted(self.channel_library(), key=lambda value: value["number"]):
+        for channel in sorted(self.channel_library(include_resume=False), key=lambda value: value["number"]):
             if not channel["enabled"]:
                 continue
             programmes = [value for value in channel["programmes"] if value["enabled"]]
@@ -357,7 +357,7 @@ class NativeMyTvMixin:
             number = int(number)
         except (TypeError, ValueError) as error:
             raise ValueError("Choose a channel") from error
-        channel = next((value for value in self.channel_library()
+        channel = next((value for value in self.channel_library(number)
                         if value["number"] == number and value["enabled"]), None)
         if not channel:
             raise ValueError("That channel is not available")

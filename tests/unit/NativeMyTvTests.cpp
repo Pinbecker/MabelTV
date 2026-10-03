@@ -12,6 +12,102 @@
 class NativeMyTvTests : public QObject {
     Q_OBJECT
 private slots:
+
+    void familyChannelsKeepFocusAndHaveOneBackStep() {
+        QQmlEngine engine;
+        QStringList warnings;
+        connect(&engine, &QQmlEngine::warnings, this, [&](const QList<QQmlError>& errors) {
+            for (const auto& error : errors) warnings.append(error.toString());
+        });
+        QQmlComponent component(&engine);
+        component.setData(R"(
+            import QtQuick
+            Item {
+                id: fixture; width: 1920; height: 1080
+                property real uiScale: 1
+                property bool playing: false
+                property var requests: []
+                property int aborted: 0
+                MyTvLibraryView {
+                    objectName: "browser"; host: fixture; tvController: fixture
+                    function request(path, method, payload, success, failure) {
+                        fixture.requests.push({path:path,success:success,failure:failure})
+                        return {abort:function(){fixture.aborted++}}
+                    }
+                }
+            }
+        )", QUrl::fromLocalFile(QStringLiteral(TEST_QML_DIR "/FamilyBrowseTest.qml")));
+        QScopedPointer<QObject> root(component.create());
+        QVERIFY2(root, qPrintable(component.errorString()));
+        auto* browser = root->findChild<QObject*>("browser");
+        auto* family = root->findChild<QObject*>("familyBrowse");
+        auto* detail = root->findChild<QObject*>("myTvDetail");
+        QVERIFY(browser && family && detail);
+        browser->setProperty("homeData", QVariant::fromValue(engine.evaluate(R"(({
+            library:Array.from({length:13},(_,i)=>({key:'film:'+i,title:'Film '+i,media_type:'movie'}))
+        }))")));
+        QVERIFY(QMetaObject::invokeMethod(browser, "rebuildRows"));
+        browser->setProperty("selectedRow", 1); browser->setProperty("selectedCard", 4);
+        family->setProperty("directory", QVariant::fromValue(engine.evaluate(R"([
+            {key:'mabel-channel:1',title:'Pat',channel_number:1,content_type:'episodes',family_channel:true},
+            {key:'mabel-channel:2',title:'Puffin',channel_number:2,content_type:'episodes',family_channel:true},
+            {key:'mabel-channel:9',title:'Zog',channel_number:9,content_type:'episodes',family_channel:true},
+            {key:'mabel-channel:5',title:'Films',channel_number:5,content_type:'films',family_channel:true}
+        ])")));
+        family->setProperty("directoryUpdated", QDateTime::currentMSecsSinceEpoch());
+        QVERIFY(QMetaObject::invokeMethod(family, "enter"));
+        browser->setProperty("selectedCard", 2);
+        QVERIFY(QMetaObject::invokeMethod(browser, "openSelected"));
+        QVERIFY(browser->property("detailVisible").toBool());
+        QCOMPARE(browser->property("selectedCard").toInt(), 2);
+        auto requests = root->property("requests").value<QJSValue>();
+        QCOMPARE(requests.property("length").toInt(), 1);
+        QVERIFY(QMetaObject::invokeMethod(browser, "back"));
+        QVERIFY(!browser->property("detailVisible").toBool());
+        QCOMPARE(browser->property("selectedCard").toInt(), 2);
+        QCOMPARE(root->property("aborted").toInt(), 1);
+        const auto episodes = engine.evaluate(R"(({content_type:'episodes',items:[
+            {key:'e1',season:1,number:1,name:'Episode 1',remote_position:0,source:'episode.mp4'}
+        ]}))");
+        requests.property(0).property("success").call({episodes}); // late response cannot reopen a closed channel
+        QVERIFY(!browser->property("detailVisible").toBool());
+        QVERIFY(QMetaObject::invokeMethod(browser, "openSelected"));
+        requests = root->property("requests").value<QJSValue>();
+        requests.property(1).property("failure").call({QJSValue("retry")});
+        QVERIFY(detail->property("loadFailed").toBool());
+        QVERIFY(QMetaObject::invokeMethod(detail, "handleKey", Q_ARG(QVariant, int(Qt::Key_Return))));
+        requests = root->property("requests").value<QJSValue>();
+        QCOMPARE(requests.property("length").toInt(), 3);
+        requests.property(2).property("success").call({episodes});
+        QVERIFY(!detail->property("loadFailed").toBool());
+        QCOMPARE(detail->property("episodes").value<QJSValue>().property("length").toInt(), 1);
+        QCOMPARE(browser->property("rows").value<QJSValue>().property(0).property("title").toString(), QString("Episode channels"));
+        QVERIFY(QMetaObject::invokeMethod(detail, "handleKey", Q_ARG(QVariant, int(Qt::Key_Escape))));
+        QVERIFY(!browser->property("detailVisible").toBool());
+        QCOMPARE(browser->property("selectedCard").toInt(), 2);
+        QVERIFY(QMetaObject::invokeMethod(browser, "openSelected")); // cached: no fourth request
+        QCOMPARE(root->property("requests").value<QJSValue>().property("length").toInt(), 3);
+        QVERIFY(QMetaObject::invokeMethod(browser, "back"));
+        browser->setProperty("selectedRow", 1); browser->setProperty("selectedCard", 0);
+        QVERIFY(QMetaObject::invokeMethod(browser, "openSelected"));
+        QCOMPARE(browser->property("selectedRow").toInt(), 1); // keep directory focus until the film grid is ready
+        requests = root->property("requests").value<QJSValue>();
+        requests.property(3).property("success").call({engine.evaluate(R"(({content_type:'films',items:[
+            {key:'film',title:'Film',borrowed:true,media_type:'movie',source:'film.mp4'}
+        ]}))")});
+        QVERIFY(QMetaObject::invokeMethod(browser, "openSelected"));
+        QVERIFY(QMetaObject::invokeMethod(detail, "handleKey", Q_ARG(QVariant, int(Qt::Key_Escape))));
+        QVERIFY(browser->property("mabelChannel").value<QJSValue>().isObject());
+        QVERIFY(QMetaObject::invokeMethod(browser, "back"));
+        QCOMPARE(browser->property("selectedRow").toInt(), 1);
+        QVERIFY(QMetaObject::invokeMethod(browser, "back"));
+        QVERIFY(!browser->property("mabelVisible").toBool());
+        QCOMPARE(browser->property("selectedRow").toInt(), 1);
+        QCOMPARE(browser->property("selectedCard").toInt(), 4);
+        QCOMPARE(root->property("requests").value<QJSValue>().property("length").toInt(), 4);
+        QCoreApplication::processEvents();
+        QVERIFY2(warnings.isEmpty(), qPrintable(warnings.join('\n')));
+    }
     void mabelPresentationCyclesWithoutChangingPlaybackOwnership() {
         QQmlEngine engine;
         QStringList warnings;
