@@ -20,6 +20,7 @@ class OneDriveBackupTests(unittest.TestCase):
         self.assertIn('PRAGMA foreign_key_check', script)
         self.assertIn('var/lib/mabeltv/secrets', script)
         self.assertIn('var/lib/mabeltv/matter', script)
+        self.assertIn('var/lib/mabeltv/matter-tv', script)
         self.assertIn('etc/rc_keymaps/mabeltv.toml', script)
         self.assertNotIn('paths=(srv/mabeltv/media', script)
         self.assertNotIn('mabeltv.db-wal', script)

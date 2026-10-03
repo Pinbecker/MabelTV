@@ -9,10 +9,10 @@ the initial browser-based Microsoft authorization.
 
 Every archive contains a validated SQLite online-backup snapshot of
 `/var/lib/mabeltv/mabeltv.db`, `/var/lib/mabeltv/secrets`,
-`/var/lib/mabeltv/matter`, `/etc/mabeltv`, and
+`/var/lib/mabeltv/matter`, `/var/lib/mabeltv/matter-tv`, `/etc/mabeltv`, and
 `/etc/rc_keymaps/mabeltv.toml` when present. It also contains a manifest and
-relative-path SHA-256 checksums. The Matter service is paused only while its
-multi-file fabric is copied; the player and Library continue running.
+relative-path SHA-256 checksums. Both Matter services are paused only while their
+multi-file fabrics are copied; the player and Library continue running.
 
 Media under `/srv/mabeltv/media`, caches, artwork, logs, support bundles,
 release binaries, the live SQLite WAL/SHM files, and PWA device storage are not

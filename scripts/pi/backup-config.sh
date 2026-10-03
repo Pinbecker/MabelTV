@@ -67,7 +67,7 @@ if [[ "$database_only" != "--database-only" ]]; then
         systemctl stop mabeltv-tv-matter.service
         tv_matter_was_active="true"
     fi
-    paths=(var/lib/mabeltv/secrets var/lib/mabeltv/matter etc/mabeltv
+    paths=(var/lib/mabeltv/secrets var/lib/mabeltv/matter var/lib/mabeltv/matter-tv etc/mabeltv
         etc/rc_keymaps/mabeltv.toml)
 fi
 included_paths=()
