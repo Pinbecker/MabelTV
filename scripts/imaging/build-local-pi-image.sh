@@ -36,7 +36,10 @@ fi
 
 docker info --format '{{.OSType}}' | grep -qx linux \
     || { printf 'Docker Desktop must be using Linux containers.\n' >&2; exit 1; }
-if ! docker buildx inspect --bootstrap 2>/dev/null | grep -q 'linux/arm64'; then
+# grep -q can close a long buildx report early; with pipefail that SIGPIPE
+# falsely reports that ARM64 is unsupported. Read the report before matching.
+if ! buildx_info="$(docker buildx inspect --bootstrap 2>&1)" \
+    || [[ "$buildx_info" != *linux/arm64* ]]; then
     printf 'Docker Buildx ARM64 support is not available.\n' >&2
     exit 1
 fi
