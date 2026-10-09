@@ -40,6 +40,17 @@ class ImagerLauncherTests(unittest.TestCase):
                 self.assertEqual("unchanged", entry["extract_sha256"])
                 self.assertEqual("cloudinit-rpi", entry["init_format"])
                 self.assertEqual(original, json.loads(manifest.read_text()))
+                # The .cmd starts a copied launcher without -Manifest. Exercise
+                # that exact default-path entry point under Windows PowerShell.
+                packaged_launcher = root / LAUNCHER.name
+                shutil.copy2(LAUNCHER, packaged_launcher)
+                default_command = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
+                                   "-File", str(packaged_launcher), "-PrepareOnly"]
+                default_result = subprocess.run(default_command, text=True, capture_output=True, timeout=20)
+                self.assertEqual(0, default_result.returncode, default_result.stderr)
+                default_entry = json.loads(resolved.read_text())["os_list"][0]
+                self.assertEqual(image.as_uri(), default_entry["url"])
+                self.assertEqual(original, json.loads(manifest.read_text()))
                 image.write_bytes(b"damaged")
                 rejected = subprocess.run(command, text=True, capture_output=True, timeout=20)
                 self.assertNotEqual(0, rejected.returncode)

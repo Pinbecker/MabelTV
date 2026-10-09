@@ -1,10 +1,15 @@
 param(
     [Parameter(Mandatory = $false)]
-    [string]$Manifest = (Join-Path $PSScriptRoot 'KidsTV.rpi-imager-manifest'),
+    [string]$Manifest,
     [switch]$PrepareOnly
 )
 
 $ErrorActionPreference = 'Stop'
+# Windows PowerShell can evaluate parameter defaults before $PSScriptRoot is
+# available. Resolve the double-click launcher's default inside the script.
+if (-not $Manifest) {
+    $Manifest = Join-Path $PSScriptRoot 'KidsTV.rpi-imager-manifest'
+}
 $manifestPath = (Resolve-Path -LiteralPath $Manifest).Path
 # Local packages remain portable: their manifest may have been made in WSL,
 # downloaded, or moved to another drive. Resolve local assets beside it.
