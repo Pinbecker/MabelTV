@@ -8,6 +8,7 @@
 #include <QJsonObject>
 #include <QLocalSocket>
 #include <QMetaObject>
+#include <QRegularExpression>
 #include <QSet>
 #include <QUrl>
 #include <QVariant>
@@ -113,6 +114,29 @@ void PortalControlServer::dispatch(QLocalSocket *socket, const QByteArray &rawCo
         const QJsonDocument request = QJsonDocument::fromJson(rawCommand);
         const QJsonObject object = request.object();
         const QString operation = object.value(QStringLiteral("command")).toString();
+        if (request.isObject() && (operation == QStringLiteral("play-family-media")
+                                  || operation == QStringLiteral("family-media-control")
+                                  || operation == QStringLiteral("open-storytime"))) {
+            QObject *family = m_rootObject->findChild<QObject *>(QStringLiteral("mabeltvFamilyMedia"));
+            bool accepted = false;
+            if (family && operation == QStringLiteral("play-family-media")) {
+                const QString session = object.value(QStringLiteral("session")).toString();
+                if (QRegularExpression(QStringLiteral("^[a-f0-9]{32}$")).match(session).hasMatch())
+                    accepted = QMetaObject::invokeMethod(family, "openSession", Qt::QueuedConnection,
+                                                        Q_ARG(QVariant, session),
+                                                        Q_ARG(QVariant, object.value(QStringLiteral("kind")).toString()));
+            } else if (family && operation == QStringLiteral("open-storytime")) {
+                accepted = QMetaObject::invokeMethod(family, "openStories", Qt::QueuedConnection);
+            } else if (family && family->property("active").toBool()) {
+                const QString action = object.value(QStringLiteral("action")).toString();
+                static const QSet<QString> actions{QStringLiteral("pause"),QStringLiteral("next"),
+                    QStringLiteral("previous"),QStringLiteral("restart"),QStringLiteral("close"),QStringLiteral("seek")};
+                if (actions.contains(action)) accepted = QMetaObject::invokeMethod(family, "control", Qt::QueuedConnection,
+                    Q_ARG(QVariant, action), Q_ARG(QVariant, object.value(QStringLiteral("position")).toDouble()));
+            }
+            finish(socket, accepted ? "ok\n" : "unsupported\n");
+            return;
+        }
         if (request.isObject() && operation == QStringLiteral("play-external")) {
             const QFileInfo requested(object.value(QStringLiteral("path")).toString());
             const QString path = requested.canonicalFilePath();
@@ -233,6 +257,17 @@ void PortalControlServer::dispatch(QLocalSocket *socket, const QByteArray &rawCo
                 status.insert(QStringLiteral("playback_duration"),
                               myTvPlayer->property("playbackDuration").toDouble());
             }
+        }
+        QObject *family = m_rootObject->findChild<QObject *>(QStringLiteral("mabeltvFamilyMedia"));
+        if (family && family->property("active").toBool()) {
+            status.insert(QStringLiteral("mode"), family->property("kind").toString());
+            status.insert(QStringLiteral("playing"), family->property("ready").toBool() && !family->property("ended").toBool());
+            status.insert(QStringLiteral("programme"), family->property("currentTitle").toString());
+            status.insert(QStringLiteral("paused"), family->property("paused").toBool());
+            status.insert(QStringLiteral("family_asset"), family->property("currentAsset").toString());
+            status.insert(QStringLiteral("playback_position"), family->property("playbackPosition").toDouble());
+            status.insert(QStringLiteral("playback_duration"), family->property("playbackDuration").toDouble());
+            status.insert(QStringLiteral("widescreen_available"), false);
         }
         finish(socket, QJsonDocument(status).toJson(QJsonDocument::Compact) + '\n');
         return;

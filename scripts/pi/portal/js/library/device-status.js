@@ -147,7 +147,64 @@
     $('#usbViewActivity').onclick = () => { openView('activity'); loadActivity().catch(() => {}) }
 
 
+    let tvSettingsDirty = false
+    let savedTvSettingsControls = ''
+    function setSettingsSwitch(button, enabled) {
+      button.value = String(enabled)
+      button.setAttribute('aria-checked', String(enabled))
+      button.setAttribute('aria-pressed', String(enabled))
+      button.textContent = enabled ? 'On' : 'Off'
+    }
+
+    async function saveSettingsPreference(button, action, extra, label) {
+      button.disabled = true
+      try {
+        const result = await manage(action, extra)
+        if (result && result.refreshed !== false) notice(`${label} saved.`)
+      } finally { button.disabled = false }
+    }
+
+    function tvSettingsControls() {
+      return JSON.stringify([...$('#tvSettingsForm').querySelectorAll('select, input, [data-tv-switch]')]
+        .map(control => [control.id, control.value]))
+    }
+
+    function renderSettingsDraft() {
+      tvSettingsDirty = tvSettingsControls() !== savedTvSettingsControls
+      $('#tvSettingsApply').disabled = !tvSettingsDirty
+      $('#tvSettingsDiscard').disabled = !tvSettingsDirty
+      $('#tvSettingsFeedback').textContent = tvSettingsDirty
+        ? 'Unsaved TV settings. Applying may briefly refresh the picture.'
+        : 'Changes stay here until you apply them. The TV picture may refresh.'
+      const border = $('#tvBorder').value
+      const preview = $('#tvSurroundPreview')
+      const source = `/portal/assets/surrounds/${border}.png`
+      if (preview.getAttribute('src') !== source) preview.src = source
+      preview.alt = `${$('#tvBorder').selectedOptions[0].textContent} TV surround`
+      $('#tvMaximumVolume').disabled = $('#tvVolumeLimit').value !== 'true'
+    }
+
+    $('#tvSettingsForm').addEventListener('input', renderSettingsDraft)
+    $('#tvSettingsForm').addEventListener('change', renderSettingsDraft)
+    $$('[data-tv-switch]').forEach(button => button.onclick = () => {
+      setSettingsSwitch(button, button.value !== 'true')
+      renderSettingsDraft()
+    })
+    $('#tvSettingsDiscard').onclick = () => { tvSettingsDirty = false; renderTvSettings() }
+
+    function renderSettingsHub() {
+      const settings = library?.tv_settings || {}
+      const border = [...$('#tvBorder').options].find(option => option.value === settings.tv_border)?.textContent || 'Slim black'
+      $('#settingsMabelSummary').textContent = `${border} · ${settings.playback_mode === 'resume' ? 'Resume playback' : 'Continuous broadcast'}`
+      $('#settingsMyTvSummary').textContent = `Where to watch ${myTvAvailabilityEnabled() ? 'on' : 'off'} · Service icons ${myTvProviderBadgesEnabled() ? 'on' : 'off'}`
+      $('#settingsSecuritySummary').textContent = library?.owner?.portal_pin_required !== false
+        ? 'Parent PIN required' : 'Portal opens without a PIN'
+      $('#settingsSystemSummary').textContent = `${Number(library?.storage?.free_gb || 0).toFixed(1)} GB free · ${library?.system?.healthy ? 'Everything looks good' : 'Needs attention'}`
+    }
+
     function renderTvSettings() {
+      // Status/domain refreshes must not replace edits waiting for Apply.
+      if (tvSettingsDirty) return
       const settings = library?.tv_settings || {}
       const setValue = (selector, value, fallback) => {
         const control = $(selector)
@@ -159,9 +216,9 @@
       setValue('#tvPictureMode', settings.picture_mode, 'channel')
       setValue('#tvBorder', settings.tv_border, 'slim-black')
       setValue('#tvDisplayResolution', settings.display_resolution, '720p')
-      setValue('#tvVolumeLimit', settings.volume_limit_enabled, true)
-      setValue('#tvSoundEffects', settings.sound_effects_enabled, true)
-      setValue('#tvScrubbing', settings.scrubbing_enabled, false)
+      setSettingsSwitch($('#tvVolumeLimit'), settings.volume_limit_enabled !== false)
+      setSettingsSwitch($('#tvSoundEffects'), settings.sound_effects_enabled !== false)
+      setSettingsSwitch($('#tvScrubbing'), settings.scrubbing_enabled === true)
       const setRange = (input, output, value, fallback) => {
         const control = $(input)
         control.value = String(value ?? fallback)
@@ -170,6 +227,8 @@
       setRange('#tvCrtGlass', '#tvCrtGlassValue', settings.crt_glass, 35)
       setRange('#tvDistortion', '#tvDistortionValue', settings.video_distortion, 20)
       setRange('#tvMaximumVolume', '#tvMaximumVolumeValue', settings.maximum_volume, 60)
+      savedTvSettingsControls = tvSettingsControls()
+      renderSettingsDraft()
     }
 
     function renderParentOverlayStyle() {
@@ -182,28 +241,25 @@
     $$('[data-parent-style]').forEach(button => button.onclick = () => {
       const style = button.dataset.parentStyle
       if (style !== (library?.appearance?.parent_overlay_style || 'classic'))
-        manage('set-parent-overlay-style', { style })
+        saveSettingsPreference(button, 'set-parent-overlay-style', { style }, 'Parent menu')
     })
 
     function renderTvGuideSetting() {
       const enabled = library?.appearance?.tv_guide_enabled === true
-      $('#tvGuideToggle').setAttribute('aria-pressed', String(enabled))
-      $('#tvGuideToggle').textContent = enabled ? 'On' : 'Off'
+      setSettingsSwitch($('#tvGuideToggle'), enabled)
       $('#tvGuideState').textContent = enabled ? 'On · ready on the television' : 'Off'
     }
 
     function renderWatchmodeAvailabilitySetting() {
       const enabled = library?.my_tv_settings?.watchmode_availability_enabled !== false
-      $('#watchmodeAvailabilityToggle').setAttribute('aria-pressed', String(enabled))
-      $('#watchmodeAvailabilityToggle').textContent = enabled ? 'On' : 'Off'
+      setSettingsSwitch($('#watchmodeAvailabilityToggle'), enabled)
       $('#watchmodeAvailabilityState').textContent = enabled
         ? 'On · direct links and rental prices' : 'Off · TMDB details still available'
     }
 
     function renderMyTvProviderBadgesSetting() {
       const enabled = myTvProviderBadgesEnabled()
-      $('#myTvProviderBadgesToggle').setAttribute('aria-pressed', String(enabled))
-      $('#myTvProviderBadgesToggle').textContent = enabled ? 'On' : 'Off'
+      setSettingsSwitch($('#myTvProviderBadgesToggle'), enabled)
       $('#myTvProviderBadgesState').textContent = enabled
         ? 'On · shown on My TV artwork' : 'Off · title sheets are unchanged'
     }
@@ -216,21 +272,24 @@
       $('#portalPinToggle').textContent = required ? 'Turn off PIN entry' : 'Turn on PIN entry'
     }
 
-    $('#tvGuideToggle').onclick = () => manage('set-tv-guide-enabled', {
+    $('#tvGuideToggle').onclick = () => saveSettingsPreference($('#tvGuideToggle'), 'set-tv-guide-enabled', {
       enabled: !(library?.appearance?.tv_guide_enabled === true)
-    })
-    $('#watchmodeAvailabilityToggle').onclick = () => manage('set-watchmode-availability', {
+    }, 'TV guide')
+    $('#watchmodeAvailabilityToggle').onclick = () => saveSettingsPreference($('#watchmodeAvailabilityToggle'), 'set-watchmode-availability', {
       enabled: !myTvAvailabilityEnabled(),
-    })
-    $('#myTvProviderBadgesToggle').onclick = () => manage('set-my-tv-provider-badges', {
+    }, 'Where to watch')
+    $('#myTvProviderBadgesToggle').onclick = () => saveSettingsPreference($('#myTvProviderBadgesToggle'), 'set-my-tv-provider-badges', {
       enabled: !myTvProviderBadgesEnabled(),
-    })
+    }, 'Streaming service icons')
 
     ;[['#tvCrtGlass', '#tvCrtGlassValue'], ['#tvDistortion', '#tvDistortionValue'], ['#tvMaximumVolume', '#tvMaximumVolumeValue']]
       .forEach(([input, output]) => $(input).oninput = () => { $(output).textContent = `${$(input).value}%` })
 
     function renderStatus() {
       const system = library.system || {}, storage = library.storage || {}, warnings = system.warnings || []
+      $('#settingsConnection').classList.toggle('needs-attention', !system.healthy)
+      $('#settingsConnection').querySelector('span').textContent = system.healthy
+        ? 'Pi connected · Everything looks good' : 'Pi connected · Needs attention'
       const warningCount = warnings.length || 1
       $('#topHealth').textContent = system.healthy ? 'Everything looks good' : `${warningCount} item${warningCount === 1 ? '' : 's'} need attention`
       $('#topHealth').classList.toggle('bad', !system.healthy)

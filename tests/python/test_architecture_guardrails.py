@@ -37,6 +37,11 @@ class ArchitectureGuardrailTests(unittest.TestCase):
                     if not path.is_file():
                         continue
                     name = relative(path)
+                    # Vendor/build directories are excluded from ownership,
+                    # including when a broad tool pattern also matches them.
+                    if any(name == item or name.startswith(f"{item}/")
+                           for item in exclusions):
+                        continue
                     previous = budgets.get(name)
                     if previous is None or rule["max_lines"] < previous[0]:
                         budgets[name] = (rule["max_lines"], rule["area"])

@@ -42,12 +42,16 @@ from mabeltv_backend.constants import (
 from mabeltv_backend.discovery import MyTvExploreMixin
 from mabeltv_backend.database import StateDatabase
 from mabeltv_backend.http import Handler, LibraryServer
+from mabeltv_backend.iplayer import IPlayerLibraryMixin
 from mabeltv_backend.lg import LgWebOsError, LgWebOsSocket, RemoteTvActiveError
 from mabeltv_backend.lg_control import LgControlMixin
 from mabeltv_backend.live_stream import LiveStream
 from mabeltv_backend.media import MediaCatalogueMixin
 from mabeltv_backend.management import ManagementMixin
 from mabeltv_backend.mabel_queue import MabelQueueMixin
+from mabeltv_backend.playlists import PlaylistsMixin
+from mabeltv_backend.family_media import FamilyMediaMixin
+from mabeltv_backend.family_uploads import FamilyUploadsMixin
 from mabeltv_backend.portal import (
     INDEX,
     PORTAL_APP_SCRIPT,
@@ -96,7 +100,8 @@ __all__ = [
     "urlopen",
 ]
 
-class Library(MabelQueueMixin, ViewingMixin, UploadConversionMixin, TranscodingMixin, AuthenticationMixin,
+class Library(PlaylistsMixin, FamilyMediaMixin, FamilyUploadsMixin,
+              IPlayerLibraryMixin, MabelQueueMixin, ViewingMixin, UploadConversionMixin, TranscodingMixin, AuthenticationMixin,
               ArtworkProxyMixin,
               MediaCatalogueMixin, ManagementMixin, RemotePlaybackMixin, LgControlMixin,
               UsbMixin,
@@ -158,6 +163,8 @@ class Library(MabelQueueMixin, ViewingMixin, UploadConversionMixin, TranscodingM
         self.sessions: dict[str, float] = {}
         self.login_failures: dict[str, list[float]] = {}
         self.config_lock = threading.RLock()
+        self.iplayer_inventory_lock = threading.RLock()
+        self.iplayer_identity_cache: dict[str, Any] = {}
         self.channel_programme_duration_cache: dict[tuple[str, int, int], float] = {}
         self.channel_programme_duration_lock = threading.RLock()
         self.upload_locks: dict[str, threading.Lock] = {}
@@ -200,6 +207,7 @@ class Library(MabelQueueMixin, ViewingMixin, UploadConversionMixin, TranscodingM
         self.conversion_closed = threading.Event()
         self.media_root.mkdir(parents=True, exist_ok=True)
         self.incoming.mkdir(mode=0o750, exist_ok=True)
+        self.initialise_family_media()
         self.my_tv_root.mkdir(mode=0o750, exist_ok=True)
         self.my_tv_artwork_root.mkdir(mode=0o750, exist_ok=True)
         self.my_tv_series_root.mkdir(mode=0o750, exist_ok=True)

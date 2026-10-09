@@ -211,25 +211,15 @@ test('@visual light remote pages keep one cohesive dark control surface', async 
 })
 
 
-test('@visual light utility, Settings and insight routes stay neutral and legible', async ({ page }, testInfo) => {
+test('@visual light utility and insight routes stay neutral and legible', async ({ page }, testInfo) => {
   phoneOnly(testInfo)
   await openLightPortal(page)
 
   await page.locator('[data-view-button="system"]').click()
-  await page.locator('#view-system [data-go="usb"]').click()
+  await page.locator('#view-system [data-go="settings-media"]').click()
+  await page.locator('#view-settings-media [data-go="usb"]').click()
   await expect(page.locator('#view-usb')).toBeVisible()
   await expect(page).toHaveScreenshot('light-usb.png')
-
-  await page.locator('[data-view-button="system"]').click()
-  await expect(page.locator('#view-system')).toBeVisible()
-  const settingsOrder = await page.locator('#tvSettingsForm').evaluate(form =>
-    [...form.children].slice(0, 2).map(element => element.className))
-  expect(settingsOrder[0]).toContain('settings-appearance-row')
-  expect(settingsOrder[1]).toContain('settings-disclosure')
-  await expect(page.locator('[data-portal-design]')).toHaveCount(0)
-  await page.waitForTimeout(250)
-  await page.evaluate(() => window.scrollTo(0, 0))
-  await expect(page).toHaveScreenshot('light-settings.png')
 
   await page.locator('[data-view-button="my-tv-home"]').click()
   await page.locator('#myTvHomeInsightsTab').click()
@@ -244,9 +234,20 @@ test('@visual light utility, Settings and insight routes stay neutral and legibl
   await expect(page).toHaveScreenshot('light-insights.png')
 
   await page.locator('[data-view-button="system"]').click()
+  await page.locator('[data-view-button="system"]').click()
+  await page.locator('#view-system [data-go="settings-media"]').click()
   await page.locator('[data-go="activity"]').click()
   await expect(page.locator('#view-activity')).toBeVisible()
   await expect(page).toHaveScreenshot('light-activity.png')
+})
+
+test('@visual light Settings matches grouped portal navigation', async ({ page }, testInfo) => {
+  phoneOnly(testInfo)
+  await openLightPortal(page)
+  await page.locator('[data-view-button="system"]').click()
+  await expect(page.locator('#view-system .settings-link-row')).toHaveCount(6)
+  await expect(page.locator('[data-portal-design]')).toHaveCount(0)
+  await expect(page).toHaveScreenshot('light-settings.png')
 })
 
 

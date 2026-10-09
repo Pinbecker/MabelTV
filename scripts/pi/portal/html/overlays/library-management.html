@@ -97,7 +97,7 @@
     </div>
   </section>
 </dialog>
-<dialog id="addChannelPanel" class="library-sheet">
+<dialog id="addChannelPanel" class="library-sheet channel-settings-sheet">
   <section class="library-sheet-panel">
     <header class="library-sheet-head">
       <div>
@@ -116,34 +116,31 @@
       >
       </button>
     </header>
-    <div class="library-sheet-body">
-      <form id="addChannelForm" class="field-grid">
-        <label
-          >Channel number<input
-            id="newChannelNumber"
-            type="number"
-            min="1"
-            max="999"
-            required /></label
-        ><label
-          >Channel name<input
-            id="newChannelName"
-            maxlength="60"
-            placeholder="Nature"
-            required /></label
-        ><label
-          >Picture mode<select id="newChannelAspect">
-            <option value="crop">Fill screen</option>
-            <option value="fit">Show whole picture</option>
-            <option value="stretch">Stretch to screen</option>
-          </select></label
-        ><label
-          >What plays here?<select id="newChannelContentType">
-            <option value="shows">Shows / episodes</option>
-            <option value="films">Films / long videos</option>
-          </select></label
-        >
-        <div class="wide library-sheet-actions">
+    <div class="library-sheet-body channel-settings-body">
+      <form id="addChannelForm" class="channel-settings-form">
+        <div class="channel-settings-identity">
+          <label class="channel-identity-field">Number<input id="newChannelNumber" type="number" min="1" max="999" inputmode="numeric" required></label>
+          <label class="channel-identity-field">Channel name<input id="newChannelName" maxlength="60" placeholder="Nature" required></label>
+        </div>
+        <fieldset class="channel-settings-choice">
+          <legend>What plays here?</legend>
+          <div class="channel-settings-options">
+            <label><input type="radio" name="newChannelContent" value="shows" checked><span>Episodes</span></label>
+            <label><input type="radio" name="newChannelContent" value="films"><span>Films</span></label>
+            <label><input type="radio" name="newChannelContent" value="memories"><span>Photos & videos</span></label>
+          </div>
+          <select id="newChannelContentType" hidden aria-hidden="true" tabindex="-1"><option value="shows">Shows / episodes</option><option value="films">Films / long videos</option><option value="memories">Photos & Videos</option></select>
+        </fieldset>
+        <fieldset class="channel-settings-choice">
+          <legend>Picture mode</legend><p>Choose how videos fit the television screen.</p>
+          <div class="channel-settings-options">
+            <label><input type="radio" name="newChannelPicture" value="fit"><span>Whole picture</span></label>
+            <label><input type="radio" name="newChannelPicture" value="crop" checked><span>Fill screen</span></label>
+            <label><input type="radio" name="newChannelPicture" value="stretch"><span>Stretch</span></label>
+          </div>
+          <select id="newChannelAspect" hidden aria-hidden="true" tabindex="-1"><option value="crop">Fill screen</option><option value="fit">Show whole picture</option><option value="stretch">Stretch to screen</option></select>
+        </fieldset>
+        <div class="channel-settings-footer">
           <button id="cancelAddChannel" type="button" class="secondary">
             Cancel</button
           ><button type="submit" class="primary">Create channel</button>
@@ -251,6 +248,29 @@
       </button>
     </header>
     <div class="library-sheet-body channel-settings-body">
+      <form id="editChannelForm" class="channel-settings-form">
+        <div class="channel-settings-identity">
+          <label class="channel-identity-field">Number<input id="editChannelNumber" type="number" min="1" max="999" inputmode="numeric" required></label>
+          <label class="channel-identity-field">Channel name<input id="editChannelName" maxlength="60" required></label>
+        </div>
+        <fieldset class="channel-settings-choice">
+          <legend>What plays here?</legend>
+          <div class="channel-settings-options">
+            <label><input type="radio" name="channelContent" value="shows"><span>Episodes</span></label>
+            <label><input type="radio" name="channelContent" value="films"><span>Films</span></label>
+            <label><input type="radio" name="channelContent" value="memories"><span>Photos & videos</span></label>
+          </div>
+          <select id="editChannelContentType" hidden aria-hidden="true" tabindex="-1"><option value="shows">Shows / episodes</option><option value="films">Films / long videos</option><option value="memories">Photos & Videos</option></select>
+        </fieldset>
+        <fieldset class="channel-settings-choice">
+          <legend>Picture mode</legend><p>Choose how videos fit the television screen.</p>
+          <div class="channel-settings-options">
+            <label><input type="radio" name="channelPicture" value="fit"><span>Whole picture</span></label>
+            <label><input type="radio" name="channelPicture" value="crop"><span>Fill screen</span></label>
+            <label><input type="radio" name="channelPicture" value="stretch"><span>Stretch</span></label>
+          </div>
+          <select id="editChannelAspect" hidden aria-hidden="true" tabindex="-1"><option value="crop">Fill screen</option><option value="fit">Show whole picture</option><option value="stretch">Stretch to screen</option></select>
+        </fieldset>
       <div class="channel-settings-actions">
         <button
           id="workspaceToggleChannel"
@@ -293,66 +313,9 @@
           </svg>
         </button>
       </div>
-      <form id="editChannelForm" class="channel-settings-form">
-        <p class="channel-settings-section-label">Channel details</p>
-        <label class="channel-setting-field"
-          ><span class="channel-setting-field-heading"
-            ><span class="channel-setting-field-icon"
-              ><svg class="icon" aria-hidden="true">
-                <use href="/portal/icons.svg#signal-list-filter" /></svg></span
-            ><span
-              ><strong>Channel number</strong
-              ><small>Where this channel appears on the television</small></span
-            ></span
-          ><input
-            id="editChannelNumber"
-            type="number"
-            min="1"
-            max="999"
-            inputmode="numeric"
-            required /></label
-        ><label class="channel-setting-field"
-          ><span class="channel-setting-field-heading"
-            ><span class="channel-setting-field-icon"
-              ><svg class="icon" aria-hidden="true">
-                <use href="/portal/icons.svg#signal-tv" /></svg></span
-            ><span
-              ><strong>Channel name</strong
-              ><small>The name shown throughout <span data-tv-name>Your TV</span></small></span
-            ></span
-          ><input id="editChannelName" maxlength="60" required /></label
-        ><label class="channel-setting-field"
-          ><span class="channel-setting-field-heading"
-            ><span class="channel-setting-field-icon"
-              ><svg class="icon" aria-hidden="true">
-                <use href="/portal/icons.svg#signal-image" /></svg></span
-            ><span
-              ><strong>Picture mode</strong
-              ><small>How videos fill the television screen</small></span
-            ></span
-          ><select id="editChannelAspect">
-            <option value="crop">Fill screen</option>
-            <option value="fit">Show whole picture</option>
-            <option value="stretch">Stretch to screen</option>
-          </select></label
-        ><label class="channel-setting-field"
-          ><span class="channel-setting-field-heading"
-            ><span class="channel-setting-field-icon"
-              ><svg class="icon" aria-hidden="true">
-                <use href="/portal/icons.svg#signal-film" /></svg></span
-            ><span
-              ><strong>What plays here?</strong
-              ><small>Choose episodes or a dedicated film channel</small></span
-            ></span
-          ><select id="editChannelContentType">
-            <option value="shows">Shows / episodes</option>
-            <option value="films">Films / long videos</option>
-          </select></label
-        >
         <div class="channel-settings-footer">
-          <button id="deleteChannel" type="button" class="danger">
-            Delete channel</button
-          ><button type="submit" class="primary">Save changes</button>
+          <button id="deleteChannel" type="button" class="channel-settings-delete">Delete channel</button>
+          <button type="submit" class="primary">Save changes</button>
         </div>
       </form>
     </div>

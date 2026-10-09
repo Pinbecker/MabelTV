@@ -183,8 +183,8 @@ class AuthenticationMixin:
                 raise ValueError("Every channel needs a unique name and folder")
             if aspect not in {"crop", "fit", "stretch"}:
                 raise ValueError("Channel picture mode must be crop, fit, or stretch")
-            if content_type not in {"shows", "films"}:
-                raise ValueError("Channel content must be shows or films")
+            if content_type not in {"shows", "films", "memories"}:
+                raise ValueError("Choose episodes, films, or Photos & Videos")
             numbers.add(number)
             folders.add(folder)
             channels.append({"number": number, "name": name, "folder": folder,

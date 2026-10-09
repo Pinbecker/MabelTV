@@ -38,9 +38,14 @@ PORTAL_ASSET_TYPES = {
     ".svg": "image/svg+xml",
     ".png": "image/png",
     ".jpg": "image/jpeg",
+    ".ttf": "font/ttf",
+    ".ogg": "audio/ogg",
 }
 
 GET_JSON_ROUTES = {
+    "/api/mabel-playlists": "mabel_playlists",
+    "/api/family-media": "family_media",
+    "/api/iplayer/library": "iplayer_library",
     "/api/mabel-queue": "mabel_queue",
     "/api/bootstrap": "portal_bootstrap",
     "/api/live": "live_tv_status",
@@ -56,6 +61,11 @@ GET_JSON_ROUTES = {
 }
 
 POST_JSON_ROUTES = {
+    "/api/mabel-playlists": ("mabel_playlist_action", 200),
+    "/api/family-media": ("family_action", 200),
+    "/api/family-media/start": ("family_start", 200),
+    "/api/family-media/control": ("family_control", 200),
+    "/api/family-media/uploads": ("family_upload_create", 201),
     "/api/mabel-queue": ("mabel_queue_action", 200),
     "/api/live/control": ("live_tv_control", 200),
     "/api/lg-tv/action": ("lg_tv_action", 200),
@@ -572,10 +582,63 @@ class Handler(BaseHTTPRequestHandler):
             return True
         return False
 
+    def handle_family_media_get(self, path, query, *, native=False):
+        if native and path in {"/api/native/family-media/session", "/api/native/family-media/start", "/api/native/family-media/stories"}:
+            if not self.native_request():
+                self.json(403, {"error": "Native player access required"})
+            elif path.endswith("/stories"):
+                self.json(200, self.server.library.family_stories_native())
+            elif path.endswith("/session"):
+                self.json(200, self.server.library.family_session(query.get("id", [""])[0], native=True))
+            else:
+                self.json(200, self.server.library.family_start({key: values[0] for key, values in query.items()}, native=True))
+            return True
+        if not native and path == "/api/family-media/content":
+            self.stream_remote_media(self.server.library.family_content(
+                query.get("id", [""])[0], query.get("artwork", [""])[0] == "1"))
+            return True
+        return False
+
+    def handle_query_json_get(self, path, query):
+        query_routes = {
+            "/api/usb/browse": lambda: self.server.library.usb_browse(
+                str(query.get("volume", [""])[0]), str(query.get("path", [""])[0])),
+            "/api/my-tv/discovery": lambda: self.server.library.my_tv_discovery(
+                str(query.get("q", [""])[0])),
+            "/api/my-tv/explore": lambda: self.server.library.my_tv_explore(
+                str(query.get("list", ["for-you"])[0]),
+                str(query.get("media_type", ["all"])[0]),
+                str(query.get("page", ["1"])[0]),
+                str(query.get("available", ["0"])[0]) == "1",
+                str(query.get("limit", [""])[0])),
+            "/api/my-tv/home/what-to-watch": lambda:
+                self.server.library.my_tv_home_what_to_watch(
+                    str(query.get("page", ["1"])[0]),
+                    str(query.get("limit", ["12"])[0])),
+            "/api/my-tv/home/released-this-week": lambda:
+                self.server.library.my_tv_released_this_week(
+                    str(query.get("limit", ["16"])[0])),
+            "/api/my-tv/title": lambda: self.server.library.my_tv_title_detail(
+                str(query.get("media_type", [""])[0]), str(query.get("tmdb_id", [""])[0])),
+            "/api/my-tv/person": lambda: self.server.library.my_tv_person_detail(
+                str(query.get("tmdb_id", [""])[0])),
+            "/api/my-tv/season": lambda: self.server.library.my_tv_title_season(
+                str(query.get("tmdb_id", [""])[0]), str(query.get("season", [""])[0])),
+            "/api/my-tv/providers": lambda: self.server.library.my_tv_streaming_links(
+                str(query.get("media_type", [""])[0]), str(query.get("tmdb_id", [""])[0]),
+                str(query.get("refresh", ["0"])[0]) == "1"),
+        }
+        query_route = query_routes.get(path)
+        if query_route is not None:
+            self.json(200, query_route())
+            return True
+        return False
+
     def do_GET(self) -> None:
         try:
             parsed = urlsplit(self.path)
             query = parse_qs(parsed.query)
+            if self.handle_family_media_get(parsed.path, query, native=True): return
             if self.handle_native_my_tv_get(parsed.path, query): return
             if self.path == "/":
                 self.serve_named_html(INDEX, inline_script="<script>" in INDEX)
@@ -601,6 +664,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.json(200, self.server.library.public_setup()); return
             if not self.require():
                 return
+            if self.handle_family_media_get(parsed.path, query): return
             if parsed.path == "/watch/player":
                 self.serve_named_html(WATCH_PAGE, inline_script=True)
                 return
@@ -625,38 +689,7 @@ class Handler(BaseHTTPRequestHandler):
                 data = self.server.library.remote_subtitles(str(query.get("stream", [""])[0]))
                 self.stream_bytes(data, "text/vtt; charset=utf-8")
                 return
-            query_routes = {
-                "/api/usb/browse": lambda: self.server.library.usb_browse(
-                    str(query.get("volume", [""])[0]), str(query.get("path", [""])[0])),
-                "/api/my-tv/discovery": lambda: self.server.library.my_tv_discovery(
-                    str(query.get("q", [""])[0])),
-                "/api/my-tv/explore": lambda: self.server.library.my_tv_explore(
-                    str(query.get("list", ["for-you"])[0]),
-                    str(query.get("media_type", ["all"])[0]),
-                    str(query.get("page", ["1"])[0]),
-                    str(query.get("available", ["0"])[0]) == "1",
-                    str(query.get("limit", [""])[0])),
-                "/api/my-tv/home/what-to-watch": lambda:
-                    self.server.library.my_tv_home_what_to_watch(
-                        str(query.get("page", ["1"])[0]),
-                        str(query.get("limit", ["12"])[0])),
-                "/api/my-tv/home/released-this-week": lambda:
-                    self.server.library.my_tv_released_this_week(
-                        str(query.get("limit", ["16"])[0])),
-                "/api/my-tv/title": lambda: self.server.library.my_tv_title_detail(
-                    str(query.get("media_type", [""])[0]), str(query.get("tmdb_id", [""])[0])),
-                "/api/my-tv/person": lambda: self.server.library.my_tv_person_detail(
-                    str(query.get("tmdb_id", [""])[0])),
-                "/api/my-tv/season": lambda: self.server.library.my_tv_title_season(
-                    str(query.get("tmdb_id", [""])[0]), str(query.get("season", [""])[0])),
-                "/api/my-tv/providers": lambda: self.server.library.my_tv_streaming_links(
-                    str(query.get("media_type", [""])[0]), str(query.get("tmdb_id", [""])[0]),
-                    str(query.get("refresh", ["0"])[0]) == "1"),
-            }
-            query_route = query_routes.get(parsed.path)
-            if query_route is not None:
-                self.json(200, query_route())
-                return
+            if self.handle_query_json_get(parsed.path, query): return
             tmdb_artwork = re.fullmatch(
                 r"/api/my-tv/tmdb-artwork/([^/]+)/([^/]+)", parsed.path)
             if tmdb_artwork:
@@ -696,6 +729,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         try:
+            if self.path == "/api/native/family-media/progress":
+                if not self.native_request():
+                    self.json(403, {"error": "Native player access required"}); return
+                self.json(200, self.server.library.family_control(self.body())); return
             if self.handle_native_my_tv_post(urlsplit(self.path).path):
                 return
             if not self.require_same_origin():

@@ -5,9 +5,9 @@ The first delivery step uses the trusted Raspberry Pi Imager application with a 
 ## What a new owner does
 
 1. Install Raspberry Pi Imager from the Raspberry Pi website.
-2. Open the supplied `KidsTV.rpi-imager-manifest` file, or follow the seller's **Open in Raspberry Pi Imager** link.
+2. On Windows, double-click `Install MabelTV.cmd` in the supplied folder. It verifies the image and opens Imager with the local image catalogue. Keep the whole folder together; it can be moved to another drive.
 3. Select Raspberry Pi 4 and the KidsTV image that is already shown.
-4. Choose the microSD card. In Imager customisation, enter the home's Wi-Fi, country, timezone, a username and strong password, and enable SSH for support.
+4. Choose a microSD card (16 GB or larger recommended). In Imager customisation, enter a unique hostname, the home's Wi-Fi, country, timezone, a username and strong password, and enable SSH for support. Do not choose the reserved `mabeltv-bootstrap` username.
 5. Write the card, put it in the Pi, connect HDMI and the remote/receiver, then turn it on.
 6. Wait through the automatic setup and one automatic reboot. The TV then shows KidsTV's QR code and setup code. During setup, enter the child’s name: the TV becomes, for example, MabelTV or JohnTV.
 
@@ -55,6 +55,9 @@ It builds the ARM64 release bundle inside an emulated Debian Trixie Docker
 container, runs the automated ARM tests, then gives that local bundle to
 `pi-gen` to make the final image. The Pi is not contacted. It needs at least
 40 GB free Linux storage and writes the final `.img.xz` to `out/pi-image/`.
+The output also includes the Windows launcher, local icon, manifest, checksum,
+build identity and `START-HERE.txt`. WSL storage is backed by the Windows drive:
+its virtual free-space figure alone does not establish that the host has room.
 
 For a Linux/WSL terminal instead, use:
 
@@ -66,6 +69,15 @@ The lower-level `build-pi-image.sh --bundle …` command remains available when
 you already have a qualified bundle.
 
 The recipe pins the official `pi-gen` commit, builds Raspberry Pi OS Lite 64-bit with Imager's `cloudinit-rpi` customisation support, preinstalls runtime packages, embeds the exact checked release bundle, and exports one `.img.xz`. It refuses an unpublished dirty bundle or a bundle built for a different OS.
+
+New bundles also carry the locked Matter Node dependencies and verify both the
+archive and lockfile before installing them. First boot does not need an npm
+download. SQLite, SVG/WebP, QML Shapes/Effects and HEIC runtime packages are
+included in the image, matching regular installations. Provisioning waits for
+cloud-init and filesystem expansion without ordering itself before
+`multi-user.target`; that would form a cycle with `cloud-final.service`.
+The physical tty1 login is masked instead. Release extraction uses the SD
+filesystem rather than `/run` RAM, particularly important on a 2 GB Pi.
 
 Create a local, double-clickable Imager manifest:
 

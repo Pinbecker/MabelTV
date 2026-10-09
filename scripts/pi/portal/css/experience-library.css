@@ -501,6 +501,8 @@ body.portal-v2 .channel-page-more {
   font-size: 10px;
 }
 
+body.portal-v2 .channel-page-more.hidden { display: none; }
+
 body.portal-v2 .channel-page-load-more {
   width: min(100%, 360px);
   min-height: 50px;

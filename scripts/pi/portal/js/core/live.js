@@ -174,7 +174,9 @@
       $('#remoteMyTvHandoff').setAttribute('aria-label', 'Open the My TV library')
       const channelPickerLabel = $('#remoteChannelPickerLabel')
       if (channelPickerLabel) channelPickerLabel.textContent = my_tv
-        ? 'My TV is open' : (available ? `CH ${state.channel_number} · ${state.channel_name}` : 'Choose a channel')
+        ? 'My TV is open' : state.family_mode === 'storytime' ? 'Storytime'
+          : state.family_mode === 'memories' ? 'Family memories'
+            : (available ? `CH ${state.channel_number} · ${state.channel_name}` : 'Choose a channel')
       const lockButton = $('#remoteLock')
       lockButton.classList.toggle('active', locked)
       const lockLabel = lockButton.querySelector('.remote-dock-action-label') || lockButton.querySelector('span')
@@ -222,7 +224,8 @@
       $('#liveOffText').textContent = available ? `Connecting to ${tvName()}` : 'Turn on the television to start the live preview.'
       $('#liveProgramme').textContent = available ? state.programme : `Waiting for ${tvName()}`
       $('#liveChannel').textContent = available
-        ? (state.my_tv_mode ? 'MY TV · PRIVATE LIBRARY' : `CH ${state.channel_number} · ${state.channel_name}`)
+        ? (state.family_mode ? state.family_mode === 'storytime' ? 'STORYTIME' : 'FAMILY MEMORIES'
+          : state.my_tv_mode ? 'MY TV · PRIVATE LIBRARY' : `CH ${state.channel_number} · ${state.channel_name}`)
         : 'Live preview'
       if ($('#liveState')) $('#liveState').textContent = available ? (state.paused ? 'Paused' : 'Live') : 'Offline'
       renderRemoteState(state)
@@ -261,6 +264,9 @@
       if (standby) {
         $('#homeNowPlayingTitle').textContent = 'Nothing playing'
         nowPlayingMeta.textContent = ''
+      } else if (state.family_mode) {
+        $('#homeNowPlayingTitle').textContent = state.programme || 'Family time'
+        nowPlayingMeta.textContent = `${state.family_mode === 'storytime' ? 'Storytime' : 'Family memories'} · ${state.paused ? 'Paused' : 'Playing'}`
       } else if (state.my_tv_mode === true) {
         const playing = state.my_tv_playing === true
         $('#homeNowPlayingTitle').textContent = playing ? (state.programme || 'My TV film') : 'My TV library'
@@ -307,6 +313,7 @@
     }
 
     function homeArtworkForState(state) {
+      if (state?.family_mode) return state.family_artwork || ''
       const media = homeMediaForState(state)
       if (media?.metadata?.poster)
         return homeArtworkUrl(state?.my_tv_mode === true ? 'my_tv' : 'channel', media.metadata.poster)
@@ -415,6 +422,22 @@
       openPrimarySection(button.dataset.viewButton, { reset: selected })
     })
     $$('[data-go]').forEach(button => button.onclick = () => {
+      if (button.dataset.go.startsWith('settings-') || button.closest('.settings-page')
+          || button.id === 'appearanceBack') {
+        const view = button.dataset.go
+        const route = view.startsWith('settings-') ? `settings/${view.slice(9)}` : view
+        if (button.matches('.settings-back, #appearanceBack, .usb-page > .appearance-back, .activity-page > .insights-back')) {
+          if (history.state?.settingsParent === `#${route}`) {
+            history.back()
+            return
+          }
+          history.replaceState({ settings: true, primaryView: 'system' }, '', `#${route}`)
+        } else {
+          history.pushState({ settings: true, primaryView: 'system', settingsParent: location.hash || '#system' }, '', `#${route}`)
+        }
+        openView(view, { resetScroll: true })
+        return
+      }
       if (button.dataset.go === 'appearance') {
         history.replaceState({ settings: true }, '', '#system')
         history.pushState({ appearance: true }, '', '#appearance')
@@ -429,6 +452,8 @@
       if (button.dataset.go === 'channels') showChannelHub()
       openView(button.dataset.go)
       if (button.classList.contains('home-device-summary')) {
+        history.pushState({ settings: true }, '', '#settings/help')
+        openView('settings-help', { resetScroll: true })
         const status = $('#systemStatusDisclosure') || $('#systemDetails')?.closest('details')
         if (status) {
           status.open = true

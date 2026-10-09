@@ -5,6 +5,7 @@ import unittest
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PORTAL_ROOT = PROJECT_ROOT / "scripts" / "pi" / "portal"
 QML_ROOT = PROJECT_ROOT / "qml"
+MY_TV_RESUME_SOURCE = (QML_ROOT / "MyTvResumeCoordinator.qml").read_text(encoding="utf-8")
 MAIN_QML_SOURCE = "\n".join(
     (QML_ROOT / name).read_text(encoding="utf-8")
     for name in ("Main.qml", "TelevisionScreen.qml", "RemoteInputHandler.qml")
@@ -217,7 +218,10 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("onPlaybackStopped", my_tv_qml)
         self.assertIn("if (overlay.closing)", my_tv_qml)
         self.assertIn("myTvResumeTimer.restart()", main_qml)
-        self.assertIn("interval: 400", main_qml)
+        self.assertIn("MyTvResumeCoordinator {", main_qml)
+        self.assertIn("interval: 400", MY_TV_RESUME_SOURCE)
+        self.assertIn("else if (familyPlayer.active)", MY_TV_RESUME_SOURCE)
+        self.assertIn("appRoot.restoreChildPauseAfterMyTv = false", MY_TV_RESUME_SOURCE)
 
     def test_visible_my_tv_player_is_inside_stall_monitor(self) -> None:
         source = (PROJECT_ROOT / "src" / "app" / "main.cpp").read_text(
@@ -383,9 +387,11 @@ class PlayerSafetyTests(unittest.TestCase):
         my_tv_qml = MY_TV_QML_SOURCE
         self.assertIn('property string pendingPowerAction: ""', main_qml)
         self.assertIn("if (myTvMode.active) {\n            myTvMode.close()", main_qml)
-        self.assertIn("root.performPowerOff()", main_qml)
+        self.assertIn("appRoot.performPowerOff()", MY_TV_RESUME_SOURCE)
         self.assertIn("tvController.turnOff()", main_qml)
-        self.assertIn("if (root.pendingPowerAction.length > 0)", main_qml)
+        self.assertIn("if (appRoot.pendingPowerAction.length > 0)", MY_TV_RESUME_SOURCE)
+        self.assertLess(MY_TV_RESUME_SOURCE.index("if (appRoot.pendingPowerAction.length > 0)"),
+                        MY_TV_RESUME_SOURCE.index("else if (familyPlayer.active)"))
         self.assertNotIn("powerHoldTimer", main_qml)
         self.assertNotIn("requestSafeShutdown", main_qml)
         self.assertIn("if (overlay.closing)\n                overlay.finishClose()", my_tv_qml)
@@ -479,7 +485,8 @@ class PlayerSafetyTests(unittest.TestCase):
         self.assertIn("onPlaybackStopped", main_qml)
         self.assertIn("if (appRoot.openingMyTvMode)", main_qml)
         self.assertIn("myTvMode.open()", main_qml)
-        self.assertIn("if (!myTvMode.active && !root.openingMyTvMode", main_qml)
+        self.assertIn("if (myTvMode.active || openingMyTvMode || poweringOff || pendingPowerAction.length > 0 || tvController.standby) return", main_qml)
+        self.assertIn("root.startControllerPlayback(source, startPositionSeconds)", main_qml)
         self.assertIn("if (myTvMode.active)\n                myTvMode.toggleSubtitles()", main_qml)
         self.assertIn("controller.myTvPlaybackPosition(film.id)", my_tv_qml)
         self.assertIn("controller.setMyTvPlaybackPosition(film.id", my_tv_qml)

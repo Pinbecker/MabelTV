@@ -223,6 +223,7 @@ const ChannelPageComponents = (() => {
       : '')
     const hero = document.querySelector('#channelPageHero')
     document.querySelector('[data-channel-page-root]').classList.toggle('is-film-channel', isFilms)
+    document.querySelector('[data-channel-page-root]').classList.toggle('is-memory-channel', channel.content_type === 'memories')
     hero.style.setProperty('--channel-page-art', heroArtwork ? `url("${artworkPath(heroArtwork)}")` : 'none')
     hero.classList.toggle('has-artwork', Boolean(heroArtwork))
     document.querySelector('#workspaceChannelBadge').textContent = `CH ${channel.number}`

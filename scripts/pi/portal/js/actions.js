@@ -35,6 +35,7 @@ let managementBusy = false
           notice(result.message || 'The change was saved, but the TV could not refresh.',
             result.refreshed === false)
         }
+        return result
       } catch (error) { notice(error.message, true) }
       finally { managementBusy = false }
     }
@@ -54,7 +55,15 @@ let managementBusy = false
     }
 
     $('#backToChannels').onclick = closeChannelPage
-    const showAddChannelSheet = () => openLibrarySheet($('#addChannelPanel'), $('#newChannelNumber'))
+    const showAddChannelSheet = () => {
+      for (const [name, id] of [['newChannelPicture', 'newChannelAspect'], ['newChannelContent', 'newChannelContentType']]) {
+        for (const option of $$('#addChannelForm input[name="' + name + '"]')) {
+          option.checked = option.value === $('#' + id).value
+          option.onchange = () => { if (option.checked) $('#' + id).value = option.value }
+        }
+      }
+      openLibrarySheet($('#addChannelPanel'))
+    }
     $('#showAddChannel').onclick = showAddChannelSheet
     $('#openAddChannelUtility').onclick = showAddChannelSheet
     $('#watchNewChannel').onclick = showAddChannelSheet
@@ -702,7 +711,17 @@ let managementBusy = false
         sound_effects_enabled: $('#tvSoundEffects').value === 'true',
         scrubbing_enabled: $('#tvScrubbing').value === 'true',
       }
-      await manage('set-tv-settings', { settings })
+      $('#tvSettingsApply').disabled = true
+      $('#tvSettingsFeedback').textContent = 'Applying TV settings…'
+      const result = await manage('set-tv-settings', { settings })
+      if (result) {
+        tvSettingsDirty = false
+        renderTvSettings()
+        $('#tvSettingsFeedback').textContent = result.refreshed === false
+          ? 'Saved. The TV player could not refresh; see System and help.' : 'TV settings saved.'
+      } else {
+        renderSettingsDraft()
+      }
     }
 
     initialise()

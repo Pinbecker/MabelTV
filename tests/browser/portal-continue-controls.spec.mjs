@@ -15,16 +15,9 @@ test('Home retains Continue watching cards when returning from Mabel TV', async 
   await page.evaluate(() => {
     window.__homeContinueCard = document.querySelector('#homeContinueRail .watch-continue-card')
   })
-  const home = await page.locator('#homeMabelQueueOpen').evaluate(button => ({
-    rect: button.getBoundingClientRect().toJSON(), font: getComputedStyle(button).fontSize,
-    countFont: getComputedStyle(document.querySelector('#homeContinueCount')).fontSize,
-  }))
   await page.locator('[data-view-button="watch"]').click()
-  const watch = await page.locator('#watchMabelQueueOpen').evaluate(button => ({
-    rect: button.getBoundingClientRect().toJSON(), font: getComputedStyle(button).fontSize,
-    countFont: getComputedStyle(document.querySelector('#watchMabelContinueCount')).fontSize,
-  }))
-  expect(watch).toEqual(home)
+  await expect(page.locator('#watchMabelContinueSection, #watchMabelQueueSection')).toHaveCount(0)
+  await expect(page.locator('#mabelChannelEpisodesTab')).toBeVisible()
   await page.locator('[data-view-button="overview"]').click()
   expect(await page.evaluate(() => window.__homeContinueCard ===
     document.querySelector('#homeContinueRail .watch-continue-card'))).toBe(true)
@@ -66,17 +59,16 @@ test('Mabel TV film More offers removal from Continue Watching', async ({ page }
       window.__clearRequests.push(JSON.parse(options.body))
       return { ok: true, kind: 'channel' }
     }
-    const channel = library.channels.find(value => value.content_type === 'films')
-    renderMabelDiscovery(mabelFilmEntries())
-    openWatchProgrammeSheet(channel, channel.programmes[0], 'continue')
+    renderHomeLibrary()
   })
-  const beforeRemoval = await page.locator('#watchMabelContinueRail .watch-continue-item').count()
+  const beforeRemoval = await page.locator('#homeContinueRail .watch-continue-card').count()
   expect(beforeRemoval).toBeGreaterThan(0)
+  await page.locator('#homeContinueRail').getByRole('button', { name: 'Resume Snowy Adventure at 7m' }).click()
   await page.locator('#watchProgrammeMore').click()
   await expect(page.locator('#watchProgrammeRemoveProgress')).toBeVisible()
   await page.locator('#watchProgrammeRemoveProgress').click()
   await expect.poll(() => page.evaluate(() => window.__clearRequests.length)).toBe(1)
-  await expect(page.locator('#watchMabelContinueRail .watch-continue-item'))
+  await expect(page.locator('#homeContinueRail .watch-continue-card'))
     .toHaveCount(beforeRemoval - 1)
   expect(await page.evaluate(() => ({
     request: window.__clearRequests[0],

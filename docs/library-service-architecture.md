@@ -34,6 +34,10 @@ secondary service objects.
   `write_json` helpers are only for operational filesystem journals.
 - `management.py`: serialized administrative mutations for channel/settings
   changes, media organization and the recoverable recycle-bin workflow.
+- `iplayer.py`: bounded MP4 BBC identity reads and the authenticated current-file
+  inventory used by Studio. Parsed tags are disposable, fingerprinted cache
+  entries; live file presence is checked again on every request. Upload history,
+  the recycle bin and staging files never establish availability.
 - `uploads.py`: resumable upload records, queueing, publication and worker
   lifecycle. `.incoming` manifests are operational journals.
 - `transcoding.py`: probing and media conversion/optimization policy used by
@@ -190,3 +194,33 @@ PIN protection on the portal's private routes.
 The native family-channel directory omits resume hydration. A selected channel
 projects only that channel through `channel_library(channel_number)`; the portal
 keeps the complete projection and shared bookmark semantics.
+
+## Playlists, listening and family memories
+
+- `playlists.py` validates MabelTV programme membership and projects saved
+  playlists. Its repository owns ordering and transactional queue snapshots.
+- `family_media.py` owns the family-only catalogue, content projection, story
+  listening position and bounded native/device playback sessions.
+- `memory_composition.py` is a pure planner for
+  bounded, orientation-aware photo layouts and transitions shared by both
+  renderers; it does not read files, change state or control playback.
+- `family_uploads.py` admits resumable audio/photo/video uploads and runs media
+  preparation on the existing single conversion worker. Original files remain
+  untouched after receipt. HEIC uses `heif-convert`; phone videos are rotated,
+  capped at 720p/30fps and converted to H.264/AAC, with HDR tone mapping.
+- `story_audio.py` validates the uncompressed chapter package and prepares its
+  ordered recordings as one AAC story through that same worker. It keeps the
+  untouched original archive, uses bounded temporary files, and honours worker
+  cancellation and thermal pauses. The existing audio asset, duration, session
+  and whole-story listening position remain the playback contract.
+
+These mixins communicate only through the composed Library object. Family
+content is separate from My TV and never bypasses My TV PIN boundaries. The
+normal authenticated family content endpoint supports HTTP byte ranges. Native
+family session/start/progress endpoints require loopback and the native header.
+The native `family-media/stories` projection reads SQLite and exposes prepared
+illustration URLs only to the loopback player. `open-storytime` on the existing
+authenticated family-control route opens the TV catalogue without making a
+listening session or changing saved progress.
+A catalogue revision change is a `library` revision; no global Insights rewrite
+is introduced and listening/memories do not record stale child-video sessions.

@@ -337,6 +337,8 @@ class NativeMyTvMixin:
         """Browse family channels without loading the private My TV catalogue."""
         cards = []
         for channel in sorted(self.channel_library(include_resume=False), key=lambda value: value["number"]):
+            if channel["content_type"] == "memories":
+                continue
             if not channel["enabled"]:
                 continue
             programmes = [value for value in channel["programmes"] if value["enabled"]]

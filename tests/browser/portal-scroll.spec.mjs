@@ -343,6 +343,7 @@ test('insights Back returns to the exact browse, highlight or Follow the day par
 test('a library refresh preserves replaced horizontal programme rails', async ({ page }) => {
   await openPortal(page)
   await page.locator('[data-view-button="watch"]').click()
+  await page.locator('#mabelChannelFilmsTab').click()
   const saved = await page.evaluate(async () => {
     const rail = [...document.querySelectorAll('#remoteMabel .watch-channel-rail')]
       .find(element => element.scrollWidth > element.clientWidth + 100)

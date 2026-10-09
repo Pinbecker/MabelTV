@@ -87,6 +87,13 @@ void TvController::finishTune()
     }
 
     ChannelRuntime &runtime = m_channels[m_currentChannelIndex];
+    if (runtime.enabled && runtime.channel.contentType == QStringLiteral("memories")) {
+        setTuning(false);
+        setNoSignal(false);
+        emit stopPlaybackRequested();
+        emit familyMemoryRequested(runtime.channel.number);
+        return;
+    }
     if (runtime.channel.episodes.isEmpty() || !runtime.enabled) {
         setTuning(false);
         setNoSignal(true);

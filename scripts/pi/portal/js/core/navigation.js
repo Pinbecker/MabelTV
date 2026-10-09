@@ -105,9 +105,13 @@
       if (reset && section === 'watch') {
         watchDomain = 'mabel'
         remoteKind = 'channel'
+        selectedPlaylistId = ''
+        selectMabelChannelKind('episodes')
       }
       history.replaceState(destination.state, '', destination.route)
-      if (destination.view === 'insights') {
+      if (destination.view === 'mabel-playlist') {
+        openMabelPlaylist(destination.state.playlistId, { updateHistory: false, resetScroll: reset })
+      } else if (destination.view === 'insights') {
         openInsightsRoute(destination.route.replace(/^#/, ''), null, { reset })
       } else {
         if (destination.view === 'watch' && !offlineMode) renderRemoteViewing()
@@ -123,6 +127,16 @@
 
     function openRequestedView(event = null) {
       const requested = location.hash.replace(/^#/, '')
+      const settingsRoute = requested.match(/^settings\/(mabel|my-tv|media|security|help)$/)
+      if (settingsRoute) {
+        openView(`settings-${settingsRoute[1]}`)
+        return
+      }
+      const playlistRoute = requested.match(/^mabel-playlist\/([^/]+)$/)
+      if (playlistRoute) {
+        openMabelPlaylist(decodeURIComponent(playlistRoute[1]), { updateHistory: false, resetScroll: event?.type !== 'popstate' })
+        return
+      }
       if (requested === 'insights' || requested.startsWith('insights/')) {
         openInsightsRoute(requested, event)
         return
@@ -153,7 +167,7 @@
       }
       const view = requested === 'home' ? 'overview'
         : requested === 'my-tv' ? 'my-tv-home' : requested
-      const allowed = new Set(['overview', 'live', 'lg-tv', 'channels', 'watch', 'mabel-queue', 'my-tv-home', 'my-tv-viewing', 'my-tv-explore', 'my-tv-ratings', 'my-tv-filmography', 'usb', 'system', 'appearance', 'insights'])
+      const allowed = new Set(['overview', 'live', 'lg-tv', 'channels', 'watch', 'mabel-queue', 'my-tv-home', 'my-tv-viewing', 'my-tv-explore', 'my-tv-ratings', 'my-tv-filmography', 'usb', 'activity', 'system', 'appearance', 'insights'])
       if (allowed.has(view)) {
         if (view === 'channels') {
           watchDomain = 'mabel'
@@ -444,13 +458,13 @@
         || (name === 'insights' && myInsightsMode === 'my_tv')
         || (name === 'watch' && watchDomain === 'my_tv')
       const activeNavigation = myTvNavigation ? 'my-tv-home'
-        : name === 'mabel-queue' || channelFromWatch || consolidatedWatchView
+        : name === 'mabel-queue' || name === 'mabel-playlist' || channelFromWatch || consolidatedWatchView
         || (name === 'insights' && myInsightsMode === 'mabel') ? 'watch'
         : name === 'lg-tv' ? 'live'
-          : (name === 'usb' || name === 'activity' || name === 'appearance') ? 'system' : name
+          : (name === 'usb' || name === 'activity' || name === 'appearance' || name.startsWith('settings-')) ? 'system' : name
       if (name !== 'mabel-queue') rememberPrimarySectionLocation(name, activeNavigation)
       $$('.view').forEach(view => view.classList.toggle('active', view.id === `view-${name}`))
-      document.body.classList.toggle('watch-mode', name === 'watch' || name === 'mabel-queue' || name === 'my-tv-home' || name === 'my-tv-viewing'
+      document.body.classList.toggle('watch-mode', name === 'watch' || name === 'mabel-queue' || name === 'mabel-playlist' || name === 'my-tv-home' || name === 'my-tv-viewing'
         || name === 'my-tv-explore' || name === 'my-tv-ratings' || name === 'my-tv-filmography'
         || channelFromWatch || consolidatedWatchView)
       document.body.classList.toggle('tv-remote-mode', name === 'live' || name === 'lg-tv')

@@ -111,18 +111,29 @@
         renderLiveChannelOptions()
       } else if (name === 'channels') {
         renderChannels()
+      } else if (name === 'mabel-playlist') {
+        renderPlaylistPage()
       } else if (name === 'usb') {
         renderUsbSeriesDestinations()
-      } else if (name === 'system') {
+      } else if (name === 'system' || name.startsWith('settings-')) {
         renderStatus()
-        renderTvSettings()
-        renderParentOverlayStyle()
-        renderTvGuideSetting()
-        renderWatchmodeAvailabilitySetting()
-        renderMyTvProviderBadgesSetting()
-        refreshMyTvProviderBadges()
-        renderPortalPinSetting()
-        refreshTmdbStatus().catch(() => {})
+        renderSettingsHub()
+        if (name === 'settings-mabel') {
+          renderTvSettings()
+          renderParentOverlayStyle()
+          renderTvGuideSetting()
+          const simultaneous = library?.remote_viewing?.allow_simultaneous === true
+          setSettingsSwitch($('#remoteConcurrentToggle'), simultaneous)
+          $('#remoteConcurrentState').textContent = simultaneous
+            ? 'On · TV and this device can play independently' : 'Off · one player at a time'
+        }
+        if (name === 'settings-my-tv') {
+          renderWatchmodeAvailabilitySetting()
+          renderMyTvProviderBadgesSetting()
+          refreshMyTvProviderBadges()
+          refreshTmdbStatus().catch(() => {})
+        }
+        if (name === 'settings-security') renderPortalPinSetting()
       }
     }
 
@@ -181,6 +192,8 @@
     async function loadInitialPortalData(bootstrap) {
       applyPortalBootstrap(bootstrap)
       refreshTmdbStatus().catch(() => {})
+      const playlistsReady = loadInitialMabelPlaylists()
+      const familyReady = loadInitialFamilyLibrary()
       const [cachedLibrary, cachedMyTvViewing] = await Promise.all([
         readPortalDataCache('library-v1'),
         readPortalDataCache('my-tv-viewing-v1'),
@@ -194,9 +207,10 @@
       const myTvChanged = !cachedMyTvViewing
         || Number(cachedMyTvViewing.revision) !== portalRevision('my_tv_viewing')
       if (!cachedLibrary) {
-        await refreshPortalDomains()
+        await Promise.all([refreshPortalDomains(), playlistsReady, familyReady])
         return { refresh: null, source: 'network' }
       }
+      await Promise.all([playlistsReady, familyReady])
       return {
         source: 'cache',
         refresh: libraryChanged || myTvChanged

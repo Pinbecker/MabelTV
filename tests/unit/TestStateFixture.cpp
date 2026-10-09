@@ -58,7 +58,7 @@ QString databaseFromJsonFixtures(const QString &channelsPath,
             if (!query.exec(statement)) return {};
         }
         if (!query.exec(QStringLiteral("INSERT INTO mabel_queue_state(id) VALUES(1)"))) return {};
-        if (!query.exec(QStringLiteral("PRAGMA user_version=11"))) return {};
+        if (!query.exec(QStringLiteral("PRAGMA user_version=12"))) return {};
         const QJsonArray channels = readTestObject(channelsPath)
                                         .value(QStringLiteral("channels")).toArray();
         query.prepare(QStringLiteral("INSERT INTO channels VALUES(?,?,?,?,?)"));

@@ -79,3 +79,77 @@ test('Mabel TV film playback closes its native dialog and restores it after Back
   await expect(page.locator('#mabelWatchPlayer')).toBeHidden()
   await expect(page.locator('#watchProgrammeSheet')).toHaveJSProperty('open', true)
 })
+
+test('device picture cycle preserves playback and queue identity without controlling the TV', async ({ page }, testInfo) => {
+  await page.goto('/')
+  await expect(page.locator('.app-shell')).toBeVisible()
+  await page.evaluate(async () => {
+    library.tv_settings.tv_border = 'charcoal-90s'
+    window.__pictureRequests = []
+    window.api = async (path, options) => {
+      window.__pictureRequests.push(path)
+      return path === '/api/remote/start' ? {
+        title: 'Fixture programme', stream_url: '/api/remote/media?stream=picture-test',
+        resume_enabled: true,
+      } : {}
+    }
+    const video = $('#mabelWatchVideo')
+    video.load = () => {}
+    video.play = () => Promise.resolve()
+    video.pause = () => {}
+    let source = ''
+    Object.defineProperty(video, 'src', { configurable: true, get: () => source, set: value => { source = value } })
+    Object.defineProperty(video, 'duration', { configurable: true, value: 600 })
+    Object.defineProperty(video, 'currentTime', { configurable: true, writable: true, value: 125 })
+    await startMabelWatchPlayer({ kind: 'channel', channel: 1, file: 'Fixture.mp4', queue_id: 'queued-fixture' })
+    window.__pictureBinding = video._mabelQueue
+    window.__pictureSource = video.src
+  })
+  const player = page.locator('#mabelWatchPlayer')
+  const screen = page.locator('#mabelWatchScreen')
+  const button = page.locator('[data-mabel-watch-action="presentation"]')
+  for (const viewport of [{ width: 393, height: 852 }, { width: 852, height: 393 }]) {
+    await page.setViewportSize(viewport)
+    for (const [mode, label, ratio] of [['standard', 'Widescreen', 4 / 3], ['widescreen', 'Full screen', 16 / 9], ['fullscreen', 'Standard', viewport.width / viewport.height]]) {
+      await expect(player).toHaveAttribute('data-presentation', mode)
+      await expect(button).toHaveText(label)
+      const bounds = await screen.boundingBox()
+      const picture = await page.locator('#mabelWatchVideo').boundingBox()
+      const geometry = await screen.evaluate(node => {
+        const style = getComputedStyle(node)
+        return { width: style.width, height: style.height, aspect: style.aspectRatio, box: style.boxSizing, border: style.borderWidth,
+          video: { width: getComputedStyle(node.querySelector('video')).width, height: getComputedStyle(node.querySelector('video')).height } }
+      })
+      expect(Math.abs(picture.width / picture.height - ratio), `${mode}: ${JSON.stringify({ picture, geometry })}`).toBeLessThan(0.04)
+      expect(bounds.x).toBeGreaterThanOrEqual(0)
+      expect(bounds.y).toBeGreaterThanOrEqual(0)
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(viewport.width + 1)
+      expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height + 1)
+      if (mode !== 'fullscreen') {
+        const brand = await page.locator('.mabel-watch-charcoal-logo').boundingBox()
+        expect(brand.y).toBeGreaterThanOrEqual(bounds.y + bounds.height + 4)
+      }
+      await expect(page.locator('.mabel-watch-charcoal-control')).toBeHidden()
+      if (process.env.MABEL_PICTURE_REVIEW && testInfo.project.name === 'iphone-webkit') {
+        await page.screenshot({ path: `../../work/device-picture-20261007/${viewport.width}-${mode}.png` })
+      }
+      expect(await button.evaluate(node => {
+        const box = node.getBoundingClientRect()
+        return document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)?.closest('button') === node
+      }), `${mode} control at ${viewport.width}px`).toBe(true)
+      await button.click()
+      expect(await page.evaluate(() => $('#mabelWatchVideo').currentTime)).toBe(125)
+      expect(await page.evaluate(() => $('#mabelWatchVideo').src === window.__pictureSource
+        && $('#mabelWatchVideo')._mabelQueue === window.__pictureBinding)).toBe(true)
+    }
+  }
+  await button.click()
+  await page.evaluate(async () => {
+    await startMabelWatchPlayer({ kind: 'channel', channel: 1, file: 'Next.mp4', queue_id: 'queued-next' })
+  })
+  await expect(player).toHaveAttribute('data-presentation', 'widescreen')
+  expect(await page.evaluate(() => window.__pictureRequests.filter(path => path === '/api/remote/start').length)).toBe(2)
+  expect(await page.evaluate(() => window.__pictureRequests.some(path => path.includes('/live/') || path === '/api/manage'))).toBe(false)
+  await page.locator('#mabelWatchBack').click()
+  await expect(player).toBeHidden()
+})

@@ -72,6 +72,7 @@
       queue.disabled = !programme || !channel.enabled
       queue.onclick = programme ? () => addToMabelQueue(
         channel, programme, queue, () => closeWatchChannelSheet(false)) : null
+      bindPlaylistAction(queue, channel, programme, () => closeWatchChannelSheet(false))
 
       const favourite = $('#watchChannelFavourite')
       favourite.classList.toggle('active', channel.favourite === true)
@@ -190,6 +191,7 @@
       queueButton.disabled = !channel.enabled || programme.enabled === false
       queueButton.onclick = () => addToMabelQueue(
         channel, programme, queueButton, () => closeWatchProgrammeSheet(false))
+      bindPlaylistAction(queueButton, channel, programme, () => closeWatchProgrammeSheet(false))
       if (filmChannel) source.position = Number(programme.remote_position || 0)
       if (queueId) here.querySelector('small').textContent = programme.browser_ready === false
         ? 'Use Play on TV for this queued file' : 'Plays this queue, replacing its current player'

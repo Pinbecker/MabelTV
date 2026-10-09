@@ -81,11 +81,16 @@ class MediaCatalogueMixin:
         self.state_database.update_channel(original_number, value)
 
     def delete_channel(self, number: int) -> None:
+        if any(item.get("channel_number") == number
+               for item in self.state_database.family_catalogue()["assets"]):
+            raise ValueError("Remove the photos and videos from this channel before deleting it")
         self.state_database.delete_channel(number)
 
     def relocate_viewing_item(self, source_channel: int, source_name: str,
                               target_channel: int, target_name: str) -> None:
         self.state_database.relocate_viewing_item(
+            source_channel, source_name, target_channel, target_name)
+        self.state_database.relocate_playlist_item(
             source_channel, source_name, target_channel, target_name)
 
     def read_json(self, path: Path, fallback: Any) -> Any:
@@ -896,6 +901,8 @@ class MediaCatalogueMixin:
             return moved
 
     def upload_destination(self, metadata: dict[str, Any]) -> Path:
+        if metadata.get("kind") == "family":
+            return self.family_path(self.state_database.family_asset(metadata["asset_id"])["source_path"])
         if metadata.get("kind") == "my_tv":
             folder = str(metadata.get("folder", ""))
             relative = f"{folder}/{metadata.get('file_name', '')}" if folder \
@@ -988,9 +995,10 @@ class MediaCatalogueMixin:
                 continue
             folder = self.media_root / str(channel["folder"])
             programmes = []
+            is_memory_channel = self.channel_content_type(channel) == "memories"
             is_film_channel = self.channel_content_type(channel) == "films"
             for item in sorted(
-                    folder.glob("*") if folder.is_dir() else [],
+                    folder.glob("*") if folder.is_dir() and not is_memory_channel else [],
                     key=lambda path: (
                         re.sub(r"^the\s+", "", self.display_name(path.name), flags=re.IGNORECASE).casefold(),
                         self.display_name(path.name).casefold(),

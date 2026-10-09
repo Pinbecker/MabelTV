@@ -2,9 +2,9 @@
 
 importScripts('/mabeltv-offline-schema.js')
 
-const SHELL_RELEASE = '266'
+const SHELL_RELEASE = '304'
 const SHELL_CACHE = `mabeltv-shell-v${SHELL_RELEASE}`
-const PREVIOUS_SHELL_CACHE = 'mabeltv-shell-v251'
+const PREVIOUS_SHELL_CACHE = 'mabeltv-shell-v303'
 const SHELL_CACHE_PREFIX = 'mabeltv-shell-v'
 const FAMILY_ARTWORK_CACHE = 'mabeltv-artwork-family-v1'
 const PROTECTED_ARTWORK_CACHE = 'mabeltv-artwork-protected-v1'
@@ -16,6 +16,7 @@ const SHELL_URLS = [
   '/mabeltv-offline.js',
   '/portal/js/core/app-cache.js',
   '/portal/js/core/assets.js',
+  '/portal/js/core/app-gestures.js',
   '/portal-app.js',
   '/portal/css/tokens.css',
   '/portal/css/base.css',
@@ -37,8 +38,23 @@ const SHELL_URLS = [
   '/portal/css/experience-shell.css',
   '/portal/css/experience-home.css',
   '/portal/css/experience-mabel-queue.css',
+  '/portal/css/experience-family.css',
+  '/portal/css/experience-storytime.css',
+  '/portal/assets/storytime/cover-v2.png',
+  '/portal/assets/storytime/cover-sapphire.png',
+  '/portal/assets/storytime/cover-ruby.png',
+  '/portal/assets/storytime/cover-amethyst.png',
+  '/portal/assets/storytime/cover-teal.png',
+  '/portal/assets/storytime/cover-amber.png',
+  '/portal/assets/storytime/cover-rose.png',
+  '/portal/assets/storytime/cover-brown.png',
+  '/portal/assets/storytime/stone-floor.png',
+  '/portal/assets/storytime/parchment.png',
+  '/portal/assets/storytime/CinzelDecorative-Bold.ttf',
+  '/portal/assets/storytime/page-turn.ogg',
   '/portal/css/experience-remote.css',
   '/portal/css/experience-watch.css',
+  '/portal/css/experience-downloads.css',
   '/portal/css/experience-watch-channels.css',
   '/portal/css/experience-library.css',
   '/portal/css/experience-viewing.css',
@@ -48,8 +64,16 @@ const SHELL_URLS = [
   '/portal/css/experience-title-metadata.css',
   '/portal/css/experience-appearance.css',
   '/portal/css/experience-settings.css',
+  '/portal/assets/surrounds/slim-black.png',
+  '/portal/assets/surrounds/silver-90s.png',
+  '/portal/assets/surrounds/charcoal-90s.png',
+  '/portal/assets/surrounds/vintage-black.png',
+  '/portal/assets/surrounds/dinosaur-den.png',
+  '/portal/assets/surrounds/ocean-club.png',
+  '/portal/assets/surrounds/finding-nemo.png',
   '/portal/css/experience-insights.css',
   '/portal/css/experience-my-tv-insights.css',
+  '/portal/css/app-gestures.css',
   '/portal/css/experience-my-tv-home.css',
   '/portal/css/experience-responsive.css',
   '/portal/css/experience-overlays.css',
@@ -258,7 +282,8 @@ async function trimCache(cache, maximum) {
 async function artworkResponse(request, cacheName, authorised = true) {
   const cache = await caches.open(cacheName)
   const cacheUrl = new URL(request.url)
-  cacheUrl.search = ''
+  if (cacheUrl.pathname === '/api/family-media/content') cacheUrl.searchParams.delete('retry')
+  else cacheUrl.search = ''
   const cacheKey = cacheUrl.href
   if (authorised) {
     const cached = await cache.match(cacheKey)
@@ -310,7 +335,8 @@ self.addEventListener('fetch', event => {
     }))
     return
   }
-  if (url.pathname.startsWith('/api/channel/artwork/')) {
+  if (url.pathname.startsWith('/api/channel/artwork/')
+      || (url.pathname === '/api/family-media/content' && url.searchParams.get('artwork') === '1')) {
     event.respondWith(artworkResponse(event.request, FAMILY_ARTWORK_CACHE))
     return
   }

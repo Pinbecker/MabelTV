@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 
 
-SCHEMA_VERSION = 11
+SCHEMA_VERSION = 12
 
 SCHEMA = r"""
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -855,6 +855,77 @@ CREATE TABLE mabel_queue_history (
 UPDATE mabel_queue_state SET paused=active,active=0,current_title='';
 """
 
+"""Schema 12: reusable plans and the family listening/memory library."""
+
+FAMILY_FEATURES_SCHEMA = """
+CREATE TABLE channels_v12 (
+ id INTEGER PRIMARY KEY,
+ number INTEGER NOT NULL UNIQUE CHECK(number BETWEEN 1 AND 999),
+ name TEXT NOT NULL CHECK(length(name) BETWEEN 1 AND 60),
+ folder TEXT NOT NULL UNIQUE CHECK(length(folder)>0),
+ aspect TEXT NOT NULL CHECK(aspect IN ('crop','fit','stretch')),
+ content_type TEXT NOT NULL CHECK(content_type IN ('shows','films','memories'))
+);
+INSERT INTO channels_v12 SELECT * FROM channels;
+DROP TABLE channels;
+ALTER TABLE channels_v12 RENAME TO channels;
+CREATE TABLE mabel_playlists (
+ id TEXT PRIMARY KEY, name TEXT NOT NULL CHECK(length(name) BETWEEN 1 AND 80),
+ repeat INTEGER NOT NULL DEFAULT 0 CHECK(repeat IN (0,1)),
+ created REAL NOT NULL, updated REAL NOT NULL
+);
+CREATE TABLE mabel_playlist_entries (
+ id TEXT PRIMARY KEY,
+ playlist_id TEXT NOT NULL REFERENCES mabel_playlists(id) ON DELETE CASCADE,
+ position INTEGER NOT NULL CHECK(position>=0),
+ channel_id INTEGER NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+ file_name TEXT NOT NULL, UNIQUE(playlist_id,position)
+);
+ALTER TABLE mabel_queue_state ADD COLUMN repeat_playlist INTEGER NOT NULL DEFAULT 0 CHECK(repeat_playlist IN (0,1));
+ALTER TABLE mabel_queue_state ADD COLUMN playlist_name TEXT NOT NULL DEFAULT '';
+CREATE TABLE mabel_queue_cycle (
+ position INTEGER PRIMARY KEY, channel_number INTEGER NOT NULL
+ REFERENCES channels(number) ON UPDATE CASCADE ON DELETE CASCADE,
+ file_name TEXT NOT NULL, title TEXT NOT NULL, artwork TEXT NOT NULL, channel_name TEXT NOT NULL
+);
+CREATE TRIGGER mabel_playlist_repeat AFTER DELETE ON mabel_queue_entries
+WHEN NOT EXISTS(SELECT 1 FROM mabel_queue_entries)
+ AND EXISTS(SELECT 1 FROM mabel_queue_state WHERE id=1 AND repeat_playlist=1
+            AND phase='playing' AND current_id=OLD.id AND paused=0)
+BEGIN
+ INSERT INTO mabel_queue_entries(id,position,channel_number,file_name,title,artwork,channel_name)
+ SELECT lower(hex(randomblob(16))),position,channel_number,file_name,title,artwork,channel_name
+ FROM mabel_queue_cycle ORDER BY position;
+END;
+CREATE TABLE family_assets (
+ id TEXT PRIMARY KEY,
+ channel_id INTEGER REFERENCES channels(id) ON DELETE CASCADE,
+ kind TEXT NOT NULL CHECK(kind IN ('photo','video','audio','music','illustration')),
+ title TEXT NOT NULL CHECK(length(title) BETWEEN 1 AND 160),
+ original_name TEXT NOT NULL, source_path TEXT NOT NULL, prepared_path TEXT NOT NULL DEFAULT '',
+ artwork_path TEXT NOT NULL DEFAULT '', width INTEGER NOT NULL DEFAULT 0,
+ height INTEGER NOT NULL DEFAULT 0, duration REAL NOT NULL DEFAULT 0,
+ captured REAL NOT NULL DEFAULT 0, created REAL NOT NULL,
+ status TEXT NOT NULL DEFAULT 'uploading' CHECK(status IN ('uploading','processing','ready','error')),
+ error TEXT NOT NULL DEFAULT '', upload_id TEXT NOT NULL UNIQUE
+);
+CREATE INDEX family_assets_channel ON family_assets(channel_id,kind,captured,created);
+CREATE TABLE storytime_items (
+ id TEXT PRIMARY KEY, title TEXT NOT NULL CHECK(length(title) BETWEEN 1 AND 160),
+ audio_id TEXT REFERENCES family_assets(id) ON DELETE SET NULL,
+ image_id TEXT REFERENCES family_assets(id) ON DELETE SET NULL,
+ position_seconds REAL NOT NULL DEFAULT 0 CHECK(position_seconds>=0),
+ updated REAL NOT NULL
+);
+CREATE TABLE memory_channel_settings (
+ channel_id INTEGER PRIMARY KEY REFERENCES channels(id) ON DELETE CASCADE,
+ ordering TEXT NOT NULL DEFAULT 'shuffle' CHECK(ordering IN ('shuffle','ordered')),
+ photo_seconds INTEGER NOT NULL DEFAULT 10 CHECK(photo_seconds BETWEEN 5 AND 30),
+ music_id TEXT REFERENCES family_assets(id) ON DELETE SET NULL,
+ music_volume INTEGER NOT NULL DEFAULT 25 CHECK(music_volume BETWEEN 0 AND 100)
+);
+"""
+
 MIGRATIONS = (
     (1, "initial relational state", SCHEMA),
     (2, "portal cache revision ledger", REVISION_SCHEMA),
@@ -870,6 +941,7 @@ MIGRATIONS = (
     (10, "persistent Mabel TV playback queue", MABEL_QUEUE_SCHEMA),
     (11, "tracked queue playback ownership and retained current entry",
      MABEL_QUEUE_PLAYBACK_SCHEMA),
+    (12, "playlists, Storytime and family memories", FAMILY_FEATURES_SCHEMA),
 )
 MIGRATION_CHECKSUMS = {
     version: hashlib.sha256(sql.encode("utf-8")).hexdigest()

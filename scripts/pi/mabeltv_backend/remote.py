@@ -933,14 +933,22 @@ class RemotePlaybackMixin:
     def live_tv_status(self) -> dict[str, Any]:
         mode = self.player_mode_status()
         my_tv_mode = mode.get("mode") == "my_tv"
-        status = self.live_stream.status(allow_screen_without_programme=my_tv_mode)
+        family_mode = mode.get("mode") in {"storytime", "memories"}
+        status = self.live_stream.status(allow_screen_without_programme=my_tv_mode or family_mode)
         for field in ("volume", "muted", "remote_locked", "standby", "subtitles_available",
                       "subtitles_visible", "widescreen_available", "widescreen_enabled", "presentation_mode",
                       "my_tv_handoff_available",
                       "connected_tv_available", "connected_tv_power"):
             if field in mode:
                 status[field] = mode[field]
-        if my_tv_mode:
+        if family_mode:
+            status.update({"available": mode.get("standby") is not True,
+                "family_mode": mode["mode"], "programme": str(mode.get("programme", "")),
+                "paused": mode.get("paused") is True, "playing": mode.get("playing") is True,
+                "playback_position": mode.get("playback_position", 0), "playback_duration": mode.get("playback_duration", 0),
+                "family_artwork": "/api/family-media/content?id=" + str(mode.get("family_asset", "")) + "&artwork=1"})
+            status.pop("reason", None)
+        elif my_tv_mode:
             playing = mode.get("playing") is True
             status.update({
                 "available": mode.get("standby") is not True,

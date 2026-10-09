@@ -67,6 +67,9 @@ order unless a change explicitly redefines the cascade.
 - `experience-shell.css`: fixed header, page frame, and bottom navigation.
 - `experience-home.css`, `experience-remote.css`, `experience-watch.css`,
   `experience-library.css`, and `experience-viewing.css`: route ownership.
+- `experience-downloads.css`: the shared device download library, progress
+  cards, filters and download-options/removal sheets. It follows theme layers
+  and uses their tokens for light, dark and true-black presentation.
 - `experience-explore.css`: the continuous My TV suggestion catalogue,
   its compact quick actions and catalogue-only title route.
 - `experience-personal-rating.css`: the thin reusable ten-star control and the
@@ -139,10 +142,31 @@ ship the fixture form to preserve a test shortcut.
     dashboards, progressive TMDB enrichment state, rating shortcuts and local
     facet drill-downs. My TV routes under `#insights/my-tv/...` reuse the
     four-wide My TV title cards; people open the existing person-card journey.
-12. `portal/js/library/device-status.js`: device, storage, and job status.
+12. `portal/js/library/device-status.js`: device, storage, job status and Settings
+    preferences. The Settings hub links to `#settings/mabel`, `#settings/my-tv`,
+    `#settings/media`, `#settings/security`, `#settings/help` and the existing
+    device-local `#appearance` page. `core/navigation.js` retains these routes
+    under the Settings primary section; `core/live.js` wires their navigation
+    and parent returns. `html/views/system.html` includes the dedicated settings
+    view fragments. TV form edits remain local until Apply and survive background
+    library refreshes; Discard restores saved values. The independent guide,
+    simultaneous-playback, availability and provider-icon switches save immediately.
 13. `portal/js/library/channels.js`: channel-management rendering.
 14. `portal/js/playback/players.js`: local player primitives and state.
+    Mabel TV's device player cycles Standard (4:3 surround), Widescreen
+    (16:9 surround) and Full screen (borderless) through its own controls.
+    This is a device-local layout change: it retains the video, playback
+    position and queue ownership, stays selected across programmes, and sends
+    no native TV command. Full screen keeps the inline controls rather than
+    transferring into Apple's native fullscreen player.
+    My TV's iPhone/iPad player keeps native fullscreen controls, with the next
+    local episode in its inline shell. Completion saves progress before an
+    eight-second cancellable handoff; Back, replay and a failed save cancel it.
+    A stream that finishes starting after Back cannot reopen the player.
 15. `portal/js/playback/film-library.js`: film cards and film sheets.
+    My TV Continue watching prioritises unfinished episode bookmarks, then
+    offers the episode after the furthest completed one in series order.
+    Mabel TV's playback queue is independent of this series progression.
 16. `portal/js/playback/my-tv-series.js`: My TV series catalogue and tools.
     `portal/js/playback/film-catalogue.js` follows it and owns the My TV Watch
     film catalogue, collection and metadata-genre filters, and combined search.
@@ -380,3 +404,57 @@ the requested episode into view; ordinary Back preserves the earlier position.
 Film filters retain native option nodes when their choices have not changed.
 `tests/browser/portal-scroll.spec.mjs` exercises these contracts with long lists
 on iPhone WebKit, iPad WebKit and Chromium; screenshots remain unchanged.
+
+## Family collections
+
+The `family/playlists.js` owner renders saved collections, Add to Playlist
+selection, repeat controls and animated arrow ordering. `family/library.js`
+owns Storytime and memory-channel browsing/settings. `family/story-audio.js`
+packages multiple chapter Files in natural filename order as a deterministic,
+uncompressed ZIP without copying the whole book into memory. `family/uploads.js`
+uses the existing resumable chunk transport, and `family/device-player.js` owns
+inline audio listening and single-memory preview. `family/storybook.js` owns
+the device Storytime catalogue, interruptible book previews and reverse/docking
+transition. Their HTML/CSS owners are `overlays/family.html`,
+`experience-family.css` and `experience-storytime.css`. They are registered in
+the private ordered bundle; the immutable delivered shell is release 294.
+Stories exposes one Open Storytime action with the normal TV/device destination
+sheet. Both catalogues use the alphabetical SQLite projection without leading
+The/A, retain book identity during refreshes, and share eight cover materials.
+
+Playlist browsing remains inside the Watch Playlists tab. Each playlist opens
+its own `#mabel-playlist/<id>` page with channel-style Back navigation and a
+measured fixed phone header. Its catalogue card previews up to three programme
+posters in a fan. Playlist ordering, repeat and queue actions keep their owners
+and API contracts. A second tap on the selected MabelTV navigation resets Watch
+to Episodes; switching between primary sections still restores their location.
+Create Channel shares Edit Channel's compact identity fields and radio choices.
+
+`family/memories-player.js` plays whole memory sequences on the device using
+the same `target: device` session plans as the native player. The bounded
+`family/memories-composition.js` renderer fits whole photos into varied solo,
+two-, three- and four-photo layouts, adapts to portrait screens and pauses its
+movement with playback. Scene transitions retain the outgoing photo positions.
+Videos keep their own audio. Background
+music fades around videos. Device playback never sends a TV command; closing
+the player cancels timers, animations, resize observers, fades and late session
+responses. The normal channel Play Memories button opens the existing-styled
+TV/device destination sheet, with Playback Settings alongside those actions;
+there is no separate play toolbar inserted into the gallery.
+
+The Watch switcher is one row: Episodes, Films, Playlists and Stories. Memories
+are Photos & Videos channels reached through their channel cards and normal
+channel page, never a fifth switcher tab. Up Next remains the
+active queue on Home. Saved playlist edits never alter a playing copy; Play
+Playlist confirms replacement and Add to Up Next appends without restarting.
+Storytime uploads one recording or a group of chapter files and one illustration.
+The prepared recording retains progress across the whole book and
+uses audio Media Session controls where the device supports them. Device Back
+saves listening progress and reverses the opening into the responsive catalogue,
+with generation guards preventing cancelled openings from restarting narration.
+The device catalogue never sends native playback commands. Its optional DOM
+full-screen action keeps the illustrated scene together; reading controls hide
+during playback and remain available on pause or tap. Memories
+provide direct phone uploads, capture-date ordering, shuffle, music settings
+and start-from-selected playback. Device downloads and My TV controls are
+unchanged.

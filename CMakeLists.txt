@@ -97,6 +97,15 @@ qt_add_resources(mabeltv "mabeltv_qml"
         qml/TelevisionScreen.qml
         qml/MabelQueueDoneScreen.qml
         qml/MabelQueueCoordinator.qml
+        qml/FamilyMediaCoordinator.qml
+        qml/Storybook.qml
+        qml/StorytimeBookCard.qml
+        qml/StorytimeCatalogue.qml
+        qml/StorytimeLibrary.qml
+        qml/StorytimeStage.qml
+        qml/MemoryStage.qml
+        qml/MemoryScene.qml
+        qml/MyTvResumeCoordinator.qml
         qml/DinosaurDenSurround.qml
         qml/FindingNemo.qml
         qml/FindingNemoBubbles.qml
@@ -143,6 +152,8 @@ qt_add_resources(mabeltv "my_tv_visual_assets"
     PREFIX "/" BASE "assets" FILES
         assets/fonts/inter/InterVariable.ttf
         assets/fonts/inter/LICENSE.txt
+        assets/fonts/storytime/CinzelDecorative-Bold.ttf
+        assets/fonts/storytime/OFL.txt
         assets/icons/my-tv/play.svg
         assets/icons/my-tv/restart.svg
         assets/icons/my-tv/back.svg
@@ -150,6 +161,20 @@ qt_add_resources(mabeltv "my_tv_visual_assets"
         assets/icons/my-tv/chevron.svg
         assets/icons/my-tv/subtitles.svg
 )
+
+qt_add_resources(mabeltv "storytime_materials"
+    BIG_RESOURCES
+    PREFIX "/storytime" BASE "scripts/pi/portal/assets/storytime" FILES
+        scripts/pi/portal/assets/storytime/cover-v2.png
+        scripts/pi/portal/assets/storytime/cover-sapphire.png
+        scripts/pi/portal/assets/storytime/cover-ruby.png
+        scripts/pi/portal/assets/storytime/cover-amethyst.png
+        scripts/pi/portal/assets/storytime/cover-teal.png
+        scripts/pi/portal/assets/storytime/cover-amber.png
+        scripts/pi/portal/assets/storytime/cover-rose.png
+        scripts/pi/portal/assets/storytime/cover-brown.png
+        scripts/pi/portal/assets/storytime/stone-floor.png
+        scripts/pi/portal/assets/storytime/parchment.png)
 
 qt_add_shaders(mabeltv "mabeltv_shaders"
     PREFIX "/shaders"
@@ -225,6 +250,56 @@ if(BUILD_TESTING)
     add_test(NAME mabeltv_native_ui_tests COMMAND mabeltv_native_ui_tests)
     set_tests_properties(mabeltv_native_ui_tests PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software" TIMEOUT 30)
+    qt_add_executable(mabeltv_family_ui_tests tests/unit/FamilyUiTests.cpp tests/unit/FamilyUiTests.h)
+    target_link_libraries(mabeltv_family_ui_tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml)
+    target_compile_definitions(mabeltv_family_ui_tests PRIVATE
+        TEST_QML_DIR="${CMAKE_CURRENT_SOURCE_DIR}/qml"
+        TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/qml"
+        TEST_OUTPUT_DIR="${CMAKE_CURRENT_BINARY_DIR}/family-ui-artifacts")
+    qt_add_resources(mabeltv_family_ui_tests "family_test_assets"
+        PREFIX "/" BASE "assets" FILES
+            assets/fonts/inter/InterVariable.ttf
+            assets/fonts/storytime/CinzelDecorative-Bold.ttf)
+    qt_add_resources(mabeltv_family_ui_tests "family_storytime_materials"
+        BIG_RESOURCES
+        PREFIX "/storytime" BASE "scripts/pi/portal/assets/storytime" FILES
+            scripts/pi/portal/assets/storytime/cover-v2.png
+            scripts/pi/portal/assets/storytime/cover-sapphire.png
+            scripts/pi/portal/assets/storytime/cover-ruby.png
+            scripts/pi/portal/assets/storytime/cover-amethyst.png
+            scripts/pi/portal/assets/storytime/cover-teal.png
+            scripts/pi/portal/assets/storytime/cover-amber.png
+            scripts/pi/portal/assets/storytime/cover-rose.png
+            scripts/pi/portal/assets/storytime/cover-brown.png
+            scripts/pi/portal/assets/storytime/stone-floor.png
+            scripts/pi/portal/assets/storytime/parchment.png)
+    add_test(NAME mabeltv_family_ui_tests COMMAND mabeltv_family_ui_tests
+        illustrationTravelsWithLeafAndLandsWithoutJump storybookAndPlaybackRespectStandbyAndBack
+        memoriesOwnOkReleaseAndDeferredChildResume compositionsRenderWholePhotosAndPauseTheirMotion
+        memoryVideoClipsSharePhotoStageAndAdvanceAtClipEnd)
+    set_tests_properties(mabeltv_family_ui_tests PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software" TIMEOUT 30)
+    add_test(NAME mabeltv_storytime_library_tests COMMAND mabeltv_family_ui_tests
+        storytimeLibraryNavigationAndClosingAreInterruptible)
+    set_tests_properties(mabeltv_storytime_library_tests PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software" TIMEOUT 15)
+    if(UNIX)
+        find_program(XVFB_RUN_EXECUTABLE xvfb-run)
+        if(XVFB_RUN_EXECUTABLE)
+            add_test(NAME mabeltv_storybook_opengl_tests COMMAND "${XVFB_RUN_EXECUTABLE}" -a
+                $<TARGET_FILE:mabeltv_family_ui_tests> illustrationTravelsWithLeafAndLandsWithoutJump)
+            set_tests_properties(mabeltv_storybook_opengl_tests PROPERTIES
+                ENVIRONMENT "QT_QPA_PLATFORM=xcb;QT_QUICK_BACKEND=rhi;QSG_RHI_BACKEND=opengl" TIMEOUT 60)
+            add_test(NAME mabeltv_storytime_library_opengl_tests COMMAND "${XVFB_RUN_EXECUTABLE}" -a
+                $<TARGET_FILE:mabeltv_family_ui_tests> storytimeLibraryNavigationAndClosingAreInterruptible)
+            set_tests_properties(mabeltv_storytime_library_opengl_tests PROPERTIES
+                ENVIRONMENT "QT_QPA_PLATFORM=xcb;QT_QUICK_BACKEND=rhi;QSG_RHI_BACKEND=opengl" TIMEOUT 30)
+            add_test(NAME mabeltv_memories_opengl_tests COMMAND "${XVFB_RUN_EXECUTABLE}" -a
+                $<TARGET_FILE:mabeltv_family_ui_tests> compositionsRenderWholePhotosAndPauseTheirMotion memoriesOwnOkReleaseAndDeferredChildResume)
+            set_tests_properties(mabeltv_memories_opengl_tests PROPERTIES
+                ENVIRONMENT "QT_QPA_PLATFORM=xcb;QT_QUICK_BACKEND=rhi;QSG_RHI_BACKEND=opengl" TIMEOUT 30)
+        endif()
+    endif()
     add_test(
         NAME mabeltv_library_service_tests
         COMMAND "${Python3_EXECUTABLE}" -m unittest discover

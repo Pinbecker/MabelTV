@@ -64,6 +64,8 @@ Window {
     readonly property real playbackOsdInsetX: Math.max(30, television.screenWidth * 0.055)
     readonly property real playbackOsdInsetY: Math.max(28, television.screenHeight * 0.065)
     readonly property var player: television.playerObject
+    readonly property var familyMedia: familyPlayback
+    readonly property var channelOverlay: channelSummaryOverlay
     readonly property int portalVolume: tvController.volume
     readonly property bool portalMuted: tvController.muted
     readonly property bool portalRemoteLocked: tvController.remoteLocked
@@ -149,6 +151,7 @@ Window {
     }
 
     function togglePlaybackPause() {
+        if (familyMedia.active) { familyMedia.control("pause", 0); return }
         if (filmCountdownActive) {
             finishFilmCountdown()
             return
@@ -157,6 +160,16 @@ Window {
             return
         syncPlaybackPosition()
         player.togglePause()
+    }
+
+    function startControllerPlayback(source, startPositionSeconds) {
+        queueAllDone = false
+        if (familyMedia.active) { familyMedia.queueChildPlayback(source, startPositionSeconds); return }
+        if (myTvMode.active || openingMyTvMode || poweringOff || pendingPowerAction.length > 0 || tvController.standby) return
+        if (!queueTransitionPending && tvController.currentContentType === "films" && startPositionSeconds < 1)
+            beginFilmCountdown(source, startPositionSeconds)
+        else { cancelFilmCountdown(); player.play(source, startPositionSeconds) }
+        queueTransitionPending = false
     }
 
     function scrubPlayback(seconds) {
@@ -270,6 +283,7 @@ Window {
     // only to physical IR input: the portal must remain available so a parent
     // can control the TV and unlock that remote again.
     function portalNavigate(key) {
+        if (familyMedia.active && familyMedia.handleKey(key, false)) return
         if (myTvMode.active) {
             myTvMode.handleKey(key, false)
         } else if (channelSummaryOverlay.visible) {
@@ -303,6 +317,7 @@ Window {
     function portalTuneChannel(channel) {
         if (poweringOff || pendingPowerAction.length > 0)
             return
+        familyMedia.close(false)
         guideOverlay.close()
         tvController.closeParent()
         if (myTvMode.active) {
@@ -314,6 +329,7 @@ Window {
     }
 
     function portalCommand(command) {
+        if (familyMedia.active && familyMedia.handlePortal(command)) return
         if (command === "toggle-remote-lock") {
             tvController.toggleRemoteLock()
             showRemoteLockState()
@@ -471,39 +487,15 @@ Window {
     // MPV's end-file event means the my_tv decoder has stopped. Give the Pi's
     // V4L2 device one final render turn to release its buffers before the
     // children's player asks for the same hardware decoder again.
-    Timer {
+    MyTvResumeCoordinator {
         id: myTvResumeTimer
-        interval: 400
-        repeat: false
-        onTriggered: {
-            if (root.pendingPowerAction.length > 0) {
-                root.pendingPowerAction = ""
-                root.performPowerOff()
-            } else if (root.pendingPortalTuneChannel >= 0) {
-                const channel = root.pendingPortalTuneChannel
-                root.pendingPortalTuneChannel = -1
-                tvController.tunePortalChannel(channel)
-            } else if (root.pendingQueueStart) {
-                root.pendingQueueStart = false
-                tvController.startMabelQueue()
-            } else if (root.pendingPortalChannel >= 0
-                       && root.pendingPortalProgramme.length > 0) {
-                const channel = root.pendingPortalChannel
-                const programme = root.pendingPortalProgramme
-                const position = root.pendingPortalProgrammePosition
-                root.pendingPortalChannel = -1
-                root.pendingPortalProgramme = ""
-                root.pendingPortalProgrammePosition = 0
-                tvController.playPortalProgramme(channel, programme, position)
-            } else {
-                tvController.resumeFromStandby()
-            }
-        }
+        appRoot: root; controller: tvController; familyPlayer: familyMedia
     }
 
     function portalExternalPlayback(source, title) {
         if (poweringOff || pendingPowerAction.length > 0)
             return
+        familyMedia.close(false)
         guideOverlay.close()
         tvController.closeParent()
         if (myTvMode.active) {
@@ -532,6 +524,7 @@ Window {
     function portalPlayChannelProgramme(channel, file, position) {
         if (poweringOff || pendingPowerAction.length > 0)
             return
+        familyMedia.close(false)
         guideOverlay.close()
         tvController.closeParent()
         if (myTvMode.active) {
@@ -545,7 +538,7 @@ Window {
                                          Math.max(0, Number(position) || 0))
     }
 
-    function portalStartMabelQueue() { queueCoordinator.start() }
+    function portalStartMabelQueue() { familyMedia.close(false); queueCoordinator.start() }
 
     function portalPauseMabelQueue() { tvController.pauseQueuePlaybackForTransfer() }
 
@@ -566,6 +559,7 @@ Window {
     function portalPlayMyTvFilm(file, position) {
         if (poweringOff || pendingPowerAction.length > 0)
             return
+        familyMedia.close(false)
         const startPosition = Math.max(0, Number(position) || 0)
         guideOverlay.close()
         tvController.closeParent()
@@ -586,7 +580,8 @@ Window {
         interval: tvController.soundEffectsEnabled ? 250 : 0
         repeat: false
         onTriggered: {
-            if (directMediaMode)
+            if (root.familyMedia.active) root.familyMedia.beginReady()
+            else if (directMediaMode)
                 player.play(startupMediaUrl, 0)
             else if (startupIntroUrl.toString().length > 0)
                 root.playWelcome(root.pendingPowerOnWake)
@@ -612,7 +607,11 @@ Window {
         id: television
         appRoot: root
     }
-
+    FamilyMediaCoordinator {
+        id: familyPlayback
+        appRoot: root
+        controller: tvController
+    }
     MabelPresentation {
         id: presentation; anchors.fill: parent
         appRoot: root; controller: tvController; mediaPlayer: root.player
@@ -764,7 +763,7 @@ Window {
         onTriggered: {
             if (tvController.tvGuideEnabled && !directMediaMode
                     && !tvController.standby && !root.introPlaying
-                    && !guideOverlay.visible) {
+                    && !guideOverlay.visible && !familyMedia.active) {
                 root.okHeldForGuide = true
                 guideOverlay.open()
             }
@@ -800,7 +799,7 @@ Window {
             if (!directMediaMode && !tvController.standby && !root.introPlaying
                     && !root.filmCountdownActive && !myTvMode.active
                     && !guideOverlay.visible && !parentOverlay.visible
-                    && !channelSummaryOverlay.visible) {
+                    && !channelSummaryOverlay.visible && !familyMedia.active) {
                 root.homeHeldForChannelSummary = true
                 root.syncPlaybackPosition()
                 channelSummaryOverlay.open()
@@ -910,20 +909,7 @@ Window {
         target: tvController
 
         function onPlaybackRequested(source, startPositionSeconds) {
-            root.queueAllDone = false
-            if (!myTvMode.active && !root.openingMyTvMode
-                    && !root.poweringOff && root.pendingPowerAction.length === 0
-                    && !tvController.standby) {
-                if (!root.queueTransitionPending
-                        && tvController.currentContentType === "films"
-                        && startPositionSeconds < 1)
-                    root.beginFilmCountdown(source, startPositionSeconds)
-                else {
-                    root.cancelFilmCountdown()
-                    player.play(source, startPositionSeconds)
-                }
-                root.queueTransitionPending = false
-            }
+            root.startControllerPlayback(source, startPositionSeconds)
         }
         function onStopPlaybackRequested() {
             root.cancelFilmCountdown()

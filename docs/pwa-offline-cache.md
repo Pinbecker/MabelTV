@@ -35,6 +35,13 @@ appearing current when the data it represents has changed. Rendering code must
 preserve mounted views and update only the changed content; a background refresh
 must not blank, flash, or rebuild an already-correct screen.
 
+Saved MabelTV playlists use the authenticated `mabel-playlists-v1` snapshot.
+Its revision follows the SQLite library counter without the player-position
+counter. Startup restores a matching snapshot before opening the app and
+refreshes it in the background; without one, it preloads playlists alongside
+the main catalogue. Playlist edits update the snapshot after refreshing the
+bootstrap ledger. Unchanged refreshed cards keep their loaded artwork mounted.
+
 The My TV provider-summary snapshot is shared by every My TV title grid.
 Cards can therefore paint their availability icons immediately on a warm load;
 one batched background request fills missing or periodically stale TMDB

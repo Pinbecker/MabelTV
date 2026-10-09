@@ -5,7 +5,7 @@
     }
 
     function contentLabel(value) {
-      return value === 'films' ? 'Films / long videos' : 'Shows / episodes'
+      return value === 'memories' ? 'Photos & Videos' : value === 'films' ? 'Films / long videos' : 'Shows / episodes'
     }
 
     function channelCardMarkup(channel, overview = false) {
@@ -189,6 +189,7 @@
       // still hold an older channel object, but it must never leave the old
       // cards on screen or suppress the first render of the new channel.
       channel = selected
+      if (channel.content_type === 'memories') { renderMemoryGallery(channel); return }
       const search = programmeSearch.trim().toLowerCase()
       const filtered = channel.programmes.filter(programme => {
         const matchesSearch = !search || programme.display_name.toLowerCase().includes(search) || programme.name.toLowerCase().includes(search)
@@ -233,6 +234,16 @@
       $('#editChannelName').value = channel.name
       $('#editChannelAspect').value = channel.aspect || 'crop'
       $('#editChannelContentType').value = channel.content_type || 'shows'
+      for (const [name, id] of [['channelPicture', 'editChannelAspect'], ['channelContent', 'editChannelContentType']]) {
+        for (const option of $$('#editChannelForm input[name="' + name + '"]')) {
+          option.checked = option.value === $('#' + id).value
+          option.onchange = () => {
+            if (!option.checked) return
+            $('#' + id).value = option.value
+            $('#' + id).dispatchEvent(new Event('change'))
+          }
+        }
+      }
       ChannelPageComponents.renderHero(channel, { aspectLabel })
       // Paint the channel identity and its contents as one transaction. The
       // management controls below may come from an older cached PWA shell; a
@@ -245,7 +256,7 @@
         : 'Put this channel and its available videos back on the television.'
       $('#workspaceToggleChannel').onclick = () => manage('toggle-channel', { channel: channel.number })
       $('#channelSettingsTitle').textContent = `Edit ${channel.name}`
-      $('#workspaceSettings').onclick = () => openLibrarySheet($('#channelSettingsSheet'), $('#editChannelName'))
+      $('#workspaceSettings').onclick = () => openLibrarySheet($('#channelSettingsSheet'))
       const favouriteButton = $('#workspaceFavourite')
       const seriesChannel = channel.content_type !== 'films'
       favouriteButton.classList.toggle('hidden', !seriesChannel)
@@ -276,7 +287,7 @@
         if (channel.content_type !== 'shows') return
         closeLibrarySheet($('#channelSettingsSheet'), false)
         scanChannelTmdb(channel, () =>
-          openLibrarySheet($('#channelSettingsSheet'), $('#editChannelName')))
+          openLibrarySheet($('#channelSettingsSheet')))
       }
       syncChannelMetadataAction()
       const watchButton = $('#channelWatchTv')
@@ -288,4 +299,13 @@
       $('#uploadDestination').textContent = channel.name
       $('#workspaceAddMedia').onclick = () => openLibrarySheet($('#channelUploadPanel'), $('#file'))
       $('#programmeSearch').value = programmeSearch
+      if (channel.content_type === 'memories') {
+        favouriteButton.classList.add('hidden')
+        watchButton.querySelector('strong').textContent = 'Play memories'
+        watchButton.querySelector('small').textContent = 'Choose your TV or this device'
+        watchButton.onclick = () => openMemoryPlayback(channel)
+        $('#workspaceAddMedia').setAttribute('aria-label', 'Upload photos and videos')
+        $('#workspaceAddMedia').onclick = () => uploadMemoryFiles(channel)
+        loadFamilyLibrary().catch(showError)
+      }
     }

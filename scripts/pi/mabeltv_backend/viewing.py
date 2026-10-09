@@ -71,7 +71,7 @@ class ViewingMixin:
     def current_tv_viewing(self, mode: dict[str, Any] | None = None) -> dict[str, Any] | None:
         """Return one active programme with aggregate and exact programme identity."""
         mode = self.player_mode_status() if mode is None else mode
-        if mode.get("standby") is True or mode.get("mode") == "my_tv":
+        if mode.get("standby") is True or mode.get("mode") in {"my_tv", "storytime", "memories"}:
             return None
         state = self.read_state("player")
         if (not isinstance(state, dict) or state.get("standby") is True

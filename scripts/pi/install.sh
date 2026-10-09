@@ -72,7 +72,8 @@ if [[ "$skip_packages" != "true" ]]; then
     apt-get update
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         qt6-qpa-plugins qt6-image-formats-plugins qt6-svg-plugins qml6-module-qtquick qml6-module-qtquick-window libqt6sql6-sqlite \
-        libqt6opengl6 libmpv-dev ffmpeg ir-keytable cec-utils python3 sudo logrotate avahi-daemon \
+        qml6-module-qtqml-workerscript qml6-module-qtquick-shapes qml6-module-qtquick-effects \
+        libqt6opengl6 libmpv-dev ffmpeg libheif-examples ir-keytable cec-utils python3 sudo logrotate avahi-daemon \
         alsa-utils ca-certificates curl util-linux psmisc qrencode udisks2 sg3-utils \
         nodejs npm rclone python3-paho-mqtt
     if [[ -z "$prebuilt_dir" ]]; then
@@ -263,8 +264,7 @@ install -d -o root -g root -m 0755 "$incoming_dir/appliance"
 cp -a "$source_root/packaging" "$source_root/scripts" "$source_root/config" \
     "$source_root/docs" "$source_root/integrations" "$incoming_dir/appliance/"
 rm -rf -- "$incoming_dir/appliance/integrations/matter/node_modules"
-npm ci --omit=dev --no-audit --no-fund \
-    --prefix "$incoming_dir/appliance/integrations/matter"
+bash "$source_root/scripts/pi/install-matter-runtime.sh" "$binary_root" "$incoming_dir/appliance/integrations/matter"
 install -o root -g root -m 0644 "$source_root/README.md" "$source_root/LICENSE" \
     "$incoming_dir/appliance/"
 rm -f -- "$incoming_dir/appliance/scripts/pi/replace-waffle-dog-fps30.sh"

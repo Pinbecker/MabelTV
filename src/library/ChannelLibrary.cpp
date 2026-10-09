@@ -45,7 +45,7 @@ QString normaliseContentType(QString type, const QString &name, const QString &f
     if (type == QStringLiteral("films")) {
         return type;
     }
-    if (type == QStringLiteral("shows")) {
+    if (type == QStringLiteral("shows") || type == QStringLiteral("memories")) {
         return type;
     }
 
@@ -116,6 +116,12 @@ ChannelLibraryResult ChannelLibrary::load(const QString &databasePath,
         }
 
         usedNumbers.insert(channel.number);
+        if (channel.contentType == QStringLiteral("memories")) {
+            // Photos and prepared home videos have their own playback owner;
+            // do not ffprobe the originals or run the ordinary episode loop.
+            result.channels.append(std::move(channel));
+            continue;
+        }
         const QString channelPath = mediaDirectory.absoluteFilePath(channel.folder);
         QDir channelDirectory(channelPath);
         if (!channelDirectory.exists()) {

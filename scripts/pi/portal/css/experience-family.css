@@ -1,0 +1,163 @@
+body.portal-v2 .mabel-channel-toggle { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 3px; }
+body.portal-v2 .mabel-channel-toggle button { min-width: 0; padding: 10px 4px; font-size: 12px; }
+body.portal-v2 #mabelChannelPlaylists, body.portal-v2 #mabelChannelAudio { display: block; }
+body.portal-v2 #mabelChannelPlaylists.hidden, body.portal-v2 #mabelChannelAudio.hidden { display: none; }
+body.portal-v2 .family-section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 12px; }
+body.portal-v2 .family-section-head h2 { margin: 3px 0 0; font-size: 22px; line-height: 1.1; letter-spacing: -.035em; }
+body.portal-v2 .family-section-head .muted { margin: 5px 0 0; font-size: 12px; }
+body.portal-v2 .family-storytime-open-tv { display: flex; justify-content: center; align-items: center; gap: 9px; width: 100%; min-height: 44px; margin: 0 0 16px; padding: 10px 16px; border: 0; border-radius: 12px; background: var(--experience-accent); color: #082922; font-size: 14px; font-weight: 700; }
+body.portal-v2 .family-storytime-open-tv svg { width: 20px; height: 20px; }
+body.portal-v2 .family-text-button, body.portal-v2 .family-back { padding: 5px 0; min-height: 44px; border: 0; background: transparent; color: var(--experience-accent-ink); font-size: 12px; font-weight: 700; }
+body.portal-v2 .family-back { display: flex; align-items: center; justify-content: flex-start; justify-self: start; gap: 7px; margin: 0; padding: 0; font-size: 13px; }
+body.portal-v2 .family-back .icon { width: 17px; height: 17px; }
+body.portal-v2 #familyConfirmAccept { border: 0; background: var(--experience-accent); color: var(--experience-primary-ink,#071b17); }
+body.portal-v2 #familyConfirmAccept.is-destructive { background: var(--experience-danger); color: #fff; }
+body.portal-v2 #mabelMemoryChannels:empty { display: none; }
+body.portal-v2 #mabelMemoryChannels:not(:empty) { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--experience-line); }
+body.portal-v2 .family-channel-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 11px; }
+body.portal-v2 #channels.family-memory-library { display: block; }
+body.portal-v2 .family-playlist-grid, body.portal-v2 .family-story-grid { display: grid; gap: 16px 12px; }
+body.portal-v2 .family-playlist-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+body.portal-v2 .family-story-grid { grid-template-columns: repeat(2,minmax(0,1fr)); row-gap: 10px; }
+body.portal-v2 .family-playlist-card, body.portal-v2 .family-story-card { display: grid; gap: 5px; justify-content: stretch; justify-items: stretch; min-width: 0; padding: 0; border: 0; background: transparent; text-align: left; color: var(--experience-ink); }
+body.portal-v2 .family-story-card { row-gap: 2px; align-content: start; }
+body.portal-v2 .family-playlist-card > strong, body.portal-v2 .family-story-card > strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+body.portal-v2 .family-playlist-card > small, body.portal-v2 .family-story-card > small { color: var(--experience-muted); font-size: 11px; line-height: 1.4; }
+body.portal-v2 .family-playlist-art { position: relative; display: block; aspect-ratio: 2/3; border-radius: 12px; overflow: hidden; background: var(--experience-soft); }
+body.portal-v2 .family-playlist-art img { display: block; width: 100%; height: 100%; object-fit: cover; }
+body.portal-v2 .family-playlist-art.is-stack { overflow: visible; background: transparent; border-radius: 0; }
+body.portal-v2 .family-playlist-art.is-stack img { position: absolute; left: calc(var(--stack-index) * 6%); top: calc(10px - var(--stack-index) * 4px); width: 82%; height: calc(100% - 10px); border: 1px solid var(--experience-line); border-radius: 10px; transform: rotate(calc(var(--stack-index) * 5deg)); transform-origin: 50% 100%; z-index: calc(3 - var(--stack-index)); box-shadow: 0 3px 8px #0002; }
+body.portal-v2 .family-playlist-art.is-empty { display: grid; place-items: center; background: var(--experience-accent-soft); color: var(--experience-accent-ink); }
+body.portal-v2 .family-playlist-art.is-empty .icon { width: 46px; height: 46px; stroke-width: 1.3; }
+body.portal-v2 .family-playlist-head { display: grid; grid-template-columns: 76px minmax(0,1fr) 44px; gap: 12px; margin: 5px 0 16px; }
+body.portal-v2 .family-playlist-head .family-playlist-art { width: 76px; }
+body.portal-v2 .family-playlist-head .watch-section-kicker { font-size: 9px; letter-spacing: .11em; }
+body.portal-v2 .page.family-playlist-page { width: min(100%,760px); padding: 8px var(--experience-gutter) 110px; }
+body.portal-v2 .family-playlist-fixed-head { background: var(--experience-canvas); }
+body.portal-v2 .family-playlist-fixed-head .channel-page-nav, body.portal-v2 .family-playlist-fixed-head .family-back { min-height: 32px; margin: 0; font-size: 11px; }
+body.portal-v2 .family-playlist-fixed-head .family-playlist-head { margin: 6px 0 12px; align-items: center; }
+body.portal-v2 .family-playlist-head h1 { margin: 4px 0 0; font-size: clamp(25px,6vw,34px); line-height: 1.08; letter-spacing: -.045em; overflow-wrap: anywhere; }
+body.portal-v2 .family-playlist-fixed-head .family-playlist-actions { margin-bottom: 10px; }
+@media(max-width:860px) {
+  body.portal-v2 .page.family-playlist-page { padding-top: 0; }
+  body.portal-v2 .family-playlist-fixed-head { position: fixed; z-index: 50; top: calc(54px + env(safe-area-inset-top)); left: 0; right: 0; padding: 0 var(--experience-gutter); border-bottom: 1px solid var(--experience-line); }
+  body.portal-v2 .family-playlist-page-body { padding-top: calc(var(--family-playlist-header-height,220px) + 12px); }
+}
+body.portal-v2 .family-empty { padding: 24px 0; max-width: 480px; color: var(--experience-muted); font-size: 13px; line-height: 1.6; }
+body.portal-v2 .family-empty strong { color: var(--experience-ink); font-size: 18px; }
+body.portal-v2 .family-empty p { margin: 6px 0 0; }
+body.portal-v2 .family-playlist-actions, body.portal-v2 .family-memory-toolbar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 12px; }
+body.portal-v2 .family-playlist-actions button, body.portal-v2 .family-memory-toolbar button { min-height: 48px; border-radius: 12px; font-size: 12px; gap: 7px; padding: 10px 8px; }
+body.portal-v2 .family-playlist-actions .icon { width: 19px; height: 19px; flex-shrink: 0; }
+body.portal-v2 .family-repeat { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--experience-line); }
+body.portal-v2 .family-repeat span { display: grid; gap: 3px; }
+body.portal-v2 .family-repeat strong { font-size: 13px; }
+body.portal-v2 .family-repeat small { color: var(--experience-muted); font-size: 11px; }
+body.portal-v2 .family-repeat input { appearance: none; width: 46px; height: 28px; min-height: 0; padding: 3px; border: 0; border-radius: 20px; background: var(--experience-line); flex-shrink: 0; cursor: pointer; transition: background .2s; }
+body.portal-v2 .family-repeat input::before { content: ''; display: block; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px #0002; transition: transform .2s; }
+body.portal-v2 .family-repeat input:checked { background: var(--experience-accent); }
+body.portal-v2 .family-repeat input:checked::before { transform: translateX(18px); }
+body.portal-v2 .family-playlist-row { position: relative; padding: 10px 0; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--experience-line); }
+body.portal-v2 .family-row-open { display: flex; flex: 1; min-width: 0; gap: 12px; justify-content: flex-start; align-items: flex-start; padding: 0; border: 0; background: transparent; color: var(--experience-ink); text-align: left; }
+body.portal-v2 .family-row-open .mabel-queue-art { width: 62px; height: 91px; flex-shrink: 0; border-radius: 9px; overflow: hidden; }
+body.portal-v2 .family-row-open .mabel-queue-art img { width: 100%; height: 100%; object-fit: cover; }
+body.portal-v2 .family-row-copy { display: grid; min-width: 0; gap: 4px; padding-top: 5px; }
+body.portal-v2 .family-row-copy strong { font-size: 14px; line-height: 1.3; }
+body.portal-v2 .family-row-copy small { color: var(--experience-muted); font-size: 11px; }
+body.portal-v2 .family-row-move { position: absolute; left: 74px; bottom: 10px; display: flex; gap: 4px; }
+body.portal-v2 .family-icon-button { display: inline-grid; place-items: center; width: 44px; height: 44px; min-height: 44px; padding: 10px; border: 0; background: transparent; color: var(--experience-ink); border-radius: 50%; }
+body.portal-v2 .family-icon-button .icon { width: 20px; height: 20px; }
+body.portal-v2 .family-icon-button:disabled { opacity: .22; }
+body.portal-v2 .family-icon-button:active { background: var(--experience-accent-soft); }
+body.portal-v2 .family-row-remove { color: var(--experience-muted); }
+body.portal-v2 .family-delete-playlist { margin-top: 18px; color: var(--experience-danger); font-size: 12px; font-weight: 700; }
+body.portal-v2 .family-choices { display: grid; gap: 9px; }
+body.portal-v2 .family-choice { gap: 12px; }
+body.portal-v2 .family-choice > span:nth-child(2) { flex: 1; min-width: 0; }
+body.portal-v2 .family-choice strong { display: block; }
+body.portal-v2 .family-choice .family-playlist-art { width: 36px; height: 54px; flex-shrink: 0; border-radius: 6px; }
+body.portal-v2 .family-choice .family-playlist-art.is-empty .icon { width: 22px; height: 22px; }
+body.portal-v2 .family-choice > .icon { width: 16px; height: 16px; color: var(--experience-muted); }
+body.portal-v2 .family-create { display: grid; gap: 9px; margin-top: 2px; padding-top: 16px; border-top: 1px solid var(--experience-line); }
+body.portal-v2 .family-create-label { font-size: 12px; font-weight: 700; }
+body.portal-v2 .family-choices .family-empty { padding: 0 0 5px; }
+body.portal-v2 .family-field { display: grid; gap: 6px; font-size: 13px; font-weight: 700; }
+body.portal-v2 .family-field input, body.portal-v2 .family-field select, body.portal-v2 .family-create input { width: 100%; min-width: 0; min-height: 44px; border: 1px solid var(--experience-line); border-radius: 12px; padding: 10px 12px; background: var(--experience-raised); color: var(--experience-ink); font: inherit; }
+body.portal-v2 .family-field input[type=range] { padding: 0; border: 0; accent-color: var(--experience-accent); }
+body.portal-v2 .family-field output { color: var(--experience-muted); font-size: 11px; }
+body.portal-v2 .family-sheet .library-sheet-body { display: grid; gap: 12px; }
+body.portal-v2 .family-menu-actions { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 0; }
+body.portal-v2 .family-menu-actions > .hidden { display: none; }
+body.portal-v2 .family-menu-divider { height: 1px; margin: 2px 0; background: var(--experience-line); }
+body.portal-v2 .family-story-files { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+body.portal-v2 .family-save-actions { display: grid; grid-template-columns: 1fr; gap: 9px; margin-top: 9px; }
+body.portal-v2 .family-save-actions > button { margin: 0; }
+body.portal-v2 .family-memory-status { margin: 0; padding: 12px; border-radius: 10px; background: var(--experience-soft); font-size: 12px; line-height: 1.5; color: var(--experience-muted); }
+body.portal-v2 .family-settings { gap: 16px; }
+body.portal-v2 .family-settings .family-field { padding-bottom: 14px; border-bottom: 1px solid var(--experience-line); }
+body.portal-v2 .family-sheet .portal-sheet-close { display: grid; place-items: center; padding: 0; background: transparent; border: 1px solid var(--experience-line); color: var(--experience-ink); }
+body.portal-v2 .family-sheet .portal-sheet-close .icon { width: 21px; height: 21px; }
+body.portal-v2 dialog.family-form-sheet[open] { position: fixed; display: block; inset: auto 0 auto; top: calc(var(--family-form-top,0px) + var(--family-form-height,100dvh) / 2); height: auto; width: min(440px,calc(100vw - 28px)); max-height: calc(var(--family-form-height,100dvh) - 24px); margin: 0 auto; padding: 0; transform: translateY(-50%); }
+body.portal-v2 .family-row-copy strong,body.portal-v2 .family-row-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.portal-v2 .family-form-sheet .library-sheet-panel { max-height: calc(var(--family-form-height,100dvh) - 24px); }
+body.portal-v2 .family-form-sheet .library-sheet-head { padding-top: 16px; padding-bottom: 14px; }
+body.portal-v2 .family-form-sheet :is(.family-field input,.family-create input) { font-size: 16px; }
+body.portal-v2 .is-memory-channel .channel-page-favourite { display: none; }
+body.portal-v2 .family-story-art { position: relative; display: grid; place-items: center; width: 100%; aspect-ratio: 16/9; overflow: hidden; border-radius: 12px; background: var(--experience-soft); color: var(--experience-accent-ink); }
+body.portal-v2 .family-story-art img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+body.portal-v2 .family-story-art > span { font: 54px Georgia,serif; }
+body.portal-v2 .family-upload-choice { position: relative; display: block; overflow: hidden; min-height: 46px; padding: 12px; border: 1px solid var(--experience-line); border-radius: 12px; background: var(--experience-raised); color: var(--experience-ink); font-size: 14px; text-align: center; font-weight: 700; cursor: pointer; }
+body.portal-v2 .family-upload-choice input { position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer; }
+body.portal-v2 .family-memory-cover { display: grid; place-items: center; aspect-ratio: 1.35; background: var(--experience-accent-soft); color: var(--experience-accent); border-radius: 14px; overflow: hidden; font-size: 44px; }
+body.portal-v2 .family-memory-cover img { width: 100%; height: 100%; object-fit: cover; }
+body.portal-v2 .family-memory-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 7px; margin-bottom: 12px; }
+body.portal-v2 .family-memory-card { position: relative; display: grid; place-items: center; padding: 0; border: 0; border-radius: 10px; overflow: hidden; aspect-ratio: 1; background: var(--experience-accent-wash); }
+body.portal-v2 .family-memory-card img { width: 100%; height: 100%; object-fit: cover; }
+body.portal-v2 .family-artwork-image { position: absolute; inset: 0; }
+body.portal-v2 .family-memory-card > span { position: absolute; bottom: 0; inset-inline: 0; padding: 12px 6px 5px; background: linear-gradient(transparent,#0009); color: #fff; font-size: 10px; text-align: left; }
+body.portal-v2 .family-memory-card:disabled > span { position: static; background: transparent; color: var(--experience-muted); }
+body.portal-v2 .family-memory-card.is-error { border: 1px solid var(--experience-line); color: var(--experience-muted); }
+body.portal-v2 .family-memory-card.is-error .icon { width: 28px; height: 28px; margin-top: -20px; }
+body.portal-v2 .family-memory-card.is-error > span { background: transparent; color: var(--experience-ink); text-align: center; line-height: 1.3; font-weight: 600; padding: 8px; }
+body.portal-v2 .family-upload-progress { position: fixed; bottom: calc(var(--experience-nav-height,90px) + env(safe-area-inset-bottom) + 14px); right: 16px; left: 16px; z-index: 1000; display: grid; gap: 5px; padding: 13px 16px; border: 1px solid var(--experience-line); border-radius: 14px; background: var(--experience-raised); box-shadow: 0 8px 35px #0002; font-size: 12px; }
+body.portal-v2 .family-upload-progress span { color: var(--experience-muted); font-size: 11px; }
+body.portal-v2 .family-upload-progress progress { width: 100%; height: 4px; accent-color: var(--experience-accent); }
+body.portal-v2 .family-upload-progress.hidden { display: none; }
+body.portal-v2 .family-device-player { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: max(20px,env(safe-area-inset-top)) 18px max(20px,env(safe-area-inset-bottom)); border: 0; border-radius: 0; background: #f6f0e2; color: #203931; }
+body.portal-v2 .family-device-player[open] { display: flex; flex-direction: column; gap: 16px; }
+body.portal-v2 .family-device-player > header { display: flex; align-items: center; gap: 14px; }
+body.portal-v2 .family-device-player > header h2 { font-size: 17px; margin: 0; }
+body.portal-v2 .family-device-player > audio { width: 100%; margin-top: auto; }
+body.portal-v2 .family-device-player > video, body.portal-v2 .family-device-player > img { width: 100%; height: calc(100% - 90px); object-fit: contain; }
+body.portal-v2 .family-device-player.is-memories { background: #0c151c; color: #eaf2f4; gap: 12px; }
+body.portal-v2 .family-device-player.is-memories > header button { background: #ffffff0c; border: 1px solid #ffffff1f; color: #eaf2f4; }
+body.portal-v2 .family-device-player.is-memories > header { flex-shrink: 0; }
+body.portal-v2 .family-device-player.is-memories > video { order: 1; flex: 1; min-height: 0; height: auto; border-radius: 12px; background: #171c20; }
+body.portal-v2 .family-device-player.is-memories > audio { display: none; }
+body.portal-v2 .family-memory-device-stage { position: relative; order: 1; flex: 1; min-height: 0; border-radius: 16px; overflow: hidden; background: linear-gradient(150deg,#101f2a,#0c151c 60%,#16212a); }
+body.portal-v2 .family-memory-device-frame { position: absolute; inset: 0; }
+body.portal-v2 .family-memory-ambient { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .10; }
+body.portal-v2 .family-memory-photo-slot { position: absolute; display: flex; align-items: center; justify-content: center; }
+body.portal-v2 .family-memory-photo { margin: 0; flex-shrink: 0; border: 1px solid #ffffff50; border-radius: 5px; overflow: hidden; background: #172029; box-shadow: 0 10px 24px #0005,0 2px 5px #0004; }
+body.portal-v2 .family-memory-photo img { display: block; width: 100%; height: 100%; object-fit: contain; }
+body.portal-v2 .family-memory-photo { position: relative; }
+body.portal-v2 .family-memory-photo video { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
+body.portal-v2 .family-memory-scene-date { position: absolute; bottom: 10px; inset-inline: 0; text-align: center; color: #c6d4dd; font-size: 10px; letter-spacing: 1.5px; opacity: .75; }
+body.portal-v2 .family-memory-device-controls { order: 2; flex-shrink: 0; display: grid; gap: 12px; }
+body.portal-v2 .family-memory-device-caption { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; }
+body.portal-v2 .family-memory-device-caption strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.portal-v2 .family-memory-device-caption > span { flex-shrink: 0; color: #a5b5bd; font-size: 11px; }
+body.portal-v2 .family-memory-device-buttons { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+body.portal-v2 .family-memory-device-buttons button { display: flex; justify-content: center; align-items: center; gap: 6px; min-height: 46px; padding: 9px 6px; border: 1px solid #ffffff20; border-radius: 12px; background: #ffffff0c; color: #eaf2f4; font-size: 12px; font-weight: 700; }
+body.portal-v2 .family-memory-device-buttons button .icon { width: 16px; height: 16px; }
+body.portal-v2 #familyDeviceMemoryToggle { background: var(--experience-accent); border-color: transparent; color: var(--experience-primary-ink,#071b17); }
+body.portal-v2 .family-device-player.is-memories > #familyDeviceMessage { order: 3; flex-shrink: 0; margin: 0; color: #a5b5bd; font-size: 12px; }
+@media(min-width:768px) {
+  body.portal-v2 .family-playlist-grid, body.portal-v2 .family-story-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
+  body.portal-v2 .family-memory-grid { grid-template-columns: repeat(6,minmax(0,1fr)); }
+  body.portal-v2 .family-upload-progress { left: auto; width: 360px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  body.portal-v2 .family-repeat input::before { transition: none; }
+  body.portal-v2 .family-memory-device-frame { transition: none; }
+}

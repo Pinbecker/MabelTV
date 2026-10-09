@@ -1,0 +1,174 @@
+@font-face { font-family: 'Storytime'; src: url('/portal/assets/storytime/CinzelDecorative-Bold.ttf') format('truetype'); font-style: normal; font-weight: 700; font-display: swap; }
+body.portal-v2 .family-device-player > .hidden { display: none; }
+body.portal-v2 .family-device-player.is-storytime { overflow: hidden; color: #eee4c8; background: #292821 url('/portal/assets/storytime/stone-floor.png') center/cover; }
+body.portal-v2 .family-device-player.is-storytime > header { z-index: 10; flex-shrink: 0; }
+body.portal-v2 .family-device-player.is-storytime > header h2 { font-size: 14px; font-weight: 600; color: #ded8bd; }
+body.portal-v2 .family-device-player.is-storytime #familyDeviceClose { min-height: 44px; padding: 8px 12px; color: #e8dfc5; border: 1px solid #d6be8130; background: #ffffff08; }
+body.portal-v2 .family-device-player.is-storytime #familyDeviceClose:focus-visible { outline-color: #d3ba7f; }
+body.portal-v2 .family-device-player.is-storytime > audio { position: relative; z-index: 10; flex-shrink: 0; }
+body.portal-v2 .story-book { --closed-scale: 1.7; --book-height: min(255px,30dvh); position: relative; width: calc(var(--book-height) * 1.4); height: var(--book-height); max-width: 100%; margin: auto; perspective: 1800px; isolation: isolate; }
+/* Paint pages in a stable order: a landed leaf must never fall behind the cover. */
+body.portal-v2 .story-volume { position: absolute; inset: 0; transform-style: flat; transform: scale(var(--closed-scale)) translateX(-25%) rotateX(7deg); }
+body.portal-v2 .story-volume::after { content: ''; position: absolute; top: 103%; left: -8%; width: 116%; height: 16%; border-radius: 50%; background: #0006; filter: blur(13px); transform: translateZ(-12px); }
+body.portal-v2 .story-page-stack { position: absolute; inset: 4px 3px 3px 50%; border-radius: 0 7px 7px 0; background: #f8efd6; border: 1px solid #b2a07e; box-shadow: 2px 2px 0 #9d8b66; }
+body.portal-v2 .story-page-stack::after { content: ''; position: absolute; top: 2px; right: -2px; bottom: 2px; width: 4px; border-radius: 0 5px 5px 0; background: repeating-linear-gradient(0deg,#a99675 0 1px,#f3e6c8 1px 3px); }
+body.portal-v2 .story-spread { position: absolute; inset: 5px; display: grid; grid-template-rows: auto minmax(0,1fr) auto; gap: 10px; padding: 16px 16px 18px; border: 1px solid #c4ac7c; border-radius: 4px 7px 7px 4px; background: linear-gradient(90deg,#76572238,transparent 6%,transparent 47%,#76572242 50%,transparent 53%,transparent 94%,#76572230),url('/portal/assets/storytime/parchment.png') center/100% 100%; }
+body.portal-v2 .story-volume > .story-spread { z-index: 2; clip-path: inset(0 0 0 50%); }
+body.portal-v2 .story-spread::before { content: ''; position: absolute; inset: 8px; border: 1px solid #ac8d492e; border-radius: 3px; pointer-events: none; }
+body.portal-v2 .story-illustration { position: relative; min-height: 0; overflow: hidden; }
+body.portal-v2 .story-spread img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+body.portal-v2 .story-byline { position: relative; margin: 0; color: #967b4b; font: 700 9px/1.4 'Storytime',Georgia,serif; text-align: center; letter-spacing: .08em; }
+body.portal-v2 .story-spread h3 { position: relative; margin: 0; font: 700 14px/1.35 'Storytime',Georgia,serif; text-align: center; color: #34533b; }
+body.portal-v2 .story-gutter { position: absolute; top: 0; bottom: 0; left: calc(50% - 6px); width: 12px; background: linear-gradient(90deg,transparent,#634a223b 48%,#634a221c 53%,transparent); opacity: .55; pointer-events: none; }
+body.portal-v2 .story-cover, body.portal-v2 .story-leaf { position: absolute; top: 0; left: 50%; width: 50%; height: 100%; transform-origin: 0 50%; transform-style: preserve-3d; }
+body.portal-v2 .story-cover { z-index: 5; }
+body.portal-v2 .story-cover-front, body.portal-v2 .story-cover-inside, body.portal-v2 .story-leaf-front, body.portal-v2 .story-leaf-back { position: absolute; inset: 0; border-radius: 3px 8px 8px 3px; }
+body.portal-v2 .story-cover-front { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 17px; padding: 26px 17%; background: #1d3d2a var(--story-cover-image,url('/portal/assets/storytime/cover-v2.png')) center/100% 100%; color: #ead294; box-shadow: inset 6px 0 5px #070f0860,2px 3px 0 #8c723f,4px 5px 0 #162c1d; }
+body.portal-v2 .story-cover-front > span { text-align: center; font: 7px/1.3 Georgia,serif; letter-spacing: .2em; text-transform: uppercase; color: #d2ba7e; }
+body.portal-v2 .story-cover-front strong { font: 700 21px/1.4 'Storytime',Georgia,serif; color: #f2d797; text-align: center; text-shadow: 0 1px 0 #091d10,0 -1px 0 #fff3bb38; }
+body.portal-v2 .story-cover-front small { font: italic 9px/1.65 Georgia,serif; text-align: center; color: #d7c694; }
+body.portal-v2 .story-cover-front i, body.portal-v2 .story-leaf-front i { width: 42%; height: 1px; flex-shrink: 0; background: linear-gradient(90deg,transparent,#c1a061,transparent); }
+body.portal-v2 .story-cover-inside { visibility: hidden; transform: rotateY(180deg); border: 4px solid #927545; background: linear-gradient(90deg,#76572225,transparent 18%,#76572215),url('/portal/assets/storytime/parchment.png') center/100% 100%; box-shadow: inset 6px 0 10px #927c4726; }
+body.portal-v2 .story-cover-inside::after { content: ''; position: absolute; inset: 12px; border: 1px solid #c5af79; border-radius: 4px; }
+body.portal-v2 .story-leaf { top: 5px; width: calc(50% - 5px); height: calc(100% - 10px); z-index: 4; opacity: 1; transform-style: flat; transform: scaleX(1); }
+body.portal-v2 .story-leaf-front { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 18px; padding: 18px; border: 1px solid #d1bd91; background: linear-gradient(90deg,#76572238,transparent 15%,transparent 88%,#76572230),url('/portal/assets/storytime/parchment.png') center/100% 100%; color: #34543e; }
+body.portal-v2 .story-leaf-front::before { content: ''; position: absolute; inset: 12px; border: 1px solid #cdb98380; border-radius: 4px; }
+body.portal-v2 .story-leaf-front span, body.portal-v2 .story-leaf-front small { font: italic 11px/1.5 Georgia,serif; color: #947b4c; text-align: center; }
+body.portal-v2 .story-leaf-front strong { font: 700 17px/1.5 'Storytime',Georgia,serif; color: #34543e; text-align: center; }
+body.portal-v2 .story-leaf-back { visibility: hidden; overflow: hidden; transform: scaleX(-1); }
+body.portal-v2 .story-leaf-illustration { position: absolute; left: -5px; top: -5px; width: calc(200% + 10px); height: calc(100% + 10px); }
+body.portal-v2 .story-leaf::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(90deg,transparent 35%,#ffffff60 65%,#7e633040 100%); opacity: 0; pointer-events: none; }
+body.portal-v2 .story-dust { position: absolute; inset: -35%; pointer-events: none; }
+body.portal-v2 .story-dust i { position: absolute; left: var(--dust-x); top: 85%; width: 2px; height: 2px; border-radius: 50%; background: #e5ca88; opacity: 0; }
+body.portal-v2 .story-book.opening .story-volume { animation: storybook-volume 8.6s cubic-bezier(.4,0,.2,1) both; }
+body.portal-v2 .story-book.opening .story-cover { animation: storybook-cover 8.6s ease-in-out both,storybook-cover-layer 8.6s steps(1,end) both; }
+body.portal-v2 .story-book.opening .story-cover-front { animation: storybook-front-face 8.6s steps(1,end) both; }
+body.portal-v2 .story-book.opening .story-cover-inside { animation: storybook-back-face 8.6s steps(1,end) both; }
+body.portal-v2 .story-book.opening .story-leaf { animation: storybook-leaf 8.6s linear both; }
+body.portal-v2 .story-book.opening .story-leaf-front { animation: storybook-leaf-front 8.6s steps(1,end) both; }
+body.portal-v2 .story-book.opening .story-leaf-back { animation: storybook-leaf-back 8.6s steps(1,end) both; }
+body.portal-v2 .story-book.opening .story-leaf::after { animation: storybook-leaf-light 8.6s ease-in-out both; }
+body.portal-v2 .story-book.opening .story-dust i { animation: storybook-dust 6.5s var(--dust-delay) ease-in-out both; }
+/* Keep the same left-page print, transform and paint order when opening ends. */
+body.portal-v2 .story-book.opened .story-volume { transform: scale(1) translateX(0) rotateX(0); transform-style: flat; }
+body.portal-v2 .story-book.opened .story-cover { left: 0; transform: none; z-index: 1; opacity: 1; }
+body.portal-v2 .story-book.opened .story-cover-front { visibility: hidden; }
+body.portal-v2 .story-book.opened .story-cover-inside { visibility: visible; transform: none; }
+body.portal-v2 .story-book.opened .story-leaf { transform: scaleX(-1); }
+body.portal-v2 .story-book.opened .story-leaf-front { visibility: hidden; }
+body.portal-v2 .story-book.opened .story-leaf-back { visibility: visible; }
+body.portal-v2 .family-story-skip { position: relative; z-index: 10; min-height: 44px; align-self: center; padding: 8px 14px; border: 1px solid #d6be8130; border-radius: 30px; background: #ffffff08; color: #d9ceb1; font-size: 11px; }
+body.portal-v2 #familyDeviceStart { align-self: center; z-index: 10; min-width: 150px; }
+body.portal-v2 #familyDeviceMessage { position: relative; margin: 0; color: #ded8bd; font-size: 12px; text-align: center; }
+@keyframes storybook-volume { 0%,12% { transform: scale(var(--closed-scale)) translateX(-25%) rotateX(7deg); } 80%,100% { transform: scale(1) translateX(0) rotateX(0); } }
+@keyframes storybook-cover { 0%,16% { transform: rotateY(0); opacity: 1; } 72%,100% { transform: rotateY(-179deg); opacity: 1; } }
+@keyframes storybook-cover-layer { 0%,73.999% { z-index: 5; } 74%,100% { z-index: 1; } }
+@keyframes storybook-front-face { 0%,43.9% { visibility: visible; } 44%,100% { visibility: hidden; } }
+@keyframes storybook-back-face { 0%,43.9% { visibility: hidden; } 44%,100% { visibility: visible; } }
+@keyframes storybook-leaf-front { 0%,75.4% { visibility: visible; } 75.5%,100% { visibility: hidden; } }
+@keyframes storybook-leaf-back { 0%,75.4% { visibility: hidden; } 75.5%,100% { visibility: visible; } }
+/* A planar turn follows the eased rotation's width without 3D face culling. */
+@keyframes storybook-leaf {
+  0%,57% { transform: scaleX(1); }
+  61.625% { transform: scaleX(.9982); }
+  66.25% { transform: scaleX(.92); }
+  70.875% { transform: scaleX(.6092); }
+  75.5% { transform: scaleX(0); }
+  80.125% { transform: scaleX(-.6092); }
+  84.75% { transform: scaleX(-.92); }
+  89.375% { transform: scaleX(-.9982); }
+  94%,100% { transform: scaleX(-1); }
+}
+@keyframes storybook-leaf-light { 0%,57%,94%,100% { opacity: 0; } 72% { opacity: .9; } }
+@keyframes storybook-dust { 0% { opacity: 0; transform: translate(0,0); } 30% { opacity: .6; } 100% { opacity: 0; transform: translate(12px,-190px); } }
+@media(min-width:768px),(orientation:landscape) {
+  body.portal-v2 .story-book { --closed-scale: 1; --book-height: min(660px,66dvh,55vw); }
+  body.portal-v2 .story-cover-front { gap: clamp(17px,3vh,34px); }
+  body.portal-v2 .story-cover-front strong { font-size: clamp(21px,3.7vh,46px); }
+  body.portal-v2 .story-cover-front > span { font-size: clamp(7px,1.2vh,13px); }
+  body.portal-v2 .story-cover-front small { font-size: clamp(9px,1.5vh,17px); }
+  body.portal-v2 .story-spread { padding: 25px 30px 30px; gap: 20px; }
+  body.portal-v2 .story-byline { font-size: clamp(9px,1.6vh,17px); }
+  body.portal-v2 .story-spread h3 { font-size: clamp(14px,2.8vh,31px); }
+  body.portal-v2 .story-leaf-front { gap: 30px; padding: 28px; }
+  body.portal-v2 .story-leaf-front strong { font-size: clamp(17px,3.2vh,36px); }
+  body.portal-v2 .story-leaf-front span,body.portal-v2 .story-leaf-front small { font-size: clamp(11px,1.8vh,22px); }
+}
+@media(prefers-reduced-motion:reduce) {
+  body.portal-v2 .story-book.opening .story-volume,body.portal-v2 .story-book.opening .story-cover,body.portal-v2 .story-book.opening .story-spread,body.portal-v2 .story-book.opening .story-leaf { animation-duration: .01s; }
+  body.portal-v2 .story-dust { display: none; }
+}
+
+/* The device catalogue shares the reading book's materials and leaf geometry. */
+body.portal-v2 .family-device-player.is-storytime { gap: 12px; }
+body.portal-v2 .family-device-player.is-storytime > header { min-height: 52px; transition: opacity .3s; }
+body.portal-v2 .family-device-player.is-storytime > header h2 { flex: 1; min-width: 0; }
+body.portal-v2 .family-device-player.is-storytime #familyDeviceClose { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex-shrink: 0; font-size: 12px; }
+body.portal-v2 .family-device-player.is-storytime #familyDeviceClose .icon { width: 16px; height: 16px; }
+body.portal-v2 .family-story-fullscreen { display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; padding: 0; border: 1px solid #d6be8130; border-radius: 12px; background: #ffffff08; color: #eee4c8; }
+body.portal-v2 .family-story-fullscreen .icon { width: 20px; height: 20px; }
+body.portal-v2 .family-story-stage { position: relative; flex: 1; width: 100%; min-height: 0; }
+body.portal-v2 .family-story-stage > .story-book { --book-height: min(255px,30dvh,calc(100dvh - 190px)); position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); margin: 0; }
+body.portal-v2 .family-story-stage > .story-book.docking { z-index: 4; pointer-events: none; }
+body.portal-v2 .story-book.closing .story-dust { display: none; }
+body.portal-v2 .family-story-stage.hidden, body.portal-v2 .family-story-catalogue.hidden, body.portal-v2 .family-story-stage > .story-book.hidden { display: none; }
+body.portal-v2 .family-device-player.is-storytime > #familyDeviceAudio { width: min(100%,680px); height: 54px; margin: 0 auto; transition: opacity .3s; }
+body.portal-v2 .family-device-player.is-storytime > #familyDeviceAudio.hidden { display: block; visibility: hidden; }
+body.portal-v2 .family-device-player.is-story-library > #familyDeviceAudio { display: none; }
+body.portal-v2 .family-device-player.is-storytime.story-controls-hidden > :is(header,audio) { opacity: 0; pointer-events: none; visibility: hidden; }
+body.portal-v2 .family-device-player.is-storytime > :is(#familyDeviceSkip,#familyDeviceStart) { position: absolute; bottom: calc(85px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); margin: 0; }
+body.portal-v2 .family-device-player.is-storytime > #familyDeviceMessage { position: absolute; bottom: calc(135px + env(safe-area-inset-bottom)); inset-inline: 20px; }
+body.portal-v2 .family-device-player.is-story-library > header h2 { font: 700 clamp(19px,3.5vw,36px)/1.25 'Storytime',Georgia,serif; color: #ead294; }
+body.portal-v2 .family-story-catalogue { height: 100%; display: flex; flex-direction: column; gap: 12px; }
+body.portal-v2 .family-story-intro { margin: 0; color: #ded8bd; font-size: clamp(11px,1.4vw,19px); line-height: 1.45; }
+body.portal-v2 .family-story-books { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); grid-template-rows: repeat(2,minmax(0,1fr)); gap: 12px; }
+body.portal-v2 .family-story-book-card { display: flex; flex-direction: column; align-items: center; align-self: center; justify-content: center; gap: 5px; min-width: 0; min-height: 44px; width: 100%; padding: 12px 7px; border: 1px solid transparent; border-radius: 20px; background: transparent; color: #eee4c8; transition: border-color .25s,background .25s; }
+body.portal-v2 .family-story-book-card.is-selected { border-color: #d9bd7559; background: #18392b42; }
+body.portal-v2 .family-story-book-card:focus-visible { outline: 2px solid #ead294; outline-offset: 2px; }
+body.portal-v2 .family-story-book-card > strong { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #ead294; font-size: clamp(12px,1.5vw,22px); font-weight: 650; text-align: center; line-height: 1.3; }
+body.portal-v2 .family-story-book-card > small { color: #cecaaf; font-size: clamp(10px,1.1vw,15px); line-height: 1.35; }
+body.portal-v2 .family-story-book-art { position: relative; display: block; width: min(100%,360px); height: clamp(160px,23dvh,260px); flex: 0 1 auto; min-height: 0; margin-bottom: 6px; }
+body.portal-v2 .family-story-book-card.is-docking .family-story-book-art { visibility: hidden; }
+body.portal-v2 .story-preview { --closed-scale: 1.4; position: absolute; top: 50%; left: 0; width: 100%; height: auto; aspect-ratio: 1.4; max-width: none; margin: 0; transform: translateY(-50%); pointer-events: none; }
+body.portal-v2 .story-preview .story-volume { transform: scale(var(--closed-scale)) translateX(-25%); }
+body.portal-v2 .story-preview.opened .story-volume { transform: scale(1) translateX(0); }
+body.portal-v2 .story-preview .story-cover-front { padding: 12%; gap: 8px; }
+body.portal-v2 .story-preview .story-cover-front > span { font-size: clamp(5px,.7vw,10px); }
+body.portal-v2 .story-preview .story-cover-front strong { font-size: clamp(12px,1.4vw,22px); line-height: 1.45; }
+body.portal-v2 .story-preview .story-cover-front :is(i,small), body.portal-v2 .story-preview .story-volume::after { display: none; }
+body.portal-v2 .story-preview .story-spread { padding: 8px 10px; gap: 5px; }
+body.portal-v2 .story-preview .story-spread h3 { font-size: clamp(8px,1vw,14px); }
+body.portal-v2 .story-preview .story-byline { font-size: clamp(5px,.6vw,9px); }
+body.portal-v2 .story-preview .story-leaf-front { gap: 6px; padding: 8px; }
+body.portal-v2 .story-preview .story-leaf-front strong { font-size: 10px; }
+body.portal-v2 .story-preview .story-leaf-front :is(span,small) { font-size: 6px; }
+body.portal-v2 .story-preview .story-cover-inside { border-width: 2px; }
+body.portal-v2 .family-story-catalogue footer { display: flex; align-items: center; justify-content: center; gap: 20px; padding-top: 6px; color: #ded8bd; font-size: 12px; }
+body.portal-v2 .family-story-catalogue footer button { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1px solid #d6be8130; border-radius: 50%; background: #ffffff08; color: #ead294; }
+body.portal-v2 .family-story-catalogue footer button:disabled { opacity: .3; }
+body.portal-v2 .family-story-catalogue footer .icon { width: 18px; height: 18px; }
+body.portal-v2 .family-story-catalogue-empty { grid-column: 1/-1; grid-row: 1/-1; place-self: center; max-width: 320px; color: #ded8bd; text-align: center; line-height: 1.6; }
+@media(min-width:768px),(orientation:landscape) {
+  body.portal-v2 .family-story-stage > .story-book { --book-height: min(660px,calc(100dvh - 190px),55vw); }
+  body.portal-v2 .family-story-books { grid-template-columns: repeat(4,minmax(0,1fr)); }
+}
+@media(orientation:landscape) {
+  body.portal-v2 .story-preview { --closed-scale: 1; }
+  body.portal-v2 .family-device-player.is-storytime:not(.is-story-library) .family-story-stage { position: absolute; inset: max(12px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left)); container-type: size; }
+  body.portal-v2 .family-device-player.is-storytime:not(.is-story-library) .family-story-stage > .story-book { --book-height: min(660px,calc(100cqh - 28px),calc((100cqw - 24px) / 1.4)); }
+  body.portal-v2 .family-device-player.is-storytime:not(.is-story-library) > header { position: absolute; top: max(12px,env(safe-area-inset-top)); left: max(18px,env(safe-area-inset-left)); right: max(18px,env(safe-area-inset-right)); padding: 0 8px; border-radius: 12px; background: #292821d9; }
+  body.portal-v2 .family-device-player.is-storytime:not(.is-story-library) > #familyDeviceAudio { position: absolute; bottom: max(12px,env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(calc(100% - 36px),680px); }
+  body.portal-v2 .family-story-stage > .story-book:not(.story-preview) .story-spread { padding: 12px 18px 14px; gap: 8px; }
+}
+@media(orientation:landscape) and (max-height:499px) {
+  body.portal-v2 .family-story-books { grid-template-rows: minmax(0,1fr); }
+  body.portal-v2 .family-story-catalogue { gap: 6px; }
+  body.portal-v2 .family-story-catalogue footer { padding: 0; }
+  body.portal-v2 .family-story-book-card { padding: 4px; }
+  body.portal-v2 .family-story-book-art { height: min(160px,32dvh); }
+  body.portal-v2 .family-story-book-card > small { display: none; }
+  body.portal-v2 .family-story-intro { display: none; }
+}
+@media(prefers-reduced-motion:reduce) {
+  body.portal-v2 .family-story-book-card, body.portal-v2 .family-device-player.is-storytime > :is(header,audio) { transition: none; }
+}

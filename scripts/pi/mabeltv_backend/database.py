@@ -21,6 +21,8 @@ from typing import Any, Iterator
 
 from .repositories.viewing import ViewingRepositoryMixin
 from .repositories.mabel_queue import MabelQueueRepositoryMixin
+from .repositories.playlists import PlaylistsRepositoryMixin
+from .repositories.family_media import FamilyMediaRepositoryMixin
 from .database_schema import (
     MIGRATIONS,
     MIGRATION_CHECKSUMS,
@@ -120,7 +122,8 @@ def normalise_my_tv_viewing(value: Any) -> tuple[dict[str, Any], dict[str, int]]
     return root, {key: count for key, count in normalisations.items() if count}
 
 
-class StateDatabase(MabelQueueRepositoryMixin, ViewingRepositoryMixin):
+class StateDatabase(PlaylistsRepositoryMixin, FamilyMediaRepositoryMixin,
+                    MabelQueueRepositoryMixin, ViewingRepositoryMixin):
     """Own MabelTV's authoritative relational SQLite state."""
 
     schema_version = SCHEMA_VERSION
@@ -270,6 +273,12 @@ class StateDatabase(MabelQueueRepositoryMixin, ViewingRepositoryMixin):
         for version, name, sql in MIGRATIONS:
             if version <= current:
                 continue
+            # SQLite's documented table-rebuild procedure preserves children
+            # while widening the channel-type constraint. Validate every FK
+            # before committing and restore enforcement even after rollback.
+            rebuild = version == 12
+            if rebuild:
+                connection.execute("PRAGMA foreign_keys=OFF")
             connection.execute("BEGIN IMMEDIATE")
             try:
                 statement = ""
@@ -291,10 +300,15 @@ class StateDatabase(MabelQueueRepositoryMixin, ViewingRepositoryMixin):
                     (version, name, MIGRATION_CHECKSUMS[version], time.time()),
                 )
                 connection.execute(f"PRAGMA user_version={version}")
+                if rebuild and connection.execute("PRAGMA foreign_key_check").fetchone():
+                    raise RuntimeError("Channel migration left an invalid relationship")
                 connection.commit()
             except Exception:
                 connection.rollback()
                 raise
+            finally:
+                if rebuild:
+                    connection.execute("PRAGMA foreign_keys=ON")
             current = version
         return current, normalisations
 
@@ -471,7 +485,7 @@ class StateDatabase(MabelQueueRepositoryMixin, ViewingRepositoryMixin):
             raise ValueError("Channel folder cannot be empty")
         if aspect not in {"crop", "fit", "stretch"}:
             raise ValueError("Choose a valid channel picture shape")
-        if content_type not in {"shows", "films"}:
+        if content_type not in {"shows", "films", "memories"}:
             raise ValueError("Choose shows or films for this channel")
         return number, name, folder, aspect, content_type
 

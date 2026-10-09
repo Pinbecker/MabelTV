@@ -15,7 +15,8 @@ public:
         if (valid) {
             run("PRAGMA foreign_keys=ON"); run("PRAGMA busy_timeout=5000");
             QSqlQuery version(db);
-            valid = version.exec("PRAGMA user_version") && version.next() && version.value(0).toInt() == 11;
+            valid = version.exec("PRAGMA user_version") && version.next()
+                && version.value(0).toInt() == 12;
             if (valid) valid = run("BEGIN IMMEDIATE");
         }
         if (!valid && error) *error = "Queue database is unavailable or has an unsupported schema";

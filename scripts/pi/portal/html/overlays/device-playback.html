@@ -124,10 +124,21 @@
     ></video>
     <p id="iosWatchError" class="ios-watch-error hidden"></p>
   </div>
+  <footer id="iosWatchNext" class="ios-watch-next hidden" aria-label="Next episode">
+    <div class="ios-watch-next-copy">
+      <small id="iosWatchNextHint" aria-live="polite">Up next</small>
+      <strong id="iosWatchNextTitle"></strong>
+      <span id="iosWatchNextContext"></span>
+    </div>
+    <div class="ios-watch-next-actions">
+      <button id="iosWatchNextPlay" type="button"><svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-play" /></svg><span>Next episode</span></button>
+      <button id="iosWatchNextCancel" type="button" class="secondary hidden">Stay here</button>
+    </div>
+  </footer>
 </section>
 <section
   id="mabelWatchPlayer"
-  class="mabel-watch-player hidden"
+  class="mabel-watch-player hidden" data-presentation="standard"
   aria-label="Your TV remote player"
   data-tv-aria-template="{name} remote player"
 >
@@ -200,6 +211,10 @@
                   <use href="/portal/icons.svg#signal-rotate-cw" /></svg
                 ><span>15</span></button
               ><span class="mabel-watch-control-spacer"></span
+              ><button type="button" class="mabel-watch-presentation" data-mabel-watch-action="presentation"
+                aria-pressed="false" aria-label="Picture mode: Standard. Switch to Widescreen. Cycles Standard, Widescreen, Full screen.">
+                <svg aria-hidden="true" viewBox="0 0 24 24"><use href="/portal/icons.svg#signal-maximize" /></svg>
+                <span>Widescreen</span></button
               ><button
                 type="button"
                 class="mabel-watch-icon-button mabel-watch-mute"

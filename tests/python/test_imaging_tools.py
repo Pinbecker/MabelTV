@@ -1,8 +1,10 @@
 import argparse
+import graphlib
 import hashlib
 import importlib.util
 import lzma
 import pathlib
+import re
 import tempfile
 import unittest
 
@@ -204,7 +206,7 @@ class ImagerManifestTests(unittest.TestCase):
         self.assertIn("userdel -r mabeltv-bootstrap", firstboot)
         self.assertIn("passwd -l root", firstboot)
 
-    def test_first_boot_provisions_before_a_console_login_can_appear(self):
+    def test_first_boot_follows_cloud_init_without_a_boot_ordering_cycle(self):
         service = (
             ROOT
             / "packaging/image/pi-gen/stage-mabeltv/00-install/files/mabeltv-image-firstboot.service"
@@ -213,8 +215,34 @@ class ImagerManifestTests(unittest.TestCase):
             ROOT
             / "packaging/image/pi-gen/stage-mabeltv/00-install/files/mabeltv-image-firstboot"
         ).read_text(encoding="utf-8")
-        self.assertIn("Before=getty.target multi-user.target", service)
+        # cloud-init's final stage runs after multi-user.target. Include the
+        # systemd target's implicit ordering for its wanted oneshot service.
+        graph = {"cloud-final.service": {"multi-user.target"},
+                 "multi-user.target": set(), "mabeltv-image-firstboot.service": set()}
+        unit = "mabeltv-image-firstboot.service"
+        for line in service.splitlines():
+            key, _, value = line.partition("=")
+            if key == "After":
+                graph[unit].update(value.split())
+            elif key == "Before":
+                for target in value.split():
+                    graph.setdefault(target, set()).add(unit)
+        # systemd only adds the implicit Before=target where no explicit
+        # After=target exists. This must be explicit for WantedBy=multi-user.
+        self.assertIn("multi-user.target", graph[unit])
+        order = list(graphlib.TopologicalSorter(graph).static_order())
+        self.assertLess(order.index("cloud-final.service"), order.index(unit))
+        stage = (ROOT / "packaging/image/pi-gen/stage-mabeltv/00-install/00-run.sh").read_text()
+        self.assertIn("systemctl mask getty@tty1.service", stage)
+        self.assertIn("mktemp -d /var/tmp/", firstboot)
         self.assertIn("Do not use the keyboard", firstboot)
+
+    def test_image_carries_every_runtime_package_used_by_regular_installs(self):
+        installer = (ROOT / "scripts/pi/install.sh").read_text(encoding="utf-8")
+        runtime = installer.split("apt-get install -y --no-install-recommends", 1)[1].split('if [[', 1)[0]
+        required = set(re.findall(r"[a-z0-9][a-z0-9+.-]+", runtime))
+        packages = (ROOT / "packaging/image/pi-gen/stage-mabeltv/00-install/00-packages").read_text().splitlines()
+        self.assertFalse(required - set(packages), f"Missing image packages: {required - set(packages)}")
 
 
 if __name__ == "__main__":

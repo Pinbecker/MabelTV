@@ -171,6 +171,8 @@
   }
 
   .mabel-watch-screen video {
+    position: absolute;
+    inset: 0;
     display: block;
     width: 100%;
     height: 100%;
@@ -293,7 +295,8 @@
 
   .mabel-watch-charcoal-logo {
     position: absolute;
-    top: 0;
+    top: 50%;
+    transform: translateY(-50%);
     left: 35%;
     width: 30%;
     color: #aaada8;
@@ -313,15 +316,7 @@
   }
 
   .mabel-watch-charcoal-control {
-    position: absolute;
-    bottom: 8%;
-    left: 40%;
-    width: 20%;
-    height: 48%;
-    border: 1px solid #626762;
-    border-radius: 28%;
-    background: linear-gradient(145deg, #161916, #060807);
-    box-shadow: inset 0 1px #ffffff12;
+    display: none;
   }
 
   .mabel-watch-cabinet.charcoal-90s .mabel-watch-brand {
@@ -518,6 +513,22 @@
     flex: 1;
   }
 
+  .mabel-watch-player .mabel-watch-controls .mabel-watch-presentation {
+    flex: 0 0 76px;
+    width: 76px;
+    border-radius: 12px;
+    gap: 1px;
+    padding: 4px;
+    font-size: 10px;
+    line-height: 1.1;
+  }
+
+  .mabel-watch-presentation svg { width: 18px; height: 18px; }
+  .mabel-watch-presentation[aria-pressed="true"] {
+    border-color: #84e5b9;
+    color: #84e5b9;
+  }
+
   .mabel-watch-brand {
     display: flex;
     align-items: center;
@@ -649,4 +660,146 @@
       font-size: 0.48rem;
     }
   }
+  .mabel-watch-player[data-presentation="standard"] .mabel-watch-shell:not(.charcoal-90s) {
+    width: min(calc(100vw - 14px - var(--safe-left) - var(--safe-right)), calc((100dvh - 100px - var(--safe-top) - var(--safe-bottom)) * 1.333333));
+  }
+
+  .mabel-watch-player[data-presentation="standard"] .mabel-watch-screen { aspect-ratio: 4 / 3; }
+
+  .mabel-watch-player[data-presentation="widescreen"] .mabel-watch-shell.charcoal-90s {
+    width: min(calc(100vw - 14px - var(--safe-left) - var(--safe-right)), calc((100dvh - 28px - var(--safe-top) - var(--safe-bottom)) * 1.6));
+  }
+
+  .mabel-watch-player[data-presentation="widescreen"] .mabel-watch-cabinet.charcoal-90s { aspect-ratio: 16 / 10; }
+  .mabel-watch-player[data-presentation="widescreen"] .mabel-watch-cabinet.charcoal-90s .mabel-watch-screen {
+    left: 7%;
+    width: calc(86% - clamp(8px, 1.2vw, 16px));
+    aspect-ratio: 16 / 9;
+  }
+
+  .mabel-watch-player[data-presentation="fullscreen"] { padding: 0; background: #000; }
+  .mabel-watch-player[data-presentation="fullscreen"] .mabel-watch-shell {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .mabel-watch-player[data-presentation="fullscreen"] .mabel-watch-cabinet,
+  .mabel-watch-player[data-presentation="fullscreen"] .mabel-watch-screen {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
+    background: #000;
+  }
+  .mabel-watch-player[data-presentation="fullscreen"] :is(.mabel-watch-brand, .mabel-watch-charcoal-fascia),
+  .mabel-watch-player[data-presentation="fullscreen"] .mabel-watch-cabinet::before,
+  .mabel-watch-player[data-presentation="fullscreen"] .mabel-watch-screen::after { display: none; }
+  .mabel-watch-player[data-presentation="fullscreen"] video { filter: none; }
+  .mabel-watch-player[data-presentation="fullscreen"] .mabel-watch-hud {
+    padding: max(12px, var(--safe-top)) max(12px, var(--safe-right)) max(12px, var(--safe-bottom)) max(12px, var(--safe-left));
+  }
+  .mabel-watch-player[data-presentation="fullscreen"] #mabelWatchBack {
+    top: max(12px, var(--safe-top));
+    left: max(12px, var(--safe-left));
+  }
+}
+
+/* My TV device-player polish follows the portal experience layer. */
+
+/* Keep the aperture ratio inside the bezel; the Experience universal reset
+   otherwise overrides the layered box-sizing declaration. */
+.mabel-watch-player[data-presentation="widescreen"] .mabel-watch-cabinet.charcoal-90s .mabel-watch-screen {
+  box-sizing: content-box;
+}
+.mabel-watch-presentation span { font-size: 11px; line-height: 12px; white-space: nowrap; }
+.mabel-watch-presentation[aria-pressed="true"] { border-color: #84e5b9; color: #84e5b9; }
+
+.ios-watch-player.is-my-tv {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  color: #f7f7f8;
+  background: #0a0a0f;
+}
+
+.is-my-tv .ios-watch-head {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 12px 16px;
+  padding: calc(16px + var(--safe-top)) max(18px, var(--safe-right)) 16px max(18px, var(--safe-left));
+  border-bottom: 1px solid #ffffff14;
+  background: #121218;
+}
+
+.is-my-tv .ios-watch-head > div { gap: 5px; }
+.is-my-tv .ios-watch-head strong {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  font-size: 18px;
+  line-height: 1.3;
+}
+.is-my-tv .ios-watch-head small { font-size: 12px; line-height: 1.5; }
+.is-my-tv .ios-watch-head .ios-watch-back {
+  border-radius: 50%;
+  border-color: #ffffff20;
+  background: #ffffff0c;
+  color: #f7f7f8;
+}
+.is-my-tv .ios-watch-back .icon { width: 20px; height: 20px; }
+.is-my-tv #iosWatchStartOver {
+  grid-column: 2;
+  justify-self: start;
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid #ffffff20;
+  border-radius: 18px;
+  background: #ffffff0c;
+  color: #f7f7f8;
+  font-size: 12px;
+}
+.is-my-tv .ios-watch-stage { min-height: 0; background: #000; }
+.is-my-tv .ios-watch-stage video { height: 100%; object-fit: contain; }
+.ios-watch-next {
+  display: grid;
+  gap: 14px;
+  padding: 18px max(18px, var(--safe-right)) calc(18px + var(--safe-bottom)) max(18px, var(--safe-left));
+  border-top: 1px solid #ffffff14;
+  background: #121218;
+}
+.ios-watch-next-copy { min-width: 0; display: grid; gap: 5px; }
+.ios-watch-next-copy small { color: var(--experience-accent, #00c7b1); font-size: 12px; font-weight: 750; }
+.ios-watch-next-copy strong { font-size: 18px; line-height: 1.3; }
+.ios-watch-next-copy > span { color: #a7a7b0; font-size: 12px; }
+.ios-watch-next-actions { display: flex; gap: 10px; }
+#iosWatchNextPlay, #iosWatchNextCancel {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 750;
+}
+#iosWatchNextPlay { background: var(--experience-accent, #00c7b1); color: #061814; }
+#iosWatchNextPlay .icon { width: 18px; height: 18px; }
+#iosWatchNextCancel { border: 1px solid #ffffff20; background: transparent; color: #f7f7f8; }
+.ios-watch-next.hidden, #iosWatchNextCancel.hidden { display: none; }
+@media (orientation: landscape) and (max-height: 500px) {
+  .is-my-tv .ios-watch-head { padding-top: 8px; padding-bottom: 8px; }
+  .is-my-tv .ios-watch-head strong { -webkit-line-clamp: 1; }
+  .is-my-tv #iosWatchStartOver { grid-column: auto; }
+  .is-my-tv .ios-watch-head:has(#iosWatchStartOver:not(.hidden)) { grid-template-columns: 44px minmax(0, 1fr) auto; }
+  .ios-watch-next { grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding-top: 10px; padding-bottom: max(10px, var(--safe-bottom)); }
+  .ios-watch-next-copy { gap: 3px; }
+  .ios-watch-next-copy strong { font-size: 15px; }
 }

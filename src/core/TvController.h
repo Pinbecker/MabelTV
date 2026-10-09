@@ -216,6 +216,7 @@ signals:
     void queueItemStarted();
     void queueAllDoneRequested();
     void stopPlaybackRequested();
+    void familyMemoryRequested(int channelNumber);
     void channelDisplayRequested(int channelNumber, const QString &channelName);
     void programmeDisplayRequested(const QString &programmeName);
     void volumeDisplayRequested(int volume, bool muted);

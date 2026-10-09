@@ -114,11 +114,7 @@ const $ = selector => document.querySelector(selector)
         setOfflineProtectedAccess(true)
         return true
       }
-      const pin = window.prompt('Enter the parent PIN to watch this My TV download offline.')
-      if (pin === null) return false
-      await window.MabelOffline.verifyPin(pin)
-      offlineProtectedAccess = true
-      return true
+      return unlockOfflineDownloads()
     }
 
     function lockPortalPlayerScroll(fixBody = true) {
@@ -173,6 +169,8 @@ const $ = selector => document.querySelector(selector)
     }
 
     function portalRevision(domain) {
+      // Saved playlists depend on catalogue changes, not playback positions.
+      if (domain === 'mabel_playlists' || domain === 'family_media') return Number(portalBootstrapState?.revisions?.library || 0)
       // The library response includes film bookmarks from the native player.
       // A player-only update must invalidate the cached library snapshot too.
       if (domain === 'library') return Number(portalBootstrapState?.revisions?.library || 0)

@@ -99,6 +99,11 @@ rm -f -- "$stage/scripts/pi"/replace-*-fps30.sh
 cp -a "$build_source/docs/." "$stage/docs/"
 cp -a "$build_source/integrations/matter/." "$stage/integrations/matter/"
 rm -rf -- "$stage/integrations/matter/node_modules"
+# Install the locked ARM64 runtime at build time so first boot can work without
+# npm/the internet. Keep it compressed until the atomic installer needs it.
+npm ci --omit=dev --no-audit --no-fund --prefix "$stage/integrations/matter"
+tar -C "$stage/integrations/matter" -czf "$stage/prebuilt/matter-node-modules.tar.gz" node_modules
+rm -rf -- "$stage/integrations/matter/node_modules"
 install -m 0644 "$build_source/config/examples/channels.json" \
     "$build_source/config/examples/settings.json" "$stage/config/examples/"
 install -m 0644 "$build_source/CMakeLists.txt" "$build_source/README.md" \
@@ -123,7 +128,7 @@ for line in pathlib.Path("/etc/os-release").read_text(encoding="utf-8").splitlin
     if separator:
         os_release[key] = value.strip().strip('"')
 files = {}
-for name in ("mabeltv", "mabeltv_media_check"):
+for name in ("mabeltv", "mabeltv_media_check", "matter-node-modules.tar.gz"):
     path = stage / "prebuilt" / name
     files[name] = {
         "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
@@ -142,6 +147,8 @@ manifest = {
                  "version_id": os_release.get("VERSION_ID", ""),
                  "codename": os_release.get("VERSION_CODENAME", "")},
     "files": files,
+    "matter_lock_sha256": hashlib.sha256(
+        (stage / "integrations/matter/package-lock.json").read_bytes()).hexdigest(),
 }
 output = json.dumps(manifest, indent=2, sort_keys=True) + "\n"
 (stage / "prebuilt" / "BUILD-MANIFEST.json").write_text(output, encoding="utf-8")

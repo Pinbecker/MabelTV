@@ -1355,7 +1355,7 @@ void CoreTests::sqliteStateIsReadableAndWritableByNativeController()
         for (const QString &statement : schema) {
             QVERIFY2(query.exec(statement), qPrintable(query.lastError().text()));
         }
-        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version=11")));
+        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version=12")));
         QVERIFY(query.exec(QStringLiteral("INSERT INTO mabel_queue_state(id) VALUES(1)")));
         QVERIFY(query.exec(QStringLiteral(
             "INSERT INTO channels VALUES(7,'Films','one','fit','films')")));
@@ -1433,7 +1433,7 @@ void CoreTests::sqliteStateIsReadableAndWritableByNativeController()
         database.setDatabaseName(databasePath);
         QVERIFY2(database.open(), qPrintable(database.lastError().text()));
         QSqlQuery query(database);
-        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version=11")));
+        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version=12")));
         database.close();
     }
     QSqlDatabase::removeDatabase(currentVersionConnectionName);

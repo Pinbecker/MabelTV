@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Window
 import MabelTV 1.0
 Item {
+    id: input
     required property var appRoot
     required property var controllerObject
     required property var myTvOverlay
@@ -15,6 +16,18 @@ Item {
     required property var parentHold
     required property var emergencyRestart
     required property var channelSummaryHold
+    property var familyKeys: []
+
+    function clearChildHolds() {
+        guideHold.stop(); parentHold.stop(); emergencyRestart.stop(); channelSummaryHold.stop()
+        appRoot.okHeldForGuide = false; appRoot.previousHeldForParent = false
+        appRoot.previousHeldForRestart = false; appRoot.homeHeldForChannelSummary = false
+    }
+
+    Connections {
+        target: input.appRoot.familyMedia
+        function onActiveChanged() { if (input.appRoot.familyMedia.active) input.clearChildHolds() }
+    }
 
     anchors.fill: parent
     focus: true
@@ -29,6 +42,10 @@ Item {
             }
             event.accepted = true
         } else if (controllerObject.remoteLocked) {
+            event.accepted = true
+        } else if (appRoot.familyMedia.active && appRoot.familyMedia.handleKey(event.key, event.isAutoRepeat)) {
+            clearChildHolds()
+            if (!event.isAutoRepeat && !familyKeys.includes(event.key)) familyKeys = familyKeys.concat([event.key])
             event.accepted = true
         } else if (myTvOverlay.active) {
             if (event.key === Qt.Key_P) {
@@ -177,7 +194,10 @@ Item {
     }
 
     Keys.onReleased: event => {
-        if (myTvOverlay.active
+        if (familyKeys.includes(event.key)) {
+            if (!event.isAutoRepeat) familyKeys = familyKeys.filter(key => key !== event.key)
+            clearChildHolds(); event.accepted = true
+        } else if (myTvOverlay.active
                 && myTvOverlay.handleKeyReleased(event.key, event.isAutoRepeat)) {
             event.accepted = true
         } else if (event.key === Qt.Key_M && !event.isAutoRepeat) {

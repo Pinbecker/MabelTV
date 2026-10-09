@@ -61,6 +61,7 @@ with tarfile.open(archive, "r:gz") as bundle:
         f"{root}/install-mabeltv",
         f"{root}/prebuilt/VERSION",
         f"{root}/prebuilt/BUILD-MANIFEST.json",
+        f"{root}/prebuilt/matter-node-modules.tar.gz",
     }
     if not required <= names:
         raise SystemExit("Release bundle is missing its product entry point or manifest")
@@ -168,7 +169,7 @@ if [[ "$native" == "true" ]]; then
 else
     command -v docker >/dev/null \
         || { printf 'Docker is required unless --native is used.\n' >&2; exit 1; }
-    (cd "$pi_gen" && ./build-docker.sh)
+    (cd "$pi_gen" && CONTAINER_NAME="mabeltv-image-$(date -u +%Y%m%d%H%M%S)" ./build-docker.sh)
 fi
 
 shopt -s nullglob
@@ -178,4 +179,33 @@ images=("$pi_gen"/deploy/*.img.xz)
 cp "${images[0]}" "$output/"
 cp "$pi_gen"/deploy/*.info "$output/" 2>/dev/null || true
 cp "$pi_gen"/deploy/*.log "$output/" 2>/dev/null || true
+cp "$source_root/packaging/imager/mabeltv-imager.svg" "$output/"
+cp "$source_root/scripts/imaging/open-mabeltv-imager.ps1" \
+    "$source_root/scripts/imaging/Install MabelTV.cmd" "$output/"
+python3 "$source_root/scripts/imaging/generate-imager-manifest.py" \
+    --image "$output/$(basename -- "${images[0]}")" --version "$version" \
+    --icon "$output/mabeltv-imager.svg" --output "$output/KidsTV.rpi-imager-manifest"
+(cd "$output" && sha256sum "$(basename -- "${images[0]}")" > "$(basename -- "${images[0]}").sha256")
+cp "$stage_files/image-build.json" "$output/IMAGE-BUILD.json"
+cat > "$output/START-HERE.txt" <<'EOF'
+MabelTV - fresh Raspberry Pi 4 SD card (preview for hardware testing)
+
+Keep every file in this folder together. Install Raspberry Pi Imager if needed:
+https://www.raspberrypi.com/software/
+
+1. Insert a blank microSD card (16 GB or larger recommended).
+2. Double-click "Install MabelTV.cmd". It checks the image and opens Imager.
+3. Select Raspberry Pi 4, the supplied MabelTV image, and the correct SD card.
+4. Set a unique hostname, Wi-Fi/country, timezone and your own username/password.
+   Enable SSH if you want support access. Do not use the name mabeltv-bootstrap.
+5. Write and verify the card. Writing erases the selected card.
+6. Safely eject it, put it in a Pi 4, connect the TV, and power on.
+7. Allow the first-time setup and automatic reboot to finish. Follow the TV's
+   setup QR code on your phone. Do not unplug power while setup is running.
+
+This is a clean installation: your current Pi, its media, Wi-Fi, PINs, accounts,
+pairings and personal settings are not copied. Media can be added after setup.
+It contains the current app, not a personal backup of the existing SD card.
+The first physical boot, HDMI/audio, remote and phone setup need testing on Pi 4.
+EOF
 printf 'KidsTV image: %s/%s\n' "$output" "$(basename -- "${images[0]}")"

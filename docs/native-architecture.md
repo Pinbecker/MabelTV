@@ -157,3 +157,69 @@ parent-access gate. Channel visibility keeps separate channel/programme focus.
 Display quality is available under System. The confirmation screen retains the
 three-press access gate, My TV shortcut and restart sequence. Native menu tests use
 a mock controller and never connect to live state, CEC or playback.
+
+## Storytime and family memories
+
+`FamilyMediaCoordinator.qml` owns the family media session and remote controls,
+with `Storybook.qml` for the personalised opening cover. `StorytimeStage.qml`
+owns the catalogue lift/open and reverse closing/docking transitions, and `StorytimeLibrary.qml` with
+`StorytimeBookCard.qml` owns the two-row paged catalogue and interruptible book
+previews. `StorytimeCatalogue.qml` loads the loopback-only SQLite projection
+independently of session requests, retaining the current book during a refresh.
+The backend catalogue is alphabetical without leading The/A, independent of
+listening timestamps. The selected identity survives refreshed arrays. Eight
+bundled cover materials cycle by catalogue slot; reading uses that same slot's
+material. The lift, opening and return can be skipped or interrupted safely.
+`MemoryStage.qml`
+coordinates two bounded scene slots; `MemoryScene.qml` fits whole photos into
+the shared solo, duet, triptych, feature and gallery compositions. Entrances
+are staggered, motion pauses with playback, and the outgoing scene keeps its
+last position during the transition. Main only routes
+commands, startup and the child-player exclusion. `finishTune` emits
+`familyMemoryRequested` for a memory channel instead of the ordinary episode
+loop; Storytime is started only through the portal and has no channel number.
+
+The family player keeps a tiny nonzero Qt render surface while playing audio
+or preparing video: libmpv must initialise its render context before loading
+either media type. Its visible video card still follows the memory composition.
+
+Only one family libmpv audio output is active. Background music continues across
+photo transitions, fades out before home-video audio, and resumes at its saved
+position after video. Opening or closing waits for the prior decoder/audio
+output to release. Storytime Back saves listening progress, stops narration,
+closes the book and docks it into its catalogue position. Repeated Back only
+closes the selected preview; the labelled MabelTV action explicitly returns to
+ordinary television. Memories retain their existing MabelTV return behaviour.
+Preview paper sounds share the family decoder, respect mute/volume and stop
+on navigation or playback handoff. No family return enters the My TV workflow.
+Storytime playback controls stay visible while paused or finished and for eight
+seconds after Play or a seek. The timeline shows elapsed, total and remaining
+time for the combined book audio, with its stored duration as a startup fallback.
+Opening, closing and catalogue browsing keep those controls hidden.
+While playback controls are visible, remote arrows select their highlighted
+button and OK activates it. With controls hidden, left/right seek the story;
+dedicated play/pause and skip commands retain their direct playback actions.
+Power commands retain existing CEC policy; a startup in standby does not launch
+family playback or wake HDMI. The storybook font is Cinzel Decorative, bundled
+with its SIL Open Font License.
+
+The book rests on the raster stone-floor material. The page paper uses the
+parchment material on both faces. The right illustration is uncovered beneath
+the turning leaf; its left half is printed on the leaf's back and transfers to
+the stationary left page only at the fully flat landing. All three views use
+one spread geometry so the illustration cannot jump onto the inside cover.
+Cover and leaf transforms keep perspective in screen space with no 3D depth;
+Qt Quick's 2D OpenGL renderer otherwise clips the turning surfaces. The native
+family test verifies the moving cover, illustration and flat landing under
+both software rendering and OpenGL on a virtual display, without opening HDMI.
+Materials and generation prompts are recorded in `docs/storybook-materials.md`.
+
+Family playback owns both press and release of its remote keys. Child guide
+and parent hold timers are cancelled when it opens. `MyTvResumeCoordinator.qml`
+owns the delayed decoder return and cannot resume the old programme while a
+family session is active. Explicit channel/film/queue requests close family
+playback before transferring ownership; a stale child-channel refresh does
+not close a portal-started memory session.
+An explicitly chosen child programme is held until the family decoder has
+released its output, then passed through the ordinary countdown/playback path.
+Unrequested background resumes during an active presentation are discarded.

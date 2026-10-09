@@ -567,6 +567,19 @@ QVariantList TvController::guideSchedule() const
     for (int channelIndex = 0; channelIndex < static_cast<int>(m_channels.size());
          ++channelIndex) {
         const ChannelRuntime &runtime = m_channels[channelIndex];
+        if (runtime.enabled && runtime.channel.contentType == QStringLiteral("memories")) {
+            rows.append(QVariantMap{
+                {QStringLiteral("number"), runtime.channel.number},
+                {QStringLiteral("name"), runtime.channel.name},
+                {QStringLiteral("current"), channelIndex == m_currentChannelIndex},
+                {QStringLiteral("programmes"), QVariantList{QVariantMap{
+                    {QStringLiteral("name"), QStringLiteral("Family photos and videos")},
+                    {QStringLiteral("start"), now.toString(QStringLiteral("HH:mm"))},
+                    {QStringLiteral("end"), now.addSecs(7200).toString(QStringLiteral("HH:mm"))},
+                    {QStringLiteral("now"), true}, {QStringLiteral("progress"), 0.0}}}},
+            });
+            continue;
+        }
         if (!runtime.enabled || runtime.channel.episodes.isEmpty()) {
             continue;
         }

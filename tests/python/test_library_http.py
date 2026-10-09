@@ -184,6 +184,13 @@ class LibraryHttpTests(unittest.TestCase):
                 self.assertEqual(response.headers.get("Connection"), "close")
                 self.assertIn(marker, response.read())
 
+    def test_storytime_page_sound_is_a_public_audio_asset(self) -> None:
+        with urllib.request.urlopen(
+                self.base + "/portal/assets/storytime/page-turn.ogg", timeout=5) as response:
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.headers["Content-Type"], "audio/ogg")
+            self.assertEqual(response.read()[:4], b"OggS")
+
     def test_portal_bundle_can_be_injected_without_changing_production_default(self) -> None:
         injected = "'use strict'\nwindow.fixturePortalBundle = true\n"
         server = mabeltv_library.LibraryServer(

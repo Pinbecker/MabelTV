@@ -1,109 +1,12 @@
-      <section id="view-system" class="view"><div class="page settings-page">
-        <header class="screen-title"><div><p class="eyebrow">Parent portal</p><h1>Settings</h1></div></header>
-
-        <section class="settings-device-card" aria-labelledby="settingsDeviceTitle">
-          <img class="settings-device-icon" src="/mabeltv-icon.png" alt="">
-          <div><small>Connected television</small><h2 id="settingsDeviceTitle" data-tv-name>Your TV</h2><span><i></i> Available on your home network</span></div>
-        </section>
-
-        <div class="settings-groups">
-          <section class="settings-group" aria-labelledby="settingsPlaybackGroup">
-            <h2 id="settingsPlaybackGroup">Television experience</h2>
-            <form id="tvSettingsForm" class="settings-form">
-              <button id="openAppearanceSettings" type="button" class="settings-link-row settings-appearance-row" data-go="appearance">
-                <span class="settings-row-icon appearance"><svg><use href="/portal/icons.svg#signal-image"/></svg></span>
-                <span><strong>Colour and appearance</strong><small id="appearanceSettingsSummary">True black · Orange · Balanced</small></span>
-                <svg class="settings-chevron"><use href="/portal/icons.svg#signal-chevron-right"/></svg>
-              </button>
-              <details class="settings-disclosure">
-                <summary><span class="settings-row-icon picture"><svg><use href="/portal/icons.svg#signal-image"/></svg></span><span><strong>Picture and display</strong><small>Framing, cabinet and CRT effects</small></span><svg class="settings-chevron"><use href="/portal/icons.svg#signal-chevron-right"/></svg></summary>
-                <div class="settings-panel"><div class="settings-fields">
-                  <label>Picture mode<select id="tvPictureMode"><option value="channel">Use each channel’s setting</option><option value="crop">Fill screen</option><option value="fit">Show whole picture</option><option value="stretch">Stretch to screen</option></select></label>
-                  <label>TV cabinet<select id="tvBorder"><option value="slim-black">Slim black</option><option value="silver-90s">Silver 90s</option><option value="charcoal-90s">Charcoal 90s</option><option value="vintage-black">Vintage black</option><option value="dinosaur-den">Dinosaur Den</option><option value="ocean-club">Ocean Club</option><option value="finding-nemo">Finding Nemo</option></select></label>
-                  <div class="range-setting"><label for="tvCrtGlass">CRT glass</label><input id="tvCrtGlass" type="range" min="0" max="100" step="5" value="35"><output id="tvCrtGlassValue" for="tvCrtGlass">35%</output></div>
-                  <div class="range-setting"><label for="tvDistortion">90s distortion</label><input id="tvDistortion" type="range" min="0" max="100" step="5" value="20"><output id="tvDistortionValue" for="tvDistortion">20%</output></div>
-                  <label>Display output<select id="tvDisplayResolution"><option value="720p">720p</option><option value="1080p">1080p</option><option value="native">Native display resolution</option></select><small>Changes after the player refreshes.</small></label>
-                </div></div>
-              </details>
-
-              <details class="settings-disclosure">
-                <summary><span class="settings-row-icon playback"><svg><use href="/portal/icons.svg#signal-play"/></svg></span><span><strong>Playback</strong><small>Programme order, reset and scrubbing</small></span><svg class="settings-chevron"><use href="/portal/icons.svg#signal-chevron-right"/></svg></summary>
-                <div class="settings-panel"><div class="settings-fields">
-                  <label>How programmes play<select id="tvPlaybackMode"><option value="continuous">Continuous broadcast</option><option value="resume">Resume where you left off</option></select><small>Continuous keeps channels moving like a live schedule.</small></label>
-                  <label>Episode reset<select id="tvEpisodeReset"><option value="0">Never</option><option value="5">After 5 minutes</option><option value="20">After 20 minutes</option><option value="60">After 1 hour</option><option value="180">After 3 hours</option></select><small>After this time away, an episode starts from the beginning.</small></label>
-                  <label>Playback scrubbing<select id="tvScrubbing"><option value="false">Off — Left / Right do nothing</option><option value="true">On — Left / Right seek</option></select><small>Up / Down always choose the previous or next programme.</small></label>
-                </div></div>
-              </details>
-
-              <details class="settings-disclosure">
-                <summary><span class="settings-row-icon sound"><svg><use href="/portal/icons.svg#signal-volume"/></svg></span><span><strong>Sound and volume</strong><small>Limit and navigation sounds</small></span><svg class="settings-chevron"><use href="/portal/icons.svg#signal-chevron-right"/></svg></summary>
-                <div class="settings-panel"><div class="settings-fields">
-                  <label>Volume limit<select id="tvVolumeLimit"><option value="true">On</option><option value="false">Off</option></select><small>Keep the remote volume within the maximum below.</small></label>
-                  <div class="range-setting"><label for="tvMaximumVolume">Maximum volume</label><input id="tvMaximumVolume" type="range" min="5" max="100" step="5" value="60"><output id="tvMaximumVolumeValue" for="tvMaximumVolume">60%</output></div>
-                  <label>Button sound effects<select id="tvSoundEffects"><option value="true">On</option><option value="false">Off</option></select><small>The navigation sounds heard on the television.</small></label>
-                </div></div>
-              </details>
-              <div class="settings-save"><p>Changes apply to <span data-tv-name>Your TV</span> straight away; the picture may refresh briefly.</p><button type="submit">Save TV settings</button></div>
-            </form>
-          </section>
-
-          <section class="settings-group" aria-labelledby="settingsActivityGroup">
-            <h2 id="settingsActivityGroup">Activity</h2>
-            <div class="settings-stack">
-              <button type="button" class="settings-link-row" data-go="usb">
-                <span class="settings-row-icon usb"><svg><use href="/portal/icons.svg#signal-hard-drive"/></svg></span>
-                <span><strong>USB drives</strong><small>Browse, play and import from removable storage</small></span>
-                <svg class="settings-chevron"><use href="/portal/icons.svg#signal-chevron-right"/></svg>
-              </button>
-              <button type="button" class="settings-link-row" data-go="activity">
-                <span class="settings-row-icon system"><svg><use href="/portal/icons.svg#signal-upload"/></svg></span>
-                <span><strong>Uploads and optimisation</strong><small>See background media work, progress and preparation</small></span>
-                <svg class="settings-chevron"><use href="/portal/icons.svg#signal-chevron-right"/></svg>
-              </button>
-            </div>
-          </section>
-
-          <section class="settings-group" aria-labelledby="settingsFeaturesGroup">
-            <h2 id="settingsFeaturesGroup">Features</h2>
-            <div class="settings-stack">
-              <details class="settings-disclosure">
-                <summary><span class="settings-row-icon parent"><svg><use href="/portal/icons.svg#signal-shield-user"/></svg></span><span><strong>On-TV parent menu</strong><small>Choose the design shown on the television</small></span><svg class="settings-chevron"><use href="/portal/icons.svg#signal-chevron-right"/></svg></summary>
-                <div class="settings-panel"><p class="settings-panel-copy">This changes the grown-up screen opened by holding Back / Previous.</p><div class="design-picker"><button type="button" class="design-option" data-parent-style="classic" aria-pressed="false"><span class="design-preview classic"><span>[ PARENT CONTROL ]<br>CHANNELS &amp; PROGRAMMES<br>CRT GLASS ........ 35%</span></span><span class="design-copy"><strong>Classic console</strong><small>Original green technical design</small></span></button><button type="button" class="design-option" data-parent-style="modern" aria-pressed="false"><span class="design-preview modern"><span class="mini-rail"></span><span class="mini-page"><span class="mini-line"></span><span class="mini-line"></span><span class="mini-line"></span></span></span><span class="design-copy"><strong>Modern family</strong><small>Warmer app-style design</small></span></button></div></div>
-              </details>
-              <div class="settings-toggle-row"><span class="settings-row-icon guide"><svg><use href="/portal/icons.svg#signal-guide"/></svg></span><div><strong>Show the TV guide</strong><small id="tvGuideState">Off</small><p>When on, hold OK / Select for 3.5 seconds to open it.</p></div><button id="tvGuideToggle" type="button" class="feature-toggle settings-switch" aria-label="Show the TV guide" aria-pressed="false">Off</button></div>
-              <div class="settings-toggle-row"><span class="settings-row-icon remote"><svg><use href="/portal/icons.svg#signal-monitor-play"/></svg></span><div><strong>Allow TV and browser playback together</strong><small id="remoteConcurrentState">Off · one player at a time</small><p>Turn on only when deliberately testing two streams.</p></div><button id="remoteConcurrentToggle" type="button" class="feature-toggle settings-switch" aria-label="Allow TV and browser playback together" aria-pressed="false">Off</button></div>
-              <div class="settings-toggle-row"><span class="settings-row-icon streaming"><svg><use href="/portal/icons.svg#signal-search"/></svg></span><div><strong>Where to watch and rent</strong><small id="watchmodeAvailabilityState">On · direct links and rental prices</small><p>Turn off while rapidly cataloguing watched titles to conserve Watchmode requests.</p></div><button id="watchmodeAvailabilityToggle" type="button" class="feature-toggle settings-switch" aria-label="Where to watch and rent lookups" aria-pressed="true">On</button></div>
-              <div class="settings-toggle-row"><span class="settings-row-icon streaming"><svg><use href="/portal/icons.svg#signal-tv"/></svg></span><div><strong>Streaming service icons</strong><small id="myTvProviderBadgesState">On · shown on My TV artwork</small><p>Show small <span data-tv-name>Your TV</span> and included streaming-service icons on title cards.</p></div><button id="myTvProviderBadgesToggle" type="button" class="feature-toggle settings-switch" aria-label="Streaming service icons" aria-pressed="true">On</button></div>
-            </div>
-          </section>
-
-          <section class="settings-group" aria-labelledby="settingsIdentityGroup">
-            <h2 id="settingsIdentityGroup">Identity and security</h2>
-            <details class="settings-disclosure">
-              <summary><span class="settings-row-icon identity"><svg><use href="/portal/icons.svg#signal-user"/></svg></span><span><strong>Name this TV</strong><small>Shown throughout the portal</small></span><svg class="settings-chevron"><use href="/portal/icons.svg#signal-chevron-right"/></svg></summary>
-              <div class="settings-panel"><form id="tvNameForm"><label>Child’s name<input id="tvNameChild" autocomplete="name" maxlength="40" placeholder="Mabel" required></label><button type="submit">Save TV name</button></form></div>
-            </details>
-            <details class="settings-disclosure">
-              <summary><span class="settings-row-icon security"><svg><use href="/portal/icons.svg#signal-lock"/></svg></span><span><strong>Parent PIN</strong><small id="portalPinState">A PIN is required to open this portal</small></span><svg class="settings-chevron"><use href="/portal/icons.svg#signal-chevron-right"/></svg></summary>
-              <div class="settings-panel settings-pin-panel">
-                <form id="portalPinForm"><p>Enter the current PIN to turn portal sign-in on or off.</p><label>Current PIN<input id="portalPinCurrent" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" required></label><button id="portalPinToggle" type="submit" class="secondary">Turn off PIN entry</button></form>
-                <form id="pinForm"><h3>Change parent PIN</h3><label>Current PIN<input id="currentPin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" required></label><label>New PIN<input id="newPin" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required></label><label>Repeat new PIN<input id="newPinAgain" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4,8}" minlength="4" maxlength="8" required></label><button type="submit">Change PIN</button></form>
-              </div>
-            </details>
-          </section>
-
-          <section class="settings-group" aria-labelledby="settingsSystemGroup">
-            <h2 id="settingsSystemGroup">Raspberry Pi</h2>
-            <details id="systemStatusDisclosure" class="settings-disclosure" open>
-              <summary><span class="settings-row-icon system"><svg><use href="/portal/icons.svg#signal-cpu"/></svg></span><span><strong>System status</strong><small>Player, temperature, storage and version</small></span><svg class="settings-chevron"><use href="/portal/icons.svg#signal-chevron-right"/></svg></summary>
-              <div class="settings-panel"><dl id="systemDetails" class="definition"></dl><div class="settings-system-actions"><button id="checkAgain" class="secondary">Check again</button><button id="restartPlayer" class="secondary">Restart TV player</button><a class="button secondary" href="/api/support" download>Download support bundle</a></div><p class="small muted settings-note">Diagnostics never include the parent PIN or video files.</p></div>
-            </details>
-            <details class="settings-disclosure">
-              <summary><span class="settings-row-icon help"><svg><use href="/portal/icons.svg#signal-circle-help"/></svg></span><span><strong>Help</strong><small>Everyday answers</small></span><svg class="settings-chevron"><use href="/portal/icons.svg#signal-chevron-right"/></svg></summary>
-              <div class="settings-panel help-list"><details class="help"><summary>How do I add a programme?</summary><p>Open Library, choose its channel, tap Add videos, choose one or more files, then upload.</p></details><details class="help"><summary>How do I open the grown-up menu on TV?</summary><p>Hold Back / Previous for 3.5 seconds, then press OK three times.</p></details><details class="help"><summary>What if the picture freezes?</summary><p>Use Restart TV player. If it happens again, download a support bundle immediately.</p></details><details class="help"><summary>Why is a phone video taking a while?</summary><p>Large or high-frame-rate iPhone MOV files are converted to a Pi-friendly copy. Normal MP4 programmes are left untouched.</p></details></div>
-            </details>
-          </section>
-          <section class="settings-danger" aria-labelledby="settingsPowerTitle"><div><p class="section-kicker">Power</p><h2 id="settingsPowerTitle">Restart or shut down safely</h2><p>Use these controls instead of pulling the cable.</p></div><div><button id="rebootPi" class="secondary">Restart Raspberry Pi</button><button id="poweroffPi" class="danger">Shut down Raspberry Pi</button></div></section>
-        </div>
-        <footer><span data-tv-name>Your TV</span> <span data-version></span> · Local to your home network</footer>
-      </div></section>
+<section id="view-system" class="view"><div class="page settings-page settings-hub">
+  <header class="settings-page-title"><p class="eyebrow">Make it yours</p><h1>Settings</h1></header>
+  <p id="settingsConnection" class="settings-connection" role="status"><svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-check"/></svg><span>Checking the Pi…</span></p>
+  <div class="settings-groups">
+    <section class="settings-section-block"><h2>Watching</h2><div class="settings-stack"><button type="button" class="settings-link-row" data-go="settings-mabel" ><span class="settings-row-icon"><svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-tv"/></svg></span><span><strong><span data-tv-name>Your TV</span></strong><small><span id="settingsMabelSummary">Surround, playback and sound</span></small></span><svg class="settings-chevron" aria-hidden="true"><use href="/portal/icons.svg#signal-chevron-right"/></svg></button><button type="button" class="settings-link-row" data-go="settings-my-tv" ><span class="settings-row-icon"><svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-film"/></svg></span><span><strong>My TV</strong><small><span id="settingsMyTvSummary">Streaming services and title cards</span></small></span><svg class="settings-chevron" aria-hidden="true"><use href="/portal/icons.svg#signal-chevron-right"/></svg></button></div></section>
+    <section class="settings-section-block"><h2>Your portal</h2><div class="settings-stack"><button type="button" class="settings-link-row" data-go="appearance" id="openAppearanceSettings"><span class="settings-row-icon"><svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-image"/></svg></span><span><strong>Portal appearance</strong><small><span id="appearanceSettingsSummary">Colour and theme</span> · This device only</small></span><svg class="settings-chevron" aria-hidden="true"><use href="/portal/icons.svg#signal-chevron-right"/></svg></button><button type="button" class="settings-link-row" data-go="settings-security" ><span class="settings-row-icon"><svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-lock"/></svg></span><span><strong>Privacy and security</strong><small><span id="settingsSecuritySummary">Parent PIN and portal access</span></small></span><svg class="settings-chevron" aria-hidden="true"><use href="/portal/icons.svg#signal-chevron-right"/></svg></button></div></section>
+    <section class="settings-section-block"><h2>Library and device</h2><div class="settings-stack"><button type="button" class="settings-link-row" data-go="settings-media" ><span class="settings-row-icon"><svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-hard-drive"/></svg></span><span><strong>Media management</strong><small>USB drives, uploads and optimisation</small></span><svg class="settings-chevron" aria-hidden="true"><use href="/portal/icons.svg#signal-chevron-right"/></svg></button><button type="button" class="settings-link-row" data-go="settings-help" ><span class="settings-row-icon"><svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-cpu"/></svg></span><span><strong>System and help</strong><small><span id="settingsSystemSummary">Pi health, support and power</span></small></span><svg class="settings-chevron" aria-hidden="true"><use href="/portal/icons.svg#signal-chevron-right"/></svg></button></div></section>
+  </div>
+  <footer><span data-tv-name>Your TV</span> <span data-version></span></footer>
+</div></section>
+<!-- portal-include:html/views/settings-mabel.html -->
+<!-- portal-include:html/views/settings-support.html -->

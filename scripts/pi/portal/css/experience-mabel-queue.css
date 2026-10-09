@@ -4,7 +4,6 @@ body.portal-v2 .mabel-queue-rail-card .home-poster-copy strong,
 body.portal-v2 .mabel-queue-rail-card .home-poster-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 body.portal-v2 .mabel-queue-rank { position: absolute; top: 6px; left: 6px; border-radius: 6px; background: #07352ddd; color: #fff; padding: 5px 6px; font-size: 10px; font-weight: 850; }
 body.portal-v2 .mabel-queue-ending-art { display: grid; place-items: center; border: 1px solid var(--experience-line); background: var(--experience-soft); color: var(--experience-orange); font-size: 38px; }
-body.portal-v2 .mabel-queue-watch { padding-inline: var(--experience-gutter); }
 body.portal-v2 .mabel-queue-page { width: min(100%, 760px); margin: 0 auto; padding: 18px var(--experience-gutter) 110px; }
 body.portal-v2 .mabel-queue-back { display: inline-flex; align-items: center; gap: 7px; border: 0; background: none; color: var(--experience-orange); font: inherit; font-size: 13px; font-weight: 760; padding: 5px 0; }
 body.portal-v2 .mabel-queue-back .icon { width: 18px; height: 18px; }
@@ -53,7 +52,7 @@ body.portal-v2 #homeMabelQueueSection { gap: 5px; }
 body.portal-v2 #homeMabelQueueSection > header { align-items: flex-end; }
 body.portal-v2 #homeMabelQueueSection .mabel-queue-manage { min-height: 24px; }
 body.portal-v2 #homeMabelQueueSection .watch-section-kicker { margin-bottom: 3px; }
-body.portal-v2 #homeMabelQueueRail { grid-auto-columns: 104px; gap: 10px; }
+body.portal-v2 #homeMabelQueueRail { grid-auto-columns: calc((100% - 33px) / 4); gap: 11px; margin-right: 0; padding: 0 0 3px; }
 body.portal-v2 #homeContinueRail.home-continue-rail { padding-bottom: 0; }
 body.portal-v2 .mabel-queue-section-meta { min-width: 0; margin: 0 0 2px; color: var(--experience-dim); font-size: 10px; line-height: 1.2; }
 body.portal-v2 .mabel-queue-rail { align-items: start; }
@@ -64,13 +63,6 @@ body.portal-v2 .mabel-queue-ending-art > span { font-size: 38px; line-height: 1;
 body.portal-v2 .mabel-queue-empty-preview { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; width: 100%; border: 1px solid var(--experience-line); border-radius: 10px; background: var(--experience-raised); color: var(--experience-muted); padding: 0 12px; font: inherit; font-size: 11px; font-weight: 700; text-align: left; }
 body.portal-v2 .mabel-queue-empty-preview.hidden { display: none; }
 body.portal-v2 .mabel-queue-empty-preview .icon { color: var(--experience-orange); }
-body.portal-v2 .mabel-queue-watch { min-width: 0; margin: 0 0 10px; padding: 0; }
-body.portal-v2 .mabel-queue-watch .watch-section-head { align-items: flex-end; min-width: 0; margin-bottom: 4px; }
-body.portal-v2 .mabel-queue-watch .watch-section-head > div { min-width: 0; }
-body.portal-v2 .mabel-queue-watch .watch-section-kicker { margin: 0 0 3px; }
-body.portal-v2 .mabel-queue-watch .mabel-queue-manage { margin-bottom: 0; }
-body.portal-v2 .mabel-queue-watch .mabel-queue-section-meta { margin-bottom: 9px; }
-body.portal-v2 .mabel-queue-watch .mabel-queue-rail { grid-auto-columns: 104px; gap: 10px; min-width: 0; margin-right: calc(var(--experience-gutter) * -1); padding: 0 var(--experience-gutter) 3px 0; }
 
 /* The queue detail uses the channel-page back and primary action patterns. */
 body.portal-v2 .page.mabel-queue-page { width: min(100%, 760px); padding: 8px var(--experience-gutter) 110px; }

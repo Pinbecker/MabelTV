@@ -184,8 +184,7 @@ body.portal-v2 .home-media-section > header span {
   font-weight: 700;
 }
 
-body.portal-v2 #homeContinueCount,
-body.portal-v2 #watchMabelContinueCount { font-size: 10px; font-weight: 700; }
+body.portal-v2 #homeContinueCount { font-size: 10px; font-weight: 700; }
 
 body.portal-v2 .home-poster-rail {
   display: grid;
@@ -307,8 +306,7 @@ body.portal-v2 .home-continue-rail {
   padding-bottom: 0;
 }
 
-body.portal-v2 #homeContinueRail .watch-continue-card,
-body.portal-v2 #watchMabelContinueRail .watch-continue-card { box-shadow: none; }
+body.portal-v2 #homeContinueRail .watch-continue-card { box-shadow: none; }
 
 body.portal-v2 .home-destinations {
   display: none;

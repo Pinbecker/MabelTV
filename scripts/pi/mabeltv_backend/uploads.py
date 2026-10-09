@@ -90,6 +90,8 @@ class UploadConversionMixin:
             # date. It remains visible for explicit retry/cancel and recovery.
             if status != "uploading" or activity >= upload_cutoff:
                 continue
+            if metadata.get("kind") == "family":
+                self.family_cancel_upload(metadata)
             upload_id = manifest.stem
             (self.incoming / f"{upload_id}.part").unlink(missing_ok=True)
             manifest.unlink(missing_ok=True)
@@ -207,6 +209,11 @@ class UploadConversionMixin:
         manifest = self.incoming / f"{upload_id}.json"
         metadata = self.read_json(manifest, {})
         if isinstance(metadata, dict) and metadata:
+            if metadata.get("kind") == "family":
+                self.state_database.family_asset_update(metadata["asset_id"], status="error", error=str(error)[:250])
+                metadata.update(status="error", error=str(error), updated=time.time())
+                self.write_json(manifest, metadata)
+                return
             if metadata.get("status") == "validating":
                 # A fully received but unreadable file cannot become valid by
                 # retrying the same bytes. Free its reserved space but retain a
@@ -245,6 +252,9 @@ class UploadConversionMixin:
             lock = self.upload_locks.setdefault(upload_id, threading.Lock())
         with lock:
             metadata = self.upload_meta(upload_id)
+            if metadata.get("kind") == "family":
+                self.process_family_conversion(upload_id, metadata)
+                return
             part = self.incoming / f"{upload_id}.part"
             my_tv_film_upload = metadata.get("kind") == "my_tv"
             my_tv_series_upload = metadata.get("kind") == "my-tv-series"
@@ -384,7 +394,8 @@ class UploadConversionMixin:
                 upload_kind = str(value.get("kind") or "channel")
                 my_tv = upload_kind == "my_tv"
                 my_tv_series = upload_kind == "my-tv-series"
-                number = -1 if my_tv or my_tv_series else int(value.get("channel", -1))
+                number = -1 if my_tv or my_tv_series or value.get("channel") is None else int(value.get("channel", -1))
+                family_source_ready = upload_kind == "family" and self.family_upload_source_ready(value)
             except (OSError, TypeError, ValueError):
                 continue
             transfer_state = str(value.get("transfer_state", "active" if status == "uploading" else "complete"))
@@ -399,8 +410,9 @@ class UploadConversionMixin:
                 "channel_name": "My TV series" if my_tv_series else
                 (f"My TV · {value.get('folder')}" if value.get("folder")
                  else "My TV · All films") if my_tv else
+                ("Storytime" if value.get("media_kind") != "music" else "Memory music") if upload_kind == "family" and number < 0 else
                 channel_names.get(number, f"CH {number}"),
-                "kind": "my-tv-series" if my_tv_series else "my_tv" if my_tv else "channel",
+                "kind": upload_kind,
                 "size": size,
                 "offset": offset,
                 "status": status,
@@ -417,7 +429,7 @@ class UploadConversionMixin:
                     "uploading", "queued", "paused", "error"
                 },
                 "retryable": (status == "error"
-                              and part.is_file() and offset == size),
+                              and (family_source_ready or part.is_file() and offset == size)),
             })
         for result_path in self.incoming.glob("*.result.json"):
             value = self.read_json(result_path, {})
@@ -427,7 +439,7 @@ class UploadConversionMixin:
             upload_kind = str(value.get("kind") or "channel")
             my_tv = upload_kind == "my_tv"
             my_tv_series = upload_kind == "my-tv-series"
-            number = -1 if my_tv or my_tv_series else int(value.get("channel", -1))
+            number = -1 if my_tv or my_tv_series or value.get("channel") is None else int(value.get("channel", -1))
             source_kind = str(value.get("source_kind") or "browser")
             jobs.append({
                 "id": value.get("id", result_path.name.removesuffix(".result.json")),
@@ -516,6 +528,8 @@ class UploadConversionMixin:
             self.write_json(manifest, value)
 
     def upload_create(self, payload: dict[str, Any]) -> dict[str, Any]:
+        if payload.get("kind") == "family":
+            return self.family_upload_create(payload)
         # The HTTP server is threaded. Serialising lookup and creation prevents
         # two simultaneous requests from reserving duplicate jobs for one file.
         with self.config_lock:
@@ -795,6 +809,8 @@ class UploadConversionMixin:
                         ready = part.is_file() and part.stat().st_size == int(metadata["size"])
                     except (OSError, KeyError, TypeError, ValueError):
                         ready = False
+                    if metadata.get("kind") == "family":
+                        ready = ready or self.family_upload_source_ready(metadata)
                     if not ready:
                         raise ValueError("Choose the original file above to retry this upload")
                     metadata["resume_from_status"] = "error"
@@ -805,6 +821,8 @@ class UploadConversionMixin:
                     # An error becomes visible just before the worker removes
                     # this ID from its dedupe set. Remember an owner retry in
                     # that narrow window so the worker requeues it on teardown.
+                    if metadata.get("kind") == "family":
+                        self.state_database.family_asset_update(metadata["asset_id"], status="uploading", error="")
                     if upload_id in self.queued_conversions:
                         self.deferred_retries.add(upload_id)
                     else:
@@ -827,6 +845,8 @@ class UploadConversionMixin:
                         raise ValueError("This upload is not paused")
                     part = self.incoming / f"{upload_id}.part"
                     complete = part.is_file() and part.stat().st_size == int(metadata.get("size", 0))
+                    if metadata.get("kind") == "family":
+                        complete = complete or self.family_upload_source_ready(metadata)
                     metadata["status"] = "queued" if complete else "uploading"
                     if not complete:
                         active_exists = any(item.get("status") == "uploading" and
@@ -845,6 +865,8 @@ class UploadConversionMixin:
                         result.get("status", "") if isinstance(result, dict) else "")
                 if status not in {"uploading", "queued", "paused", "error"}:
                     raise ValueError("This upload is already being prepared and can no longer be cancelled")
+                if isinstance(metadata, dict) and metadata.get("kind") == "family":
+                    self.family_cancel_upload(metadata)
                 self.unlink_with_retry(self.incoming / f"{upload_id}.part")
                 self.unlink_with_retry(manifest)
                 self.unlink_with_retry(result_path)
@@ -895,6 +917,8 @@ class UploadConversionMixin:
         try:
             offset = part.stat().st_size if part.is_file() \
                 else (int(metadata.get("size", 0)) if status in processing_statuses else 0)
+            if metadata.get("kind") == "family" and self.family_upload_source_ready(metadata):
+                offset = int(metadata["size"])
         except (OSError, TypeError, ValueError):
             offset = 0
         return {

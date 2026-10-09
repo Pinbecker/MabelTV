@@ -10,6 +10,7 @@
     "tools"
   ],
   "source_suffixes": [
+    ".cjs",
     ".cpp",
     ".css",
     ".h",
@@ -22,6 +23,11 @@
     ".sh"
   ],
   "excluded_paths": [
+    "tools/studio/node_modules",
+    "tools/studio/dist",
+    "tools/studio/resources",
+    "tools/studio/test-results",
+    "tools/studio/playwright-report",
     "integrations/matter/node_modules",
     "scripts/pi/portal/vendor",
     "tests/browser/node_modules",
@@ -29,6 +35,21 @@
     "tests/browser/test-results"
   ],
   "rules": [
+    {
+      "area": "Native UI test fixture",
+      "patterns": ["tests/qml/*.qml"],
+      "max_lines": 100
+    },
+    {
+      "area": "Studio desktop owner and test",
+      "patterns": ["tools/studio/*.cjs", "tools/studio/lib/*.cjs", "tools/studio/scripts/*.cjs", "tools/studio/tests/*.cjs"],
+      "max_lines": 300
+    },
+    {
+      "area": "Studio interface responsibility",
+      "patterns": ["tools/studio/ui/*.js", "tools/studio/ui/*.css", "tools/studio/ui/*.html"],
+      "max_lines": 350
+    },
     {
       "area": "Native QML component",
       "patterns": [

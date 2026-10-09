@@ -22,7 +22,7 @@ clearing it transactionally, and never treats retained `owner.json` as live.
 `database_schema.py` is the only schema and migration owner. `database.py`
 owns connections, transactions and the general relational projections;
 `repositories/viewing.py` owns targeted viewing identity/session operations and is
-composed into the same `StateDatabase`. Schema version 11 contains these main
+composed into the same `StateDatabase`. Schema version 12 contains these main
 relationships:
 
 - channels and favourites: `channels`, `channel_metadata`,
@@ -38,6 +38,9 @@ relationships:
 - My TV viewing state: `my_tv_titles`, `title_watch_events`, `watchlist_entries`,
   `up_next_entries`, `title_ratings` and `title_episode_state`;
 - Mabel TV playback queue: `mabel_queue_entries`, `mabel_queue_state` and the bounded `mabel_queue_history`;
+- reusable playlists: `mabel_playlists`, `mabel_playlist_entries` and the queue's
+  independent repeat snapshot `mabel_queue_cycle`;
+- family media: `family_assets`, `storytime_items` and `memory_channel_settings`;
 - discovery/availability/insights: `explore_feedback`, `availability_cache`,
   `my_tv_viewing_state`, `my_tv_insights_titles`, `my_tv_insights_failures` and
   `my_tv_insights_state`;
@@ -113,7 +116,7 @@ bootstrap ledger. Rebuildable caches never advance or become authoritative.
 
 Migrations are append-only and checksummed. Never edit a released migration;
 add the next integer migration and update both Python and native maximum/minimum
-support in the same release. The current native release accepts schema 11 only,
+support in the same release. The current native release accepts schema 12 only,
 preventing an old binary from writing a database whose invariants it does not
 understand. Cross-language tests enforce the version match.
 
@@ -162,3 +165,32 @@ record the active release. Before the new release is proven, rollback means stop
 both database clients, restore the pre-upgrade database snapshot atomically,
 point `/opt/mabeltv/current` at the matching prior release, restart and re-run
 health/integrity checks. Reverting code alone after a schema upgrade is unsafe.
+
+## Playlists and family media (migration 12)
+
+Migration 12 widens the channel type to `memories` using SQLite's table-rebuild
+procedure. Foreign-key enforcement is disabled on that migration connection
+only, before its transaction, and every relationship is checked before commit.
+Enforcement is restored after success or rollback. Existing channel IDs, numbers
+and all dependent rows remain unchanged. Back up through SQLite's online backup
+API before upgrading; keep the backup with its matching release for rollback.
+
+`repositories/playlists.py` owns saved membership and atomic queue copies. Entries
+reference stable channel IDs, so changing a channel number preserves playlists.
+The copied queue and repeat snapshot do not change when a saved playlist is edited
+or deleted. A trigger refills a repeat snapshot only when playback consumes the
+last current entry; clearing the queue disables the repeat snapshot first.
+
+`repositories/family_media.py` owns audio/image associations, listening positions,
+asset readiness and memory settings. Media bytes and operational upload journals
+stay on disk; catalogues never use a JSON fallback. Original media is retained.
+Prepared files are published atomically before their SQLite row becomes ready.
+Native session projections alone return local file URLs, and require both
+loopback access and the native header. Normal portal projections expose only
+authenticated content URLs. Sessions are bounded, ephemeral playback requests,
+like existing remote stream sessions; they are not saved application state.
+
+Story listening positions expire after an hour in catalogue/session projections.
+The story's `updated` timestamp records listening, creation or replacement audio;
+renaming a story or replacing its illustration does not extend a bookmark.
+Expired reads never rewrite the stored bookmark.

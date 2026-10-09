@@ -21,7 +21,9 @@ actual="$(sha256sum "$archive" | awk '{ print $1 }')"
 [[ "$expected" =~ ^[0-9a-f]{64}$ && "$actual" == "$expected" ]] \
     || { printf 'The embedded KidsTV release failed its checksum.\n' >&2; exit 1; }
 
-work="$(mktemp -d /run/mabeltv-image-firstboot.XXXXXX)"
+# A release includes artwork and the offline Matter runtime. Extract onto the
+# expanded SD filesystem, not /run's small RAM-backed tmpfs on a 2 GB Pi.
+work="$(mktemp -d /var/tmp/mabeltv-image-firstboot.XXXXXX)"
 cleanup() { rm -rf -- "$work"; }
 trap cleanup EXIT
 

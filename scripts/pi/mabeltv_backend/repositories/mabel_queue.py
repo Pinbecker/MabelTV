@@ -113,8 +113,11 @@ class MabelQueueRepositoryMixin:
                 ending = item.get("ending")
                 if ending not in ("all_done", "keep_playing"):
                     raise ValueError("Choose how the queue ends")
-                db.execute("UPDATE mabel_queue_state SET ending=? WHERE id=1", (ending,))
+                db.execute("UPDATE mabel_queue_state SET ending=?,repeat_playlist=0,playlist_name='' WHERE id=1", (ending,))
+                db.execute("DELETE FROM mabel_queue_cycle")
             elif action == "clear":
+                db.execute("UPDATE mabel_queue_state SET repeat_playlist=0,playlist_name='' WHERE id=1")
+                db.execute("DELETE FROM mabel_queue_cycle")
                 if state["phase"] == "playing":
                     db.execute("DELETE FROM mabel_queue_entries WHERE id<>?", (state["current_id"],))
                     db.execute("UPDATE mabel_queue_state SET paused=1,completed=0 WHERE id=1")

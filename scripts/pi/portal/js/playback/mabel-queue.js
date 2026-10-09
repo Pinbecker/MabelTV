@@ -90,25 +90,21 @@
       const items = mabelQueue.items || []
       const summary = mabelQueueSummary(items)
       $('#homeMabelQueueCount').textContent = summary
-      $('#watchMabelQueueCount').textContent = summary
       const empty = !items.length
-      for (const selector of ['#homeMabelQueueEmpty', '#watchMabelQueueEmpty'])
-        $(selector).classList.toggle('hidden', !empty)
-      for (const selector of ['#homeMabelQueueRail', '#watchMabelQueueRail']) {
-        const rail = $(selector)
-        rail.classList.toggle('hidden', empty)
-        rail.replaceChildren()
-        items.forEach((item, index) => rail.append(mabelQueueRailCard(item, index)))
-        if (empty) continue
-        const ending = document.createElement('button')
-        ending.type = 'button'
-        ending.className = 'home-poster-card mabel-queue-rail-card mabel-queue-rail-ending'
-        ending.innerHTML = '<span class="home-poster-art mabel-queue-ending-art" aria-hidden="true"><span>✓</span></span><span class="home-poster-copy"><strong>After the last one</strong><small></small></span>'
-        ending.querySelector('small').textContent = mabelQueue.ending === 'keep_playing'
-          ? 'Keep playing' : 'All done screen'
-        ending.onclick = openMabelQueuePage
-        rail.append(ending)
-      }
+      $('#homeMabelQueueEmpty').classList.toggle('hidden', !empty)
+      const rail = $('#homeMabelQueueRail')
+      rail.classList.toggle('hidden', empty)
+      rail.replaceChildren()
+      items.forEach((item, index) => rail.append(mabelQueueRailCard(item, index)))
+      if (empty) return
+      const ending = document.createElement('button')
+      ending.type = 'button'
+      ending.className = 'home-poster-card mabel-queue-rail-card mabel-queue-rail-ending'
+      ending.innerHTML = '<span class="home-poster-art mabel-queue-ending-art" aria-hidden="true"><span>✓</span></span><span class="home-poster-copy"><strong>After the last one</strong><small></small></span>'
+      ending.querySelector('small').textContent = mabelQueue.repeat_playlist ? 'Repeat playlist'
+        : mabelQueue.ending === 'keep_playing' ? 'Keep playing' : 'All done screen'
+      ending.onclick = openMabelQueuePage
+      rail.append(ending)
     }
 
     function mabelQueueRow(item, index, count) {
@@ -191,10 +187,12 @@
         list.append(empty)
       }
       $('#mabelQueueAllDone').setAttribute('aria-pressed',
-        String(mabelQueue.ending === 'all_done'))
+        String(!mabelQueue.repeat_playlist && mabelQueue.ending === 'all_done'))
       $('#mabelQueueKeepPlaying').setAttribute('aria-pressed',
-        String(mabelQueue.ending === 'keep_playing'))
-      $('#mabelQueueEndingHint').textContent = mabelQueue.ending === 'keep_playing'
+        String(!mabelQueue.repeat_playlist && mabelQueue.ending === 'keep_playing'))
+      $('#mabelQueueEndingHint').textContent = mabelQueue.repeat_playlist
+        ? `Repeating ${mabelQueue.playlist_name || 'this playlist'}. Choose an ending above to stop repeating.`
+        : mabelQueue.ending === 'keep_playing'
         ? 'After the final item, this channel carries on naturally.'
         : 'A gentle message appears on the TV when the queue finishes.'
     }
@@ -346,9 +344,7 @@
     }
 
     $('#homeMabelQueueOpen').onclick = openMabelQueuePage
-    $('#watchMabelQueueOpen').onclick = openMabelQueuePage
     $('#homeMabelQueueEmpty').onclick = openMabelQueuePage
-    $('#watchMabelQueueEmpty').onclick = openMabelQueuePage
     $('#mabelQueueBack').onclick = () => history.back()
     $('#mabelQueueBrowse').onclick = () => {
       history.pushState({}, '', '#watch')

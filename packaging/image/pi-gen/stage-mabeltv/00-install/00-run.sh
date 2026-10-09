@@ -11,5 +11,6 @@ install -m 0644 files/mabeltv-image-firstboot.service \
 	"${ROOTFS_DIR}/etc/systemd/system/mabeltv-image-firstboot.service"
 
 on_chroot <<'EOF'
+systemctl mask getty@tty1.service
 systemctl enable mabeltv-image-firstboot.service
 EOF

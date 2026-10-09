@@ -5,7 +5,9 @@ import copy
 import importlib.util
 import re
 import secrets
+import tempfile
 import time
+import wave
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from typing import Any
@@ -49,6 +51,9 @@ class FixtureLibrary(MabelQueueFixtureMixin):
 
     def start_viewing_tracker(self) -> None:
         pass
+
+    def family_media(self):
+        return {"assets": [], "stories": [], "memory_settings": []}
 
     def reset_test_state(self) -> None:
         self.pin_required = False
@@ -409,6 +414,11 @@ class FixtureHandler(mabeltv_library.Handler):
         BaseHTTPRequestHandler.end_headers(self)
 
     def do_GET(self) -> None:
+        if self.path == "/__fixture/story.wav":
+            # WebKit's native media loader can bypass page interception.
+            # Serve actual range-capable audio from this isolated fixture.
+            self.stream_remote_media(self.server.story_audio)
+            return
         if self.path == "/__fixture/reset":
             self.server.library.reset_test_state()
             self.json(200, {"ok": True})
@@ -469,12 +479,17 @@ def main() -> None:
         portal_app_script=mabeltv_library.load_portal_app_script(private_scope=False),
     )
     server.RequestHandlerClass = FixtureHandler
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        server.server_close()
+    with tempfile.TemporaryDirectory(prefix="mabeltv-browser-audio-") as temporary:
+        server.story_audio = Path(temporary) / "story.wav"
+        with wave.open(str(server.story_audio), "wb") as audio:
+            audio.setnchannels(1); audio.setsampwidth(2); audio.setframerate(8000)
+            audio.writeframes(b"\0\0" * 8000 * 60)
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            pass
+        finally:
+            server.server_close()
 
 
 if __name__ == "__main__":

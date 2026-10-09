@@ -84,7 +84,7 @@ test('Mabel TV and My TV keep compact icon tabs across every section', async ({ 
   await expectCompactDomainTabs(page, '#view-watch')
 })
 
-test('Mabel TV groups compact episode channels ahead of unchanged film channels', async ({ page }) => {
+test('Mabel TV separates all episode channels from compact film shelves', async ({ page }) => {
   await openPortal(page)
   await page.locator('[data-view-button="watch"]').click()
   await page.evaluate(() => {
@@ -108,37 +108,31 @@ test('Mabel TV groups compact episode channels ahead of unchanged film channels'
     renderRemoteViewing({ force: true })
   })
 
-  await expect(page.locator('.mabel-episode-channel-section h2')).toHaveText('Episode channels')
+  await expect(page.locator('#mabelChannelEpisodesTab')).toHaveAttribute('aria-selected', 'true')
+  await expect(page.locator('#mabelChannelEpisodes')).toBeVisible()
+  await expect(page.locator('#mabelChannelFilms')).not.toBeVisible()
   await expect(page.locator('.watch-mabel-series-channel-card')).toHaveCount(4)
   await expect(page.locator('.watch-mabel-series-channel-card .watch-mabel-channel-copy small'))
-    .toHaveText(['CH 1 · 1 episode', 'CH 3 · 3 episodes', 'CH 6 · 6 episodes', 'CH 10 · 3 episodes'])
+    .toHaveText(['CH 1 · 1 EP', 'CH 3 · 3 EP', 'CH 6 · 6 EP', 'CH 10 · 3 EP'])
   await expect(page.locator('.watch-mabel-episode')).toHaveCount(0)
-  await expect(page.locator('.mabel-film-channels-heading h2')).toHaveText('Film channels')
   await expect(page.locator('.mabel-film-channel .watch-mabel-film-card')).toHaveCount(1)
-  const channelDivider = await page.evaluate(() => {
-    const episodes = document.querySelector('.mabel-episode-channel-section').getBoundingClientRect()
-    const films = document.querySelector('.mabel-film-channels-heading')
-    const filmBounds = films.getBoundingClientRect()
-    const style = getComputedStyle(films)
-    return {
-      gap: Math.round(filmBounds.top - episodes.bottom),
-      borderWidth: style.borderTopWidth,
-      borderStyle: style.borderTopStyle,
-    }
-  })
-  expect(channelDivider.gap).toBeGreaterThanOrEqual(18)
-  expect(channelDivider).toMatchObject({ borderWidth: '1px', borderStyle: 'solid' })
   await expect(page.locator('.watch-mabel-series-channel-card').last().locator('img'))
     .toHaveAttribute('src', /mabel-show-10-0\.jpg$/)
   const columns = await page.locator('.mabel-episode-channel-grid').evaluate(grid =>
     getComputedStyle(grid).gridTemplateColumns.split(' ').length)
-  expect(columns).toBe(3)
+  expect(columns).toBe(4)
   const titleStyle = await page.locator('.watch-mabel-channel-copy strong').first().evaluate(title => ({
     overflow: getComputedStyle(title).overflow,
     textOverflow: getComputedStyle(title).textOverflow,
     whiteSpace: getComputedStyle(title).whiteSpace,
   }))
   expect(titleStyle).toEqual({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })
+  await page.locator('#mabelChannelFilmsTab').click()
+  await expect(page.locator('#mabelChannelEpisodes')).not.toBeVisible()
+  await expect(page.locator('#mabelChannelFilms')).toBeVisible()
+  await expect(page.locator('.mabel-film-head h2')).toHaveText('Film channel 2')
+  await expect(page.locator('.mabel-film-head-art')).toHaveCount(0)
+  expect(await page.locator('.mabel-film-head').evaluate(head => head.offsetHeight)).toBeLessThanOrEqual(48)
 })
 
 test('@visual Mabel TV and My TV each keep the same three-section structure', async ({ page }, testInfo) => {
