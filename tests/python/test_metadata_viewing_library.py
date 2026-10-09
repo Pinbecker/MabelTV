@@ -514,7 +514,13 @@ class MetadataViewingLibraryTests(unittest.TestCase):
         self.assertIn('id="openAppearanceSettings"', system_view)
         self.assertNotIn('id="experienceAccentHue"', system_view)
         self.assertNotIn('id="viewingInsights"', system_view)
-        self.assertIn('data-go="usb"', system_view)
+        # The approved Settings hub now routes through Media management.
+        # Preserve the complete route to USB rather than requiring the old
+        # flat hub to contain every settings destination itself.
+        self.assertIn('data-go="settings-media"', system_view)
+        support_view = (PORTAL_ROOT / "html/views/settings-support.html").read_text(encoding="utf-8")
+        media_view = support_view.split('id="view-settings-media"', 1)[1].split('</section>', 1)[0]
+        self.assertIn('data-go="usb"', media_view)
         self.assertNotIn('data-go="insights"', system_view)
         self.assertIn('id="viewingInsights"', insights_view)
         self.assertIn('/portal/icons.svg#signal-chart-column', insights_view)
