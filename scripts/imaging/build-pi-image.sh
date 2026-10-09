@@ -119,13 +119,19 @@ cp "$bundle" "$stage_files/release.tar.gz"
 sha256sum "$stage_files/release.tar.gz" | awk '{print $1}' \
     > "$stage_files/release.sha256"
 python3 - "$stage_files/image-build.json" "$version" "$release_commit" \
-    "$pi_gen_commit" "$(sha256sum "$bundle" | awk '{print $1}')" <<'PY'
+    "$pi_gen_commit" "$(sha256sum "$bundle" | awk '{print $1}')" "$source_root" <<'PY'
 import datetime
+import hashlib
 import json
 import pathlib
 import sys
 
 output = pathlib.Path(sys.argv[1])
+source = pathlib.Path(sys.argv[6])
+recipe_files = list((source / "packaging/image/pi-gen").rglob("*"))
+recipe_files += [source / "scripts/imaging" / name for name in (
+    "build-pi-image.sh", "generate-imager-manifest.py",
+    "open-mabeltv-imager.ps1", "Install MabelTV.cmd")]
 data = {
     "schema_version": 1,
     "product": "KidsTV",
@@ -133,6 +139,8 @@ data = {
     "release_commit": sys.argv[3],
     "pi_gen_commit": sys.argv[4],
     "release_sha256": sys.argv[5],
+    "image_recipe_files": {str(path.relative_to(source)): hashlib.sha256(path.read_bytes()).hexdigest()
+                           for path in sorted(recipe_files) if path.is_file()},
     "built_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
     "base": "Raspberry Pi OS Lite 64-bit (Trixie)",
     "target": "raspberry-pi-4-arm64",

@@ -8,6 +8,7 @@ qml6-module-qtqml-workerscript
 qml6-module-qtquick-shapes
 qml6-module-qtquick-effects
 libqt6opengl6
+libqt6concurrent6
 libmpv-dev
 ffmpeg
 libheif-examples
