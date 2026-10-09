@@ -274,10 +274,11 @@ if(BUILD_TESTING)
             scripts/pi/portal/assets/storytime/stone-floor.png
             scripts/pi/portal/assets/storytime/parchment.png)
     add_test(NAME mabeltv_family_ui_tests COMMAND mabeltv_family_ui_tests
-        illustrationTravelsWithLeafAndLandsWithoutJump storybookAndPlaybackRespectStandbyAndBack
+        illustrationTravelsWithLeafAndLandsWithoutJump storybookAndPlaybackRespectStandbyAndBack)
+    add_test(NAME mabeltv_memory_ui_tests COMMAND mabeltv_family_ui_tests
         memoriesOwnOkReleaseAndDeferredChildResume compositionsRenderWholePhotosAndPauseTheirMotion
         memoryVideoClipsSharePhotoStageAndAdvanceAtClipEnd)
-    set_tests_properties(mabeltv_family_ui_tests PROPERTIES
+    set_tests_properties(mabeltv_family_ui_tests mabeltv_memory_ui_tests PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software" TIMEOUT 30)
     add_test(NAME mabeltv_storytime_library_tests COMMAND mabeltv_family_ui_tests
         storytimeLibraryNavigationAndClosingAreInterruptible)
