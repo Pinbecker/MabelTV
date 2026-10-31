@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https://ichef.bbci.co.uk https://ichef.bbc.co.uk https://image.tmdb.org; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>MabelTV Studio</title>
+  <link rel="stylesheet" href="studio.css">
+  <link rel="stylesheet" href="title-review.css">
+</head>
+<body>
+  <div class="titlebar"><span>MabelTV Studio</span></div>
+  <aside class="sidebar">
+    <div class="brand"><img src="mark.svg" alt=""><div>MabelTV<span>STUDIO</span></div></div>
+    <div class="nav-label">YOUR WORKSPACE</div>
+    <nav aria-label="Main navigation">
+      <button data-view="add" class="nav-button active"><span data-icon="add"></span>Add media</button>
+      <button data-view="iplayer" class="nav-button"><span data-icon="search"></span>BBC iPlayer</button>
+      <button data-view="queue" class="nav-button"><span data-icon="queue"></span>Queue<span class="nav-count" id="queue-count">0</span></button>
+      <button data-view="completed" class="nav-button"><span data-icon="check"></span>Completed</button>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="connection-card"><div class="connection-heading"><span class="status-dot" id="status-dot"></span><strong id="device-label">Your MabelTV</strong></div><span id="connection-label">Connecting…</span><button id="connection-settings">Connection settings <span>↗</span></button></div>
+      <button data-view="settings" class="nav-button"><span data-icon="settings"></span>Settings</button>
+      <div class="sidebar-foot">A little less admin.<br>A lot more watching.</div>
+    </div>
+  </aside>
+  <main>
+    <header class="page-header"><div><div class="eyebrow" id="eyebrow">YOUR MEDIA, READY TO WATCH</div><h1 id="page-title">Make room for your next watch.</h1><p id="page-description">Find it, prepare it, send it. All from one place.</p></div><button class="button subtle" id="open-portal"><span data-icon="external"></span>Open portal</button></header>
+    <section id="view-add" class="view">
+      <div class="add-grid">
+        <div class="panel media-panel"><div class="section-heading"><h2>Add your videos</h2><span class="tag">FROM YOUR COMPUTER</span></div>
+          <button class="dropzone" id="dropzone"><span class="drop-icon" data-icon="upload"></span><strong>Drop something good here.</strong><span>Films, episodes or family videos</span><span class="button primary">Choose video files <span>+</span></span><small>MP4, MOV, MKV and more</small></button>
+          <div id="selected-files" class="selected-files"></div>
+          <div class="reassurance"><span data-icon="shield"></span><div><strong>Your originals stay yours.</strong><span>Studio checks every file and prepares only what needs it.</span></div></div>
+        </div>
+        <div class="panel destination-panel" id="add-destination"></div>
+      </div>
+      <div class="workflow-panel"><div><span class="eyebrow">ONE SIMPLE WORKFLOW</span><h2>From your laptop to the sofa.</h2></div><div class="workflow-step"><span>01</span><strong>Add or find</strong><small>Your files or BBC iPlayer</small></div><div class="workflow-step"><span>02</span><strong>Make it ready</strong><small>Compatible, without the guesswork</small></div><div class="workflow-step"><span>03</span><strong>Send to your TV</strong><small>At home or away</small></div></div>
+      <div id="recent-preview"></div>
+    </section>
+    <section id="view-iplayer" class="view hidden">
+      <form id="search-form" class="search-form"><span data-icon="search"></span><input id="search-input" aria-label="Search BBC iPlayer" placeholder="Search programmes, or paste an iPlayer episode link" maxlength="200"><button class="button primary" id="search-button">Search iPlayer</button><button type="button" class="button subtle" id="refresh-search" title="Refresh the BBC programme index"><span data-icon="refresh"></span>Refresh</button></form>
+      <div class="catalogue-note"><span data-icon="info"></span>Search covers recent BBC broadcasts. For older programmes or box sets, paste an episode link.</div>
+      <div class="library-check"><span id="library-check-status">Search results are checked against files currently on your TV.</span><button type="button" class="text-button" id="check-library">Check TV library</button></div>
+      <div class="iplayer-grid"><div><div id="search-summary" class="list-heading"></div><div id="search-results"></div></div><div class="panel destination-panel" id="iplayer-destination"></div></div>
+    </section>
+    <section id="view-queue" class="view hidden"><div class="list-heading"><span>Your next additions</span><span id="queue-summary"></span></div><div id="queue-list"></div></section>
+    <section id="view-completed" class="view hidden"><div class="list-heading"><span>Ready for the sofa</span><button class="text-button" id="open-workspace">Open media folder <span>↗</span></button></div><div id="completed-list"></div></section>
+    <section id="view-settings" class="view hidden">
+      <div class="settings-grid">
+        <form id="settings-form" class="panel settings-panel"><div class="section-heading"><h2>Your MabelTV connection</h2><span data-icon="connection"></span></div><p>Use your local connection at home and your secure portal address when you are away.</p>
+          <label>Local portal address<input id="local-url" type="url" required></label><label>Remote portal address<input id="remote-url" type="url" placeholder="https://your-portal-address"></label>
+          <label>Preferred connection<select id="connection-mode"><option value="auto">Automatic · prefer local, then remote</option><option value="local">Local network only</option><option value="remote">Remote portal only</option></select></label>
+          <div class="button-row"><button class="button primary">Save and connect</button><button type="button" class="button secondary" id="remote-signin">Sign in to remote access</button></div>
+          <div class="connection-tests"><button type="button" class="text-button" id="test-local">Check local connection</button><button type="button" class="text-button" id="test-remote">Check remote connection</button><button type="button" class="text-button" id="pin-open">Enter portal PIN</button></div>
+          <div id="connection-result" class="inline-message" role="status"></div>
+        </form>
+        <div><div class="panel settings-panel"><h2>Files and storage</h2><p>All Studio downloads and converted copies are kept in this media folder. Validated iPlayer conversions replace their downloaded original. Imported source files stay where they are.</p><label>Media folder<div class="folder-picker"><input id="workspace" readonly><button class="button secondary" id="choose-workspace">Choose</button></div></label><small>Open media folder in Completed to review or clear these files. Nothing is automatically removed after uploading.</small></div>
+        <div class="panel settings-panel tools-panel"><div class="section-heading"><h2>Media tools</h2><span class="tag" id="tools-status"></span></div><div id="tools-detail"></div><p class="muted">Included with the installed app. An alternative tools folder can be selected if needed.</p><button class="text-button" id="choose-tools">Choose tools folder</button><small id="app-version"></small></div></div>
+      </div>
+    </section>
+    <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
+  </main>
+  <dialog id="pin-dialog"><form id="pin-form"><div class="section-heading"><h2>Unlock your portal</h2><button type="button" class="icon-button" id="pin-close" aria-label="Close">×</button></div><p>Enter your usual portal PIN. Studio will never save it.</p><label>Connection<select id="pin-mode"><option value="local">Local network</option><option value="remote">Remote portal</option></select></label><label>Portal PIN<input id="pin-value" type="password" inputmode="numeric" autocomplete="off" maxlength="12" required></label><button class="button primary">Unlock and connect</button><div id="pin-error" class="inline-message"></div></form></dialog>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

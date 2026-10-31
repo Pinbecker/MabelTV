@@ -1,0 +1,41 @@
+{
+  "name": "mabeltv-studio",
+  "version": "1.2.0",
+  "description": "Find, prepare and send media to Mabel TV and My TV",
+  "author": "MabelTV",
+  "private": true,
+  "main": "main.cjs",
+  "engines": { "node": ">=22.12.0" },
+  "scripts": {
+    "start": "electron .",
+    "postinstall": "install-electron",
+    "test": "node --test tests/*.test.cjs",
+    "test:ui": "playwright test",
+    "bundle:tools": "node scripts/bundle-tools.cjs",
+    "package": "electron-builder --win nsis --x64"
+  },
+  "devDependencies": {
+    "electron": "44.5.1",
+    "electron-builder": "26.15.3",
+    "@playwright/test": "1.62.1"
+  },
+  "overrides": { "@electron/get": "5.1.0" },
+  "build": {
+    "appId": "uk.mabeltv.studio",
+    "productName": "MabelTV Studio",
+    "directories": { "output": "dist" },
+    "files": ["main.cjs", "preload.cjs", "lib/**", "ui/**", "package.json"],
+    "extraResources": [{ "from": "resources", "to": "tools" }],
+    "win": { "target": "nsis", "icon": "ui/studio.ico", "signAndEditExecutable": true },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "MabelTV Studio",
+      "runAfterFinish": false,
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}

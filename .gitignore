@@ -7,3 +7,6 @@ __pycache__/
 node_modules/
 tests/browser/playwright-report/
 tests/browser/test-results/
+/test-results/
+/tests/browser/test-results-*/
+/work/
