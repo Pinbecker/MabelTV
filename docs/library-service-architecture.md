@@ -224,3 +224,5 @@ authenticated family-control route opens the TV catalogue without making a
 listening session or changing saved progress.
 A catalogue revision change is a `library` revision; no global Insights rewrite
 is introduced and listening/memories do not record stale child-video sessions.
+
+`my_tv_transfer.py` owns independent local My TV copies into typed Mabel TV channels. It queues recoverable copy journals through the existing upload worker and publishes ordinary channel files with separately copied descriptive metadata/artwork. My TV originals, identities and personal state never move or share mutable progress. Streaming-only titles cannot be copied.

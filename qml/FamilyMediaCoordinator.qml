@@ -11,6 +11,8 @@ Item {
     z: 210
     visible: active
     property bool active: false
+    property bool audioOnly: false
+    readonly property bool audioOnlyPlaying: audioOnly && storyStarted && !paused && !ended && media.status === "Playing"
     property bool loading: false
     property bool ready: false
     property bool paused: false
@@ -105,11 +107,17 @@ Item {
         active = true; paused = false; controlsVisible = false; playbackControlIndex = 1
         if (appRoot.channelOverlay) appRoot.channelOverlay.close()
         appRoot.cancelFilmCountdown(); appRoot.player.stop(); media.stop()
-        if (controller.standby) controller.turnOn()
+        if (audioOnly) {
+            if (appRoot.prepareFamilyAudioOnly) appRoot.prepareFamilyAudioOnly()
+            audioOnlyCover.start()
+        } else if (controller.standby) controller.turnOn()
         readyDelay.restart(); controlsTimer.restart()
     }
 
-    function openSession(identity, requestedKind) {
+    function openSession(identity, requestedKind) { openRequestedSession(identity, requestedKind, false) }
+    function openAudioStory(identity) { openRequestedSession(identity, "storytime", true) }
+    function openRequestedSession(identity, requestedKind, audio) {
+        audioOnly = audio === true
         prepare()
         session = { kind: requestedKind === "memories" ? "memories" : "storytime", scenes: [], settings: {} }
         if (kind === "storytime") storyCatalogue.refresh()
@@ -121,6 +129,7 @@ Item {
     }
 
     function openStories() {
+        audioOnly = false
         prepare()
         session = { kind: "storytime", scenes: [], settings: {} }
         ready = true; book.showLibrary(false); storyCatalogue.refresh()
@@ -136,24 +145,27 @@ Item {
     }
 
     function back() {
+        const withoutBook = audioOnly
+        audioOnly = false
         if (kind !== "storytime") { close(true); return }
         if (browsingStories || returningToStories) { book.back(); return }
         progress(ended); bookOpening.stop(); readyDelay.stop(); controlsTimer.stop()
         requestGeneration++; requestDeadline.stop()
         if (requestObject) requestObject.abort()
         requestObject = null; loading = false; paused = false; controlsVisible = false; errorMessage = ""
-        storyStarted = false; media.stop(); book.showLibrary(true); storyCatalogue.refresh()
+        storyStarted = false; media.stop(); book.showLibrary(!withoutBook); storyCatalogue.refresh()
     }
 
     function stopPreviewSound() { if (browsingStories || returningToStories) media.stop() }
     function previewSound() {
-        if (!active || !(browsingStories || storyOpening) || returningToStories || controller.standby || controller.muted || !storyCatalogue.pageSound.toString().length) return
+        if (audioOnly || !active || !(browsingStories || storyOpening) || returningToStories || controller.standby || controller.muted || !storyCatalogue.pageSound.toString().length) return
         // The paper recording is already quiet; do not attenuate it twice.
         soundVolume = controller.volume
         media.play(storyCatalogue.pageSound, 0)
     }
 
     function openChannel(number) {
+        audioOnly = false
         prepare()
         request("start?kind=memories&channel=" + Number(number), function(value) {
             family.session = value; family.sceneIndex = 0; family.musicPosition = 0
@@ -163,10 +175,11 @@ Item {
 
     function beginReady() {
         if (!active || loading || !session.scenes?.length || controller.standby || closing) return
+        if (audioOnly && !audioOnlyCover.ready) return
         appRoot.player.stop()
         ready = true; soundVolume = controller.volume
         if (kind === "storytime") {
-            bookOpening.restart()
+            if (audioOnly) beginStory(); else bookOpening.restart()
         } else presentScene(0)
     }
 
@@ -232,7 +245,7 @@ Item {
 
     function close(resumeChild) {
         if (!active) return
-        progress(ended); closing = true; controlsTimer.stop(); bookOpening.stop()
+        progress(ended); closing = true; audioOnlyCover.cancel(); controlsTimer.stop(); bookOpening.stop()
         sceneSwitch.stop(); videoStart.stop(); musicStart.stop(); readyDelay.stop(); fadeSound.stop()
         book.reset(); memories.reset()
         storyCatalogue.cancel()
@@ -366,7 +379,7 @@ Item {
         onPlaybackFinished: {
             if (!family.active || family.closing) return
             if (family.browsingStories || family.returningToStories || family.storyOpening) return
-            if (family.kind === "storytime") { family.ended = true; family.controlsVisible = true; family.progress(true) }
+            if (family.kind === "storytime") { family.ended = true; if (family.audioOnly) { family.progress(true); family.controlsVisible = false } else family.back() }
             else if (family.scene.kind === "video" && family.pendingScene < 0) family.presentScene(family.sceneIndex + 1)
             else if (family.session.settings.music) { family.musicPosition = 0; musicStart.restart() }
         }
@@ -450,6 +463,7 @@ Item {
         visible: family.errorMessage.length > 0 || family.loading
         font.pixelSize: 30 * family.uiScale; color: family.kind === "memories" ? "#eaf2f4" : "#28463c"; wrapMode: Text.WordWrap
     }
+    FamilyAudioOnly { id: audioOnlyCover; host: family; onReadyToListen: family.beginReady() }
     NumberAnimation { id: fadeSound; target: family; property: "soundVolume" }
     Timer { id: requestDeadline; interval: 15000; onTriggered: { family.requestGeneration++; if (family.requestObject) family.requestObject.abort(); family.loading = false; family.errorMessage = "Your family library took too long to respond. Try opening it again." } }
     Timer { id: readyDelay; interval: 550; onTriggered: family.beginReady() }

@@ -616,7 +616,15 @@ void TvController::turnOffMabelOnly()
     }
 }
 
+QString TvController::connectedTvPower() const
+{
+    return m_tvControl ? m_tvControl->lastPowerStatus() : QStringLiteral("unknown");
+}
+
 void TvController::setTvControl(CecTvControl *tvControl)
 {
+    if (m_tvControl) disconnect(m_tvControl, nullptr, this, nullptr);
     m_tvControl = tvControl;
+    if (m_tvControl) connect(m_tvControl, &CecTvControl::powerStatusChanged, this, &TvController::connectedTvPowerChanged);
+    emit connectedTvPowerChanged();
 }

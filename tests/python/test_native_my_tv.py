@@ -10,6 +10,46 @@ class NativeMyTvTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.fixture.close()
 
+    def test_portal_playback_keeps_series_identity_order_and_resume(self) -> None:
+        library = self.fixture.library
+        series_id = library.create_my_tv_series("Example")
+        season = library.my_tv_series_root / series_id / "Season 1"
+        season.mkdir()
+        for number in (1, 2):
+            (season / f"Example.S01E{number:02d}.mp4").write_bytes(b"episode")
+        series = library.my_tv_series_library()[0]
+        episode = series["episodes"][0]
+        payload = {"kind": "my-tv-series", "series": series_id,
+                   "file": episode["path"], "position": 123}
+        playback = library.native_my_tv_playback(payload)
+        self.assertEqual(playback["position"], 123)
+        self.assertEqual(playback["item"]["id"], episode["library_id"])
+        self.assertEqual(playback["item"]["series"]["domain"], "my-tv")
+        self.assertEqual([value["number"] for value in playback["item"]["series"]["episodes"]], [1, 2])
+        fake_socket = mock.MagicMock()
+        fake_socket.__enter__.return_value = fake_socket
+        fake_socket.recv.return_value = b"ok\n"
+        with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
+                mock.patch.object(mabeltv_library.socket, "socket", return_value=fake_socket):
+            library.play_on_tv(payload)
+            command = json.loads(fake_socket.sendall.call_args.args[0])
+            self.assertEqual(command, {"command": "play-my-tv-item", **payload})
+        for change in ({"file": "../../etc/passwd"}, {"series": "missing"},
+                       {"position": float("nan")}, {"position": float("inf")}):
+            with self.assertRaises(ValueError):
+                library.native_my_tv_playback({**payload, **change})
+
+    def test_portal_film_projection_keeps_the_private_film_identity(self) -> None:
+        library = self.fixture.library
+        film = library.my_tv_root / "Example.mp4"
+        film.parent.mkdir(parents=True, exist_ok=True)
+        film.write_bytes(b"film")
+        library_id = library.my_tv_library()[0]["library_id"]
+        playback = library.native_my_tv_playback({"kind": "my_tv", "file": film.name, "position": 0})
+        self.assertEqual(playback["item"]["id"], library_id)
+        self.assertEqual(playback["item"]["source"], film.resolve().as_uri())
+        self.assertEqual(playback["position"], 0)
+
     def test_series_home_is_compact_and_selected_detail_hydrates_exact_episode(self) -> None:
         library = self.fixture.library
         series = {

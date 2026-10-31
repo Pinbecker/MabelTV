@@ -147,6 +147,8 @@ function renderMyTvLibraryControls() {
       const select = $('#myTvFilmFolder'); select.innerHTML = '<option value="">Unfiled</option>'
       folders.forEach(folder => { const option = document.createElement('option'); option.value = folder; option.textContent = folder; select.append(option) })
       select.value = film.folder || ''
+      bindSendToMabel($('#myTvFilmSheet .watch-film-actions'), { kind: "my_tv", file: film.path }, title,
+        () => openMyTvFilmSheet(film, returnTo))
       const busy = ['processing', 'queued'].includes(film.playback_state)
       const optimise = $('#myTvFilmOptimise')
       optimise.disabled = busy || film.playback_state === 'optimised'

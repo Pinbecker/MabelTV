@@ -69,6 +69,8 @@ Window {
     readonly property int portalVolume: tvController.volume
     readonly property bool portalMuted: tvController.muted
     readonly property bool portalRemoteLocked: tvController.remoteLocked
+    readonly property bool portalStoryAudioOnly: familyMedia.active && familyMedia.audioOnly
+    readonly property bool portalStoryAudioPlaying: familyMedia.active && familyMedia.audioOnlyPlaying
     readonly property bool portalStandby: tvController.standby
     readonly property bool portalSubtitlesAvailable: myTvMode.active
         && myTvMode.subtitlesAvailable || portalFullScreenEnabled && player.subtitlesAvailable
@@ -104,6 +106,11 @@ Window {
         else
             lastVolumeRepeatMs = now
         return true
+    }
+
+    function prepareFamilyAudioOnly() {
+        playbackAfterPowerClickTimer.stop(); warmupAnimation.stop()
+        introPlaying = false; introCompletesStandbyWake = false; warmingUp = false; poweringOff = false
     }
 
     function startTelevision() {
@@ -572,6 +579,9 @@ Window {
         enterMyTvMode()
     }
 
+    function portalPlayMyTvItem(payload) { guideOverlay.close(); tvController.closeParent(); portalMyTvPlayback.request(payload) }
+    MyTvPortalPlayback { id: portalMyTvPlayback; appRoot: root; host: myTvMode }
+
     // The generated power click and programme audio both use the Pi's
     // exclusive HDMI ALSA device. Let the 85 ms click close its audio output
     // before the intro/player opens the same device.
@@ -927,6 +937,7 @@ Window {
             root.showVolume(value, isMuted)
         }
         function onStandbyChanged() {
+            if (!tvController.standby && familyMedia.active && familyMedia.audioOnly) { root.poweringOff = false; return }
             if (tvController.standby)
                 root.cancelFilmCountdown()
             if (tvController.standby)

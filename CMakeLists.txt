@@ -98,6 +98,7 @@ qt_add_resources(mabeltv "mabeltv_qml"
         qml/MabelQueueDoneScreen.qml
         qml/MabelQueueCoordinator.qml
         qml/FamilyMediaCoordinator.qml
+    qml/FamilyAudioOnly.qml
         qml/Storybook.qml
         qml/StorytimeBookCard.qml
         qml/StorytimeCatalogue.qml
@@ -128,6 +129,7 @@ qt_add_resources(mabeltv "mabeltv_qml"
         qml/ParentChannelSettings.qml
         qml/SignalIcon.qml
         qml/MyTvModeOverlay.qml
+        qml/MyTvPortalPlayback.qml
         qml/MyTvLibraryView.qml
         qml/MyTvMabelBrowse.qml
         qml/MyTvArtwork.qml
@@ -226,6 +228,7 @@ if(BUILD_TESTING)
     qt_add_executable(mabeltv_core_tests
         tests/unit/CoreTests.cpp
         tests/unit/CoreTests.h
+        tests/unit/PortalProgrammeTests.cpp
         tests/unit/QueueTests.cpp
         tests/unit/TestStateFixture.cpp
         tests/unit/TestStateFixture.h
@@ -280,6 +283,8 @@ if(BUILD_TESTING)
         memoryVideoClipsSharePhotoStageAndAdvanceAtClipEnd)
     set_tests_properties(mabeltv_family_ui_tests mabeltv_memory_ui_tests PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software" TIMEOUT 30)
+    add_test(NAME mabeltv_audio_only_tests COMMAND mabeltv_family_ui_tests audioOnlyStoryWakesOnBlackAndRemainsBlackAtEnd)
+    set_tests_properties(mabeltv_audio_only_tests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software" TIMEOUT 15)
     add_test(NAME mabeltv_storytime_library_tests COMMAND mabeltv_family_ui_tests
         storytimeLibraryNavigationAndClosingAreInterruptible)
     set_tests_properties(mabeltv_storytime_library_tests PROPERTIES

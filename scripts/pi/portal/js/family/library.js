@@ -120,8 +120,9 @@ function openFamilyStory(story) {
   $('#familyStoryTitle').textContent = story.title
   $('#familyStoryStatus').textContent = story.ready ? `${watchTimeLabel(story.audio.duration)} · Ready to listen`
     : story.audio?.status === 'error' || story.image?.status === 'error' ? 'A file could not be prepared. Choose those audio files or that illustration again below.' : 'Choose an audio recording or chapter files and a story illustration.'
-  $('#familyStoryTv').disabled = $('#familyStoryDevice').disabled = !story.ready
+  $('#familyStoryTv').disabled = $('#familyStoryAudioOnly').disabled = $('#familyStoryDevice').disabled = !story.ready
   $('#familyStoryTv').onclick = () => startFamilyMedia({ kind: 'storytime', id: story.id }).catch(showError)
+  $('#familyStoryAudioOnly').onclick = () => startFamilyMedia({ kind: 'storytime', id: story.id, audio_only: true }).catch(showError)
   $('#familyStoryDevice').onclick = () => playFamilyStoryOnDevice(story).catch(showError)
   $('#familyStoryRename').onclick = () => {
     portalSheets.close($('#familyStorySheet'))
@@ -146,7 +147,7 @@ function openFamilyStory(story) {
 async function startFamilyMedia(payload) {
   const result = await api('/api/family-media/start', { method: 'POST', body: JSON.stringify(payload) })
   for (const id of ['familyStorySheet', 'familyMemorySheet', 'familyMemoryPlaybackSheet']) if ($(`#${id}`).open) portalSheets.close($(`#${id}`))
-  notice(payload.kind === 'storytime' ? 'Opening your storybook on TV' : 'Playing family memories on TV')
+  notice(payload.audio_only ? 'Playing your story on TV with a black screen' : payload.kind === 'storytime' ? 'Opening your storybook on TV' : 'Playing family memories on TV')
   return result
 }
 

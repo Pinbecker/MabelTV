@@ -316,6 +316,9 @@
         openMyTvSeriesRestartSheet(current, null,
           parentReturn || (() => openMyTvSeriesSheet(current, returnTo)))
       }
+      bindSendToMabel($('#myTvSeriesMoreSheet .watch-programme-film-tools'),
+        { kind: "my-tv-series", series: current.id }, current.title,
+        () => openMyTvSeriesMoreSheet(current, returnTo, parentReturn))
       const metadata = $('#myTvSeriesMetadata')
       metadata.disabled = !tmdbConfigured
       metadata.onclick = tmdbConfigured ? () => {
@@ -399,6 +402,8 @@
       $('#myTvEpisodeMeta').textContent = `S${String(episode.season).padStart(2, '0')} E${String(episode.episode).padStart(2, '0')}${episode.watched ? ' · Watched' : episode.remote_position > 0 ? ` · ${watchTimeLabel(episode.remote_position)} watched` : ''}`
       const source = { kind: 'my-tv-series', series: series.id,
         file: episode.path, position: Number(episode.remote_position || 0) }
+      bindSendToMabel($('#myTvEpisodeSheet .watch-destination-actions'), source, episode.display_name,
+        () => openMyTvEpisodeSheet(current, episode, returnTo))
       $('#myTvEpisodeTv').onclick = () => {
         playOnTv(source, episode.display_name)
       }

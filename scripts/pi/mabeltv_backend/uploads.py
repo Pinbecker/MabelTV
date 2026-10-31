@@ -125,7 +125,9 @@ class UploadConversionMixin:
                 "uploading", "validating", "queued", "processing", "publishing",
                 "finalising", "error"
             }
-            if (ready or destination_ready) and metadata.get("status") in resumable_statuses:
+            copy_ready = metadata.get("source_kind") == "my-tv-copy" and self.mabel_copy_source_available(metadata)
+            if copy_ready: resumable_statuses.add("copying")
+            if (ready or destination_ready or copy_ready) and metadata.get("status") in resumable_statuses:
                 metadata["resume_from_status"] = metadata.get("status")
                 metadata["status"] = "queued"
                 metadata.pop("error", None)
@@ -255,6 +257,8 @@ class UploadConversionMixin:
             if metadata.get("kind") == "family":
                 self.process_family_conversion(upload_id, metadata)
                 return
+            if metadata.get("source_kind") == "my-tv-copy":
+                self.prepare_mabel_copy(upload_id, metadata)
             part = self.incoming / f"{upload_id}.part"
             my_tv_film_upload = metadata.get("kind") == "my_tv"
             my_tv_series_upload = metadata.get("kind") == "my-tv-series"
@@ -336,6 +340,8 @@ class UploadConversionMixin:
                     current.setdefault("library_id", uuid.uuid4().hex)
                     states["episodes"][key] = current
                     self.write_my_tv_series_states(states)
+            if metadata.get("source_kind") == "my-tv-copy":
+                self.finish_mabel_copy(metadata, destination)
             refreshed = True if my_tv_series_upload else self.refresh_tv()
             result = {
                 "id": upload_id,
@@ -390,7 +396,8 @@ class UploadConversionMixin:
                 # atomically moved, so those later states legitimately count
                 # the upload bytes as fully received.
                 offset = part.stat().st_size if part.exists() \
-                    else (0 if status == "uploading" else size)
+                    else (0 if status == "uploading" or value.get("source_kind") == "my-tv-copy"
+                          and status not in {"publishing", "finalising"} else size)
                 upload_kind = str(value.get("kind") or "channel")
                 my_tv = upload_kind == "my_tv"
                 my_tv_series = upload_kind == "my-tv-series"
@@ -403,6 +410,7 @@ class UploadConversionMixin:
             source_kind = str(value.get("source_kind") or "browser")
             source_available = self.usb_source_available(value) if source_kind == "usb" \
                 else bool(source_seen and time.time() - source_seen <= UPLOAD_SOURCE_GRACE_SECONDS)
+            if source_kind == "my-tv-copy": source_available = self.mabel_copy_source_available(value)
             jobs.append({
                 "id": value["id"],
                 "file_name": str(value.get("file_name", "Video")),
@@ -429,7 +437,7 @@ class UploadConversionMixin:
                     "uploading", "queued", "paused", "error"
                 },
                 "retryable": (status == "error"
-                              and (family_source_ready or part.is_file() and offset == size)),
+                              and (family_source_ready or source_kind == "my-tv-copy" and source_available or part.is_file() and offset == size)),
             })
         for result_path in self.incoming.glob("*.result.json"):
             value = self.read_json(result_path, {})
@@ -811,6 +819,8 @@ class UploadConversionMixin:
                         ready = False
                     if metadata.get("kind") == "family":
                         ready = ready or self.family_upload_source_ready(metadata)
+                    if metadata.get("source_kind") == "my-tv-copy":
+                        ready = ready or self.mabel_copy_source_available(metadata)
                     if not ready:
                         raise ValueError("Choose the original file above to retry this upload")
                     metadata["resume_from_status"] = "error"
@@ -847,6 +857,8 @@ class UploadConversionMixin:
                     complete = part.is_file() and part.stat().st_size == int(metadata.get("size", 0))
                     if metadata.get("kind") == "family":
                         complete = complete or self.family_upload_source_ready(metadata)
+                    if metadata.get("source_kind") == "my-tv-copy":
+                        complete = complete or self.mabel_copy_source_available(metadata)
                     metadata["status"] = "queued" if complete else "uploading"
                     if not complete:
                         active_exists = any(item.get("status") == "uploading" and
@@ -912,11 +924,13 @@ class UploadConversionMixin:
         part = self.incoming / f"{upload_id}.part"
         status = str(metadata.get("status", "uploading"))
         processing_statuses = {
-            "validating", "queued", "processing", "publishing", "finalising"
+            "copying", "validating", "queued", "processing", "publishing", "finalising"
         }
         try:
             offset = part.stat().st_size if part.is_file() \
                 else (int(metadata.get("size", 0)) if status in processing_statuses else 0)
+            if metadata.get("source_kind") == "my-tv-copy" and not part.is_file() and status in {"queued", "copying"}:
+                offset = 0
             if metadata.get("kind") == "family" and self.family_upload_source_ready(metadata):
                 offset = int(metadata["size"])
         except (OSError, TypeError, ValueError):

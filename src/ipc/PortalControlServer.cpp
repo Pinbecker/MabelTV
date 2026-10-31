@@ -121,7 +121,11 @@ void PortalControlServer::dispatch(QLocalSocket *socket, const QByteArray &rawCo
             bool accepted = false;
             if (family && operation == QStringLiteral("play-family-media")) {
                 const QString session = object.value(QStringLiteral("session")).toString();
-                if (QRegularExpression(QStringLiteral("^[a-f0-9]{32}$")).match(session).hasMatch())
+                if (QRegularExpression(QStringLiteral("^[a-f0-9]{32}$")).match(session).hasMatch()
+                    && object.value(QStringLiteral("audio_only")).toBool(false)
+                    && object.value(QStringLiteral("kind")).toString() == QStringLiteral("storytime")) {
+                    accepted = QMetaObject::invokeMethod(family, "openAudioStory", Qt::QueuedConnection, Q_ARG(QVariant, session));
+                } else if (QRegularExpression(QStringLiteral("^[a-f0-9]{32}$")).match(session).hasMatch())
                     accepted = QMetaObject::invokeMethod(family, "openSession", Qt::QueuedConnection,
                                                         Q_ARG(QVariant, session),
                                                         Q_ARG(QVariant, object.value(QStringLiteral("kind")).toString()));
@@ -189,6 +193,20 @@ void PortalControlServer::dispatch(QLocalSocket *socket, const QByteArray &rawCo
             finish(socket, "ok\n");
             return;
         }
+        if (request.isObject() && operation == QStringLiteral("play-my-tv-item")) {
+            const QString kind = object.value(QStringLiteral("kind")).toString();
+            const QString file = object.value(QStringLiteral("file")).toString();
+            if ((kind != QStringLiteral("my_tv") && kind != QStringLiteral("my-tv-series"))
+                || file.isEmpty() || QFileInfo(file).isAbsolute()
+                || QDir::cleanPath(file).startsWith(QStringLiteral(".."))) {
+                finish(socket, "unsupported\n"); return;
+            }
+            const bool accepted = QMetaObject::invokeMethod(
+                m_rootObject, "portalPlayMyTvItem", Qt::QueuedConnection,
+                Q_ARG(QVariant, object.toVariantMap()));
+            finish(socket, accepted ? "ok\n" : "unsupported\n");
+            return;
+        }
         if (request.isObject() && operation == QStringLiteral("tune-channel")) {
             const int channel = object.value(QStringLiteral("channel")).toInt(-1);
             if (channel > 0) {
@@ -226,6 +244,8 @@ void PortalControlServer::dispatch(QLocalSocket *socket, const QByteArray &rawCo
             {QStringLiteral("remote_locked"),
              m_rootObject->property("portalRemoteLocked").toBool()},
             {QStringLiteral("standby"), m_rootObject->property("portalStandby").toBool()},
+            {QStringLiteral("story_audio_only"), m_rootObject->property("portalStoryAudioOnly").toBool()},
+            {QStringLiteral("story_audio_playing"), m_rootObject->property("portalStoryAudioPlaying").toBool()},
             {QStringLiteral("connected_tv_available"), m_tvControl->available()},
             {QStringLiteral("connected_tv_power"), m_tvControl->lastPowerStatus()},
             {QStringLiteral("subtitles_available"),

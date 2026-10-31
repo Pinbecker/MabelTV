@@ -48,6 +48,7 @@ from mabeltv_backend.lg_control import LgControlMixin
 from mabeltv_backend.live_stream import LiveStream
 from mabeltv_backend.media import MediaCatalogueMixin
 from mabeltv_backend.management import ManagementMixin
+from mabeltv_backend.my_tv_transfer import MyTvTransferMixin
 from mabeltv_backend.mabel_queue import MabelQueueMixin
 from mabeltv_backend.playlists import PlaylistsMixin
 from mabeltv_backend.family_media import FamilyMediaMixin
@@ -100,7 +101,7 @@ __all__ = [
     "urlopen",
 ]
 
-class Library(PlaylistsMixin, FamilyMediaMixin, FamilyUploadsMixin,
+class Library(MyTvTransferMixin, PlaylistsMixin, FamilyMediaMixin, FamilyUploadsMixin,
               IPlayerLibraryMixin, MabelQueueMixin, ViewingMixin, UploadConversionMixin, TranscodingMixin, AuthenticationMixin,
               ArtworkProxyMixin,
               MediaCatalogueMixin, ManagementMixin, RemotePlaybackMixin, LgControlMixin,

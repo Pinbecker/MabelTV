@@ -838,3 +838,8 @@ body.portal-experience .my-tv-film-danger .watch-action-icon {
     font-size: 9px;
   }
 }
+
+.compact-film-playback > [data-send-to-mabel] { grid-column: 1 / -1; }
+
+#myTvSendSheet .library-sheet-actions { margin-top: 12px; grid-template-columns: 1fr; }
+#myTvSendSubmit { width: 100%; white-space: nowrap; }

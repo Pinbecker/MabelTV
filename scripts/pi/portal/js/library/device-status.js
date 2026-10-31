@@ -315,7 +315,7 @@
       const root = $('#uploadJobs'), jobs = library.uploads || []
       if (!jobs.length) { root.innerHTML = '<p class="muted">No videos are waiting.</p>'; return }
       const labels = {
-        uploading: 'Uploading', validating: 'Checking the video', queued: 'Waiting in the preparation queue',
+        copying: 'Copying from My TV', uploading: 'Uploading', validating: 'Checking the video', queued: 'Waiting in the preparation queue',
         processing: 'Preparing for smooth playback', publishing: 'Publishing', finalising: 'Refreshing the TV',
         error: 'Needs attention', 'refresh-error': 'TV refresh needed'
       }
@@ -365,7 +365,8 @@
       const transfer = job.transfer_state || 'active'
       const uploadStates = {
         uploading: isUsb ? `Copying from ${job.source_label || 'USB drive'}` : 'Uploading',
-        validating: 'Checking video', queued: 'Waiting to publish', processing: 'Preparing video',
+        copying: 'Copying from My TV', validating: 'Checking video',
+        queued: job.source_kind === 'my-tv-copy' ? 'Waiting to copy' : 'Waiting to publish', processing: 'Preparing video',
         publishing: 'Publishing', finalising: 'Refreshing TV', error: job.error || 'Needs attention',
         'refresh-error': 'TV refresh needed', paused: 'Paused',
       }

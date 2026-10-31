@@ -20,6 +20,7 @@ PORTAL_APP_SOURCES = (
     "library/device-status.js",
     "library/channels.js",
     "playback/players.js",
+    "playback/send-to-mabel.js",
     "playback/film-library.js",
     "playback/my-tv-series.js",
     "playback/film-catalogue.js",

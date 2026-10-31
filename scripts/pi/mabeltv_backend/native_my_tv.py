@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from pathlib import Path
+import math
 import re
 from typing import Any
 from urllib.parse import quote
@@ -185,6 +186,43 @@ class NativeMyTvMixin:
             result["seasons"] = [{"number": number, "name": f"Season {number}"}
                                  for number in sorted({item["season"] for item in episodes})]
         return result
+
+    def native_my_tv_playback(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Resolve a portal choice using the same identities as the TV library."""
+        kind = str(payload.get("kind", ""))
+        if kind not in {"my_tv", "my-tv-series"}:
+            raise ValueError("Choose a local My TV film or episode")
+        series = None
+        if kind == "my-tv-series":
+            series = next((value for value in self.my_tv_series_library()
+                           if value["id"] == str(payload.get("series", ""))), None)
+            if not series:
+                raise ValueError("That My TV series is no longer in the library")
+        _kind, source, title, library_id, resume = self.remote_source(payload)
+        item = {"id": library_id, "source": source.as_uri(), "name": title}
+        if series:
+            player_state = self.read_state("player")
+            episodes = [self._native_episode(value, series["id"], player_state)
+                        for value in series.get("episodes", [])]
+            episode = next((value for value in episodes
+                            if value["path"] == str(payload.get("file", ""))), None)
+            if not episode:
+                raise ValueError("That episode is no longer in the series")
+            item.update({"id": episode["library_id"], "season": episode["season"],
+                         "number": episode["number"], "episodeTitle": episode["name"],
+                         "series": {"id": series["id"], "title": series["title"],
+                                    "domain": "my-tv", "episodes": episodes}})
+            resume = episode["remote_position"]
+        if not item["id"]:
+            raise ValueError("That local video has no playback identity")
+        try:
+            position = float(payload.get("position", resume))
+            if not math.isfinite(position):
+                raise ValueError("Invalid position")
+            position = max(0.0, position)
+        except (ValueError, TypeError) as error:
+            raise ValueError("That playback position is not valid") from error
+        return {"item": item, "position": position}
 
     def native_my_tv_home(self) -> dict[str, Any]:
         """Return the TV home payload without waiting on external providers."""

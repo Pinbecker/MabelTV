@@ -381,12 +381,8 @@ Rectangle {
 
         QVERIFY(QMetaObject::invokeMethod(player,"playbackFinished"));
         player->setProperty("playbackDuration",0); player->setProperty("playbackPosition",0);
-        QCOMPARE(elapsed->property("text").toString(),QString("2:00:00 / 2:00:00"));
-        QCOMPARE(remaining->property("text").toString(),QString("0:00 remaining"));
-        QVERIFY(playbackControls->property("showing").toBool());
-
-        // Back closes the book into Storytime, without resuming the old film.
-        QVERIFY(command("close"));
+        // EOF automatically closes the book without resuming the old film.
+        QTRY_VERIFY_WITH_TIMEOUT(family->property("returningToStories").toBool(), 1000);
         QTRY_VERIFY_WITH_TIMEOUT(family->property("browsingStories").toBool(), 3000);
         QVERIFY(family->property("active").toBool());
         QCOMPARE(root->property("resumes").toInt(), 0);
@@ -618,4 +614,43 @@ int main(int argc, char** argv) {
     QGuiApplication app(argc, argv);
     FamilyUiTests tests;
     return QTest::qExec(&tests, argc, argv);
+}
+
+
+void FamilyUiTests::audioOnlyStoryWakesOnBlackAndRemainsBlackAtEnd()
+{
+    QQmlEngine engine;
+    engine.rootContext()->setContextProperty("tvDisplayName", "Mabel TV");
+    QQmlComponent component(&engine, QUrl::fromLocalFile(QStringLiteral(TEST_QML_DIR "/../tests/qml/FamilyAudioOnlyTest.qml")));
+    QScopedPointer<QObject> root(component.create());
+    QVERIFY2(root, qPrintable(component.errorString()));
+    auto *family = root->findChild<QObject *>("family");
+    auto *player = root->findChild<QObject *>("mabeltvFamilyPlayer");
+    auto *cover = root->findChild<QQuickItem *>("familyAudioOnlyCover");
+    QVERIFY(family); QVERIFY(player); QVERIFY(cover);
+    QQuickWindow window; window.setGeometry(0, 0, 960, 540);
+    qobject_cast<QQuickItem *>(root.data())->setParentItem(window.contentItem());
+    window.show();
+    family->setProperty("audioOnly", true);
+    QVERIFY(QMetaObject::invokeMethod(family, "prepare"));
+    QCOMPARE(root->property("turnOns").toInt(), 0); // never wake before a black frame
+    family->setProperty("session", QVariantMap{{"kind", "storytime"}, {"title", "Quiet story"},
+        {"settings", QVariantMap{}}, {"scenes", QVariantList{QVariantMap{{"kind", "audio"},
+        {"items", QVariantList{}}, {"audio", QVariantMap{{"source", "quiet-story.m4a"}, {"duration", 120}}}}}}});
+    QTRY_COMPARE_WITH_TIMEOUT(root->property("turnOns").toInt(), 1, 2000);
+    QTRY_VERIFY_WITH_TIMEOUT(family->property("storyStarted").toBool(), 5000);
+    QCOMPARE(player->property("source").toUrl(), QUrl("quiet-story.m4a"));
+    const QImage picture = window.grabWindow();
+    QVERIFY(!picture.isNull());
+    for (const QPoint &point : {QPoint(2,2), QPoint(480,270), QPoint(957,537)})
+        QCOMPARE(picture.pixelColor(point).rgb(), QColor(Qt::black).rgb());
+    QVERIFY(QMetaObject::invokeMethod(player, "playbackFinished"));
+    QVERIFY(family->property("ended").toBool());
+    QVERIFY(cover->isVisible());
+    QVERIFY(!family->property("returningToStories").toBool());
+    QCOMPARE(root->property("resumes").toInt(), 0);
+    QVERIFY(QMetaObject::invokeMethod(family, "back"));
+    QVERIFY(!family->property("audioOnly").toBool());
+    QVERIFY(family->property("browsingStories").toBool());
+    QCOMPARE(root->property("resumes").toInt(), 0);
 }

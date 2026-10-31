@@ -1086,6 +1086,12 @@ class RemotePlaybackMixin:
             skip_film_countdown = False
         else:
             raise ValueError("Choose a programme, My TV film, or episode to play")
+        if kind == "my-tv-series":
+            resolved = self.native_my_tv_playback(payload)
+            command = {"command": "play-my-tv-item", "kind": kind,
+                       "file": str(payload.get("file", "")),
+                       "series": str(payload.get("series", "")),
+                       "position": resolved["position"]}
         if not source.is_file():
             raise ValueError(f"That video is no longer in the {self.tv_identity()[1]} library")
         state = self.read_state("player")

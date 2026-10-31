@@ -53,7 +53,7 @@ async function playFamilyStoryOnDevice(story) {
     if (!current() || !familyListeningStarted || Date.now() - familyDeviceLastSaved < 10000) return
     familyDeviceLastSaved = Date.now(); saveFamilyListeningPosition().catch(() => {})
   }
-  audio.onended = () => { if (current()) { showFamilyStoryControls(); saveFamilyListeningPosition(true).catch(showError) } }
+  audio.onended = () => { if (current()) { saveFamilyListeningPosition(true).catch(showError); backFromFamilyDevicePlayer() } }
   audio.onpause = () => { if (current()) { showFamilyStoryControls(); saveFamilyListeningPosition().catch(() => {}) } }
   audio.onplaying = () => { if (current() && familyListeningStarted) showFamilyStoryControls() }
   audio.onerror = () => {

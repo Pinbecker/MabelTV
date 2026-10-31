@@ -1,0 +1,17 @@
+<dialog id="myTvSendSheet" class="library-sheet" aria-labelledby="myTvSendHeading">
+  <section class="library-sheet-panel">
+    <header class="library-sheet-head">
+      <div><p class="section-kicker">Add to a channel</p><h2 id="myTvSendHeading">Send to Mabel TV</h2><p id="myTvSendTitle"></p></div>
+      <button id="myTvSendClose" type="button" class="portal-sheet-close library-sheet-close" aria-label="Close send to channel"></button>
+    </header>
+    <form id="myTvSendForm" class="library-sheet-body">
+      <p id="myTvSendExplanation"></p>
+      <div class="usb-destination-fields">
+        <label>Destination channel<select id="myTvSendChannel" required></select></label>
+        <label id="myTvSendNewChannel" class="hidden">New channel name<input id="myTvSendName" maxlength="80" autocomplete="off"></label>
+      </div>
+      <p id="myTvSendError" class="error" role="alert"></p>
+      <div class="library-sheet-actions"><button id="myTvSendSubmit" type="submit" class="primary">Send to Mabel TV</button></div>
+    </form>
+  </section>
+</dialog>

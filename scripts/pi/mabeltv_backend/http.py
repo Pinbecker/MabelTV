@@ -91,6 +91,7 @@ POST_JSON_ROUTES = {
     "/api/my-tv/uploads": ("my_tv_upload_create", 201),
     "/api/my-tv/series/uploads": ("my_tv_series_upload_create", 201),
     "/api/uploads": ("upload_create", 201),
+    "/api/my-tv/send-to-mabel": ("send_my_tv_to_mabel", 202),
 }
 
 POST_NO_ARGUMENT_ROUTES = {
@@ -281,6 +282,10 @@ class Handler(BaseHTTPRequestHandler):
             return True
         if path == "/api/native/my-tv/home":
             self.json(200, self.server.library.native_my_tv_home())
+        elif path == "/api/native/my-tv/playback":
+            self.json(200, self.server.library.native_my_tv_playback({
+                key: values[0] for key, values in query.items()
+                if key in {"kind", "file", "series", "position"} and values}))
         elif path == "/api/native/my-tv/mabel-channels":
             self.json(200, self.server.library.native_my_tv_mabel_channels())
         elif path == "/api/native/my-tv/mabel-channel":

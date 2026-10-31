@@ -106,6 +106,9 @@ class FamilyMediaMixin:
 
     def family_start(self, payload, *, native=False):
         kind = str(payload.get("kind", ""))
+        audio_only = payload.get("audio_only", False)
+        if not isinstance(audio_only, bool) or audio_only and kind != "storytime":
+            raise ValueError("Audio-only playback is available for stories")
         data = self.state_database.family_catalogue()
         assets = {item["id"]: item for item in data["assets"] if item["status"] == "ready"
                   and item["prepared_path"] and self.family_path(item["prepared_path"]).is_file()}
@@ -116,7 +119,7 @@ class FamilyMediaMixin:
             scenes = [{"kind": "audio", "items": [assets[story["image_id"]]],
                        "audio": assets[story["audio_id"]], "title": story["title"]}]
             position = 0 if payload.get("restart") else story["position_seconds"]
-            settings = {}
+            settings = {"audio_only": True} if audio_only else {}
             story_id = story["id"]
         elif kind == "memories":
             channel_number = int(payload.get("channel", 0))
@@ -163,7 +166,8 @@ class FamilyMediaMixin:
                 oldest = min(self.family_sessions, key=lambda key: self.family_sessions[key]["created"])
                 self.family_sessions.pop(oldest, None)
         if payload.get("target", "tv") == "tv" and not native:
-            self.family_player_command({"command": "play-family-media", "session": token, "kind": kind})
+            self.family_player_command({"command": "play-family-media", "session": token, "kind": kind,
+                                        **({"audio_only": True} if audio_only else {})})
         return self.family_session(token, native=native)
 
     @staticmethod

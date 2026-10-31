@@ -15,6 +15,34 @@ class NativeMyTvTests : public QObject {
     Q_OBJECT
 private slots:
 
+    void portalPlaybackSerialisesDecoderAndCancelsObsoleteRequests() {
+        QQmlEngine engine;
+        QQmlComponent component(&engine, QUrl::fromLocalFile(
+            QStringLiteral(TEST_QML_DIR "/../tests/qml/MyTvPortalPlaybackTest.qml")));
+        QScopedPointer<QObject> root(component.create());
+        QVERIFY2(root, qPrintable(component.errorString()));
+        QObject *bridge = root->findChild<QObject *>("bridge");
+        QVERIFY(bridge);
+        auto request = [&]() {
+            const QVariantMap payload{{"kind", "my-tv-series"}, {"file", "episode.mp4"},
+                                      {"series", "series"}, {"position", 125}};
+            QVERIFY(QMetaObject::invokeMethod(bridge, "request", Q_ARG(QVariant, payload)));
+        };
+        request();
+        QTRY_COMPARE(root->property("plays").toInt(), 1);
+        QCOMPARE(root->property("position").toDouble(), 125.0);
+        request();
+        QCOMPARE(root->property("stops").toInt(), 1);
+        QCOMPARE(root->property("plays").toInt(), 1);
+        root->setProperty("playing", false); root->setProperty("stopping", false);
+        QTRY_COMPARE(root->property("plays").toInt(), 2);
+        request();
+        QVERIFY(QMetaObject::invokeMethod(root.data(), "closed"));
+        root->setProperty("playing", false); root->setProperty("stopping", false);
+        QTest::qWait(450);
+        QCOMPARE(root->property("plays").toInt(), 2);
+    }
+
     void floatingChannelMenuAndSettingsNavigation() {
         qmlRegisterUncreatableType<TvController>("MabelTV", 1, 0, "TvController", "Enums only in this isolated fixture");
         QQmlEngine engine;

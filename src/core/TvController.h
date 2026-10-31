@@ -36,6 +36,7 @@ class TvController final : public QObject
     Q_PROPERTY(bool tuning READ tuning NOTIFY tuningChanged)
     Q_PROPERTY(bool noSignal READ noSignal NOTIFY noSignalChanged)
     Q_PROPERTY(bool standby READ standby NOTIFY standbyChanged)
+    Q_PROPERTY(QString connectedTvPower READ connectedTvPower NOTIFY connectedTvPowerChanged)
     Q_PROPERTY(bool remoteLocked READ remoteLocked NOTIFY remoteLockedChanged)
     Q_PROPERTY(QString numericEntry READ numericEntry NOTIFY numericEntryChanged)
     Q_PROPERTY(QString libraryStatus READ libraryStatus NOTIFY libraryStatusChanged)
@@ -100,6 +101,7 @@ public:
     [[nodiscard]] bool tuning() const;
     [[nodiscard]] bool noSignal() const;
     [[nodiscard]] bool standby() const;
+    [[nodiscard]] QString connectedTvPower() const;
     [[nodiscard]] bool remoteLocked() const;
     [[nodiscard]] QString numericEntry() const;
     [[nodiscard]] QString libraryStatus() const;
@@ -190,6 +192,7 @@ signals:
     void tuningChanged();
     void noSignalChanged();
     void standbyChanged();
+    void connectedTvPowerChanged();
     void remoteLockedChanged();
     void numericEntryChanged();
     void libraryStatusChanged();

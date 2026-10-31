@@ -295,7 +295,7 @@ function remoteTime(value) {
           track.kind = 'subtitles'; track.srclang = 'en'; track.label = 'English'; track.src = result.subtitle_url; track.default = false
           video.append(track)
         }
-        const resume = Number(position || result.resume_position || 0)
+        const resume = Number(payload.position ?? (position || result.resume_position || 0))
         let nativeFullscreen = false
         const requestNativeFullscreen = () => {
           if (nativeFullscreen || video.webkitDisplayingFullscreen || video.webkitPresentationMode === 'fullscreen' || typeof video.webkitEnterFullscreen !== 'function') return

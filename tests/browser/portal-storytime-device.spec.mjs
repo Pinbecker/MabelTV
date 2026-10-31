@@ -228,6 +228,8 @@ test('Device bookmarks expire even in an already open catalogue, and Restart cle
     familyLibrary.stories[0].updated = Date.now() / 1000 - 3601
     familyLibrary.stories[0].position_seconds = 300
     Object.defineProperty(HTMLMediaElement.prototype, 'duration', { configurable: true, get: () => 1200 })
+    // Match this test's fake 20-minute clock instead of seeking in the one-minute WAV.
+    Object.defineProperty(HTMLMediaElement.prototype, 'currentTime', { configurable: true, get() { return this.fixtureTime || 0 }, set(value) { this.fixtureTime = value } })
   })
   await tapInContent(page.locator('.family-story-card').first())
   await page.locator('#familyStoryDevice').click()
@@ -262,4 +264,31 @@ test('Storytime fits portrait, landscape and tablet with readable book surfaces 
     }
     await page.screenshot({ path: join(path, `${info.project.name}-${name}.png`), animations: 'disabled' })
   }
+})
+
+
+test('the completed story closes itself into its selected shelf position', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  const state = await stories(page, 3)
+  await openCatalogue(page)
+  await page.evaluate(() => playFamilyStoryOnDevice(familyLibrary.stories[1]))
+  await expect.poll(() => page.evaluate(() => familyListeningStarted)).toBe(true)
+  await page.locator('#familyDeviceAudio').evaluate(audio => audio.dispatchEvent(new Event('ended')))
+  await expect.poll(() => page.evaluate(() => familyStoryBrowser.phase)).toBe('catalogue')
+  await expect(page.locator('#familyDevicePlayer')).toBeVisible()
+  await expect(page.locator('#familyStoryBooks .is-selected')).toContainText(state.stories[1].title)
+  expect(await page.evaluate(() => familyDeviceStory)).toBeNull()
+})
+
+
+test('audio-only TV launch is separate from the normal storybook destination', async ({ page }) => {
+  const state = await stories(page, 1)
+  await tapInContent(page.locator('.family-story-card').first())
+  if (test.info().project.name === 'iphone-webkit') await page.screenshot({ path: '../../work/audio-only-story-menu.png' })
+  await page.locator('#familyStoryAudioOnly').click()
+  expect(state.calls.at(-1)).toEqual({ kind:'storytime', id:'story0', audio_only:true })
+  await expect(page.locator('#familyStorySheet')).not.toBeVisible()
+  await tapInContent(page.locator('.family-story-card').first())
+  await page.locator('#familyStoryTv').click()
+  expect(state.calls.at(-1)).toEqual({ kind:'storytime', id:'story0' })
 })

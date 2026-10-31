@@ -223,3 +223,7 @@ not close a portal-started memory session.
 An explicitly chosen child programme is held until the family decoder has
 released its output, then passed through the ordinary countdown/playback path.
 Unrequested background resumes during an active presentation are discarded.
+
+`MyTvPortalPlayback.qml` resolves exact local series playback and serialises the decoder handoff without embedding My TV in a surround. Storytime EOF returns through the same book-closing/shelf transition as Back and never resumes the previous child film.
+
+Audio-only stories use `FamilyAudioOnly.qml`: two rendered black frames precede CEC wake/Active Source, then playback waits for HDMI readiness. This mask covers the complete Pi UI throughout listening and EOF. Back intentionally opens Storytime; explicit normal playback or power-off cancels a pending quiet wake. The controller exposes the connected TV power state without a second QML state machine.

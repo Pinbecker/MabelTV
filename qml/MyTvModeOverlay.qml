@@ -10,6 +10,7 @@ Item {
     required property var controller
     property bool active: false
     property bool playing: false
+    property bool portalTransitionPending: false
     property bool stopping: false
     property bool closing: false
     property bool backPressHeld: false
@@ -52,7 +53,7 @@ Item {
     signal powerRequested()
 
     onSelectedIndexChanged: refreshSelectedFilmPosition()
-    onPlayingChanged: if (!playing && active && !closing) libraryView.loadHome()
+    onPlayingChanged: if (!playing && active && !closing && !portalTransitionPending) libraryView.loadHome()
 
     visible: active
     z: 180
@@ -74,7 +75,7 @@ Item {
         scrubberActive = false
         scrubberFocus = 0
         active = true
-        libraryView.open()
+        if (!portalTransitionPending) libraryView.open()
         externalSession = false
         externalSource = ""
         externalTitle = ""
@@ -224,6 +225,10 @@ Item {
                 ? films[selectedIndex] : null
     }
 
+    function loadPortalPlayback(path, ready) {
+        libraryView.request(path, "GET", null, ready, message => libraryView.notify(message))
+    }
+
     function clampLibrarySelection() {
         selectedIndex = Math.max(0, Math.min(selectedIndex, visibleFilms.length - 1))
         refreshSelectedFilmPosition()
@@ -370,7 +375,7 @@ Item {
         episodePlayback.cancel(); externalStartTimer.stop(); libraryFilmStartTimer.stop()
         queuedExternalSource = ""; queuedLibraryFilmPath = ""; playChoiceVisible = false
         if (playing && !stopping) stopFilm()
-        libraryView.open()
+        if (!portalTransitionPending) libraryView.open()
     }
 
     function playSelected() {
@@ -678,6 +683,7 @@ Item {
 
     MyTvLibraryView {
         id: libraryView
+        visible: !overlay.portalTransitionPending
         host: overlay
         tvController: controller
     }

@@ -53,6 +53,10 @@ void TvController::playPortalProgramme(int channelNumber,
         return;
     }
 
+    // An explicit parent selection retries this file. An old failure must not
+    // make finishTune silently substitute another programme from the channel.
+    target.failedEpisodes.remove(episodeIndex);
+
     if (!m_queueTransition) mabeltv::state::stopMabelQueue(m_databasePath);
 
     const bool changingChannel = channelIndex != m_currentChannelIndex;

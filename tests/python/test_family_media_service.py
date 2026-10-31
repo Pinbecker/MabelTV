@@ -16,6 +16,27 @@ from tests.python.library_test_support import LibraryFixture, mabeltv_library, u
 
 
 class FamilyMediaServiceTests(unittest.TestCase):
+    def test_audio_only_story_is_explicit_and_never_changes_normal_playback(self):
+        identity = self.library.family_action({"action": "story-create", "title": "Quiet story"})["id"]
+        for kind, name in [("audio", "quiet.wav"), ("illustration", "quiet.png")]:
+            source = self.fixture.root / name
+            source.write_bytes(b"prepared fixture")
+            asset = self.library.family_upload_create({"media_kind": kind, "story_id": identity,
+                "file_name": name, "size": source.stat().st_size})
+            row = self.library.state_database.family_asset(asset["asset_id"])
+            path = self.library.family_path(row["source_path"])
+            path.parent.mkdir(parents=True, exist_ok=True); path.write_bytes(source.read_bytes())
+            self.library.state_database.family_asset_update(row["id"], status="ready", prepared_path=row["source_path"], duration=120)
+        with mock.patch.object(self.library, "family_player_command") as command:
+            quiet = self.library.family_start({"kind":"storytime", "id":identity, "audio_only":True})
+            self.assertIs(quiet["settings"]["audio_only"], True)
+            self.assertIs(command.call_args.args[0]["audio_only"], True)
+            normal = self.library.family_start({"kind":"storytime", "id":identity})
+            self.assertNotIn("audio_only", normal["settings"])
+            self.assertNotIn("audio_only", command.call_args.args[0])
+        for bad in [{"kind":"memories", "audio_only":True}, {"kind":"storytime", "audio_only":"true"}]:
+            with self.assertRaises(ValueError): self.library.family_start(bad)
+
     def test_story_bookmarks_expire_after_an_hour_and_metadata_does_not_extend_them(self):
         from contextlib import closing
         from mabeltv_backend.repositories import family_media as repository

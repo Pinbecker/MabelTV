@@ -458,3 +458,7 @@ during playback and remain available on pause or tap. Memories
 provide direct phone uploads, capture-date ordering, shuffle, music settings
 and start-from-selected playback. Device downloads and My TV controls are
 unchanged.
+
+Local My TV films, episodes and whole shows expose Send to Mabel TV through `playback/send-to-mabel.js`. Its destination sheet chooses an existing matching channel or creates one. Playback retains the original My TV player; there is no player-choice/framed My TV route. Completed device stories close into their existing catalogue animation.
+
+The story destination sheet includes Listen on TV - audio only. It sends a strictly boolean `audio_only` option through the existing authenticated family start route; normal TV/device choices are unchanged. This is a black HDMI picture with sound, not a hardware-panel power setting.

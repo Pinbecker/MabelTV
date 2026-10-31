@@ -597,6 +597,7 @@
 
     function configureFilmPlaybackActions(film, context, controls) {
       const title = watchFilmTitle(film)
+      bindSendToMabel(controls.tvPlay.parentElement, { kind: "my_tv", file: film.path }, title, controls.reopen)
       const resumable = watchFilmResumable(film)
       const streamable = film.browser_ready !== false
       const favouriteResumeChoice = context === 'favourite' && resumable

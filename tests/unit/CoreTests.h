@@ -13,6 +13,8 @@ private slots:
     void controllerTunesNumericChannelsAndHonoursVolumeLimit();
     void controllerClearsNoSignalWhenReturningToPopulatedChannel();
     void controllerSkipsAnEpisodeAfterPlaybackFailure();
+    void controllerPortalRetriesQuarantinedProgramme_data();
+    void controllerPortalRetriesQuarantinedProgramme();
     void controllerDoesNotPersistWatchdogQuarantine();
     void controllerMovesBetweenProgrammesInFilenameOrder();
     void controllerRestartsStaleShowsButNeverFilms();
