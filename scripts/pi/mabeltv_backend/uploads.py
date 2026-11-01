@@ -612,8 +612,8 @@ class UploadConversionMixin:
                 season = int(payload.get("season"))
             except (TypeError, ValueError) as error:
                 raise ValueError("Choose a series number") from error
-            if season < 1 or season > 99:
-                raise ValueError("Choose a series number from 1 to 99")
+            if season < 0 or season > 99:
+                raise ValueError("Choose a season from 0 to 99")
             file_name = str(payload.get("file_name", ""))
             if Path(file_name).name != file_name or Path(file_name).suffix.lower() \
                     not in SUPPORTED_EXTENSIONS:

@@ -49,7 +49,7 @@
         </button>
       </form>
       <div id="myTvUploadState" class="hidden upload-state" aria-live="polite">
-        <p id="myTvUploadText">Uploading…</p>
+        <p id="myTvUploadText">Uploadingâ€¦</p>
         <progress id="myTvProgress" max="1" value="0"></progress>
       </div>
     </div>
@@ -60,36 +60,36 @@
     <header class="library-sheet-head">
       <div>
         <p class="section-kicker">Organise My TV</p>
-        <h2>Collections</h2>
-        <p>Keep your films together in collections.</p>
+        <h2>Folders</h2>
+        <p>Keep your films together in folders.</p>
       </div>
       <button
         id="myTvCollectionClose"
         type="button"
         class="portal-sheet-close library-sheet-close"
-        aria-label="Close collections"
+        aria-label="Close folders"
       >
       </button>
     </header>
     <div class="library-sheet-body my-tv-collection-body">
       <div>
-        <p class="my-tv-sheet-label">Your collections</p>
+        <p class="my-tv-sheet-label">Your folders</p>
         <div id="myTvFolderTabs" class="my-tv-folder-tabs library-actions"></div>
       </div>
       <div id="myTvFolderSelectionActions" class="my-tv-folder-selection-actions library-actions hidden">
         <button id="myTvRenameFolder" type="button" class="my-tv-collection-action" disabled>
           <span class="library-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-edit" /></svg></span>
-          <span><strong>Rename collection</strong><small data-selected-collection></small></span>
+          <span><strong>Rename folder</strong><small data-selected-collection></small></span>
           <svg class="icon"><use href="/portal/icons.svg#signal-chevron-right" /></svg>
         </button>
         <button id="myTvDeleteFolder" type="button" class="my-tv-collection-delete" disabled>
           <span class="library-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-trash" /></svg></span>
-          <span><strong>Delete collection</strong><small id="myTvDeleteFolderHint">Empty collections only</small></span>
+          <span><strong>Delete folder</strong><small id="myTvDeleteFolderHint">Empty folders only</small></span>
           <svg class="icon"><use href="/portal/icons.svg#signal-chevron-right" /></svg>
         </button>
       </div>
       <div class="my-tv-folder-tools">
-        <label for="myTvFolderName">New collection</label>
+        <label for="myTvFolderName">New folder</label>
         <div class="my-tv-folder-create-row">
           <input id="myTvFolderName" maxlength="80" placeholder="e.g. Comedies" />
           <button id="myTvCreateFolder" type="button" class="primary">
@@ -404,7 +404,7 @@
         class="hidden upload-state"
         aria-live="polite"
       >
-        <p id="myTvSeriesUploadText">Uploading…</p>
+        <p id="myTvSeriesUploadText">Uploadingâ€¦</p>
         <progress id="myTvSeriesProgress" max="1" value="0"></progress>
       </div>
     </div>
@@ -500,7 +500,7 @@
           ><strong>View Series</strong
           ><small>Open the complete show and its series</small></span
         ></button
-      ><button id="myTvEpisodeRemoveProgress" type="button" class="watch-film-play hidden"><span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-arrow-left" /></svg></span><span><strong>Remove from Continue</strong><small>Clear this episode’s saved position</small></span></button
+      ><button id="myTvEpisodeRemoveProgress" type="button" class="watch-film-play hidden"><span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-arrow-left" /></svg></span><span><strong>Remove from Continue</strong><small>Clear this episodeâ€™s saved position</small></span></button
       ><button id="myTvEpisodeDelete" type="button" class="watch-film-play watch-film-danger"><span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-trash" /></svg></span><span><strong>Remove from <span data-tv-name>Your TV</span></strong><small>Move this local episode to the bin</small></span></button>
     </div>
   </article>

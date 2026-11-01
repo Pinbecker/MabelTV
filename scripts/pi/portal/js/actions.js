@@ -56,6 +56,7 @@ let managementBusy = false
 
     $('#backToChannels').onclick = closeChannelPage
     const showAddChannelSheet = () => {
+      prepareNewChannelNumber()
       for (const [name, id] of [['newChannelPicture', 'newChannelAspect'], ['newChannelContent', 'newChannelContentType']]) {
         for (const option of $$('#addChannelForm input[name="' + name + '"]')) {
           option.checked = option.value === $('#' + id).value
@@ -67,6 +68,7 @@ let managementBusy = false
     $('#showAddChannel').onclick = showAddChannelSheet
     $('#openAddChannelUtility').onclick = showAddChannelSheet
     $('#watchNewChannel').onclick = showAddChannelSheet
+    $('#channelNumbersAdd').onclick = showAddChannelSheet
     $('#openRecycleBin').onclick = () => openLibrarySheet($('#recycleSheet'))
     $('#watchRecycleBin').onclick = () => $('#openRecycleBin').click()
     $('#cancelAddChannel').onclick = () => closeLibrarySheet($('#addChannelPanel'))
@@ -89,7 +91,7 @@ let managementBusy = false
     $('#refreshLibrary').onclick = () => manage('refresh')
     $('#editChannelForm').onsubmit = async event => {
       event.preventDefault()
-      const number = Number($('#editChannelNumber').value)
+      const number = selectedManageChannel
       await manage('update-channel', { original_number: selectedManageChannel, number, name: $('#editChannelName').value, aspect: $('#editChannelAspect').value, content_type: $('#editChannelContentType').value }, number)
       closeLibrarySheet($('#channelSettingsSheet'))
     }
@@ -102,8 +104,14 @@ let managementBusy = false
     }
     $('#addChannelForm').onsubmit = async event => {
       event.preventDefault()
-      const number = Number($('#newChannelNumber').value), name = $('#newChannelName').value.trim()
-      await manage('add-channel', { number, name, folder: slug(name), aspect: $('#newChannelAspect').value, content_type: $('#newChannelContentType').value }, number)
+      const number = nextChannelNumber(), name = $('#newChannelName').value.trim()
+      if (number === null) return
+      const result = await manage('add-channel', { name, folder: slug(name), aspect: $('#newChannelAspect').value, content_type: $('#newChannelContentType').value })
+      if (!result) {
+        $('#newChannelError').textContent = $('#notice').textContent || 'The channel could not be created. Try again.'
+        $('#newChannelError').classList.remove('hidden')
+        return
+      }
       event.target.reset()
       closeLibrarySheet($('#addChannelPanel'))
     }

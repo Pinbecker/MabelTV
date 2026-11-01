@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, dialog, shell, session, protocol, net } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, session, protocol, net, Tray, Menu } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
@@ -9,6 +9,8 @@ const { IPlayer } = require('./lib/iplayer.cjs');
 const { Media } = require('./lib/media.cjs');
 const { Portal, endpoint } = require('./lib/portal.cjs');
 const { Queue } = require('./lib/queue.cjs');
+const { Companion } = require('./lib/companion.cjs');
+const { sendSubtitles } = require('./lib/subtitles.cjs');
 const { migrateWorkspace } = require('./lib/workspace.cjs');
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'studio', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
@@ -17,7 +19,7 @@ if (process.env.STUDIO_TEST_DATA) app.setPath('userData', path.resolve(process.e
 const single = app.requestSingleInstanceLock();
 if (!single) app.quit();
 let window, store, queue, portal, iplayer, portalSession, searchController;
-let closing = false;
+let closing = false, tray, companion;
 const resources = app.isPackaged ? path.join(process.resourcesPath, 'tools') : path.join(__dirname, 'resources');
 const getTools = () => resolveTools(resources, store.state.settings.toolFolder);
 
@@ -79,7 +81,22 @@ async function start() {
   portal = new Portal(store, (url, options) => portalSession.fetch(url, options));
   iplayer = new IPlayer(app.getPath('userData'), getTools);
   queue = new Queue(store, new Media(getTools), iplayer, portal);
-  handler('snapshot', () => ({ ...store.snapshot(), connection: portal.current,
+  queue.afterPublish = (job, signal) => sendSubtitles(job, portal, getTools(), signal);
+  companion = new Companion(store, queue, iplayer, portal);
+  if (!process.env.STUDIO_TEST_DATA) {
+    app.setLoginItemSettings({ openAtLogin: true, args: ['--background'] });
+    tray = new Tray(path.join(__dirname, 'ui/studio.ico'));
+    tray.setToolTip('MabelTV Studio - ready for portal requests');
+    tray.setContextMenu(Menu.buildFromTemplate([
+      { label: 'Open MabelTV Studio', click: () => { window?.show(); window?.focus(); } },
+      { label: 'Open portal', click: () => shell.openExternal(endpoint(store.state.settings.remoteUrl)) },
+      { type: 'separator' },
+      { label: 'Quit Studio and pause work', click: () => { closing = true; companion.close().then(() => queue.shutdown()).finally(() => app.quit()); } },
+    ]));
+    tray.on('double-click', () => { window?.show(); window?.focus(); });
+    companion.start();
+  } else if (process.env.STUDIO_TEST_COMPANION === '1') companion.start();
+  handler('snapshot', () => ({ ...store.snapshot(), connection: portal.current, companion: companion.status,
     catalogue: portal.current ? portal.catalogue : store.state.catalogue || { channels: [], series: [] }, tools: getTools(), warning: store.warning, version: app.getVersion() }));
   handler('settings', settingsUpdate);
   handler('connect', mode => portal.connect(mode));
@@ -118,10 +135,12 @@ async function start() {
   window.setMenu(null);
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event, url) => { if (!url.startsWith('studio://app/')) event.preventDefault(); });
-  window.once('ready-to-show', () => window.show());
+  window.once('ready-to-show', () => { if (!process.argv.includes('--background')) window.show(); });
   window.on('close', event => {
     if (closing) return;
-    event.preventDefault(); closing = true;
+    event.preventDefault();
+    if (!process.env.STUDIO_TEST_DATA) { window.hide(); return; }
+    closing = true;
     searchController?.abort(); queue.shutdown().finally(() => app.quit());
   });
   queue.on('change', jobs => {
@@ -136,4 +155,4 @@ async function start() {
 }
 app.on('second-instance', () => { if (window) { if (window.isMinimized()) window.restore(); window.show(); window.focus(); } });
 if (single) app.whenReady().then(start).catch(error => { dialog.showErrorBox('MabelTV Studio could not start', error.message); app.quit(); });
-app.on('window-all-closed', () => app.quit());
+app.on('window-all-closed', () => { if (!tray) app.quit(); });

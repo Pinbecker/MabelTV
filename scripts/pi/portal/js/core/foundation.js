@@ -277,11 +277,12 @@ const $ = selector => document.querySelector(selector)
     function renderSetupChannels() {
       const root = $('#setupChannels')
       root.innerHTML = ''
+      if (!recoveringOwner) setupChannels.forEach((channel, index) => { channel.number = index + 1 })
       setupChannels.forEach((channel, index) => {
         const box = document.createElement('div')
         box.className = 'channel-setup'
         box.innerHTML = `<div class="channel-setup-fields" role="group" aria-label="Channel ${channel.number} ${escapeHtml(channel.name)}">
-          <label>Number<input type="number" min="1" max="999" data-setup-field="number" value="${channel.number}" required></label>
+          <label>Number<input type="text" value="${channel.number}" readonly></label>
           <label>Name<input maxlength="60" data-setup-field="name" value="${escapeHtml(channel.name)}" required></label>
           <label>Picture<select data-setup-field="aspect"><option value="crop">Fill screen</option><option value="fit">Whole picture</option><option value="stretch">Stretch</option></select></label>
           <label>Content<select data-setup-field="content_type"><option value="shows">Shows / episodes</option><option value="films">Films / long videos</option></select></label>

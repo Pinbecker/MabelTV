@@ -52,7 +52,7 @@ Launch **MabelTV Studio** from the desktop or Start menu. It opens directly as a
 
 - **Add media:** choose or drop videos, select Mabel TV and a channel, or My TV and its film/series destination, then prepare and send. You can also prepare locally and send later from Completed.
 - **BBC iPlayer:** search a programme name or paste an episode link/PID, review artwork and programme details, select episodes, and add them to the queue. The search catalogue mainly covers recent broadcasts; an episode link can find programmes outside it.
-- **Queue:** follow downloading, preparation, sending and publication. Pause, resume or retry individual items. Closing the app pauses active work; reopening preserves the queue and local files.
+- **Queue:** follow downloading, preparation, sending and publication. Pause, resume or retry individual items. Closing the installed window keeps Studio in the notification area; **Quit Studio and pause work** pauses it explicitly.
 - **My TV title check:** before sending a film, choose and confirm its title,
   year and poster. Edit the search or optional year to correct the match. For
   TV series, confirm the show once for the selected episodes; your chosen
@@ -74,3 +74,9 @@ For iPlayer items, a downloaded original is removed only after its separate prep
 Search results are checked against authenticated `GET /api/iplayer/library`. The Pi reads the BBC ID and show/episode tags from files currently in its libraries, using bounded MP4 atom reads that skip video data. Deleted files, staging files and recycle-bin contents never establish presence. A conservative show/series/episode match supports different BBC broadcast IDs and untagged legacy names. Unknown/offline presence is labelled explicitly. Studio rechecks on search, entering the view, returning focus, completed uploads and every 30 seconds while visible; **Check TV library** forces a fresh check. Completed queue history does not prevent downloading an episode again after it was removed.
 
 The previous PowerShell preparation tool remains available in `tools/media-prep` as a fallback. Studio 1.1 adds a current-file inventory endpoint to the Pi; its backend release uses the guarded atomic installer with `--preserve-player`. See `VALIDATION.md` for the tested release boundary.
+
+## Portal companion (1.3)
+
+`lib/companion.cjs` owns heartbeat, claims and iPlayer requests. `lib/companion-jobs.cjs` adapts remote jobs to the existing durable queue; `lib/cloud-files.cjs` hydrates a single selected original through iCloud for Windows and confirms cloud writes through the Pi. `lib/subtitles.cjs` transfers text subtitles to confirmed publications and removes only app-owned optimised copies when requested.
+
+Installed Studio starts at Windows sign-in and continues in the notification area after closing its window. Quit explicitly pauses work. Test profiles never register login items; companion tests opt in explicitly. Remote jobs retain the original, reuse saved upload IDs, and report stage progress through the same desktop queue. Imported originals and iCloud originals are never removed by the retention choice. iCloud root defaults to the user's iCloudDrive folder; processing stays outside the sync folder until a cloud copy is explicitly requested.

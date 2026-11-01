@@ -10,3 +10,6 @@ tests/browser/test-results/
 /test-results/
 /tests/browser/test-results-*/
 /work/
+
+# Local API credentials
+/.env.local

@@ -4,6 +4,39 @@ from tests.python.library_test_support import *
 
 
 class LibraryHttpTests(unittest.TestCase):
+    def test_studio_routes_require_owner_auth_and_reject_cross_origin_mutation(self) -> None:
+        self.request("/api/setup", {"setup_code": "135790", "pin": "8642", "channels": mabeltv_library.DEFAULT_CHANNELS})
+        self.cookies.clear()
+        self.assertEqual(self.request("/api/studio/status")[0], 401)
+        self.assertEqual(self.request("/api/studio/worker", {"id": "a" * 32})[0], 401)
+        self.request("/api/login", {"pin": "8642"})
+        self.assertEqual(self.request("/api/studio/status")[0], 200)
+        self.assertEqual(self.request("/api/studio/iplayer", {"query": "Ludwig"}, origin="https://untrusted.invalid")[0], 403)
+        self.assertEqual(self.request("/api/studio/cloud/operation", {"action": "delete", "items": [{"path": "Media/Film.mp4"}]})[0], 400)
+
+    def test_my_library_metadata_requires_login_and_current_local_membership(self) -> None:
+        self.request("/api/setup", {
+            "setup_code": "135790", "owner_name": "Taylor", "child_name": "Taylor",
+            "pin": "8642", "channels": mabeltv_library.DEFAULT_CHANNELS,
+        })
+        self.cookies.clear()
+        path = "/api/my-tv/library/metadata?media_type=movie&tmdb_id=11"
+        self.assertEqual(self.request(path)[0], 401)
+        self.request("/api/login", {"pin": "8642"})
+        self.assertEqual(self.request(path)[0], 400)
+        film = self.fixture.library.my_tv_root / "Local.mp4"
+        film.write_bytes(b"film")
+        self.fixture.library.write_my_tv_media_states({film.name: {
+            "library_id": "a" * 32, "metadata": {"tmdb_id": 11}}})
+        self.fixture.library.tmdb_request = mock.Mock(return_value={
+            "genres": [{"name": "Fantasy"}],
+            "belongs_to_collection": {"id": 99, "name": "Local collection"}})
+        status, result = self.request(path)
+        self.assertEqual(status, 200)
+        self.assertEqual(result["collection"]["tmdb_id"], 99)
+        film.unlink()
+        self.assertEqual(self.request(path)[0], 400)
+
     def setUp(self) -> None:
         self.fixture = LibraryFixture()
         self.server = mabeltv_library.LibraryServer(("127.0.0.1", 0),

@@ -127,7 +127,9 @@
 
     function openRequestedView(event = null) {
       const requested = location.hash.replace(/^#/, '')
-      const settingsRoute = requested.match(/^settings\/(mabel|my-tv|media|security|help)$/)
+      const studioRoute = requested.match(/^my-tv-studio(?:\/(cloud|iplayer|activity))?$/)
+      if (studioRoute) { studioState.tab = studioRoute[1] || studioState.tab; openView('my-tv-studio'); return }
+      const settingsRoute = requested.match(/^settings\/(mabel|channels|my-tv|media|security|help)$/)
       if (settingsRoute) {
         openView(`settings-${settingsRoute[1]}`)
         return
@@ -167,7 +169,7 @@
       }
       const view = requested === 'home' ? 'overview'
         : requested === 'my-tv' ? 'my-tv-home' : requested
-      const allowed = new Set(['overview', 'live', 'lg-tv', 'channels', 'watch', 'mabel-queue', 'my-tv-home', 'my-tv-viewing', 'my-tv-explore', 'my-tv-ratings', 'my-tv-filmography', 'usb', 'activity', 'system', 'appearance', 'insights'])
+      const allowed = new Set(['overview', 'live', 'lg-tv', 'channels', 'watch', 'mabel-queue', 'my-tv-home', 'my-tv-library', 'my-tv-viewing', 'my-tv-explore', 'my-tv-ratings', 'my-tv-filmography', 'usb', 'activity', 'system', 'appearance', 'insights'])
       if (allowed.has(view)) {
         if (view === 'channels') {
           watchDomain = 'mabel'
@@ -349,9 +351,8 @@
     }
     $('#setupBack').onclick = () => { setupStep--; setupMarker() }
     $('#addSetupChannel').onclick = () => {
-      const used = new Set(setupChannels.map(channel => Number(channel.number)))
-      let number = 1
-      while (used.has(number)) number++
+      const number = nextChannelNumber(setupChannels)
+      if (number === null) { $('#setupError').textContent = 'All channel numbers are in use.'; return }
       setupChannels.push({ number, name: 'New channel', folder: `channel-${number}`, aspect: 'crop', content_type: 'shows' })
       renderSetupChannels()
     }
@@ -452,7 +453,7 @@
       rememberPortalView()
       const channelFromWatch = name === 'channels' && selectedManageChannel !== null && channelWorkspaceReturnToWatch
       const consolidatedWatchView = name === 'channels'
-      const myTvNavigation = name === 'my-tv-home' || name === 'my-tv-viewing'
+      const myTvNavigation = name === 'my-tv-home' || name === 'my-tv-studio' || name === 'my-tv-library' || name === 'my-tv-viewing'
         || name === 'my-tv-explore' || name === 'my-tv-ratings'
         || name === 'my-tv-filmography'
         || (name === 'insights' && myInsightsMode === 'my_tv')
@@ -464,7 +465,7 @@
           : (name === 'usb' || name === 'activity' || name === 'appearance' || name.startsWith('settings-')) ? 'system' : name
       if (name !== 'mabel-queue') rememberPrimarySectionLocation(name, activeNavigation)
       $$('.view').forEach(view => view.classList.toggle('active', view.id === `view-${name}`))
-      document.body.classList.toggle('watch-mode', name === 'watch' || name === 'mabel-queue' || name === 'mabel-playlist' || name === 'my-tv-home' || name === 'my-tv-viewing'
+      document.body.classList.toggle('watch-mode', name === 'watch' || name === 'mabel-queue' || name === 'mabel-playlist' || name === 'my-tv-home' || name === 'my-tv-studio' || name === 'my-tv-library' || name === 'my-tv-viewing'
         || name === 'my-tv-explore' || name === 'my-tv-ratings' || name === 'my-tv-filmography'
         || channelFromWatch || consolidatedWatchView)
       document.body.classList.toggle('tv-remote-mode', name === 'live' || name === 'lg-tv')
@@ -512,6 +513,8 @@
       if (name === 'watch' && remoteKind === 'downloads') renderDownloads().catch(showError)
       if (name === 'insights') loadMyInsights().catch(() => {})
       if (name === 'my-tv-home') loadMyTvHome().catch(showError)
+      if (name === 'my-tv-library') loadMyLibraryMetadata().catch(showError)
+      if (name === 'my-tv-studio') void loadStudio().catch(studioFailure)
       if (name === 'activity') loadActivity().catch(error => notice(error.message, true))
       if (name === 'my-tv-viewing') loadMyTvViewing().catch(showError)
       if (name === 'my-tv-explore') {

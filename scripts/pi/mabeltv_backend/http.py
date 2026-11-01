@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
+from .studio_http import studio_get, studio_post
 from .constants import CHUNK_LIMIT, SESSION_SECONDS
 from .lg import RemoteTvActiveError
 from .portal import INDEX, PORTAL_APP_SCRIPT, SERVICE_ROOT, WATCH_PAGE
@@ -233,7 +234,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def body(self) -> dict[str, Any]:
         length = int(self.headers.get("Content-Length", "0"));
-        if length > 64 * 1024: raise ValueError("Request is too large")
+        limit = 2 * 1024 * 1024 if self.path in {"/api/studio/worker", "/api/studio/subtitle", "/api/studio/cloud/operation"} else 64 * 1024
+        if length < 0 or length > limit: raise ValueError("Request is too large")
         value = json.loads(self.rfile.read(length) or b"{}")
         if not isinstance(value, dict): raise ValueError("Request must be a JSON object")
         return value
@@ -623,6 +625,8 @@ class Handler(BaseHTTPRequestHandler):
             "/api/my-tv/home/released-this-week": lambda:
                 self.server.library.my_tv_released_this_week(
                     str(query.get("limit", ["16"])[0])),
+            "/api/my-tv/library/metadata": lambda: self.server.library.my_tv_library_metadata(
+                str(query.get("media_type", [""])[0]), str(query.get("tmdb_id", [""])[0])),
             "/api/my-tv/title": lambda: self.server.library.my_tv_title_detail(
                 str(query.get("media_type", [""])[0]), str(query.get("tmdb_id", [""])[0])),
             "/api/my-tv/person": lambda: self.server.library.my_tv_person_detail(
@@ -669,6 +673,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.json(200, self.server.library.public_setup()); return
             if not self.require():
                 return
+            if studio_get(self, parsed.path, query): return
             if self.handle_family_media_get(parsed.path, query): return
             if parsed.path == "/watch/player":
                 self.serve_named_html(WATCH_PAGE, inline_script=True)
@@ -758,6 +763,7 @@ class Handler(BaseHTTPRequestHandler):
             if not self.require():
                 return
             payload = self.body()
+            if studio_post(self, self.path, payload): return
             if self.dispatch_json_post(payload):
                 return
             if self.path == "/api/external/release":

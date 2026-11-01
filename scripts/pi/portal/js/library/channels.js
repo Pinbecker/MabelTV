@@ -1,5 +1,98 @@
 'use strict'
 
+let channelOrderSaving = false
+
+function nextChannelNumber(channels = library?.channels || []) {
+  return channels.length < 20 ? channels.length + 1 : null
+}
+
+function prepareNewChannelNumber() {
+  const number = nextChannelNumber()
+  $('#newChannelNumber').value = number ?? ''
+  $('#addChannelForm button[type="submit"]').disabled = number === null
+  $('#newChannelError').classList.add('hidden')
+  $('#newChannelError').textContent = ''
+  $('#newChannelNumberHint').textContent = number === null
+    ? 'Your TV already has the maximum of 20 channels.'
+    : 'Added at the end. Change its position with the arrows in channel settings.'
+}
+
+async function moveChannelInOrder(folder, direction) {
+  if (channelOrderSaving || managementBusy) return
+  const channels = [...(library?.channels || [])].sort((a, b) => Number(a.number) - Number(b.number))
+  const index = channels.findIndex(channel => channel.folder === folder)
+  const target = index + direction
+  if (index < 0 || target < 0 || target >= channels.length) return
+  const channel = channels[index]
+  const selectedFolder = channels.find(value => value.number === selectedManageChannel)?.folder
+  ;[channels[index], channels[target]] = [channels[target], channels[index]]
+  const feedback = $('#channelNumbersFeedback')
+  channelOrderSaving = true
+  managementBusy = true
+  feedback.textContent = 'Saving channel order…'
+  renderChannelNumbers()
+  let saved = false
+  try {
+    const result = await api('/api/manage', { method: 'POST', body: JSON.stringify({
+      action: 'reorder-channels', channels: channels.map(({ folder, number }) => ({ folder, number })),
+    }) })
+    saved = true
+    channels.forEach((value, index) => { value.number = index + 1 })
+    if (selectedFolder) selectedManageChannel = channels.find(value => value.folder === selectedFolder).number
+    await reloadLibraryWithoutLosingPlace()
+    feedback.textContent = result.refreshed === false
+      ? 'Order saved, but the TV could not refresh yet.'
+      : `${channel.name} is now channel ${target + 1}.`
+  } catch (error) {
+    feedback.textContent = saved ? 'The order was saved. Reconnect to refresh this list.'
+      : error.message || 'The order could not be saved. Try again.'
+  } finally {
+    channelOrderSaving = false
+    managementBusy = false
+    renderChannelNumbers()
+  }
+}
+
+function renderChannelNumbers() {
+  const channels = [...(library?.channels || [])].sort((a, b) => Number(a.number) - Number(b.number))
+  const root = $('#channelNumbersList')
+  $('#channelNumbersCount').textContent = `${channels.length} channel${channels.length === 1 ? '' : 's'}`
+  const existing = new Map([...root.querySelectorAll('.channel-number-row')].map(row => [row.dataset.channelFolder, row]))
+  for (const [index, channel] of channels.entries()) {
+    let row = existing.get(channel.folder)
+    if (!row) {
+      row = document.createElement('div')
+      row.className = 'channel-number-row'
+      row.dataset.channelFolder = channel.folder
+      row.innerHTML = `<span class="channel-number-badge"></span><div class="channel-number-copy"><strong></strong><small></small></div><div class="channel-order-arrows"></div>`
+      for (const [direction, icon] of [[-1, 'chevron-up'], [1, 'chevron-down']]) {
+        const button = document.createElement('button')
+        button.type = 'button'
+        button.className = 'secondary'
+        button.dataset.direction = direction
+        button.innerHTML = `<svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-${icon}"/></svg>`
+        button.onclick = () => void moveChannelInOrder(row.dataset.channelFolder, direction)
+        row.querySelector('.channel-order-arrows').append(button)
+      }
+    }
+    row.querySelector('.channel-number-badge').textContent = channel.number
+    row.querySelector('strong').textContent = channel.name
+    row.querySelector('small').textContent = `${contentLabel(channel.content_type)}${channel.enabled === false ? ' · Hidden from TV' : ''}`
+    for (const button of row.querySelectorAll('button')) {
+      const direction = Number(button.dataset.direction)
+      button.setAttribute('aria-label', `Move ${channel.name} ${direction < 0 ? 'up' : 'down'}`)
+      button.disabled = channelOrderSaving || (direction < 0 ? index === 0 : index === channels.length - 1)
+    }
+    if (root.children[index] !== row) root.insertBefore(row, root.children[index] || null)
+    existing.delete(channel.folder)
+  }
+  for (const row of existing.values()) row.remove()
+  if (!channels.length && !root.querySelector('.channel-numbers-empty')) {
+    root.append(portalEmptyState({ className: 'channel-numbers-empty', title: 'No channels yet',
+      message: 'Create a channel to start your library.' }))
+  } else if (channels.length) root.querySelector('.channel-numbers-empty')?.remove()
+}
+
     function aspectLabel(value) {
       return { crop: 'Fill screen', fit: 'Whole picture', stretch: 'Stretch' }[value] || 'Fill screen'
     }

@@ -105,6 +105,9 @@
       if (name === 'overview') {
         renderStatus()
         renderHomeLibrary()
+      } else if (name === 'my-tv-library') {
+        renderMyLibrary()
+        void loadMyLibraryMetadata().catch(() => {})
       } else if (name === 'watch') {
         renderRemoteViewing({ force })
       } else if (name === 'live') {
@@ -118,7 +121,10 @@
       } else if (name === 'system' || name.startsWith('settings-')) {
         renderStatus()
         renderSettingsHub()
+        if (name === 'settings-channels') renderChannelNumbers()
         if (name === 'settings-mabel') {
+          const channelCount = (library.channels || []).length
+          $('#settingsChannelNumbersSummary').textContent = `${channelCount} channel${channelCount === 1 ? '' : 's'} · See and change channel numbers`
           renderTvSettings()
           renderParentOverlayStyle()
           renderTvGuideSetting()

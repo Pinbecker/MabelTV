@@ -20,7 +20,7 @@ test('desktop navigation, rich search, settings and keyboard layout work in the 
     await page.screenshot({ path: 'test-results/add-media.png' });
     await page.getByRole('button', { name: 'BBC iPlayer', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'A world of BBC favourites.' })).toBeVisible();
-    await page.locator('#search-input').fill('Ludwig');
+    await page.locator('#search-input').fill('Teletubbies');
     await page.locator('#search-button').click();
     await expect(page.locator('#search-summary')).toContainText(/episodes? found/, { timeout: 60000 });
     const cards = page.locator('.episode-card');

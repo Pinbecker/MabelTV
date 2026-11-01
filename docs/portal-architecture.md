@@ -462,3 +462,62 @@ unchanged.
 Local My TV films, episodes and whole shows expose Send to Mabel TV through `playback/send-to-mabel.js`. Its destination sheet chooses an existing matching channel or creates one. Playback retains the original My TV player; there is no player-choice/framed My TV route. Completed device stories close into their existing catalogue animation.
 
 The story destination sheet includes Listen on TV - audio only. It sends a strictly boolean `audio_only` option through the existing authenticated family start route; normal TV/device choices are unchanged. This is a black HDMI picture with sound, not a hardware-panel power setting.
+
+## My Library
+
+`my-tv-viewing/local-library.js` owns `#my-tv-library`, its local search,
+type/genre/sort filters, and metadata-driven film collection stacks. The My TV
+homepage has equal My Viewing and My Library shortcuts. The library uses the My Viewing subpage layout: top Back control, My Library
+heading, Titles/Collections tabs, shared search and compact filters. The My TV
+domain Watch/Insights/Downloads tabs remain on the parent homepage. Title and
+season playback use the existing sheets.
+Membership comes only from `library.my_tv_library` and series with local episodes.
+Unmatched and non-browser-ready files remain visible; family channels and
+streaming-only viewing records never contribute membership. Folder management
+is retained under Folders on this page, independently of film collections.
+
+The authenticated `/api/my-tv/library/metadata` endpoint validates the title
+against the current local catalogue, then returns cached TMDB genres and the
+film collection identity without provider requests or viewing mutations. Two
+client workers enrich progressively; daily disposable metadata snapshots retain
+warm grouping. Failed enrichment never removes local titles and offers Retry.
+Grouping and overlays contain only filtered local members, with at least two
+different film identities per stack. Collection overlays return to the same
+filtered library; nested title Back restores the collection.
+
+`experience-my-library.css` owns the layout and translucent collection sheet.
+`added_at` is an optional local-media state extension, set on first discovery
+for new files. Existing files use their filesystem modification dates when no
+recorded arrival exists. Series recency follows its newest local episode.
+No schema or Downloads storage change is required.
+
+## Channel numbering settings
+
+`library/channels.js` owns the `#settings/channels` directory reached from
+Mabel TV Settings. All channels, including hidden and empty ones, have up/down
+arrows. Each tap sends the complete folder/number snapshot in its desired order
+to authenticated `reorder-channels`; the backend rejects stale snapshots and
+renumbers consecutively from one in a single SQLite transaction. Controls lock
+while saving. Failed writes retain the confirmed order; successful writes with
+failed refreshes are reported as saved. Opening the page does not change state.
+
+`repositories/channel_order.py` reuses the transactional single-channel mapping
+so stable identities, metadata, favourites, programme visibility, history,
+queue entries and runtime references travel with each channel. Upload admission
+and affected-channel checks share the management lock. No schema change occurs.
+
+The shared creation sheet displays a read-only next number (channel count plus
+one). New portal requests omit the number; the backend closes old numbering gaps
+and appends the new channel atomically. Explicit-number API clients remain
+supported. Channel detail numbers are read-only too. Failed creation preserves
+the form. Initial setup assigns consecutive numbers rather than editable fields.
+
+## Portal Studio
+
+`studio/library.js` owns the My TV Studio route, independent iCloud catalogue and BBC iPlayer programme/episode browser. `studio/queue.js` owns shared destination, metadata matching, activity and private connection sheets. `experience-studio.css` uses shared theme tokens with compact segmented tabs, quiet headings, custom select controls and content-sized dialogs matching the refined portal. Destructive confirmation keeps the named selection, one full-width action and a separate cancel control. My TV Home and My Library link to Studio; primary navigation, Back and offline handling remain shared.
+
+The laptop's durable worker reports independent stage progress without refreshing the library or losing form focus. iCloud refresh keeps the previous catalogue on failure. Search requests wait on the Pi while the laptop is offline. Cloud sign-in runs only through the owner-authenticated HTTPS portal and never browser storage. A private Unix socket carries rclone's configuration protocol.
+
+`studio/cloud-library.js` owns four-column My Viewing poster cards and grouped cloud series. `studio/metadata.js` owns background exact matching and explicit rich metadata correction before publishing. `studio/cloud-delete.js` owns only the named deletion confirmation reached from the destination sheet. The library exposes one Films/TV/Kids filter, no folder browser or file-format labels. Activity keeps keyed rows with a Studio-specific version marker, compact status/actions and collapsed diagnostics; the portal system-version marker is reserved for actual version labels.
+
+Studio keeps catalogue matching quiet and exposes corrections per title. The library toolbar contains the category selector and Select; refresh sits beside the connection status. Selection mode replaces personal artwork status with an empty circle on each card and a filled tick for chosen titles. Activity lists pending work and actionable failures/metadata warnings; successful completed and cancelled records remain durable but leave the visible list.

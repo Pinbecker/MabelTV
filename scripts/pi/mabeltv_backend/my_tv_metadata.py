@@ -31,6 +31,31 @@ from .constants import (
 
 
 class MyTvMetadataMixin:
+    def my_tv_library_metadata(self, media_type: str, tmdb_id: Any) -> dict[str, Any]:
+        """Enrich an existing local title without provider or viewing-state work.
+
+        The local catalogue remains the membership authority. This small,
+        cached request supplies genres and a film's franchise identity only;
+        it never expands the library with other parts of that franchise.
+        """
+        key = self.my_tv_title_key(media_type, tmdb_id)
+        if key not in self.my_tv_local_title_index():
+            raise ValueError("That title is not in My Library")
+        value = self.my_tv_cached_tmdb_request(
+            f"{media_type}/{int(tmdb_id)}", {"language": "en-GB"})
+        if not isinstance(value, dict):
+            raise ValueError("Library metadata is unavailable")
+        collection = value.get("belongs_to_collection") if media_type == "movie" else None
+        if isinstance(collection, dict) and int(collection.get("id", 0) or 0) > 0:
+            collection = {"tmdb_id": int(collection["id"]),
+                          "name": str(collection.get("name") or "Film collection")}
+        else:
+            collection = None
+        return {"key": key, "collection": collection,
+                "year": str(value.get("release_date") or value.get("first_air_date") or "")[:4],
+                "genres": [str(item["name"]) for item in value.get("genres", [])
+                           if isinstance(item, dict) and item.get("name")]}
+
     @staticmethod
     def netflix_content_id(destination: Any) -> str:
         """Turn an official Watchmode Netflix URL into LG's proven launch value."""

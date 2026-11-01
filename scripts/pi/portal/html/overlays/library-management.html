@@ -104,7 +104,7 @@
         <p class="section-kicker">Build the schedule</p>
         <h2>Create a channel</h2>
         <p>
-          Give it a number and name. You can add videos as soon as it is
+          Give it a name. Its channel number is assigned automatically. You can add videos as soon as it is
           created.
         </p>
       </div>
@@ -119,9 +119,11 @@
     <div class="library-sheet-body channel-settings-body">
       <form id="addChannelForm" class="channel-settings-form">
         <div class="channel-settings-identity">
-          <label class="channel-identity-field">Number<input id="newChannelNumber" type="number" min="1" max="999" inputmode="numeric" required></label>
+          <label class="channel-identity-field">Number<input aria-describedby="newChannelNumberHint" id="newChannelNumber" type="text" readonly></label>
           <label class="channel-identity-field">Channel name<input id="newChannelName" maxlength="60" placeholder="Nature" required></label>
         </div>
+        <p id="newChannelNumberHint" class="settings-hint"></p>
+        <p id="newChannelError" class="channel-number-error hidden" role="alert"></p>
         <fieldset class="channel-settings-choice">
           <legend>What plays here?</legend>
           <div class="channel-settings-options">
@@ -250,7 +252,7 @@
     <div class="library-sheet-body channel-settings-body">
       <form id="editChannelForm" class="channel-settings-form">
         <div class="channel-settings-identity">
-          <label class="channel-identity-field">Number<input id="editChannelNumber" type="number" min="1" max="999" inputmode="numeric" required></label>
+          <label class="channel-identity-field">Number<input id="editChannelNumber" type="text" readonly></label>
           <label class="channel-identity-field">Channel name<input id="editChannelName" maxlength="60" required></label>
         </div>
         <fieldset class="channel-settings-choice">

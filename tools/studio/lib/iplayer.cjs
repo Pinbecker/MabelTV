@@ -15,7 +15,9 @@ function pidFrom(value) {
   } catch { return ''; }
 }
 function normalise(data) {
-  const title = String(data.name || data.title || 'BBC programme');
+  const suppliedTitle = String(data.name || data.title || 'BBC programme');
+  const title = suppliedTitle.replace(/:\s*(?:Series|Season)\s+\d+\b.*$/i, '').trim();
+  const suppliedSeries = data.seriesnum ?? suppliedTitle.match(/:\s*(?:Series|Season)\s+(\d+)/i)?.[1];
   const episode = String(data.episode || '').replace(/^-$|^0\.$/, '');
   let artwork = String(data.thumbnail || '');
   if (!/^https:\/\/(?:ichef\.bbci\.co\.uk|ichef\.bbc\.co\.uk)\//.test(artwork)) artwork = '';
@@ -23,7 +25,8 @@ function normalise(data) {
   return { pid: String(data.pid), title, episode, channel: String(data.channel || 'BBC iPlayer'),
     synopsis: String(data.desc || data.descmedium || data.descshort || ''), artwork,
     duration: Number(data.duration) || 0, broadcast: String(data.firstbcastdate || data.available || ''),
-    series: Number(data.seriesnum) || null, episodeNumber: Number(data.episodenum) || null };
+    series: suppliedSeries !== '' && suppliedSeries != null && Number.isFinite(Number(suppliedSeries)) ? Number(suppliedSeries) : null,
+    episodeNumber: Number(data.episodenum) || null };
 }
 function parseSearch(output) {
   const seen = new Set();
@@ -46,8 +49,15 @@ class IPlayer {
   async command(args, options = {}) {
     const tools = this.getTools();
     if (!tools.perl || !tools.getPlayer) throw new Error('get_iplayer is unavailable. Check the media tools in Settings.');
-    return run(tools.perl, [tools.getPlayer, '--profile-dir', this.profile, '--nocopyright',
-      '--encoding-console-out=UTF-8', '--expiry=21600', ...args], { ...options, env: tools.playerEnv });
+    try {
+      return await run(tools.perl, [tools.getPlayer, '--profile-dir', this.profile, '--nocopyright',
+        '--encoding-console-out=UTF-8', '--expiry=21600', ...args], { ...options, env: tools.playerEnv });
+    } catch (error) {
+      if (/No media streams|No versions of this programme|programme may not be available/i.test(error.message)) {
+        throw new Error('BBC is not providing a downloadable stream for this episode right now. Check it in BBC iPlayer, or try another episode.', { cause: error });
+      }
+      throw error;
+    }
   }
   async search(query, refresh = false, signal) {
     query = String(query || '').trim();
@@ -74,7 +84,11 @@ class IPlayer {
         `--file-prefix=${pid}`, '--output', directory, '--overwrite'], { signal, timeout: 180000 });
     }
     if (!fs.existsSync(file)) throw new Error('BBC metadata is unavailable for this programme.');
-    return normalise(JSON.parse(fs.readFileSync(file, 'utf8')));
+    const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (Object.hasOwn(data, 'modes') && !String(data.modes).trim()) {
+      throw new Error('BBC is not providing a downloadable stream for this episode right now. Check it in BBC iPlayer, or try another episode.');
+    }
+    return normalise(data);
   }
   async download(item, directory, target, signal, progress) {
     if (!pidFrom(item.pid)) throw new Error('Invalid BBC programme ID.');
@@ -82,7 +96,7 @@ class IPlayer {
     const expected = path.join(directory, `${item.pid}.mp4`);
     if (!fs.existsSync(expected)) {
       await this.command([`--pid=${item.pid}`, '--force', '--no-subdir', `--file-prefix=${item.pid}`,
-        '--output', directory, '--metadata=json', '--thumb', '--log-progress',
+        '--output', directory, '--metadata=json', '--thumb', '--subtitles', '--log-progress',
         `--tv-quality=${target === 'mabel' ? 'hd,sd,web,mobile' : 'fhd,hd,sd,web,mobile'}`], {
         signal, timeout: 4 * 3600000, onLine: line => {
           const state = downloadProgress(line);

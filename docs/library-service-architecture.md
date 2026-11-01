@@ -226,3 +226,62 @@ A catalogue revision change is a `library` revision; no global Insights rewrite
 is introduced and listening/memories do not record stale child-video sessions.
 
 `my_tv_transfer.py` owns independent local My TV copies into typed Mabel TV channels. It queues recoverable copy journals through the existing upload worker and publishes ordinary channel files with separately copied descriptive metadata/artwork. My TV originals, identities and personal state never move or share mutable progress. Streaming-only titles cannot be copied.
+
+## Studio companion and iCloud
+
+- `studio.py` validates portal jobs, stable channel destinations and iPlayer requests.
+- `studio_cloud.py` owns the independent iCloud catalogue cache and refresh thread.
+- `studio_cloud_auth.py` runs the private rclone question protocol over a protected Unix socket; credentials never enter command arguments or logs. Pending credentials are proved before atomic promotion.
+- `studio_http.py` dispatches only after the shared origin/session gates.
+- `repositories/studio.py` owns independent `studio.job.*`, `studio.request.*` and `studio.worker.*` checked fields in the existing SQLite application field store. Ordinary settings reads exclude this reserved namespace, and aggregate settings writes preserve it. Native writers merge only their explicit fields. Jobs and claims update inside BEGIN IMMEDIATE; request results and finished history are bounded. Each record has its own updated timestamp; Studio uses no-store independent polling, not whole-library refreshes. No schema/native compatibility change is required.
+
+The Pi owns queued intent, claims, progress and cloud catalogue availability. Windows owns operational transfer journals, hydration, conversion and upload. A lease prevents two workers from publishing the same item. Paused/cancelled jobs reject late progress. A worker restart reuses the existing transfer and final publication result. Processing preserves cloud originals; a separate confirmed action can delete selected films/episodes and their subtitles. iCloud credentials remain under the private secrets directory; catalogue snapshots alone are disposable. Series publication supports season 0 for specials and preserves source seasons in a mixed-season batch.
+
+`studio_cloud_metadata.py` projects only films and TV, groups series, categorises Films/TV/Kids, and matches cloud titles through the shared TMDB transport. Durable identity/fingerprint links are reserved `studio.cloudmetadata.*` fields; descriptive title/year/poster/overview data remains in canonical `external_titles`. Automatic matching requires one exact result and cannot overwrite an explicit correction. No Pi library membership or player command is created by matching.
+
+`studio_cloud_manager.py` owns only confirmed deletion of selected videos and matching subtitle sidecars. It accepts catalogue identities and frozen versions, derives paths on the server, rechecks each cloud file before fixed rclone `deletefile` commands, and never admits folders, arbitrary paths or rename/move/mkdir. Legacy queued folder operations fail without mutation. Separate Pi copies are untouched.
+
+`studio_organiser.py` quietly resolves one film/series per catalogue-loop step.
+`studio_organiser_model.py` uses bounded, non-stored Responses requests to
+GPT-6 Luna for search hints and selection among actual TMDB candidates. It
+cannot generate metadata facts, filesystem destinations or commands. Descriptive
+metadata remains in `external_titles` and the shared TMDB cache, including the
+normal credits/director path. Owner corrections take priority. The private API
+key lives outside source and SQLite at `secrets/openai/api-key` beside the
+database, readable only by the service account. Provider errors are redacted.
+
+`studio_filing_policy.py` owns deterministic destinations: standalone films are
+loose in Films or Kids/Films; real franchises need at least two distinct owned
+films, deduplicated by canonical movie identity. Per-title collection links
+and targeted membership stamps recheck only that collection when its films
+are added or removed, using cached matches without new AI calls. The owner's Disney,
+Julia Donaldson and MCU groups get folders. MCU remains one folder with its
+original numbered film order, overriding individual Marvel subcollections.
+DreamWorks, Christmas and per-film folders are not created. Series keep their
+existing show, season and episode names.
+
+`studio_cloud_filing.py` applies that policy to verified metadata. Existing
+filenames are retained; stable-ID suffixes resolve collisions only. Existing
+same-stem subtitle sidecars move with their videos, but Studio never uploads
+new subtitles to iCloud. Checked file versions
+carry canonical title links through cloud-side renames, including series-group
+identity changes. Reserved `studio.filing.*` SQLite journals checkpoint each
+move and recover an unacknowledged move by checking both endpoints. Existing
+targets are never overwritten, unmatched episodes are not renumbered, and no
+duplicate/original is automatically deleted. The rclone Move capability is
+required and a one-byte transfer ceiling blocks fallback video hydration on the
+Pi. Active or paused Studio sources and pending deletions are skipped. This
+lightweight cloud/API coordination does not run video conversion or invoke the
+native player. Activity shows only current work or an actionable failure.
+
+Organiser memos are durable per-input state, separate from the 200-item completed
+job history. A memo includes the relevant film/episode versions and canonical
+match identity; unrelated catalogue, settings and viewing changes are excluded.
+Successful and uncertain decisions have no scan/restart expiry. Filing-policy
+changes reapply destinations using the saved match without rerunning AI;
+unchanged uncertain decisions stay cached. A new episode
+invalidates only its series filing memo and reuses existing series metadata.
+Prompt/model-versioned AI response memos protect retries after interruption;
+they contain search hints or catalogue IDs, never canonical descriptions or
+credentials. The bounded request cache and monthly aggregate request/token
+receipts use independent reserved fields through `repositories/studio.py`.

@@ -1,0 +1,157 @@
+MabelTV torrent-source readiness — 1 November 2026
+
+Research and prerequisite preparation are complete. The proposed workflow is
+feasible. No portal feature or application source was changed or deployed.
+
+Prepared and checked
+
+An isolated, official qBittorrent 5.3.0 Windows x64 portable installation is at:
+  C:\Users\danco\AppData\Local\Programs\MabelTV qBittorrent\qbittorrent.exe
+
+The official installer is retained at:
+  out/torrent-readiness-20261101/packages/
+    qBittorrent_5.3.0_Machine_X64_nullsoft_en-US.exe
+
+Its SHA256 matches both the official download page and the WinGet manifest:
+  aff5b3bdc00d6e5773d6099ba30f9696dd3dfd1669ab0f64ce5c4e7168486436
+Its detached PGP signature was verified against the signing-key fingerprint
+published by qBittorrent:
+  D8F3DA77AAC6741053599C136E4A2D025B7CC9A2
+Portable extraction is a supported qBittorrent installation method. It avoided
+changing the existing BitTorrent Web installation or taking over magnet links.
+
+The qBittorrent repository's Pirate Bay search plugin 3.10 is installed in the
+isolated prerequisite profile. Its bytes match the reviewed source at commit:
+  d2eb83da56230c76f47b449ae1d99e209cc8e265
+Python 3.14.3 is already available and successfully ran this search through
+qBittorrent. Studio 1.3.4 and its bundled FFmpeg/FFprobe are already installed.
+No Jackett, Prowlarr, extra Python API package or Pi torrent client is needed
+for the source that was tested today. Studio can use its existing Node HTTP
+capabilities for the local qBittorrent API.
+
+The prerequisite profile is separate from the normal Studio transfer journal:
+  %LOCALAPPDATA%\MabelTV Studio\torrent-prerequisites
+Its Web API was tested at http://127.0.0.1:48085 with authentication required,
+including for local clients. Its saved test password is protected by Windows
+DPAPI, outside Git. The test profile binds peer traffic to loopback and disables
+peer discovery; it is deliberately an isolated verification profile, rather
+than an activated Internet downloader. Production activation/configuration
+belongs to the feature build. qBittorrent is closed, its API port is closed,
+and its queue contains no torrents. No automatic startup was registered.
+
+Observed test results
+
+- The current Pirate Bay plugin searches apibay.org and produces magnet links.
+  The API returned 18 results for the open-licensed film Big Buck Bunny from
+  this Windows connection. The search also worked through qBittorrent itself.
+  Ten results could be ranked by seed count, with valid magnet links and sizes.
+- The Pirate Bay web page itself failed to load in the direct connection test.
+  The working search API route does not require that web page to be opened.
+- qBittorrent reports v5.3.0 and Web API 2.16.2. Successful login returned an
+  empty HTTP 204 response, whereas older documentation describes HTTP 200 and
+  'Ok.'. Future integration must handle the tested response and verify the
+  authenticated session, rather than insisting on the old response text.
+- A magnet for a generated test item was accepted and its expected hash found.
+- A generated 1-second MP4 was hash-checked as complete. Per-torrent ratio
+  limit 0, seeding-time limit 0 and share-limit action Stop produced stoppedUP,
+  progress 1 and upload speed 0. It stayed complete and stopped after restarting
+  qBittorrent.
+- Removing the torrent with deleteFiles=false removed its queue entry and
+  preserved the MP4 byte for byte. Its SHA256 remained:
+  47cfa4f52fe66c02022c6912c0dbaf9cccffb15f5922a34a4e0698839d6b128f
+- The application was then shut down with an empty torrent queue. No search
+  result was downloaded, no Pi publication was queued, and the TV was untouched.
+
+Evidence and the repeatable preparation checks are under:
+  out/torrent-readiness-20261101/
+The structured result is prerequisite-smoke.json. Research sources, hashes,
+installer verification and the network probe are retained alongside it.
+
+Proposed build, when authorised
+
+Use a Find anything / Find downloads tab beside BBC iPlayer. The phone uses
+the existing authenticated portal. The Pi keeps durable requests and progress;
+Windows Studio performs source searches, downloads and media preparation.
+Studio talks directly to the authenticated local qBittorrent API. A browser
+does not open magnet links, and qBittorrent's API is not published on the domain.
+
+Search only when requested. Fetch a bounded candidate set, restrict it to film
+and television releases, deduplicate by torrent identity, rank it, then show the
+best ten. The API's first ten returned entries are not necessarily the best
+ten. Include useful size, seed and release information so a choice is informed.
+Search and torrent control do not need OpenAI calls. Reuse the selected title's
+existing metadata match throughout the download and Studio handoff.
+
+Resolve magnet metadata before committing to a large download. For a season
+pack, inspect the file list and let the owner choose episodes; do not turn a
+whole series into unrelated cards or download every included file blindly.
+qBittorrent supports stopping at MetadataReceived. Disk admission should allow
+for both the selected original and the prepared output. Downloads should use
+isolated job directories inside the existing Studio working area, outside
+iCloud, with explicit destinations when creating each torrent.
+
+Persist the portal job ID, torrent hashes, selected files and destination.
+Scope every qBittorrent action to that job; never stop/remove unrelated torrents
+or use a global 'all' action. Reconcile existing hashes after a restart so a
+recovered claim does not add the same torrent again. Use existing Studio claims,
+heartbeats and durable local transfer journals rather than introducing a
+second independent portal job system.
+
+Progress stages should be Getting details, Downloading, Preparing, Sending or
+Saving, and Complete. Report size/progress, speed, ETA where available, and
+actionable pause/retry states. Retain the existing Studio connection line as
+the place for hardware/connection wording. Searches and downloads wait safely
+when Studio is unavailable and resume after Windows sign-in through the
+existing Studio startup mechanism. Live new search results require that worker
+to be connected; cached results must be labelled accordingly.
+
+On completion, first persist a receipt of the completed files and torrent
+identity. Use built-in per-torrent limits to stop completed seeding even if
+Studio is temporarily unavailable. Verify the stopped state, remove only that
+torrent with deleteFiles=false, then hand its retained video files into the
+existing Studio file queue. Recover a crash between those steps from the saved
+receipt, without downloading again or creating duplicate publications.
+
+Reuse Where should it go? for My TV, a Mabel TV channel, Download, or iCloud,
+and retain Keep optimised copy. Keep original downloads through the handoff;
+separate retained conversions follow the existing choice. Match films/series,
+prepare on Windows and publish through the existing resumable Pi APIs. Subtitle
+sidecars or extracted text subtitles can accompany Pi publications; iCloud
+saves stay video-only. Existing iCloud layout rules still apply: standalone
+films loose, franchises with at least two distinct owned films in folders,
+and the owner's numbered MCU, Disney and Julia Donaldson groupings preserved.
+
+Limits and remaining integration checks
+
+BitTorrent exchanges pieces during a download. Stopping completed seeding is
+supported; this must not be described as a guarantee of zero upload while
+downloading. Source uptime, indexing and available peers determine whether a
+particular result can finish. Seed counts are a selection aid, not a guarantee.
+Provider changes must cause a useful retry/availability state, not silent
+failure. Community search plugins need versioned review when updated.
+
+The completed-file test establishes control, restart behaviour and data
+retention. A real peer download through the new portal-to-Studio workflow
+remains an implementation acceptance test. That phase also needs interrupted
+downloads, worker restarts, multifile season selection, disk-full handling,
+malformed results, media validation and a real installed-iOS-PWA review.
+Non-media payloads must not be executed. Fail unsupported or encrypted archives
+with a useful state rather than passing them blindly to the media pipeline.
+
+Primary sources
+
+Official package, checksums and signing key:
+  https://www.qbittorrent.org/download
+Supported portable installation:
+  https://github.com/qbittorrent/qBittorrent/wiki/How-to-use-portable-mode
+qBittorrent Web API reference:
+  https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)
+Current API and share-limit implementation (also downloaded for inspection):
+  https://github.com/qbittorrent/qBittorrent/blob/master/src/webui/api/torrentscontroller.cpp
+  https://github.com/qbittorrent/qBittorrent/blob/master/src/base/bittorrent/sharelimits.h
+Metadata-only stop condition:
+  https://github.com/qbittorrent/qBittorrent/blob/master/src/base/bittorrent/torrent.h
+Reviewed source plugin:
+  https://github.com/qbittorrent/search-plugins/blob/d2eb83da56230c76f47b449ae1d99e209cc8e265/nova3/engines/piratebay.py
+BitTorrent protocol behaviour:
+  https://www.bittorrent.org/beps/bep_0003.html

@@ -13,8 +13,9 @@ function safeName(value) {
 function destinationValid(value) {
   if (!value || !['mabel', 'film', 'series', 'local'].includes(value.kind)) throw new Error('Choose where this media should go.');
   if (value.kind === 'mabel' && (!Number.isInteger(value.channel) || value.channel < 1)) throw new Error('Choose a Mabel TV channel.');
-  if (value.kind === 'series' && (!/^[a-f0-9]{32}$/.test(value.series) || !Number.isInteger(value.season) || value.season < 1 || value.season > 99)) throw new Error('Choose a My TV show and series number.');
+  if (value.kind === 'series' && (!/^[a-f0-9]{32}$/.test(value.series) || !Number.isInteger(value.season) || value.season < 0 || value.season > 99)) throw new Error('Choose a My TV show and series number.');
   return { kind: value.kind, channel: value.channel, series: value.series, season: value.season,
+    ...(value.channelFolder ? { channelFolder: String(value.channelFolder).slice(0, 180) } : {}),
     label: String(value.label || 'Prepared locally').slice(0, 180), profile: value.profile === 'mabel' ? 'mabel' : 'mytv', downloadOnly: value.kind === 'local' && value.downloadOnly === true };
 }
 class Queue extends EventEmitter {
@@ -24,6 +25,7 @@ class Queue extends EventEmitter {
   }
   snapshot() { return this.store.snapshot().jobs; }
   async cleanupOriginal(job) {
+    if (job.preserveOriginal) return;
     if (job.originalRemoved) {
       if (job.cleanupWarning) this.store.update(job.id, { cleanupWarning: '' });
       return;
@@ -57,6 +59,7 @@ class Queue extends EventEmitter {
       const id = crypto.randomBytes(16).toString('hex');
       const title = input.kind === 'iplayer' ? input.metadata.title : path.basename(input.path, path.extname(input.path));
       const job = { id, source: input.kind, sourcePath: input.path || '', sourceFingerprint: fingerprint,
+        remoteId: input.remoteId || '', preserveOriginal: input.preserveOriginal === true,
         metadata: input.metadata || { title, episode: '', artwork: '' }, match: matches[index], destination, status: 'queued',
         percent: 0, message: 'Waiting to start', createdAt: Date.now(), updatedAt: Date.now(),
         directory: path.join(this.store.state.settings.workspace, safeName([title, input.metadata?.episode].filter(Boolean).join(' - ')).slice(0, 100) + ' - ' + id.slice(0, 8)), uploadId: '', preparedPath: '' };
@@ -89,7 +92,7 @@ class Queue extends EventEmitter {
     };
     // Publication is durable independently of optional enrichment. A metadata
     // retry must work even after the owner has cleaned up their laptop files.
-    if (job.result?.complete) { await this.finishMetadata(job, signal, change); return; }
+    if (job.result?.complete) { await this.finishSubtitles(job, signal, change); await this.finishMetadata(job, signal, change); return; }
     const profile = job.destination.kind === 'mabel' || job.destination.profile === 'mabel' ? 'mabel' : 'mytv';
     if (!job.sourcePath) {
       change({ status: 'downloading', percent: 0, message: 'Downloading from BBC iPlayer' }, true);
@@ -122,7 +125,14 @@ class Queue extends EventEmitter {
     change({ status: 'uploading', percent: 0, message: 'Connecting to MabelTV' }, true);
     const result = await this.portal.upload(job, this.store.state.sourceId, signal, change);
     change({ result }, true);
+    await this.finishSubtitles(job, signal, change);
     await this.finishMetadata(job, signal, change);
+  }
+  async finishSubtitles(job, signal, change) {
+    if (this.afterPublish && !job.subtitlesSent) {
+      try { await this.afterPublish(job, signal); change({ subtitlesSent: true, subtitleWarning: '' }, true); }
+      catch (error) { if (signal.aborted) throw error; change({ subtitleWarning: error.message }, true); }
+    }
   }
   async finishMetadata(job, signal, change) {
     let metadataWarning = '';

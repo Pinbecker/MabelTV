@@ -81,13 +81,14 @@ class Portal {
     return { checkedAt: inventory.checkedAt, device: inventory.device,
       items: items.map(item => ({ pid: item.pid, locations: locationsFor(item, inventory.items) })) };
   }
-  async createSeries(name, season) {
+  async createSeries(name, season, identity = '') {
     name = String(name).trim();
     if (!name || name.length > 120) throw new Error('Enter a show name.');
-    if (!Number.isInteger(season) || season < 1 || season > 99) throw new Error('Choose a series number from 1 to 99.');
-    await this.api('/api/manage', { method: 'POST', body: { action: 'create-my-tv-series', name } });
+    if (!Number.isInteger(season) || season < 0 || season > 99) throw new Error('Choose a season from 0 to 99.');
+    if (identity && !/^[a-f0-9]{32}$/.test(identity)) throw new Error('Choose an existing show.');
+    if (!identity) await this.api('/api/manage', { method: 'POST', body: { action: 'create-my-tv-series', name } });
     await this.connect(this.current.mode);
-    const series = this.catalogue.series.find(series => series.title.toLowerCase() === name.toLowerCase());
+    const series = this.catalogue.series.find(series => identity ? series.id === identity : series.title.toLowerCase() === name.toLowerCase());
     if (!series) throw new Error('The show was created but its destination could not be found. Refresh the connection.');
     if (!series.seasons.includes(season)) await this.api('/api/manage', { method: 'POST', body: { action: 'create-my-tv-season', series: series.id, season } });
     await this.connect(this.current.mode);
@@ -133,6 +134,12 @@ class Portal {
     change({ uploadFingerprint: { size: stats.size, mtime: stats.mtimeMs } }, true);
     const routes = { mabel: '/api/uploads', film: '/api/my-tv/uploads', series: '/api/my-tv/series/uploads' };
     const destination = job.destination;
+    if (destination.kind === 'mabel' && destination.channelFolder) {
+      const library = await request('/api/library', { signal });
+      const channel = library.channels.find(value => value.folder === destination.channelFolder);
+      if (!channel) throw new Error('The selected channel no longer exists.');
+      destination.channel = channel.number;
+    }
     const body = { file_name: job.publishName || path.basename(file), size: stats.size, source_id: sourceId };
     if (destination.kind === 'mabel') body.channel = destination.channel;
     if (destination.kind === 'series') { body.series = destination.series; body.season = destination.season; }

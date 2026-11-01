@@ -39,3 +39,12 @@ test('pending jobs cannot be redirected to another Pi', async () => {
   const portal = new Portal({}); portal.current = { device: 'other-pi' };
   await assert.rejects(portal.upload({ device: 'original-pi' }, '', new AbortController().signal, () => {}), /different MabelTV device/);
 });
+test('an existing series destination keeps its ID when its title changes', async () => {
+  const identity = 'a'.repeat(32), calls = [], portal = new Portal({});
+  portal.current = { mode: 'local' };
+  portal.catalogue.series = [{ id: identity, title: 'Renamed show', seasons: [0, 1] }];
+  portal.connect = async () => {};
+  portal.api = async (...args) => calls.push(args);
+  assert.deepEqual(await portal.createSeries('Previous name', 0, identity), { id: identity, season: 0 });
+  assert.deepEqual(calls, []);
+});

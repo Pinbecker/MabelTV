@@ -30,8 +30,10 @@ function run(executable, args, { signal, timeout = 120000, onLine = () => {}, en
       if (pending) onLine(pending);
       if (failure) reject(failure);
       else if (code !== 0) {
-        const meaningful = output.split(/[\r\n]+/).filter(line => /ERROR|WARNING|Error|Invalid|failed/i.test(line));
-        reject(new Error(meaningful.slice(-3).join('\n') || `The media tool stopped (code ${code}).`));
+        const lines = output.split(/[\r\n]+/);
+        const errors = lines.filter(line => /\bERROR\b|No media streams|No versions of this programme|Invalid|failed/i.test(line));
+        const meaningful = errors.length ? errors : lines.filter(line => /WARNING/i.test(line));
+        reject(new Error(meaningful.slice(-8).join('\n').slice(-3000) || `The media tool stopped (code ${code}).`));
       } else resolve(output);
     });
   });

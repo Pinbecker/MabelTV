@@ -375,7 +375,7 @@
         : transfer === 'waiting' ? (isUsb ? 'Waiting in transfer queue' : 'Waiting in upload queue')
           : transfer === 'source-missing' ? (job.error || 'USB drive disconnected — reconnect it, then resume')
             : transfer === 'paused' ? 'Paused' : !job.source_available && job.status === 'uploading'
-              ? 'Waiting for source file — select the same file again on the laptop to resume'
+              ? 'Waiting for source file — select the same file again to resume'
               : (uploadStates[job.status] || job.status)
       const source = isUsb ? `${job.source_label || 'USB drive'} → ` : ''
       const detail = isOptimising ? activityDuration(job.eta_seconds)

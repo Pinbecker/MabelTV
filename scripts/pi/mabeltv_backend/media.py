@@ -413,6 +413,7 @@ class MediaCatalogueMixin:
                     state = {}
                 if not state.get("library_id"):
                     state["library_id"] = uuid.uuid4().hex
+                    state["added_at"] = time.time()
                     states[relative] = state
                     changed = True
                 values.append({
@@ -420,6 +421,7 @@ class MediaCatalogueMixin:
                     "path": relative,
                     "folder": "" if item.parent == self.my_tv_root else item.parent.name,
                     "library_id": state["library_id"],
+                    "added_at": float(state.get("added_at") or item.stat().st_mtime),
                     "display_name": self.display_name(item.name),
                     "size": item.stat().st_size,
                     "playback_state": state.get("state", "original"),
@@ -511,8 +513,8 @@ class MediaCatalogueMixin:
             number = int(season)
         except (TypeError, ValueError) as error:
             raise ValueError("Choose a valid series number") from error
-        if number < 1 or number > 99:
-            raise ValueError("Choose a series number from 1 to 99")
+        if number < 0 or number > 99:
+            raise ValueError("Choose a season from 0 to 99")
         destination = self.my_tv_series_path(series_id, f"Season {number}")
         if destination.exists():
             raise ValueError(f"Series {number} already exists")
@@ -581,6 +583,7 @@ class MediaCatalogueMixin:
                         episode_state = {}
                     if not episode_state.get("library_id"):
                         episode_state["library_id"] = uuid.uuid4().hex
+                        episode_state["added_at"] = time.time()
                         states["episodes"][key] = episode_state
                         changed = True
                     parsed = self.my_tv_episode_identity(item, ordinal)
@@ -592,6 +595,7 @@ class MediaCatalogueMixin:
                         float(episode_state.get("remote_duration", 0) or 0))
                     episodes.append({
                         "path": relative, "name": item.name,
+                        "added_at": float(episode_state.get("added_at") or item.stat().st_mtime),
                         "display_name": metadata.get("title") or parsed["title"],
                         "season": int(metadata.get("season_number") or parsed["season"]),
                         "episode": int(metadata.get("episode_number") or parsed["episode"]),
@@ -612,7 +616,7 @@ class MediaCatalogueMixin:
                 folder_seasons = {
                     int(match.group(1))
                     for item in root.iterdir() if item.is_dir()
-                    for match in [re.fullmatch(r"(?i)Season\s+0*([1-9][0-9]?)", item.name)]
+                    for match in [re.fullmatch(r"(?i)Season\s+(0|0*[1-9][0-9]?)", item.name)]
                     if match
                 }
                 seasons = sorted(folder_seasons | {
@@ -628,6 +632,8 @@ class MediaCatalogueMixin:
                     "episodes": episodes,
                     "seasons": seasons,
                     "episode_count": len(episodes),
+                    "added_at": max((item["added_at"] for item in episodes),
+                                    default=float(series_state.get("created", 0) or 0)),
                     "season_count": len(seasons),
                     "watched_count": sum(value["watched"] for value in episodes),
                 })
@@ -734,7 +740,7 @@ class MediaCatalogueMixin:
             season_number = int(season)
         except (TypeError, ValueError):
             raise ValueError("Choose a valid series") from None
-        if season_number < 1:
+        if season_number < 0:
             raise ValueError("Choose a valid series")
         series = next((value for value in self.my_tv_series_library()
                        if value.get("id") == series_id), None)
@@ -911,7 +917,7 @@ class MediaCatalogueMixin:
         if metadata.get("kind") == "my-tv-series":
             series_id = str(metadata.get("series_id", ""))
             season = int(metadata.get("season", 0) or 0)
-            if season < 1 or season > 99:
+            if season < 0 or season > 99:
                 raise ValueError("That series upload has no valid series number")
             return self.my_tv_series_path(
                 series_id, f"Season {season}/{metadata.get('file_name', '')}")

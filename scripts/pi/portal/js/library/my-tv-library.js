@@ -121,7 +121,7 @@ function renderMyTvLibraryControls() {
       $('#myTvFolderSelectionActions').classList.toggle('hidden', !realFolderSelected)
       $('#myTvFolderSelectionActions [data-selected-collection]').textContent = folderName
       $('#myTvDeleteFolderHint').textContent = selectedCount
-        ? 'Move its films first' : 'This collection is empty'
+        ? 'Move its films first' : 'This folder is empty'
     }
 
     function openMyTvFilmSheet(film, returnTo = null) {
@@ -375,7 +375,7 @@ function renderMyTvLibraryControls() {
     }
     $('#myTvDeleteFolder').onclick = async () => {
       if (myTvFolderFilter === '*' || myTvFolderFilter === '') return
-      if (!confirm(`Delete the empty “${myTvFolderFilter}” collection?`)) return
+      if (!confirm(`Delete the empty “${myTvFolderFilter}” folder?`)) return
       const folder = myTvFolderFilter; myTvFolderFilter = '*'
       await manage('delete-my-tv-folder', { folder })
     }

@@ -64,6 +64,12 @@ from mabeltv_backend.portal import (
     load_portal_document,
     load_watch_page,
 )
+from mabeltv_backend.studio_cloud_metadata import StudioCloudMetadataMixin
+from mabeltv_backend.studio_cloud_manager import StudioCloudManagerMixin
+from mabeltv_backend.studio import StudioMixin
+from mabeltv_backend.studio_cloud import StudioCloudMixin
+from mabeltv_backend.studio_organiser import StudioOrganiserMixin
+from mabeltv_backend.studio_cloud_filing import StudioCloudFilingMixin
 from mabeltv_backend.providers import ProviderMetadataMixin
 from mabeltv_backend.provider_transport import ProviderTransportMixin
 from mabeltv_backend.remote import RemotePlaybackMixin
@@ -101,7 +107,7 @@ __all__ = [
     "urlopen",
 ]
 
-class Library(MyTvTransferMixin, PlaylistsMixin, FamilyMediaMixin, FamilyUploadsMixin,
+class Library(StudioMixin, StudioCloudMixin, StudioOrganiserMixin, StudioCloudFilingMixin, StudioCloudManagerMixin, StudioCloudMetadataMixin, MyTvTransferMixin, PlaylistsMixin, FamilyMediaMixin, FamilyUploadsMixin,
               IPlayerLibraryMixin, MabelQueueMixin, ViewingMixin, UploadConversionMixin, TranscodingMixin, AuthenticationMixin,
               ArtworkProxyMixin,
               MediaCatalogueMixin, ManagementMixin, RemotePlaybackMixin, LgControlMixin,
@@ -236,6 +242,7 @@ class Library(MyTvTransferMixin, PlaylistsMixin, FamilyMediaMixin, FamilyUploads
             daemon=True,
         )
         self.usb_transfer_worker.start()
+        self.init_studio_cloud()
         self.live_stream = LiveStream(self)
         if os.name == "posix" and self.usb_requires_mount:
             self.usb_power_worker = threading.Thread(
@@ -249,6 +256,7 @@ class Library(MyTvTransferMixin, PlaylistsMixin, FamilyMediaMixin, FamilyUploads
         """Drain and stop the single media worker (primarily for clean tests)."""
         if self.conversion_closed.is_set():
             return
+        self.close_studio_cloud()
         with self.lg_tv_lock:
             self.close_lg_tv_pointer()
         self.usb_transfer_closed.set()

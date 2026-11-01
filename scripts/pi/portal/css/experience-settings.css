@@ -436,3 +436,23 @@ body.portal-v2 .viewing-film-stat-grid { display: grid; grid-template-columns: r
 body.portal-v2 .viewing-film-stat-grid > div { display: grid; gap: 4px; border: 1px solid var(--experience-line); border-radius: 10px; background: var(--experience-raised); padding: 11px; }
 body.portal-v2 .viewing-film-stat-grid span { color: var(--experience-dim); font-size: 9px; }
 body.portal-v2 .viewing-film-stat-grid strong { color: var(--experience-orange); font-size: 19px; }
+
+body.portal-v2 .channel-numbers-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 0 8px; }
+body.portal-v2 .channel-numbers-heading > span { white-space: nowrap; color: var(--experience-dim); font-size: 12px; }
+body.portal-v2 .settings-page .channel-numbers-heading > button { width: auto; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; }
+body.portal-v2 .channel-numbers-heading .icon { width: 16px; height: 16px; }
+body.portal-v2 .channel-numbers-list { display: grid; gap: 0; margin-top: 12px; }
+body.portal-v2 .channel-number-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 7px 10px; padding: 13px 0; border-bottom: 1px solid var(--experience-line); }
+body.portal-v2 .channel-number-copy { display: grid; gap: 4px; min-width: 0; }
+body.portal-v2 .channel-number-copy strong { font-size: 13px; line-height: 1.35; overflow-wrap: anywhere; }
+body.portal-v2 .channel-number-copy small { color: var(--experience-dim); font-size: 10px; line-height: 1.4; }
+body.portal-v2 .channel-number-badge { color: var(--experience-orange); font-size: 17px; font-weight: 800; text-align: center; }
+body.portal-v2 .channel-order-arrows { display: flex; gap: 5px; }
+body.portal-v2 .settings-page .channel-order-arrows button { display: grid; place-items: center; width: 42px; min-height: 44px; padding: 8px; }
+body.portal-v2 .channel-order-arrows .icon { width: 18px; height: 18px; }
+body.portal-v2 .channel-number-error { grid-column: 1 / -1; margin: 0; color: var(--danger); font-size: 11px; line-height: 1.5; }
+body.portal-v2 .channel-number-error:empty { display: none; }
+body.portal-v2 .channel-numbers-feedback { margin: 8px 0; color: var(--experience-dim); font-size: 12px; line-height: 1.5; }
+body.portal-v2 .channel-numbers-feedback:empty { display: none; }
+
+body.portal-v2 #newChannelNumberHint { margin: 0 0 12px; color: var(--experience-dim); font-size: 11px; line-height: 1.5; }

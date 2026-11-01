@@ -19,6 +19,8 @@ from pathlib import Path
 from typing import Any, Iterator
 
 
+from .repositories.studio import StudioRepositoryMixin
+from .repositories.channel_order import ChannelOrderRepositoryMixin
 from .repositories.viewing import ViewingRepositoryMixin
 from .repositories.mabel_queue import MabelQueueRepositoryMixin
 from .repositories.playlists import PlaylistsRepositoryMixin
@@ -122,7 +124,7 @@ def normalise_my_tv_viewing(value: Any) -> tuple[dict[str, Any], dict[str, int]]
     return root, {key: count for key, count in normalisations.items() if count}
 
 
-class StateDatabase(PlaylistsRepositoryMixin, FamilyMediaRepositoryMixin,
+class StateDatabase(StudioRepositoryMixin, ChannelOrderRepositoryMixin, PlaylistsRepositoryMixin, FamilyMediaRepositoryMixin,
                     MabelQueueRepositoryMixin, ViewingRepositoryMixin):
     """Own MabelTV's authoritative relational SQLite state."""
 
@@ -506,93 +508,97 @@ class StateDatabase(PlaylistsRepositoryMixin, FamilyMediaRepositoryMixin,
         fields = self._channel_fields(value)
         try:
             with self.transaction() as db:
-                existing = db.execute(
-                    "SELECT id,number FROM channels WHERE number=?", (int(original_number),)
-                ).fetchone()
-                if existing is None:
-                    raise ValueError("Channel not found")
-                result = db.execute(
-                    "UPDATE channels SET number=?,name=?,folder=?,aspect=?,content_type=? "
-                    "WHERE number=?", (*fields, int(original_number)))
-                if result.rowcount != 1:
-                    raise ValueError("Channel not found")
-                new_number = fields[0]
-                channel_id = int(existing["id"])
-                viewing_changed = db.execute(
-                    "UPDATE viewing_items SET current_key=CASE "
-                    "WHEN kind='channel' THEN ? ELSE ? || lower(file_name) END,"
-                    "title_snapshot=CASE WHEN kind='channel' THEN ? ELSE title_snapshot END,"
-                    "source_snapshot=?,updated_at=? WHERE channel_id=?",
-                    (f"channel:{new_number}", f"channel:{new_number}:", fields[1],
-                     fields[1], time.time(), channel_id),
-                ).rowcount > 0
-                if viewing_changed:
-                    db.execute(
-                        "UPDATE viewing_sessions SET channel_number=?,item_key=(SELECT "
-                        "current_key FROM viewing_items WHERE viewing_items.id="
-                        "viewing_sessions.viewing_item_id) WHERE viewing_item_id IN "
-                        "(SELECT id FROM viewing_items WHERE channel_id=?)",
-                        (new_number, channel_id),
-                    )
-                if fields[4] != "shows":
-                    db.execute("DELETE FROM channel_favourites WHERE channel_number=?",
-                               (new_number,))
-                settings_changed = False
-                if new_number != int(original_number):
-                    old_prefix = f"{int(original_number)}/"
-                    new_prefix = f"{new_number}/"
-                    db.execute(
-                        "DELETE FROM channel_metadata WHERE entity_kind='channel' "
-                        "AND entity_key=?", (str(new_number),))
-                    db.execute(
-                        "UPDATE channel_metadata SET entity_key=? "
-                        "WHERE entity_kind='channel' AND entity_key=?",
-                        (str(new_number), str(int(original_number))))
-                    db.execute(
-                        "DELETE FROM channel_metadata WHERE entity_kind='programme' "
-                        "AND entity_key LIKE ?", (new_prefix + "%",))
-                    db.execute(
-                        "UPDATE channel_metadata SET entity_key=? || substr(entity_key,?) "
-                        "WHERE entity_kind='programme' AND entity_key LIKE ?",
-                        (new_prefix, len(old_prefix) + 1, old_prefix + "%"))
-                    db.execute(
-                        "DELETE FROM programme_favourites WHERE media_key LIKE ?",
-                        (new_prefix + "%",))
-                    db.execute(
-                        "UPDATE programme_favourites SET media_key=? || substr(media_key,?) "
-                        "WHERE media_key LIKE ?",
-                        (new_prefix, len(old_prefix) + 1, old_prefix + "%"))
-                    row = db.execute(
-                        "SELECT value_json FROM application_settings WHERE key='library'"
-                    ).fetchone()
-                    library = _load(row[0], {}) if row is not None else {}
-                    if isinstance(library, dict):
-                        disabled_channels = set(library.get("disabled_channels", []))
-                        if int(original_number) in disabled_channels:
-                            disabled_channels.discard(int(original_number))
-                            disabled_channels.add(new_number)
-                            library["disabled_channels"] = sorted(disabled_channels)
-                            settings_changed = True
-                        disabled = library.get("disabled_programmes", {})
-                        if isinstance(disabled, dict) and str(int(original_number)) in disabled:
-                            moved = disabled.pop(str(int(original_number)))
-                            if str(new_number) in disabled and isinstance(moved, list):
-                                moved = sorted(set(moved) | set(disabled[str(new_number)]))
-                            disabled[str(new_number)] = moved
-                            settings_changed = True
-                        if settings_changed:
-                            db.execute(
-                                "INSERT INTO application_settings(key,value_json,updated_at) "
-                                "VALUES('library',?,?) ON CONFLICT(key) DO UPDATE SET "
-                                "value_json=excluded.value_json,updated_at=excluded.updated_at",
-                                (_dump(library), time.time()))
-                self._bump_revisions(db, "channels")
-                if viewing_changed:
-                    self._bump_revisions(db, "viewing")
-                if settings_changed:
-                    self._bump_revisions(db, "settings")
+                self._update_channel(db, original_number, fields)
         except sqlite3.IntegrityError as error:
             raise ValueError("That channel number or folder is already in use") from error
+
+    def _update_channel(self, db: sqlite3.Connection, original_number: int,
+                        fields: tuple[int, str, str, str, str]) -> None:
+        existing = db.execute(
+            "SELECT id,number FROM channels WHERE number=?", (int(original_number),)
+        ).fetchone()
+        if existing is None:
+            raise ValueError("Channel not found")
+        result = db.execute(
+            "UPDATE channels SET number=?,name=?,folder=?,aspect=?,content_type=? "
+            "WHERE number=?", (*fields, int(original_number)))
+        if result.rowcount != 1:
+            raise ValueError("Channel not found")
+        new_number = fields[0]
+        channel_id = int(existing["id"])
+        viewing_changed = db.execute(
+            "UPDATE viewing_items SET current_key=CASE "
+            "WHEN kind='channel' THEN ? ELSE ? || lower(file_name) END,"
+            "title_snapshot=CASE WHEN kind='channel' THEN ? ELSE title_snapshot END,"
+            "source_snapshot=?,updated_at=? WHERE channel_id=?",
+            (f"channel:{new_number}", f"channel:{new_number}:", fields[1],
+             fields[1], time.time(), channel_id),
+        ).rowcount > 0
+        if viewing_changed:
+            db.execute(
+                "UPDATE viewing_sessions SET channel_number=?,item_key=(SELECT "
+                "current_key FROM viewing_items WHERE viewing_items.id="
+                "viewing_sessions.viewing_item_id) WHERE viewing_item_id IN "
+                "(SELECT id FROM viewing_items WHERE channel_id=?)",
+                (new_number, channel_id),
+            )
+        if fields[4] != "shows":
+            db.execute("DELETE FROM channel_favourites WHERE channel_number=?",
+                       (new_number,))
+        settings_changed = False
+        if new_number != int(original_number):
+            old_prefix = f"{int(original_number)}/"
+            new_prefix = f"{new_number}/"
+            db.execute(
+                "DELETE FROM channel_metadata WHERE entity_kind='channel' "
+                "AND entity_key=?", (str(new_number),))
+            db.execute(
+                "UPDATE channel_metadata SET entity_key=? "
+                "WHERE entity_kind='channel' AND entity_key=?",
+                (str(new_number), str(int(original_number))))
+            db.execute(
+                "DELETE FROM channel_metadata WHERE entity_kind='programme' "
+                "AND entity_key LIKE ?", (new_prefix + "%",))
+            db.execute(
+                "UPDATE channel_metadata SET entity_key=? || substr(entity_key,?) "
+                "WHERE entity_kind='programme' AND entity_key LIKE ?",
+                (new_prefix, len(old_prefix) + 1, old_prefix + "%"))
+            db.execute(
+                "DELETE FROM programme_favourites WHERE media_key LIKE ?",
+                (new_prefix + "%",))
+            db.execute(
+                "UPDATE programme_favourites SET media_key=? || substr(media_key,?) "
+                "WHERE media_key LIKE ?",
+                (new_prefix, len(old_prefix) + 1, old_prefix + "%"))
+            row = db.execute(
+                "SELECT value_json FROM application_settings WHERE key='library'"
+            ).fetchone()
+            library = _load(row[0], {}) if row is not None else {}
+            if isinstance(library, dict):
+                disabled_channels = set(library.get("disabled_channels", []))
+                if int(original_number) in disabled_channels:
+                    disabled_channels.discard(int(original_number))
+                    disabled_channels.add(new_number)
+                    library["disabled_channels"] = sorted(disabled_channels)
+                    settings_changed = True
+                disabled = library.get("disabled_programmes", {})
+                if isinstance(disabled, dict) and str(int(original_number)) in disabled:
+                    moved = disabled.pop(str(int(original_number)))
+                    if str(new_number) in disabled and isinstance(moved, list):
+                        moved = sorted(set(moved) | set(disabled[str(new_number)]))
+                    disabled[str(new_number)] = moved
+                    settings_changed = True
+                if settings_changed:
+                    db.execute(
+                        "INSERT INTO application_settings(key,value_json,updated_at) "
+                        "VALUES('library',?,?) ON CONFLICT(key) DO UPDATE SET "
+                        "value_json=excluded.value_json,updated_at=excluded.updated_at",
+                        (_dump(library), time.time()))
+        self._bump_revisions(db, "channels")
+        if viewing_changed:
+            self._bump_revisions(db, "viewing")
+        if settings_changed:
+            self._bump_revisions(db, "settings")
 
     def delete_channel(self, number: int) -> None:
         """Delete one channel and all number-keyed preferences atomically."""
@@ -719,10 +725,18 @@ class StateDatabase(PlaylistsRepositoryMixin, FamilyMediaRepositoryMixin,
             f"SELECT key,value_json FROM {table} ORDER BY key")}
 
     def _read_settings(self, db: sqlite3.Connection) -> dict[str, Any]:
-        return self._read_kv(db, "application_settings")
+        return {row["key"]: _load(row["value_json"]) for row in db.execute(
+            "SELECT key,value_json FROM application_settings WHERE key NOT LIKE 'studio.%' ORDER BY key")}
 
     def _write_settings(self, db: sqlite3.Connection, value: Any) -> None:
-        self._replace_kv(db, "application_settings", validate_current_settings(value))
+        fields = validate_current_settings(value)
+        if any(str(key).startswith("studio.") for key in fields):
+            raise ValueError("Studio records belong to the Studio repository")
+        now = time.time()
+        db.executemany("INSERT INTO application_settings(key,value_json,updated_at) VALUES(?,?,?) "
+                       "ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json,updated_at=excluded.updated_at",
+                       [(str(key), _dump(saved), now) for key, saved in fields.items()])
+        self._delete_missing(db, "application_settings", "key", set(fields), "key NOT LIKE 'studio.%'")
 
     def _read_owner(self, db: sqlite3.Connection) -> dict[str, Any]:
         return self._read_kv(db, "owner_fields")

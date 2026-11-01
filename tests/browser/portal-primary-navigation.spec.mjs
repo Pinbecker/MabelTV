@@ -61,7 +61,7 @@ test('subpage back controls sit tightly beneath the app header', async ({ page }
 
   await page.locator('[data-view-button="my-tv-home"]').click()
   await page.locator('#myTvMyViewing').click()
-  await expectCompactBack('#myTvViewingBack', '.my-tv-viewing-title .eyebrow')
+  await expectCompactBack('#myTvViewingBack', '#view-my-tv-viewing .my-tv-viewing-title .eyebrow')
   await page.locator('#myTvViewingExplore').click()
   await expectCompactBack('#myTvExploreBack', '#view-my-tv-explore .my-tv-explore-title .eyebrow')
   await page.goBack()

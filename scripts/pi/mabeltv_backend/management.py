@@ -92,8 +92,24 @@ class ManagementMixin:
             return True
         return self.refresh_tv()
 
+    def _check_channel_order_uploads(self, order: Any) -> None:
+        if not isinstance(order, list) or any(
+                not isinstance(item, dict) or not isinstance(item.get("folder"), str)
+                or type(item.get("number")) is not int for item in order):
+            raise ValueError("Choose the complete channel order")
+        changed = {item["number"] for index, item in enumerate(order, 1)
+                   if item["number"] != index}
+        if any(job.get("channel") in changed and job.get("status") != "refresh-error"
+               for job in self.upload_jobs()):
+            raise ValueError("Finish or cancel the affected channels' uploads before changing the order")
+
     def _apply_management(self, payload: dict[str, Any]) -> None:
         action = payload.get("action")
+        if action == "reorder-channels":
+            order = payload.get("channels")
+            self._check_channel_order_uploads(order)
+            self.state_database.reorder_channels(order)
+            return
         if action == "optimisation-action":
             self.my_tv_optimisation_action(str(payload.get("file", "")),
                                            str(payload.get("operation", "")))
@@ -204,6 +220,23 @@ class ManagementMixin:
             self.merge_state_fields("settings", updates)
             return
         if action == "add-channel":
+            if "number" not in payload:
+                order = [{"folder": value["folder"], "number": value["number"]}
+                         for value in self.channels()]
+                if len(order) >= 20:
+                    raise ValueError("Create between 1 and 20 channels")
+                self._check_channel_order_uploads(order)
+                channel = self.normalise_channels([{
+                    "number": len(order) + 1, "name": payload.get("name"),
+                    "folder": payload.get("folder"),
+                    "aspect": payload.get("aspect", "crop"),
+                    "content_type": payload.get("content_type", "shows"),
+                }])[0]
+                if any(item["folder"] == channel["folder"] for item in order):
+                    raise ValueError("That channel folder is already in use")
+                self.state_database.reorder_channels(order, channel)
+                (self.media_root / str(channel["folder"])).mkdir(mode=0o750, exist_ok=True)
+                return
             requested = {
                 "number": payload.get("number"),
                 "name": payload.get("name"),
