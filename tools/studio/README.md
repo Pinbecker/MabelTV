@@ -22,11 +22,20 @@ The desktop app owns only local preferences, metadata caches and operational tra
 - `lib/workspace.cjs` journals the move to the media folder outside OneDrive.
 - `lib/media-cleanup.cjs` validates retained conversions before deleting only
   app-owned iPlayer originals.
+- `lib/cloud-archive.cjs` owns Original/Optimised/Both cloud receipts, safe
+  replacement of confirmed originals, and reuse of canonical archive metadata.
+- `lib/working-cleanup.cjs` removes verified temporary portal-job media only
+  from Studio-owned working directories after cloud and TV delivery.
 - `ui/` owns the desktop design and interaction, with no Node privileges.
 
 Cookies are stored by Electron's isolated persistent portal session. PINs are never saved. Remote sign-in opens a separate sandboxed window without the Studio bridge. IPC accepts only the bundled Studio page. Download subprocess arguments never pass through cmd.exe or PowerShell.
 
-Prepared files remain local after completion. Closing Studio pauses work; reopening restores the queue. Upload jobs stay bound to their selected device and use server-confirmed offsets. A successful byte transfer is not publication: Studio waits for the server's final completion state.
+Portal jobs archive the selected Original, Optimised or Both versions in
+iCloud and clean temporary media after confirmed delivery. Imported user files
+are never deleted. Closing Studio pauses work; reopening restores the queue.
+Upload jobs stay bound to their selected device and use server-confirmed
+offsets. A successful byte transfer is not publication: Studio waits for the
+server's final completion state.
 
 ## Phases and acceptance
 

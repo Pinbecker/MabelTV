@@ -17,7 +17,7 @@ class StudioCloudMetadataMixin:
 
     @staticmethod
     def _studio_title_guess(item):
-        name = item["name"] if item["kind"] == "series" else PurePosixPath(item["name"]).stem
+        name = item.get("title_hint") or (item["name"] if item["kind"] == "series" else PurePosixPath(item["name"]).stem)
         name = re.sub(r"[._]+", " ", name).strip()
         years = list(re.finditer(r"\b(?:19|20)\d{2}\b", name))
         year = years[-1].group() if years and years[-1].start() > 0 else ""
@@ -62,14 +62,49 @@ class StudioCloudMetadataMixin:
                 elif len({(value.get("media_type"), value.get("tmdb_id")) for value in aliases}) == 1:
                     record = aliases[0]
             metadata = record.get("metadata") or {}
+            if not metadata and record.get("archiveGroup"):
+                aliases = [value for value in records.values() if value.get("archiveGroup") == record["archiveGroup"] and value.get("metadata")]
+                if len({(value["media_type"], value["tmdb_id"]) for value in aliases}) == 1:
+                    metadata = aliases[0]["metadata"]
             media_type = metadata.get("media_type") or ("tv" if item["kind"] == "series" else "movie")
             parts = PurePosixPath(item["path"]).parts
             kids = any(part.casefold() in {"kids", "children", "childrens"} for part in parts[:-1])
-            item.update(title=metadata.get("title") or title, year=metadata.get("year") or year,
+            item.update(title=metadata.get("title") or record.get("titleHint") or title, year=metadata.get("year") or year,
                 media_type=media_type, category="kids" if kids else "tv" if media_type == "tv" else "films",
                 metadata=metadata or None, metadata_confirmed=record.get("confirmed", False), match_status=record.get("status", "pending"),
-                fingerprint=fingerprint, needs_metadata=not record or record.get("status") == "unavailable")
+                fingerprint=fingerprint, needs_metadata=not metadata and (not record or record.get("status") in {"pending", "unavailable"}),
+                variants=record.get("variants", []), archiveGroup=record.get("archiveGroup", ""), title_hint=record.get("titleHint", ""))
         return titles, groups
+
+    def studio_cloud_archive_metadata(self, item, payload):
+        variants = payload.get("variants", [])
+        if not isinstance(variants, list) or any(value not in {"original", "optimised"} for value in variants):
+            raise ValueError("Choose the archived copy type")
+        group = str(payload.get("archiveGroup", ""))
+        if group and not re.fullmatch(r"[a-f0-9]{32}", group):
+            raise ValueError("Choose a Studio archive identity")
+        record = {"id": item["id"], "fingerprint": self._studio_title_fingerprint(item),
+            "files": [[item["id"], item["bytes"], item["modified"], item["remoteId"]]], "status": "pending",
+            "variants": variants, "archiveGroup": group, "titleHint": str(payload.get("title", ""))[:200], "updated": time.time()}
+        publication_job = str(payload.get("publicationJob", ""))
+        asset = str(payload.get("archiveAsset", ""))
+        if asset:
+            if not re.fullmatch(r"[a-f0-9]{32}:(?:original|optimised|original\+optimised)", asset):
+                raise ValueError("Choose a Studio archive asset")
+            record["archiveAsset"] = asset
+        if publication_job:
+            if not re.fullmatch(r"[a-f0-9]{32}", publication_job):
+                raise ValueError("Choose a Studio publication")
+            record["publicationJob"] = publication_job
+        match = self.studio_match(payload.get("match"))
+        metadata = None
+        if match:
+            details = self.my_tv_cached_tmdb_request(f"{match['media_type']}/{match['tmdb_id']}", {"language": "en-GB"})
+            metadata = {**match, "title": str(details.get("title") or details.get("name") or match["title"]),
+                        "year": str(details.get("release_date") or details.get("first_air_date") or match.get("year") or "")[:4] or None,
+                        "poster_path": details.get("poster_path"), "overview": details.get("overview"), "runtime": details.get("runtime")}
+            record["status"] = "matched"
+        self.state_database.studio_save_cloud_metadata(record, metadata, automatic=True)
 
     def studio_cloud_title_for_file(self, identity):
         titles, groups = self.studio_cloud_media_titles()
@@ -85,21 +120,46 @@ class StudioCloudMetadataMixin:
             title = next((item for item in titles if item["id"] == identity), None)
             if not title or identity not in groups:
                 raise ValueError("That series is no longer in iCloud")
+            records = self.state_database.studio_cloud_metadata_records()
             episodes = [{**item, "series_title": title["title"], "titleId": identity,
-                         "metadata": title["metadata"], "category": title["category"]} for item in groups[identity]]
+                         "metadata": title["metadata"], "category": title["category"],
+                         "variants": records.get(item["id"], {}).get("variants", []),
+                         "archiveGroup": records.get(item["id"], {}).get("archiveGroup", "")} for item in groups[identity]]
+            episodes = self._studio_cloud_merge_versions(episodes, episodes=True)
             return {"items": episodes, "total": len(episodes), "series": identity}
         search = str(query.get("q", [""])[0]).strip().casefold()[:200]
         category = str(query.get("category", [""])[0])
         if category not in {"", "films", "tv", "kids"}:
             raise ValueError("Choose Films, TV or Kids")
-        visible = [item for item in titles if (not category or item["category"] == category)
+        display_titles = self._studio_cloud_merge_versions(titles)
+        visible = [item for item in display_titles if (not category or item["category"] == category)
                    and (not search or search in (item["title"] + " " + item["name"] + " " + item["year"]).casefold())]
         visible.sort(key=lambda item: item["title"].casefold())
         offset = max(0, int(query.get("offset", ["0"])[0]))
         return {**self.studio_cloud_status(), "items": visible[offset:offset + 100], "offset": offset,
-            "total": len(visible), "titleCount": len(titles), "unmatched": sum(not item["metadata"] for item in titles),
+            "total": len(visible), "titleCount": len(display_titles), "unmatched": sum(not item["metadata"] for item in display_titles),
             "needsMetadata": [item["id"] for item in titles if item["needs_metadata"]][:500],
             "unmatchedIds": [item["id"] for item in titles if not item["metadata"]][:500]}
+
+    @staticmethod
+    def _studio_cloud_merge_versions(items, episodes=False):
+        groups = {}
+        for item in items:
+            metadata = item.get("metadata") or {}
+            key = item["id"]
+            if episodes and item.get("episodeNumber") is not None:
+                key = (item.get("series"), item["episodeNumber"])
+            elif not episodes and item["kind"] != "series":
+                key = (item.get("category"), metadata.get("media_type"), metadata.get("tmdb_id")) if metadata.get("tmdb_id") else item.get("archiveGroup") or key
+            groups.setdefault(key, []).append(item)
+        result = []
+        for versions in groups.values():
+            versions.sort(key=lambda item: (bool(item.get("variants")) and "original" not in item["variants"], -item["bytes"], item["id"]))
+            item = dict(versions[0])
+            if len(versions) > 1:
+                item["versions"] = [dict(version) for version in versions]
+            result.append(item)
+        return result
 
     def studio_cloud_match(self, payload):
         item = self.studio_cloud_title_for_file(str(payload.get("id", "")))

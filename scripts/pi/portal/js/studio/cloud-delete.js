@@ -8,6 +8,7 @@ function studioConfirmCloudDelete() {
     const row = document.createElement('li')
     row.textContent = title.title || title.name
     if (title.kind === 'series') row.textContent += ` · ${studioDeleteContext.files.length} selected episodes`
+    else if (title.versions?.length > 1) row.textContent += ` · ${title.versions.length} versions`
     list.append(row)
   }
   $('#studioCloudDeleteError').classList.add('hidden')

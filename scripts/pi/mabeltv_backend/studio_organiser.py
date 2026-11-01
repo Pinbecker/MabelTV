@@ -89,8 +89,11 @@ class StudioOrganiserMixin:
             done = {item["id"]: item for item in self.state_database.studio_records("organiser")}
             jobs = self.state_database.studio_records("job")
             deletions = self.state_database.studio_records("cloudop")
+            records = self.state_database.studio_cloud_metadata_records()
+            publishing = {job["id"] for job in jobs if job["status"] == "active"}
             # Finish opaque/new Studio downloads first, then backfill the library.
-            for candidate in sorted(titles, key=lambda item: (not item["path"].startswith("MabelTV Studio/"), bool(item.get("metadata")), item["title"].casefold())):
+            for candidate in sorted(titles, key=lambda item: (records.get(item["id"], {}).get("publicationJob") not in publishing,
+                    not item["path"].startswith("MabelTV Studio/"), bool(item.get("metadata")), item["title"].casefold())):
                 previous = done.get(candidate["id"], {})
                 stamp = self._studio_organiser_stamp(candidate, groups, titles, list(done.values()))
                 if previous.get("fingerprint") == stamp and previous.get("matchKey") == self._studio_organiser_match_key(candidate) and (
@@ -100,8 +103,12 @@ class StudioOrganiserMixin:
                     continue
                 members = groups.get(candidate["id"], [candidate])
                 identities = {item["id"] for item in members}
-                if any(job["status"] in {"queued", "active", "paused"} and
-                       (job["source"].get("id") in identities or any(job["id"] in PurePosixPath(item["path"]).parts for item in members)) for job in jobs):
+                busy = any(job["status"] in {"queued", "active", "paused"} and
+                       (job["source"].get("id") in identities or records.get(candidate["id"], {}).get("publicationJob") == job["id"] or
+                        any(job["id"] in PurePosixPath(item["path"]).parts for item in members)) for job in jobs)
+                # New archive metadata may be resolved while publication finishes;
+                # moving a source must wait until its transfer releases it.
+                if busy and (candidate.get("metadata") or records.get(candidate["id"], {}).get("publicationJob") not in publishing):
                     continue
                 if any(op["status"] in {"queued", "active"} and any(frozen["path"] == "Media/" + item["path"]
                     for frozen in op["items"] for item in members) for op in deletions):
@@ -130,6 +137,9 @@ class StudioOrganiserMixin:
                     collection = {"id": details_collection["id"], "name": details_collection.get("name", ""), "matchKey": filed_match}
                 self.state_database.studio_memo("organiser", {"id": title["id"], "status": "changed",
                     "collection": collection, "updated": now})
+                if busy:
+                    self._studio_organiser_progress(status="complete", message="Title matched; filing waits for its transfer", percent=100)
+                    return
                 self._studio_organiser_progress(status="active", message="Filing " + title["title"], percent=60)
                 if not self.studio_filing(title, details):
                     return

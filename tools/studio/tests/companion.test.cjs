@@ -4,7 +4,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
-const { copy, beneath, fetchCloud, saveCloud } = require('../lib/cloud-files.cjs');
+const { copy, beneath, fetchCloud } = require('../lib/cloud-files.cjs');
+const { saveCloud } = require('../lib/cloud-archive.cjs');
 const { removeOptimised, sendSubtitles } = require('../lib/subtitles.cjs');
 const { Companion } = require('../lib/companion.cjs');
 const { CompanionJobs } = require('../lib/companion-jobs.cjs');
@@ -88,14 +89,14 @@ test('cloud saving sends video only and keeps subtitles for Pi delivery', async 
   const source = path.join(directory, 'Original.mkv'), prepared = path.join(directory, 'Prepared.mp4');
   fs.writeFileSync(source, 'original'); fs.writeFileSync(prepared, 'optimised');
   fs.writeFileSync(path.join(directory, 'Original.en.srt'), '1\n00:00:00,000 --> 00:00:01,000\nHello');
-  const local = { id: 'local', directory, sourcePath: source, preparedPath: prepared, metadata: { title: 'Example show', series: 2, episodeNumber: 3, episode: 'An episode' } }; store.add(local);
+  const local = { id: 'b'.repeat(32), directory, sourcePath: source, preparedPath: prepared, metadata: { title: 'Example show', series: 2, episodeNumber: 3, episode: 'An episode' } }; store.add(local);
   const confirmed = [];
   const relative = await saveCloud({ id: 'a'.repeat(32), source: { type: 'iplayer' }, destination: { kind: 'icloud', prepare: true } }, local, store,
-    { api: async (_route, { body }) => { confirmed.push(body.path); return { confirmed: true }; } }, new AbortController().signal, () => {}, {});
+    { api: async (_route, { body }) => { if (body.lookupOnly) return { confirmed: false }; confirmed.push(body.path); return { confirmed: true }; } }, new AbortController().signal, () => {}, {});
   const cloudFolder = path.join(store.state.settings.iCloudRoot, 'Media', path.dirname(relative));
   assert.equal(path.basename(cloudFolder), 'Season 2');
   assert.equal(path.basename(path.dirname(cloudFolder)), 'Example show');
-  assert.deepEqual(fs.readdirSync(cloudFolder), ['S02E03 - An episode - aaaaaaaa.mp4']);
+  assert.deepEqual(fs.readdirSync(cloudFolder), ['S02E03 - An episode - bbbbbbbb [Optimised].mp4']);
   assert.equal(confirmed.length, 1); assert.equal(fs.readFileSync(source, 'utf8'), 'original');
   assert.ok(fs.existsSync(path.join(directory, 'Original.en.srt')));
   assert.ok(relative.startsWith('TV/'));

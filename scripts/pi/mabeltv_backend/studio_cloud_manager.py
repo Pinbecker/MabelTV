@@ -1,12 +1,55 @@
 """Confirmed deletion of selected cloud films/episodes and their subtitle sidecars."""
 from __future__ import annotations
 import json
+import hashlib
 from pathlib import PurePosixPath
 import subprocess
 import time
 import uuid
 
 class StudioCloudManagerMixin:
+    def studio_cloud_replace_original(self, payload):
+        job = next((value for value in self.state_database.studio_records("job") if value["id"] == payload.get("job")), None)
+        if not job or job["source"]["type"] != "cloud" or job["status"] != "active" or not job.get("claim") or job["claim"] != payload.get("claim"):
+            raise ValueError("This Studio task no longer owns the replacement")
+        if not job["destination"].get("replaceCloudOriginal") or job["destination"].get("cloudCopies") != "optimised":
+            raise ValueError("Choose Both to keep the original, or confirm its replacement first")
+        output_id = str(payload.get("output", ""))
+        previous = next((value for value in self.state_database.studio_records("cloudop") if value.get("archiveJob") == job["id"] and value.get("archiveOutput") == output_id), None)
+        if previous:
+            return {"id": previous["id"], "complete": previous["status"] == "complete", "status": previous["status"], "error": previous.get("error", "")}
+        if job["destination"]["kind"] in {"film", "series", "mabel"}:
+            result = self.upload_status(str(payload.get("upload", "")))
+            if not result.get("complete") or not self.upload_destination(result).is_file():
+                raise ValueError("Wait until the TV copy has been published")
+        with self.studio_cloud_lock:
+            files = {value["id"]: dict(value) for value in self.studio_cloud_files}
+        records = self.state_database.studio_cloud_metadata_records()
+        output, record = files.get(output_id), records.get(output_id, {})
+        if not output or record.get("publicationJob") != job["id"] or "optimised" not in record.get("variants", []):
+            raise ValueError("Wait for iCloud to confirm this task's optimised copy")
+        current = self._studio_cloud_stat("Media/" + output["path"])
+        if current.get("IsDir") or current.get("ID") != output.get("remoteId") or current.get("Size") != output["bytes"] or current.get("ModTime", "") != output.get("modified", ""):
+            raise ValueError("The optimised cloud copy changed. The original was kept.")
+        if output_id == job["source"]["id"]:
+            return {"complete": True, "retainedExisting": True}
+        if any(other["id"] != job["id"] and other["status"] in {"queued", "active", "paused"} and
+               other["source"].get("id") == job["source"]["id"] for other in self.state_database.studio_records("job")):
+            raise ValueError("Another transfer still needs the original. It was kept; finish that transfer before retrying.")
+        original = files.get(job["source"]["id"])
+        if not original or any(original.get(key, "") != job["source"].get(key, "") for key in ("bytes", "modified", "remoteId")):
+            raise ValueError("The original changed. Refresh and confirm its replacement again.")
+        current = self._studio_cloud_stat("Media/" + original["path"])
+        if current.get("IsDir") or any(current.get(key, "") != original.get(field, "") for key, field in (("ID", "remoteId"), ("Size", "bytes"), ("ModTime", "modified"))):
+            raise ValueError("The original changed. It was kept for a fresh confirmation.")
+        identity = hashlib.sha256((job["id"] + output_id).encode()).hexdigest()[:32]
+        operation = self.state_database.studio_add("cloudop", {"id": identity, "action": "delete",
+            "archiveJob": job["id"], "archiveOutput": output_id, "status": "queued", "completed": 0,
+            "created": time.time(), "updated": time.time(), "items": [{"path": "Media/" + original["path"],
+                "bytes": original["bytes"], "modified": original.get("modified", ""), "remoteId": original.get("remoteId", "")}]})
+        self.studio_cloud_wake.set()
+        return {"id": operation["id"], "complete": operation["status"] == "complete", "status": operation["status"]}
+
     def studio_cloud_operation(self, payload):
         if payload.get("action") != "delete":
             raise ValueError("Only deletion of films and TV episodes is available")

@@ -23,12 +23,12 @@ function openStudioDestination(sources, matchingJob = null, cloudContext = null)
     $('#studioSeason').value = sources[0].series ?? 1
   }
   const nonVideo = sources.some(source => source.kind && source.kind !== 'video')
+  if (nonVideo) throw new Error('Choose a film or TV video.')
   const fromCloud = sources.length > 0 && sources.every(source => source.type === 'cloud')
   $('#studioDestinationForm').classList.toggle('is-cloud-source', fromCloud)
   for (const input of $$('#studioDestinationForm input[name="studioDestination"]')) {
-    input.disabled = nonVideo && input.value !== 'local' || fromCloud && input.value === 'icloud'
+    input.disabled = fromCloud && input.value === 'icloud'
     if (input.value === 'icloud') input.closest('label').classList.toggle('hidden', fromCloud)
-    if (nonVideo) input.checked = input.value === 'local'
   }
   if (matchingJob) {
     $('#studioLibraryType').value = matchingJob.destination.kind === 'series' ? 'series' : 'film'
@@ -48,14 +48,11 @@ function studioSyncDestination() {
   $('#studioChannelField').classList.toggle('hidden', chosen !== 'mabel')
   $('#studioSeriesFields').classList.toggle('hidden', !series)
   $('#studioNewSeriesField').classList.toggle('hidden', $('#studioSeries').value !== 'new')
-  const needsPrepare = ['film', 'mabel'].includes(chosen)
-  $('#studioPrepare').disabled = needsPrepare
-  if (needsPrepare) $('#studioPrepare').checked = true
-  if (studioDraft?.sources.some(source => source.kind && source.kind !== 'video')) { $('#studioPrepare').checked = false; $('#studioPrepare').disabled = true }
-  $('#studioPrepareHint').textContent = needsPrepare ? `Compatible ${chosen === 'mabel' ? '720p' : 'up to 1080p'} video and audio before sending.` : 'Switch off to keep the original download without conversion.'
-  $('#studioKeepField').classList.toggle('hidden', chosen === 'local' || !$('#studioPrepare').checked)
-  $('#studioSaveCloudField').classList.toggle('hidden', chosen === 'icloud' || studioDraft?.sources.every(source => source.type === 'cloud'))
-  $('#studioMatchSection').classList.toggle('hidden', chosen !== 'film' || Boolean(studioDraft?.cloudContext))
+  const fromCloud = studioDraft?.sources.length > 0 && studioDraft.sources.every(source => source.type === 'cloud')
+  const cloudCopies = $('#studioDestinationForm input[name="studioCloudCopies"]:checked')?.value || 'original'
+  $('#studioCloudCopiesField').classList.toggle('hidden', Boolean(studioDraft?.matchingJob))
+  $('#studioCloudReplaceWarning').classList.toggle('hidden', !fromCloud || cloudCopies !== 'optimised' || Boolean(studioDraft?.matchingJob))
+  $('#studioMatchSection').classList.toggle('hidden', !studioDraft?.matchingJob)
   $('#studioDestinationSubmit').textContent = studioDraft?.matchingJob ? 'Save match and retry metadata' : 'Add to queue'
 }
 async function studioFindMatch() {
@@ -83,9 +80,12 @@ async function studioSubmitDestination(event) {
       await api('/api/studio/action', { method: 'POST', body: JSON.stringify({ id: draft.matchingJob.id, action: 'metadata', match: draft.match }) })
     } else {
       const chosen = $('#studioDestinationForm input[name="studioDestination"]:checked').value
+      const replaceOriginal = draft.sources.length > 0 && draft.sources.every(source => source.type === 'cloud') && $('#studioDestinationForm input[name="studioCloudCopies"]:checked').value === 'optimised'
+      if (replaceOriginal && !draft.replaceCloudOriginal) { studioOpenReplaceWarning(); return }
       const destination = { kind: chosen === 'film' ? $('#studioLibraryType').value : chosen,
-        prepare: $('#studioPrepare').checked, keepOptimised: chosen === 'local' || $('#studioKeepOptimised').checked,
-        saveCloud: !$('#studioSaveCloudField').classList.contains('hidden') && $('#studioSaveCloud').checked }
+        prepare: chosen !== 'icloud' || $('#studioDestinationForm input[name="studioCloudCopies"]:checked').value !== 'original', keepOptimised: false,
+        saveCloud: !$('#studioCloudCopiesField').classList.contains('hidden') }
+      if (destination.saveCloud) destination.cloudCopies = $('#studioDestinationForm input[name="studioCloudCopies"]:checked').value
       if (chosen === 'mabel') destination.folder = $('#studioChannel').value
       if (destination.kind === 'series') {
         destination.series = $('#studioSeries').value === 'new' ? '' : $('#studioSeries').value
@@ -93,7 +93,7 @@ async function studioSubmitDestination(event) {
         destination.season = Number($('#studioSeason').value)
         destination.preserveSeasons = new Set(draft.sources.map(source => source.series).filter(value => Number.isInteger(value))).size > 1
       }
-      await api('/api/studio/jobs', { method: 'POST', body: JSON.stringify({ sources: draft.sources, destination, match: chosen === 'film' ? draft.match : null }) })
+      await api('/api/studio/jobs', { method: 'POST', body: JSON.stringify({ sources: draft.sources, destination, replaceCloudOriginal: draft.replaceCloudOriginal === true, match: chosen === 'film' ? draft.match : null }) })
     }
     closeLibrarySheet($('#studioDestinationSheet'))
     studioState.selected.clear(); studioState.selecting = false
@@ -195,7 +195,8 @@ function studioApplyAuth(result) {
 }
 $('#studioDestinationForm').onsubmit = studioSubmitDestination
 for (const input of $$('#studioDestinationForm input[name="studioDestination"]')) input.onchange = studioSyncDestination
-for (const id of ['studioLibraryType', 'studioSeries', 'studioPrepare']) $('#' + id).onchange = studioSyncDestination
+for (const input of $$('#studioDestinationForm input[name="studioCloudCopies"]')) input.onchange = () => { if (studioDraft) studioDraft.replaceCloudOriginal = false; studioSyncDestination() }
+for (const id of ['studioLibraryType', 'studioSeries']) $('#' + id).onchange = studioSyncDestination
 $('#studioMatchQuery').oninput = () => { clearTimeout(studioMatchTimer); studioMatchTimer = setTimeout(() => void studioFindMatch().catch(studioFailure), 350) }
 $('#studioCloudConnect').onclick = () => void studioStartAuth()
 $('#studioAuthForm').onsubmit = async event => {

@@ -21,7 +21,7 @@ class StudioTests(unittest.TestCase):
 
     def add(self, destination=None):
         return self.library.studio_add_jobs({"sources": [{"type": "cloud", "id": "a" * 24}],
-                                             "destination": destination or {"kind": "local", "prepare": False}})["ids"][0]
+                                             "destination": destination or {"kind": "film"}})["ids"][0]
 
     def poll(self, worker="1" * 32, **extra):
         return self.library.studio_worker_poll({"id": worker, "name": "Laptop", **extra})
@@ -79,7 +79,7 @@ class StudioTests(unittest.TestCase):
         before = self.database.studio_records("job")
         with self.assertRaises(ValueError):
             self.library.studio_add_jobs({"sources": [{"type": "cloud", "id": "b" * 24}, {"type": "file", "path": "/etc/passwd"}],
-                                          "destination": {"kind": "local"}})
+                                          "destination": {"kind": "film"}})
         self.assertEqual(before, self.database.studio_records("job"))
 
     def test_search_waits_offline_then_returns_worker_result_and_cached_request(self):

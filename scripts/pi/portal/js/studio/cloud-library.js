@@ -75,11 +75,34 @@ async function studioOpenCloudTitles(titles, selectedEpisodes = null) {
   for (const title of titles) {
     const episodes = selectedEpisodes || (title.kind === 'series' ? (await api('/api/studio/cloud?series=' + encodeURIComponent(title.id))).items : [title])
     for (const file of episodes) {
-      files.push(file)
+      files.push(...(file.versions || [file]))
       sources.push({ type: 'cloud', id: file.id, title: title.title || title.name, kind: 'video',
+        bytes: file.bytes, modified: file.modified || '', remoteId: file.remoteId || '',
         seriesTitle: title.media_type === 'tv' || title.kind === 'series' ? title.title || title.name : '',
         series: file.series, match: title.metadata || null })
     }
   }
   openStudioDestination(sources, null, { titles, files, selectedEpisodes: Boolean(selectedEpisodes) })
 }
+
+function studioOpenReplaceWarning() {
+  $('#studioReplaceNames').textContent = studioDraft.sources.map(source => source.title).join(', ')
+  closeLibrarySheet($('#studioDestinationSheet'), false)
+  openLibrarySheet($('#studioReplaceSheet'))
+}
+function studioCloseReplaceWarning() {
+  closeLibrarySheet($('#studioReplaceSheet'), false)
+  openLibrarySheet($('#studioDestinationSheet'))
+}
+$('#studioReplaceBoth').onclick = () => {
+  $('#studioDestinationForm input[name="studioCloudCopies"][value="both"]').checked = true
+  studioDraft.replaceCloudOriginal = false
+  studioCloseReplaceWarning(); studioSyncDestination()
+  void studioSubmitDestination({ preventDefault() {} })
+}
+$('#studioReplaceConfirm').onclick = () => {
+  studioDraft.replaceCloudOriginal = true
+  studioCloseReplaceWarning()
+  void studioSubmitDestination({ preventDefault() {} })
+}
+portalSheets.wire($('#studioReplaceSheet'), { closeButton: $('#studioReplaceClose'), close: studioCloseReplaceWarning })

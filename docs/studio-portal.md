@@ -39,7 +39,9 @@ Cloud-side moves do not download videos through the Pi. Interrupted moves
 resume from checked receipts; conflicts preserve both files. Empty old folders
 are removed during the approved layout repair only when empty. Matching and
 filing progress appears in Activity while working; stopped work is hidden.
-New Studio cloud copies are checked once their original queue job finishes.
+New Studio cloud copies receive metadata while their queue job finishes. Filing
+waits until the transfer releases them. The verified identity is reused for My
+TV metadata without another upload or another AI decision.
 
 **Where should it go? → Delete from iCloud** names the selected films or episodes
 and asks for confirmation. It deletes those videos and matching subtitle files
@@ -71,16 +73,24 @@ file's change timestamp while hydrating it, so copy receipts use its size,
 modification time and file identity instead. Interrupted copies resume only
 against the same source version.
 
-Choose My TV films/series, a Mabel TV channel, the laptop, or iCloud. TV uploads
-are prepared before publication. Laptop-only jobs can keep the original without
-conversion. A multi-season selection preserves source seasons, including season
+Choose My TV films/series, a Mabel TV channel, or iCloud. TV uploads are always
+prepared for their destination: Mabel TV uses 720p, My TV uses up to 1080p.
+There is no Download destination or optimisation checkbox. A multi-season selection preserves source seasons, including season
 0 for specials. New series saved into iCloud use a show/season hierarchy so the
 cloud catalogue groups them again.
 
-**Keep optimised copy on laptop** controls removal of the separate Studio-owned
-converted output after confirmed publication/cloud saving. Imported files and
-iCloud originals are preserved. Working originals/downloads remain available
-for recovery and can be managed separately in the Studio working folder.
+Every source offers **Original**, **Optimised**, or **Both** for its iCloud
+archive. An iCloud-only original needs no conversion. Both keeps two versions
+when conversion changes the file; an already compatible file can satisfy both
+roles without duplicate bytes. Versions share one title card and metadata.
+Existing iCloud sources are not offered iCloud as a destination, but still have
+the three archive choices. Optimised only warns that it replaces the existing
+original, recommends Both to retain it, and requires separate confirmation.
+Deletion waits for verified cloud and TV receipts and rechecks the frozen
+original version. A changed original is kept for a fresh confirmation.
+Studio-owned temporary media is removed only after retained cloud copies and
+TV publication are confirmed. Imported user files remain untouched. Interrupted
+work keeps its journals and resumes from confirmed per-version receipts.
 Available disk space limits large jobs; Studio does not hydrate the whole Drive.
 
 Text subtitle sidecars and supported embedded text subtitles are converted to

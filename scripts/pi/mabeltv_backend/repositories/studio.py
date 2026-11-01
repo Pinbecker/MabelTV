@@ -65,6 +65,10 @@ class StudioRepositoryMixin:
     def studio_add(self, kind, value):
         with self.transaction() as db:
             records = self._studio_records(db, kind)
+            if kind == "cloudop" and value.get("archiveJob") and value.get("status") == "queued" and value.get("completed") == 0:
+                previous = next((item for item in records if item["id"] == value["id"]), None)
+                if previous:
+                    return previous
             if kind == "job" and sum(r["status"] not in FINISHED for r in records) >= 200:
                 raise ValueError("Your Studio queue is full. Finish or cancel some items first.")
             if kind in {"request", "cloudop"} and not any(r["id"] == value["id"] for r in records) and sum(r["status"] in {"queued", "active"} for r in records) >= (20 if kind == "request" else 200):
@@ -119,6 +123,10 @@ class StudioRepositoryMixin:
         with self.transaction() as db:
             records = self._studio_records(db, "cloudmetadata")
             old = next((item for item in records if item["id"] == value["id"]), None)
+            if old:
+                for field in ("variants", "archiveGroup", "titleHint", "publicationJob", "archiveAsset"):
+                    if field not in value and field in old:
+                        value[field] = old[field]
             if automatic:
                 protected = [item for item in records if item.get("confirmed") and (
                     item["id"] == value["id"] and item.get("fingerprint") == value["fingerprint"] or
@@ -129,6 +137,11 @@ class StudioRepositoryMixin:
                     self._studio_put(db, "cloudmetadata", value)
                     return value
                 if old and old.get("status") == "matched" and old.get("fingerprint") == value["fingerprint"] and not metadata:
+                    for field in ("variants", "archiveGroup", "titleHint", "publicationJob", "archiveAsset"):
+                        if field in value:
+                            old[field] = value[field]
+                    old["updated"] = time.time()
+                    self._studio_put(db, "cloudmetadata", old)
                     return old
             if metadata:
                 db.execute("""INSERT INTO external_titles(media_type,tmdb_id,title,year,poster_path,overview,runtime,updated)
@@ -143,12 +156,12 @@ class StudioRepositoryMixin:
             self._studio_put(db, "cloudmetadata", value)
         return value
 
-    def studio_action(self, identity, action, match=None):
+    def studio_action(self, identity, action, match=None, cloud_copies="original"):
         with self.transaction() as db:
             job = next((j for j in self._studio_records(db, "job") if j["id"] == identity), None)
             if not job:
                 raise ValueError("That Studio item could not be found")
-            if action not in {"pause", "cancel", "resume", "retry", "metadata"}:
+            if action not in {"pause", "cancel", "resume", "retry", "metadata", "archive"}:
                 raise ValueError("Choose a Studio queue action")
             if action in {"pause", "cancel"}:
                 if job["status"] in {"complete", "cancelled"}:
@@ -162,6 +175,14 @@ class StudioRepositoryMixin:
                         raise ValueError("Publish this item before matching its title")
                     job["match"] = match
                     job["metadata_only"] = True
+                if action == "archive":
+                    if not job.get("result", {}).get("complete") or job["source"]["type"] == "cloud":
+                        raise ValueError("Choose a completed Studio download to save in iCloud")
+                    if cloud_copies not in {"original", "optimised", "both"}:
+                        raise ValueError("Choose Original, Optimised or Both for iCloud")
+                    job["destination"].update(saveCloud=True, cloudCopies=cloud_copies, temporaryWork=True, keepOptimised=False)
+                    job["cloud_only"] = True
+                    job["metadata_only"] = False
                 job.update(status="queued", command="", worker="", claim="", lease=0, error="")
             job["updated"] = time.time()
             self._studio_put(db, "job", job)

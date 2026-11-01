@@ -1,6 +1,8 @@
 'use strict';
 const fs = require('node:fs');
-const { fetchCloud, saveCloud } = require('./cloud-files.cjs');
+const { fetchCloud } = require('./cloud-files.cjs');
+const { saveCloud, cloudCopiesComplete, replaceCloudOriginal, verifyCloudCopies, archiveMatch } = require('./cloud-archive.cjs');
+const { cleanWorkingCopies } = require('./working-cleanup.cjs');
 const { removeOptimised } = require('./subtitles.cjs');
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -72,14 +74,28 @@ class CompanionJobs {
     if (local.status === 'paused' || local.status === 'cancelled') throw new Error('Stopped');
     state.finishing = true;
     let cloudPath = local.savedCloudPath || '';
-    if ((remote.destination.saveCloud || remote.destination.kind === 'icloud') && !cloudPath) {
+    if ((remote.destination.saveCloud || remote.destination.kind === 'icloud') && !cloudCopiesComplete(remote, local)) {
       state.progress = { stage: 'saving-cloud', percent: 0, message: 'Saving to iCloud' };
       cloudPath = await saveCloud(remote, local, this.store, this.portal, signal, progress => {
         state.progress = { stage: 'saving-cloud', ...progress, message: progress.syncing ? 'Waiting for iCloud to confirm the file' : 'Saving to iCloud' };
       }, this.queue.media.getTools?.());
       this.store.update(local.id, { savedCloudPath: cloudPath });
     }
-    if (!remote.destination.keepOptimised && !local.optimisedRemoved &&
+    if (!local.match && local.result?.complete && remote.destination.saveCloud) {
+      state.progress = { stage: 'matching', percent: 100, message: 'Adding artwork and title details' };
+      const match = await archiveMatch(remote, local, this.portal, signal);
+      if (match) {
+        this.store.update(local.id, { match, matchApplied: false });
+        await this.queue.action(local.id, 'metadata');
+        while (!['complete', 'failed', 'paused', 'cancelled'].includes(local.status)) {
+          if (signal.aborted) throw new Error('Stopped');
+          await delay(200);
+        }
+      }
+    }
+    await replaceCloudOriginal(remote, local, this.store, this.portal, signal);
+    if (remote.destination.temporaryWork && !local.workingRemoved) { await verifyCloudCopies(remote, local, this.portal, signal); cleanWorkingCopies(remote, local, this.store); }
+    if (!remote.destination.temporaryWork && !remote.destination.keepOptimised && !local.optimisedRemoved &&
         (local.result?.complete || cloudPath)) {
       if (removeOptimised(local, this.store.state.settings.workspace)) this.store.update(local.id, { optimisedRemoved: true });
     }

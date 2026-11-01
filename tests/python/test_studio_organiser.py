@@ -195,6 +195,22 @@ class StudioOrganiserTests(unittest.TestCase):
         self.assertFalse(self.commands)
         self.library.my_tv_cached_tmdb_request.assert_not_called()
 
+    def test_new_archive_matches_while_active_but_filing_waits_for_publication(self):
+        job = {'id': 'a'*32, 'fingerprint': 'archive', 'title': 'Arrival', 'source': {'type': 'iplayer', 'pid': 'm0000001'},
+               'status': 'active', 'created': time.time(), 'destination': {'kind': 'film'}}
+        self.database.studio_add_jobs([job])
+        self.library.studio_cloud_archive_metadata(self.library.studio_cloud_files[0],
+            {'publicationJob': job['id'], 'variants': ['original'], 'archiveGroup': 'b'*32, 'title': 'Arrival'})
+        self.step()
+        self.assertFalse(self.commands)
+        self.assertEqual(self.library.studio_cloud_item('one')['metadata']['tmdb_id'], 329865)
+        calls = self.library.my_tv_cached_tmdb_request.call_count
+        self.step()
+        self.assertEqual(self.library.my_tv_cached_tmdb_request.call_count, calls)
+        self.database.studio_add('job', {**job, 'status': 'complete'})
+        self.step()
+        self.assertTrue(self.commands)
+
     def test_series_remains_grouped_after_a_recoverable_root_change(self):
         self.library.studio_cloud_files = [self.file('ep1', 'TV/Ludwig/Season 0/Ludwig S00E01.mp4'),
                                          self.file('ep2', 'TV/Ludwig/Season 2/Ludwig S02E03.mp4')]

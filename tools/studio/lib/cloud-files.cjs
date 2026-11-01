@@ -3,7 +3,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { pipeline } = require('node:stream/promises');
 const { setTimeout: delay } = require('node:timers/promises');
-const { safeName } = require('./queue.cjs');
 
 function beneath(root, relative) {
   if (typeof relative !== 'string' || relative.includes('\\') || relative.split('/').some(p => p === '..') || path.isAbsolute(relative)) throw new Error('Invalid cloud media path.');
@@ -77,33 +76,4 @@ async function fetchCloud(job, store, portal, signal, progress) {
   return { file: target, metadata: { title: item.series_title || path.basename(source, path.extname(source)),
     episode: item.series_title ? path.basename(source, path.extname(source)) : '', series: item.series, episodeNumber: item.episodeNumber } };
 }
-async function saveCloud(remote, local, store, portal, signal, progress, tools) {
-  if (remote.source.type === 'cloud' && remote.destination.kind !== 'icloud') return '';
-  const file = remote.destination.kind === 'icloud' && remote.destination.prepare ? local.preparedPath : local.sourcePath;
-  const root = store.state.settings.iCloudRoot || path.join(process.env.USERPROFILE, 'iCloudDrive');
-  const metadata = local.metadata || {};
-  const kids = remote.destination.kind === 'mabel' || /^(?:cbeebies|cbbc)$/i.test(metadata.channel || '');
-  const episode = Number.isInteger(metadata.series) && metadata.series >= 0 && Number.isInteger(metadata.episodeNumber) && metadata.episodeNumber > 0;
-  const relative = episode ? [kids ? 'Kids/TV' : 'TV', safeName(metadata.title), 'Season ' + metadata.series,
-    `S${String(metadata.series).padStart(2, '0')}E${String(metadata.episodeNumber).padStart(2, '0')} - ${safeName(metadata.episode || metadata.title)} - ${remote.id.slice(0, 8)}${path.extname(file)}`].join('/')
-    : [kids ? 'Kids/Films' : 'Films', safeName(local.match?.title || metadata.title || path.basename(file, path.extname(file))) +
-        (local.match?.year ? ' (' + local.match.year + ')' : '') + ' - ' + remote.id.slice(0, 8) + path.extname(file)].join('/');
-  const files = [{ file, path: relative }];
-  for (const [index, item] of files.entries()) await copy(item.file, beneath(path.join(root, 'Media'), item.path), signal, index ? () => {} : progress, path.join(local.directory, 'cloud-copy-' + index + '.json'));
-  for (;;) {
-    if (signal.aborted) throw new Error('Stopped');
-    let confirmed = true;
-    for (const item of files) {
-      const result = await portal.api('/api/studio/cloud/confirm', { method: 'POST', body: { path: item.path, bytes: fs.statSync(item.file).size }, signal, timeout: 100000 });
-      if (!result.confirmed) confirmed = false;
-    }
-    if (confirmed) return relative;
-    progress({ percent: 100, syncing: true });
-    await new Promise((resolve, reject) => {
-      const stop = () => { clearTimeout(timer); reject(new Error('Stopped')); };
-      const timer = setTimeout(() => { signal.removeEventListener('abort', stop); resolve(); }, 12000);
-      signal.addEventListener('abort', stop, { once: true });
-    });
-  }
-}
-module.exports = { beneath, copy, fetchCloud, saveCloud };
+module.exports = { beneath, copy, fetchCloud };

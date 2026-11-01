@@ -56,11 +56,16 @@ class StudioMixin:
         return self._studio_public_request(request)
 
     def studio_destination(self, value):
-        if not isinstance(value, dict) or value.get("kind") not in {"mabel", "film", "series", "local", "icloud"}:
+        if not isinstance(value, dict) or value.get("kind") not in {"mabel", "film", "series", "icloud"}:
             raise ValueError("Choose where this media should go")
         destination = {"kind": value["kind"], "prepare": value.get("prepare", value["kind"] in {"mabel", "film", "series"}) is True,
                        "keepOptimised": value.get("keepOptimised", True) is True,
                        "saveCloud": value.get("saveCloud", False) is True, "preserveSeasons": value.get("preserveSeasons") is True}
+        destination.update(temporaryWork=True, keepOptimised=False)
+        if not isinstance(value.get("cloudCopies", "original"), str) or value.get("cloudCopies", "original") not in {"original", "optimised", "both"}:
+            raise ValueError("Choose Original, Optimised or Both for iCloud")
+        destination["cloudCopies"] = value.get("cloudCopies", "original")
+        destination["prepare"] = value["kind"] != "icloud" or destination["cloudCopies"] != "original"
         if destination["kind"] == "mabel":
             channel = next((c for c in self.channels() if c["folder"] == value.get("folder")), None)
             if not channel:
@@ -81,7 +86,7 @@ class StudioMixin:
                 raise ValueError("Enter the series name")
             destination.update(series=identity, name=name, season=season, label=name)
         else:
-            destination["label"] = {"film": "My TV films", "local": "Download", "icloud": "iCloud"}[destination["kind"]]
+            destination["label"] = {"film": "My TV films", "icloud": "iCloud"}[destination["kind"]]
         return destination
 
     def studio_match(self, match):
@@ -98,13 +103,14 @@ class StudioMixin:
             raise ValueError("Choose between 1 and 100 files or episodes")
         destination = self.studio_destination(payload.get("destination"))
         match = self.studio_match(payload.get("match"))
+        cloud_records = self.state_database.studio_cloud_metadata_records() if any(isinstance(value, dict) and value.get("type") == "cloud" for value in sources) else {}
         jobs = []
         for source in sources:
             if not isinstance(source, dict):
                 raise ValueError("Choose a media source")
             if source.get("type") == "cloud":
                 if destination["kind"] == "icloud":
-                    raise ValueError("This item is already in iCloud. Choose My TV, Mabel TV or Download.")
+                    raise ValueError("This item is already in iCloud. Choose My TV or Mabel TV.")
                 item = self.studio_cloud_item(str(source.get("id", "")))
                 if not self._studio_media_file(item):
                     raise ValueError("Choose video files to send to a TV library")
@@ -112,6 +118,11 @@ class StudioMixin:
                 source_match = cloud_title.get("metadata") or match
                 origin = {"type": "cloud", "id": item["id"], "path": item["path"], "bytes": item["bytes"],
                           "modified": item.get("modified", ""), "remoteId": item.get("remoteId", "")}
+                origin["archiveGroup"] = cloud_records.get(item["id"], {}).get("archiveGroup") or hashlib.sha256(item["id"].encode()).hexdigest()[:32]
+                origin["variants"] = cloud_records.get(item["id"], {}).get("variants", [])
+                if destination["cloudCopies"] == "optimised":
+                    if payload.get("replaceCloudOriginal") is not True or any(source.get(key) != item.get(key, "") for key in ("bytes", "modified", "remoteId")):
+                        raise ValueError("Confirm that the original iCloud copy will be replaced. Choose Both to keep it.")
                 if "series" in item:
                     origin.update(series=item["series"], episodeNumber=item["episodeNumber"])
                 title = cloud_title["title"]
@@ -124,9 +135,17 @@ class StudioMixin:
             else:
                 raise ValueError("Choose an iCloud file or BBC programme")
             chosen = dict(destination)
+            chosen["saveCloud"] = True
+            if origin["type"] == "cloud" and chosen["cloudCopies"] == "optimised":
+                chosen["replaceCloudOriginal"] = True
+            if origin["type"] != "cloud":
+                chosen.update(saveCloud=True, cloudCopies=destination.get("cloudCopies", "original"))
+                if chosen["cloudCopies"] != "original":
+                    chosen["prepare"] = True
             if chosen["kind"] == "series" and chosen["preserveSeasons"] and "series" in origin:
                 chosen["season"] = origin["series"]
-            fingerprint = hashlib.sha256(json.dumps([origin, chosen], sort_keys=True).encode()).hexdigest()
+            stable_origin = {key: value for key, value in origin.items() if key not in {"archiveGroup", "variants", "path"}} if origin["type"] == "cloud" else origin
+            fingerprint = hashlib.sha256(json.dumps([stable_origin, chosen], sort_keys=True).encode()).hexdigest()
             existing = next((j for j in self.state_database.studio_records("job") if j.get("fingerprint") == fingerprint
                              and j["status"] in {"queued", "active", "paused"}), None)
             if existing:
@@ -140,7 +159,7 @@ class StudioMixin:
 
     def studio_job_action(self, payload):
         self.state_database.studio_action(str(payload.get("id", "")), str(payload.get("action", "")),
-                                          self.studio_match(payload.get("match")))
+                                          self.studio_match(payload.get("match")), payload.get("cloudCopies", "original"))
         return {"ok": True}
 
     def studio_worker_poll(self, payload):

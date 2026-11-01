@@ -46,7 +46,7 @@ function studioDestinationMetadata() {
     if (poster) root.append(myTvArtworkImage(poster))
     const copy = document.createElement('span'), name = document.createElement('strong'), detail = document.createElement('small')
     name.textContent = title.title
-    detail.textContent = [title.year, title.media_type === 'tv' ? 'Series' : 'Film', context.files.length > 1 ? `${context.files.length} episodes` : ''].filter(Boolean).join(' · ')
+    detail.textContent = [title.year, title.media_type === 'tv' ? 'Series' : 'Film', context.files.length > 1 ? `${context.files.length} ${title.media_type === 'tv' ? 'files' : 'versions'}` : ''].filter(Boolean).join(' · ')
     copy.append(name, detail); root.append(copy)
     $('#studioCloudEditMetadata span').textContent = title.tmdb_id ? 'Change metadata' : 'Match title'
     $('#studioCloudEditMetadata').disabled = false

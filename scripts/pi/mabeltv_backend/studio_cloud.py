@@ -156,7 +156,7 @@ class StudioCloudMixin:
             group["episodes"].append({**item, "series_title": name, "series": season_number,
                                        "episodeNumber": int(episode.group(2)) if episode else None})
         for group in groups.values():
-            group["title"].update(episode_count=len(group["episodes"]), season_count=len({i["series"] for i in group["episodes"]}))
+            group["title"].update(episode_count=len({(i["series"], i.get("episodeNumber") if i.get("episodeNumber") is not None else i["id"]) for i in group["episodes"]}), season_count=len({i["series"] for i in group["episodes"]}))
             titles.append(group["title"])
         return titles, {identity: sorted(group["episodes"], key=lambda i: (i["series"], i.get("episodeNumber") or 0, i["name"]))
                         for identity, group in groups.items()}
@@ -174,18 +174,69 @@ class StudioCloudMixin:
             item["subtitles"] = [{"path": i["path"], "bytes": i["bytes"]} for i in self.studio_cloud_files
                                  if i["extension"] in {".srt", ".vtt", ".ass"}
                                  and (i["path"].startswith(stem + "."))]
-            return item
+        if self._studio_media_file(item):
+            title = self.studio_cloud_title_for_file(identity)
+            item["metadata"] = title.get("metadata")
+            item["match_status"] = title.get("match_status", "pending")
+        return item
 
     def studio_cloud_confirm(self, payload):
         path = PurePosixPath(str(payload.get("path", "")))
+        if payload.get("verifyId"):
+            with self.studio_cloud_lock:
+                frozen = next((dict(value) for value in self.studio_cloud_files if value["id"] == payload["verifyId"]), None)
+            if not frozen or any(frozen.get(key, "") != payload.get(key, "") for key in ("bytes", "modified", "remoteId")):
+                return {"confirmed": False}
+            try:
+                checked = self._studio_rclone(["lsjson", "mabeltv_icloud:Media/" + frozen["path"], "--stat", "--no-mimetype"], timeout=90)
+            except ValueError:
+                return {"confirmed": False}
+            return {"confirmed": not checked.get("IsDir") and checked.get("ID") == frozen["remoteId"] and checked.get("Size") == frozen["bytes"] and checked.get("ModTime", "") == frozen.get("modified", "")}
+        if path.suffix.lower() not in VIDEO:
+            raise ValueError("Only video copies are saved to iCloud")
         if not path.parts or path.is_absolute() or ".." in path.parts or any(part.startswith('.') for part in path.parts) or not (
             str(path).startswith("MabelTV Studio/") or path.parts[0] in {"Films", "TV", "Kids"} and path.suffix.lower() in VIDEO):
             raise ValueError("Choose a Studio iCloud destination")
+        group, variants = str(payload.get("archiveGroup", "")), payload.get("variants", [])
+        if group and not re.fullmatch(r"[a-f0-9]{32}", group) or not isinstance(variants, list) or len(variants) > 2 or any(not isinstance(role, str) or role not in {"original", "optimised"} for role in variants):
+            raise ValueError("Choose a valid Studio archive copy")
+        if group and re.fullmatch(r"[a-f0-9]{32}", group) and isinstance(variants, list) and variants:
+            with self.studio_cloud_lock:
+                current_files = {value["id"]: dict(value) for value in self.studio_cloud_files}
+            for record in self.state_database.studio_cloud_metadata_records().values():
+                current = current_files.get(record["id"])
+                if current and record.get("archiveGroup") == group and (not payload.get("archiveAsset") or record.get("archiveAsset") == payload["archiveAsset"]) and set(variants) <= set(record.get("variants", [])) and current["bytes"] == payload.get("bytes"):
+                    version = [current["id"], current["bytes"], current.get("modified", ""), current.get("remoteId", "")]
+                    if version in record.get("files", []):
+                        try:
+                            checked = self._studio_rclone(["lsjson", "mabeltv_icloud:Media/" + current["path"], "--stat", "--no-mimetype"], timeout=90)
+                        except ValueError:
+                            continue
+                        if checked.get("ID") == current["remoteId"] and checked.get("Size") == current["bytes"] and checked.get("ModTime", "") == current.get("modified", ""):
+                            if payload.get("lookupOnly") is not True:
+                                self.studio_cloud_archive_metadata(current, payload)
+                            return {"confirmed": True, "id": current["id"], "path": current["path"], "modified": current.get("modified", ""), "remoteId": current["remoteId"]}
+        if payload.get("lookupOnly") is True:
+            return {"confirmed": False}
         try:
             item = self._studio_rclone(["lsjson", "mabeltv_icloud:Media/" + str(path), "--stat", "--no-mimetype"], timeout=90)
         except ValueError:
             return {"confirmed": False}
-        return {"confirmed": int(item.get("Size", -1)) == int(payload.get("bytes", -2))}
+        if item.get("IsDir") or int(item.get("Size", -1)) != int(payload.get("bytes", -2)):
+            return {"confirmed": False}
+        if not item.get("ID"):
+            return {"confirmed": True}
+        entry = {"id": hashlib.sha256(str(item["ID"]).encode()).hexdigest()[:24],
+                 "path": str(path), "name": path.name, "folder": str(path.parent),
+                 "bytes": int(item["Size"]), "modified": str(item.get("ModTime", "")),
+                 "remoteId": str(item["ID"]), "extension": path.suffix.lower(), "kind": "video"}
+        with self.studio_cloud_lock:
+            self.studio_cloud_files = [value for value in self.studio_cloud_files if value["id"] != entry["id"]] + [entry]
+            temporary = self.studio_cache / "icloud-confirm.tmp"
+            temporary.write_text(json.dumps({"files": self.studio_cloud_files, "checked": self.studio_cloud_checked}), encoding="utf-8")
+            temporary.replace(self.studio_cache / "icloud-catalogue.json")
+        self.studio_cloud_archive_metadata(entry, payload)
+        return {"confirmed": True, "id": entry["id"], "path": str(path), "modified": entry["modified"], "remoteId": entry["remoteId"]}
 
     def studio_cloud_auth(self, payload):
         with self.studio_auth_lock:
