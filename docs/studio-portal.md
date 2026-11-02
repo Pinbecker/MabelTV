@@ -91,6 +91,9 @@ original version. A changed original is kept for a fresh confirmation.
 Studio-owned temporary media is removed only after retained cloud copies and
 TV publication are confirmed. Imported user files remain untouched. Interrupted
 work keeps its journals and resumes from confirmed per-version receipts.
+Each pending cloud copy reserves its path under the current queue claim before
+copying. Catalogue arrival binds that reservation to the stable cloud identity;
+the organiser cannot relocate a copy ahead of its confirmation receipt.
 Available disk space limits large jobs; Studio does not hydrate the whole Drive.
 
 Text subtitle sidecars and supported embedded text subtitles are converted to
@@ -104,6 +107,48 @@ chosen in the portal. Metadata retry reuses the confirmed publication and does
 not upload the video again.
 
 ## Connections and recovery
+
+### Find anything
+
+The fourth Studio section searches The Pirate Bay's video category through
+qBittorrent's reviewed search plugin, covering films and TV. Search results are
+deduplicated and ranked by seed count, with the best ten shown. Searching does
+not invoke AI or download media. Search and file-inspection intents wait in
+SQLite when Studio is offline and use capability-aware worker leases; older
+companions cannot claim this work.
+
+Review obtains torrent metadata with the native MetadataReceived stop
+condition. Only video files can be chosen. Season packs stay under one release;
+the review can select specials, seasons and individual episodes. The server
+freezes the hash and selected file paths/sizes before queuing. Relative paths
+are checked for Windows traversal, collisions and unsupported names. Matching
+text subtitle sidecars can accompany the selected videos; installers and other
+unselected files are never executed or imported.
+
+My TV, Mabel TV and iCloud use the same Original / Optimised / Both archive
+choice as BBC iPlayer. TV preparation is automatic. A pack downloads once,
+then processes selected videos sequentially with one Activity row. Searches,
+downloads and conversion run through Windows Studio. The Pi coordinates the
+queue, publishes completed uploads and keeps catalogue metadata.
+
+The bundled qBittorrent uses a dedicated profile and authenticated API bound
+to `127.0.0.1`. Its random password is protected by Windows private storage;
+neither credentials nor user profiles are bundled or committed. It starts
+when requested and does not replace another torrent client's magnet handling.
+Per-torrent limits stop completed seeding even when Studio is disconnected.
+Uploads to peers can still occur during downloading. The completion journal is
+saved before stopping/removing the torrent with data retained. An interrupted
+handoff reuses that journal, verifies the retained files and never republishes
+already confirmed Studio children. Shared pack data is removed after all
+selected files have confirmed cloud/TV delivery. Paused or failed work keeps
+its recovery data. Torrent operations are scoped to the exact managed hash,
+tag and working directory, never to all torrents.
+
+Results depend on the external search service and peers; availability and seed
+counts do not guarantee a working download. A metadata timeout leaves the
+selection intact for retry or another result. Disk admission reserves room for
+selected originals and preparation. No torrent client, peer video download or
+video conversion is installed on the Pi.
 
 Use **Connections → Reconnect** in the HTTPS portal for Apple sign-in and
 verification. The rclone connector is experimental and Apple may require a

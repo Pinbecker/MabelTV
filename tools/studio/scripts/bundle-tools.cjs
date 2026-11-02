@@ -23,3 +23,4 @@ fs.writeFileSync(path.join(root, 'THIRD-PARTY-NOTICES.txt'),
   'FFmpeg / FFprobe: https://ffmpeg.org/\nWindows build: https://www.gyan.dev/ffmpeg/builds/\nSee the included FFmpeg license and build README, and get_iplayer/licenses for runtime notices.\n\n' +
   'No personal preferences, browser cookies, download history or recordings are included.\n');
 console.log('Bundled media tools and license notices in ' + root);
+require('./bundle-torrents.cjs').bundle().catch(error => { console.error(error.message); process.exitCode = 1; });

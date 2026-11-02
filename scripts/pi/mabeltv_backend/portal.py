@@ -55,6 +55,7 @@ PORTAL_APP_SOURCES = (
     "studio/cloud-library.js",
     "studio/metadata.js",
     "studio/cloud-delete.js",
+    "studio/torrents.js",
     "actions.js",
     "lg-tv-remote.js",
 )

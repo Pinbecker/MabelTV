@@ -127,7 +127,7 @@
 
     function openRequestedView(event = null) {
       const requested = location.hash.replace(/^#/, '')
-      const studioRoute = requested.match(/^my-tv-studio(?:\/(cloud|iplayer|activity))?$/)
+      const studioRoute = requested.match(/^my-tv-studio(?:\/(cloud|iplayer|torrents|activity))?$/)
       if (studioRoute) { studioState.tab = studioRoute[1] || studioState.tab; openView('my-tv-studio'); return }
       const settingsRoute = requested.match(/^settings\/(mabel|channels|my-tv|media|security|help)$/)
       if (settingsRoute) {

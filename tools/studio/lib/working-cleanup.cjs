@@ -10,7 +10,9 @@ function cleanWorkingCopies(remote, local, store) {
   if (!/^[a-f0-9]{32}$/.test(local.id) || !inside(workspace, directory) || !path.basename(directory).endsWith(local.id.slice(0, 8))) throw new Error('Working files were kept because their ownership could not be confirmed.');
   const roots = [directory];
   if (/^[a-f0-9]{32}$/.test(remote.id)) {
-    for (const name of ['Remote', 'Torrents']) {
+    // Torrent packs keep their shared sources until every selected episode
+    // has confirmed delivery. Their parent owner then removes the pack.
+    for (const name of ['Remote']) {
       const candidate = path.join(workspace, name, remote.id);
       if (fs.existsSync(candidate)) {
         const resolved = fs.realpathSync(candidate);

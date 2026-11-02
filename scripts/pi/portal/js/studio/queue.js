@@ -91,7 +91,7 @@ async function studioSubmitDestination(event) {
         destination.series = $('#studioSeries').value === 'new' ? '' : $('#studioSeries').value
         destination.name = $('#studioNewSeries').value.trim()
         destination.season = Number($('#studioSeason').value)
-        destination.preserveSeasons = new Set(draft.sources.map(source => source.series).filter(value => Number.isInteger(value))).size > 1
+        destination.preserveSeasons = new Set(draft.sources.flatMap(source => source.seasons || [source.series]).filter(value => Number.isInteger(value))).size > 1
       }
       await api('/api/studio/jobs', { method: 'POST', body: JSON.stringify({ sources: draft.sources, destination, replaceCloudOriginal: draft.replaceCloudOriginal === true, match: chosen === 'film' ? draft.match : null }) })
     }

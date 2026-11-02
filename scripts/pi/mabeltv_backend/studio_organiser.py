@@ -91,6 +91,9 @@ class StudioOrganiserMixin:
             deletions = self.state_database.studio_records("cloudop")
             records = self.state_database.studio_cloud_metadata_records()
             publishing = {job["id"] for job in jobs if job["status"] == "active"}
+            transferring = {job["id"] for job in jobs if job["status"] in {"queued", "active", "paused"}}
+            awaiting = {intent["path"] for intent in self.state_database.studio_records("archiveintent")
+                        if intent.get("status") == "pending" and intent.get("publicationJob") in transferring}
             # Finish opaque/new Studio downloads first, then backfill the library.
             for candidate in sorted(titles, key=lambda item: (records.get(item["id"], {}).get("publicationJob") not in publishing,
                     not item["path"].startswith("MabelTV Studio/"), bool(item.get("metadata")), item["title"].casefold())):
@@ -103,6 +106,8 @@ class StudioOrganiserMixin:
                     continue
                 members = groups.get(candidate["id"], [candidate])
                 identities = {item["id"] for item in members}
+                if any(item["path"] in awaiting for item in members):
+                    continue
                 busy = any(job["status"] in {"queued", "active", "paused"} and
                        (job["source"].get("id") in identities or records.get(candidate["id"], {}).get("publicationJob") == job["id"] or
                         any(job["id"] in PurePosixPath(item["path"]).parts for item in members)) for job in jobs)

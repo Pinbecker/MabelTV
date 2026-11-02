@@ -38,11 +38,12 @@ class CompanionJobs {
     } catch { return null; }
   }
   async run(remote, state, signal) {
-    let local = this.store.state.jobs.find(j => j.remoteId === remote.id);
+    let local = this.store.state.jobs.find(j => j.remoteId === (remote.localKey || remote.id));
     if (!local) {
       state.progress = { stage: 'downloading', message: remote.source.type === 'cloud' ? 'Downloading from iCloud' : 'Reading BBC programme details', percent: 0 };
       let input;
-      if (remote.source.type === 'cloud') {
+      if (remote.source.type === 'torrent' && remote.fileInput) input = remote.fileInput;
+      else if (remote.source.type === 'cloud') {
         const cloud = await fetchCloud(remote, this.store, this.portal, signal, progress => { state.progress = { stage: 'downloading', message: 'Downloading from iCloud', ...progress }; });
         input = { kind: 'file', path: cloud.file, metadata: cloud.metadata };
         if (!/\.(mp4|m4v|mov|mkv|avi|webm|mpg|mpeg|ts)$/i.test(cloud.file)) {
@@ -53,7 +54,7 @@ class CompanionJobs {
       } else input = { kind: 'iplayer', metadata: await this.iplayer.metadata(remote.source.pid, signal) };
       const destination = await this.destination(remote);
       input.match = await this.match(remote, input.metadata, destination);
-      input.remoteId = remote.id; input.preserveOriginal = true;
+      input.remoteId = remote.localKey || remote.id; input.preserveOriginal = true;
       [local] = this.queue.add([input], destination);
       if (!local) throw new Error('This item is already queued.');
     } else if (remote.metadata_only) {

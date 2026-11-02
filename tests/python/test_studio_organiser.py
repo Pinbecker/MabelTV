@@ -211,6 +211,16 @@ class StudioOrganiserTests(unittest.TestCase):
         self.step()
         self.assertTrue(self.commands)
 
+    def test_unconfirmed_reserved_archive_is_not_relocated_while_its_receipt_is_pending(self):
+        job={'id':'a'*32,'fingerprint':'pending-archive','title':'Arrival','source':{'type':'iplayer','pid':'m0000001'},
+             'status':'active','created':time.time(),'destination':{'kind':'film'}}
+        self.database.studio_add_jobs([job])
+        self.database.studio_add('archiveintent',{'id':'intent','publicationJob':job['id'],
+            'path':self.library.studio_cloud_files[0]['path'],'status':'pending'})
+        self.step()
+        self.assertFalse(self.commands)
+        self.library.my_tv_cached_tmdb_request.assert_not_called()
+
     def test_series_remains_grouped_after_a_recoverable_root_change(self):
         self.library.studio_cloud_files = [self.file('ep1', 'TV/Ludwig/Season 0/Ludwig S00E01.mp4'),
                                          self.file('ep2', 'TV/Ludwig/Season 2/Ludwig S02E03.mp4')]

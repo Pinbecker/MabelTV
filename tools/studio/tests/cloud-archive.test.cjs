@@ -32,6 +32,7 @@ function fixture(t, copies = 'both') {
     if (route.startsWith('/api/studio/cloud/item?')) return [...cloud.values()].find(item => item.id === remote.source.id);
     if (route === '/api/studio/cloud/replace-original') return { complete: true };
     assert.equal(route, '/api/studio/cloud/confirm');
+    if (body.reserve) return { reserved: true };
     if (body.verifyId) {
       const item = [...cloud.values()].find(value => value.id === body.verifyId);
       return { confirmed: Boolean(item && ['bytes', 'modified', 'remoteId'].every(key => item[key] === body[key])) };
@@ -88,7 +89,7 @@ test('a resumed archive keeps its first confirmed role and only copies the unfin
   fail = false;
   await saveCloud(f.remote, restored, reopened, f.portal, f.signal);
   assert.equal(f.cloud.size, 2);
-  assert.equal(f.calls.filter(call => !call.body?.lookupOnly && call.body?.variants?.includes('original')).length, 1);
+  assert.equal(f.calls.filter(call => !call.body?.lookupOnly && !call.body?.reserve && call.body?.variants?.includes('original')).length, 1);
   await verifyCloudCopies(f.remote, restored, f.portal, f.signal);
 });
 test('lost cloud confirmation keeps temporary working files safe', async t => {

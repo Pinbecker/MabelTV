@@ -132,8 +132,12 @@ class StudioMixin:
                 title = str(source.get("title", "BBC programme"))[:200]
                 if type(source.get("series")) is int and 0 <= source["series"] <= 99:
                     origin["series"] = source["series"]
+            elif source.get("type") == "torrent":
+                origin = self.studio_torrent_source(source)
+                source_match = match if len(origin["files"]) == 1 or match and match["media_type"] == "tv" else None
+                title = str(source_match.get("title") if source_match else origin["title"])[:240]
             else:
-                raise ValueError("Choose an iCloud file or BBC programme")
+                raise ValueError("Choose an iCloud file, BBC programme or download result")
             chosen = dict(destination)
             chosen["saveCloud"] = True
             if origin["type"] == "cloud" and chosen["cloudCopies"] == "optimised":
@@ -144,7 +148,8 @@ class StudioMixin:
                     chosen["prepare"] = True
             if chosen["kind"] == "series" and chosen["preserveSeasons"] and "series" in origin:
                 chosen["season"] = origin["series"]
-            stable_origin = {key: value for key, value in origin.items() if key not in {"archiveGroup", "variants", "path"}} if origin["type"] == "cloud" else origin
+            excluded = {"archiveGroup", "variants", "path"} if origin["type"] == "cloud" else {"inspection", "magnet", "title"} if origin["type"] == "torrent" else set()
+            stable_origin = {key: value for key, value in origin.items() if key not in excluded}
             fingerprint = hashlib.sha256(json.dumps([stable_origin, chosen], sort_keys=True).encode()).hexdigest()
             existing = next((j for j in self.state_database.studio_records("job") if j.get("fingerprint") == fingerprint
                              and j["status"] in {"queued", "active", "paused"}), None)
@@ -172,7 +177,15 @@ class StudioMixin:
         responses = payload.get("responses", [])
         if not isinstance(responses, list) or len(json.dumps(responses)) > 2 * 1024 * 1024:
             raise ValueError("Invalid Studio search response")
-        return self.state_database.studio_poll(identity, str(payload.get("name", "Laptop"))[:80], active, responses)
+        capabilities = payload.get("capabilities", [])
+        if not isinstance(capabilities, list) or len(capabilities) > 10 or any(not isinstance(item, str) or item != "torrent" for item in capabilities):
+            raise ValueError("Invalid Studio capabilities")
+        request_active = payload.get("requestActive")
+        if request_active is not None and (not isinstance(request_active, dict) or len(json.dumps(request_active)) > 300):
+            raise ValueError("Invalid Studio request lease")
+        responses = self.studio_torrent_worker_responses(responses)
+        return self.state_database.studio_poll(identity, str(payload.get("name", "Laptop"))[:80], active, responses,
+                                               capabilities, request_active)
 
     def studio_subtitle(self, payload):
         """Attach text only to a server-confirmed publication, never an arbitrary path."""

@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, dialog, shell, session, protocol, net, Tray, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, session, protocol, net, Tray, Menu, safeStorage } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
@@ -12,6 +12,7 @@ const { Queue } = require('./lib/queue.cjs');
 const { Companion } = require('./lib/companion.cjs');
 const { sendSubtitles } = require('./lib/subtitles.cjs');
 const { migrateWorkspace } = require('./lib/workspace.cjs');
+const { TorrentRuntime } = require('./lib/torrent-runtime.cjs');
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'studio', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 app.setName('MabelTV Studio');
@@ -82,7 +83,7 @@ async function start() {
   iplayer = new IPlayer(app.getPath('userData'), getTools);
   queue = new Queue(store, new Media(getTools), iplayer, portal);
   queue.afterPublish = (job, signal) => sendSubtitles(job, portal, getTools(), signal);
-  companion = new Companion(store, queue, iplayer, portal);
+  companion = new Companion(store, queue, iplayer, portal, new TorrentRuntime(app.getPath('userData'), resources, safeStorage));
   if (!process.env.STUDIO_TEST_DATA) {
     app.setLoginItemSettings({ openAtLogin: true, args: ['--background'] });
     tray = new Tray(path.join(__dirname, 'ui/studio.ico'));

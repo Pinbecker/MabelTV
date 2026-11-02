@@ -73,6 +73,8 @@ async function saveCloud(remote, local, store, portal, signal, progress = () => 
       store.update(local.id, { savedCloudCopies: { ...saved }, savedCloudPath: Object.values(saved)[0].path });
       continue;
     }
+    const reserved = await portal.api('/api/studio/cloud/confirm', { method: 'POST', body: { ...confirmation, reserve: true, claim: remote.claim }, signal });
+    if (!reserved.reserved) throw new Error('iCloud could not reserve this archive copy. Retry after reconnecting Studio.');
     const existing = await portal.api('/api/studio/cloud/confirm', { method: 'POST', body: { ...confirmation, lookupOnly: true }, signal });
     if (existing.confirmed) {
       await portal.api('/api/studio/cloud/confirm', { method: 'POST', body: { ...confirmation, path: existing.path || relative }, signal });

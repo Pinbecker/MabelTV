@@ -149,3 +149,24 @@ class StudioCloudCopiesTests(unittest.TestCase):
         self.assertTrue(queued['cloud_only'])
         self.assertEqual(queued['destination']['cloudCopies'],'both')
         self.assertEqual(queued['result']['file_name'],'Published.mp4')
+
+    def test_archive_reservation_needs_a_current_claim_and_binds_arrival_before_filing(self):
+        self.library.studio_add_jobs({'sources':[{'type':'iplayer','pid':'m0000001','title':'Incoming'}],
+            'destination':{'kind':'film','cloudCopies':'optimised'}})
+        job=self.library.studio_worker_poll({'id':'1'*32})['job']
+        payload={'reserve':True,'publicationJob':job['id'],'claim':job['claim'],'archiveAsset':'a'*32+':optimised',
+            'archiveGroup':'a'*32,'variants':['optimised'],'path':'Films/Incoming [Optimised].mp4','bytes':100,'title':'Incoming'}
+        with self.assertRaises(ValueError):
+            self.library.studio_cloud_confirm({**payload,'claim':'stale'})
+        self.assertEqual(self.library.studio_cloud_confirm(payload),{'reserved':True})
+        row={'Path':payload['path'],'Size':100,'ID':'incoming-cloud-id','ModTime':'2026-11-02','IsDir':False}
+        with mock.patch.object(self.library,'_studio_rclone',return_value=[row]):
+            self.library._studio_cloud_scan()
+        intent=self.database.studio_records('archiveintent')[0]
+        self.assertEqual(intent['status'],'complete')
+        record=self.database.studio_cloud_metadata_records()[intent['file']]
+        self.assertEqual(record['publicationJob'],job['id'])
+        self.assertEqual(record['archiveAsset'],payload['archiveAsset'])
+        with mock.patch.object(self.library,'_studio_rclone',return_value=row):
+            result=self.library.studio_cloud_confirm({**payload,'reserve':False,'lookupOnly':True})
+        self.assertTrue(result['confirmed'])

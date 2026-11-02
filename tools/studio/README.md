@@ -26,6 +26,15 @@ The desktop app owns only local preferences, metadata caches and operational tra
   replacement of confirmed originals, and reuse of canonical archive metadata.
 - `lib/working-cleanup.cjs` removes verified temporary portal-job media only
   from Studio-owned working directories after cloud and TV delivery.
+- `lib/torrent-client.cjs` owns authenticated, bounded loopback Web API calls.
+- `lib/torrent-runtime.cjs` owns the private qBittorrent profile, Windows private
+  credentials, bundled Python/search plugin and bounded film/TV searches.
+- `lib/torrent-media.cjs` checks Windows-safe relative paths and episode names.
+- `lib/torrent-downloads.cjs` owns metadata inspection, selected-file priorities,
+  space admission, durable completion/removal receipts and working-pack cleanup.
+- `lib/companion-torrents.cjs` feeds selected files sequentially through existing
+  Studio jobs under one durable portal job, retaining pack data until all files
+  have confirmed delivery.
 - `ui/` owns the desktop design and interaction, with no Node privileges.
 
 Cookies are stored by Electron's isolated persistent portal session. PINs are never saved. Remote sign-in opens a separate sandboxed window without the Studio bridge. IPC accepts only the bundled Studio page. Download subprocess arguments never pass through cmd.exe or PowerShell.
@@ -52,6 +61,17 @@ Each phase is checked before handover. No Pi source changes are required when it
 Run `npm ci`, then `npm start`. `npm test` exercises desktop owners; `npm run test:ui` exercises the actual Electron window. `npm run package` creates a per-user Windows installer under `dist/`.
 
 Run `npm run bundle:tools` before packaging to copy the installed get_iplayer runtime and FFmpeg tools, together with license notices, into ignored build resources. No user get_iplayer settings, history or recordings are packaged.
+It also runs `scripts/bundle-torrents.cjs`, which downloads checksum-pinned
+qBittorrent 5.3.0, Python 3.14.10 and the reviewed Pirate Bay plugin, extracts
+them without installing a public API or changing magnet associations, and
+includes their license notices. A developer build needs 7-Zip installed.
+End-user installations include these tools and need no separate Python setup.
+
+After bundling, `npx electron scripts/verify-torrents.cjs` runs a separate
+loopback-only transfer proof using generated video, a fresh encrypted profile,
+restart recovery, actual optimisation and an isolated cloud/publication fixture.
+It never contacts the Pi or downloads external media. Evidence stays under
+`out/studio-torrent-proof/`; ordinary unit tests use fake API boundaries.
 
 The development toolchain requires Node 22.12 or newer. On this computer use the bundled Node 24 runtime; the system npm launcher still invokes Node 20. Invoke npm's `npm-cli.js` with the newer Node executable when installing dependencies.
 

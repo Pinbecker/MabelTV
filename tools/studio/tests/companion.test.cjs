@@ -92,7 +92,7 @@ test('cloud saving sends video only and keeps subtitles for Pi delivery', async 
   const local = { id: 'b'.repeat(32), directory, sourcePath: source, preparedPath: prepared, metadata: { title: 'Example show', series: 2, episodeNumber: 3, episode: 'An episode' } }; store.add(local);
   const confirmed = [];
   const relative = await saveCloud({ id: 'a'.repeat(32), source: { type: 'iplayer' }, destination: { kind: 'icloud', prepare: true } }, local, store,
-    { api: async (_route, { body }) => { if (body.lookupOnly) return { confirmed: false }; confirmed.push(body.path); return { confirmed: true }; } }, new AbortController().signal, () => {}, {});
+    { api: async (_route, { body }) => { if (body.reserve) return { reserved: true }; if (body.lookupOnly) return { confirmed: false }; confirmed.push(body.path); return { confirmed: true }; } }, new AbortController().signal, () => {}, {});
   const cloudFolder = path.join(store.state.settings.iCloudRoot, 'Media', path.dirname(relative));
   assert.equal(path.basename(cloudFolder), 'Season 2');
   assert.equal(path.basename(path.dirname(cloudFolder)), 'Example show');

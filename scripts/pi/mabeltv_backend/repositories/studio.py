@@ -183,16 +183,22 @@ class StudioRepositoryMixin:
                     job["destination"].update(saveCloud=True, cloudCopies=cloud_copies, temporaryWork=True, keepOptimised=False)
                     job["cloud_only"] = True
                     job["metadata_only"] = False
+                    job.update(stage="saving-cloud", message="Waiting to save to iCloud", percent=0)
                 job.update(status="queued", command="", worker="", claim="", lease=0, error="")
             job["updated"] = time.time()
             self._studio_put(db, "job", job)
             return job
 
-    def studio_poll(self, worker, name, active=None, responses=None):
+    def studio_poll(self, worker, name, active=None, responses=None, capabilities=None, request_active=None):
         now = time.time()
         with self.transaction() as db:
-            self._studio_put(db, "worker", {"id": worker, "name": name, "seen": now})
+            self._studio_put(db, "worker", {"id": worker, "name": name, "seen": now, "capabilities": capabilities or []})
             requests = self._studio_records(db, "request")
+            if request_active:
+                current = next((item for item in requests if item["id"] == request_active.get("id")), None)
+                if current and current.get("worker") == worker and current.get("claim") == request_active.get("claim") and current["status"] == "active":
+                    current.update(lease=now + 300, updated=now)
+                    self._studio_put(db, "request", current)
             for response in (responses or [])[:4]:
                 current = next((r for r in requests if r["id"] == response.get("id")), None)
                 if current and current.get("worker") == worker and current.get("claim") == response.get("claim"):
@@ -217,6 +223,8 @@ class StudioRepositoryMixin:
             job = None
             if not active:
                 for item in sorted(jobs, key=lambda j: j["created"]):
+                    if item["source"].get("type") == "torrent" and "torrent" not in (capabilities or []):
+                        continue
                     if item["status"] == "queued" or item["status"] == "active" and item.get("lease", 0) < now:
                         item.update(status="active", worker=worker, claim=secrets.token_hex(16), lease=now + 90, updated=now)
                         self._studio_put(db, "job", item)
@@ -224,6 +232,10 @@ class StudioRepositoryMixin:
                         break
             pending = []
             for request in sorted(requests, key=lambda r: r["created"]):
+                if request["kind"].startswith("torrent-") and "torrent" not in (capabilities or []):
+                    continue
+                if any(item["status"] == "active" and item.get("worker") == worker and item.get("lease", 0) > now for item in requests):
+                    break
                 if request["status"] == "queued" or request["status"] == "active" and request.get("lease", 0) < now:
                     request.update(status="active", worker=worker, claim=secrets.token_hex(16), lease=now + 300)
                     self._studio_put(db, "request", request)

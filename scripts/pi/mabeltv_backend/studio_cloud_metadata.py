@@ -105,6 +105,9 @@ class StudioCloudMetadataMixin:
                         "poster_path": details.get("poster_path"), "overview": details.get("overview"), "runtime": details.get("runtime")}
             record["status"] = "matched"
         self.state_database.studio_save_cloud_metadata(record, metadata, automatic=True)
+        for intent in self.state_database.studio_records("archiveintent"):
+            if intent.get("status") == "pending" and intent.get("archiveAsset") == asset and intent.get("publicationJob") == publication_job:
+                self.state_database.studio_add("archiveintent", {**intent, "status": "complete", "file": item["id"], "updated": time.time()})
 
     def studio_cloud_title_for_file(self, identity):
         titles, groups = self.studio_cloud_media_titles()

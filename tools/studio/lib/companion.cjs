@@ -1,11 +1,15 @@
 'use strict';
 const os = require('node:os');
 const { CompanionJobs } = require('./companion-jobs.cjs');
+const { TorrentDownloads } = require('./torrent-downloads.cjs');
+const { CompanionTorrents } = require('./companion-torrents.cjs');
 
 class Companion {
-  constructor(store, queue, iplayer, portal) {
+  constructor(store, queue, iplayer, portal, torrents = null) {
     Object.assign(this, { store, queue, iplayer, portal });
     this.runner = new CompanionJobs(store, queue, iplayer, portal);
+    this.torrents = torrents;
+    if (torrents) { this.downloads = new TorrentDownloads(store, torrents); this.torrentRunner = new CompanionTorrents(this.downloads, this.runner); }
     this.active = null; this.responses = []; this.request = null; this.closed = false; this.busy = false;
     this.status = { connected: false, message: 'Connecting to your portal' };
   }
@@ -26,6 +30,7 @@ class Companion {
       const responses = this.responses.slice();
       const reply = await this.portal.api('/api/studio/worker', { method: 'POST', body: {
         id: this.store.state.sourceId, name: os.hostname(), active: this.progress(), responses,
+        capabilities: this.torrents ? ['torrent'] : [], requestActive: this.request ? { id: this.request.id, claim: this.request.claim } : null,
       } });
       this.responses.splice(0, responses.length);
       this.status = { connected: true, message: this.active ? 'Working for your portal' : 'Ready for portal requests' };
@@ -42,7 +47,8 @@ class Companion {
       if (reply.job && !this.active) {
         const state = { remote: reply.job, controller: new AbortController(), progress: {} };
         this.active = state;
-        this.runner.run(reply.job, state, state.controller.signal).catch(error => {
+        const runner = reply.job.source.type === 'torrent' ? this.torrentRunner : this.runner;
+        runner.run(reply.job, state, state.controller.signal).catch(error => {
           state.progress = { status: state.controller.signal.aborted ? 'paused' : 'failed', stage: 'failed', error: error.message, message: error.message };
           state.finishing = true;
         }).finally(() => { state.done = true; });
@@ -53,7 +59,9 @@ class Companion {
           continue;
         }
         this.request = request;
-        const operation = request.kind === 'metadata' ? this.iplayer.metadata(request.query) : this.iplayer.search(request.query, request.refresh);
+        const operation = request.kind === 'torrent-search' ? this.torrents.search(request.query)
+          : request.kind === 'torrent-inspect' ? this.downloads.inspect(request.source)
+          : request.kind === 'metadata' ? this.iplayer.metadata(request.query) : this.iplayer.search(request.query, request.refresh);
         operation.then(result => this.responses.push({ id: request.id, claim: request.claim, result }))
           .catch(error => this.responses.push({ id: request.id, claim: request.claim, error: error.message }))
           .finally(() => { this.request = null; });
@@ -63,6 +71,6 @@ class Companion {
       // Work can finish locally while offline; its journal and result remain durable.
     } finally { this.busy = false; }
   }
-  async close() { this.closed = true; clearInterval(this.timer); this.active?.controller.abort(); }
+  async close() { this.closed = true; clearInterval(this.timer); this.active?.controller.abort(); await this.torrents?.close(); }
 }
 module.exports = { Companion };

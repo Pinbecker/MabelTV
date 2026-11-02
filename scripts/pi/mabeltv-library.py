@@ -67,6 +67,7 @@ from mabeltv_backend.portal import (
 from mabeltv_backend.studio_cloud_metadata import StudioCloudMetadataMixin
 from mabeltv_backend.studio_cloud_manager import StudioCloudManagerMixin
 from mabeltv_backend.studio import StudioMixin
+from mabeltv_backend.studio_torrents import StudioTorrentsMixin
 from mabeltv_backend.studio_cloud import StudioCloudMixin
 from mabeltv_backend.studio_organiser import StudioOrganiserMixin
 from mabeltv_backend.studio_cloud_filing import StudioCloudFilingMixin
@@ -107,7 +108,7 @@ __all__ = [
     "urlopen",
 ]
 
-class Library(StudioMixin, StudioCloudMixin, StudioOrganiserMixin, StudioCloudFilingMixin, StudioCloudManagerMixin, StudioCloudMetadataMixin, MyTvTransferMixin, PlaylistsMixin, FamilyMediaMixin, FamilyUploadsMixin,
+class Library(StudioMixin, StudioTorrentsMixin, StudioCloudMixin, StudioOrganiserMixin, StudioCloudFilingMixin, StudioCloudManagerMixin, StudioCloudMetadataMixin, MyTvTransferMixin, PlaylistsMixin, FamilyMediaMixin, FamilyUploadsMixin,
               IPlayerLibraryMixin, MabelQueueMixin, ViewingMixin, UploadConversionMixin, TranscodingMixin, AuthenticationMixin,
               ArtworkProxyMixin,
               MediaCatalogueMixin, ManagementMixin, RemotePlaybackMixin, LgControlMixin,

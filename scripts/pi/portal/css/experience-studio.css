@@ -192,3 +192,18 @@ body.portal-v2 .studio-cloud-copy-options span { display: flex; align-items: cen
 body.portal-v2 .studio-cloud-copy-options input:checked + span { border-color: var(--experience-accent); color: var(--experience-accent); background: color-mix(in srgb,var(--experience-accent) 12%,var(--experience-raised)); }
 body.portal-v2 .studio-cloud-copy-options input:focus-visible + span { outline: 2px solid var(--experience-accent); outline-offset: 3px; }
 body.portal-v2 .studio-cloud-copies .studio-caption { margin: 6px 0 0; font-size: 10px; }
+body.portal-v2 .studio-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+body.portal-v2 .studio-tabs button { min-width: 0; padding-inline: 5px; font-size: 11px; }
+body.portal-v2 .studio-torrent-results { display: grid; }
+body.portal-v2 .studio-torrent-result { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 15px 0; border: 0; border-bottom: 1px solid var(--experience-line); background: transparent; color: var(--experience-ink); text-align: left; }
+body.portal-v2 .studio-torrent-result > span:nth-child(2) { display: grid; gap: 5px; flex: 1; min-width: 0; }
+body.portal-v2 .studio-torrent-result strong { font-size: 13px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+body.portal-v2 .studio-torrent-result small { font-size: 11px; color: var(--experience-dim); }
+body.portal-v2 .studio-torrent-result > .icon { width: 16px; height: 16px; flex: none; color: var(--experience-dim); }
+body.portal-v2 .studio-torrent-icon { display: grid; place-items: center; flex: 0 0 40px; width: 40px; height: 48px; border-radius: 10px; background: var(--experience-raised); color: var(--experience-accent); }
+body.portal-v2 #studioTorrentSearchForm .portal-search { display: flex; align-items: center; }
+body.portal-v2 #studioTorrentSearchForm input { flex: 1; min-width: 0; }
+body.portal-v2 #studioTorrentSearchForm button { display: grid; place-items: center; flex: 0 0 40px; min-height: 40px; border: 0; background: transparent; color: var(--experience-accent); }
+body.portal-v2 #studioTorrentFiles { max-height: min(52vh, 480px); overflow: auto; }
+body.portal-v2 #studioTorrentSheet .studio-section-head { gap: 8px; flex-wrap: wrap; }
+body.portal-v2 #studioTorrentSheet select { max-width: 135px; }

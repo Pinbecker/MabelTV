@@ -109,6 +109,11 @@ class StudioCloudMixin:
             os.replace(temporary, self.studio_cache / "icloud-catalogue.json")
             with self.studio_cloud_lock:
                 self.studio_cloud_files, self.studio_cloud_checked, self.studio_cloud_error = files, checked, ""
+            for intent in self.state_database.studio_records("archiveintent"):
+                if intent.get("status") == "pending":
+                    arrived = next((item for item in files if item["path"] == intent["path"] and item["bytes"] == intent["bytes"]), None)
+                    if arrived:
+                        self.studio_cloud_archive_metadata(arrived, intent)
         except (ValueError, OSError):
             self.studio_cloud_error = "iCloud could not refresh. Your last catalogue is kept; reconnect if this continues."
         finally:
@@ -200,6 +205,20 @@ class StudioCloudMixin:
         group, variants = str(payload.get("archiveGroup", "")), payload.get("variants", [])
         if group and not re.fullmatch(r"[a-f0-9]{32}", group) or not isinstance(variants, list) or len(variants) > 2 or any(not isinstance(role, str) or role not in {"original", "optimised"} for role in variants):
             raise ValueError("Choose a valid Studio archive copy")
+        if payload.get("reserve") is True:
+            publication = str(payload.get("publicationJob", ""))
+            asset = str(payload.get("archiveAsset", ""))
+            job = next((value for value in self.state_database.studio_records("job") if value["id"] == publication), None)
+            if not job or job["status"] != "active" or not payload.get("claim") or job.get("claim") != payload["claim"]:
+                raise ValueError("This transfer needs its current Studio claim")
+            if not group or not variants or not re.fullmatch(r"[a-f0-9]{32}:(?:original|optimised|original\+optimised)", asset) or type(payload.get("bytes")) is not int or not 0 < payload["bytes"] <= 4 * 1024 ** 4:
+                raise ValueError("Choose a valid archive reservation")
+            identity = hashlib.sha256((publication + asset).encode()).hexdigest()[:32]
+            self.state_database.studio_add("archiveintent", {"id": identity, "publicationJob": publication,
+                "archiveAsset": asset, "archiveGroup": group, "variants": variants, "path": str(path),
+                "bytes": payload["bytes"], "title": str(payload.get("title", ""))[:200],
+                "match": self.studio_match(payload.get("match")), "status": "pending", "updated": time.time()})
+            return {"reserved": True}
         if group and re.fullmatch(r"[a-f0-9]{32}", group) and isinstance(variants, list) and variants:
             with self.studio_cloud_lock:
                 current_files = {value["id"]: dict(value) for value in self.studio_cloud_files}

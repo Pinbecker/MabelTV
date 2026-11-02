@@ -514,6 +514,13 @@ the form. Initial setup assigns consecutive numbers rather than editable fields.
 
 ## Portal Studio
 
+`studio/torrents.js` owns Find Anything searches and release/file review. It
+keeps season-pack selections grouped, then uses the existing destination sheet
+and its Original / Optimised / Both cloud archive controls. Search/inspection
+requests use the shared Studio polling lifecycle; provider text is escaped and
+only hash-bound server selections reach the queue. The four compact tabs share
+the normal Studio route and Back behaviour, including `/torrents` deep links.
+
 `studio/library.js` owns the My TV Studio route, independent iCloud catalogue and BBC iPlayer programme/episode browser. `studio/queue.js` owns shared destination, metadata matching, activity and private connection sheets. `experience-studio.css` uses shared theme tokens with compact segmented tabs, quiet headings, custom select controls and content-sized dialogs matching the refined portal. Destructive confirmation keeps the named selection, one full-width action and a separate cancel control. My TV Home and My Library link to Studio; primary navigation, Back and offline handling remain shared.
 
 The laptop's durable worker reports independent stage progress without refreshing the library or losing form focus. iCloud refresh keeps the previous catalogue on failure. Search requests wait on the Pi while the laptop is offline. Cloud sign-in runs only through the owner-authenticated HTTPS portal and never browser storage. A private Unix socket carries rclone's configuration protocol.

@@ -241,6 +241,14 @@ The Pi owns queued intent, claims, progress and cloud catalogue availability. Wi
 
 `studio_cloud_manager.py` owns only confirmed deletion of selected videos and matching subtitle sidecars. It accepts catalogue identities and frozen versions, derives paths on the server, rechecks each cloud file before fixed rclone `deletefile` commands, and never admits folders, arbitrary paths or rename/move/mkdir. Legacy queued folder operations fail without mutation. Separate Pi copies are untouched.
 
+`studio_torrents.py` owns checked torrent search and metadata-inspection intents.
+It freezes only selected video files from a completed, hash-bound inspection;
+arbitrary paths/magnets are not accepted as queue sources. Provider replies are
+bounded and canonicalised before storage/rendering. Requests and jobs retain
+the existing Studio leases in SQLite, with capability-aware claims so older
+companions cannot consume torrent work. Search, peer transfer and media work
+remain on Windows; no torrent client or video payload is run on the Pi.
+
 `studio_organiser.py` quietly resolves one film/series per catalogue-loop step.
 `studio_organiser_model.py` uses bounded, non-stored Responses requests to
 GPT-6 Luna for search hints and selection among actual TMDB candidates. It
@@ -270,7 +278,9 @@ move and recover an unacknowledged move by checking both endpoints. Existing
 targets are never overwritten, unmatched episodes are not renumbered, and no
 duplicate/original is automatically deleted. The rclone Move capability is
 required and a one-byte transfer ceiling blocks fallback video hydration on the
-Pi. Active or paused Studio sources and pending deletions are skipped. This
+Pi. Active or paused Studio sources and pending deletions are not relocated.
+New archive metadata may resolve during publication; its verified identity is
+reused by Studio before filing resumes after the transfer completes. This
 lightweight cloud/API coordination does not run video conversion or invoke the
 native player. Activity shows only current work or an actionable failure.
 

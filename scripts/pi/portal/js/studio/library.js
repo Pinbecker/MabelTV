@@ -18,8 +18,8 @@ function studioLastChecked(time) {
   return time ? `Checked ${new Date(time * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Not checked yet'
 }
 function studioSetTab(tab, { historyEntry = false } = {}) {
-  studioState.tab = ['cloud', 'iplayer', 'activity'].includes(tab) ? tab : 'cloud'
-  for (const [key, id] of [['cloud', 'studioCloudPane'], ['iplayer', 'studioIplayerPane'], ['activity', 'studioActivityPane']]) {
+  studioState.tab = ['cloud', 'iplayer', 'torrents', 'activity'].includes(tab) ? tab : 'cloud'
+  for (const [key, id] of [['cloud', 'studioCloudPane'], ['iplayer', 'studioIplayerPane'], ['torrents', 'studioTorrentPane'], ['activity', 'studioActivityPane']]) {
     $('#' + id).classList.toggle('hidden', studioState.tab !== key)
   }
   $$('[data-studio-tab]').forEach(button => {
@@ -50,6 +50,7 @@ async function studioTick() {
     if (studioState.tab === 'activity') renderStudioJobs()
     if (studioState.tab === 'cloud' && (status.cloud.checked !== studioLastCloudScan || status.cloud.metadataRevision !== studioState.cloud?.metadataRevision)) await studioLoadCloud()
     if (studioState.request && ['queued', 'active'].includes(studioState.request.status)) await studioPollSearch()
+    if (studioState.torrentRequest && ['queued', 'active'].includes(studioState.torrentRequest.status)) await studioPollTorrents()
     $('#studioError').classList.add('hidden')
   } finally { studioLoading = false }
 }
