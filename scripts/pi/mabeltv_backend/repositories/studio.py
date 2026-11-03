@@ -15,6 +15,21 @@ FINISHED = {"complete", "cancelled", "failed", "paused"}
 
 
 class StudioRepositoryMixin:
+    def studio_upload_notice(self, upload_id):
+        db = self.connect()
+        try:
+            row = db.execute("SELECT value_json FROM application_settings WHERE key=?",
+                             (PREFIX + "uploadnotice." + upload_id,)).fetchone()
+            return json.loads(row[0]) if row else {}
+        finally:
+            db.close()
+
+    def studio_save_upload_notice(self, upload_id, receipt):
+        with self.transaction() as db:
+            self._studio_put(db, "uploadnotice", {**receipt, "id": upload_id})
+            db.execute("DELETE FROM application_settings WHERE key LIKE 'studio.uploadnotice.%' "
+                       "AND updated_at<?", (time.time() - 30 * 86400,))
+
     @staticmethod
     def _studio_records(db, kind):
         return [json.loads(row[0]) for row in db.execute(
@@ -127,6 +142,10 @@ class StudioRepositoryMixin:
                 for field in ("variants", "archiveGroup", "titleHint", "publicationJob", "archiveAsset"):
                     if field not in value and field in old:
                         value[field] = old[field]
+                if old.get("fingerprint") == value.get("fingerprint"):
+                    for field in ("encodingProfile", "encodingSourceBytes"):
+                        if field not in value and field in old:
+                            value[field] = old[field]
             if automatic:
                 protected = [item for item in records if item.get("confirmed") and (
                     item["id"] == value["id"] and item.get("fingerprint") == value["fingerprint"] or
@@ -137,7 +156,7 @@ class StudioRepositoryMixin:
                     self._studio_put(db, "cloudmetadata", value)
                     return value
                 if old and old.get("status") == "matched" and old.get("fingerprint") == value["fingerprint"] and not metadata:
-                    for field in ("variants", "archiveGroup", "titleHint", "publicationJob", "archiveAsset"):
+                    for field in ("variants", "archiveGroup", "titleHint", "publicationJob", "archiveAsset", "encodingProfile", "encodingSourceBytes"):
                         if field in value:
                             old[field] = value[field]
                     old["updated"] = time.time()
@@ -189,10 +208,10 @@ class StudioRepositoryMixin:
             self._studio_put(db, "job", job)
             return job
 
-    def studio_poll(self, worker, name, active=None, responses=None, capabilities=None, request_active=None):
+    def studio_poll(self, worker, name, active=None, responses=None, capabilities=None, request_active=None, actives=None, worker_session=""):
         now = time.time()
         with self.transaction() as db:
-            self._studio_put(db, "worker", {"id": worker, "name": name, "seen": now, "capabilities": capabilities or []})
+            self._studio_put(db, "worker", {"id": worker, "name": name, "seen": now, "capabilities": capabilities or [], "session": worker_session})
             requests = self._studio_records(db, "request")
             if request_active:
                 current = next((item for item in requests if item["id"] == request_active.get("id")), None)
@@ -206,30 +225,47 @@ class StudioRepositoryMixin:
                                    result=response.get("result"), error=str(response.get("error", ""))[:500], updated=now)
                     self._studio_put(db, "request", current)
             jobs = self._studio_records(db, "job")
-            acknowledged = None
-            if active:
-                current = next((j for j in jobs if j["id"] == active.get("id")), None)
-                if current and current.get("worker") == worker and current.get("claim") == active.get("claim"):
-                    acknowledged = {"id": current["id"], "command": current.get("command", "")}
+            parallel = actives is not None and "parallel-stages" in (capabilities or [])
+            progress_items = actives if parallel else [active] if active else []
+            acknowledgements = []
+            for progress in progress_items:
+                current = next((j for j in jobs if j["id"] == progress.get("id")), None)
+                if current and current.get("worker") == worker and current.get("claim") == progress.get("claim"):
+                    acknowledgements.append({"id": current["id"], "command": current.get("command", "")})
                     if current["status"] == "active":
                         for key in ("stage", "message", "percent", "result", "error", "metadataWarning", "savedCloudPath", "matchedTitle"):
-                            if key in active:
-                                current[key] = active[key]
-                        if active.get("status") in {"complete", "failed", "paused"}:
-                            current["status"] = active["status"]
+                            if key in progress:
+                                current[key] = progress[key]
+                        if progress.get("status") in {"complete", "failed", "paused"}:
+                            current["status"] = progress["status"]
                         current.update(updated=now, lease=now + 90)
                         self._studio_put(db, "job", current)
             # An expired lease can be recovered by the same laptop or another paired Studio.
-            job = None
-            if not active:
+            claimed = []
+            background = {"saving-cloud", "waiting-for-cloud", "freeing-space"}
+            workers = {item["id"]: item for item in self._studio_records(db, "worker")}
+            def background_alive(item):
+                owner = workers.get(item.get("worker"), {})
+                return item.get("stage") in background and bool(item.get("workerSession")) \
+                    and item["workerSession"] == owner.get("session") and owner.get("seen", 0) >= now - 90
+            owned = [item for item in jobs if item["status"] == "active" and item.get("worker") == worker
+                     and (item.get("lease", 0) >= now or background_alive(item))]
+            busy = sum(item.get("stage") not in background for item in owned)
+            available = max(0, 12 - busy) if parallel else 0 if active else 1
+            if available:
                 for item in sorted(jobs, key=lambda j: j["created"]):
                     if item["source"].get("type") == "torrent" and "torrent" not in (capabilities or []):
                         continue
-                    if item["status"] == "queued" or item["status"] == "active" and item.get("lease", 0) < now:
-                        item.update(status="active", worker=worker, claim=secrets.token_hex(16), lease=now + 90, updated=now)
+                    if item.get("destination", {}).get("optimiseCloud") and "cloud-optimise" not in (capabilities or []):
+                        continue
+                    if item.get("destination", {}).get("compression") and "compression-presets" not in (capabilities or []):
+                        continue
+                    if item["status"] == "queued" or item["status"] == "active" and item.get("lease", 0) < now and not background_alive(item):
+                        item.update(status="active", worker=worker, workerSession=worker_session, claim=secrets.token_hex(16), lease=now + 90, updated=now)
                         self._studio_put(db, "job", item)
-                        job = item
-                        break
+                        claimed.append(item)
+                        if len(claimed) >= available:
+                            break
             pending = []
             for request in sorted(requests, key=lambda r: r["created"]):
                 if request["kind"].startswith("torrent-") and "torrent" not in (capabilities or []):
@@ -241,4 +277,6 @@ class StudioRepositoryMixin:
                     self._studio_put(db, "request", request)
                     pending.append(request)
                     break
-            return {"job": job, "acknowledged": acknowledged, "requests": pending}
+            return {"job": claimed[0] if claimed and not parallel else None,
+                    "jobs": claimed if parallel else [], "acknowledgedJobs": acknowledgements if parallel else [],
+                    "acknowledged": acknowledgements[0] if acknowledgements and not parallel else None, "requests": pending}

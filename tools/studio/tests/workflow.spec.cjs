@@ -11,7 +11,7 @@ const { run } = require('../lib/process.cjs');
 test('prepare locally, send later, recover a lost chunk acknowledgement and retain completed history', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'studio-workflow-'));
   const tools = resolveTools(''); const original = path.join(root, 'Studio & sample.mkv');
-  await run(tools.ffmpeg, ['-v','error','-y','-f','lavfi','-i','testsrc2=size=320x180:rate=25','-t','2','-c:v','mpeg4',original]);
+  await run(tools.ffmpeg, ['-v','error','-y','-f','lavfi','-i','testsrc2=size=320x180:rate=25','-t','2','-c:v','ffv1',original]);
   const originalBytes = fs.readFileSync(original);
   const id = 'a'.repeat(32); let offset = 0, total = 0, chunks = 0, statusReads = 0, disconnected = true;
   const server = http.createServer(async (request, response) => {
@@ -21,7 +21,8 @@ test('prepare locally, send later, recover a lost chunk acknowledgement and reta
     if (request.url === '/api/my-tv/uploads') {
       const buffers = []; for await (const buffer of request) buffers.push(buffer);
       const body = JSON.parse(Buffer.concat(buffers)); total = body.size;
-      expect(body.file_name).toBe('Studio & sample.mp4'); return json({ id, offset: 0, transfer_state: 'active' });
+      expect(body.file_name).toBe('Studio & sample.mp4'); expect(body.compression).toBe('smallest');
+      return json({ id, offset: 0, transfer_state: 'active' });
     }
     if (request.url === '/api/uploads/' + id && request.method === 'PATCH') {
       // Chromium may retry a dropped connection. Simulate the connection
@@ -49,6 +50,11 @@ test('prepare locally, send later, recover a lost chunk acknowledgement and reta
     await app.evaluate(({ dialog }, file) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] }); }, original);
     await page.locator('#dropzone').click();
     await expect(page.locator('.selected-file')).toContainText('Studio & sample.mkv');
+    await expect(page.locator('#add-destination [data-field="compression"]')).toHaveValue('compact');
+    await expect(page.locator('#add-destination [data-field="compression"] option')).toHaveCount(3);
+    await page.locator('#add-destination [data-field="compression"]').selectOption('smallest');
+    await expect(page.locator('#add-destination .compression-estimate')).toContainText(
+      (originalBytes.length*.25*.98/1e9).toFixed(2) + ' GB');
     await page.locator('#add-destination [data-field="mode"]').selectOption('local');
     await page.locator('#add-destination .submit-destination').click();
     await page.getByRole('button', { name: 'Completed', exact: true }).click();
@@ -56,6 +62,7 @@ test('prepare locally, send later, recover a lost chunk acknowledgement and reta
     expect(fs.readFileSync(original)).toEqual(originalBytes);
     await page.locator('#completed-list [data-job-action="send"]').click();
     await page.locator('#send-destination [data-target="mytv"]').click();
+    await page.locator('#send-destination [data-field="compression"]').selectOption('smallest');
     await page.locator('#send-destination .submit-destination').click();
     await page.locator('#title-review .review-skip').click();
     await expect(page.locator('#queue-list .job-status')).toContainText('Waiting for connection', { timeout: 15000 });

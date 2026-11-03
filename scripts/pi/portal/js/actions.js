@@ -185,6 +185,7 @@ let managementBusy = false
     }
 
     function renderSelectedUploadFiles() {
+      updateMediaCompressionEstimate('uploadCompression', 'uploadCompressionEstimate', selectedUploadFiles)
       const root = $('#selectedFiles'), button = $('#uploadButton')
       root.innerHTML = ''
       if (!selectedUploadFiles.length) {
@@ -258,7 +259,7 @@ let managementBusy = false
       const queued = []
       for (const file of files) {
         try {
-          queued.push(await api('/api/uploads', { method: 'POST', body: JSON.stringify({ channel, file_name: file.name, size: file.size, source_id: uploadSourceId }) }))
+          queued.push(await api('/api/uploads', { method: 'POST', body: JSON.stringify({ channel, file_name: file.name, size: file.size, source_id: uploadSourceId, compression: $('#uploadCompression')?.value || 'compact' }) }))
         } catch (error) {
           failures.push({ file, message: error.message })
         }
@@ -294,6 +295,7 @@ let managementBusy = false
     let selectedMyTvFiles = []
 
     function renderSelectedMyTvFiles() {
+      updateMediaCompressionEstimate('myTvUploadCompression', 'myTvUploadCompressionEstimate', selectedMyTvFiles)
       const root = $('#myTvSelectedFiles'), button = $('#myTvUploadButton')
       root.innerHTML = ''
       if (!selectedMyTvFiles.length) {
@@ -372,7 +374,7 @@ let managementBusy = false
       $('#myTvUploadState').classList.remove('hidden')
       const queued = await Promise.all(files.map(async file => ({ file, created: await api('/api/my-tv/uploads', {
         method: 'POST', body: JSON.stringify({ file_name: file.name, size: file.size,
-          folder: $('#myTvUploadFolder').value, source_id: uploadSourceId })
+          folder: $('#myTvUploadFolder').value, source_id: uploadSourceId, compression: $('#myTvUploadCompression')?.value || 'compact' })
       }) })))
       await Promise.all(queued.map(async ({ file, created }, index) => {
         try { await sendMyTvFile(file, created, index + 1, queued.length) }
@@ -394,6 +396,7 @@ let managementBusy = false
     }
 
     function renderSelectedMyTvSeriesFiles() {
+      updateMediaCompressionEstimate('myTvSeriesCompression', 'myTvSeriesCompressionEstimate', selectedMyTvSeriesFiles)
       const root = $('#myTvSeriesSelectedFiles')
       const button = $('#myTvSeriesUploadButton')
       root.replaceChildren()
@@ -484,7 +487,7 @@ let managementBusy = false
       $('#myTvSeriesUploadState').classList.remove('hidden')
       const queued = await Promise.all(files.map(async file => ({ file, created: await api('/api/my-tv/series/uploads', {
         method: 'POST', body: JSON.stringify({ series: target.id, season, file_name: file.name,
-          size: file.size, source_id: uploadSourceId }),
+          size: file.size, source_id: uploadSourceId, compression: $('#myTvSeriesCompression')?.value || 'compact' }),
       }) })))
       await Promise.all(queued.map(async ({ file, created }, index) => {
         try { await sendMyTvSeriesFile(file, created, index + 1, queued.length, season) }
@@ -736,3 +739,9 @@ let managementBusy = false
     setInterval(() => {
       if (!$('#app').classList.contains('hidden')) refreshLiveStatus().catch(() => {})
     }, 60000)
+
+if (document.getElementById('uploadCompression')) document.getElementById('uploadCompression').onchange = renderSelectedUploadFiles
+
+if (document.getElementById('myTvUploadCompression')) document.getElementById('myTvUploadCompression').onchange = renderSelectedMyTvFiles
+
+if (document.getElementById('myTvSeriesCompression')) document.getElementById('myTvSeriesCompression').onchange = renderSelectedMyTvSeriesFiles

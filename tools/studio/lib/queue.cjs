@@ -5,6 +5,8 @@ const crypto = require('node:crypto');
 const { EventEmitter } = require('node:events');
 const { cleanupDownload } = require('./media-cleanup.cjs');
 const { titleMatch } = require('./title-match.cjs');
+const { StageResources } = require('./stage-resources.cjs');
+const { compressionProfile } = require('./compression.cjs');
 
 function safeName(value) {
   const name = String(value).replace(/[<>:"/\\|?*\x00-\x1f]/g, ' ').replace(/\s+/g, ' ').trim().replace(/[. ]+$/, '').slice(0, 170) || 'Video';
@@ -15,14 +17,17 @@ function destinationValid(value) {
   if (value.kind === 'mabel' && (!Number.isInteger(value.channel) || value.channel < 1)) throw new Error('Choose a Mabel TV channel.');
   if (value.kind === 'series' && (!/^[a-f0-9]{32}$/.test(value.series) || !Number.isInteger(value.season) || value.season < 0 || value.season > 99)) throw new Error('Choose a My TV show and series number.');
   return { kind: value.kind, channel: value.channel, series: value.series, season: value.season,
+    compression: compressionProfile(value.compression).id,
     ...(value.channelFolder ? { channelFolder: String(value.channelFolder).slice(0, 180) } : {}),
     label: String(value.label || 'Prepared locally').slice(0, 180), profile: value.profile === 'mabel' ? 'mabel' : 'mytv', downloadOnly: value.kind === 'local' && value.downloadOnly === true };
 }
 class Queue extends EventEmitter {
   constructor(store, media, iplayer, portal) {
     super(); Object.assign(this, { store, media, iplayer, portal });
-    this.active = null; this.stopping = false; this.timer = null;
+    this.actives = new Map(); this.resources = new StageResources(store); this.stopping = false; this.timer = null;
   }
+  get active() { return this.actives.values().next().value || null; }
+  isActive(id) { return this.actives.has(id); }
   snapshot() { return this.store.snapshot().jobs; }
   async cleanupOriginal(job) {
     if (job.preserveOriginal) return;
@@ -59,7 +64,7 @@ class Queue extends EventEmitter {
       const id = crypto.randomBytes(16).toString('hex');
       const title = input.kind === 'iplayer' ? input.metadata.title : path.basename(input.path, path.extname(input.path));
       const job = { id, source: input.kind, sourcePath: input.path || '', sourceFingerprint: fingerprint,
-        remoteId: input.remoteId || '', preserveOriginal: input.preserveOriginal === true,
+        remoteId: input.remoteId || '', reservationKey: input.reservationKey || '', preserveOriginal: input.preserveOriginal === true,
         metadata: input.metadata || { title, episode: '', artwork: '' }, match: matches[index], destination, status: 'queued',
         percent: 0, message: 'Waiting to start', createdAt: Date.now(), updatedAt: Date.now(),
         directory: path.join(this.store.state.settings.workspace, safeName([title, input.metadata?.episode].filter(Boolean).join(' - ')).slice(0, 100) + ' - ' + id.slice(0, 8)), uploadId: '', preparedPath: '' };
@@ -68,20 +73,21 @@ class Queue extends EventEmitter {
     this.changed(); this.kick(); return result;
   }
   kick() {
-    if (this.active || this.stopping) return;
-    const job = this.store.state.jobs.find(job => job.status === 'queued' || job.status === 'waiting' && (!job.nextAttempt || job.nextAttempt <= Date.now()));
+    if (this.actives.size >= 12 || this.stopping) return;
+    const job = this.store.state.jobs.find(job => !this.actives.has(job.id) && (job.status === 'queued' || job.status === 'waiting' && (!job.nextAttempt || job.nextAttempt <= Date.now())));
     if (!job) {
       clearTimeout(this.timer); this.timer = setTimeout(() => this.kick(), 15000); this.timer.unref(); return;
     }
     const controller = new AbortController();
-    this.active = { job, controller, requested: '' };
-    const active = this.active;
+    const active = { job, controller, requested: '' };
+    this.actives.set(job.id, active);
     this.execute(job, controller.signal).catch(error => {
       const status = active.requested || (['OFFLINE', 'AUTH'].includes(error.code) ? 'waiting' : error.code === 'PAUSED' ? 'paused' : 'failed');
       this.store.update(job.id, { status, message: active.requested ? (status === 'cancelled' ? 'Cancelled. Local files kept.' : 'Paused. Resume when ready.') : error.message,
         nextAttempt: Date.now() + (error.code === 'AUTH' ? 60000 : 30000), errorCode: error.code || '' });
       if (error.code === 'OFFLINE') this.portal.current = null;
-    }).finally(() => { this.active = null; this.changed(); this.kick(); });
+    }).finally(() => { this.actives.delete(job.id); if (!job.reservationKey) this.resources.release(job.id); this.changed(); this.kick(); });
+    this.kick();
   }
   async execute(job, signal) {
     let lastSaved = 0;
@@ -96,7 +102,13 @@ class Queue extends EventEmitter {
     const profile = job.destination.kind === 'mabel' || job.destination.profile === 'mabel' ? 'mabel' : 'mytv';
     if (!job.sourcePath) {
       change({ status: 'downloading', percent: 0, message: 'Downloading from BBC iPlayer' }, true);
-      const download = await this.iplayer.download(job.metadata, path.join(job.directory, 'Original'), profile, signal, fields => change(fields));
+      const download = await this.resources.downloads.run(signal,
+        () => change({ status: 'queued-download', percent: 0, message: 'Waiting for a download slot' }, true), async () => {
+          await this.resources.admit(job.reservationKey || job.id, Math.max(1024 ** 3, (job.metadata.duration || 3600) * 6800000 / 8) * 3,
+            signal, () => change({ status: 'queued-download', message: 'Waiting for disk space' }));
+          change({ status: 'downloading', percent: 0, message: 'Downloading from BBC iPlayer' }, true);
+          return this.iplayer.download(job.metadata, path.join(job.directory, 'Original'), profile, signal, fields => change(fields));
+        });
       const stats = fs.statSync(download.file);
       change({ sourcePath: download.file, metadata: download.metadata, sourceFingerprint: { size: stats.size, mtime: stats.mtimeMs } }, true);
     }
@@ -112,21 +124,33 @@ class Queue extends EventEmitter {
       }
       change({ status: 'preparing', downloadStage: '', percent: 0, message: 'Checking and preparing for ' + (profile === 'mabel' ? 'Mabel TV · 720p' : 'My TV · up to 1080p') }, true);
       const stem = safeName([job.metadata.title, job.metadata.episode].filter(Boolean).join(' - '));
-      const destination = path.join(job.directory, 'Prepared', profile === 'mabel' ? 'Mabel TV' : 'My TV', stem + '.mp4');
-      const output = await this.media.prepare(job.sourcePath, destination, profile, signal, percent => change({ percent }));
+      const destination = path.join(job.directory, 'Prepared', profile === 'mabel' ? 'Mabel TV' : 'My TV', job.destination.compression || 'compact', stem + '.mp4');
+      const output = await this.resources.conversion.run(signal,
+        () => change({ status: 'queued-conversion', percent: 0, message: 'Waiting for conversion' }, true), async () => {
+          change({ status: 'preparing', percent: 0, message: 'Checking and preparing video' }, true);
+          return this.media.prepare(job.sourcePath, destination, profile, signal, percent => change({ percent }), analysis => {
+            this.resources.reserve(job.reservationKey || job.id, analysis.bytes * 2);
+          }, job.destination.compression);
+        });
       let publishName = stem + '.mp4';
       if (job.destination.kind === 'series' && job.metadata.episodeNumber) publishName = `S${String(job.destination.season).padStart(2, '0')}E${String(job.metadata.episodeNumber).padStart(2, '0')} - ${publishName}`;
       // For ready local files, retain the original name and extension.
       if (job.source === 'file' && !output.converted) publishName = path.basename(job.sourcePath);
-      change({ preparedPath: output.file, analysis: output.analysis, converted: output.converted, publishName }, true);
+      if (job.match?.title && job.destination.kind === 'film') publishName = safeName(job.match.title + (job.match.year ? ' (' + job.match.year + ')' : '')) + path.extname(output.file);
+      change({ preparedPath: output.file, analysis: output.analysis, sourceAnalysis: output.sourceAnalysis, converted: output.converted,
+        preparedCompression: job.destination.compression || 'compact', publishName }, true);
     }
     await this.cleanupOriginal(job);
     if (job.destination.kind === 'local') { change({ status: 'prepared', percent: 100, message: job.originalRemoved ? 'Ready locally. Prepared copy kept; downloaded original removed.' : 'Ready locally. Your original file is unchanged.' }, true); return; }
     change({ status: 'uploading', percent: 0, message: 'Connecting to MabelTV' }, true);
-    const result = await this.portal.upload(job, this.store.state.sourceId, signal, change);
-    change({ result }, true);
-    await this.finishSubtitles(job, signal, change);
-    await this.finishMetadata(job, signal, change);
+    await this.resources.upload.run(signal,
+      () => change({ status: 'queued-upload', percent: 0, message: 'Waiting to send to the Pi' }, true), async () => {
+        change({ status: 'uploading', percent: 0, message: 'Connecting to MabelTV' }, true);
+        const result = await this.portal.upload(job, this.store.state.sourceId, signal, change);
+        change({ result }, true);
+        await this.finishSubtitles(job, signal, change);
+        await this.finishMetadata(job, signal, change);
+      });
   }
   async finishSubtitles(job, signal, change) {
     if (this.afterPublish && !job.subtitlesSent) {
@@ -163,7 +187,7 @@ class Queue extends EventEmitter {
       const oldProfile = job.destination.profile, needsInspection = job.destination.downloadOnly;
       job.destination = chosen;
       job.match = confirmed;
-      if (needsInspection || chosen.kind === 'mabel' && oldProfile !== 'mabel') {
+      if (needsInspection || chosen.compression !== job.preparedCompression || chosen.kind === 'mabel' && oldProfile !== 'mabel') {
         if (job.originalRemoved) { job.sourcePath = job.preparedPath; job.sourceFingerprint = { size: fs.statSync(job.sourcePath).size, mtime: fs.statSync(job.sourcePath).mtimeMs }; job.originalRemoved = false; }
         job.preparedPath = '';
       }
@@ -176,16 +200,17 @@ class Queue extends EventEmitter {
         try { await this.portal.api('/api/uploads/' + job.uploadId, { method: 'POST', body: { action } }); }
         catch (error) { if (action !== 'pause' || !['OFFLINE', 'AUTH'].includes(error.code)) throw error; }
       }
-      if (this.active?.job.id === id) {
-        this.active.requested = action === 'cancel' ? 'cancelled' : 'paused'; this.active.controller.abort();
+      const active = this.actives.get(id);
+      if (active) {
+        active.requested = action === 'cancel' ? 'cancelled' : 'paused'; active.controller.abort();
       } else this.store.update(id, { status: action === 'cancel' ? 'cancelled' : 'paused', message: action === 'cancel' ? 'Cancelled. Local files kept.' : 'Paused. Resume when ready.' });
     }
     this.changed(); this.kick(); return this.snapshot();
   }
   async shutdown() {
     this.stopping = true; clearTimeout(this.timer);
-    if (this.active) { this.active.requested = 'paused'; this.active.controller.abort(); }
-    while (this.active) await new Promise(resolve => setTimeout(resolve, 50));
+    for (const active of this.actives.values()) { active.requested = 'paused'; active.controller.abort(); }
+    while (this.actives.size) await new Promise(resolve => setTimeout(resolve, 50));
     this.store.save();
   }
 }

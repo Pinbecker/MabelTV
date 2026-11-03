@@ -51,9 +51,21 @@ function studioSyncDestination() {
   const fromCloud = studioDraft?.sources.length > 0 && studioDraft.sources.every(source => source.type === 'cloud')
   const cloudCopies = $('#studioDestinationForm input[name="studioCloudCopies"]:checked')?.value || 'original'
   $('#studioCloudCopiesField').classList.toggle('hidden', Boolean(studioDraft?.matchingJob))
+  $('#studioCompressionField').classList.toggle('hidden', Boolean(studioDraft?.matchingJob) || chosen === 'icloud' && cloudCopies === 'original')
+  studioUpdateCompressionEstimate()
   $('#studioCloudReplaceWarning').classList.toggle('hidden', !fromCloud || cloudCopies !== 'optimised' || Boolean(studioDraft?.matchingJob))
   $('#studioMatchSection').classList.toggle('hidden', !studioDraft?.matchingJob)
   $('#studioDestinationSubmit').textContent = studioDraft?.matchingJob ? 'Save match and retry metadata' : 'Add to queue'
+}
+function studioUpdateCompressionEstimate() {
+  const select = $('#studioCompression'), option = select.selectedOptions[0]
+  const sources = studioDraft?.sources || []
+  const sizes = sources.map(source => Number(source.bytes) || source.files?.reduce((n, f) => n + Number(f.bytes || f.size || 0), 0) || 0)
+  const total = sizes.reduce((a, b) => a + b, 0)
+  const fraction = Number(option?.dataset.fraction || .4) * .98
+  $('#studioCompressionEstimate').textContent = total && sizes.every(n => n > 0)
+    ? `Estimated compressed size: ${studioBytes(total * fraction)} · about ${Math.round((1-fraction)*100)}% smaller`
+    : 'Finished size can be estimated after the download size is known.'
 }
 async function studioFindMatch() {
   const query = $('#studioMatchQuery').value.trim()
@@ -83,6 +95,7 @@ async function studioSubmitDestination(event) {
       const replaceOriginal = draft.sources.length > 0 && draft.sources.every(source => source.type === 'cloud') && $('#studioDestinationForm input[name="studioCloudCopies"]:checked').value === 'optimised'
       if (replaceOriginal && !draft.replaceCloudOriginal) { studioOpenReplaceWarning(); return }
       const destination = { kind: chosen === 'film' ? $('#studioLibraryType').value : chosen,
+        compression: $('#studioCompression').value,
         prepare: chosen !== 'icloud' || $('#studioDestinationForm input[name="studioCloudCopies"]:checked').value !== 'original', keepOptimised: false,
         saveCloud: !$('#studioCloudCopiesField').classList.contains('hidden') }
       if (destination.saveCloud) destination.cloudCopies = $('#studioDestinationForm input[name="studioCloudCopies"]:checked').value
@@ -118,14 +131,16 @@ function renderStudioJobs() {
   for (const [index, job] of jobs.entries()) {
     let row = rows.get(job.id)
     if (!row) { row = document.createElement('article'); row.className = 'studio-job'; row.dataset.studioJob = job.id }
-    const version = JSON.stringify([job.status, job.percent, job.message, job.error, job.metadataWarning, job.displayStatus])
+    const waitingCloud = job.status === 'active' && (job.stage === 'waiting-for-cloud' || job.stage === 'saving-cloud' && /waiting for iCloud|iCloud.*confirm/i.test(job.message || ''))
+    const version = JSON.stringify([job.status, job.stage, job.percent, job.message, job.error, job.metadataWarning, job.displayStatus])
     if (row.dataset.studioVersion !== version) {
       row.dataset.studioVersion = version
       const status = job.status === 'complete' && job.metadataWarning ? 'Needs attention' : job.displayStatus || ({ queued: 'Queued', active: 'Working', complete: 'Complete', failed: 'Needs attention', paused: 'Paused', cancelled: 'Cancelled' }[job.status] || job.status)
       const warning = job.error || job.metadataWarning || ''
-      const message = job.error ? studioJobFailureMessage(job.error) : job.message || 'Waiting for Studio'
+      const message = waitingCloud ? (job.destination.kind !== 'icloud' ? 'Available on your TV. ' : '') + 'Uploading to iCloud — waiting for upload confirmation.' : job.error ? studioJobFailureMessage(job.error) : job.message || 'Waiting for Studio'
       const destination = job.destination.kind === 'local' ? 'Download' : job.destination.label
-      row.innerHTML = `<div class="studio-job-head"><strong>${escapeHtml(job.title)}</strong><small>${escapeHtml(status)}</small></div><p>${escapeHtml(destination)} · ${escapeHtml(message)}</p>${['active', 'queued'].includes(job.status) ? `<progress max="100" value="${Math.max(0, Math.min(100, Number(job.percent) || 0))}" aria-label="${escapeHtml(job.title)} progress"></progress>` : ''}${warning ? `<details class="studio-job-details"><summary>Details</summary><p>${escapeHtml(warning)}</p></details>` : ''}<div class="studio-job-actions"></div>`
+      const percent = Math.round(Math.max(0, Math.min(100, Number(job.percent) || 0)))
+      row.innerHTML = `<div class="studio-job-head"><strong>${escapeHtml(job.title)}</strong><small>${waitingCloud ? '<span class="studio-spinner studio-inline-spinner" aria-hidden="true"></span> iCloud upload' : `${escapeHtml(status)} · <span class="studio-job-percent">${percent}%</span>`}</small></div><p>${escapeHtml(destination)} · ${escapeHtml(message)}</p>${['active', 'queued'].includes(job.status) && !waitingCloud ? `<progress max="100" value="${percent}" aria-label="${escapeHtml(job.title)} progress" aria-valuetext="${percent}%"></progress>` : ''}${warning ? `<details class="studio-job-details"><summary>Details</summary><p>${escapeHtml(warning)}</p></details>` : ''}<div class="studio-job-actions"></div>`
       const actions = row.querySelector('.studio-job-actions')
       const add = (label, action) => {
         const button = document.createElement('button'); button.type = 'button'; button.className = 'studio-text-button'; button.textContent = label
@@ -137,9 +152,9 @@ function renderStudioJobs() {
         }
         actions.append(button)
       }
-      if (!job.cloudOperation && ['queued', 'active'].includes(job.status)) add('Pause', 'pause')
+      if (!job.cloudOperation && !waitingCloud && ['queued', 'active'].includes(job.status)) add('Pause', 'pause')
       if (!job.cloudOperation && ['paused', 'failed'].includes(job.status)) add(job.status === 'failed' ? 'Retry' : 'Resume', 'resume')
-      if (!job.cloudOperation && !['complete', 'cancelled'].includes(job.status)) add('Cancel', 'cancel')
+      if (!job.cloudOperation && !waitingCloud && !['complete', 'cancelled'].includes(job.status)) add('Cancel', 'cancel')
       if (job.status === 'failed' && job.source?.type === 'iplayer' && /^[bmp][a-z0-9]{7}$/.test(job.source.pid)) {
         const link = document.createElement('a'); link.className = 'studio-text-button'; link.textContent = 'Check BBC iPlayer'
         link.href = 'https://www.bbc.co.uk/iplayer/episode/' + job.source.pid; link.target = '_blank'; link.rel = 'noopener noreferrer'
@@ -197,6 +212,7 @@ $('#studioDestinationForm').onsubmit = studioSubmitDestination
 for (const input of $$('#studioDestinationForm input[name="studioDestination"]')) input.onchange = studioSyncDestination
 for (const input of $$('#studioDestinationForm input[name="studioCloudCopies"]')) input.onchange = () => { if (studioDraft) studioDraft.replaceCloudOriginal = false; studioSyncDestination() }
 for (const id of ['studioLibraryType', 'studioSeries']) $('#' + id).onchange = studioSyncDestination
+$('#studioCompression').onchange = studioUpdateCompressionEstimate
 $('#studioMatchQuery').oninput = () => { clearTimeout(studioMatchTimer); studioMatchTimer = setTimeout(() => void studioFindMatch().catch(studioFailure), 350) }
 $('#studioCloudConnect').onclick = () => void studioStartAuth()
 $('#studioAuthForm').onsubmit = async event => {

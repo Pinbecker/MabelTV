@@ -11,7 +11,7 @@ const { run } = require('../lib/process.cjs');
 test('film review can cancel, correct and confirm; metadata retry survives restart without sending the video twice', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'studio-title-ui-'));
   const file = path.join(root, 'Shrek (2001).mp4');
-  await run(resolveTools('').ffmpeg, ['-v','error','-y','-f','lavfi','-i','color=size=320x180:rate=25','-t','1','-c:v','libx264','-pix_fmt','yuv420p','-movflags','+faststart',file]);
+  await run(resolveTools('').ffmpeg, ['-v','error','-y','-f','lavfi','-i','testsrc2=size=1280x720:rate=25','-t','3','-c:v','libx264','-b:v','4000k','-pix_fmt','yuv420p','-movflags','+faststart',file]);
   let creates = 0, chunks = 0, bytes = 0, total = 0, applies = 0, uploadsConfirmed = false;
   const id = 'a'.repeat(32), queries = [];
   const server = http.createServer(async (request, response) => {

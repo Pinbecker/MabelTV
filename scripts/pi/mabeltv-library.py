@@ -77,6 +77,8 @@ from mabeltv_backend.remote import RemotePlaybackMixin
 from mabeltv_backend.system import SystemStatusMixin
 from mabeltv_backend.transcoding import TranscodingMixin
 from mabeltv_backend.uploads import UploadConversionMixin
+from mabeltv_backend.upload_notifications import UploadNotificationsMixin
+from mabeltv_backend.studio_cloud_optimisation import StudioCloudOptimisationMixin
 from mabeltv_backend.usb import UsbMixin
 from mabeltv_backend.viewing import ViewingMixin
 from mabeltv_backend.viewing_queue import ViewingQueueMixin
@@ -108,8 +110,8 @@ __all__ = [
     "urlopen",
 ]
 
-class Library(StudioMixin, StudioTorrentsMixin, StudioCloudMixin, StudioOrganiserMixin, StudioCloudFilingMixin, StudioCloudManagerMixin, StudioCloudMetadataMixin, MyTvTransferMixin, PlaylistsMixin, FamilyMediaMixin, FamilyUploadsMixin,
-              IPlayerLibraryMixin, MabelQueueMixin, ViewingMixin, UploadConversionMixin, TranscodingMixin, AuthenticationMixin,
+class Library(StudioMixin, StudioTorrentsMixin, StudioCloudMixin, StudioOrganiserMixin, StudioCloudFilingMixin, StudioCloudManagerMixin, StudioCloudMetadataMixin, StudioCloudOptimisationMixin, MyTvTransferMixin, PlaylistsMixin, FamilyMediaMixin, FamilyUploadsMixin,
+              IPlayerLibraryMixin, MabelQueueMixin, ViewingMixin, UploadConversionMixin, UploadNotificationsMixin, TranscodingMixin, AuthenticationMixin,
               ArtworkProxyMixin,
               MediaCatalogueMixin, ManagementMixin, RemotePlaybackMixin, LgControlMixin,
               UsbMixin,
@@ -243,6 +245,7 @@ class Library(StudioMixin, StudioTorrentsMixin, StudioCloudMixin, StudioOrganise
             daemon=True,
         )
         self.usb_transfer_worker.start()
+        self.init_upload_notifications()
         self.init_studio_cloud()
         self.live_stream = LiveStream(self)
         if os.name == "posix" and self.usb_requires_mount:
@@ -257,6 +260,7 @@ class Library(StudioMixin, StudioTorrentsMixin, StudioCloudMixin, StudioOrganise
         """Drain and stop the single media worker (primarily for clean tests)."""
         if self.conversion_closed.is_set():
             return
+        self.close_upload_notifications(timeout)
         self.close_studio_cloud()
         with self.lg_tv_lock:
             self.close_lg_tv_pointer()

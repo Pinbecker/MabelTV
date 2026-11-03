@@ -14,11 +14,23 @@ function bindSendToMabel(root, source, title, returnTo) {
   button.querySelector('strong').textContent = `Send to ${tvName()}`
   button.onclick = () => {
     portalSheets.dismiss(root.closest('dialog'))
-    openSendToMabel(source, title, returnTo)
+    void openSendToMabel(source, title, returnTo).catch(error => notice(error.message, true))
   }
 }
 
-function openSendToMabel(source, title, returnTo) {
+async function openSendToMabel(source, title, returnTo) {
+  const profiles = await loadMediaCompressionProfiles()
+  const compression = $('#myTvSendCompression'); compression.replaceChildren()
+  for (const profile of profiles) compression.add(new Option(`${profile.label} · about ${Math.round((1-profile.sourceFraction)*100)}% smaller`, profile.id))
+  compression.value = 'compact'
+  const files = source.kind === 'my_tv' ? (library.my_tv_library || []).filter(f => f.path === source.file)
+    : (library.my_tv_series || []).find(s => s.id === source.series)?.episodes.filter(e => !source.file || e.path === source.file) || []
+  const bytes = files.reduce((n,f) => n + Number(f.size || 0), 0)
+  const estimate = () => {
+    const profile = profiles.find(p => p.id === compression.value)
+    $('#myTvSendEstimate').textContent = bytes ? `Estimated channel copy: ${mediaCompressionBytes(bytes*profile.targetFraction)}` : 'Size estimate available when the source size is known.'
+  }
+  compression.onchange = estimate; estimate()
   myTvSendTarget = { source, title, returnTo }
   const select = $('#myTvSendChannel')
   select.replaceChildren()
@@ -54,7 +66,7 @@ $('#myTvSendForm').onsubmit = async event => {
   button.disabled = true; $('#myTvSendError').textContent = ''
   try {
     const result = await api('/api/my-tv/send-to-mabel', { method: 'POST', body: JSON.stringify({
-      ...target.source, ...(channel === 'new' ? { new_channel: $('#myTvSendName').value.trim() } : { channel: Number(channel) }),
+      ...target.source, compression: $('#myTvSendCompression').value, ...(channel === 'new' ? { new_channel: $('#myTvSendName').value.trim() } : { channel: Number(channel) }),
     }) })
     portalSheets.close($('#myTvSendSheet'))
     notice(`Copying ${result.count === 1 ? target.title : `${result.count} episodes`} to ${result.channel_name}. Follow progress in Downloads.`)

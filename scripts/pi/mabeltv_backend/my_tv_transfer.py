@@ -8,6 +8,7 @@ import time
 import uuid
 from pathlib import Path
 from typing import Any
+from .compression import compression_profile
 
 
 class MyTvTransferMixin:
@@ -37,6 +38,7 @@ class MyTvTransferMixin:
                  "show_metadata": deepcopy(series.get("metadata", {}))} for e in episodes]
 
     def send_my_tv_to_mabel(self, payload: dict[str, Any]) -> dict[str, Any]:
+        compression = compression_profile(payload["compression"])["id"] if "compression" in payload else None
         with self.config_lock:
             items = self._mabel_copy_sources(payload)
             content_type = "films" if payload.get("kind") == "my_tv" else "shows"
@@ -81,6 +83,8 @@ class MyTvTransferMixin:
                             "copy_mtime": item["source_mtime"], "copy_metadata": item["metadata"],
                             "copy_show_metadata": item.get("show_metadata", {}),
                             "queue_order": self.next_upload_queue_order()}
+                if compression:
+                    metadata["compression"] = compression
                 self.write_json(self.incoming / f"{identity}.json", metadata)
                 jobs.append(identity)
             for identity in jobs:

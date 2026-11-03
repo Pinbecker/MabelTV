@@ -25,6 +25,13 @@ are available in Studio status. The dedicated project's enforced monthly limit
 is $15; auto-reload remains off.
 
 Standalone films are loose in `Media/Films/` or `Media/Kids/Films/`.
+The iCloud section has separate section and sort controls: title, total stored
+file size and release year. Size includes all owned versions of a film and all
+episodes of a series, and sorting applies before pagination. File size is also
+visible below each title. Activity displays numeric percentages for measured
+work. During iCloud upload confirmation it instead shows a live upload status,
+with no misleading full progress bar or Pause/Cancel controls: stopping Studio's
+wait would not stop the Windows iCloud provider's upload.
 Real franchises have a folder only when at least two different owned films
 belong to that series; multiple copies of one film count once. Single-film
 series stay loose, and adding/removing a second film rechecks only that series
@@ -33,8 +40,13 @@ contain their films directly. MCU stays together in `Media/Films/MCU/`, using
 the original numbered release order rather than individual Marvel franchise
 folders. No DreamWorks, Christmas or individual-film folders are created.
 Series keep their existing show/season hierarchy and episode names.
-Existing filenames stay intact, with a suffix only when needed to keep
-multiple versions separate. Subtitles are kept on the Pi, outside iCloud.
+Imported existing filenames stay intact, with a suffix only when needed to keep
+multiple versions separate. New Studio film copies are filed under the matched
+title and year; retained optimised alternatives are labelled when both versions
+exist. Subtitles are kept on the Pi, outside iCloud.
+New Studio film uploads use the matched title and year on the Pi. Cloud-only
+optimisation and other cloud-only saves notify at their final completed state;
+Pi destinations notify at publication, without an extra alert for the archive.
 Cloud-side moves do not download videos through the Pi. Interrupted moves
 resume from checked receipts; conflicts preserve both files. Empty old folders
 are removed during the approved layout repair only when empty. Matching and
@@ -63,7 +75,19 @@ menu has an explicit quit/pause action. Processing requires the laptop to be
 awake, signed in and connected. The portal reports offline waiting and progress.
 It does not wake a powered-off laptop.
 
-Studio uses iCloud for Windows to fetch selected files, one job at a time. Its
+Studio uses separate stage limits: up to five downloads across torrents,
+iPlayer and iCloud, one conversion, and one transfer to the Pi. These stages
+can run simultaneously. Waiting for iCloud archive confirmation occupies none
+of those stage slots or the twelve-job foreground window. There is no application
+count limit on pending iCloud files. Progress messages use batches of up to 64
+records, and worker-session heartbeats retain background claims between batches.
+Only confirmation HTTP requests are bounded; that does not limit Apple's file
+uploads. Foreground work can be paused or cancelled
+without stopping other jobs. Disk admission accounts for other jobs' working
+reservations and retains a 20 GiB free-space allowance; insufficient space
+keeps new downloads waiting. qBittorrent's secondary queue is disabled because
+Studio owns payload concurrency and metadata lookups must remain available.
+Studio uses iCloud for Windows to fetch selected files. Its
 selected download waits, with cancellable progress, while iCloud makes a new
 or renamed file and its subtitles available. Each retry checks the frozen
 version again; an actual replacement requires a fresh selection. Its
@@ -91,10 +115,27 @@ original version. A changed original is kept for a fresh confirmation.
 Studio-owned temporary media is removed only after retained cloud copies and
 TV publication are confirmed. Imported user files remain untouched. Interrupted
 work keeps its journals and resumes from confirmed per-version receipts.
+When phone notifications are configured, each successfully published film or
+episode sends a "Ready on your TV" alert with its destination. This is based on
+the Pi's completed publication receipt and actual file presence, independently
+of the source and of any later iCloud archiving. Failed notifications retry
+without blocking transfers; successful deliveries survive restarts in SQLite.
+The private ntfy configuration also specifies when notifications were enabled,
+so earlier upload history is not announced as a backlog.
 Each pending cloud copy reserves its path under the current queue claim before
 copying. Catalogue arrival binds that reservation to the stable cloud identity;
 the organiser cannot relocate a copy ahead of its confirmation receipt.
 Available disk space limits large jobs; Studio does not hydrate the whole Drive.
+**Optimise iCloud version** in a cloud item's action sheet queues a cloud-only
+replacement using the same up-to-1080p H.264/AAC MP4 profile as My TV. Its
+confirmation lists the frozen selected files, containers and existing sizes,
+plus a duration/maxrate size guide in the expandable file details when catalogue
+duration is available. This guide is not an output-size prediction: the main
+comparison labels the output size and space saving as unknown until conversion.
+Interface text is factual and contains no conversational or promotional copy.
+The existing version-consent, verified-output
+and deletion guards apply; no TV upload is required for this action. A larger
+replacement cannot delete the original. Completion produces one phone alert.
 
 Text subtitle sidecars and supported embedded text subtitles are converted to
 SRT and attached to confirmed Pi publications. iCloud saves contain the video
@@ -174,6 +215,23 @@ BBC search uses get_iplayer's broadcast catalogue; an available episode link/PID
 can reach content outside the recent search catalogue. Availability and network
 conditions still apply. Torrent search and qBittorrent are a later source
 integration, not part of this release.
+
+## Compression choices
+
+Every preparation/send flow offers Balanced, Compact (preselected), and Smallest.
+The shared immutable `compression-profiles.json` is packaged with Windows Studio
+and the Pi backend: targets are approximately 60%, 40%, and 25% of the source
+size, with a small mux allowance. Known source sizes produce an estimate before
+confirmation; BBC recordings without a known download size do not invent one.
+The selected profile persists with the job and old companions cannot claim it.
+
+Preparation uses two-pass H.264/AAC MP4, fast-start playback, and up to 1080p for
+My TV/iCloud. Mabel TV channel copies retain their 720p playback cap; an optimised
+iCloud copy is prepared separately from the original when that cap would reduce
+the cloud version. Lower-resolution originals are not upscaled. Each output is
+validated and must be smaller before replacing an original. Embedded encoding
+proof retains the original size basis so repeated sends do not repeatedly
+multiply the reduction; an already smaller compatible prepared copy is reused.
 
 ## Validation for the November 2026 build
 

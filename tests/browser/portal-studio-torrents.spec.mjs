@@ -2,7 +2,7 @@ import { test, expect } from './test-fixtures.mjs'
 
 test.use({ serviceWorkers: 'block' })
 
-async function studio(page, { offline = false, series = false, fail = false } = {}) {
+async function studio(page, { offline = false, series = false, fail = false, pending = false } = {}) {
   const writes = [], requests = new Map(), jobs = []
   const hash = 'a'.repeat(40), title = series ? 'Ludwig Complete Series' : 'Big Buck Bunny 2008 1080p'
   const cloud = { configured: true, checked: 1793530000, count: 0, scanning: false, error: '', root: 'Media' }
@@ -14,13 +14,13 @@ async function studio(page, { offline = false, series = false, fail = false } = 
     if (path === '/api/studio/status') json = { workers: offline ? [] : [{ id: '1'.repeat(32), name: 'XPS', online: true, capabilities: ['torrent'] }], jobs, cloud, cloudOperations: [] }
     else if (path === '/api/studio/cloud') json = { ...cloud, items: [], total: 0 }
     else if (path === '/api/studio/torrents/search') {
-      json = { id: 'search', kind: 'torrent-search', status: offline ? 'queued' : fail ? 'failed' : 'complete', error: fail ? 'Search is temporarily unavailable. Try again.' : '', result: { items: [{ hash, title, bytes: 1024 ** 3, seeders: 120 }] } }
+      json = { id: 'search', kind: 'torrent-search', status: offline || pending ? 'queued' : fail ? 'failed' : 'complete', error: fail ? 'Search is temporarily unavailable. Try again.' : '', result: { items: [{ hash, title, bytes: 1024 ** 3, seeders: 120 }] } }
       requests.set(json.id, json)
     } else if (path === '/api/studio/torrents/inspect') {
       const files = series ? [{ index: 0, path: 'Ludwig/Ludwig.S00E01.mkv', series: 0, episodeNumber: 1, bytes: 123456 }, { index: 1, path: 'Ludwig/Ludwig.S02E01.mkv', series: 2, episodeNumber: 1, bytes: 123456 }]
         : [{ index: 0, path: 'Big.Buck.Bunny.2008.mkv', bytes: 1024 ** 3 }]
       files.push({ index: 9, path: 'Unwanted.exe', bytes: 20 })
-      json = { id: 'inspection', kind: 'torrent-inspect', status: 'complete', result: { hash, title, files } }; requests.set(json.id, json)
+      json = { id: 'inspection', kind: 'torrent-inspect', status: pending ? 'queued' : 'complete', result: { hash, title, files } }; requests.set(json.id, json)
     } else if (path === '/api/studio/request') json = requests.get(url.searchParams.get('id'))
     else if (path === '/api/studio/jobs') {
       jobs.push({ id: 'job', title, source: { type: 'torrent' }, destination: { ...body.destination, label: 'iCloud' }, status: 'queued', stage: 'queued', percent: 0, created: 1793530000 })
@@ -34,6 +34,23 @@ async function studio(page, { offline = false, series = false, fail = false } = 
   await page.locator('#studioTorrentSearchForm').evaluate(form => form.requestSubmit())
   return { writes, requests, hash }
 }
+
+test('search and file inspection keep animated loading feedback until their results arrive', async ({ page }, info) => {
+  const { requests, writes } = await studio(page, { pending: true })
+  await expect(page.locator('#studioTorrentResults')).toHaveAttribute('aria-busy', 'true')
+  await expect(page.locator('.studio-search-loading .studio-spinner')).toBeVisible()
+  await page.screenshot({ path: info.outputPath('studio-search-loading.png'), animations: 'disabled' })
+  requests.get('search').status = 'complete'
+  await expect(page.locator('.studio-torrent-result')).toBeVisible()
+  await page.locator('.studio-torrent-result').click()
+  await expect(page.locator('.studio-torrent-result')).toHaveAttribute('aria-busy', 'true')
+  await expect(page.locator('.studio-torrent-result .studio-spinner')).toBeVisible()
+  await expect(page.locator('.studio-torrent-result')).toBeDisabled()
+  await page.screenshot({ path: info.outputPath('studio-inspection-loading.png'), animations: 'disabled' })
+  requests.get('inspection').status = 'complete'
+  await expect(page.locator('#studioTorrentSheet')).toBeVisible()
+  expect(writes.filter(write => write.path === '/api/studio/torrents/inspect')).toHaveLength(1)
+})
 
 test('Find anything reviews a video and offers Original Optimised and Both without a Download destination', async ({ page }, info) => {
   const { writes } = await studio(page)

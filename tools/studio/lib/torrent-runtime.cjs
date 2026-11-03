@@ -50,7 +50,9 @@ class TorrentRuntime {
   async start() {
     const connection = await this.connection();
     this.client = new TorrentClient('http://127.0.0.1:' + connection.port, connection.password);
-    try { await this.client.login(); return this.client; } catch { /* Start only this private profile. */ }
+    let connected = false;
+    try { await this.client.login(); connected = true; } catch { /* Start only this private profile. */ }
+    if (connected) return this.configure();
     const executable = path.join(this.resources, 'qbittorrent/qbittorrent.exe');
     if (!fs.existsSync(executable)) throw new Error('The download tools are missing. Reinstall the current Studio build.');
     this.process = spawn(executable, ['--profile=' + this.root, '--webui-port=' + connection.port, '--no-splash', '--confirm-legal-notice'], {
@@ -59,9 +61,17 @@ class TorrentRuntime {
     });
     let failed = false; this.process.once('error', () => { failed = true; }); this.process.once('exit', () => { failed = true; });
     for (let attempt = 0; attempt < 80 && !failed; attempt++) {
-      await delay(250); try { await this.client.login(); return this.client; } catch { /* Bounded startup. */ }
+      await delay(250); let ready = false;
+      try { await this.client.login(); ready = true; } catch { /* Bounded startup. */ }
+      if (ready) return this.configure();
     }
     throw new Error('Download service could not start. Retry in a moment.');
+  }
+  async configure() {
+    // Studio owns the five payload slots. A second qBittorrent queue would
+    // also block metadata lookups behind those payloads.
+    await this.client.request('app/setPreferences', { json: JSON.stringify({ queueing_enabled: false }) });
+    return this.client;
   }
   async api(route, values, options) {
     if (!this.client) await this.ensure();

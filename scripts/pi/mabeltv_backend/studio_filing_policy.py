@@ -2,7 +2,7 @@
 from pathlib import PurePosixPath
 import re
 
-POLICY_VERSION = 3
+POLICY_VERSION = 4
 
 
 def component(value):

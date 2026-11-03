@@ -2,10 +2,37 @@ from __future__ import annotations
 from tests.python.library_test_support import *
 
 from mabeltv_backend.studio_cloud_filing import component
+from mabeltv_backend.studio_filing_policy import POLICY_VERSION
 from mabeltv_backend import studio_organiser_model as model
 
 
 class StudioOrganiserTests(unittest.TestCase):
+    def test_only_the_new_studio_copy_receipt_can_canonicalise_a_filename(self):
+        item = self.file('owned', 'Films/Release.noise - bbbbbbbb.mkv')
+        self.library.studio_cloud_files = [item]
+        metadata = {'title': 'Arrival', 'year': '2016', 'media_type': 'movie', 'tmdb_id': 329865}
+        record = {'id': 'owned', 'publicationJob': 'a' * 32, 'archiveAsset': 'b' * 32 + ':original',
+                  'archiveGroup': 'c' * 32, 'variants': ['original'], 'files': []}
+        self.database.studio_save_cloud_metadata(record, metadata, automatic=True)
+        title = {**item, 'title': 'Arrival', 'category': 'films', 'metadata': metadata}
+        plan = self.library.studio_filing_plan(title, {})
+        self.assertEqual(plan[0]['target'], 'Films/Arrival (2016).mkv')
+        # Adopting an existing file for a different transfer does not grant
+        # that transfer ownership of its existing imported filename.
+        self.database.studio_save_cloud_metadata({**record, 'archiveAsset': 'd' * 32 + ':original'}, metadata, automatic=True)
+        self.assertEqual(self.library.studio_filing_plan(title, {}), [])
+
+    def test_deleted_original_receipts_do_not_leave_a_spurious_alternative_label(self):
+        item = self.file('owned', 'Films/Release - bbbbbbbb [Optimised].mp4')
+        self.library.studio_cloud_files = [item]
+        metadata = {'title': 'Arrival', 'year': '2016', 'media_type': 'movie', 'tmdb_id': 329865}
+        record = {'id': 'owned', 'publicationJob': 'a' * 32, 'archiveAsset': 'b' * 32 + ':optimised',
+                  'archiveGroup': 'c' * 32, 'variants': ['optimised'], 'files': []}
+        self.database.studio_save_cloud_metadata(record, metadata, automatic=True)
+        self.database.studio_save_cloud_metadata({**record, 'id': 'removed', 'variants': ['original']}, metadata, automatic=True)
+        title = {**item, 'title': 'Arrival', 'category': 'films', 'metadata': metadata}
+        self.assertEqual(self.library.studio_filing_plan(title, {})[0]['target'], 'Films/Arrival (2016).mp4')
+
     def setUp(self):
         self.fixture = LibraryFixture()
         self.library = self.fixture.library
@@ -175,7 +202,7 @@ class StudioOrganiserTests(unittest.TestCase):
         plan = self.library.studio_filing_plan(title, {})
         first = plan[0]
         self.remote['Media/' + first['target']] = self.remote.pop('Media/' + first['source'])
-        operation = {'id': 'recovery', 'policy': 3, 'title': 'Arrival', 'status': 'active', 'items': plan,
+        operation = {'id': 'recovery', 'policy': POLICY_VERSION, 'title': 'Arrival', 'status': 'active', 'items': plan,
                      'completed': 0, 'created': time.time()}
         self.database.studio_add('filing', operation)
         self.assertTrue(self.library.studio_filing_resume(operation))

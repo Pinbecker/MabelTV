@@ -4,13 +4,43 @@ studioState.torrentRequest = null
 studioState.torrentSearch = null
 studioState.torrentInspection = null
 studioState.torrentSelected = new Map()
+let studioTorrentSearching = false, studioTorrentInspecting = null
+
+function studioTorrentSearchLoading(busy) {
+  studioTorrentSearching = busy
+  const root = $('#studioTorrentResults')
+  root.setAttribute('aria-busy', String(busy))
+  $('#studioTorrentSearchForm button').disabled = busy || Boolean(studioTorrentInspecting)
+  root.querySelector('.studio-search-loading')?.remove()
+  if (busy) {
+    root.replaceChildren()
+    const loading = document.createElement('div'); loading.className = 'studio-search-loading'
+    loading.innerHTML = '<span class="studio-spinner" aria-hidden="true"></span><span>Finding results…</span>'
+    root.append(loading)
+  }
+}
+function studioTorrentInspectionLoading(hash) {
+  studioTorrentInspecting = hash
+  $('#studioTorrentSearchForm button').disabled = Boolean(hash) || studioTorrentSearching
+  for (const row of $$('#studioTorrentResults .studio-torrent-result')) {
+    const busy = row.dataset.torrentHash === hash
+    row.disabled = Boolean(hash); row.classList.toggle('is-loading', busy)
+    row.setAttribute('aria-busy', String(busy))
+    row.querySelector('.studio-torrent-trailing').innerHTML = busy
+      ? '<span class="studio-spinner" aria-label="Loading file details"></span>'
+      : '<svg class="icon"><use href="/portal/icons.svg#signal-chevron-right"/></svg>'
+  }
+}
 
 async function studioSearchTorrents() {
   const query = $('#studioTorrentSearch').value.trim()
-  if (query.length < 2) return
-  $('#studioTorrentResults').replaceChildren()
-  studioState.torrentRequest = await api('/api/studio/torrents/search', { method: 'POST', body: JSON.stringify({ query }) })
-  await studioApplyTorrents(studioState.torrentRequest)
+  if (query.length < 2 || studioTorrentSearching || studioTorrentInspecting) return
+  studioTorrentSearchLoading(true)
+  $('#studioTorrentStatus').textContent = 'Searching…'
+  try {
+    studioState.torrentRequest = await api('/api/studio/torrents/search', { method: 'POST', body: JSON.stringify({ query }) })
+    await studioApplyTorrents(studioState.torrentRequest)
+  } catch (error) { studioTorrentSearchLoading(false); throw error }
 }
 async function studioPollTorrents() {
   const pending = studioState.torrentRequest
@@ -21,26 +51,28 @@ async function studioPollTorrents() {
 }
 async function studioApplyTorrents(request) {
   const status = $('#studioTorrentStatus')
-  if (request.status === 'failed') { status.textContent = request.error || 'The search could not finish. Try again.'; return }
+  if (request.status === 'failed') { studioTorrentSearchLoading(false); studioTorrentInspectionLoading(null); status.textContent = request.error || 'The search could not finish. Try again.'; return }
   if (request.status !== 'complete') {
     status.textContent = request.kind === 'torrent-inspect' ? 'Getting the file list. This can take a few minutes while peers connect.'
       : studioState.status?.workers.some(worker => worker.online && worker.capabilities?.includes('torrent')) ? 'Searching The Pirate Bay…' : 'Search queued. Results will appear when Studio connects.'
     return
   }
-  if (request.kind === 'torrent-inspect') { studioOpenTorrentReview(request); status.textContent = 'File details ready. Choose what to keep.'; return }
+  studioTorrentSearchLoading(false)
+  if (request.kind === 'torrent-inspect') { studioTorrentInspectionLoading(null); studioOpenTorrentReview(request); status.textContent = 'File details ready. Choose what to keep.'; return }
   studioState.torrentSearch = request
   const items = request.result?.items || [], root = $('#studioTorrentResults'); root.replaceChildren()
   status.textContent = items.length ? `${items.length} results · Most seeders first` : 'No results found. Try another title.'
   for (const item of items) {
     const row = document.createElement('button'); row.type = 'button'; row.className = 'studio-torrent-result'
-    row.innerHTML = `<span class="studio-torrent-icon"><svg class="icon"><use href="/portal/icons.svg#signal-film"/></svg></span><span><strong>${escapeHtml(item.title)}</strong><small>${studioBytes(item.bytes)} · ${Number(item.seeders) || 0} seeders</small></span><svg class="icon"><use href="/portal/icons.svg#signal-chevron-right"/></svg>`
+    row.dataset.torrentHash = item.hash
+    row.innerHTML = `<span class="studio-torrent-icon"><svg class="icon"><use href="/portal/icons.svg#signal-film"/></svg></span><span><strong>${escapeHtml(item.title)}</strong><small>${studioBytes(item.bytes)} · ${Number(item.seeders) || 0} seeders</small></span><span class="studio-torrent-trailing"><svg class="icon"><use href="/portal/icons.svg#signal-chevron-right"/></svg></span>`
     row.onclick = async () => {
-      row.disabled = true
+      studioTorrentInspectionLoading(item.hash)
+      status.textContent = 'Getting the file list. Connecting to peers…'
       try {
         studioState.torrentRequest = await api('/api/studio/torrents/inspect', { method: 'POST', body: JSON.stringify({ request: request.id, hash: item.hash }) })
         await studioApplyTorrents(studioState.torrentRequest)
-      } catch (error) { studioFailure(error) }
-      finally { row.disabled = false }
+      } catch (error) { studioTorrentInspectionLoading(null); studioFailure(error) }
     }
     root.append(row)
   }

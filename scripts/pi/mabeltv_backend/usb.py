@@ -10,6 +10,7 @@ import subprocess
 import sys
 import time
 import uuid
+from .compression import compression_profile
 from pathlib import Path
 from typing import Any
 
@@ -379,6 +380,8 @@ class UsbMixin:
         return unique
 
     def start_usb_import(self, payload: dict[str, Any]) -> dict[str, Any]:
+        if "compression" in payload:
+            compression_profile(payload["compression"])
         with self.config_lock:
             plan, specifications = self._usb_import_plan(payload)
             if not plan["enough_space"]:
@@ -425,7 +428,7 @@ class UsbMixin:
                 if specification.get("series_id"):
                     metadata["series_id"] = specification["series_id"]
                     metadata["season"] = specification["season"]
-                self.initialise_upload_queue(metadata, "")
+                self.initialise_upload_queue(metadata, "", payload.get("compression"))
                 metadata["source_seen"] = time.time()
                 self.write_json(self.incoming / f"{upload_id}.json", metadata)
                 batch["upload_ids"].append(upload_id)

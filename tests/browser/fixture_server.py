@@ -25,6 +25,7 @@ SPEC = importlib.util.spec_from_file_location("mabeltv_browser_library", MODULE_
 assert SPEC and SPEC.loader
 mabeltv_library = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(mabeltv_library)
+from mabeltv_backend.compression import compression_choices
 FIXTURE_INSIGHTS_PATH = Path(__file__).with_name("fixture_my_tv_insights.py")
 FIXTURE_INSIGHTS_SPEC = importlib.util.spec_from_file_location(
     "mabeltv_browser_my_tv_insights", FIXTURE_INSIGHTS_PATH)
@@ -92,6 +93,7 @@ class FixtureLibrary(MabelQueueFixtureMixin):
 
     def library(self) -> dict[str, Any]:
         payload = copy.deepcopy(LIBRARY_PAYLOAD)
+        payload["compressionProfiles"] = compression_choices()
         payload["owner"]["portal_pin_required"] = self.pin_required
         return payload
 
@@ -100,6 +102,7 @@ class FixtureLibrary(MabelQueueFixtureMixin):
 
     def live_status(self) -> dict[str, Any]:
         return {
+            "compressionProfiles": compression_choices(),
             "uploads": [],
             "storage": copy.deepcopy(LIBRARY_PAYLOAD["storage"]),
             "system": copy.deepcopy(LIBRARY_PAYLOAD["system"]),

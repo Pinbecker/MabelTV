@@ -130,9 +130,9 @@ test('portal cancellation aborts local work and stale claims stop reporting prog
   const root = fixture(t), store = new Store(root), actions = [];
   const local = { id: 'local', status: 'uploading', percent: 20 };
   const companion = new Companion(store, { action: async (...args) => actions.push(args) }, {}, {
-    api: async () => ({ acknowledged: { id: 'remote', command: 'cancel' }, requests: [] }),
+    api: async () => ({ acknowledgedJobs: [{ id: 'remote', command: 'cancel' }], requests: [] }),
   });
-  const controller = new AbortController(); companion.active = { remote: { id: 'remote', claim: 'claim' }, controller, local };
+  const controller = new AbortController(); companion.actives.set('remote', { remote: { id: 'remote', claim: 'claim' }, controller, local });
   await companion.tick(); assert.equal(controller.signal.aborted, true); assert.equal(companion.active, null);
   assert.deepEqual(actions, [['local', 'cancel']]); await companion.close();
 });

@@ -55,7 +55,14 @@
       $('#usbSeriesName').value = selected?.title || ''
     }
 
+    function validLibraryData(data) {
+      return Boolean(data && Array.isArray(data.channels)
+        && data.system && typeof data.system === 'object'
+        && data.storage && typeof data.storage === 'object')
+    }
+
     function applyLibraryData(data, preferredUploadChannel = null) {
+      if (!validLibraryData(data)) throw new Error('The Pi library response was incomplete. Try again.')
       library = data
       applyTvName()
       const channels = library.channels || []

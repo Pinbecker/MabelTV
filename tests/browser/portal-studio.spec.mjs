@@ -1,8 +1,5 @@
 import { test, expect } from './test-fixtures.mjs'
-
-test.use({ serviceWorkers: 'block' })
-
-async function openStudio(page, { online = false, series = false, organiser = null } = {}) {
+async function openStudio(page, { online = false, series = false, organiser = null, profileSize } = {}) {
   const writes = [], jobs = []
   const items = Array.from({ length: 9 }, (_, index) => ({ id: String(index).padStart(24, '0'),
     name: ['The Grand Budapest Hotel.mkv', 'Ludwig S01E01.mp4', 'A Family Holiday.mp4', 'The Secret Garden.mkv', 'Arrival.mp4', 'The Night Manager.mp4', 'Paddington 2.mp4', 'The Imitation Game.mkv', 'The Hobbit.mkv'][index],
@@ -12,6 +9,7 @@ async function openStudio(page, { online = false, series = false, organiser = nu
   for (const [index, item] of items.entries()) {
     item.title = item.name.replace(/\.[^.]+$/, '').replace(/ S\d+E\d+$/, ''); item.year = '2016'; item.category = item.kind === 'series' ? 'tv' : 'films'; item.media_type = item.kind === 'series' ? 'tv' : 'movie'
     item.metadata = {tmdb_id: 100 + index, media_type:item.media_type, title:item.title, year:item.year, poster_path:`/explore-${100+index}.jpg`}
+    if (index === 4) item.metadata.overview = 'A linguist is recruited to communicate with mysterious visitors after spacecraft arrive around the world.'
   }
   items.push({id:'kids', title:'Paddington', name:'Paddington.mp4', kind:'video', category:'kids', media_type:'movie', year:'2014', bytes:100, path:'Kids/Paddington.mp4'})
   let request = null, step = 0
@@ -29,7 +27,15 @@ async function openStudio(page, { online = false, series = false, organiser = nu
       if (url.searchParams.has('series')) return route.fulfill({ json: { items: episodes.map((item, index) => ({ ...item, id: 'episode-' + index, series_title: 'Ludwig', name: item.episode + '.mp4', kind: 'video', series: index === 2 ? 2 : 1 })) } })
       const q = url.searchParams.get('q')?.toLowerCase() || ''
       const filtered = items.filter(i => i.name.toLowerCase().includes(q) && (!url.searchParams.get('category') || i.category === url.searchParams.get('category')))
+      if (url.searchParams.get('sort') === 'size-desc') filtered.sort((a, b) => b.bytes - a.bytes)
+      if (url.searchParams.get('sort') === 'size-asc') filtered.sort((a, b) => a.bytes - b.bytes)
       json = { ...cloud, items: filtered, total: filtered.length, folders: ['Films', 'Family Videos', 'Audiobooks'] }
+    } else if (path === '/api/studio/cloud/optimise-preview') {
+      json = { files: payload.ids.map(id => ({ ...items.find(item => item.id === id), type: 'MKV',
+        modified: 'same-version', remoteId: 'remote-' + id, estimatedBytes: profileSize === undefined ?
+          Math.floor(items.find(item => item.id === id).bytes * ({balanced:.6,compact:.4,smallest:.25}[payload.compression || 'compact']) * .98) : profileSize })),
+        output: 'MP4 · H.264 video · AAC stereo · up to 1080p / 30 fps',
+        compression: payload.compression || 'compact', estimateNote: 'Estimated size from the selected two-pass target; measured size can vary.' }
     } else if (path === '/api/studio/cloud/match') {
       const item = items.find(i => i.id === payload.id); item.metadata = {...item.metadata, ...payload.match}; json = {item}
     } else if (path === '/api/studio/jobs') {
@@ -58,6 +64,100 @@ async function openStudio(page, { online = false, series = false, organiser = nu
   return { writes, jobs }
 }
 
+test.use({ serviceWorkers: 'block' })
+
+test('cloud optimisation offers all three size targets with estimates and queues the selected profile', async ({ page }, info) => {
+  const { writes } = await openStudio(page)
+  await page.getByRole('button', { name: 'Arrival', exact: true }).click()
+  await page.getByRole('button', { name: 'Optimise iCloud version', exact: true }).click()
+  await expect(page.locator('#studioOptimiseSheet')).toBeVisible()
+  await expect(page.locator('#studioOptimiseFiles')).toContainText('MKV · 5.0 GB')
+  await expect(page.locator('#studioOptimiseFiles')).toContainText('estimated size: 2.0 GB')
+  await expect(page.locator('#studioOptimiseOutput')).toContainText('H.264')
+  await expect(page.locator('#studioOptimiseHero img')).toBeVisible()
+  await expect(page.locator('#studioOptimiseHero')).toContainText('A linguist is recruited')
+  await expect(page.locator('#studioOptimiseCompression')).toHaveValue('compact')
+  await expect(page.locator('#studioOptimiseCompression option')).toHaveCount(3)
+  await expect(page.locator('#studioOptimiseNewSize')).toHaveText('≈ 2.0 GB')
+  await expect(page.locator('#studioOptimiseSavings')).toContainText('3.0 GB')
+  await page.locator('#studioOptimiseCompression').selectOption('balanced')
+  await expect(page.locator('#studioOptimiseNewSize')).toHaveText('≈ 2.9 GB')
+  await page.locator('#studioOptimiseCompression').selectOption('smallest')
+  await expect(page.locator('#studioOptimiseNewSize')).toHaveText('≈ 1.2 GB')
+  await expect(page.locator('#studioOptimiseSheet')).not.toContainText(/we.ll|your copy|already compact/i)
+  expect(writes.filter(write => write.path === '/api/studio/jobs')).toHaveLength(0)
+  await page.screenshot({ path: info.outputPath('studio-optimise-confirmation.png'), animations: 'disabled' })
+  await page.getByRole('button', { name: 'Start optimisation', exact: true }).click()
+  await expect(page.locator('#studioOptimiseSheet')).toBeHidden()
+  const job = writes.find(write => write.path === '/api/studio/jobs')
+  expect(job.destination).toMatchObject({ kind: 'icloud', optimiseCloud: true, cloudCopies: 'optimised', compression: 'smallest' })
+  expect(job.replaceCloudOriginal).toBe(true)
+  expect(job.sources[0]).toMatchObject({ bytes: 5 * 1024 ** 3, modified: 'same-version' })
+  await expect(page.locator('.studio-job-percent').first()).toHaveText('0%')
+})
+
+for (const profileSize of [5.6 * 1024 ** 3, null]) {
+  test(`cloud optimisation does not predict a larger replacement or savings from ${profileSize ? 'a larger profile guide' : 'missing duration'}`, async ({ page }, info) => {
+    await page.addInitScript(() => localStorage.setItem('mabeltv-experience-theme', 'light'))
+    await openStudio(page, { profileSize })
+    await page.getByRole('button', { name: 'The Grand Budapest Hotel', exact: true }).click()
+    await page.getByRole('button', { name: 'Optimise iCloud version', exact: true }).click()
+    await expect(page.locator('#studioOptimiseCurrentSize')).toHaveText('1.0 GB')
+    await expect(page.locator('#studioOptimiseNewSize')).toHaveText('Not calculated')
+    await expect(page.locator('#studioOptimiseSavings')).toHaveText('Estimated space savingKnown after conversion')
+    await expect(page.locator('#studioOptimiseSheet')).not.toContainText(/we.ll|already compact/i)
+    await page.getByText('File details & size guide', { exact: true }).click()
+    await expect(page.locator('#studioOptimiseEstimate')).toContainText('measured size can vary')
+    await expect(page.locator('#studioOptimiseFiles')).toContainText(profileSize ? 'estimated size: 5.6 GB' : 'size estimate unavailable')
+    await page.getByText('File details & size guide', { exact: true }).click()
+    await page.screenshot({ path: info.outputPath('studio-optimise-size-guide.png'), animations: 'disabled' })
+  })
+}
+
+test('cloud upload confirmation has a live status without a fake percentage or ineffective controls', async ({ page }, info) => {
+  const { jobs } = await openStudio(page, { online: true })
+  jobs.push({ id: 'uploading-cloud', title: 'The Covenant', status: 'active', stage: 'saving-cloud',
+    message: '1 of 1 · Waiting for iCloud to confirm the file', percent: 100, created: Date.now(), destination: { kind: 'film', label: 'My TV films' } })
+  await page.getByRole('button', { name: 'Activity', exact: true }).click()
+  const job = page.locator('[data-studio-job="uploading-cloud"]')
+  await expect(job).toContainText('Available on your TV.')
+  await expect(job).toContainText('Uploading to iCloud — waiting for upload confirmation.')
+  await expect(job.locator('.studio-spinner')).toBeVisible()
+  await expect(job.locator('progress, .studio-job-percent, button')).toHaveCount(0)
+  await page.screenshot({ path: info.outputPath('studio-cloud-upload-status.png'), animations: 'disabled' })
+})
+
+test('cloud file-size sorting shares the filter row and sends the chosen order', async ({ page }, info) => {
+  await openStudio(page)
+  await page.getByRole('combobox', { name: 'Sort library' }).selectOption('size-desc')
+  await expect(page.locator('.studio-cloud-card').first()).toContainText('The Hobbit')
+  await expect(page.locator('.studio-cloud-card').first()).toContainText('9.0 GB')
+  await page.screenshot({ path: info.outputPath('studio-size-sort.png'), animations: 'disabled' })
+  expect(await page.locator('#view-my-tv-studio').evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true)
+  await page.getByRole('combobox', { name: 'Sort library' }).selectOption('size-asc')
+  await expect(page.locator('.studio-cloud-card').first()).toContainText('The Grand Budapest Hotel')
+})
+
+test('Activity keeps five downloads, conversion, Pi transfer and iCloud confirmation independent', async ({ page }) => {
+  const { jobs, writes } = await openStudio(page, { online: true })
+  const destination = { kind: 'film', label: 'My TV films' }
+  for (let i = 0; i < 5; i++) jobs.push({ id: `download-${i}`, title: `Download ${i + 1}`, status: 'active', stage: 'downloading', message: 'Downloading', percent: 10 + i, destination })
+  jobs.push({ id: 'convert', title: 'Converting film', status: 'active', stage: 'preparing', message: 'Converting', percent: 42, destination },
+    { id: 'transfer', title: 'Pi transfer film', status: 'active', stage: 'uploading', message: 'Sending to the Pi', percent: 63, destination },
+    { id: 'cloud', title: 'Archived film', status: 'active', stage: 'saving-cloud', message: 'Waiting for iCloud to confirm the file', percent: 100, destination })
+  await page.getByRole('button', { name: 'Activity', exact: true }).click()
+  await expect(page.locator('[data-studio-job]')).toHaveCount(8)
+  await expect(page.locator('[data-studio-job="convert"] progress')).toHaveAttribute('value', '42')
+  await expect(page.locator('[data-studio-job="transfer"] progress')).toHaveAttribute('value', '63')
+  await expect(page.locator('[data-studio-job="cloud"] progress')).toHaveCount(0)
+  await expect(page.locator('[data-studio-job="cloud"] button')).toHaveCount(0)
+  await page.locator('[data-studio-job="download-2"]').getByRole('button', { name: 'Pause', exact: true }).click()
+  expect(writes.filter(write => write.path === '/api/studio/action')).toEqual([{ path: '/api/studio/action', id: 'download-2', action: 'pause' }])
+  await expect(page.locator('[data-studio-job="download-2"]')).toContainText('Paused')
+  await expect(page.locator('[data-studio-job="download-1"]')).toContainText('Downloading')
+  await expect(page.locator('[data-studio-job="transfer"] progress')).toHaveAttribute('value', '63')
+})
+
 test('cloud library is in My TV, filters independently and queues while laptop is offline', async ({ page }) => {
   const { writes } = await openStudio(page)
   await expect(page.locator('[data-view-button="my-tv-home"]')).toHaveAttribute('aria-current', 'page')
@@ -68,11 +168,15 @@ test('cloud library is in My TV, filters independently and queues while laptop i
   await expect(page.locator('#studioDestinationSheet')).toBeVisible()
   await expect(page.locator('input[name="studioDestination"][value="icloud"]')).toBeDisabled()
   await expect(page.locator('input[name="studioDestination"][value="icloud"]').locator('..')).toBeHidden()
+  await expect(page.locator('#studioCompression')).toHaveValue('compact')
+  await expect(page.locator('#studioCompression option')).toHaveCount(3)
+  await page.locator('#studioCompression').selectOption('balanced')
+  await expect(page.locator('#studioCompressionEstimate')).toContainText('2.9 GB')
   await page.locator('#studioDestinationSubmit').click()
   await expect(page.locator('#studioActivityPane')).toBeVisible()
   await expect(page.locator('#studioJobs')).toContainText('Queued')
   const write = writes.find(write => write.path === '/api/studio/jobs')
-  expect(write.destination).toMatchObject({ kind: 'film', prepare: true, keepOptimised: false })
+  expect(write.destination).toMatchObject({ kind: 'film', prepare: true, keepOptimised: false, compression: 'balanced' })
   expect(write.sources).toHaveLength(1)
   await page.getByRole('button', { name: 'Pause', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Resume', exact: true })).toBeVisible()
@@ -169,12 +273,16 @@ test('cloud multi-selection keeps its choices and posts one batch', async ({ pag
   expect(writes.find(write => write.path === '/api/studio/jobs').sources).toHaveLength(2)
 })
 
-test('library controls keep refresh by the connection and leave a wide category selector', async ({ page }) => {
+test('library controls keep refresh by the connection and split category and sort evenly', async ({ page }) => {
   const { writes } = await openStudio(page, {online:true})
   await expect(page.locator('.studio-worker-strip #studioCloudRefresh')).toBeVisible()
   await expect(page.locator('#studioCloudMatchAll, #studioMetadataStatus')).toHaveCount(0)
   await expect(page.locator('.studio-cloud-tools button')).toHaveText(['Select'])
-  expect((await page.locator('.studio-cloud-tools > label').boundingBox()).width).toBeGreaterThan(180)
+  const controls = page.locator('.studio-cloud-tools > label')
+  await expect(controls).toHaveCount(2)
+  const widths = await controls.evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().width))
+  expect(Math.abs(widths[0] - widths[1])).toBeLessThan(2)
+  expect(widths[0]).toBeGreaterThan(100)
   await page.locator('#studioCloudRefresh').click()
   expect(writes.filter(write=>write.path === '/api/studio/cloud/refresh')).toHaveLength(1)
   await expect(page.locator('#studioCloudRefresh')).toBeEnabled()
@@ -255,7 +363,7 @@ test('iCloud deletion requires a named confirmation and cancelling does not chan
 
 test('cloud uses poster cards, one category filter and a metadata correction path', async ({ page }) => {
   const { writes } = await openStudio(page)
-  await expect(page.locator('#studioCloudPane select')).toHaveCount(1)
+  await expect(page.locator('#studioCloudPane select')).toHaveCount(2)
   await expect(page.locator('#studioCloudCategory option')).toHaveText(['Films', 'TV', 'Kids'])
   await expect(page.locator('.studio-cloud-card.my-tv-viewing-row')).toHaveCount(9)
   await expect(page.locator('#studioCloudGrid')).not.toContainText('.mkv')

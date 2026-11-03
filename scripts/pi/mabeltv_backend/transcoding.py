@@ -12,6 +12,8 @@ import sys
 import threading
 import time
 import uuid
+from .compression import compression_profile
+from .size_encoding import encode_size_profile
 from pathlib import Path
 from typing import Any
 
@@ -79,7 +81,8 @@ class TranscodingMixin:
             "1800k", "2000k", "4000k", progress_callback
             or self.my_tv_optimisation_progress_callback)
 
-    def request_my_tv_optimisation(self, file_name: str) -> None:
+    def request_my_tv_optimisation(self, file_name: str, compression=None) -> None:
+        profile = compression_profile(compression)
         source = self.safe_my_tv_path(file_name)
         if not source.is_file():
             raise ValueError("Film not found")
@@ -97,7 +100,9 @@ class TranscodingMixin:
                 raise ValueError("This film is already being optimised")
             self.my_tv_optimisation_active.add(relative)
         with self.config_lock:
-            self.set_my_tv_media_state(relative, "queued", progress=0)
+            self.set_my_tv_media_state(relative, "queued", progress=0, compression=profile["id"],
+                                       compressionOperation=uuid.uuid4().hex,
+                                       compressionOriginalBytes=source.stat().st_size)
         threading.Thread(target=self.optimise_my_tv_file, args=(relative,),
                          name="mabeltv-my-tv-optimise", daemon=True).start()
 
@@ -153,7 +158,11 @@ class TranscodingMixin:
                             started=started, eta_seconds=eta or None)
 
                 self.my_tv_optimisation_progress_callback = save_progress
-                self.optimise_my_tv_for_playback(source, destination)
+                selected = self.my_tv_media_states().get(file_name, {}).get("compression")
+                if selected:
+                    encode_size_profile(self, source, destination, selected, save_progress)
+                else:
+                    self.optimise_my_tv_for_playback(source, destination)
                 if destination != source:
                     source.unlink()
                 destination_relative = self.my_tv_relative_path(destination)
@@ -162,7 +171,7 @@ class TranscodingMixin:
                     current = states.pop(file_name, {})
                     if not isinstance(current, dict):
                         current = {}
-                    current.update({"state": "optimised", "message": "",
+                    current.update({"state": "optimised", "message": "", "compressionCompleted": time.time(),
                                     "progress": 100, "updated": time.time()})
                     states[destination_relative] = current
                     self.write_my_tv_media_states(states)

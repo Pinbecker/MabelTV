@@ -12,6 +12,8 @@ import sys
 import threading
 import time
 import uuid
+from .compression import compression_profile
+from .size_encoding import encode_size_profile
 from pathlib import Path
 from typing import Any
 
@@ -280,8 +282,8 @@ class UploadConversionMixin:
                 # Channel uploads are published exactly as supplied. Automatic
                 # optimisation made successful uploads look stuck and delayed
                 # films and episodes appearing in their chosen channel.
-                conversion_required = False
-                metadata["conversion_required"] = False
+                conversion_required = bool(metadata.get("compression"))
+                metadata["conversion_required"] = conversion_required
                 previous_status = "validated"
 
             destination = original_destination.with_suffix(".mp4") \
@@ -302,7 +304,13 @@ class UploadConversionMixin:
                 metadata["status"] = "processing"
                 metadata["updated"] = time.time()
                 self.write_json(self.incoming / f"{upload_id}.json", metadata)
-                if my_tv_film_upload:
+                if metadata.get("compression"):
+                    def report(percent, message=""):
+                        metadata.update(processing_percent=percent, processing_message=message, updated=time.time())
+                        self.write_json(self.incoming / f"{upload_id}.json", metadata)
+                    encode_size_profile(self, part, destination, metadata["compression"],
+                                        report, target="mytv" if my_tv_film_upload or my_tv_series_upload else "mabel")
+                elif my_tv_film_upload:
                     self.optimise_my_tv_for_playback(part, destination)
                 else:
                     self.optimise_for_playback(part, destination)
@@ -354,6 +362,7 @@ class UploadConversionMixin:
                 "channel": metadata.get("channel"),
                 "kind": "my-tv-series" if my_tv_series_upload
                 else "my_tv" if my_tv_film_upload else "channel",
+                "folder": metadata.get("folder", ""),
                 "series_id": metadata.get("series_id"),
                 "season": metadata.get("season"),
                 "source_kind": metadata.get("source_kind", "browser"),
@@ -424,6 +433,7 @@ class UploadConversionMixin:
                 "size": size,
                 "offset": offset,
                 "status": status,
+                **({"progress": value["processing_percent"]} if "processing_percent" in value else {}),
                 "error": value.get("error"),
                 "created": float(value.get("created", 0)),
                 "queue_order": int(value.get("queue_order", 0) or 0),
@@ -484,8 +494,10 @@ class UploadConversionMixin:
                 except (TypeError, ValueError): pass
         return max(orders, default=0) + 1
 
-    def initialise_upload_queue(self, metadata: dict[str, Any], source_id: str) -> None:
+    def initialise_upload_queue(self, metadata: dict[str, Any], source_id: str, compression=None) -> None:
         """Give every browser-selected file a durable, Pi-owned place in line."""
+        if compression is not None:
+            metadata["compression"] = compression_profile(compression)["id"]
         if not re.fullmatch(r"[a-f0-9]{32}", source_id):
             source_id = ""
         has_active = any(item.get("status") == "uploading" and
@@ -498,8 +510,10 @@ class UploadConversionMixin:
             metadata["source_seen"] = time.time()
 
     def reconnect_upload_source(self, manifest: Path, metadata: dict[str, Any],
-                                source_id: str) -> None:
+                                source_id: str, compression=None) -> None:
         """Reconnect a reselected local file to its durable upload reservation."""
+        if compression is not None and metadata.get("compression") != compression_profile(compression)["id"]:
+            raise ValueError("This upload already has a different compression profile. Resume it unchanged or cancel it first")
         if re.fullmatch(r"[a-f0-9]{32}", source_id):
             metadata["source_id"] = source_id
             metadata["source_seen"] = time.time()
@@ -570,7 +584,7 @@ class UploadConversionMixin:
                 if isinstance(result, dict) and result.get("complete"):
                     return result
                 self.reconnect_upload_source(
-                    manifest, value, str(payload.get("source_id", "")))
+                    manifest, value, str(payload.get("source_id", "")), payload.get("compression"))
                 offset = part.stat().st_size if part.is_file() else 0
                 if offset == size and value.get("status", "uploading") == "uploading":
                     value["status"] = "validating"
@@ -587,7 +601,7 @@ class UploadConversionMixin:
                 raise ValueError("A film with that name already exists in My TV")
             # My TV films arrive untouched. A later owner-approved conversion
             # reserves source-and-output space only if it is actually needed.
-            reserve = size + 512 * 1024 * 1024
+            reserve = size + (int(size * compression_profile(payload["compression"])["sourceFraction"]) if payload.get("compression") is not None else 0) + 512 * 1024 * 1024
             if shutil.disk_usage(self.media_root).free < reserve:
                 raise ValueError("There is not enough free space to upload that film")
             upload_id = uuid.uuid4().hex
@@ -599,7 +613,7 @@ class UploadConversionMixin:
                 "size": size,
                 "created": time.time(),
             }
-            self.initialise_upload_queue(metadata, str(payload.get("source_id", "")))
+            self.initialise_upload_queue(metadata, str(payload.get("source_id", "")), payload.get("compression"))
             self.write_json(self.incoming / f"{upload_id}.json", metadata)
             return {"id": upload_id, "offset": 0, "transfer_state": metadata["transfer_state"]}
 
@@ -643,7 +657,7 @@ class UploadConversionMixin:
                 if isinstance(result, dict) and result.get("complete"):
                     return result
                 self.reconnect_upload_source(
-                    manifest, value, str(payload.get("source_id", "")))
+                    manifest, value, str(payload.get("source_id", "")), payload.get("compression"))
                 offset = part.stat().st_size if part.is_file() else 0
                 if offset == size and value.get("status", "uploading") == "uploading":
                     value["status"] = "validating"
@@ -658,7 +672,7 @@ class UploadConversionMixin:
 
             if destination.exists():
                 raise ValueError("That series already contains an episode with this file name")
-            reserve = size + 512 * 1024 * 1024
+            reserve = size + (int(size * compression_profile(payload["compression"])["sourceFraction"]) if payload.get("compression") is not None else 0) + 512 * 1024 * 1024
             if shutil.disk_usage(self.media_root).free < reserve:
                 raise ValueError("There is not enough free space to upload that episode")
             (series_root / season_name).mkdir(mode=0o750, exist_ok=True)
@@ -672,7 +686,7 @@ class UploadConversionMixin:
                 "size": size,
                 "created": time.time(),
             }
-            self.initialise_upload_queue(metadata, str(payload.get("source_id", "")))
+            self.initialise_upload_queue(metadata, str(payload.get("source_id", "")), payload.get("compression"))
             self.write_json(self.incoming / f"{upload_id}.json", metadata)
             return {"id": upload_id, "offset": 0, "transfer_state": metadata["transfer_state"]}
 
@@ -712,7 +726,7 @@ class UploadConversionMixin:
                 if isinstance(saved_result, dict) and saved_result.get("complete"):
                     return saved_result
                 self.reconnect_upload_source(
-                    meta, value, str(payload.get("source_id", "")))
+                    meta, value, str(payload.get("source_id", "")), payload.get("compression"))
                 offset = part.stat().st_size if part.exists() else 0
                 reserve = max(0, size - offset) + 512 * 1024 * 1024
                 if shutil.disk_usage(self.media_root).free < reserve:
@@ -742,14 +756,14 @@ class UploadConversionMixin:
 
         if destination.exists() or destination.with_suffix(".mp4").exists():
             raise ValueError("A file with that name already exists in this channel")
-        reserve = size + 512 * 1024 * 1024
+        reserve = size + (int(size * compression_profile(payload["compression"])["sourceFraction"]) if payload.get("compression") is not None else 0) + 512 * 1024 * 1024
         if shutil.disk_usage(self.media_root).free < reserve:
             raise ValueError("There is not enough free space to upload that video")
         self.clear_superseded_upload_errors(number, file_name)
         upload_id = uuid.uuid4().hex
         metadata = {"id": upload_id, "channel": number, "file_name": file_name,
                     "size": size, "created": time.time()}
-        self.initialise_upload_queue(metadata, str(payload.get("source_id", "")))
+        self.initialise_upload_queue(metadata, str(payload.get("source_id", "")), payload.get("compression"))
         self.write_json(self.incoming / (upload_id + ".json"), metadata)
         return {"id": upload_id, "offset": 0, "transfer_state": metadata["transfer_state"]}
 
@@ -945,6 +959,7 @@ class UploadConversionMixin:
             "offset": offset,
             "complete": False,
             "processing": status in processing_statuses,
+            **({"progress": metadata["processing_percent"]} if "processing_percent" in metadata else {}),
             "status": status,
             "transfer_state": str(metadata.get("transfer_state", "active")),
             "source_kind": metadata.get("source_kind", "browser"),

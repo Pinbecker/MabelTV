@@ -35,6 +35,7 @@ class StudioCloudFilingMixin:
         collection_size = len(collection_members(title, details.get("belongs_to_collection"), titles,
                                                  self.state_database.studio_records("organiser"))) if kind == "Films" else 0
         plan = []
+        records = self.state_database.studio_cloud_metadata_records()
         for member in members:
             source = PurePosixPath(member["path"])
             if source.is_absolute() or ".." in source.parts or not member.get("remoteId"):
@@ -50,6 +51,17 @@ class StudioCloudFilingMixin:
                 original = PurePosixPath(origins.get(member["id"], member["path"]))
                 opaque = re.fullmatch(r"[bmp][a-z0-9]{7}|[a-f0-9]{24,32}", original.stem, re.I)
                 filename = name + source.suffix.lower() if opaque else original.name
+                record = records.get(member["id"], {})
+                asset = str(record.get("archiveAsset", "")).split(":")[0]
+                managed_name = re.fullmatch(r"[a-f0-9]{32}", asset) and re.search(
+                    r" - " + re.escape(asset[:8]) + r"(?: \[Optimised\])?$", original.stem)
+                if record.get("publicationJob") and managed_name:
+                    # Only Studio-owned new copies are canonicalised. Preserve
+                    # the separate organiser's existing imported filenames.
+                    siblings = any(other != member["id"] and any(value_file["id"] == other for value_file in files) and value.get("archiveGroup") == record.get("archiveGroup")
+                                   for other, value in records.items()) if record.get("archiveGroup") else False
+                    marker = " [Optimised]" if siblings and record.get("variants") == ["optimised"] else ""
+                    filename = name + marker + source.suffix.lower()
                 if parent == PurePosixPath("Films/MCU") and not re.match(r"^\d+\s*[-.]", filename):
                     ordinal = next((re.match(r"^(\d+)\s*[-.]", part).group(1) for part in original.parts
                                     if re.match(r"^\d+\s*[-.]", part)), None)

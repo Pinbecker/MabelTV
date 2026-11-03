@@ -23,7 +23,7 @@ function studioCloudCard(item) {
   }
   const copy = document.createElement('span'); copy.className = 'my-tv-viewing-copy'
   const heading = document.createElement('strong'); heading.textContent = title.title
-  const subtitle = document.createElement('span'); subtitle.textContent = [title.year, title.media_type === 'tv' ? 'Series' : 'Film'].filter(Boolean).join(' · ')
+  const subtitle = document.createElement('span'); subtitle.textContent = [title.year, studioBytes((item.versions || [item]).reduce((bytes, file) => bytes + file.bytes, 0))].filter(Boolean).join(' · ')
   copy.append(heading, subtitle); opener.append(art, copy)
   opener.onclick = () => {
     if (studioState.selecting) {
@@ -51,7 +51,7 @@ function renderStudioCloud() {
     : cloud.scanning ? 'Refreshing iCloud…' : cloud.error || `${cloud.total} titles · ${studioLastChecked(cloud.checked)}`
   const grid = $('#studioCloudGrid'), existing = new Map([...grid.querySelectorAll('[data-cloud-id]')].map(row => [row.dataset.cloudId, row]))
   for (const [index, item] of studioState.items.entries()) {
-    const version = JSON.stringify([item.metadata, item.title, item.year, studioState.selecting, studioState.selected.has(item.id)])
+    const version = JSON.stringify([item.metadata, item.title, item.year, item.bytes, item.versions, studioState.selecting, studioState.selected.has(item.id)])
     let row = existing.get(item.id)
     if (!row || row.dataset.studioVersion !== version) {
       const replacement = studioCloudCard(item); replacement.dataset.studioVersion = version

@@ -86,6 +86,15 @@ class StudioCloudMetadataMixin:
         record = {"id": item["id"], "fingerprint": self._studio_title_fingerprint(item),
             "files": [[item["id"], item["bytes"], item["modified"], item["remoteId"]]], "status": "pending",
             "variants": variants, "archiveGroup": group, "titleHint": str(payload.get("title", ""))[:200], "updated": time.time()}
+        old = self.state_database.studio_cloud_metadata_records().get(item["id"], {})
+        profile = payload.get("encodingProfile")
+        source_size = payload.get("encodingSourceBytes")
+        if profile in {"balanced", "compact", "smallest"} and type(source_size) is int and item["bytes"] <= source_size <= 2**53:
+            record.update(encodingProfile=profile, encodingSourceBytes=source_size)
+        elif old.get("fingerprint") == record["fingerprint"]:
+            for key in ("encodingProfile", "encodingSourceBytes"):
+                if key in old:
+                    record[key] = old[key]
         publication_job = str(payload.get("publicationJob", ""))
         asset = str(payload.get("archiveAsset", ""))
         if asset:
@@ -137,7 +146,18 @@ class StudioCloudMetadataMixin:
         display_titles = self._studio_cloud_merge_versions(titles)
         visible = [item for item in display_titles if (not category or item["category"] == category)
                    and (not search or search in (item["title"] + " " + item["name"] + " " + item["year"]).casefold())]
-        visible.sort(key=lambda item: item["title"].casefold())
+        order = str(query.get("sort", ["name-asc"])[0])
+        if order not in {"name-asc", "name-desc", "size-desc", "size-asc", "date-desc", "date-asc"}:
+            raise ValueError("Choose a library sort order")
+        size = lambda item: sum(version["bytes"] for version in item.get("versions", [item]))
+        name = lambda item: item["title"].casefold()
+        if order.startswith("size-"):
+            visible.sort(key=lambda item: ((-1 if order == "size-desc" else 1) * size(item), name(item)))
+        elif order.startswith("date-"):
+            visible.sort(key=lambda item: (not bool(item.get("year")),
+                (-1 if order == "date-desc" else 1) * int(item.get("year") or 0), name(item)))
+        else:
+            visible.sort(key=name, reverse=order == "name-desc")
         offset = max(0, int(query.get("offset", ["0"])[0]))
         return {**self.studio_cloud_status(), "items": visible[offset:offset + 100], "offset": offset,
             "total": len(visible), "titleCount": len(display_titles), "unmatched": sum(not item["metadata"] for item in display_titles),

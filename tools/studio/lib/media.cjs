@@ -2,6 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { run } = require('./process.cjs');
+const { compressionProof, reusableCompression, encodeCompression, policy } = require('./compression.cjs');
 
 function frameRate(value) { const parts = String(value).split('/').map(Number); return parts.length === 2 ? parts[0] / parts[1] : parts[0]; }
 function fastStart(file) {
@@ -34,8 +35,10 @@ function analyse(probe, file, target) {
   if (!Number.isFinite(fps) || fps > 30.1) reasons.push('30 fps maximum');
   if (Number(probe.format?.bit_rate) > (myTv ? 7000000 : 2800000)) reasons.push('playback bitrate');
   if (!fastStart(file)) reasons.push('fast-start playback');
+  const duration = Number(probe.format?.duration) || 0, bytes = fs.statSync(file).size;
   return { ready: reasons.length === 0, reasons, width: video.width, height: video.height,
-    fps, duration: Number(probe.format?.duration) || 0, bytes: fs.statSync(file).size };
+    fps, duration, bytes, hasAudio: audio.length > 0, colorTransfer: video.color_transfer,
+    compressionProof: compressionProof(probe, bytes, duration) };
 }
 class Media {
   constructor(getTools) { this.getTools = getTools; }
@@ -45,31 +48,14 @@ class Media {
     const output = await run(tools.ffprobe, ['-v', 'error', '-show_streams', '-show_format', '-of', 'json', file], { signal });
     return analyse(JSON.parse(output), file, target);
   }
-  async prepare(file, destination, target, signal, progress) {
+  async prepare(file, destination, target, signal, progress, reserve, compression = policy.default) {
     const analysis = await this.inspect(file, target, signal);
-    if (analysis.ready) return { file, analysis, converted: false };
+    if (reusableCompression(analysis, compression)) return { file, analysis, sourceAnalysis: analysis, converted: false, compression };
+    reserve?.(analysis);
     const tools = this.getTools(); if (!tools.ffmpeg) throw new Error('FFmpeg is unavailable. Check Settings.');
-    fs.mkdirSync(path.dirname(destination), { recursive: true });
-    const free = fs.statfsSync(path.dirname(destination));
-    const estimate = Math.max(analysis.bytes, analysis.duration * (target === 'mabel' ? 2700000 : 6800000) / 8);
-    if (free.bavail * free.bsize < estimate + 256 * 1024 * 1024) throw new Error('Not enough free space for safe preparation. Choose another working folder.');
-    const partial = destination + '.part.mp4';
-    const width = target === 'mabel' ? 1280 : 1920, height = target === 'mabel' ? 720 : 1080;
-    const fps = Math.min(30, Math.max(1, analysis.fps || 25));
-    await run(tools.ffmpeg, ['-hide_banner', '-y', '-i', file, '-map', '0:v:0', '-map', '0:a:0?',
-      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '22', '-pix_fmt', 'yuv420p',
-      '-maxrate', target === 'mabel' ? '2500k' : '6500k', '-bufsize', target === 'mabel' ? '5000k' : '13000k',
-      '-vf', `scale=${width}:${height}:force_original_aspect_ratio=decrease:force_divisible_by=2`,
-      '-r', String(fps), '-c:a', 'aac', '-b:a', target === 'mabel' ? '160k' : '192k', '-ac', '2',
-      '-movflags', '+faststart', '-progress', 'pipe:1', '-nostats', partial], {
-      signal, timeout: 24 * 3600000, onLine: line => {
-        const match = line.match(/^out_time_us=(\d+)/);
-        if (match && analysis.duration) progress(Math.min(99, Number(match[1]) / 1000000 / analysis.duration * 100));
-      } });
-    const validated = await this.inspect(partial, target, signal);
-    if (!validated.ready) throw new Error(`Prepared video failed validation: ${validated.reasons.join(', ')}.`);
-    fs.renameSync(partial, destination);
-    return { file: destination, analysis: validated, converted: true };
+    const output = await encodeCompression({ file, destination, target, analysis, tools, signal, progress,
+      inspect: this.inspect.bind(this), compression });
+    return { ...output, sourceAnalysis: analysis };
   }
 }
 module.exports = { Media, analyse, fastStart };

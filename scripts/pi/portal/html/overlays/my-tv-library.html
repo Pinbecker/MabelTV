@@ -44,7 +44,7 @@
         >
           No films selected yet.
         </div>
-        <button id="myTvUploadButton" type="submit" class="primary" disabled>
+        <label>Compression<select id="myTvUploadCompression"><option value="balanced" data-fraction="0.6">Balanced · about 40% smaller</option><option value="compact" data-fraction="0.4" selected>Compact · about 60% smaller</option><option value="smallest" data-fraction="0.25">Smallest · about 75% smaller</option></select></label><p id="myTvUploadCompressionEstimate" class="studio-caption"></p><button id="myTvUploadButton" type="submit" class="primary" disabled>
           Upload selected films
         </button>
       </form>
@@ -390,7 +390,7 @@
         >
           No episodes selected yet.
         </div>
-        <button
+        <label>Compression<select id="myTvSeriesCompression"><option value="balanced" data-fraction="0.6">Balanced · about 40% smaller</option><option value="compact" data-fraction="0.4" selected>Compact · about 60% smaller</option><option value="smallest" data-fraction="0.25">Smallest · about 75% smaller</option></select></label><p id="myTvSeriesCompressionEstimate" class="studio-caption"></p><button
           id="myTvSeriesUploadButton"
           type="submit"
           class="primary"

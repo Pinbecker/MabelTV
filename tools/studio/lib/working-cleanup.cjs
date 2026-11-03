@@ -21,7 +21,7 @@ function cleanWorkingCopies(remote, local, store) {
     }
   }
   const candidates = new Set();
-  for (const file of [local.sourcePath, local.preparedPath]) {
+  for (const file of [local.sourcePath, local.preparedPath, local.cloudPreparedPath]) {
     if (!file || !fs.existsSync(file)) continue;
     const resolved = fs.realpathSync(file);
     if (!roots.some(root => inside(root, resolved))) continue; // Imported originals and iCloud sync files stay untouched.

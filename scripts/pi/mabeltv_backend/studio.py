@@ -8,6 +8,7 @@ from pathlib import PurePosixPath
 import re
 import time
 import uuid
+from .compression import compression_profile, compression_choices
 
 
 class StudioMixin:
@@ -19,7 +20,7 @@ class StudioMixin:
             job.pop("claim", None)
             if job["status"] in {"queued", "active"} and not any(now - w["seen"] < 25 for w in workers):
                 job["displayStatus"] = "Queued"
-        return {"workers": [{**w, "online": now - w["seen"] < 25} for w in workers],
+        return {"compressionProfiles": compression_choices(), "workers": [{**w, "online": now - w["seen"] < 25} for w in workers],
                 "jobs": jobs, "cloudOperations": self.state_database.studio_records("cloudop"),
                 "organiser": self.studio_organiser_status(),
                 "organiserUsage": self.state_database.studio_records("aiusage"), "cloud": self.studio_cloud_status(), "now": now}
@@ -62,9 +63,16 @@ class StudioMixin:
                        "keepOptimised": value.get("keepOptimised", True) is True,
                        "saveCloud": value.get("saveCloud", False) is True, "preserveSeasons": value.get("preserveSeasons") is True}
         destination.update(temporaryWork=True, keepOptimised=False)
+        if "compression" in value:
+            destination["compression"] = compression_profile(value["compression"])["id"]
         if not isinstance(value.get("cloudCopies", "original"), str) or value.get("cloudCopies", "original") not in {"original", "optimised", "both"}:
             raise ValueError("Choose Original, Optimised or Both for iCloud")
         destination["cloudCopies"] = value.get("cloudCopies", "original")
+        if value.get("optimiseCloud") is True:
+            if value["kind"] != "icloud" or destination["cloudCopies"] != "optimised":
+                raise ValueError("Choose an optimised iCloud replacement")
+            destination["optimiseCloud"] = True
+            destination["label"] = "Optimise iCloud version"
         destination["prepare"] = value["kind"] != "icloud" or destination["cloudCopies"] != "original"
         if destination["kind"] == "mabel":
             channel = next((c for c in self.channels() if c["folder"] == value.get("folder")), None)
@@ -86,7 +94,7 @@ class StudioMixin:
                 raise ValueError("Enter the series name")
             destination.update(series=identity, name=name, season=season, label=name)
         else:
-            destination["label"] = {"film": "My TV films", "icloud": "iCloud"}[destination["kind"]]
+            destination["label"] = "Optimise iCloud version" if destination.get("optimiseCloud") else {"film": "My TV films", "icloud": "iCloud"}[destination["kind"]]
         return destination
 
     def studio_match(self, match):
@@ -109,7 +117,7 @@ class StudioMixin:
             if not isinstance(source, dict):
                 raise ValueError("Choose a media source")
             if source.get("type") == "cloud":
-                if destination["kind"] == "icloud":
+                if destination["kind"] == "icloud" and not destination.get("optimiseCloud"):
                     raise ValueError("This item is already in iCloud. Choose My TV or Mabel TV.")
                 item = self.studio_cloud_item(str(source.get("id", "")))
                 if not self._studio_media_file(item):
@@ -138,6 +146,8 @@ class StudioMixin:
                 title = str(source_match.get("title") if source_match else origin["title"])[:240]
             else:
                 raise ValueError("Choose an iCloud file, BBC programme or download result")
+            if destination.get("optimiseCloud") and origin["type"] != "cloud":
+                raise ValueError("Choose an existing iCloud video to optimise")
             chosen = dict(destination)
             chosen["saveCloud"] = True
             if origin["type"] == "cloud" and chosen["cloudCopies"] == "optimised":
@@ -178,14 +188,24 @@ class StudioMixin:
         if not isinstance(responses, list) or len(json.dumps(responses)) > 2 * 1024 * 1024:
             raise ValueError("Invalid Studio search response")
         capabilities = payload.get("capabilities", [])
-        if not isinstance(capabilities, list) or len(capabilities) > 10 or any(not isinstance(item, str) or item != "torrent" for item in capabilities):
+        if not isinstance(capabilities, list) or len(capabilities) > 10 or any(not isinstance(item, str) or item not in {"torrent", "cloud-optimise", "parallel-stages", "compression-presets"} for item in capabilities):
             raise ValueError("Invalid Studio capabilities")
+        actives = payload.get("activeJobs")
+        if actives is not None and ("parallel-stages" not in capabilities or not isinstance(actives, list)
+                or len(actives) > 64 or any(not isinstance(value, dict) or not isinstance(value.get("id"), str)
+                                          or len(json.dumps(value)) > 16384 for value in actives)
+                or len({value["id"] for value in actives}) != len(actives)):
+            raise ValueError("Invalid Studio parallel progress")
+        worker_session = payload.get("session", "")
+        if not isinstance(worker_session, str) or worker_session and ("parallel-stages" not in capabilities
+                or not re.fullmatch(r"[a-f0-9]{32}", worker_session)):
+            raise ValueError("Invalid Studio worker session")
         request_active = payload.get("requestActive")
         if request_active is not None and (not isinstance(request_active, dict) or len(json.dumps(request_active)) > 300):
             raise ValueError("Invalid Studio request lease")
         responses = self.studio_torrent_worker_responses(responses)
         return self.state_database.studio_poll(identity, str(payload.get("name", "Laptop"))[:80], active, responses,
-                                               capabilities, request_active)
+                                               capabilities, request_active, actives, worker_session)
 
     def studio_subtitle(self, payload):
         """Attach text only to a server-confirmed publication, never an arbitrary path."""

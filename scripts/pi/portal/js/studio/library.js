@@ -56,7 +56,7 @@ async function studioTick() {
 }
 async function studioLoadCloud({ more = false } = {}) {
   const query = new URLSearchParams({ q: $('#studioCloudSearch').value, category: $('#studioCloudCategory').value,
-    offset: more ? studioState.items.length : 0 })
+    sort: $('#studioCloudSort').value, offset: more ? studioState.items.length : 0 })
   const response = await api('/api/studio/cloud?' + query)
   studioState.cloud = response
   studioLastCloudScan = response.checked
@@ -166,6 +166,7 @@ function renderStudioConnections() {
 $$('[data-studio-tab]').forEach(button => button.onclick = () => studioSetTab(button.dataset.studioTab, { historyEntry: true }))
 $('#studioCloudSearch').oninput = () => { clearTimeout(studioCloudTimer); studioCloudTimer = setTimeout(() => void studioLoadCloud().catch(studioFailure), 250) }
 $('#studioCloudCategory').onchange = () => { studioState.selected.clear(); void studioLoadCloud().catch(studioFailure) }
+$('#studioCloudSort').onchange = () => { studioState.selected.clear(); void studioLoadCloud().catch(studioFailure) }
 $('#studioCloudMore').onclick = () => void studioLoadCloud({ more: true }).catch(studioFailure)
 $('#studioCloudSelect').onclick = () => { studioState.selecting = !studioState.selecting; if (!studioState.selecting) studioState.selected.clear(); renderStudioCloud() }
 $('#studioCloudContinue').onclick = () => void studioOpenCloudTitles([...studioState.selected.values()]).catch(studioFailure)

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from .lg import lg_webos_log
+from .compression import compression_choices
 
 
 class SystemStatusMixin:
@@ -17,6 +18,7 @@ class SystemStatusMixin:
         """Small polling payload that cannot overwrite an in-progress form."""
         disk = shutil.disk_usage(self.media_root)
         return {
+            "compressionProfiles": compression_choices(),
             "uploads": self.upload_jobs(),
             "storage": {"free_gb": disk.free / 1024**3,
                         "used_gb": disk.used / 1024**3,

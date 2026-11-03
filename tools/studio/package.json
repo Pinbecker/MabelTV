@@ -1,11 +1,13 @@
 {
   "name": "mabeltv-studio",
-  "version": "1.4.0",
+  "version": "1.6.0",
   "description": "Find, prepare and send media to Mabel TV and My TV",
   "author": "MabelTV",
   "private": true,
   "main": "main.cjs",
-  "engines": { "node": ">=22.12.0" },
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "start": "electron .",
     "postinstall": "install-electron",
@@ -19,14 +21,34 @@
     "electron-builder": "26.15.3",
     "@playwright/test": "1.62.1"
   },
-  "overrides": { "@electron/get": "5.1.0" },
+  "overrides": {
+    "@electron/get": "5.1.0"
+  },
   "build": {
     "appId": "uk.mabeltv.studio",
     "productName": "MabelTV Studio",
-    "directories": { "output": "dist" },
-    "files": ["main.cjs", "preload.cjs", "lib/**", "ui/**", "package.json"],
-    "extraResources": [{ "from": "resources", "to": "tools" }],
-    "win": { "target": "nsis", "icon": "ui/studio.ico", "signAndEditExecutable": true },
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "lib/**",
+      "ui/**",
+      "package.json",
+      { "from": "../../scripts/pi/mabeltv_backend", "to": "lib", "filter": ["compression-profiles.json"] }
+    ],
+    "extraResources": [
+      {
+        "from": "resources",
+        "to": "tools"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "ui/studio.ico",
+      "signAndEditExecutable": true
+    },
     "nsis": {
       "oneClick": false,
       "perMachine": false,

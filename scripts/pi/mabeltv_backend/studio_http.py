@@ -47,6 +47,7 @@ def studio_post(handler, path, payload):
               "/api/studio/cloud/confirm": "studio_cloud_confirm"}
     routes["/api/studio/cloud/operation"] = "studio_cloud_operation"
     routes["/api/studio/cloud/replace-original"] = "studio_cloud_replace_original"
+    routes["/api/studio/cloud/optimise-preview"] = "studio_cloud_optimise_preview"
     routes["/api/studio/cloud/match"] = "studio_cloud_match"
     routes["/api/studio/subtitle"] = "studio_subtitle"
     routes["/api/studio/torrents/search"] = "studio_torrent_search"

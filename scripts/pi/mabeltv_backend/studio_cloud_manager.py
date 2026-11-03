@@ -39,6 +39,8 @@ class StudioCloudManagerMixin:
         original = files.get(job["source"]["id"])
         if not original or any(original.get(key, "") != job["source"].get(key, "") for key in ("bytes", "modified", "remoteId")):
             raise ValueError("The original changed. Refresh and confirm its replacement again.")
+        if job["destination"].get("optimiseCloud") and output["bytes"] >= original["bytes"]:
+            raise ValueError("The replacement would not save space. The original was kept.")
         current = self._studio_cloud_stat("Media/" + original["path"])
         if current.get("IsDir") or any(current.get(key, "") != original.get(field, "") for key, field in (("ID", "remoteId"), ("Size", "bytes"), ("ModTime", "modified"))):
             raise ValueError("The original changed. It was kept for a fresh confirmation.")

@@ -141,7 +141,8 @@ const $ = selector => document.querySelector(selector)
         headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
         ...options
       })
-      const body = await response.json().catch(() => ({}))
+      let invalidResponse = false
+      const body = await response.json().catch(() => { invalidResponse = true; return {} })
       if (response.status === 401) {
         portalConnectionState = 'auth-required'
         setOfflineProtectedAccess(false)
@@ -157,6 +158,11 @@ const $ = selector => document.querySelector(selector)
         const error = new Error(body.error || `${tvName()} could not complete that request`)
         error.status = response.status
         error.code = body.code
+        throw error
+      }
+      if (invalidResponse || !body || typeof body !== 'object') {
+        const error = new Error('The Pi response was incomplete. Try again.')
+        error.code = 'invalid-response'
         throw error
       }
       return body
@@ -182,6 +188,7 @@ const $ = selector => document.querySelector(selector)
       try {
         const cached = await window.MabelAppCache?.read(key)
         if (!cached?.data || cached.schema !== 1) return null
+        if (key === 'library-v1' && !validLibraryData(cached.data)) return null
         const stale = Boolean(domain
           && Number(cached.revision) !== portalRevision(domain))
         return {

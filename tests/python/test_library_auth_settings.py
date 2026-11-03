@@ -234,6 +234,10 @@ class LibraryAuthSettingsTests(unittest.TestCase):
             destination.write_bytes(source.read_bytes())
 
         self.fixture.library.optimise_my_tv_for_playback = mock.Mock(side_effect=optimise)
+        selected_encoder = mock.patch("mabeltv_backend.transcoding.encode_size_profile",
+            side_effect=lambda _library, source, destination, _selected, _callback: optimise(source, destination))
+        encoder = selected_encoder.start()
+        self.addCleanup(selected_encoder.stop)
         self.fixture.library.refresh_tv = mock.Mock(return_value=True)
 
         created = self.fixture.library.my_tv_upload_create({
@@ -261,7 +265,7 @@ class LibraryAuthSettingsTests(unittest.TestCase):
         self.fixture.library.optimise_my_tv_for_playback.assert_not_called()
         self.fixture.library.refresh_tv.assert_called_once()
 
-        self.fixture.library.manage({"action": "optimise-my-tv", "file": "My Film.mkv"})
+        self.fixture.library.manage({"action": "optimise-my-tv", "file": "My Film.mkv", "compression": "smallest"})
         deadline = time.monotonic() + 3
         while time.monotonic() < deadline:
             films = self.fixture.library.my_tv_library()
@@ -272,7 +276,8 @@ class LibraryAuthSettingsTests(unittest.TestCase):
                          b"raw-film-content")
         self.assertFalse((self.fixture.library.my_tv_root / "My Film.mkv").exists())
         self.assertEqual(self.fixture.library.my_tv_library()[0]["playback_state"], "optimised")
-        self.fixture.library.optimise_my_tv_for_playback.assert_called_once()
+        encoder.assert_called_once()
+        self.assertEqual(encoder.call_args.args[3], "smallest")
 
     def test_my_tv_optimisation_progress_is_exposed_without_reloading_library(self) -> None:
         film = self.fixture.library.my_tv_root / "Long Film.mkv"

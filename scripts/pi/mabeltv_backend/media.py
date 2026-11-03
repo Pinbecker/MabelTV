@@ -10,6 +10,7 @@ import subprocess
 import sys
 import time
 import uuid
+from .compression import compression_choices
 from pathlib import Path
 from typing import Any
 
@@ -1058,6 +1059,7 @@ class MediaCatalogueMixin:
         owner = self.owner()
         return {
             "channels": response,
+            "compressionProfiles": compression_choices(),
             "appearance": {
                 "parent_overlay_style": self.parent_overlay_style(settings),
                 "tv_guide_enabled": self.tv_guide_enabled(settings),

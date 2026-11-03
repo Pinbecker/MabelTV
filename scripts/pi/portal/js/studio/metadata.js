@@ -37,6 +37,7 @@ function studioDestinationMetadata() {
   const context = studioDraft?.cloudContext
   $('#studioCloudTitleMetadata').classList.toggle('hidden', !context)
   $('#studioDestinationDelete').classList.toggle('hidden', !context)
+  $('#studioCloudOptimise').classList.toggle('hidden', !context)
   $('#studioChooseEpisodes').classList.toggle('hidden', !context || context.selectedEpisodes || context.titles.length !== 1 || context.titles[0].kind !== 'series')
   if (!context) return
   const title = studioCloudTitle(context.titles[0])

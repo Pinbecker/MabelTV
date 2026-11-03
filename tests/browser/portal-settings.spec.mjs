@@ -5,6 +5,40 @@ import path from 'node:path'
 const destinations = ['settings-mabel', 'settings-my-tv', 'appearance', 'settings-security', 'settings-media', 'settings-help']
 test.use({ serviceWorkers: 'block' })
 
+test('interrupted health responses preserve the last valid Pi readings', async ({ page }) => {
+  await page.goto('/#settings/help')
+  const details = page.locator('#systemDetails')
+  await expect(details).toContainText('Storage')
+  const original = await details.textContent()
+  await page.route('**/api/status', route => route.fulfill({
+    status: 200, contentType: 'application/json', body: '{"system":',
+  }))
+  await page.locator('#checkAgain').click()
+  await expect(page.getByText('The Pi response was incomplete. Try again.', { exact: true })).toBeVisible()
+  await expect(details).toHaveText(original)
+  await page.route('**/api/status', route => route.fulfill({ json: {} }))
+  await page.locator('#checkAgain').click()
+  await expect(page.getByText('The Pi status response was incomplete. Try again.', { exact: true })).toBeVisible()
+  await expect(details).toHaveText(original)
+})
+
+test('an empty library snapshot is replaced by the real library on startup', async ({ page }) => {
+  await page.goto('/#settings/help')
+  await expect(page.locator('#systemDetails')).toContainText('Storage')
+  await page.evaluate(async () => {
+    const saved = await MabelAppCache.read('library-v1')
+    await MabelAppCache.write('library-v1', saved.revision, {})
+  })
+  let requests = 0
+  await page.route('**/api/library', async route => { requests++; await route.continue() })
+  await page.reload()
+  await expect(page.locator('#view-settings-help')).toBeVisible()
+  await expect.poll(() => requests).toBe(1)
+  await expect.poll(() => page.evaluate(async () =>
+    Boolean((await MabelAppCache.read('library-v1'))?.data?.system?.player))).toBe(true)
+  await expect(page.locator('#systemDetails')).not.toContainText('0.0 GB free of 0.0 GB')
+})
+
 test('settings surround and icon refinements @visual', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'iphone-chromium', 'Review phone and tablet WebKit')
   await page.addInitScript(() => localStorage.setItem('mabeltv-experience-theme', 'light'))

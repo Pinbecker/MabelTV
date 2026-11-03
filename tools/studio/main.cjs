@@ -13,6 +13,8 @@ const { Companion } = require('./lib/companion.cjs');
 const { sendSubtitles } = require('./lib/subtitles.cjs');
 const { migrateWorkspace } = require('./lib/workspace.cjs');
 const { TorrentRuntime } = require('./lib/torrent-runtime.cjs');
+const { releaseCloudCaches } = require('./lib/cloud-cache.cjs');
+const { policy: compressionPolicy } = require('./lib/compression.cjs');
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'studio', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 app.setName('MabelTV Studio');
@@ -83,6 +85,7 @@ async function start() {
   iplayer = new IPlayer(app.getPath('userData'), getTools);
   queue = new Queue(store, new Media(getTools), iplayer, portal);
   queue.afterPublish = (job, signal) => sendSubtitles(job, portal, getTools(), signal);
+  queue.releaseCloudCaches = (remote, local, signal) => releaseCloudCaches(remote, local, store, portal, signal);
   companion = new Companion(store, queue, iplayer, portal, new TorrentRuntime(app.getPath('userData'), resources, safeStorage));
   if (!process.env.STUDIO_TEST_DATA) {
     app.setLoginItemSettings({ openAtLogin: true, args: ['--background'] });
@@ -97,8 +100,16 @@ async function start() {
     tray.on('double-click', () => { window?.show(); window?.focus(); });
     companion.start();
   } else if (process.env.STUDIO_TEST_COMPANION === '1') companion.start();
-  handler('snapshot', () => ({ ...store.snapshot(), connection: portal.current, companion: companion.status,
+  handler('snapshot', () => ({ ...store.snapshot(), compressionProfiles: compressionPolicy.profiles, connection: portal.current, companion: companion.status,
     catalogue: portal.current ? portal.catalogue : store.state.catalogue || { channels: [], series: [] }, tools: getTools(), warning: store.warning, version: app.getVersion() }));
+  handler('sourceSize', files => {
+    if (!Array.isArray(files) || files.length > 200) throw new Error('Choose up to 200 videos.');
+    return files.reduce((sum, file) => {
+      if (typeof file !== 'string' || !path.isAbsolute(file) || !/\.(mp4|m4v|mov|mkv|avi|webm|mpg|mpeg|ts)$/i.test(file)) throw new Error('Choose a video file.');
+      const stat = fs.statSync(file); if (!stat.isFile()) throw new Error('Choose a video file.');
+      return sum + stat.size;
+    }, 0);
+  });
   handler('settings', settingsUpdate);
   handler('connect', mode => portal.connect(mode));
   handler('pin', (pin, mode) => portal.pin(pin, mode));

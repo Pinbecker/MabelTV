@@ -2,6 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { setTimeout: delay } = require('node:timers/promises');
+const { StageGate } = require('./stage-resources.cjs');
 
 class PortalError extends Error {
   constructor(message, code = 'API') { super(message); this.code = code; }
@@ -15,7 +16,7 @@ function endpoint(value) {
   return url.origin;
 }
 class Portal {
-  constructor(store, transport = fetch) { this.store = store; this.transport = transport; this.current = null; this.catalogue = { channels: [], series: [] }; }
+  constructor(store, transport = fetch) { this.store = store; this.transport = transport; this.current = null; this.catalogue = { channels: [], series: [] }; this.cloudConfirmations = new StageGate(4); }
   async at(base, route, { method = 'GET', body, signal, offset, timeout = 30000 } = {}) {
     const controller = new AbortController();
     const abort = () => controller.abort(); signal?.addEventListener('abort', abort, { once: true });
@@ -61,7 +62,12 @@ class Portal {
   }
   async api(route, options = {}) {
     if (!this.current) await this.connect(undefined, options.signal);
-    return this.at(this.current.base, route, options);
+    const base = this.current.base;
+    if (route === '/api/studio/cloud/confirm' && !options.body?.reserve && !options.body?.lookupOnly) {
+      // Bound confirmation HTTP requests, never files handed to Apple's uploader.
+      return this.cloudConfirmations.run(options.signal, null, () => this.at(base, route, options));
+    }
+    return this.at(base, route, options);
   }
   async pin(pin, mode) {
     if (!/^\d{4,12}$/.test(String(pin))) throw new Error('Enter your portal PIN.');
@@ -141,6 +147,7 @@ class Portal {
       destination.channel = channel.number;
     }
     const body = { file_name: job.publishName || path.basename(file), size: stats.size, source_id: sourceId };
+    if (destination.compression) body.compression = destination.compression;
     if (destination.kind === 'mabel') body.channel = destination.channel;
     if (destination.kind === 'series') { body.series = destination.series; body.season = destination.season; }
     if (!routes[destination.kind]) throw new Error('Choose a library destination.');

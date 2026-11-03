@@ -3,10 +3,11 @@ import { $, escape, icon, toast, attempt } from './shared.js';
 export class Destination {
   constructor(container, { search = false, submit, catalogue = () => ({ channels: [], series: [] }) }) {
     this.node = $(container); this.search = search; this.submit = submit; this.catalogue = catalogue;
-    this.state = { target: 'mabel', channel: '', type: 'film', series: '', season: '', mode: 'send', create: false };
+    this.state = { target: 'mabel', channel: '', type: 'film', series: '', season: '', mode: 'send', create: false, compression: 'compact' };
     this.count = 0; this.busy = false; this.render();
   }
   setCount(count) { this.count = count; this.updateButton(); }
+  setSourceSize(bytes) { this.sourceBytes = bytes; this.render(); }
   updateButton() {
     const button = this.node.querySelector('.submit-destination');
     button.disabled = !this.count || this.busy;
@@ -17,7 +18,7 @@ export class Destination {
   value() {
     const state = this.state, catalogue = this.catalogue();
     let value = { kind: state.target === 'mabel' ? 'mabel' : state.type,
-      profile: state.target === 'mabel' ? 'mabel' : 'mytv' };
+      profile: state.target === 'mabel' ? 'mabel' : 'mytv', compression: state.compression };
     if (state.mode !== 'send') return { ...value, kind: 'local', downloadOnly: state.mode === 'download', label: 'Kept on this computer' };
     if (value.kind === 'mabel') {
       const channel = catalogue.channels.find(item => item.number === Number(state.channel));
@@ -43,7 +44,8 @@ export class Destination {
       <div class="target-options"><button class="target-option ${state.target === 'mabel' ? 'selected' : ''}" data-target="mabel" aria-pressed="${state.target === 'mabel'}">${icon('tv')}Mabel TV</button><button class="target-option ${state.target === 'mytv' ? 'selected' : ''}" data-target="mytv" aria-pressed="${state.target === 'mytv'}">${icon('film')}My TV</button></div>
       <label>${this.search ? 'After downloading' : 'When ready'}<select data-field="mode"><option value="send" ${state.mode === 'send' ? 'selected' : ''}>Prepare and send to MabelTV</option><option value="local" ${state.mode === 'local' ? 'selected' : ''}>Prepare and keep locally</option>${this.search ? `<option value="download" ${state.mode === 'download' ? 'selected' : ''}>Download only</option>` : ''}</select></label>
       ${state.mode === 'send' ? state.target === 'mabel' ? `<label>Mabel TV channel<select data-field="channel"><option value="">Choose a channel</option>${catalogue.channels.map(channel => `<option value="${channel.number}" ${String(channel.number) === state.channel ? 'selected' : ''}>${channel.number} · ${escape(channel.name)}</option>`).join('')}</select></label>` : `<label>Library section<select data-field="type"><option value="film" ${state.type === 'film' ? 'selected' : ''}>Films</option><option value="series" ${state.type === 'series' ? 'selected' : ''}>TV series</option></select></label>${state.type === 'series' ? `<div class="series-fields"><label>Show<select data-field="series"><option value="">Choose a show</option>${catalogue.series.map(series => `<option value="${escape(series.id)}" ${series.id === state.series ? 'selected' : ''}>${escape(series.title)}</option>`).join('')}</select></label><label>Series number<select data-field="season"><option value="">Choose a series</option>${(series?.seasons || []).map(season => `<option value="${season}" ${String(season) === state.season ? 'selected' : ''}>Series ${season}</option>`).join('')}</select></label><button class="text-button create-toggle">${state.create ? 'Close destination creation' : '+ Create a show or series destination'}</button>${state.create ? `<div class="create-show"><label>Show name<input class="create-name" maxlength="120" placeholder="e.g. Ludwig" value="${escape(series?.title || '')}"></label><label>Series number<input class="create-season" type="number" min="1" max="99" value="1"></label><button class="button secondary create-button">Create destination</button></div>` : ''}</div>` : ''}` : ''}
-      <div class="destination-hint">${state.mode === 'download' ? 'Keep the BBC download unchanged. You can prepare and send it later.' : state.target === 'mabel' ? 'Prepared for smooth 720p playback on Mabel TV.' : 'Keep up to 1080p where available, with compatible video and audio.'}</div>
+      ${state.mode !== 'download' ? `<label>Compression<select data-field="compression">${(catalogue.compressionProfiles || []).map(p => `<option value="${p.id}" ${state.compression === p.id ? 'selected' : ''}>${p.label} · about ${Math.round((1-p.sourceFraction)*100)}% smaller</option>`).join('')}</select></label><small class="compression-estimate">${this.sourceBytes ? `Estimated compressed size: ${(this.sourceBytes*(catalogue.compressionProfiles?.find(p => p.id === state.compression)?.sourceFraction || .4)*.98/1e9).toFixed(2)} GB` : 'Estimated file size available after the download size is known.'}</small>` : ''}
+      <div class="destination-hint">${state.mode === 'download' ? 'Keep the BBC download unchanged. You can prepare and send it later.' : state.target === 'mabel' ? 'Up to 720p on Mabel TV. Original aspect ratio and frame rate are preserved.' : 'Up to 1080p. Original aspect ratio and frame rate are preserved.'}</div>
       <button class="button primary submit-destination"></button><div class="destination-summary">${this.search ? 'Your prepared copy stays in the media folder.' : 'Your original files are never changed.'}</div>`;
     this.node.querySelectorAll('[data-target]').forEach(button => button.onclick = () => { state.target = button.dataset.target; this.render(); });
     this.node.querySelectorAll('[data-field]').forEach(input => input.onchange = () => {

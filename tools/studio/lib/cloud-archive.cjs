@@ -8,7 +8,7 @@ const { safeName } = require('./queue.cjs');
 function archiveFiles(remote, local) {
   const chosen = remote.destination.cloudCopies || (remote.destination.kind === 'icloud' && remote.destination.prepare ? 'optimised' : 'original');
   if (!['original', 'optimised', 'both'].includes(chosen)) throw new Error('Choose Original, Optimised or Both for iCloud.');
-  const original = local.sourcePath, optimised = local.preparedPath;
+  const original = local.sourcePath, optimised = local.cloudPreparedPath || local.preparedPath;
   const wanted = chosen === 'both' ? ['original', 'optimised'] : [chosen];
   if (wanted.includes('original') && local.sourceFingerprint) {
     const current = fs.statSync(original);
@@ -44,6 +44,8 @@ async function saveCloud(remote, local, store, portal, signal, progress = () => 
       path: cloudOriginal.path, bytes: cloudOriginal.bytes, archiveGroup: remote.source.archiveGroup,
       variants: remote.source.variants?.length ? remote.source.variants : ['original'],
       publicationJob: remote.id, title: local.metadata?.title || remote.title || '', match: local.match || remote.match || null,
+      ...(local.sourceAnalysis?.compressionProof ? { encodingProfile: local.sourceAnalysis.compressionProof.profile,
+        encodingSourceBytes: local.sourceAnalysis.compressionProof.sourceBytes } : {}),
     }, signal });
     if (!adopted.confirmed) throw new Error('iCloud has not confirmed the original. It was kept.');
   }
@@ -62,7 +64,9 @@ async function saveCloud(remote, local, store, portal, signal, progress = () => 
     const relative = archivePath(remote, local, asset);
     const variant = asset.variants[0];
     const existingSource = cloudOriginal && path.resolve(asset.file) === path.resolve(local.sourcePath);
+    const proof = (asset.file === local.cloudPreparedPath ? local.cloudPreparedAnalysis : asset.file === local.preparedPath ? local.analysis : null)?.compressionProof;
     const confirmation = { path: existingSource ? cloudOriginal.path : relative, bytes: fs.statSync(asset.file).size, variants: asset.variants,
+      ...(proof ? { encodingProfile: proof.profile, encodingSourceBytes: proof.sourceBytes } : {}),
       archiveGroup: remote.source.archiveGroup || local.id, publicationJob: remote.id,
       archiveAsset: local.id + ':' + asset.variants.join('+'),
       title: local.metadata?.title || remote.title || '', match: local.match || remote.match || null };
@@ -85,10 +89,19 @@ async function saveCloud(remote, local, store, portal, signal, progress = () => 
     const update = detail => progress({ ...detail, percent: (index + (detail.percent || 0) / 100) / assets.length * 100 });
     await copy(asset.file, beneath(path.join(root, 'Media'), relative), signal, update,
       path.join(local.directory, 'cloud-copy-' + variant + '.json'));
-    let result;
+    let result, reconnects = 0;
+    progress({ percent: (index + 1) / assets.length * 100, syncing: true });
     for (;;) {
       if (signal.aborted) throw new Error('Stopped');
-      result = await portal.api('/api/studio/cloud/confirm', { method: 'POST', body: confirmation, signal, timeout: 100000 });
+      try {
+        result = await portal.api('/api/studio/cloud/confirm', { method: 'POST', body: confirmation, signal, timeout: 180000 });
+      } catch (error) {
+        if (error.code !== 'OFFLINE' || ++reconnects > 2 || signal.aborted) throw error;
+        portal.current = null;
+        progress({ percent: (index + 1) / assets.length * 100, syncing: true });
+        await delay(12000, undefined, { signal });
+        continue;
+      }
       if (result.confirmed) break;
       progress({ percent: (index + 1) / assets.length * 100, syncing: true });
       await delay(12000, undefined, { signal });

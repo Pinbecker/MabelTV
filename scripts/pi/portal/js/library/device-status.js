@@ -5,6 +5,7 @@
     function usbTransferPayload(action) {
       const payload = {
         action, volume: usbVolume, paths: [...usbSelection], target: $('#usbTarget').value,
+        compression: $('#usbCompression')?.value || 'compact',
       }
       if (payload.target === 'my_tv') payload.folder = $('#usbMyTvFolder').value
       if (payload.target === 'channel') payload.channel = Number($('#usbChannel').value)
@@ -27,6 +28,8 @@
         usbImportPlan = plan
         $('#usbPlanFiles').textContent = String(plan.files_total)
         $('#usbPlanSize').textContent = formatBytes(plan.bytes_total)
+        const option = $('#usbCompression')?.selectedOptions[0]
+        if (option) $('#usbCompressionEstimate').textContent = `Estimated prepared size: ${mediaCompressionBytes(plan.bytes_total*Number(option.dataset.fraction)*.98)}`
         $('#usbPlanSpace').textContent = plan.enough_space
           ? formatBytes(Math.max(0, plan.free_bytes - plan.bytes_total)) : 'Not enough space'
         $('#usbPlanStatus').textContent = `${plan.files_total} video${plan.files_total === 1 ? '' : 's'} will be copied to ${plan.destination_label}.`
@@ -346,6 +349,7 @@
     async function refreshLiveStatus() {
       const fresh = await api('/api/status')
       if (!library) return
+      if (!fresh.system || !fresh.storage) throw new Error('The Pi status response was incomplete. Try again.')
       library = { ...library, ...fresh }
       renderStatus()
       renderUploads()
@@ -462,3 +466,5 @@
     })
 
     window.setInterval(() => loadActivity().catch(() => {}), 5000)
+
+if (document.getElementById('usbCompression')) document.getElementById('usbCompression').onchange = refreshUsbImportPlan

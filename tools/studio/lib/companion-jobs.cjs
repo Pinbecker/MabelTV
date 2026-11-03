@@ -4,6 +4,7 @@ const { fetchCloud } = require('./cloud-files.cjs');
 const { saveCloud, cloudCopiesComplete, replaceCloudOriginal, verifyCloudCopies, archiveMatch } = require('./cloud-archive.cjs');
 const { cleanWorkingCopies } = require('./working-cleanup.cjs');
 const { removeOptimised } = require('./subtitles.cjs');
+const { prepareCloudCompression } = require('./cloud-compression.cjs');
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 class CompanionJobs {
@@ -15,14 +16,14 @@ class CompanionJobs {
       const library = await this.portal.api('/api/library');
       const channel = library.channels.find(c => c.folder === chosen.folder);
       if (!channel) throw new Error('The chosen channel no longer exists. Choose another destination.');
-      return { kind: 'mabel', channel: channel.number, channelFolder: chosen.folder, label: chosen.label };
+      return { kind: 'mabel', channel: channel.number, channelFolder: chosen.folder, label: chosen.label, compression: chosen.compression };
     }
     if (chosen.kind === 'series') {
       const series = await this.portal.createSeries(chosen.name, chosen.season, chosen.series);
-      return { kind: 'series', series: series.id, season: series.season, label: chosen.label };
+      return { kind: 'series', series: series.id, season: series.season, label: chosen.label, compression: chosen.compression };
     }
     return { kind: chosen.kind === 'film' ? 'film' : 'local', profile: 'mytv', label: chosen.label,
-      downloadOnly: !chosen.prepare };
+      compression: chosen.compression, downloadOnly: !chosen.prepare };
   }
   async match(remote, metadata, destination) {
     const type = destination.kind === 'film' ? 'movie' : destination.kind === 'series' ? 'tv' : '';
@@ -44,7 +45,14 @@ class CompanionJobs {
       let input;
       if (remote.source.type === 'torrent' && remote.fileInput) input = remote.fileInput;
       else if (remote.source.type === 'cloud') {
-        const cloud = await fetchCloud(remote, this.store, this.portal, signal, progress => { state.progress = { stage: 'downloading', message: 'Downloading from iCloud', ...progress }; });
+        const fetch = () => fetchCloud(remote, this.store, this.portal, signal, progress => { state.progress = { stage: 'downloading', message: 'Downloading from iCloud', ...progress }; });
+        const resources = this.queue.resources;
+        const cloud = resources ? await resources.downloads.run(signal,
+          () => { state.progress = { stage: 'queued-download', percent: 0, message: 'Waiting for a download slot' }; }, async () => {
+            await resources.admit(remote.id, remote.source.bytes * 3, signal,
+              () => { state.progress = { stage: 'queued-download', percent: 0, message: 'Waiting for disk space' }; });
+            return fetch();
+          }) : await fetch();
         input = { kind: 'file', path: cloud.file, metadata: cloud.metadata };
         if (!/\.(mp4|m4v|mov|mkv|avi|webm|mpg|mpeg|ts)$/i.test(cloud.file)) {
           if (remote.destination.kind !== 'local') throw new Error('This file can be downloaded. Choose a video to prepare for TV.');
@@ -54,7 +62,8 @@ class CompanionJobs {
       } else input = { kind: 'iplayer', metadata: await this.iplayer.metadata(remote.source.pid, signal) };
       const destination = await this.destination(remote);
       input.match = await this.match(remote, input.metadata, destination);
-      input.remoteId = remote.localKey || remote.id; input.preserveOriginal = true;
+      signal.throwIfAborted();
+      input.remoteId = remote.localKey || remote.id; input.reservationKey = remote.resourceKey || remote.id; input.preserveOriginal = true;
       [local] = this.queue.add([input], destination);
       if (!local) throw new Error('This item is already queued.');
     } else if (remote.metadata_only) {
@@ -66,7 +75,7 @@ class CompanionJobs {
     state.local = local;
     while (!['complete', 'prepared', 'failed', 'cancelled', 'paused'].includes(local.status)) {
       if (signal.aborted) {
-        if (this.queue.active?.job.id === local.id) await this.queue.action(local.id, 'pause');
+        if (!['complete', 'prepared', 'paused', 'cancelled'].includes(local.status)) await this.queue.action(local.id, 'pause');
         throw new Error('Stopped');
       }
       await delay(200);
@@ -74,6 +83,23 @@ class CompanionJobs {
     if (local.status === 'failed') throw new Error(local.message);
     if (local.status === 'paused' || local.status === 'cancelled') throw new Error('Stopped');
     state.finishing = true;
+    await prepareCloudCompression(remote, local, this.queue, this.store, signal,
+      progress => { state.progress = progress; });
+    if (remote.destination.optimiseCloud && !local.savedCloudCopies?.optimised &&
+        (local.cloudOptimisationUnchanged || fs.statSync(local.preparedPath).size >= remote.source.bytes)) {
+      const item = await this.portal.api('/api/studio/cloud/item?id=' + encodeURIComponent(remote.source.id), { signal });
+      if (['bytes', 'modified', 'remoteId'].some(key => item[key] !== remote.source[key])) throw new Error('The cloud original changed. It was kept.');
+      const verified = await this.portal.api('/api/studio/cloud/confirm', { method: 'POST', body: {
+        verifyId: item.id, path: item.path, bytes: item.bytes, modified: item.modified, remoteId: item.remoteId, lookupOnly: true }, signal });
+      if (!verified.confirmed) throw new Error('The existing iCloud original could not be confirmed. Working files were kept.');
+      this.store.update(local.id, { savedCloudPath: item.path, savedCloudCopies: { original: { ...item, confirmed: true } }, cloudOptimisationUnchanged: true });
+      if (this.queue.releaseCloudCaches) await this.queue.releaseCloudCaches(remote, local, signal);
+      cleanWorkingCopies(remote, local, this.store);
+      state.progress = { status: 'complete', stage: 'complete', percent: 100, message: local.analysis?.compressionProof && !local.converted
+        ? 'Existing copy kept: it already meets the selected size target' : 'Original kept: conversion would not save space',
+        result: { complete: true, unchanged: true }, savedCloudPath: item.path };
+      return;
+    }
     let cloudPath = local.savedCloudPath || '';
     if ((remote.destination.saveCloud || remote.destination.kind === 'icloud') && !cloudCopiesComplete(remote, local)) {
       state.progress = { stage: 'saving-cloud', percent: 0, message: 'Saving to iCloud' };
@@ -95,6 +121,10 @@ class CompanionJobs {
       }
     }
     await replaceCloudOriginal(remote, local, this.store, this.portal, signal);
+    if (this.queue.releaseCloudCaches && remote.destination.temporaryWork) {
+      state.progress = { stage: 'freeing-space', percent: 100, message: 'Freeing the local iCloud cache' };
+      await this.queue.releaseCloudCaches(remote, local, signal);
+    }
     if (remote.destination.temporaryWork && !local.workingRemoved) { await verifyCloudCopies(remote, local, this.portal, signal); cleanWorkingCopies(remote, local, this.store); }
     if (!remote.destination.temporaryWork && !remote.destination.keepOptimised && !local.optimisedRemoved &&
         (local.result?.complete || cloudPath)) {

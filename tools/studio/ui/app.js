@@ -5,6 +5,7 @@ import { renderJobs } from './jobs.js';
 import { reviewTitles } from './title-review.js';
 
 let snapshot = null, files = [], view = 'add';
+let sourceSizeGeneration = 0;
 const descriptions = {
   add: ['YOUR MEDIA, READY TO WATCH', 'Make room for your next watch.', 'Find it, prepare it, send it. All from one place.'],
   iplayer: ['FIND SOMETHING GOOD', 'A world of BBC favourites.', 'Choose the episodes you want. Studio takes care of the rest.'],
@@ -12,7 +13,7 @@ const descriptions = {
   completed: ['READY WHEN YOU ARE', 'More watching. Less waiting.', 'Your finished additions, with local files safely kept.'],
   settings: ['MAKE STUDIO YOURS', 'At home. Away. Connected.', 'Your connections, working folder and media tools.']
 };
-const catalogue = () => snapshot?.catalogue || { channels: [], series: [] };
+const catalogue = () => ({ ...(snapshot?.catalogue || { channels: [], series: [] }), compressionProfiles: snapshot?.compressionProfiles || [] });
 const addDestination = new Destination('#add-destination', { catalogue, submit: async destination => {
   const inputs = await reviewTitles(files.map(path => ({ kind: 'file', path })), destination);
   if (!inputs) return;
@@ -38,6 +39,8 @@ function renderFiles() {
   $('#selected-files').innerHTML = files.map((file, index) => `<div class="selected-file"><span title="${escape(file)}">${escape(file.split(/[\\/]/).pop())}</span><button data-remove="${index}" aria-label="Remove ${escape(file.split(/[\\/]/).pop())}">×</button></div>`).join('');
   $('#selected-files').querySelectorAll('button').forEach(button => button.onclick = () => { files.splice(Number(button.dataset.remove), 1); renderFiles(); });
   addDestination.setCount(files.length);
+  const generation = ++sourceSizeGeneration;
+  window.studio.sourceSize(files).then(bytes => { if (generation === sourceSizeGeneration) addDestination.setSourceSize(bytes); }).catch(() => {});
 }
 function addFiles(values) {
   files = Array.from(new Set([...files, ...values.filter(file => /\.(mp4|m4v|mov|mkv|avi|webm|mpg|mpeg|ts)$/i.test(file))]));
@@ -130,7 +133,7 @@ const sendDestination = new Destination('#send-destination', { catalogue, submit
   if (!inputs) { sendDialog.showModal(); return; }
   await window.studio.action(sendId, 'send', destination, inputs[0].match); showView('queue');
 } });
-window.openSendDialog = id => { sendId = id; sendDestination.render(); sendDestination.setCount(1); sendDialog.showModal(); };
+window.openSendDialog = id => { sendId = id; const job = snapshot.jobs.find(j => j.id === id); sendDestination.setSourceSize(job?.sourceFingerprint?.size || job?.analysis?.bytes || 0); sendDestination.setCount(1); sendDialog.showModal(); };
 window.studio.onQueue(jobs => {
   if (!snapshot) return;
   snapshot.jobs = jobs;

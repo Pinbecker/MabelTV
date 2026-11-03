@@ -30,7 +30,7 @@
       <p class="usb-plan-note">Each video is checked through the same upload and publishing process as files sent from this device. The originals stay on the USB drive.</p>
       <div class="library-sheet-actions">
         <button id="cancelUsbImport" type="button" class="secondary">Keep browsing</button>
-        <button id="confirmUsbImport" type="button" class="primary" disabled>Start copying</button>
+        <label>Compression<select id="usbCompression"><option value="balanced" data-fraction="0.6">Balanced · about 40% smaller</option><option value="compact" data-fraction="0.4" selected>Compact · about 60% smaller</option><option value="smallest" data-fraction="0.25">Smallest · about 75% smaller</option></select></label><p id="usbCompressionEstimate" class="studio-caption"></p><button id="confirmUsbImport" type="button" class="primary" disabled>Start copying</button>
       </div>
     </div>
   </section>
@@ -218,7 +218,7 @@
         <div id="selectedFiles" class="upload-selection channel-upload-selection" aria-live="polite">
           No videos selected yet.
         </div>
-        <button id="uploadButton" type="submit" class="primary" disabled>
+        <label>Compression<select id="uploadCompression"><option value="balanced" data-fraction="0.6">Balanced · about 40% smaller</option><option value="compact" data-fraction="0.4" selected>Compact · about 60% smaller</option><option value="smallest" data-fraction="0.25">Smallest · about 75% smaller</option></select></label><p id="uploadCompressionEstimate" class="studio-caption"></p><button id="uploadButton" type="submit" class="primary" disabled>
           Upload selected videos
         </button>
       </form>

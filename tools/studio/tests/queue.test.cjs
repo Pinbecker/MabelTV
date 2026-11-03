@@ -24,7 +24,7 @@ test('real conversion preserves source bytes, produces compatible fast-start med
   const { root, store } = setup(t), tools = resolveTools('');
   assert.ok(tools.ffmpeg && tools.ffprobe, 'FFmpeg tools are required for the desktop core gate');
   const file = path.join(root, 'Original film.mkv');
-  await run(tools.ffmpeg, ['-v','error','-y','-f','lavfi','-i','testsrc2=size=320x180:rate=25','-f','lavfi','-i','sine=frequency=440','-t','2','-c:v','mpeg4','-c:a','mp3',file]);
+  await run(tools.ffmpeg, ['-v','error','-y','-f','lavfi','-i','testsrc2=size=320x180:rate=25','-f','lavfi','-i','sine=frequency=440','-t','2','-c:v','ffv1','-c:a','pcm_s16le',file]);
   const original = fs.readFileSync(file); let uploaded = false;
   const portal = { upload: async () => { uploaded = true; return { status: 'complete', complete: true }; } };
   const queue = new Queue(store, new Media(() => tools), {}, portal); t.after(async () => { await queue.shutdown(); fs.rmSync(root, { recursive: true, force: true }); });

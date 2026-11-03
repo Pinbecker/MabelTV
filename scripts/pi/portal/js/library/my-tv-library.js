@@ -347,7 +347,17 @@ function renderMyTvLibraryControls() {
       }
     }
     $('#myTvFilmRename').onclick = () => { const film = selectedMyTvFilm; if (!film) return; const name = prompt('Film name:', film.display_name); if (name?.trim()) { closeLibrarySheet($('#myTvFilmSheet'), false); manage('rename-my-tv', { file: film.path, name: name.trim() }) } }
-    $('#myTvFilmOptimise').onclick = () => { const film = selectedMyTvFilm; if (film && confirm(`Optimise “${film.display_name}” for the Pi? The original is replaced only after the new copy passes its checks.`)) { closeLibrarySheet($('#myTvFilmSheet'), false); manage('optimise-my-tv', { file: film.path }) } }
+    $('#myTvFilmOptimise').onclick = async () => {
+      const film = selectedMyTvFilm
+      if (!film) return
+      const returnTo = selectedMyTvFilmReturnTo
+      closeLibrarySheet($('#myTvFilmSheet'))
+      try {
+        const compression = await chooseMediaCompression(film.display_name, film.size, 'Start optimisation')
+        if (compression) await manage('optimise-my-tv', { file: film.path, compression })
+        else openMyTvFilmSheet(film, returnTo)
+      } catch (error) { notice(error.message, true) }
+    }
     $('#myTvFilmRemoveProgress').onclick = () => {
       const film = selectedMyTvFilm
       if (!film) return

@@ -40,6 +40,15 @@ secondary service objects.
   the recycle bin and staging files never establish availability.
 - `uploads.py`: resumable upload records, queueing, publication and worker
   lifecycle. `.incoming` manifests are operational journals.
+- `upload_notifications.py`: source-independent phone alerts after verified Pi
+  publication, private ntfy configuration and bounded delivery retries. SQLite
+  owns delivery receipts; notification work never holds the media queue.
+- `studio_cloud_optimisation.py`: frozen cloud-video replacement previews and
+  selected size-target estimates from the shared encoding profiles.
+- `compression.py` and `compression-profiles.json`: immutable Balanced, Compact
+  and Smallest policies shared by Windows encoding and Pi previews.
+- `size_encoding.py`: bounded two-pass preparation for explicitly selected Pi
+  size profiles, including pause/cancel, heat checks and verified publication.
 - `transcoding.py`: probing and media conversion/optimization policy used by
   uploads and USB preparation.
 - `viewing.py`: viewing sample/session lifecycle, stable catalogue identities,
@@ -236,6 +245,20 @@ is introduced and listening/memories do not record stale child-video sessions.
 - `repositories/studio.py` owns independent `studio.job.*`, `studio.request.*` and `studio.worker.*` checked fields in the existing SQLite application field store. Ordinary settings reads exclude this reserved namespace, and aggregate settings writes preserve it. Native writers merge only their explicit fields. Jobs and claims update inside BEGIN IMMEDIATE; request results and finished history are bounded. Each record has its own updated timestamp; Studio uses no-store independent polling, not whole-library refreshes. No schema/native compatibility change is required.
 
 The Pi owns queued intent, claims, progress and cloud catalogue availability. Windows owns operational transfer journals, hydration, conversion and upload. A lease prevents two workers from publishing the same item. Paused/cancelled jobs reject late progress. A worker restart reuses the existing transfer and final publication result. Processing preserves cloud originals; a separate confirmed action can delete selected films/episodes and their subtitles. iCloud credentials remain under the private secrets directory; catalogue snapshots alone are disposable. Series publication supports season 0 for specials and preserves source seasons in a mixed-season batch.
+
+Workers advertising `parallel-stages` exchange bounded `activeJobs` and
+`acknowledgedJobs` arrays and may hold twelve foreground job leases, with
+background iCloud saves excluded from that window and no total background count
+limit. Progress messages contain at most 64 records; a fresh matching worker
+session retains unchanged background claims between updates. A new session or
+stale worker allows ordinary lease recovery. The
+repository claims only remaining capacity within the same transaction, renews
+each claim separately and keeps cancellation commands scoped to their job.
+Legacy workers keep the single-active-job protocol. Windows `stage-resources.cjs`
+owns five download slots shared across sources, one conversion slot, one Pi
+transfer slot and aggregate disk reservations with a 20 GiB free-space floor.
+The local queue and companion release each stage independently; iCloud archive
+confirmation retains a job journal but never a download/conversion/Pi slot.
 
 `studio_cloud_metadata.py` projects only films and TV, groups series, categorises Films/TV/Kids, and matches cloud titles through the shared TMDB transport. Durable identity/fingerprint links are reserved `studio.cloudmetadata.*` fields; descriptive title/year/poster/overview data remains in canonical `external_titles`. Automatic matching requires one exact result and cannot overwrite an explicit correction. No Pi library membership or player command is created by matching.
 

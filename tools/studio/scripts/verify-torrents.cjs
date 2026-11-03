@@ -94,7 +94,7 @@ async function run() {
       const item={...body,id:crypto.createHash('sha256').update(body.path).digest('hex').slice(0,24),modified:'synthetic',remoteId:'remote-'+cloud.size};cloud.set(body.path,item);return{...item,confirmed:true};
     }};
   queue=new Queue(store,new Media(()=>tools),{},portal);queue.afterPublish=(job,signal)=>sendSubtitles(job,portal,tools,signal);
-  const runner=new CompanionTorrents(downloads,new CompanionJobs(store,queue,{},portal)), state={};
+  const runner=new CompanionTorrents(downloads,new CompanionJobs(store,queue,{},portal),queue.resources), state={};
   await runner.run(remote,state,new AbortController().signal);
   assert.equal(state.progress.status,'complete');assert.equal(publications.length,1);assert.equal(cloud.size,2);assert.equal(subtitles.length,1);
   assert.ok([...cloud.keys()].every(name=>/\.(mp4|mkv)$/.test(name)));

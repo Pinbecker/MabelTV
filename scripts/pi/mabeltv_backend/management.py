@@ -376,7 +376,7 @@ class ManagementMixin:
                 self.write_my_tv_media_states(state)
             return
         if action == "optimise-my-tv":
-            self.request_my_tv_optimisation(str(payload.get("file", "")))
+            self.request_my_tv_optimisation(str(payload.get("file", "")), payload.get("compression"))
             return
         if action == "trash-my-tv":
             source = self.safe_my_tv_path(str(payload.get("file", "")))

@@ -126,7 +126,8 @@ class LibraryHttpTests(unittest.TestCase):
         self.assertEqual(len(dashboard["channels"]), 4)
         status, live = self.request("/api/status")
         self.assertEqual(status, 200)
-        self.assertEqual(set(live), {"storage", "system", "uploads"})
+        self.assertEqual(set(live), {"storage", "system", "uploads", "compressionProfiles"})
+        self.assertEqual([p["id"] for p in live["compressionProfiles"]], ["balanced", "compact", "smallest"])
 
     def test_cross_origin_mutation_is_rejected(self) -> None:
         status, body = self.request("/api/setup", {
