@@ -1,6 +1,5 @@
 'use strict'
 
-let iosInlineControlTimer = null
 let mabelFilmArtCycleTimer = null
 let iosPlayerHistoryActive = false
 let iosPlayerReturnTo = null
@@ -179,24 +178,26 @@ function remoteTime(value) {
       return image
     }
 
-    function playerUrl(payload, position = 0) {
-      const query = new URLSearchParams({ ...payload, position: String(Math.max(0, Number(position) || 0)) })
+    function playerUrl(payload, position = null) {
+      const query = new URLSearchParams({ ...payload,
+        ...(position == null ? {} : { position: String(Math.max(0, Number(position) || 0)) }) })
       return `/watch/player?${query}`
     }
 
     function saveIosRemotePosition(finished = false, force = false) {
       const video = $('#iosWatchVideo')
+      if (video._myTvProgress) return myTvProgress.checkpoint(video, finished || video.ended, force)
       if (!iosRemoteSession || !Number.isFinite(video.currentTime) || (!finished && !force && Math.abs(video.currentTime - iosRemoteLastSaved) < 10)) return Promise.resolve(false)
       const session = iosRemoteSession
       const duration = Number.isFinite(video.duration) ? video.duration : 0
       const position = finished && duration > 0 ? duration : video.currentTime
-      iosRemoteLastSaved = position
       return api('/api/remote/position', { method: 'POST', body: JSON.stringify({ stream: session, position, duration }) })
-        .then(() => true).catch(() => false)
+        .then(() => { if (session === iosRemoteSession) iosRemoteLastSaved = position; return true }).catch(() => false)
     }
 
     function beaconIosRemotePosition() {
       const video = $('#iosWatchVideo')
+      if (video._myTvProgress) { myTvProgress.beacon(video); return }
       if (!iosRemoteSession || !Number.isFinite(video.currentTime) || !navigator.sendBeacon) return
       const duration = Number.isFinite(video.duration) ? video.duration : 0
       navigator.sendBeacon('/api/remote/position', new Blob([
@@ -216,9 +217,10 @@ function remoteTime(value) {
       const session = iosRemoteSession
       const myTvPlayer = $('#iosWatchPlayer').classList.contains('is-my-tv')
       const saved = saveIosRemotePosition(false, true)
+      video._myTvProgress = null
       iosPlayerGeneration += 1
+      clearTimeout(video._iosStartupTimer)
       clearIosNextEpisode()
-      clearTimeout(iosInlineControlTimer); iosInlineControlTimer = null
       clearInterval(iosRemotePositionTimer); clearInterval(iosRemoteHeartbeatTimer)
       iosRemotePositionTimer = null; iosRemoteHeartbeatTimer = null; iosRemoteSession = null
       iosOfflineDownloadId = null
@@ -240,29 +242,25 @@ function remoteTime(value) {
       document.documentElement.classList.toggle('native-video-fullscreen', active)
     }
 
-    function restoreIosInlineVideoControls(video) {
-      setNativeVideoBackdrop(false)
-      clearTimeout(iosInlineControlTimer)
-      // AVKit can hand the visible page back before its composited control
-      // layer has stopped receiving touches. Briefly removing the inline
-      // controls retires that layer; rebuilding them after the transition
-      // gives WebKit a fresh, correctly positioned interaction surface.
-      video.controls = false
-      video.style.pointerEvents = 'none'
-      iosInlineControlTimer = setTimeout(() => {
-        video.controls = true
-        video.style.pointerEvents = ''
-        iosInlineControlTimer = null
-      }, 80)
-    }
-
-    async function startIosRemotePlayer(payload, position = 0) {
+    async function startIosRemotePlayer(payload, position = null) {
       const shell = $('#iosWatchPlayer'); const video = $('#iosWatchVideo'); const error = $('#iosWatchError')
+      void saveIosRemotePosition(false, true)
+      video._myTvProgress = null
+      const previousSession = iosRemoteSession
+      iosRemoteSession = null; iosOfflineDownloadId = null
+      if (previousSession) void playbackRequest('/api/remote/release', { stream: previousSession }).catch(() => {})
+      video.onpause = null; video.onseeked = null; video.onloadedmetadata = null
+      video.oncanplay = null; video.onerror = null; video.onplay = null; video.onended = null
+      video.pause()
+      if (position != null && payload.position == null) payload = { ...payload, position }
       const generation = ++iosPlayerGeneration
       clearIosNextEpisode()
       shell.classList.toggle('is-my-tv', ['my_tv', 'my-tv-series'].includes(payload.kind))
       clearInterval(iosRemotePositionTimer); clearInterval(iosRemoteHeartbeatTimer)
       shell.classList.remove('hidden'); error.classList.add('hidden'); video.classList.remove('hidden')
+      $('#iosWatchProgressStatus').classList.add('hidden')
+      $('#iosWatchRetry').classList.add('hidden')
+      $('#iosWatchContext').textContent = 'Opening video…'
       openIosPlayerHistoryLayer()
       // The fixed-body scroll lock causes incorrect touch coordinates in
       // installed iOS web apps after AVKit changes the viewport. The player
@@ -279,13 +277,12 @@ function remoteTime(value) {
         video.onpause = null; video.onplaying = null; video.onended = null
         video._mabelQueue = null
         iosRemoteSession = new URL(result.stream_url, location.origin).searchParams.get('stream')
-        $('#iosWatchTitle').textContent = result.title
         $('#iosWatchContext').textContent = result.kind === 'usb' ? 'Playing directly from USB' : `${tvName()} remote viewing`
-        const episodeState = prepareIosNextEpisode(payload)
         if (payload.kind === 'my_tv') $('#iosWatchContext').textContent = 'My TV · Playing on this device'
         video.pause(); video.removeAttribute('src'); video.replaceChildren()
         let captionsAttached = false
         const attachNativeCaptions = () => {
+          recovery.onReady()
           if (!result.subtitle_url || captionsAttached) return
           captionsAttached = true
           const track = document.createElement('track')
@@ -295,14 +292,22 @@ function remoteTime(value) {
           track.kind = 'subtitles'; track.srclang = 'en'; track.label = 'English'; track.src = result.subtitle_url; track.default = false
           video.append(track)
         }
-        const resume = Number(payload.position ?? (position || result.resume_position || 0))
-        let nativeFullscreen = false
-        const requestNativeFullscreen = () => {
-          if (nativeFullscreen || video.webkitDisplayingFullscreen || video.webkitPresentationMode === 'fullscreen' || typeof video.webkitEnterFullscreen !== 'function') return
-          try { video.webkitEnterFullscreen() } catch (_) { /* wait for play */ }
+        let resume = Number(payload.position ?? result.resume_position ?? 0)
+        if (shell.classList.contains('is-my-tv')) {
+          const local = await myTvProgress.read(payload).catch(() => null)
+          if (generation !== iosPlayerGeneration) return
+          if (payload.position == null && local?.pending && local.observed_at > (result.resume_updated || 0))
+            resume = local.finished ? 0 : local.position
+          myTvProgress.begin(video, { ...payload, library_id: result.library_id }, result.server_time)
         }
+        const requestNativeFullscreen = bindIosPresentation(video, generation)
+        $('#iosWatchTitle').textContent = result.title
+        const episodeState = prepareIosNextEpisode(payload)
         video.onloadedmetadata = () => {
-          if (resume > 10 && resume < video.duration - 5) video.currentTime = resume
+          if (generation !== iosPlayerGeneration) return
+          if (resume > 0 && resume < video.duration - 5) video.currentTime = resume
+          if (video._myTvProgress) video._myTvProgress.ready = true
+          if (payload.position === 0) void saveIosRemotePosition(false, true)
           requestNativeFullscreen()
         }
         // Do not involve the external VTT in initial source negotiation. MyTv
@@ -310,19 +315,8 @@ function remoteTime(value) {
         // received the video and text track together. Once canplay fires, the
         // movie is already accepted and the native AVPlayer can safely add CC.
         video.oncanplay = attachNativeCaptions
-        video.onerror = () => { clearInterval(iosNextEpisodeTimer); setNativeVideoBackdrop(false); error.textContent = `This video could not be played (media error ${video.error?.code || 'unknown'}).`; error.classList.remove('hidden'); video.classList.add('hidden'); failMabelQueueDevice(video, error.textContent) }
-        video.onwebkitendfullscreen = () => {
-          nativeFullscreen = false
-          restoreIosInlineVideoControls(video)
-          saveIosRemotePosition(false, true)
-        }
-        video.onwebkitpresentationmodechanged = () => {
-          const active = video.webkitPresentationMode === 'fullscreen' || Boolean(video.webkitDisplayingFullscreen)
-          nativeFullscreen = active
-          if (active) setNativeVideoBackdrop(true)
-          else restoreIosInlineVideoControls(video)
-        }
-        video.onwebkitbeginfullscreen = () => { nativeFullscreen = true; setNativeVideoBackdrop(true) }
+        const recovery = bindIosStreamRecovery(video, payload, generation, error)
+        video.onerror = recovery.onError
         // Ask for the true native player immediately from the library tap and
         // retry only once the media becomes ready. This avoids the old inline
         // hand-off before the Liquid Glass player opens.
@@ -337,14 +331,14 @@ function remoteTime(value) {
         }
         if (payload.kind === 'channel')
           bindMabelQueuePlayer(video, payload, result, next => startIosRemotePlayer(next, 0))
-        video.onpause = () => saveIosRemotePosition(false, true)
+        video.onpause = () => { recovery.onPause(); return saveIosRemotePosition(false, true) }
         video.onseeked = () => saveIosRemotePosition(false, true)
         video.onended = () => episodeState ? finishIosSeriesEpisode(episodeState)
           : saveIosRemotePosition(true).then(() => finishMabelQueueDevice(video))
         $('#iosWatchStartOver').classList.toggle('hidden', resume <= 10)
         iosRemoteLastSaved = 0
-        clearInterval(iosRemotePositionTimer); iosRemotePositionTimer = setInterval(saveIosRemotePosition, 15000)
-        clearInterval(iosRemoteHeartbeatTimer); iosRemoteHeartbeatTimer = setInterval(() => api('/api/remote/heartbeat', { method: 'POST', body: JSON.stringify({ stream: iosRemoteSession }) }).catch(() => {}), 30000)
+        clearInterval(iosRemotePositionTimer); iosRemotePositionTimer = setInterval(saveIosRemotePosition, 5000)
+        clearInterval(iosRemoteHeartbeatTimer); iosRemoteHeartbeatTimer = setInterval(recovery.heartbeat, 30000)
         video.src = result.stream_url
         video.load()
         const playAttempt = video.play()
@@ -356,6 +350,8 @@ function remoteTime(value) {
       } catch (startError) {
         if (generation !== iosPlayerGeneration) return
         error.textContent = startError.message; error.classList.remove('hidden'); video.classList.add('hidden')
+        $('#iosWatchRetry').classList.remove('hidden')
+        $('#iosWatchRetry').onclick = () => { void startIosRemotePlayer(payload, position) }
         if (video._myTvEpisode) {
           video._myTvEpisode.busy = false
           $('#iosWatchNextPlay').disabled = false
@@ -366,52 +362,55 @@ function remoteTime(value) {
     async function startOfflinePlayer(manifest) {
       if (!await authoriseOfflineDownload(manifest)) return
       const shell = $('#iosWatchPlayer'); const video = $('#iosWatchVideo'); const error = $('#iosWatchError')
-      iosPlayerGeneration += 1
+      void saveIosRemotePosition(false, true)
+      video._myTvProgress = null
+      const generation = ++iosPlayerGeneration
       clearIosNextEpisode()
-      shell.classList.toggle('is-my-tv', ['my_tv', 'my-tv-series'].includes(manifest.source?.kind))
-      iosRemoteSession = null
-      iosOfflineDownloadId = manifest.id
+      clearInterval(iosRemotePositionTimer); clearInterval(iosRemoteHeartbeatTimer)
+      const session = iosRemoteSession
+      if (session) void playbackRequest('/api/remote/release', { stream: session }).catch(() => {})
+      iosRemoteSession = null; iosOfflineDownloadId = manifest.id
       video._mabelQueue = null
-      video.onplaying = null
-      video.onended = null
+      video.onpause = null; video.onseeked = null; video.onplaying = null
+      video.oncanplay = null; video.onended = null; video.onerror = null
+      video.pause(); video.removeAttribute('src'); video.replaceChildren()
+      const privateMedia = ['my_tv', 'my-tv-series'].includes(manifest.source?.kind)
+      shell.classList.toggle('is-my-tv', privateMedia)
       shell.classList.remove('hidden'); error.classList.add('hidden'); video.classList.remove('hidden')
-      openIosPlayerHistoryLayer()
-      lockPortalPlayerScroll(false)
+      $('#iosWatchProgressStatus').classList.add('hidden'); $('#iosWatchRetry').classList.add('hidden')
+      openIosPlayerHistoryLayer(); lockPortalPlayerScroll(false)
       $('#iosWatchTitle').textContent = manifest.title
       $('#iosWatchContext').textContent = 'Downloaded · ready offline'
-      $('#iosWatchStartOver').classList.add('hidden')
-      video.pause(); video.removeAttribute('src'); video.replaceChildren()
+      const checkpoint = privateMedia ? await myTvProgress.read(manifest.source).catch(() => null) : null
+      if (generation !== iosPlayerGeneration) return
+      const resume = checkpoint ? checkpoint.finished ? 0 : checkpoint.position : Number(manifest.resume_position || 0)
+      if (privateMedia) myTvProgress.begin(video, manifest.source)
+      $('#iosWatchStartOver').classList.toggle('hidden', resume <= 10)
       if (manifest.subtitles) {
         const track = document.createElement('track')
         track.kind = 'subtitles'; track.srclang = 'en'; track.label = 'English'
-        track.src = MabelOffline.subtitleUrl(manifest.id)
-        video.append(track)
+        track.src = MabelOffline.subtitleUrl(manifest.id); video.append(track)
       }
-      let nativeFullscreen = false
-      const requestNativeFullscreen = () => {
-        if (nativeFullscreen || video.webkitDisplayingFullscreen || video.webkitPresentationMode === 'fullscreen' || typeof video.webkitEnterFullscreen !== 'function') return
-        try { video.webkitEnterFullscreen() } catch (_) { /* retry when playback starts */ }
+      const requestNativeFullscreen = bindIosPresentation(video, generation)
+      video.onloadedmetadata = () => {
+        if (generation !== iosPlayerGeneration) return
+        if (resume > 0 && resume < video.duration - 5) video.currentTime = resume
+        if (video._myTvProgress) video._myTvProgress.ready = true
+        requestNativeFullscreen()
       }
-      video.onloadedmetadata = requestNativeFullscreen
-      video.oncanplay = requestNativeFullscreen
       video.onplay = requestNativeFullscreen
-      video.onwebkitbeginfullscreen = () => { nativeFullscreen = true; setNativeVideoBackdrop(true) }
-      video.onwebkitendfullscreen = () => { nativeFullscreen = false; restoreIosInlineVideoControls(video) }
-      video.onwebkitpresentationmodechanged = () => {
-        const active = video.webkitPresentationMode === 'fullscreen' || Boolean(video.webkitDisplayingFullscreen)
-        nativeFullscreen = active
-        if (active) setNativeVideoBackdrop(true)
-        else restoreIosInlineVideoControls(video)
-      }
+      video.onpause = () => saveIosRemotePosition(false, true)
+      video.onseeked = () => saveIosRemotePosition(false, true)
+      video.onended = () => saveIosRemotePosition(true, true)
+      iosRemotePositionTimer = setInterval(saveIosRemotePosition, 5000)
       video.onerror = () => {
         setNativeVideoBackdrop(false)
         error.textContent = 'This downloaded copy could not be opened. Try removing it and downloading it again.'
         error.classList.remove('hidden'); video.classList.add('hidden')
       }
-      video.src = MabelOffline.playbackUrl(manifest.id)
-      video.load()
-      await video.play().catch(() => {})
-      requestNativeFullscreen()
+      video.src = MabelOffline.playbackUrl(manifest.id); video.load()
+      const playing = video.play(); requestNativeFullscreen()
+      await playing.catch(() => {})
     }
 
     function saveMabelRemotePosition(finished = false, force = false) {
@@ -576,7 +575,7 @@ function remoteTime(value) {
 
     async function startRemoteStream(payload) {
       if (!payload.queue_id) await allowIndependentViewing()
-      return api('/api/remote/start', { method: 'POST', body: JSON.stringify(payload) })
+      return playbackRequest('/api/remote/start', payload)
     }
 
     async function openInVlc(payload, title) {
@@ -627,7 +626,7 @@ function remoteTime(value) {
       }
     }
 
-    async function openRemotePlayer(payload, position = 0, returnTo = null) {
+    async function openRemotePlayer(payload, position = null, returnTo = null) {
       const desktopMyTv = ['my_tv', 'my-tv-series'].includes(payload.kind) && !isAppleMobilePlayer()
       // Reserve the tab during the direct user gesture. Waiting for the
       // portal-only concurrency setting first would let some browsers mistake

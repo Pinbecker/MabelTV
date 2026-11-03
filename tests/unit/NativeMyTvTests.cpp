@@ -14,6 +14,31 @@
 class NativeMyTvTests : public QObject {
     Q_OBJECT
 private slots:
+    void myTvBrowserDoesNotCoverPlayingVideo() {
+        qmlRegisterType(QUrl::fromLocalFile(QStringLiteral(TEST_QML_DIR "/../tests/qml/FamilyMpvFixture.qml")),
+                        "MabelTV", 1, 0, "MpvVideo");
+        qmlRegisterUncreatableType<TvController>("MabelTV", 1, 0, "TvController", "Test enums");
+        TvController controller;
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty("testController", &controller);
+        engine.rootContext()->setContextProperty("tvDisplayName", "Mabel TV");
+        QQmlComponent component(&engine);
+        component.setData("import QtQuick\nMyTvModeOverlay { width: 1920; height: 1080; controller: testController; active: true }",
+                          QUrl::fromLocalFile(QStringLiteral(TEST_QML_DIR "/PlaybackVisibilityTest.qml")));
+        QScopedPointer<QObject> overlay(component.create());
+        QVERIFY2(overlay, qPrintable(component.errorString()));
+        auto *browser = overlay->findChild<QQuickItem *>("myTvLibrarySurface");
+        auto *video = overlay->findChild<QQuickItem *>("mabeltvMyTvPlayer");
+        QVERIFY(browser); QVERIFY(video);
+        QVERIFY(browser->isVisible()); QVERIFY(!video->isVisible());
+        overlay->setProperty("playing", true);
+        QVERIFY(!browser->isVisible()); QVERIFY(video->isVisible());
+        overlay->setProperty("portalTransitionPending", true);
+        overlay->setProperty("playing", false);
+        QVERIFY(!browser->isVisible());
+        overlay->setProperty("portalTransitionPending", false);
+        QVERIFY(browser->isVisible());
+    }
 
     void portalPlaybackSerialisesDecoderAndCancelsObsoleteRequests() {
         QQmlEngine engine;
@@ -487,7 +512,15 @@ Item {
                 property bool playing: false
                 property var played: null
                 function startNativePlayback(item, position) { played = { id: item.id, position: position, item: item } }
-                MyTvLibraryView { objectName: "browser"; host: fixture; tvController: fixture }
+                MyTvLibraryView {
+                    objectName: "browser"; host: fixture; tvController: fixture
+                    function request(path, method, payload, success, failure) {
+                        if (path.startsWith("/api/native/my-tv/playback?"))
+                            success({ item: selectedPlayback,
+                                position: path.includes("position=0") ? 0 : selectedPlayback.id === "episode9" ? 180 : 0 })
+                        return { abort: function() {} }
+                    }
+                }
             }
         )", QUrl::fromLocalFile(QStringLiteral(TEST_QML_DIR "/MyTvTest.qml")));
         QScopedPointer<QObject> root(component.create());
@@ -539,10 +572,10 @@ Item {
         auto* detail = root->findChild<QObject*>("myTvDetail");
         QVERIFY(detail);
         const auto title = engine.evaluate(R"(({
-            title:'Example',media_type:'tv',on_mabeltv:true,
+            title:'Example',media_type:'tv',on_mabeltv:true,local:{id:'example'},
             seasons:[{number:1},{number:2}],next_playable:{season:2,number:1},
             local_episodes:Array.from({length:12},(_,i)=>({season:2,number:i+1,name:'Episode '+(i+1),
-                source:'file:///episode'+(i+1)+'.mp4',library_id:'episode'+(i+1),remote_position:i===8?120:0}))
+                path:'episode'+(i+1)+'.mp4',source:'file:///episode'+(i+1)+'.mp4',library_id:'episode'+(i+1),remote_position:i===8?120:0}))
         }))");
         QVERIFY(QMetaObject::invokeMethod(detail, "open", Q_ARG(QVariant, QVariant::fromValue(title))));
         QVERIFY(QMetaObject::invokeMethod(detail, "updateDetail", Q_ARG(QVariant, QVariant::fromValue(title))));
@@ -555,17 +588,17 @@ Item {
         QVERIFY(QMetaObject::invokeMethod(detail, "handleKey", Q_ARG(QVariant, int(Qt::Key_Return))));
         const auto played = root->property("played").value<QJSValue>();
         QCOMPARE(played.property("id").toString(), QString("episode9"));
-        QCOMPARE(played.property("position").toInt(), 120);
+        QCOMPARE(played.property("position").toInt(), 180);
         QVERIFY(QMetaObject::invokeMethod(detail, "handleKey", Q_ARG(QVariant, int(Qt::Key_Up))));
         QVERIFY(QMetaObject::invokeMethod(detail, "handleKey", Q_ARG(QVariant, int(Qt::Key_Return))));
         const auto freshEpisode = root->property("played").value<QJSValue>();
         QCOMPARE(freshEpisode.property("id").toString(), QString("episode8"));
         QCOMPARE(freshEpisode.property("position").toInt(), 0);
         auto resumeTitle = engine.evaluate(R"(({
-            title:'Example',media_type:'tv',on_mabeltv:true,seasons:[{number:2}],
+            title:'Example',media_type:'tv',on_mabeltv:true,local:{id:'example'},seasons:[{number:2}],
             next_playable:{season:2,number:9,name:'Exact episode',remote_position:120},
             local_episodes:Array.from({length:12},(_,i)=>({season:2,number:i+1,name:'Episode '+(i+1),
-                source:'file:///episode'+(i+1)+'.mp4',library_id:'episode'+(i+1),remote_position:i===8?120:0}))
+                path:'episode'+(i+1)+'.mp4',source:'file:///episode'+(i+1)+'.mp4',library_id:'episode'+(i+1),remote_position:i===8?120:0}))
         }))");
         QVERIFY(QMetaObject::invokeMethod(detail, "open", Q_ARG(QVariant, QVariant::fromValue(resumeTitle))));
         QVERIFY(QMetaObject::invokeMethod(detail, "updateDetail", Q_ARG(QVariant, QVariant::fromValue(resumeTitle))));

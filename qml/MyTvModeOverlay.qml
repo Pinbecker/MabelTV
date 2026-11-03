@@ -407,7 +407,8 @@ Item {
         if (externalSession)
             return
         const film = currentFilm()
-        if (!film || myTvPlayer.playbackPosition < 2)
+        if (!film || myTvPlayer.playbackDuration <= 0
+                || (myTvPlayer.status !== "Playing" && myTvPlayer.status !== "Paused"))
             return
         if (film.mabel?.kind === "films")
             controller.setChannelFilmPlaybackState(film.mabel.channel, film.mabel.file, myTvPlayer.playbackPosition, myTvPlayer.playbackDuration)
@@ -671,7 +672,17 @@ Item {
                 overlay.controlsOpacity = 1
             }
         }
-        onPausedChanged: overlay.showControls()
+        onPausedChanged: {
+            overlay.showControls()
+            if (overlay.playing && !overlay.stopping) overlay.rememberCurrentFilmPosition()
+        }
+        onPlaybackReady: {
+            if (overlay.playing && !overlay.stopping) overlay.rememberCurrentFilmPosition()
+        }
+        onPlaybackPositionChanged: {
+            if (overlay.playing && !overlay.stopping && myTvPlayer.paused)
+                overlay.rememberCurrentFilmPosition()
+        }
         onPlaybackDurationChanged: {
             const film = overlay.currentFilm()
             if (film && !overlay.externalSession && myTvPlayer.playbackDuration >= 10) {
@@ -683,7 +694,8 @@ Item {
 
     MyTvLibraryView {
         id: libraryView
-        visible: !overlay.portalTransitionPending
+        objectName: "myTvLibrarySurface"
+        visible: !overlay.playing && !overlay.portalTransitionPending
         host: overlay
         tvController: controller
     }
@@ -898,7 +910,7 @@ Item {
 
     Timer {
         id: myTvPositionTimer
-        interval: 10000
+        interval: 5000
         repeat: true
         running: overlay.playing && !overlay.stopping && !overlay.externalSession
         onTriggered: overlay.rememberCurrentFilmPosition()

@@ -166,20 +166,22 @@ void TvController::setMyTvPlaybackPosition(const QString &libraryId,
         return;
     }
     const double position = std::max(0.0, positionSeconds);
-    if (position < 2.0) {
-        if (m_myTvPlaybackPositions.remove(key) > 0) {
-            m_myTvPlaybackUpdatedUtcMs.remove(key);
-            saveState();
-            emit myTvPlaybackStateChanged();
-        }
+    if (position >= 2.0
+        && std::abs(m_myTvPlaybackPositions.value(key, -1.0) - position) < 0.5) {
         return;
     }
-    if (std::abs(m_myTvPlaybackPositions.value(key, -1.0) - position) < 0.5) {
+    // Zero is a timestamped restart/completion, not missing history. Removing
+    // it resurrects an older bookmark from a phone on the next resume.
+    const double saved = position < 2.0 ? 0.0 : position;
+    const qint64 updated = QDateTime::currentMSecsSinceEpoch();
+    QString error;
+    if (!mabeltv::state::saveMyTvResume(m_databasePath, key, saved,
+                                       m_myTvPlaybackDurations.value(key), updated, &error)) {
+        qWarning().noquote() << "Could not save My TV progress:" << error;
         return;
     }
-    m_myTvPlaybackPositions.insert(key, position);
-    m_myTvPlaybackUpdatedUtcMs.insert(key, QDateTime::currentMSecsSinceEpoch());
-    saveState();
+    m_myTvPlaybackPositions.insert(key, saved);
+    m_myTvPlaybackUpdatedUtcMs.insert(key, updated);
     emit myTvPlaybackStateChanged();
 }
 

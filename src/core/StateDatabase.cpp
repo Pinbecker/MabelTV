@@ -145,6 +145,37 @@ bool mergeKeyValues(const QString &path, const QString &table,
 
 namespace mabeltv::state
 {
+bool saveMyTvResume(const QString &path, const QString &libraryId,
+                    double position, double duration, qint64 updated, QString *error)
+{
+    Connection connection(path);
+    if (!ready(connection, error)) return false;
+    QSqlDatabase &database = connection.database();
+    QSqlQuery query(database);
+    if (!run(query, QStringLiteral("BEGIN IMMEDIATE"), error)) return false;
+    query.prepare(QStringLiteral(
+        "INSERT INTO my_tv_resume VALUES(?,?,?,?,1,?,1) "
+        "ON CONFLICT(library_id) DO UPDATE SET position_seconds=excluded.position_seconds,"
+        "duration_seconds=CASE WHEN excluded.duration_present THEN excluded.duration_seconds "
+        "ELSE my_tv_resume.duration_seconds END,updated_utc_ms=excluded.updated_utc_ms,"
+        "position_present=1,duration_present=MAX(my_tv_resume.duration_present,excluded.duration_present),"
+        "updated_present=1"));
+    query.addBindValue(libraryId); query.addBindValue(position);
+    query.addBindValue(duration); query.addBindValue(updated); query.addBindValue(duration >= 10);
+    if (!query.exec()) {
+        setError(error, query.lastError().text()); database.rollback(); return false;
+    }
+    query.prepare(QStringLiteral(
+        "INSERT INTO state_revisions(domain,revision,updated_at) VALUES('player',1,?) "
+        "ON CONFLICT(domain) DO UPDATE SET revision=revision+1,updated_at=excluded.updated_at"));
+    query.addBindValue(updated / 1000.0);
+    if (!query.exec()) {
+        setError(error, query.lastError().text()); database.rollback(); return false;
+    }
+    if (!database.commit()) { setError(error, database.lastError().text()); return false; }
+    return true;
+}
+
 QJsonArray channels(const QString &path, QString *error)
 {
     Connection connection(path);

@@ -572,8 +572,7 @@
       playOnTv({
         kind: 'my_tv',
         file: film.path,
-        position: position === null
-          ? Number(film.remote_position || 0) : Math.max(0, Number(position) || 0),
+        ...(position == null ? {} : { position: Math.max(0, Number(position) || 0) }),
       }, watchFilmTitle(film))
     }
 
@@ -610,8 +609,7 @@
       const playOnTvNow = (position = null) => {
         playOnTv({
           kind: 'my_tv', file: film.path,
-          position: position === null
-            ? Number(film.remote_position || 0) : Math.max(0, Number(position) || 0),
+          ...(position == null ? {} : { position: Math.max(0, Number(position) || 0) }),
         }, title)
       }
       const tvPlay = controls.tvPlay
@@ -645,10 +643,10 @@
         openFilmResumeChoice({
           title, destination: 'Play on this device', position: film.remote_position,
           returnTo: controls.reopen,
-          continueAction: () => playHere(Number(film.remote_position || 0)),
+          continueAction: () => playHere(null),
           restartAction: () => playHere(0),
         })
-      } : () => playHere(resumable ? Number(film.remote_position || 0) : 0)
+      } : () => playHere(null)
         : () => openInVlc({ kind: 'my_tv', file: film.path }, title)
     }
 

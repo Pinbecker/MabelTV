@@ -8,7 +8,7 @@ async function openDownloads(page, theme = 'dark') {
     await window.MabelOffline.initialise()
     stage = 'open database'
     const db = await new Promise((resolve, reject) => {
-      const request = indexedDB.open('mabeltv-offline-v1', 2)
+      const request = indexedDB.open('mabeltv-offline-v1', window.MabelOfflineSchema.version)
       request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error)
     })
     stage = 'write sample media'

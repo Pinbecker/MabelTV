@@ -120,6 +120,12 @@ written incrementally as Blob chunks so iOS does not need a complete film in
 memory. Partial downloads can resume, completed media supports HTTP byte ranges,
 and subtitles are stored with the manifest.
 
+The additive `playback` store holds one My TV checkpoint per source, including
+pending uploads. It survives shell upgrades and only opens after the same PIN
+gate as Downloads. `playback/progress.js` retries acknowledged, ordered writes
+to `/api/my-tv/progress` independently of short-lived media tokens. Database
+version 3 adds this store without changing existing downloads or security data.
+
 My TV manifests are marked `protected` and are also recognised by their source
 kind for compatibility. The device stores a PBKDF2 digest and salt, never the
 PIN. Successful verification unlocks only the current in-memory service-worker

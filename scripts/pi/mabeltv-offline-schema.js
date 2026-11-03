@@ -12,11 +12,14 @@
     if (!database.objectStoreNames.contains('security')) {
       database.createObjectStore('security', { keyPath: 'id' })
     }
+    if (!database.objectStoreNames.contains('playback')) {
+      database.createObjectStore('playback', { keyPath: 'id' })
+    }
   }
 
   globalThis.MabelOfflineSchema = Object.freeze({
     databaseName: 'mabeltv-offline-v1',
-    version: 2,
+    version: 3,
     upgrade,
   })
 })()

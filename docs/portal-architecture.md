@@ -31,6 +31,12 @@ strict size ceiling. Page markup lives under
 Include order is functional. Shared nodes and dialogs must exist before the
 ordered scripts initialise.
 
+`playback/progress.js` owns durable My TV progress and retry acknowledgements;
+`playback/ios-presentation.js` owns the native fullscreen handoff for streamed
+and downloaded video. `playback/stream-recovery.js` renews an expired media
+source at the current position with bounded retries. `players.js` coordinates
+these owners and retains the separate Mabel TV device-player presentation.
+
 Mabel TV Up Next retains the playing entry at position one with an artwork
 overlay. Programme sheets carry its queue identity to the chosen player;
 ordinary library playback remains separate. `playback/mabel-queue.js` owns the

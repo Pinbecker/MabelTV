@@ -88,15 +88,43 @@
 
   .ios-watch-error {
     position: absolute;
-    right: var(--space-4);
-    bottom: calc(var(--space-4) + var(--safe-bottom));
-    left: var(--space-4);
+    right: 16px;
+    bottom: calc(16px + var(--safe-bottom));
+    left: 16px;
     margin: 0;
-    border-radius: var(--radius-card);
-    padding: var(--space-4);
-    background: var(--danger-soft);
-    color: var(--danger);
+    border-radius: 12px;
+    padding: 16px;
+    background: #3b1820;
+    color: #ffb1a8;
     text-align: center;
+  }
+
+  .ios-watch-progress {
+    background: #202725;
+    color: #e2e7e4;
+    font-size: 0.875rem;
+  }
+
+  .ios-watch-retry {
+    position: absolute;
+    bottom: calc(16px + var(--safe-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    min-height: 44px;
+    padding: 10px 18px;
+    border: 1px solid #ffffff30;
+    border-radius: 22px;
+    background: #202725;
+    color: #f7f7f8;
+    z-index: 2;
+  }
+
+  .ios-watch-player:has(.ios-watch-retry:not(.hidden)) #iosWatchError {
+    bottom: calc(72px + var(--safe-bottom));
+  }
+
+  .ios-watch-player:has(#iosWatchError:not(.hidden)) .ios-watch-progress {
+    display: none;
   }
 
   /* Exact MabelTV web player restored from the pre-component-rebuild tag.

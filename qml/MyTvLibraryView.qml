@@ -39,6 +39,7 @@ Item {
     property int searchGeneration: 0
     property int detailGeneration: 0
     property int homeGeneration: 0
+    property int playbackRequestGeneration: 0
     property var pendingRequests: []
     property alias artworkQueue: artworkQueue
     property alias browseContentY: browse.contentY
@@ -137,7 +138,7 @@ Item {
         MyTvText { id: message; anchors.centerIn: parent; width: parent.width - 40 * view.uiScale; color: "white"; font.pixelSize: 23 * view.uiScale; wrapMode: Text.WordWrap; text: view.errorMessage }
     }
     Timer { id: messageTimer; interval: 7000; onTriggered: view.errorMessage = "" }
-    Timer { interval: 700; repeat: true; running: !view.host.playing && !view.detailVisible && !view.query.trim(); onTriggered: view.loadNextBackdrop() }
+    Timer { interval: 700; repeat: true; running: view.visible && !view.host.playing && !view.detailVisible && !view.query.trim(); onTriggered: view.loadNextBackdrop() }
     Timer {
         interval: 1000; running: view.pendingRequests.length > 0; repeat: true
         onTriggered: {
@@ -401,7 +402,17 @@ Item {
         if (!selectedPlayback.id) { notify("This title has no playback identity"); return }
         const position = fromStart ? 0 : episode || item.media_type === "tv"
             ? Number(playable.remote_position || 0) : Number(item.progress?.position || 0)
-        host.startNativePlayback(selectedPlayback, position)
+        if (item.borrowed) { host.startNativePlayback(selectedPlayback, position); return }
+        const generation = ++playbackRequestGeneration
+        const series = item.media_type === "tv"
+        const path = "/api/native/my-tv/playback?kind=" + (series ? "my-tv-series" : "my_tv")
+            + "&file=" + encodeURIComponent(series ? playable.path : item.local.path)
+            + (series ? "&series=" + encodeURIComponent(item.local.id) : "")
+            + (fromStart ? "&position=0" : "")
+        request(path, "GET", null, result => {
+            if (generation !== view.playbackRequestGeneration || !view.visible) return
+            view.host.startNativePlayback(result.item, result.position)
+        }, message => { if (generation === view.playbackRequestGeneration) view.notify(message) })
     }
     function detailProviders(item) {
         return (item.services || []).map(value => Object.assign({}, value, {
@@ -417,6 +428,7 @@ Item {
             result => notify(result.message || "Opened " + provider.name), message => notify(message))
     }
     function back() {
+        playbackRequestGeneration += 1
         if (keyboardVisible) { keyboardVisible = false; return true }
         if (detailVisible) {
             if (mabelVisible && mabelChannel?.content_type !== "films") family.showDirectory()

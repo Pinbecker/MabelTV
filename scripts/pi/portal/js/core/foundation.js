@@ -87,6 +87,7 @@ const $ = selector => document.querySelector(selector)
 
     function setOfflineProtectedAccess(unlocked) {
       offlineProtectedAccess = Boolean(unlocked)
+      window.dispatchEvent(new Event('mabel-playback-access'))
       const acknowledgement = window.MabelOffline?.setMediaAccess(offlineProtectedAccess)
       if (offlineProtectedAccess) Promise.resolve(acknowledgement).then(confirmed => {
         if (confirmed !== false) window.dispatchEvent(

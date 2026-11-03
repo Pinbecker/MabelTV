@@ -299,7 +299,7 @@ void TvController::loadState()
     for (auto iterator = myTvPositions.constBegin(); iterator != myTvPositions.constEnd();
          ++iterator) {
         const double position = iterator.value().toDouble(0.0);
-        if (!iterator.key().isEmpty() && std::isfinite(position) && position >= 2.0) {
+        if (!iterator.key().isEmpty() && std::isfinite(position) && position >= 0.0) {
             m_myTvPlaybackPositions.insert(iterator.key(), position);
         }
     }

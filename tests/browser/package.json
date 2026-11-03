@@ -6,7 +6,7 @@
     "test": "npm run test:core",
     "test:smoke": "playwright test --project=iphone-webkit --project=iphone-chromium --grep-invert @visual pwa.spec.mjs portal-primary-navigation.spec.mjs",
     "test:offline": "playwright test --project=iphone-webkit --project=iphone-chromium pwa.spec.mjs",
-    "test:core": "playwright test --project=iphone-webkit --project=iphone-chromium --grep-invert @visual pwa.spec.mjs portal-primary-navigation.spec.mjs portal-domain-navigation.spec.mjs portal-card-navigation.spec.mjs portal-explore.spec.mjs portal-provider-badges.spec.mjs portal-artwork-status.spec.mjs portal-my-tv-home-playback.spec.mjs portal-my-library.spec.mjs portal-player-history.spec.mjs portal-continue-controls.spec.mjs portal-mabel-queue.spec.mjs portal-local-film-search.spec.mjs portal-send-to-mabel.spec.mjs portal-settings.spec.mjs portal-channel-numbers.spec.mjs portal-studio.spec.mjs portal-studio-torrents.spec.mjs",
+    "test:core": "playwright test --project=iphone-webkit --project=iphone-chromium --grep-invert @visual pwa.spec.mjs portal-primary-navigation.spec.mjs portal-domain-navigation.spec.mjs portal-card-navigation.spec.mjs portal-explore.spec.mjs portal-provider-badges.spec.mjs portal-artwork-status.spec.mjs portal-my-tv-home-playback.spec.mjs portal-playback-reliability.spec.mjs portal-my-library.spec.mjs portal-player-history.spec.mjs portal-continue-controls.spec.mjs portal-mabel-queue.spec.mjs portal-local-film-search.spec.mjs portal-send-to-mabel.spec.mjs portal-settings.spec.mjs portal-channel-numbers.spec.mjs portal-studio.spec.mjs portal-studio-torrents.spec.mjs",
     "test:visual": "playwright test --grep @visual",
     "test:full": "playwright test",
     "test:update": "playwright test --grep @visual --update-snapshots"

@@ -32,4 +32,7 @@ bool mergeSettings(const QString &databasePath, const QJsonObject &value,
                    QString *error = nullptr);
 bool savePlayerSnapshot(const QString &databasePath, const QJsonObject &value,
                         QString *error = nullptr);
+bool saveMyTvResume(const QString &databasePath, const QString &libraryId,
+                    double position, double duration, qint64 updated,
+                    QString *error = nullptr);
 } // namespace mabeltv::state

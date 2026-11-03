@@ -74,6 +74,7 @@ from mabeltv_backend.studio_cloud_filing import StudioCloudFilingMixin
 from mabeltv_backend.providers import ProviderMetadataMixin
 from mabeltv_backend.provider_transport import ProviderTransportMixin
 from mabeltv_backend.remote import RemotePlaybackMixin
+from mabeltv_backend.playback_progress import PlaybackProgressMixin
 from mabeltv_backend.system import SystemStatusMixin
 from mabeltv_backend.transcoding import TranscodingMixin
 from mabeltv_backend.uploads import UploadConversionMixin
@@ -113,7 +114,7 @@ __all__ = [
 class Library(StudioMixin, StudioTorrentsMixin, StudioCloudMixin, StudioOrganiserMixin, StudioCloudFilingMixin, StudioCloudManagerMixin, StudioCloudMetadataMixin, StudioCloudOptimisationMixin, MyTvTransferMixin, PlaylistsMixin, FamilyMediaMixin, FamilyUploadsMixin,
               IPlayerLibraryMixin, MabelQueueMixin, ViewingMixin, UploadConversionMixin, UploadNotificationsMixin, TranscodingMixin, AuthenticationMixin,
               ArtworkProxyMixin,
-              MediaCatalogueMixin, ManagementMixin, RemotePlaybackMixin, LgControlMixin,
+              MediaCatalogueMixin, ManagementMixin, RemotePlaybackMixin, PlaybackProgressMixin, LgControlMixin,
               UsbMixin,
               ProviderTransportMixin, NativeMyTvMixin, MyTvMetadataMixin, ProviderMetadataMixin,
               ViewingQueueMixin,

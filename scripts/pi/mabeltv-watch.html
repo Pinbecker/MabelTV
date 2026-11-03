@@ -21,10 +21,15 @@
     let session = null
     let saveTimer = null
     let heartbeatTimer = null
-    let lastSaved = 0
+    let lastSaved = -1
+    let ready = false
+    let sequence = 0
+    let serverOffset = 0
+    let libraryId = ''
+    const writer = Array.from(crypto.getRandomValues(new Uint8Array(16)), value => value.toString(16).padStart(2, '0')).join('')
 
     async function api(path, options = {}) {
-      const response = await fetch(path, { credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, ...options })
+      const response = await fetch(path, { credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(10000), ...options })
       const body = await response.json().catch(() => ({}))
       if (!response.ok) { const error = new Error(body.error || 'The TV could not complete that request'); error.code = body.code; throw error }
       return body
@@ -32,7 +37,7 @@
 
     function payload() {
       const kind = query.get('kind') || ''
-      return kind === 'my_tv' ? { kind, file: query.get('file') || '' }
+      return ['my_tv', 'my-tv-series'].includes(kind) ? { kind, file: query.get('file') || '', ...(kind === 'my-tv-series' ? { series: query.get('series') || '' } : {}), ...(query.has('position') ? { position: Number(query.get('position')) } : {}) }
         : { kind: 'channel', channel: Number(query.get('channel')), file: query.get('file') || '' }
     }
 
@@ -41,6 +46,7 @@
     }
 
     async function start() {
+      ready = false; clearInterval(saveTimer); clearInterval(heartbeatTimer)
       $('#error').hidden = true; $('#cabinet').hidden = true; $('#loading').hidden = false
       try {
         let result
@@ -52,7 +58,8 @@
           result = await api('/api/remote/start', { method: 'POST', body: JSON.stringify(payload()) })
         }
         session = new URL(result.stream_url, location.origin).searchParams.get('stream')
-        $('#cabinet').classList.toggle('my-tv', result.kind === 'my_tv')
+        libraryId = result.library_id || ''; serverOffset = (result.server_time || Date.now() / 1000) - Date.now() / 1000
+        $('#cabinet').classList.toggle('my-tv', ['my_tv', 'my-tv-series'].includes(result.kind))
         const tvName = result.tv_name || 'Your TV'
         document.title = `${result.title} · ${tvName}`; $('#title').textContent = result.title
         $('#detail').textContent = `${tvName} remote viewing`
@@ -60,8 +67,8 @@
         // Register media handlers before assigning the source/loading.  On
         // iOS a cached/fast metadata response can otherwise arrive before the
         // handler exists, leaving the native player stuck in its error state.
-        const requested = Number(query.get('position') || 0); const resume = requested > 0 ? requested : Number(result.resume_position || 0)
-        video.onloadedmetadata = () => { if (resume > 10 && resume < video.duration - 5) video.currentTime = resume }
+        const resume = Number(result.resume_position || 0)
+        video.onloadedmetadata = () => { if (resume > 0 && resume < video.duration - 5) video.currentTime = resume; ready = true; if (query.get('position') === '0') void savePosition(false, true) }
         video.onerror = () => {
           const detail = video.error ? ` (media error ${video.error.code})` : ''
           showError(`This video could not be played on this device${detail}. Try again.`)
@@ -77,9 +84,9 @@
             video.webkitEnterFullscreen()
           }
         }
-        video.onpause = () => savePosition(); video.onended = () => savePosition(true)
+        video.onpause = () => savePosition(false, true); video.onseeked = () => savePosition(false, true); video.onended = () => savePosition(true, true)
         $('#loading').hidden = true; $('#cabinet').hidden = false
-        clearInterval(saveTimer); saveTimer = setInterval(savePosition, 15000)
+        clearInterval(saveTimer); saveTimer = setInterval(savePosition, 5000)
         clearInterval(heartbeatTimer); heartbeatTimer = setInterval(() => api('/api/remote/heartbeat', { method: 'POST', body: JSON.stringify({ stream: session }) }).catch(() => {}), 30000)
         // The library card click is no longer a user gesture after navigating
         // to this dedicated page. Calling play() here makes iOS reject the
@@ -88,14 +95,30 @@
       } catch (error) { showError(error.message) }
     }
 
-    function savePosition(finished = false) {
-      const video = $('#video'); if (!session || !Number.isFinite(video.currentTime) || (!finished && video.currentTime - lastSaved < 10)) return
-      lastSaved = video.currentTime
-      api('/api/remote/position', { method: 'POST', body: JSON.stringify({ stream: session, position: finished ? video.duration : video.currentTime, duration: video.duration }) }).catch(() => {})
+    function checkpoint(finished = false) {
+      const video = $('#video')
+      return { source: { ...payload(), library_id: libraryId }, writer, sequence: ++sequence,
+        observed_at: Date.now() / 1000 + serverOffset, position: video.currentTime,
+        duration: Number.isFinite(video.duration) ? video.duration : 0, finished: finished || video.ended,
+        stream: session }
     }
-
+    async function savePosition(finished = false, force = false) {
+      const video = $('#video')
+      if (!ready || !session || !Number.isFinite(video.currentTime)
+          || (!finished && !force && Math.abs(video.currentTime - lastSaved) < 5)) return
+      const sample = checkpoint(finished)
+      try {
+        await api(libraryId && ['my_tv', 'my-tv-series'].includes(payload().kind)
+          ? '/api/my-tv/progress' : '/api/remote/position', { method: 'POST', body: JSON.stringify(sample) })
+        lastSaved = sample.position
+      } catch (_) { $('#detail').textContent = 'Progress is waiting to sync · reconnect to save your place' }
+    }
     function release() {
-      if (!session) return; savePosition(); navigator.sendBeacon?.('/api/remote/release', new Blob([JSON.stringify({ stream: session })], { type: 'application/json' }))
+      if (!session || !ready) return
+      const sample = checkpoint()
+      navigator.sendBeacon?.(libraryId && ['my_tv', 'my-tv-series'].includes(payload().kind)
+        ? '/api/my-tv/progress' : '/api/remote/position', new Blob([JSON.stringify(sample)], { type: 'application/json' }))
+      navigator.sendBeacon?.('/api/remote/release', new Blob([JSON.stringify({ stream: session })], { type: 'application/json' }))
     }
 
     $('#retry').onclick = start

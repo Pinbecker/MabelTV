@@ -912,6 +912,7 @@ Window {
         running: (tvController.videoDistortion > 0 || player.paused)
                  && (player.status === "Playing" || player.paused)
                  && !tvController.standby
+                 && !root.portalFullScreenEnabled && !myTvMode.active
         onTriggered: root.distortionPhase = (root.distortionPhase + 0.05) % 1000
     }
 

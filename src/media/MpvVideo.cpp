@@ -1,6 +1,9 @@
 #include "MpvVideo.h"
 
 #include <QDir>
+#include <QElapsedTimer>
+#include <QGuiApplication>
+#include <QScreen>
 #include <QFileInfo>
 #include <QMetaObject>
 #include <QOpenGLContext>
@@ -62,7 +65,7 @@ void *resolveOpenGlSymbol(void *, const char *name)
 void requestFrame(void *context)
 {
     auto *item = static_cast<MpvVideo *>(context);
-    QMetaObject::invokeMethod(item, [item]() { item->update(); }, Qt::QueuedConnection);
+    item->requestRenderUpdate();
 }
 
 void releaseUnusedDecoderMemory()
@@ -114,6 +117,7 @@ public:
 
     QOpenGLFramebufferObject *createFramebufferObject(const QSize &size) override
     {
+        m_needsRedraw = true;
         ensureRenderContext();
 
         QOpenGLFramebufferObjectFormat format;
@@ -135,7 +139,14 @@ public:
             return;
         }
 
-        mpv_render_context_update(context);
+        const auto flags = mpv_render_context_update(context);
+        // Qt can redraw the surround without a new video frame. Keep the
+        // existing texture, but always service mpv's advanced-control updates.
+        if (!(flags & MPV_RENDER_UPDATE_FRAME) && !m_needsRedraw) {
+            QQuickOpenGLUtils::resetOpenGLState();
+            return;
+        }
+        m_needsRedraw = false;
 
         mpv_opengl_fbo targetFbo{
             static_cast<int>(target->handle()),
@@ -165,7 +176,8 @@ public:
             QQuickOpenGLUtils::resetOpenGLState();
             return;
         }
-        m_state->renderedFrames.fetch_add(1, std::memory_order_relaxed);
+        if (flags & MPV_RENDER_UPDATE_FRAME)
+            m_state->renderedFrames.fetch_add(1, std::memory_order_relaxed);
         QQuickOpenGLUtils::resetOpenGLState();
     }
 
@@ -212,8 +224,18 @@ private:
     }
 
     MpvVideo *m_item;
+    bool m_needsRedraw = true;
     std::shared_ptr<MpvVideo::SharedState> m_state;
 };
+
+void MpvVideo::requestRenderUpdate()
+{
+    if (m_renderUpdateQueued.exchange(true)) return;
+    QMetaObject::invokeMethod(this, [this]() {
+        m_renderUpdateQueued.store(false);
+        update();
+    }, Qt::QueuedConnection);
+}
 
 MpvVideo::MpvVideo(QQuickItem *parent)
     : QQuickFramebufferObject(parent)
@@ -316,6 +338,26 @@ MpvVideo::MpvVideo(QQuickItem *parent)
     checkMpv(mpv_observe_property(m_state->handle, 7, "video-params/aspect", MPV_FORMAT_DOUBLE),
              "Observing video display aspect ratio");
     mpv_set_wakeup_callback(m_state->handle, wakeup, this);
+    mpv_observe_property(m_state->handle, 8, "frame-drop-count", MPV_FORMAT_INT64);
+    mpv_observe_property(m_state->handle, 9, "decoder-frame-drop-count", MPV_FORMAT_INT64);
+    mpv_observe_property(m_state->handle, 10, "avsync", MPV_FORMAT_DOUBLE);
+    if (const auto *screen = QGuiApplication::primaryScreen())
+        qInfo() << "Playback display:" << screen->size() << screen->refreshRate() << "Hz";
+    auto *diagnostics = new QTimer(this);
+    diagnostics->setInterval(30000);
+    QElapsedTimer elapsed;
+    elapsed.start();
+    connect(diagnostics, &QTimer::timeout, this, [this, elapsed, previous = std::uint64_t{0}]() mutable {
+        const auto frames = renderedFrameCount();
+        const auto milliseconds = elapsed.restart();
+        const double fps = milliseconds > 0 ? (frames - previous) * 1000.0 / milliseconds : 0;
+        previous = frames;
+        if (!m_fileActive || m_paused || !m_state->handle) return;
+        // Observed values only: GUI diagnostics never wait for a busy decoder.
+        qInfo() << "Playback render rate:" << fps << "fps; position:" << m_playbackPosition
+                << "timing:" << m_playbackDiagnostics;
+    });
+    diagnostics->start();
 }
 
 MpvVideo::~MpvVideo()
@@ -706,6 +748,7 @@ void MpvVideo::finishPendingStop()
 
 void MpvVideo::resetPlaybackTelemetry(double positionSeconds)
 {
+    m_checkpointPending = false;
     setPlaybackPosition(positionSeconds);
     setPlaybackDuration(0.0);
     setVideoAspectRatio(0.0);
@@ -831,6 +874,10 @@ void MpvVideo::processMpvEvents()
             m_pendingStartPosition = 0.0;
             setStatus(QStringLiteral("Playing"));
             break;
+        case MPV_EVENT_PLAYBACK_RESTART: {
+            m_checkpointPending = true;
+            break;
+        }
         case MPV_EVENT_END_FILE: {
             const auto *end = static_cast<mpv_event_end_file *>(event->data);
             m_fileActive = false;
@@ -855,6 +902,13 @@ void MpvVideo::processMpvEvents()
             if (change == nullptr || change->name == nullptr) {
                 break;
             }
+            if (event->reply_userdata >= 8 && event->reply_userdata <= 10 && change->data) {
+                if (change->format == MPV_FORMAT_INT64)
+                    m_playbackDiagnostics[QString::fromUtf8(change->name)] = *static_cast<std::int64_t *>(change->data);
+                else if (change->format == MPV_FORMAT_DOUBLE)
+                    m_playbackDiagnostics[QString::fromUtf8(change->name)] = *static_cast<double *>(change->data);
+                break;
+            }
             if (QByteArray(change->name) == QByteArrayLiteral("pause")
                 && change->format == MPV_FORMAT_FLAG && change->data != nullptr) {
                 const bool pausedNow = *static_cast<int *>(change->data) != 0;
@@ -877,6 +931,7 @@ void MpvVideo::processMpvEvents()
             } else if (QByteArray(change->name) == QByteArrayLiteral("time-pos")) {
                 if (change->format == MPV_FORMAT_DOUBLE && change->data != nullptr) {
                     setPlaybackPosition(*static_cast<double *>(change->data));
+                    if (m_checkpointPending) { m_checkpointPending = false; emit playbackReady(); }
                 } else {
                     setPlaybackPosition(m_pendingStartPosition);
                 }

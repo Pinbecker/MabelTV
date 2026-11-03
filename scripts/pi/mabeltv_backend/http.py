@@ -75,6 +75,7 @@ POST_JSON_ROUTES = {
     "/api/external/start": ("start_external_stream", 200),
     "/api/offline/start": ("start_offline_download", 200),
     "/api/remote/position": ("remote_save_position", 200),
+    "/api/my-tv/progress": ("my_tv_progress", 200),
     "/api/remote/clear-position": ("remote_clear_position", 200),
     "/api/viewing-insights/delete": ("delete_viewing_sessions", 200),
     "/api/favourite": ("set_favourite", 200),
@@ -111,7 +112,24 @@ class Handler(BaseHTTPRequestHandler):
 
     def setup(self) -> None:
         super().setup()
-        self.connection.settimeout(120)
+        self.connection.settimeout(10)
+
+    def handle_one_request(self) -> None:
+        # Idle upload keep-alives must not occupy workers for two minutes.
+        self.connection.settimeout(10)
+        super().handle_one_request()
+
+    def acquire_transfer_slot(self) -> bool:
+        if self.server.transfer_slots.acquire(blocking=False):
+            self.connection.settimeout(120)
+            return True
+        self.close_connection = True
+        self.send_response(HTTPStatus.SERVICE_UNAVAILABLE)
+        self.send_header("Retry-After", "1")
+        self.send_header("Content-Length", "0")
+        self.send_header("Connection", "close")
+        self.end_headers()
+        return False
 
     def end_headers(self) -> None:
         # Cloudflare and phone browsers keep ordinary asset connections idle.
@@ -170,6 +188,13 @@ class Handler(BaseHTTPRequestHandler):
             shutil.copyfileobj(source, self.wfile, 1024 * 1024)
 
     def stream_remote_media(self, path: Path) -> None:
+        if not self.acquire_transfer_slot(): return
+        try:
+            self.transfer_remote_media(path)
+        finally:
+            self.server.transfer_slots.release()
+
+    def transfer_remote_media(self, path: Path) -> None:
         """Serve one authorised local file with HTTP range support for native players."""
         size = path.stat().st_size
         start, end = 0, size - 1
@@ -796,6 +821,13 @@ class Handler(BaseHTTPRequestHandler):
             self.unexpected("POST", error)
             self.json(500, {"error": "The library had an unexpected problem"})
     def do_PATCH(self) -> None:
+        if not self.acquire_transfer_slot(): return
+        try:
+            self.upload_chunk()
+        finally:
+            self.server.transfer_slots.release()
+
+    def upload_chunk(self) -> None:
         try:
             if not self.require_same_origin(): return
             if not self.require(): return
@@ -818,7 +850,10 @@ class LibraryServer(ThreadingHTTPServer):
         super().__init__(address, Handler)
         self.library = library
         self.portal_app_script = portal_app_script
-        self.worker_slots = threading.BoundedSemaphore(12)
+        self.worker_slots = threading.BoundedSemaphore(24)
+        # Bulk transfers cannot consume the full pool needed by playback
+        # startup, heartbeats and checkpoint acknowledgements.
+        self.transfer_slots = threading.BoundedSemaphore(8)
         self.library.start_viewing_tracker()
 
     def process_request(self, request: Any, client_address: Any) -> None:

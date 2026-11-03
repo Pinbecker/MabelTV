@@ -1409,6 +1409,13 @@ void CoreTests::sqliteStateIsReadableAndWritableByNativeController()
     QVERIFY2(mabeltv::state::savePlayerSnapshot(databasePath, player, &error),
              qPrintable(error));
     QCOMPARE(mabeltv::state::player(databasePath), player);
+    QVERIFY2(mabeltv::state::saveMyTvResume(databasePath, QStringLiteral("film"), 1200, 7200, 1000, &error), qPrintable(error));
+    QVERIFY2(mabeltv::state::saveMyTvResume(databasePath, QStringLiteral("film"), 0, 0, 2000, &error), qPrintable(error));
+    const auto completed = mabeltv::state::player(databasePath);
+    QCOMPARE(completed.value("my_tv_positions").toObject().value("film").toDouble(), 0.0);
+    QCOMPARE(completed.value("my_tv_durations").toObject().value("film").toDouble(), 7200.0);
+    QCOMPARE(completed.value("my_tv_position_updated_utc_ms").toObject().value("film").toDouble(), 2000.0);
+    QCOMPARE(completed.value("channel_timelines"), player.value("channel_timelines"));
 
     const QString versionTwoConnectionName = QStringLiteral("state-test-v2");
     {

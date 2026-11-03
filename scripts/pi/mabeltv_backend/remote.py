@@ -59,7 +59,8 @@ class RemotePlaybackMixin:
         candidates: list[tuple[float, float]] = []
         try:
             candidates.append((
-                float(media_state.get("remote_last_watched", 0) or 0),
+                max(float(media_state.get("remote_last_watched", 0) or 0),
+                    float(media_state.get("progress_cleared_at", 0) or 0)),
                 float(media_state.get("remote_position", 0) or 0),
             ))
         except (TypeError, ValueError):
@@ -87,7 +88,8 @@ class RemotePlaybackMixin:
         # State written by an older player has no per-film timestamp. Preserve
         # the established furthest-position fallback until that player next
         # receives this additive state field.
-        position = max(timestamped, key=lambda item: item[0])[1] \
+        newest = max(timestamped, default=(0, 0), key=lambda item: item[0])
+        position = newest[1] \
             if timestamped and len(timestamped) == len(valid) \
             else max([item[1] for item in valid] or [0])
         duration = self.remote_resume_duration(library_id, media_state, player_state)
@@ -205,9 +207,7 @@ class RemotePlaybackMixin:
             if not isinstance(state, dict):
                 state = {}
             library_id = str(state.get("library_id") or "")
-            resume = self.normalise_resume_position(
-                float(state.get("remote_position", 0) or 0),
-                float(state.get("remote_duration", 0) or 0))
+            resume = self.remote_resume_position(library_id, state)
             parsed = self.my_tv_episode_identity(source)
             metadata = state.get("metadata", {})
             title = str(metadata.get("title") or parsed["title"]) \
@@ -603,9 +603,13 @@ class RemotePlaybackMixin:
             if browser_sidecars:
                 subtitle_url = f"/api/remote/subtitles?{base}"
         return {"ok": True, "title": title, "kind": kind,
+                "library_id": library_id, "server_time": time.time(),
                 "tv_name": self.tv_identity()[1],
                 "resume_enabled": bool(library_id) or "position" in payload,
                 "resume_position": resume,
+                "resume_updated": self.remote_last_watched(library_id,
+                    self.state_database.my_tv_progress_state(library_id))
+                    if library_id and kind in {"my_tv", "my-tv-series"} else 0,
                 "stream_url": f"/api/remote/media?{base}",
                 # The browser attaches this only after the video itself has
                 # reached canplay. That keeps iOS source negotiation isolated
@@ -797,6 +801,7 @@ class RemotePlaybackMixin:
                     state = {}
                 state["remote_position"] = 0.0
                 state["remote_last_watched"] = 0.0
+                state["progress_cleared_at"] = time.time()
                 state.pop("pre_watched_resume", None)
                 states["episodes"][relative] = state
                 self.write_my_tv_series_states(states)
@@ -811,6 +816,7 @@ class RemotePlaybackMixin:
                 state = {}
             state["remote_position"] = 0.0
             state["remote_last_watched"] = 0.0
+            state["progress_cleared_at"] = time.time()
             player_state = self.read_state("player")
             positions = player_state.get("my_tv_positions", {}) \
                 if isinstance(player_state, dict) else {}

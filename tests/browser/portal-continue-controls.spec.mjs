@@ -163,7 +163,7 @@ test('continued episodes offer View Series and direct progress removal', async (
     episodeOpen: document.querySelector('#myTvEpisodeSheet').open,
   }))).toEqual({
     request: { kind: 'my-tv-series', series: 'ludwig',
-      file: 'Season 1/Ludwig S01E03.mp4', position: 420 },
+      file: 'Season 1/Ludwig S01E03.mp4' },
     position: 0,
     episodeOpen: false,
   })

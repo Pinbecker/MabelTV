@@ -36,8 +36,7 @@ for (const destination of ['device', 'TV']) {
     const request = page.waitForRequest(request => new URL(request.url()).pathname === routePath)
     if (destination === 'TV') page.once('dialog', dialog => dialog.accept())
     await page.locator(destination === 'TV' ? '#watchFilmTv' : '#watchFilmHere').click()
-    expect((await request).postDataJSON()).toEqual({ kind: 'my_tv', file: 'Shrek.mp4',
-      ...(destination === 'TV' ? { position: 0 } : {}) })
+    expect((await request).postDataJSON()).toEqual({ kind: 'my_tv', file: 'Shrek.mp4' })
     if (destination === 'device') {
       await expect(page.locator('#iosWatchPlayer')).toBeVisible()
       const released = page.waitForResponse(response => new URL(response.url()).pathname === '/api/remote/release')

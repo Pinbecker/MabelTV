@@ -25,11 +25,12 @@ async function openDeviceEpisode(page) {
   await openPortal(page)
   await page.evaluate(async series => {
     library.my_tv_series = [series]
+    setOfflineProtectedAccess(true)
     library.remote_viewing = { allow_simultaneous: true }
     window.__episodeRequests = []
     const networkApi = window.api
     window.api = async (path, options) => {
-      if (path.startsWith('/api/remote/')) {
+      if (path.startsWith('/api/remote/') || path === '/api/my-tv/progress') {
         const body = JSON.parse(options?.body || '{}')
         window.__episodeRequests.push({ path, body })
         if (path === '/api/remote/start') {
@@ -42,7 +43,7 @@ async function openDeviceEpisode(page) {
       return networkApi(path, options)
     }
     const video = document.querySelector('#iosWatchVideo')
-    video.load = () => {}
+    video.load = () => { if (video._myTvProgress) video.onloadedmetadata?.() }
     video.play = () => Promise.resolve()
     video.pause = () => {}
     video.webkitEnterFullscreen = () => {}
@@ -118,8 +119,8 @@ test('My TV device episode completes, offers a cancellable handoff and advances 
   const requests = await page.evaluate(() => window.__episodeRequests)
   expect(requests.filter(value => value.path === '/api/remote/start').map(value => value.body.file))
     .toEqual(['Season 1/Episode 1.mp4', 'Season 1/Episode 2.mp4'])
-  expect(requests.find(value => value.path === '/api/remote/position').body)
-    .toMatchObject({ stream: 'episode-1', position: 1800, duration: 1800 })
+  expect(requests.find(value => value.path === '/api/my-tv/progress' && value.body.finished).body)
+    .toMatchObject({ source: { kind: 'my-tv-series', file: 'Season 1/Episode 1.mp4' }, position: 1800, duration: 1800, finished: true })
 })
 
 test('My TV device handoff saves an unfinished episode and Back cancels pending autoplay', async ({ page }) => {
@@ -129,7 +130,7 @@ test('My TV device handoff saves an unfinished episode and Back cancels pending 
   await page.locator('#iosWatchNextPlay').click()
   await expect(page.locator('#iosWatchTitle')).toHaveText('The second episode')
   expect(await page.evaluate(() => window.__episodeRequests.find(value =>
-    value.path === '/api/remote/position').body.position)).toBe(600)
+    value.path === '/api/my-tv/progress' && value.body.position === 600).body.position)).toBe(600)
   await page.evaluate(async () => {
     const video = document.querySelector('#iosWatchVideo')
     video.currentTime = 1800
@@ -171,7 +172,9 @@ test('My TV does not advance when saving completion fails or the next file needs
   await page.evaluate(async () => {
     const video = document.querySelector('#iosWatchVideo')
     const apiBeforeFailure = window.api
-    window.api = (path, options) => path === '/api/remote/position'
+    window.__openPlaybackDb = indexedDB.open.bind(indexedDB)
+    indexedDB.open = () => { throw new Error('Storage unavailable') }
+    window.api = (path, options) => path === '/api/my-tv/progress'
       ? Promise.reject(new Error('Progress could not be saved')) : apiBeforeFailure(path, options)
     video.currentTime = 1800
     await video.onended()
@@ -182,7 +185,8 @@ test('My TV does not advance when saving completion fails or the next file needs
     value.path === '/api/remote/start').length)).toBe(1)
   await page.evaluate(async () => {
     const video = document.querySelector('#iosWatchVideo')
-    window.api = async path => path === '/api/remote/position' ? { ok: true } : {}
+    indexedDB.open = window.__openPlaybackDb
+    window.api = async path => path === '/api/my-tv/progress' ? { ok: true } : {}
     video._myTvEpisode.ended = false
     video._myTvEpisode.next.browser_ready = false
     await video.onended()

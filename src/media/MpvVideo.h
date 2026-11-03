@@ -1,11 +1,13 @@
 #pragma once
 
 #include <QQuickFramebufferObject>
+#include <QHash>
 #include <QString>
 #include <QTimer>
 #include <QUrl>
 
 #include <cstdint>
+#include <atomic>
 #include <memory>
 
 class MpvRenderer;
@@ -61,6 +63,7 @@ public:
     Q_INVOKABLE void seekAbsolute(double seconds);
     [[nodiscard]] std::uint64_t renderedFrameCount() const;
     [[nodiscard]] bool available() const;
+    void requestRenderUpdate();
 
 signals:
     void sourceChanged();
@@ -76,6 +79,7 @@ signals:
     void videoAspectRatioChanged();
     void playbackGenerationChanged();
     void playbackFinished();
+    void playbackReady();
     void playbackStopped();
     void playbackFailed(const QString &message);
     void fatalPlayerFailure(const QString &message);
@@ -127,4 +131,7 @@ private:
     std::uint64_t m_playbackGeneration = 0;
     std::uint64_t m_dispatchedPlaybackGeneration = 0;
     QTimer m_stopTimeout;
+    std::atomic_bool m_renderUpdateQueued = false;
+    bool m_checkpointPending = false;
+    QHash<QString, double> m_playbackDiagnostics;
 };

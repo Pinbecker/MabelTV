@@ -401,7 +401,7 @@
       $('#myTvEpisodeTitle').textContent = episode.display_name
       $('#myTvEpisodeMeta').textContent = `S${String(episode.season).padStart(2, '0')} E${String(episode.episode).padStart(2, '0')}${episode.watched ? ' · Watched' : episode.remote_position > 0 ? ` · ${watchTimeLabel(episode.remote_position)} watched` : ''}`
       const source = { kind: 'my-tv-series', series: series.id,
-        file: episode.path, position: Number(episode.remote_position || 0) }
+        file: episode.path }
       bindSendToMabel($('#myTvEpisodeSheet .watch-destination-actions'), source, episode.display_name,
         () => openMyTvEpisodeSheet(current, episode, returnTo))
       $('#myTvEpisodeTv').onclick = () => {
@@ -418,7 +418,7 @@
         if (episode.browser_ready) {
           const mobile = isAppleMobilePlayer()
           if (mobile) closeMyTvEpisodeSheet(false)
-          openRemotePlayer(source, episode.remote_position,
+          openRemotePlayer(source, null,
             mobile ? () => openMyTvEpisodeSheet(current, episode, returnTo) : null)
         }
         else openInVlc(source, episode.display_name)

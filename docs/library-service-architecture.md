@@ -27,6 +27,9 @@ secondary service objects.
 - `repositories/viewing.py`: the targeted relational repository for stable MabelTV
   viewing identities and session CRUD; it composes into `StateDatabase`.
 - `repositories/mabel_queue.py`: the independent ordered Mabel TV playback queue.
+- `playback_progress.py` and `repositories/playback.py`: authenticated My TV
+  checkpoints independent of expiring stream tokens, with ordered, targeted
+  SQLite updates and completion/clear tombstones.
 - `auth.py`: first-time setup, owner identity, PIN verification, login limits
   and session lifetime.
 - `media.py`: read models for channels, programmes, My TV media and safe media

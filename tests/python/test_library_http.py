@@ -4,6 +4,35 @@ from tests.python.library_test_support import *
 
 
 class LibraryHttpTests(unittest.TestCase):
+    def test_progress_authentication_and_control_capacity_during_bulk_transfers(self):
+        self.request("/api/setup", {"setup_code": "135790", "pin": "8642",
+                                   "channels": mabeltv_library.DEFAULT_CHANNELS})
+        self.cookies.clear()
+        self.assertEqual(self.request("/api/my-tv/progress", {})[0], 401)
+        self.request("/api/login", {"pin": "8642"})
+        self.assertEqual(self.request("/api/my-tv/progress", {}, origin="https://untrusted.invalid")[0], 403)
+        library = self.fixture.library
+        (library.my_tv_root / "Film.mp4").write_bytes(b"film")
+        item = library.my_tv_library()[0]
+        library.write_state("player", {"standby": True})
+        source = {"kind": "my_tv", "file": "Film.mp4", "library_id": item["library_id"]}
+        for _ in range(8): self.assertTrue(self.server.transfer_slots.acquire(False))
+        try:
+            status, started = self.request("/api/remote/start", source)
+            self.assertEqual(status, 200)
+            status, saved = self.request("/api/my-tv/progress", {
+                "source": source, "writer": "http-test-session-123", "sequence": 1,
+                "observed_at": time.time(), "position": 1234, "duration": 7200})
+            self.assertEqual(status, 200)
+            self.assertTrue(saved["applied"])
+            with self.assertRaises(urllib.error.HTTPError) as blocked:
+                self.opener.open(self.base + started["stream_url"], timeout=5)
+            self.assertEqual(blocked.exception.code, 503)
+            self.assertEqual(blocked.exception.headers["Retry-After"], "1")
+            blocked.exception.close()
+        finally:
+            for _ in range(8): self.server.transfer_slots.release()
+
     def test_studio_routes_require_owner_auth_and_reject_cross_origin_mutation(self) -> None:
         self.request("/api/setup", {"setup_code": "135790", "pin": "8642", "channels": mabeltv_library.DEFAULT_CHANNELS})
         self.cookies.clear()

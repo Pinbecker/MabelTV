@@ -4,6 +4,15 @@ The native television remains one Qt 6 application. This document describes
 the internal boundaries used to keep that application maintainable without
 changing its appearance or remote-control behaviour.
 
+My TV hides its library surface for the entire playback lifetime. Selection
+resolves fresh resume state through the native Library endpoint. Pause, seek
+completion and periodic checkpoints use targeted `my_tv_resume` writes; zero
+positions retain timestamps so completed titles cannot revive an older bookmark.
+The libmpv renderer services every update notification, renders only new frames
+or a resized target, and coalesces queued GUI updates. Thirty-second diagnostic
+samples report render rate, decoder/display drops and audio/video timing without
+blocking the decoder; display geometry and refresh are logged at startup.
+
 ## QML composition
 
 `Main.qml` is the application coordinator. It owns cross-cutting state such as

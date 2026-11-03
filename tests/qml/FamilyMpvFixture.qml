@@ -9,8 +9,13 @@ Item {
     property string aspectMode: "fit"
     property real playbackPosition: 0
     property real playbackDuration: 300
+    property bool subtitlesAvailable: false
+    property bool subtitlesVisible: false
+    property bool subtitleDefaultOn: false
     property int starts: 0
     signal playbackFinished()
+    signal playbackStopped()
+    signal playbackReady()
     signal playbackFailed(string message)
     function play(value, position) { source = value; playbackPosition = position; starts++; paused = false; status = "Playing" }
     function stop() { status = "Idle"; paused = false }

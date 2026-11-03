@@ -71,8 +71,9 @@ test('version-one downloads survive the PWA database and worker upgrade', async 
   })
 
   expect(result.ids).toContain('legacy-family')
-  expect(result.databaseState.version).toBe(2)
+  expect(result.databaseState.version).toBe(3)
   expect(result.databaseState.stores).toContain('security')
+  expect(result.databaseState.stores).toContain('playback')
 })
 
 
@@ -84,7 +85,7 @@ test('the real worker serves family media and PIN-locks MyTv media', async ({ pa
 
   const locked = await page.evaluate(async () => {
     await new Promise((resolve, reject) => {
-      const request = indexedDB.open('mabeltv-offline-v1', 2)
+      const request = indexedDB.open('mabeltv-offline-v1', window.MabelOfflineSchema.version)
       request.onerror = () => reject(request.error)
       request.onsuccess = () => {
         const database = request.result

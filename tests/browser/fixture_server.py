@@ -13,32 +13,23 @@ from pathlib import Path
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-FIXTURE_QUEUE_PATH = Path(__file__).with_name("fixture_mabel_queue.py")
-FIXTURE_QUEUE_SPEC = importlib.util.spec_from_file_location(
-    "mabeltv_browser_queue_fixture", FIXTURE_QUEUE_PATH)
-assert FIXTURE_QUEUE_SPEC and FIXTURE_QUEUE_SPEC.loader
-fixture_mabel_queue = importlib.util.module_from_spec(FIXTURE_QUEUE_SPEC)
-FIXTURE_QUEUE_SPEC.loader.exec_module(fixture_mabel_queue)
-MabelQueueFixtureMixin = fixture_mabel_queue.MabelQueueFixtureMixin
+def load_fixture(name, filename):
+    spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(filename))
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+MabelQueueFixtureMixin = load_fixture("mabeltv_browser_queue_fixture", "fixture_mabel_queue.py").MabelQueueFixtureMixin
 MODULE_PATH = PROJECT_ROOT / "scripts" / "pi" / "mabeltv-library.py"
 SPEC = importlib.util.spec_from_file_location("mabeltv_browser_library", MODULE_PATH)
 assert SPEC and SPEC.loader
 mabeltv_library = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(mabeltv_library)
 from mabeltv_backend.compression import compression_choices
-FIXTURE_INSIGHTS_PATH = Path(__file__).with_name("fixture_my_tv_insights.py")
-FIXTURE_INSIGHTS_SPEC = importlib.util.spec_from_file_location(
-    "mabeltv_browser_my_tv_insights", FIXTURE_INSIGHTS_PATH)
-assert FIXTURE_INSIGHTS_SPEC and FIXTURE_INSIGHTS_SPEC.loader
-fixture_my_tv_insights = importlib.util.module_from_spec(FIXTURE_INSIGHTS_SPEC)
-FIXTURE_INSIGHTS_SPEC.loader.exec_module(fixture_my_tv_insights)
-my_tv_insights_fixture = fixture_my_tv_insights.my_tv_insights_fixture
-FIXTURE_DATA_PATH = Path(__file__).with_name("fixture_data.py")
-FIXTURE_DATA_SPEC = importlib.util.spec_from_file_location(
-    "mabeltv_browser_fixture_data", FIXTURE_DATA_PATH)
-assert FIXTURE_DATA_SPEC and FIXTURE_DATA_SPEC.loader
-fixture_data = importlib.util.module_from_spec(FIXTURE_DATA_SPEC)
-FIXTURE_DATA_SPEC.loader.exec_module(fixture_data)
+my_tv_insights_fixture = load_fixture("mabeltv_browser_my_tv_insights", "fixture_my_tv_insights.py").my_tv_insights_fixture
+fixture_data = load_fixture("mabeltv_browser_fixture_data", "fixture_data.py")
 LIBRARY_PAYLOAD = fixture_data.LIBRARY_PAYLOAD
 LIVE_PAYLOAD = fixture_data.LIVE_PAYLOAD
 
@@ -52,6 +43,9 @@ class FixtureLibrary(MabelQueueFixtureMixin):
 
     def start_viewing_tracker(self) -> None:
         pass
+
+    def my_tv_progress(self, payload):
+        return {"ok": True, "applied": True}
 
     def family_media(self):
         return {"assets": [], "stories": [], "memory_settings": []}

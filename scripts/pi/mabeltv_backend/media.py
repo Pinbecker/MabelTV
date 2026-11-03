@@ -557,6 +557,7 @@ class MediaCatalogueMixin:
                 "title": title or f"Episode {episode}"}
 
     def my_tv_series_library(self) -> list[dict[str, Any]]:
+        player = self.read_state("player")
         with self.config_lock:
             states = self.my_tv_series_states()
             changed = False
@@ -591,9 +592,7 @@ class MediaCatalogueMixin:
                     metadata = episode_state.get("metadata", {})
                     if not isinstance(metadata, dict):
                         metadata = {}
-                    position = self.normalise_resume_position(
-                        float(episode_state.get("remote_position", 0) or 0),
-                        float(episode_state.get("remote_duration", 0) or 0))
+                    position = self.remote_resume_position(episode_state["library_id"], episode_state, player)
                     episodes.append({
                         "path": relative, "name": item.name,
                         "added_at": float(episode_state.get("added_at") or item.stat().st_mtime),
@@ -609,8 +608,8 @@ class MediaCatalogueMixin:
                         "watched": episode_state.get("watched") is True,
                         "watched_updated": float(episode_state.get("watched_updated", 0) or 0),
                         "remote_position": position,
-                        "remote_duration": float(episode_state.get("remote_duration", 0) or 0),
-                        "remote_last_watched": float(episode_state.get("remote_last_watched", 0) or 0),
+                        "remote_duration": self.remote_resume_duration(episode_state["library_id"], episode_state, player),
+                        "remote_last_watched": self.remote_last_watched(episode_state["library_id"], episode_state, player),
                     })
                 episodes.sort(key=lambda value: (
                     value["season"], value["episode"], value["display_name"].casefold()))

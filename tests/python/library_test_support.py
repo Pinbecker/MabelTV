@@ -45,6 +45,7 @@ LIBRARY_SCRIPTS = (
     "my-tv-insights.js", "device-status.js", "channels.js",
 )
 PLAYBACK_SCRIPTS = (
+    "progress.js", "ios-presentation.js", "stream-recovery.js",
     "players.js", "film-library.js", "my-tv-series.js", "film-catalogue.js",
     "programmes.js", "mabel-queue.js", "downloads.js", "view.js",
 )
