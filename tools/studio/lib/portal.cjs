@@ -148,6 +148,7 @@ class Portal {
     }
     const body = { file_name: job.publishName || path.basename(file), size: stats.size, source_id: sourceId };
     if (destination.compression) body.compression = destination.compression;
+    if (destination.kind === 'film' && destination.folder) body.folder = destination.folder;
     if (destination.kind === 'mabel') body.channel = destination.channel;
     if (destination.kind === 'series') { body.series = destination.series; body.season = destination.season; }
     if (!routes[destination.kind]) throw new Error('Choose a library destination.');

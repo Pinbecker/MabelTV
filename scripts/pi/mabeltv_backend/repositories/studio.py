@@ -15,6 +15,27 @@ FINISHED = {"complete", "cancelled", "failed", "paused"}
 
 
 class StudioRepositoryMixin:
+    def studio_assign_cloud_collection(self, keys, name, create=False):
+        """Cloud-only membership; never mutate the Pi's media directories."""
+        import hashlib
+        with self.transaction() as db:
+            collections = self._studio_records(db, "cloudcollection")
+            existing = next((item for item in collections if item["name"].casefold() == name.casefold()), None)
+            if create and existing:
+                raise ValueError("That iCloud collection already exists")
+            if name:
+                if existing:
+                    name = existing["name"]
+                elif len(collections) >= 200:
+                    raise ValueError("Your iCloud library has reached 200 collections")
+                else:
+                    self._studio_put(db, "cloudcollection", {"id": hashlib.sha256(name.casefold().encode()).hexdigest(),
+                        "name": name, "updated": time.time()})
+            for key in keys:
+                self._studio_put(db, "cloudmembership", {"id": hashlib.sha256(key.encode()).hexdigest(),
+                    "key": key, "collection": name, "updated": time.time()})
+        return name
+
     def studio_upload_notice(self, upload_id):
         db = self.connect()
         try:
@@ -257,6 +278,9 @@ class StudioRepositoryMixin:
                     if item["source"].get("type") == "torrent" and "torrent" not in (capabilities or []):
                         continue
                     if item.get("destination", {}).get("optimiseCloud") and "cloud-optimise" not in (capabilities or []):
+                        continue
+                    if (item.get("destination", {}).get("collection") and item["destination"]["kind"] in {"film", "series"}
+                            and "library-collections" not in (capabilities or [])):
                         continue
                     if item.get("destination", {}).get("compression") and "compression-presets" not in (capabilities or []):
                         continue

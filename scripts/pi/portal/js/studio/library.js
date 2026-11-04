@@ -29,6 +29,8 @@ function studioSetTab(tab, { historyEntry = false } = {}) {
   if (historyEntry) history.pushState({ primaryView: 'my-tv-studio' }, '', '#my-tv-studio/' + studioState.tab)
   if (studioState.tab === 'cloud' && !studioState.cloud) void studioLoadCloud().catch(studioFailure)
   if (studioState.tab === 'activity') renderStudioJobs()
+  if (studioState.tab === 'iplayer' && !$('#studioIplayerGrid').children.length) $('#studioIplayerGrid').append(studioEmpty('Search BBC iPlayer', 'Find a programme or paste an episode link.'))
+  if (studioState.tab === 'torrents' && !$('#studioTorrentResults').children.length) $('#studioTorrentResults').append(studioEmpty('Find a film or series', 'Search by title, then choose your files.'))
 }
 async function loadStudio() {
   studioSetTab(studioState.tab)
@@ -43,12 +45,13 @@ async function studioTick() {
     studioState.status = status
     const online = status.workers.find(worker => worker.online)
     $('#studioWorkerDot').classList.toggle('online', Boolean(online))
-    $('#studioWorkerState').textContent = online ? `${online.name} is connected` : 'Waiting for your laptop'
+    $('#studioWorkerState').textContent = online ? 'Connected' : 'Studio offline'
+    $('#studioWorkerState').parentElement.classList.toggle('is-online', Boolean(online))
     $('#studioActiveCount').textContent = status.jobs.filter(job => ['queued', 'active'].includes(job.status)).length || ''
     renderStudioConnections()
     studioCloudOperationsStatus(status.cloudOperations)
     if (studioState.tab === 'activity') renderStudioJobs()
-    if (studioState.tab === 'cloud' && (status.cloud.checked !== studioLastCloudScan || status.cloud.metadataRevision !== studioState.cloud?.metadataRevision)) await studioLoadCloud()
+    if (studioState.tab === 'cloud' && (status.cloud.checked !== studioLastCloudScan || status.cloud.metadataRevision !== studioState.cloud?.metadataRevision || status.cloud.collectionRevision !== studioState.cloud?.collectionRevision)) await studioLoadCloud()
     if (studioState.request && ['queued', 'active'].includes(studioState.request.status)) await studioPollSearch()
     if (studioState.torrentRequest && ['queued', 'active'].includes(studioState.torrentRequest.status)) await studioPollTorrents()
     $('#studioError').classList.add('hidden')
@@ -57,6 +60,7 @@ async function studioTick() {
 async function studioLoadCloud({ more = false } = {}) {
   const query = new URLSearchParams({ q: $('#studioCloudSearch').value, category: $('#studioCloudCategory').value,
     sort: $('#studioCloudSort').value, offset: more ? studioState.items.length : 0 })
+  if ($('#studioCloudCollection').value !== '*') query.set('collection', $('#studioCloudCollection').value)
   const response = await api('/api/studio/cloud?' + query)
   studioState.cloud = response
   studioLastCloudScan = response.checked
@@ -85,12 +89,14 @@ async function studioPollSearch() {
 }
 async function studioApplySearch(request) {
   if (request.status === 'failed') {
-    $('#studioIplayerStatus').textContent = request.error || 'BBC search could not finish. Try again.'
+    $('#studioIplayerStatus').textContent = ''
+    $('#studioIplayerGrid').replaceChildren(studioEmpty('Search unavailable', request.error || 'Try again.'))
     return
   }
   if (request.status !== 'complete') {
     const online = studioState.status?.workers.some(w => w.online)
-    $('#studioIplayerStatus').textContent = online ? 'Searching BBC iPlayer…' : 'Search queued. Results will appear here.'
+    $('#studioIplayerStatus').textContent = ''
+    $('#studioIplayerGrid').replaceChildren(studioEmpty(online ? 'Finding programmes…' : 'Search queued', online ? '' : 'Waiting for Studio to connect.', 'signal-search', online))
     return
   }
   studioState.programmes = request.result?.items || []
@@ -101,13 +107,13 @@ async function studioApplySearch(request) {
     if (!groups.has(key)) groups.set(key, [])
     groups.get(key).push(item)
   }
-  $('#studioIplayerStatus').textContent = `${studioState.programmes.length} episodes · ${studioLastChecked(request.updated)}${request.result?.truncated ? ' · Refine your search for more results' : ''}`
+  $('#studioIplayerStatus').textContent = `${groups.size} programme${groups.size === 1 ? '' : 's'}${request.result?.truncated ? ' — refine your search for more' : ''}`
   const root = $('#studioIplayerGrid'); root.replaceChildren()
-  if (!groups.size) root.append(portalEmptyState({ title: 'No programmes found', message: 'Try another name or paste a BBC episode link.' }))
+  if (!groups.size) root.append(studioEmpty('No programmes found', 'Try another name or paste an episode link.'))
   for (const episodes of groups.values()) {
     const item = episodes[0], button = document.createElement('button')
     button.type = 'button'; button.className = 'studio-programme'
-    button.innerHTML = `<span class="studio-programme-art">${studioArtwork(item)}</span><strong>${escapeHtml(item.title)}</strong><small>${item.series ? `Series ${item.series} · ` : ''}${episodes.length} episode${episodes.length === 1 ? '' : 's'} · ${escapeHtml(item.channel)}</small><p>${escapeHtml(item.synopsis)}</p>`
+    button.innerHTML = `<span class="studio-programme-art">${studioArtwork(item)}<span class="studio-chip">${episodes.length} episode${episodes.length === 1 ? '' : 's'}</span></span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.channel)}${item.series ? ` · Series ${item.series}` : ''}</small>`
     button.onclick = () => openStudioEpisodes(episodes)
     root.append(button)
   }
@@ -123,8 +129,8 @@ function openStudioEpisodes(episodes, source = 'iplayer') {
   studioState.episodeSelection.clear()
   const first = episodes[0]
   $('#studioEpisodesTitle').textContent = first.title
-  $('#studioEpisodeHero').innerHTML = studioArtwork(first) + `<p>${escapeHtml(first.synopsis)}</p>`
-  $('#studioEpisodeCount').textContent = `${episodes.length} episodes${first.series ? ` · Series ${first.series}` : ''}`
+  $('#studioEpisodeHero').innerHTML = studioArtwork(first)
+  $('#studioEpisodeCount').textContent = `${episodes.length} episodes`
   $('#studioEpisodeSource').textContent = source === 'cloud' ? 'iCloud library' : 'BBC iPlayer'
   const select = $('#studioEpisodeSeason'); select.replaceChildren()
   const seasons = [...new Set(episodes.map(i => i.series ?? 1))].sort((a,b) => a-b)
@@ -140,7 +146,7 @@ function renderStudioEpisodes() {
   for (const item of studioState.episodes.filter(i => selectedSeason === 'all' || String(i.series ?? 1) === selectedSeason)) {
     const identity = item.id || item.pid
     const label = document.createElement('label'); label.className = 'studio-episode'
-    label.innerHTML = `<input type="checkbox" value="${escapeHtml(identity)}"><span><strong>${escapeHtml(item.episode || item.title)}</strong><small>${item.episodeNumber ? `Episode ${item.episodeNumber} · ` : ''}${item.duration ? `${Math.round(item.duration / 60)} min` : item.bytes ? studioBytes(item.bytes) : escapeHtml(item.channel)}${studioState.presence.has(item.pid) ? ' · Already on your TV' : ''}</small><p>${escapeHtml(item.synopsis || '')}</p></span>`
+    label.innerHTML = `<input type="checkbox" value="${escapeHtml(identity)}" aria-label="Select ${escapeHtml(item.episode || item.title)}"><span><strong>${escapeHtml(item.episode || item.title)}</strong>${studioState.presence.has(item.pid) ? '<small><span class="studio-chip good">Already on your TV</span></small>' : ''}</span><small>${item.duration ? `${Math.round(item.duration / 60)} min` : item.bytes ? studioBytes(item.bytes) : escapeHtml(item.channel || '')}</small>`
     label.querySelector('input').checked = studioState.episodeSelection.has(identity)
     label.querySelector('input').onchange = event => {
       if (event.target.checked) studioState.episodeSelection.set(identity, item)
@@ -154,12 +160,19 @@ function renderStudioEpisodes() {
 function studioEpisodeCount() {
   $('#studioEpisodeSelected').textContent = `${studioState.episodeSelection.size} selected`
   $('#studioEpisodesContinue').disabled = !studioState.episodeSelection.size
+  const inputs = [...$('#studioEpisodes').querySelectorAll('input')]
+  $('#studioEpisodesAll').textContent = inputs.length && inputs.every(input => input.checked) ? 'Deselect all' : 'Select all'
 }
 function renderStudioConnections() {
   const state = studioState.status
   if (!state) return
-  $('#studioCloudConnectionState').textContent = state.cloud.error || (state.cloud.configured ? 'Connected' : 'Not connected yet')
-  $('#studioCloudConnectionChecked').textContent = studioLastChecked(state.cloud.checked)
+  const online = state.workers.find(worker => worker.online)
+  $('#studioLaptopName').textContent = online?.name || 'No connected device'
+  $('#studioLaptopConnection').textContent = online ? 'Connected' : 'Offline'
+  $('#studioLaptopConnection').classList.toggle('good', Boolean(online))
+  $('#studioCloudConnectionState').textContent = state.cloud.error ? 'Needs attention' : state.cloud.configured ? 'Connected' : 'Not connected'
+  $('#studioCloudConnectionState').classList.toggle('good', state.cloud.configured && !state.cloud.error)
+  $('#studioCloudConnectionChecked').textContent = state.cloud.error || studioLastChecked(state.cloud.checked)
   $('#studioCloudConnect').textContent = state.cloud.configured ? 'Reconnect' : 'Connect'
 }
 
@@ -167,6 +180,7 @@ $$('[data-studio-tab]').forEach(button => button.onclick = () => studioSetTab(bu
 $('#studioCloudSearch').oninput = () => { clearTimeout(studioCloudTimer); studioCloudTimer = setTimeout(() => void studioLoadCloud().catch(studioFailure), 250) }
 $('#studioCloudCategory').onchange = () => { studioState.selected.clear(); void studioLoadCloud().catch(studioFailure) }
 $('#studioCloudSort').onchange = () => { studioState.selected.clear(); void studioLoadCloud().catch(studioFailure) }
+$('#studioCloudCollection').onchange = () => { studioState.selected.clear(); void studioLoadCloud().catch(studioFailure) }
 $('#studioCloudMore').onclick = () => void studioLoadCloud({ more: true }).catch(studioFailure)
 $('#studioCloudSelect').onclick = () => { studioState.selecting = !studioState.selecting; if (!studioState.selecting) studioState.selected.clear(); renderStudioCloud() }
 $('#studioCloudContinue').onclick = () => void studioOpenCloudTitles([...studioState.selected.values()]).catch(studioFailure)

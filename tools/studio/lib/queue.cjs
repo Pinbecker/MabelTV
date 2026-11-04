@@ -16,7 +16,8 @@ function destinationValid(value) {
   if (!value || !['mabel', 'film', 'series', 'local'].includes(value.kind)) throw new Error('Choose where this media should go.');
   if (value.kind === 'mabel' && (!Number.isInteger(value.channel) || value.channel < 1)) throw new Error('Choose a Mabel TV channel.');
   if (value.kind === 'series' && (!/^[a-f0-9]{32}$/.test(value.series) || !Number.isInteger(value.season) || value.season < 0 || value.season > 99)) throw new Error('Choose a My TV show and series number.');
-  return { kind: value.kind, channel: value.channel, series: value.series, season: value.season,
+  if (value.kind === 'film' && value.folder !== undefined && (typeof value.folder !== 'string' || value.folder.length > 80 || /[/\\\x00-\x1f]/.test(value.folder) || ['.', '..'].includes(value.folder))) throw new Error('Choose a My TV collection.');
+  return { ...(value.kind === 'film' && value.folder ? { folder: value.folder } : {}), kind: value.kind, channel: value.channel, series: value.series, season: value.season,
     compression: compressionProfile(value.compression).id,
     ...(value.channelFolder ? { channelFolder: String(value.channelFolder).slice(0, 180) } : {}),
     label: String(value.label || 'Prepared locally').slice(0, 180), profile: value.profile === 'mabel' ? 'mabel' : 'mytv', downloadOnly: value.kind === 'local' && value.downloadOnly === true };

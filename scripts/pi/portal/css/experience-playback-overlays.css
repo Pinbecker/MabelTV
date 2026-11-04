@@ -578,6 +578,9 @@ body.portal-experience .my-tv-film-collection-controls {
   margin-top: 7px;
 }
 
+body.portal-experience .my-tv-film-collection-controls.hidden { display: none; }
+
+body.portal-experience .my-tv-film-collection-controls input,
 body.portal-experience .my-tv-film-collection-controls select,
 body.portal-experience .my-tv-film-collection-controls button {
   min-width: 0;
@@ -587,6 +590,7 @@ body.portal-experience .my-tv-film-collection-controls button {
   border-radius: 8px;
 }
 
+body.portal-experience .my-tv-film-collection-controls input,
 body.portal-experience .my-tv-film-collection-controls select {
   width: 100%;
   background: var(--experience-soft);

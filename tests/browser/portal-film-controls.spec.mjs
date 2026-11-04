@@ -62,38 +62,17 @@ for (const theme of ['light', 'dark']) {
     await expect(page.locator('#iosWatchPlayer')).toBeHidden()
   })
 
-  test(`${theme} collections reuse full width action rows`, async ({ page }, testInfo) => {
+  test(`${theme} collections are selected from My Library and created in film settings`, async ({ page }, testInfo) => {
     await openPortal(page, theme)
     await filmFixture(page)
-    await page.locator('#watchManageMyTv').click()
-    await expect(page.locator('#myTvCollectionSheet')).toBeVisible()
-    const collection = page.locator('#myTvFolderTabs button').filter({ hasText: 'The Lord of the Rings extended editions' })
-    await collection.click()
-    await expect(collection).toHaveAttribute('aria-pressed', 'true')
-    await expect(page.locator('#myTvRenameFolder')).toBeEnabled()
-    await expect(page.locator('#myTvDeleteFolder')).toBeDisabled()
-    const rows = await page.locator('#myTvFolderTabs button').evaluateAll(buttons => buttons.map(button => {
-      const label = button.querySelector('strong')
-      return { width: button.getBoundingClientRect().width, parent: button.parentElement.clientWidth,
-        labelWidth: label.clientWidth, labelScroll: label.scrollWidth,
-        icon: button.querySelector('use').getAttribute('href') }
-    }))
-    for (const row of rows) {
-      expect(row.width).toBeGreaterThanOrEqual(row.parent - 1)
-      expect(row.labelScroll).toBeLessThanOrEqual(row.labelWidth + 1)
-      expect(row.icon).toBe('/portal/icons.svg#folder')
-    }
-    await page.screenshot({ path: testInfo.outputPath('collections.png') })
-    await page.locator('#myTvFolderTabs button').filter({ hasText: /^Empty/ }).click()
-    await expect(page.locator('#myTvDeleteFolder')).toBeEnabled()
-    await page.locator('#myTvFolderTabs button').filter({ hasText: 'All films' }).click()
-    await expect(page.locator('#myTvFolderSelectionActions')).toBeHidden()
-    const input = await page.locator('#myTvFolderName').boundingBox()
-    const create = await page.locator('#myTvCreateFolder').boundingBox()
-    expect(input.y).toBeCloseTo(create.y, 0)
-    expect(input.x + input.width).toBeLessThan(create.x)
-    await page.locator('#myTvCollectionClose').click()
-    await expect(page.locator('#myTvCollectionSheet')).toBeHidden()
+    await page.locator('#myTvMyLibrary').click()
+    await page.getByRole('combobox', { name: 'Library collection', exact: true }).selectOption('Marvel')
+    await expect(page.locator('#myLibraryGrid > button')).toHaveCount(2)
+    await page.evaluate(() => openMyTvFilmSheet(library.my_tv_library[0]))
+    await page.locator('#myTvFilmFolder').selectOption('__new__')
+    await expect(page.locator('#myTvFilmCollectionName')).toBeVisible()
+    await expect(page.locator('#myTvFilmMove')).toBeDisabled()
+    await page.screenshot({ path: testInfo.outputPath('collection-from-film-settings.png') })
   })
 
   test(`${theme} My TV keeps compact search and library controls`, async ({ page }, testInfo) => {
@@ -110,7 +89,7 @@ for (const theme of ['light', 'dark']) {
     expect(geometry.search).toBeLessThanOrEqual(50)
     expect(geometry.viewing).toBeLessThanOrEqual(56)
     expect(geometry.toolMax).toBeLessThanOrEqual(48)
-    await expect(page.locator('#watchManageMyTv')).toBeVisible()
+    await expect(page.locator('#myTvMyLibrary')).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath('my-tv-home-controls.png') })
   })
 

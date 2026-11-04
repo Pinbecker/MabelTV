@@ -13,6 +13,7 @@ function studioConfirmCloudDelete() {
   }
   $('#studioCloudDeleteError').classList.add('hidden')
   closeLibrarySheet($('#studioDestinationSheet'), false)
+  closeLibrarySheet($('#studioActionsSheet'), false)
   openLibrarySheet($('#studioCloudDeleteSheet'))
 }
 function studioCancelCloudDelete() {

@@ -176,11 +176,11 @@ test('Mabel TV remote confirms before restarting the programme', async ({ page }
   await installLiveFixture(page, { ...liveState, available: true, standby: false })
   await page.getByRole('button', { name: 'Remote', exact: true }).click()
   const restart = page.locator('#view-live [data-live-command="restart-programme"]')
-  page.once('dialog', dialog => dialog.dismiss())
   await restart.click()
+  await page.locator('#portalConfirmationCancel').click()
   expect(await page.evaluate(() => window.__liveCommand)).toBeUndefined()
-  page.once('dialog', dialog => dialog.accept())
   await restart.click()
+  await page.locator('#portalConfirmationAccept').click()
   await expect.poll(() => page.evaluate(() => window.__liveCommand)).toBe('restart-programme')
 })
 

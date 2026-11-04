@@ -1,20 +1,15 @@
 <section id="view-my-tv-library" class="view"><div class="page my-tv-viewing-page my-library-page">
   <header class="screen-title my-tv-viewing-title my-library-title">
     <div><button id="myLibraryBack" type="button" class="view-back"><svg class="icon"><use href="/portal/icons.svg#signal-arrow-left"/></svg><span>My TV</span></button><p class="eyebrow">Your films and series on this Pi</p><h1>My Library</h1></div>
-    <div class="my-tv-viewing-shortcuts"><button type="button" data-go="my-tv-studio" class="my-tv-viewing-explore"><svg class="icon"><use href="/portal/icons.svg#signal-folder"/></svg><span>iCloud</span></button><button id="watchManageMyTv" type="button" class="my-tv-viewing-explore" aria-label="Manage library folders"><svg class="icon"><use href="/portal/icons.svg#folder"/></svg><span>Folders</span></button></div>
+    <div class="my-tv-viewing-shortcuts"><button type="button" data-go="my-tv-studio" class="my-tv-viewing-explore"><svg class="icon"><use href="/portal/icons.svg#signal-folder"/></svg><span>iCloud</span></button></div>
   </header>
-  <nav class="my-tv-viewing-tabs my-library-switch" aria-label="Library display">
-    <button type="button" data-library-mode="titles" aria-pressed="true">Titles</button>
-    <button type="button" data-library-mode="collections" aria-pressed="false">Collections</button>
-  </nav>
+
   <label class="portal-search my-tv-viewing-search"><svg class="icon"><use href="/portal/icons.svg#signal-search"/></svg><input id="myLibrarySearch" type="search" autocomplete="off" placeholder="Search My Library" aria-label="Search My Library"><button id="myLibrarySearchClear" type="button" class="hidden" aria-label="Clear library search"><svg class="icon"><use href="/portal/icons.svg#signal-x"/></svg></button></label>
   <div class="my-tv-viewing-tools my-library-filters">
     <label class="my-tv-viewing-select"><span class="sr-only">Show</span><select id="myLibraryType" aria-label="Library type"><option value="all">All titles</option><option value="movie">Films</option><option value="tv">Series</option></select></label>
     <label class="my-tv-viewing-select"><span class="sr-only">Sort</span><select id="myLibrarySort" aria-label="Sort library"><option value="title">A–Z</option><option value="recent">Recently added</option><option value="newest">Newest release</option><option value="oldest">Oldest release</option></select></label>
-    <label class="my-tv-viewing-select"><span class="sr-only">Genre</span><select id="myLibraryGenre" aria-label="Library genre"><option value="">All genres</option></select></label>
+    <label class="my-tv-viewing-select"><span class="sr-only">Collections</span><select id="myLibraryGenre" aria-label="Library collection"><option value="*">All collections</option></select></label>
   </div>
-  <button id="myLibraryMetadataRetry" type="button" class="my-library-retry hidden">Retry collection details</button>
-  <p id="myLibraryMetadataStatus" class="my-library-status hidden" role="status"></p>
   <section class="my-tv-viewing-list-wrap"><header class="watch-library-head"><div><p class="watch-section-kicker">On your Pi</p><h2 id="myLibraryHeading">All titles</h2></div><span id="myLibraryCount" class="watch-library-count" aria-live="polite"></span></header><div id="myLibraryGrid" class="watch-poster-grid my-library-grid"></div></section>
   <footer>My Library · On your Pi</footer>
 </div></section>

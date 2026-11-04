@@ -99,7 +99,7 @@ test('season packs stay grouped and selection preserves specials and selected se
 
 test('a search waits safely offline and produces results after Studio reconnects', async ({ page }) => {
   const { requests } = await studio(page, { offline: true })
-  await expect(page.locator('#studioTorrentStatus')).toContainText('Search queued')
+  await expect(page.locator('#studioTorrentResults')).toContainText('Search queued')
   await expect(page.locator('.studio-torrent-result')).toHaveCount(0)
   requests.get('search').status = 'complete'
   await expect(page.locator('.studio-torrent-result')).toHaveCount(1)

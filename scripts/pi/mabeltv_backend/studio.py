@@ -95,6 +95,15 @@ class StudioMixin:
             destination.update(series=identity, name=name, season=season, label=name)
         else:
             destination["label"] = "Optimise iCloud version" if destination.get("optimiseCloud") else {"film": "My TV films", "icloud": "iCloud"}[destination["kind"]]
+        if "collection" in value and destination["kind"] != "mabel":
+            collection = value["collection"]
+            if not isinstance(collection, str) or len(collection) > 80:
+                raise ValueError("Choose an existing collection")
+            names = (self.studio_cloud_catalogue({})["collections"] if destination["kind"] == "icloud"
+                     else self.my_tv_folders())
+            if collection and collection not in names:
+                raise ValueError("Choose an existing collection in this library")
+            destination["collection"] = collection
         return destination
 
     def studio_match(self, match):
@@ -188,7 +197,7 @@ class StudioMixin:
         if not isinstance(responses, list) or len(json.dumps(responses)) > 2 * 1024 * 1024:
             raise ValueError("Invalid Studio search response")
         capabilities = payload.get("capabilities", [])
-        if not isinstance(capabilities, list) or len(capabilities) > 10 or any(not isinstance(item, str) or item not in {"torrent", "cloud-optimise", "parallel-stages", "compression-presets"} for item in capabilities):
+        if not isinstance(capabilities, list) or len(capabilities) > 10 or any(not isinstance(item, str) or item not in {"torrent", "cloud-optimise", "parallel-stages", "compression-presets", "library-collections"} for item in capabilities):
             raise ValueError("Invalid Studio capabilities")
         actives = payload.get("activeJobs")
         if actives is not None and ("parallel-stages" not in capabilities or not isinstance(actives, list)

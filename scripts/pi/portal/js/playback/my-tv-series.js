@@ -306,6 +306,7 @@
 
     function openMyTvSeriesMoreSheet(series, returnTo = null, parentReturn = null) {
       const current = library?.my_tv_series?.find(value => value.id === series.id) || series
+      configureMyTvSeriesCollection(current)
       $('#myTvSeriesMoreTitle').textContent = current.title
       renderMyTvSeriesHeaderFacts($('#myTvSeriesMoreMeta'), [
         { label: 'Series', value: String(current.season_count) },

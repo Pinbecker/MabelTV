@@ -627,6 +627,7 @@ class MediaCatalogueMixin:
                     "id": series_id,
                     "title": str(metadata.get("title") or series_state.get("title") or "Series"),
                     "stored_title": str(series_state.get("title") or "Series"),
+                    "folder": str(series_state.get("folder") or ""),
                     "favourite": series_state.get("favourite") is True,
                     "metadata": metadata if isinstance(metadata, dict) else {},
                     "episodes": episodes,

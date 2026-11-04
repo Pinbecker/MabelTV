@@ -3,7 +3,6 @@ import { test, expect } from './test-fixtures.mjs'
 test.use({ serviceWorkers: 'block' })
 
 test('The playing entry stays first with an artwork overlay and queue identity in its menu', async ({ page }) => {
-  page.on('dialog', dialog => dialog.accept())
   for (const file of ['Snowy Adventure.mp4', 'Ocean Friends.mp4'])
     await page.request.post('/api/mabel-queue', { data: { action: 'add', channel: 1, file } })
   const queued = await (await page.request.get('/api/mabel-queue')).json()
@@ -17,6 +16,7 @@ test('The playing entry stays first with an artwork overlay and queue identity i
   await page.goto('/')
   await page.locator('#homeMabelQueueRail .mabel-queue-rail-card').nth(1).click()
   await page.locator('#watchProgrammeTv').click()
+  await page.locator('#portalConfirmationAccept').click()
   await expect.poll(() => playbackRequest?.queue_id).toBe(selected.id)
   await page.evaluate(() => loadMabelQueue())
   const cards = page.locator('#homeMabelQueueRail .mabel-queue-rail-card')

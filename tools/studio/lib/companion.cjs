@@ -48,7 +48,7 @@ class Companion {
       this.progressCursor = batch.cursor;
       const reply = await this.portal.api('/api/studio/worker', { method: 'POST', body: {
         id: this.store.state.sourceId, session: this.workerSession, name: os.hostname(), activeJobs: batch.reports.map(item => item.value), responses,
-        capabilities: ['parallel-stages', 'cloud-optimise', 'compression-presets', ...(this.torrents ? ['torrent'] : [])], requestActive: this.request ? { id: this.request.id, claim: this.request.claim } : null,
+        capabilities: ['library-collections', 'parallel-stages', 'cloud-optimise', 'compression-presets', ...(this.torrents ? ['torrent'] : [])], requestActive: this.request ? { id: this.request.id, claim: this.request.claim } : null,
       } });
       if (this.closed) return;
       this.responses.splice(0, responses.length);

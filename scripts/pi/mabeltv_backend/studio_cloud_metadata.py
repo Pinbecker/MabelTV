@@ -10,6 +10,58 @@ import time
 
 class StudioCloudMetadataMixin:
     @staticmethod
+    def _studio_collection_keys(item, groups):
+        members = [version for value in item.get("versions", [item])
+                   for version in groups.get(value["id"], [value])]
+        metadata = item.get("metadata") or {}
+        keys = ["file:" + member["id"] for member in members]
+        if metadata.get("tmdb_id"):
+            keys.insert(0, f"title:{metadata['media_type']}:{metadata['tmdb_id']}")
+        return keys
+
+    def _studio_collection_catalogue(self, titles, groups):
+        assignments = {item["key"]: item["collection"] for item in self.state_database.studio_records("cloudmembership")}
+        names = {item["name"] for item in self.state_database.studio_records("cloudcollection")}
+        for item in titles:
+            parts = list(PurePosixPath(item.get("folder", "")).parts)
+            while parts and parts[0].casefold() in {"films", "tv", "kids", "children", "childrens"}:
+                parts.pop(0)
+            inherited = parts[0] if parts else ""
+            keys = self._studio_collection_keys(item, groups)
+            item["collection"] = next((assignments[key] for key in keys if key in assignments), inherited)
+            if item["collection"]:
+                names.add(item["collection"])
+        return sorted(names, key=str.casefold)
+
+    def studio_cloud_collection(self, payload):
+        identities = payload.get("ids")
+        if not isinstance(identities, list) or not 1 <= len(identities) <= 100 or any(not isinstance(value, str) for value in identities):
+            raise ValueError("Choose between 1 and 100 iCloud titles")
+        name = payload.get("collection", "")
+        if not isinstance(name, str) or len(name) > 80 or any(ord(c) < 32 or c in '/\\' for c in name):
+            raise ValueError("Use a collection name of up to 80 characters")
+        name = name.strip()
+        if name in {".", ".."} or payload.get("create") is True and not name:
+            raise ValueError("Enter a collection name")
+        titles, groups = self.studio_cloud_media_titles()
+        titles = self._studio_cloud_merge_versions(titles)
+        names = self._studio_collection_catalogue(titles, groups)
+        existing = next((value for value in names if value.casefold() == name.casefold()), None)
+        create = payload.get("create") is True
+        if create and existing:
+            raise ValueError("That iCloud collection already exists")
+        if name and not create and existing is None:
+            raise ValueError("Choose an existing iCloud collection")
+        keys = set()
+        for identity in identities:
+            item = next((value for value in titles if any(version["id"] == identity for version in value.get("versions", [value]))), None)
+            if not item:
+                raise ValueError("That title is no longer in iCloud. Refresh before moving it.")
+            keys.update(self._studio_collection_keys(item, groups))
+        collection = self.state_database.studio_assign_cloud_collection(sorted(keys), existing or name, create)
+        return {"ok": True, "collection": collection}
+
+    @staticmethod
     def _studio_media_file(item):
         root = PurePosixPath(item["path"]).parts[0].casefold()
         return item.get("kind") == "video" and root not in {
@@ -114,6 +166,14 @@ class StudioCloudMetadataMixin:
                         "poster_path": details.get("poster_path"), "overview": details.get("overview"), "runtime": details.get("runtime")}
             record["status"] = "matched"
         self.state_database.studio_save_cloud_metadata(record, metadata, automatic=True)
+        publication = next((job for job in self.state_database.studio_records("job")
+                            if job["id"] == publication_job), None)
+        if (publication and publication["destination"]["kind"] == "icloud"
+                and "collection" in publication["destination"]):
+            keys = ["file:" + item["id"]]
+            if metadata and metadata.get("tmdb_id"):
+                keys.append(f"title:{metadata['media_type']}:{metadata['tmdb_id']}")
+            self.state_database.studio_assign_cloud_collection(keys, publication["destination"]["collection"])
         for intent in self.state_database.studio_records("archiveintent"):
             if intent.get("status") == "pending" and intent.get("archiveAsset") == asset and intent.get("publicationJob") == publication_job:
                 self.state_database.studio_add("archiveintent", {**intent, "status": "complete", "file": item["id"], "updated": time.time()})
@@ -144,7 +204,10 @@ class StudioCloudMetadataMixin:
         if category not in {"", "films", "tv", "kids"}:
             raise ValueError("Choose Films, TV or Kids")
         display_titles = self._studio_cloud_merge_versions(titles)
+        collections = self._studio_collection_catalogue(display_titles, groups)
+        collection = query.get("collection", [None])[0]
         visible = [item for item in display_titles if (not category or item["category"] == category)
+                   and (collection is None or item["collection"] == collection)
                    and (not search or search in (item["title"] + " " + item["name"] + " " + item["year"]).casefold())]
         order = str(query.get("sort", ["name-asc"])[0])
         if order not in {"name-asc", "name-desc", "size-desc", "size-asc", "date-desc", "date-asc"}:
@@ -159,7 +222,7 @@ class StudioCloudMetadataMixin:
         else:
             visible.sort(key=name, reverse=order == "name-desc")
         offset = max(0, int(query.get("offset", ["0"])[0]))
-        return {**self.studio_cloud_status(), "items": visible[offset:offset + 100], "offset": offset,
+        return {**self.studio_cloud_status(), "items": visible[offset:offset + 100], "offset": offset, "collections": collections,
             "total": len(visible), "titleCount": len(display_titles), "unmatched": sum(not item["metadata"] for item in display_titles),
             "needsMetadata": [item["id"] for item in titles if item["needs_metadata"]][:500],
             "unmatchedIds": [item["id"] for item in titles if not item["metadata"]][:500]}

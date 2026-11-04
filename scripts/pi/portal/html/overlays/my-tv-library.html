@@ -55,51 +55,7 @@
     </div>
   </section>
 </dialog>
-<dialog id="myTvCollectionSheet" class="library-sheet my-tv-sheet">
-  <section class="library-sheet-panel">
-    <header class="library-sheet-head">
-      <div>
-        <p class="section-kicker">Organise My TV</p>
-        <h2>Folders</h2>
-        <p>Keep your films together in folders.</p>
-      </div>
-      <button
-        id="myTvCollectionClose"
-        type="button"
-        class="portal-sheet-close library-sheet-close"
-        aria-label="Close folders"
-      >
-      </button>
-    </header>
-    <div class="library-sheet-body my-tv-collection-body">
-      <div>
-        <p class="my-tv-sheet-label">Your folders</p>
-        <div id="myTvFolderTabs" class="my-tv-folder-tabs library-actions"></div>
-      </div>
-      <div id="myTvFolderSelectionActions" class="my-tv-folder-selection-actions library-actions hidden">
-        <button id="myTvRenameFolder" type="button" class="my-tv-collection-action" disabled>
-          <span class="library-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-edit" /></svg></span>
-          <span><strong>Rename folder</strong><small data-selected-collection></small></span>
-          <svg class="icon"><use href="/portal/icons.svg#signal-chevron-right" /></svg>
-        </button>
-        <button id="myTvDeleteFolder" type="button" class="my-tv-collection-delete" disabled>
-          <span class="library-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-trash" /></svg></span>
-          <span><strong>Delete folder</strong><small id="myTvDeleteFolderHint">Empty folders only</small></span>
-          <svg class="icon"><use href="/portal/icons.svg#signal-chevron-right" /></svg>
-        </button>
-      </div>
-      <div class="my-tv-folder-tools">
-        <label for="myTvFolderName">New folder</label>
-        <div class="my-tv-folder-create-row">
-          <input id="myTvFolderName" maxlength="80" placeholder="e.g. Comedies" />
-          <button id="myTvCreateFolder" type="button" class="primary">
-            <svg class="icon"><use href="/portal/icons.svg#signal-plus" /></svg><span>Create</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  </section>
-</dialog>
+
 <dialog
   id="myTvFilmSheet"
   class="watch-film-sheet my-tv-film-sheet"
@@ -144,6 +100,9 @@
                 aria-label="My TV collection"
               ></select
               ><button id="myTvFilmMove" type="button">Move film</button></span
+            ><span id="myTvFilmNewCollection" class="my-tv-film-collection-controls hidden"
+              ><input id="myTvFilmCollectionName" maxlength="80" aria-label="New My Library collection" placeholder="Collection name"
+              ><button id="myTvFilmCreateCollection" type="button">Create</button></span
             ></span
           >
         </div>
@@ -255,6 +214,7 @@
     <h2 id="myTvSeriesMoreTitle">Series</h2>
     <p id="myTvSeriesMoreMeta"></p>
     <div class="watch-programme-film-tools">
+      <div class="watch-film-play my-tv-film-collection-action"><span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-folder"/></svg></span><span class="my-tv-film-collection-content"><strong>Move to collection</strong><span class="my-tv-film-collection-controls"><select id="myTvSeriesCollection" aria-label="Series collection"></select><button id="myTvSeriesMoveCollection" type="button">Move show</button></span><span id="myTvSeriesNewCollection" class="my-tv-film-collection-controls hidden"><input id="myTvSeriesCollectionName" maxlength="80" aria-label="New series collection" placeholder="Collection name"><button id="myTvSeriesCreateCollection" type="button">Create</button></span></span></div>
       <button id="myTvSeriesRestart" type="button" class="watch-film-play"><span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-restart" /></svg></span><span><strong>Restart watching</strong><small>Clear every watched mark and resume point</small></span></button>
       <button id="myTvSeriesMetadata" type="button" class="watch-film-play"><span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-panels-top-left" /></svg></span><span><strong>Match metadata</strong><small>Match the show, series and episode details</small></span></button>
       <button id="myTvSeriesDelete" type="button" class="watch-film-play watch-film-danger"><span class="watch-action-icon"><svg class="icon"><use href="/portal/icons.svg#signal-trash" /></svg></span><span><strong>Move show to bin</strong><small>Remove every series and episode</small></span></button>
