@@ -1,5 +1,5 @@
 import { test, expect } from './test-fixtures.mjs'
-export async function openStudio(page, { online = false, series = false, organiser = null, profileSize } = {}) {
+export async function openStudio(page, { online = false, series = false, organiser = null, profileSize, originals = false } = {}) {
   const writes = [], jobs = [], collections = []
   const items = Array.from({ length: 9 }, (_, index) => ({ id: String(index).padStart(24, '0'),
     name: ['The Grand Budapest Hotel.mkv', 'Ludwig S01E01.mp4', 'A Family Holiday.mp4', 'The Secret Garden.mkv', 'Arrival.mp4', 'The Night Manager.mp4', 'Paddington 2.mp4', 'The Imitation Game.mkv', 'The Hobbit.mkv'][index],
@@ -40,7 +40,10 @@ export async function openStudio(page, { online = false, series = false, organis
           Math.floor(items.find(item => item.id === id).bytes * ({balanced:.6,compact:.4,smallest:.25}[payload.compression || 'compact']) * .98) : profileSize })),
         output: 'MP4 · H.264 video · AAC stereo · up to 1080p / 30 fps',
         compression: payload.compression || 'compact', estimateNote: 'Estimated size from the selected compression target; measured size can vary.' }
-    } else if (path === '/api/studio/cloud/match') {
+    } else if (path === '/api/studio/originals') {
+      json = { available: originals, title: 'Ludwig', items: payload.ids.map((id, index) => ({ available: originals, title: 'Ludwig', deliveryId: 'delivery-' + index })) }
+    } else if (path === '/api/studio/download-originals') json = { ok: true, ids: [] }
+    else if (path === '/api/studio/cloud/match') {
       const item = items.find(i => i.id === payload.id); item.metadata = {...item.metadata, ...payload.match}; json = {item}
     } else if (path === '/api/studio/jobs') {
       for (const source of payload.sources) jobs.unshift({ id: 'job-' + jobs.length, title: source.title, source,

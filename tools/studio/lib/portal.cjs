@@ -121,7 +121,8 @@ class Portal {
     const connection = { ...this.current };
     if (job.device !== connection.device || job.match.device !== connection.device) throw new Error('This title match belongs to a different TV. Restore the original connection.');
     const film = job.destination.kind === 'film';
-    const file = job.result?.file_name;
+    const published = job.result?.file_name;
+    const file = film && job.result.folder && published && !published.includes('/') ? job.result.folder + '/' + published : published;
     if (film && (!job.result?.complete || typeof file !== 'string' || !file)) throw new Error('The portal has not confirmed the published filename. The video is safe; check its metadata in the portal.');
     const result = await this.at(connection.base, film ? '/api/tmdb/apply' : '/api/tmdb/my-tv-series/apply', {
       method: 'POST', body: film ? { file, tmdb_id: job.match.tmdb_id } : { series: job.destination.series, tmdb_id: job.match.tmdb_id }, signal, timeout: 120000 });

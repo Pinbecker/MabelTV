@@ -233,3 +233,14 @@ class StudioRecoveryTests(unittest.TestCase):
             info = self.library.video_info(self.fixture.root / "source.mp4")
         self.assertEqual(info["codec_type"], "video")
         self.assertEqual(info["audio_streams"][0]["codec_name"], "ac3")
+
+    def test_original_episodes_keep_source_season_when_recovering_a_multi_season_selection(self):
+        identity = self.library.studio_add_jobs({"sources": [{"type": "iplayer", "pid": "m0000002", "title": "Ludwig", "series": 2}],
+            "destination": {"kind": "icloud", "cloudCopies": "optimised"}})["ids"][0]
+        job = self.library.studio_worker_poll({"id": "a" * 32, "capabilities": ["intel-policy-v2"]})["job"]
+        self.library.studio_record_provenance({"job": identity, "claim": job["claim"],
+            "provenance": {"cloudCopies": {"optimised": {"id": "episode-copy", "bytes": 100, "confirmed": True}}}})
+        result = self.library.studio_download_original({"id": "episode-copy", "destination": {
+            "kind": "series", "name": "Ludwig", "season": 1, "preserveSeasons": True}})
+        restored = next(value for value in self.db.studio_records("job") if value["id"] == result["ids"][0])
+        self.assertEqual(restored["destination"]["season"], 2)

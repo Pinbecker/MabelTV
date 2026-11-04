@@ -19,9 +19,10 @@ function openStudioDestination(sources, matchingJob = null, cloudContext = null)
   series.add(new Option('Create a new show…', 'new'))
   if (sources[0]?.seriesTitle || sources[0]?.type === 'iplayer' && (sources.length > 1 || sources[0].series)) {
     $('#studioLibraryType').value = 'series'
-    const existing = (library.my_tv_series || []).find(item => item.title.toLowerCase() === sources[0].title.toLowerCase())
+    const seriesTitle = sources[0].seriesTitle || sources[0].title
+    const existing = (library.my_tv_series || []).find(item => item.title.toLowerCase() === seriesTitle.toLowerCase())
     series.value = existing?.id || 'new'
-    $('#studioNewSeries').value = sources[0].title
+    $('#studioNewSeries').value = seriesTitle
     $('#studioSeason').value = sources[0].series ?? 1
   }
   const nonVideo = sources.some(source => source.kind && source.kind !== 'video')

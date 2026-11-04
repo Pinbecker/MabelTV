@@ -47,6 +47,7 @@ async function studioOpenCloudOptimise() {
 async function studioRefreshOptimisePreview() {
   const generation = ++studioOptimiseGeneration, draft = studioOptimiseDraft
   studioOptimisePreview = null
+  delete $('#studioOptimiseCompression').dataset.recommended
   $('#studioOptimiseConfirm').disabled = true
   $('#studioOptimiseNewSize').replaceChildren()
   const spinner = document.createElement('span'); spinner.className = 'studio-spinner studio-inline-spinner'; spinner.setAttribute('aria-label', 'Calculating size')
@@ -68,6 +69,7 @@ async function studioRefreshOptimisePreview() {
   }
   if (generation !== studioOptimiseGeneration || studioDraft !== draft) return
   studioOptimisePreview = preview
+  $('#studioOptimiseCompression').dataset.recommended = preview.files.some(file => file.risky) ? 'balanced' : 'compact'
   studioRenderOptimiseHero(preview)
   const files = $('#studioOptimiseFiles'); files.replaceChildren()
   for (const file of preview.files) {

@@ -10,7 +10,7 @@ restored. The implementation follows the saved
 
 ## Processing and destinations
 
-- Windows Studio 1.7.1 owns video preparation for desktop, portal, existing Pi
+- Windows Studio 1.7.2 owns video preparation for desktop, portal, existing Pi
   optimisation actions and incompatible phone/USB uploads. The Pi stages and
   publishes files. Its retired CPU encoder refuses to run.
 - Intel H.264 Quick Sync, slow preset and look-ahead are shared by Balanced,
@@ -122,7 +122,7 @@ Source checks completed before live delivery:
 | Boundary | Result |
 | --- | --- |
 | Complete Python Library/SQLite suite | 505 tests: 499 passed, 6 existing platform skips |
-| Studio Node suite | 83 passed, including required real Intel encoding |
+| Studio Node suite | 85 passed, including required real Intel encoding |
 | Latest stage/backup boundary tests | 13 passed |
 | Complete JavaScript owner groups | 22 passed |
 | Core iPhone WebKit/Chromium portal gate | 219 passed, 19 existing conditional skips |

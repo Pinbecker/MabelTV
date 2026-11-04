@@ -55,7 +55,7 @@ function studioOpenOptions(select) {
     input.checked = option.selected; input.disabled = option.disabled
     const text = document.createElement('span'); text.textContent = option.textContent.split(' · ')[0]
     row.append(input, text)
-    if (option.value === 'compact') { const marker = document.createElement('small'); marker.textContent = 'Recommended'; row.append(marker) }
+    if (option.value === (select.dataset.recommended || 'compact')) { const marker = document.createElement('small'); marker.textContent = 'Recommended'; row.append(marker) }
     if (option.textContent.includes(' · ')) { const small = document.createElement('small'); small.textContent = option.textContent.split(' · ').slice(1).join(' · '); row.append(small) }
     input.onchange = () => { select.value = option.value; select.dispatchEvent(new Event('change', { bubbles: true })); studioSyncSelects() }
     root.append(row)

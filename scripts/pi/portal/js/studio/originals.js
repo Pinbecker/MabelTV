@@ -8,6 +8,8 @@ async function studioLoadOriginalAction() {
   if (!draft?.sources.length) return
   const info = await api('/api/studio/originals', { method: 'POST', body: JSON.stringify({ ids: draft.sources.map(source => source.id) }) })
   if (draft !== studioDraft) return
+  if (info.available) info.items = info.items.map((item, index) => ({ ...item,
+    seriesTitle: draft.sources[index].seriesTitle, series: draft.sources[index].series }))
   studioOriginalChoice = info.available ? info : null
   button.disabled = !info.available; button.title = info.reason || ''
 }
@@ -18,7 +20,9 @@ $('#studioDownloadOriginal').onclick = () => {
 function studioChooseOriginal(info) {
   closeLibrarySheet($('#studioActionsSheet'), false)
   const items = info.items || [info]
-  openStudioDestination(items.map(item => ({ type: 'original', title: item.title, bytes: item.bytes })))
+  openStudioDestination(items.map(item => ({ type: 'original', title: item.title, bytes: item.bytes,
+    seriesTitle: item.seriesTitle, series: item.series })))
+  if (info.seriesId && (library.my_tv_series || []).some(series => series.id === info.seriesId)) $('#studioSeries').value = info.seriesId
   studioDraft.originalInfo = info
   studioDraft.originalInfo.items = items
   $('#studioDestinationForm input[name="studioCloudCopies"][value="original"]').checked = true
@@ -44,6 +48,7 @@ $('#myTvEpisodeOriginal').onclick = async () => {
   try {
     const info = await api('/api/studio/original?' + new URLSearchParams({ kind: 'my-tv-series', series: selected.series.id, file: selected.episode.path }))
     if (!info.available) throw new Error(info.reason)
+    info.seriesTitle = selected.series.title; info.series = selected.season; info.seriesId = selected.series.id
     closeLibrarySheet($('#myTvEpisodeSheet'), false)
     studioChooseOriginal(info)
   } catch (error) { notice(error.message, true) }

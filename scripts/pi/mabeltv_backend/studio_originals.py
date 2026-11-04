@@ -109,9 +109,11 @@ class StudioOriginalsMixin:
                 raise ValueError("The original torrent file selection is missing")
         if info.get("original"):
             retained = self.studio_cloud_item(info["original"]["id"])
-            source = {"type": "cloud", **{key: retained.get(key, "") for key in ("id", "path", "bytes", "modified", "remoteId")},
+            source = {"type": "cloud", **{key: retained.get(key, "") for key in ("id", "path", "bytes", "modified", "remoteId", "series", "episodeNumber")},
                       "archiveGroup": acquisition["id"], "variants": ["original"]}
         source["acquisitionId"] = acquisition["id"]
+        if destination["kind"] == "series" and destination["preserveSeasons"] and type(source.get("series")) is int:
+            destination["season"] = source["series"]
         destination.update(preparationIntent="compatible", cloudCopies="original", saveCloud=destination["kind"] == "icloud" or destination["saveCloud"],
                            prepare=destination["kind"] != "icloud", recoveryMode=mode)
         if mode == "replace":
