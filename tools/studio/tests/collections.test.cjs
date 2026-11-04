@@ -38,3 +38,14 @@ test('a collection reaches the actual resumable film upload admission', async t 
   assert.equal(admission.folder, 'Weekend');
   assert.equal(result.file_name, 'Weekend/Example.mp4');
 });
+test('metadata uses the server receipt collection as well as its published basename', async () => {
+  const portal = new Portal({}), requests = [];
+  portal.current = { device: 'pi', base: 'http://mabeltv-512.local:8080' };
+  portal.at = async (_base, route, options) => { requests.push([route, options.body]); return { ok: true, metadata: { tmdb_id: 42 } }; };
+  const match = { tmdb_id: 42, media_type: 'movie', title: 'Example', year: '2026', device: 'pi' };
+  await portal.applyMatch({ device: 'pi', match, destination: { kind: 'film' }, result: { complete: true, folder: 'Weekend', file_name: 'Example.mp4' } });
+  assert.deepEqual(requests, [['/api/tmdb/apply', { file: 'Weekend/Example.mp4', tmdb_id: 42 }]]);
+  requests.length = 0;
+  await portal.applyMatch({ device: 'pi', match, destination: { kind: 'film' }, result: { complete: true, folder: 'Weekend', file_name: 'Weekend/Example.mp4' } });
+  assert.equal(requests[0][1].file, 'Weekend/Example.mp4');
+});

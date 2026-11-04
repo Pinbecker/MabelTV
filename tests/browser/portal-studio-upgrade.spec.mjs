@@ -109,3 +109,18 @@ test('recovering selected original episodes keeps show and multi-season filing i
   expect(request.destination).toMatchObject({ kind: 'series', name: 'Ludwig', preserveSeasons: true, saveCloud: false })
   expect(request.ids).toHaveLength(3)
 })
+test('Download original from a Pi film enters Studio and shows Activity after submission', async ({ page }) => {
+  const { writes } = await openStudio(page)
+  await page.route('**/api/studio/original?**', route => route.fulfill({ json: { available: true, title: 'Film original', deliveryId: 'film-delivery', bytes: 1e9 } }))
+  await page.evaluate(() => {
+    const film = { path: 'Example.mp4', display_name: 'Example', metadata: { title: 'Example' }, size: 1e9, browser_ready: true, folder: '' }
+    library.my_tv_library = [film]
+    openView('my-tv-library'); openMyTvFilmSheet(film)
+  })
+  await page.locator('#myTvFilmOriginal').click()
+  await expect(page.locator('#view-my-tv-studio')).toBeVisible()
+  await expect(page.locator('#studioDestinationSheet')).toBeVisible()
+  await page.locator('#studioDestinationSubmit').click()
+  await expect(page.locator('#studioActivityPane')).toBeVisible()
+  expect(writes.find(write => write.path === '/api/studio/download-originals')).toMatchObject({ ids: ['film-delivery'], destination: { kind: 'film', saveCloud: false } })
+})

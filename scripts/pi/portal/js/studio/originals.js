@@ -18,6 +18,7 @@ $('#studioDownloadOriginal').onclick = () => {
   studioChooseOriginal(studioOriginalChoice)
 }
 function studioChooseOriginal(info) {
+  if (!studioVisible()) openView('my-tv-studio')
   closeLibrarySheet($('#studioActionsSheet'), false)
   const items = info.items || [info]
   openStudioDestination(items.map(item => ({ type: 'original', title: item.title, bytes: item.bytes,

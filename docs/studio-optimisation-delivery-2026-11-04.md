@@ -127,6 +127,9 @@ Source checks completed before live delivery:
 | Complete JavaScript owner groups | 22 passed |
 | Core iPhone WebKit/Chromium portal gate | 219 passed, 19 existing conditional skips |
 | Focused iPhone/iPad layout and visual cases | 8 passed; captures inspected |
+| Final recovery/recommendation journeys on iPhone and iPad | 14 passed |
+| Latest recovery/architecture owners | 24 passed |
+| Final shell/syntax owners | 19 passed |
 | Real Electron desktop and lost-upload-ack workflow | 2 passed |
 
 Tests include generated full-frame/profile comparisons, HDR, high frame rate,
@@ -137,4 +140,49 @@ temporary/permanent Windows journal locks. The earlier accepted full-film
 quality experiments were not rerun. Physical installed-iPhone acceptance remains
 with Dan; emulated WebKit is not a substitute for that device review.
 
-Runtime delivery evidence is recorded below after installation and deployment.
+## Verified live delivery
+
+- Installed Windows Studio **1.7.2**, using the existing profile. All 21 previous
+  job IDs and the worker identity survived. The worker is online and advertises
+  Intel policy v2, independent stages, collections, cloud optimisation and
+  torrent support. The installed Intel encoder completed a synthetic hardware
+  check. All 49 shipped source/policy files match the reviewed tree; installed
+  ASAR SHA-256 is
+  `c07531f1edbf61cfdfc66970f8a56b84f04115648ef7ced1f6734ebf7650db8a`.
+- Pi release `/opt/mabeltv/releases/0.2.5-20261104084607`, with portal shell
+  **331**. The guarded atomic installer and portal deployer passed. The TV player
+  stayed PID 193988; Matter stayed PIDs 300351 and 300353. All remain active with
+  zero restart counters. Final temperature was 49.1 C and throttle flags 0x0.
+  The Library alone restarted for the application updates.
+- Live SQLite is schema 12, integrity `ok`, with zero foreign-key errors. It
+  retains 13 channels and 223 viewing sessions. Current Studio recovery data
+  includes 12 acquisition records, 6 delivery records and the worker snapshot.
+- The full coherent disaster archive
+  `Backups/MabelTV/snapshots/2026/11/MabelTV-Backup-2026-11-04T032447Z.tar.gz`
+  was uploaded by the companion and read back independently through iCloud.
+  Its SHA-256 is
+  `6833ae0baadea400793c2ae70e95015ead9310adc3adafb81e9548585577b9ec`.
+  An isolated restore verified every archived checksum, SQLite integrity and
+  foreign keys, plus the presence of secrets and coherent Matter state. The
+  original OneDrive archive and its scheduled delivery remain in place.
+- A separate current online SQLite/Studio checkpoint, created after this
+  build's provenance backfill and profile capture, is at
+  `Backups/MabelTV/checkpoints/2026-11-04/Studio-Recovery-2026-11-04.tar.gz`.
+  Its independently downloaded iCloud checksum matches
+  `f6a1fafcfda4c0ba665ea00ccfa8c59fa3b7c2a34b827ae1e52757707a3143a6`.
+  This checkpoint also passed an isolated restore. It supplements the full
+  disaster archive with the new Studio records; it is not a second full Matter
+  snapshot. Future scheduled full archives include the current SQLite records.
+- Backup archive/profile endpoints reject unpaired clients with HTTP 403 even
+  with the ordinary portal PIN disabled. The one-time pairing token was consumed
+  into Windows private storage, and the temporary provisioning copy was removed.
+- The existing film/kids migration remains complete. At the 08:56 check, TV
+  migration was on batch 16 of 16: all ten files copied and verified, with iCloud
+  upload confirmation pending. The controller remained running with 46.2 GiB
+  free. The later bulk optimiser was still `waiting_for_start`, unfrozen, at
+  index zero. No source deletion or full-library optimisation was started.
+
+Evidence logs and inspected captures are under `out/studio-upgrade-*` in the
+development checkout. The private pre-upgrade Studio checkpoint is under
+`%LOCALAPPDATA%/MabelTV-Upgrade-20261104/before-1.7.0`; application rollback points
+were retained by the Pi installers and portal deployer.
