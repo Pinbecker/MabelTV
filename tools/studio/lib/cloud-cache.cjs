@@ -67,6 +67,8 @@ async function releaseCloudCaches(remote, local, store, portal, signal, release 
   if (!remote.destination.temporaryWork || local.cloudCacheReleased) return;
   const root = path.join(store.state.settings.iCloudRoot || path.join(process.env.USERPROFILE, 'iCloudDrive'), 'Media');
   const copies = new Map(Object.values(local.savedCloudCopies || {}).map(copy => [copy.id || copy.path, copy]));
+  if (remote.source?.type === 'cloud' && remote.source.id && !local.cloudOriginalRemoved && !copies.has(remote.source.id))
+    copies.set(remote.source.id, { ...remote.source, confirmed: true });
   const released = [];
   for (const receipt of copies.values()) {
     if (!receipt.confirmed || !receipt.id || !receipt.bytes) throw new Error('The retained cloud copy needs confirmation before freeing space.');

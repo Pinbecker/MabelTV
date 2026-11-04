@@ -45,6 +45,15 @@ test('changed cloud versions and paths outside Media cannot be freed', async t =
   await assert.rejects(releaseCloudCaches(remote, local, f.store, { api: async () => ({ ...receipt, remoteId: 'replacement' }) }, f.signal, release), /changed/);
   await assert.rejects(releaseCloudCaches(remote, local, f.store, { api: async () => ({ ...receipt, path: '../other.mp4' }) }, f.signal, release), /Invalid cloud/);
 });
+test('TV-only original recovery releases its hydrated cloud source without needing a new archive copy', async t => {
+  const f = fixture(t), calls = [];
+  const item = { id: 'source-original', path: path.basename(f.file), bytes: 5, modified: 'same', remoteId: 'original-version' };
+  const local = { id: f.store.state.jobs[0]?.id || 'a'.repeat(32), savedCloudCopies: {}, result: { complete: true } };
+  if (!f.store.state.jobs.some(value => value.id === local.id)) f.store.add(local);
+  await releaseCloudCaches({ source: { type: 'cloud', ...item }, destination: { temporaryWork: true, saveCloud: false } }, local, f.store,
+    { api: async () => item }, f.signal, async (file, bytes) => { calls.push([file, bytes]); return { status: 'cloud_only' }; });
+  assert.equal(calls.length, 1); assert.equal(calls[0][0], f.file); assert.equal(local.cloudCacheReleased, true);
+});
 test('non-saving cloud optimisation keeps the original and avoids another upload', async t => {
   const f = fixture(t), id = 'b'.repeat(32), remoteId = 'a'.repeat(32);
   const directory = path.join(f.store.state.settings.workspace, 'Film - ' + id.slice(0, 8)); fs.mkdirSync(directory, { recursive: true });
