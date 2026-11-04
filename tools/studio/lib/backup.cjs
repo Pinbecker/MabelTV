@@ -31,13 +31,14 @@ async function hash(file) {
   return digest.digest('hex');
 }
 class BackupBridge {
-  constructor(store, portal) { Object.assign(this, { store, portal }); this.busy = false; this.next = 0; this.controller = new AbortController(); }
+  constructor(store, portal, options = {}) { Object.assign(this, { store, portal, key: options.key }); this.busy = false; this.next = 0; this.controller = new AbortController(); }
   async tick() {
     if (this.busy || Date.now() < this.next) return;
     this.busy = true; this.next = Date.now() + 5 * 60000;
     const signal = AbortSignal.any([this.controller.signal, AbortSignal.timeout(10 * 60000)]);
     try {
-      await this.portal.api('/api/studio/backup/profile', { method: 'POST', body: { worker: this.store.state.sourceId, snapshot: profileSnapshot(this.store) }, signal });
+      const headers = { 'X-MabelTV-Backup-Key': this.key?.() || '' };
+      await this.portal.api('/api/studio/backup/profile', { method: 'POST', body: { worker: this.store.state.sourceId, snapshot: profileSnapshot(this.store) }, signal, headers });
       const info = await this.portal.api('/api/studio/backup', { signal });
       if (!info.available || info.verified?.some(value => value.id === info.name && value.sha256 === info.sha256)) return;
       const directory = path.join(this.store.root, 'Backups'); fs.mkdirSync(directory, { recursive: true });
@@ -47,7 +48,7 @@ class BackupBridge {
       const local = path.join(directory, info.name), partial = local + '.part';
       if (!fs.existsSync(local) || await hash(local) !== info.sha256) {
         const response = await this.portal.transport(this.portal.current.base + '/api/studio/backup/file?name=' + encodeURIComponent(info.name),
-          { credentials: 'include', redirect: 'manual', signal });
+          { credentials: 'include', redirect: 'manual', signal, headers });
         if (!response.ok || !response.headers.get('content-type')?.includes('gzip')) throw new Error('The Pi backup could not be downloaded.');
         await pipeline(response.body, fs.createWriteStream(partial, { mode: 0o600 }), { signal });
         if (fs.statSync(partial).size !== info.bytes || await hash(partial) !== info.sha256) throw new Error('The downloaded backup checksum does not match.');
@@ -57,8 +58,10 @@ class BackupBridge {
       const expected = 'Backups/MabelTV/snapshots/' + info.name.slice(15, 19) + '/' + info.name.slice(20, 22) + '/' + info.name;
       if (info.path !== expected) throw new Error('Unexpected backup destination.');
       const target = beneath(root, expected);
-      await copy(local, target, signal, () => {}, path.join(directory, info.name + '.copy.json'));
-      const confirmed = await this.portal.api('/api/studio/backup/confirm', { method: 'POST', body: { name: info.name }, signal, timeout: 210000 });
+      if (fs.existsSync(target)) {
+        if (fs.statSync(target).size !== info.bytes || await hash(target) !== info.sha256) throw new Error('A different backup already uses this name. Both recovery points were kept.');
+      } else await copy(local, target, signal, () => {}, path.join(directory, info.name + '.copy.json'));
+      const confirmed = await this.portal.api('/api/studio/backup/confirm', { method: 'POST', body: { name: info.name }, signal, timeout: 210000, headers });
       this.store.state.backupStatus = { name: info.name, verified: confirmed.confirmed ? Date.now() : this.store.state.backupStatus?.verified || 0,
         message: confirmed.confirmed ? 'iCloud backup verified' : 'Waiting for iCloud backup upload' }; this.store.save();
       if (confirmed.confirmed) { await freeCloudCache(target, info.bytes, signal); fs.unlinkSync(local); }

@@ -112,7 +112,7 @@ class StudioOriginalsMixin:
             source = {"type": "cloud", **{key: retained.get(key, "") for key in ("id", "path", "bytes", "modified", "remoteId")},
                       "archiveGroup": acquisition["id"], "variants": ["original"]}
         source["acquisitionId"] = acquisition["id"]
-        destination.update(preparationIntent="compatible", cloudCopies="original", saveCloud=True,
+        destination.update(preparationIntent="compatible", cloudCopies="original", saveCloud=destination["kind"] == "icloud" or destination["saveCloud"],
                            prepare=destination["kind"] != "icloud", recoveryMode=mode)
         if mode == "replace":
             destination["replaceDelivery"] = info["deliveryId"]

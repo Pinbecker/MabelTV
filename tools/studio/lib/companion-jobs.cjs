@@ -156,6 +156,10 @@ class CompanionJobs {
     await recordProvenance(remote, local, this.portal, signal);
     if (remote.originalRecovery && remote.destination.recoveryMode === 'replace') {
       const receipt = await this.portal.api('/api/studio/recovery/finish', { method: 'POST', body: { job: remote.id, claim: remote.claim, upload: local.uploadId }, signal });
+      if (receipt.published) {
+        this.store.update(local.id, { result: receipt.published });
+        await recordProvenance(remote, local, this.portal, signal);
+      }
       if (receipt.operation) {
         for (;;) {
           const status = await this.portal.api('/api/studio/status', { signal });
@@ -171,7 +175,11 @@ class CompanionJobs {
       state.progress = { stage: 'freeing-space', percent: 100, message: 'Freeing the local iCloud cache' };
       await this.queue.releaseCloudCaches(remote, local, signal);
     }
-    if (remote.destination.temporaryWork && !local.workingRemoved) { await verifyCloudCopies(remote, local, this.portal, signal); cleanWorkingCopies(remote, local, this.store); }
+    if (remote.destination.temporaryWork && !local.workingRemoved) {
+      if (remote.destination.saveCloud || remote.destination.kind === 'icloud') await verifyCloudCopies(remote, local, this.portal, signal);
+      else if (!local.result?.complete) throw new Error('Wait for verified TV publication before removing working copies.');
+      cleanWorkingCopies(remote, local, this.store);
+    }
     if (!remote.destination.temporaryWork && !remote.destination.keepOptimised && !local.optimisedRemoved &&
         (local.result?.complete || cloudPath)) {
       if (removeOptimised(local, this.store.state.settings.workspace)) this.store.update(local.id, { optimisedRemoved: true });

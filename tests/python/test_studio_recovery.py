@@ -45,6 +45,9 @@ class StudioRecoveryTests(unittest.TestCase):
         self.assertEqual(pending["destination"]["preparationIntent"], "compatible")
         self.assertEqual(pending["destination"]["cloudCopies"], "original")
         self.assertEqual(result["ids"], [pending["id"]])
+        self.library.studio_download_original({"id": "cloud-variant", "destination": {"kind": "film"}})
+        pi_job = next(value for value in restored.studio_records("job") if value["destination"]["kind"] == "film")
+        self.assertFalse(pi_job["destination"]["saveCloud"], "A TV-only original recovery must not archive an unwanted large original")
 
     def test_stale_claim_cannot_overwrite_provenance(self):
         job = self.claimed()
@@ -122,6 +125,7 @@ class StudioRecoveryTests(unittest.TestCase):
             self.assertEqual((self.library.incoming / (job["id"] + ".recovery-previous")).read_bytes(), b"old-copy")
             result = self.library.studio_finish_recovery({"job": job["id"], "claim": job["claim"], "upload": "c" * 32})
             self.assertTrue(result["complete"])
+            self.assertEqual(result["published"]["file_name"], old.name)
             self.assertEqual(old.read_bytes(), b"high-quality-recovered-copy")
             state = self.library.my_tv_media_states()[old.name]
             self.assertEqual(state["library_id"], "3" * 32)
@@ -186,3 +190,46 @@ class StudioRecoveryTests(unittest.TestCase):
                 self.library.studio_backup_confirm({"name": name})
         self.assertEqual(self.db.studio_records("backupreceipt"), [])
         self.assertEqual((root / name).read_bytes(), payload)
+
+    def test_disaster_archive_and_worker_profile_require_pairing_even_without_portal_pin(self):
+        self.library.complete_setup({"setup_code": "135790", "pin": "8642", "channels": mabeltv_library.DEFAULT_CHANNELS})
+        self.library.portal_pin_required = lambda: False
+        key = "a" * 64
+        secrets = self.library.database_path.parent / "secrets"
+        secrets.mkdir(exist_ok=True)
+        (secrets / "studio-backup-token").write_text(key)
+        server = mabeltv_library.LibraryServer(("127.0.0.1", 0), self.library)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        base = "http://127.0.0.1:" + str(server.server_address[1])
+        snapshot = {"version": 1, "sourceId": "b" * 32, "settings": {}, "jobs": []}
+        try:
+            for route in ("/api/studio/backup/file?name=anything", "/api/studio/backup/profile?worker=" + "b" * 32):
+                with self.assertRaises(urllib.error.HTTPError) as refused:
+                    urllib.request.urlopen(base + route)
+                self.assertEqual(refused.exception.code, 403)
+                refused.exception.close()
+            data = json.dumps({"worker": "b" * 32, "snapshot": snapshot}).encode()
+            request = urllib.request.Request(base + "/api/studio/backup/profile", data=data,
+                headers={"Content-Type": "application/json", "Origin": base})
+            with self.assertRaises(urllib.error.HTTPError) as refused:
+                urllib.request.urlopen(request)
+            self.assertEqual(refused.exception.code, 403)
+            refused.exception.close()
+            request.add_header("X-MabelTV-Backup-Key", key)
+            with urllib.request.urlopen(request) as response:
+                self.assertTrue(json.load(response)["ok"])
+            self.assertEqual(self.library.studio_profile_restore("b" * 32)["snapshot"], snapshot)
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
+
+    def test_stereo_compatibility_checks_include_audio_even_when_it_is_the_first_stream(self):
+        from types import SimpleNamespace
+        streams = [{"codec_type": "audio", "codec_name": "ac3", "channels": 6},
+                   {"codec_type": "video", "codec_name": "h264", "pix_fmt": "yuv420p", "width": 1280, "height": 720, "avg_frame_rate": "25/1"}]
+        with mock.patch("mabeltv_backend.transcoding.subprocess.run", return_value=SimpleNamespace(returncode=0, stdout=json.dumps({"streams": streams}))):
+            info = self.library.video_info(self.fixture.root / "source.mp4")
+        self.assertEqual(info["codec_type"], "video")
+        self.assertEqual(info["audio_streams"][0]["codec_name"], "ac3")

@@ -8,6 +8,7 @@ const { writeJson } = require('../lib/atomic-json.cjs');
 const { profileSnapshot, reconcileSnapshot, BackupBridge } = require('../lib/backup.cjs');
 const { Store } = require('../lib/store.cjs');
 const crypto = require('node:crypto');
+const { readBackupKey } = require('../lib/backup-key.cjs');
 const { compressionPlan } = require('../lib/compression.cjs');
 test('restore retains completed receipts and never resumes missing partial media at a recorded offset', () => {
   const input = { version: 1, sourceId: 'a'.repeat(32), settings: { workspace: 'C:/Media' }, jobs: [
@@ -60,4 +61,15 @@ test('backup delivery retains local archive and last verified time while the new
   assert.equal(store.state.backupStatus.verified, 123);
   assert.match(store.state.backupStatus.message, /Waiting/);
   assert.deepEqual(calls, ['/api/studio/backup/profile', '/api/studio/backup', '/api/studio/backup/confirm']);
+});
+test('backup pairing consumes its one-time token and retains only a Windows-encrypted credential', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'studio-backup-key-')); t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const key = 'a'.repeat(64), pairing = path.join(root, 'backup-pairing-token');
+  const encryption = { isEncryptionAvailable: () => true, encryptString: value => Buffer.from('encrypted:' + value), decryptString: value => value.toString().replace(/^encrypted:/, '') };
+  assert.equal(readBackupKey(root, encryption), '');
+  fs.writeFileSync(pairing, key);
+  assert.equal(readBackupKey(root, encryption), key); assert.equal(fs.existsSync(pairing), false);
+  assert.equal(fs.readFileSync(path.join(root, 'backup-private.json'), 'utf8').includes(key), false);
+  assert.equal(readBackupKey(root, encryption), key);
+  assert.throws(() => readBackupKey(root, { isEncryptionAvailable: () => false }), /private storage/);
 });

@@ -1,5 +1,6 @@
 """Protected companion snapshots and verified iCloud disaster-backup delivery."""
 import hashlib
+import hmac
 import datetime as dt
 import json
 import re
@@ -30,6 +31,14 @@ def retained_backups(names):
 
 
 class StudioBackupsMixin:
+    def studio_backup_authorised(self, supplied):
+        try:
+            expected = (self.database_path.parent / "secrets" / "studio-backup-token").read_text().strip()
+            return bool(re.fullmatch(r"[a-f0-9]{64}", expected) and isinstance(supplied, str)
+                        and re.fullmatch(r"[a-f0-9]{64}", supplied) and hmac.compare_digest(expected, supplied))
+        except (OSError, ValueError):
+            return False
+
     def studio_profile_backup(self, payload):
         identity, snapshot = str(payload.get("worker", "")), payload.get("snapshot")
         if not re.fullmatch(r"[a-f0-9]{32}", identity) or not isinstance(snapshot, dict) or len(json.dumps(snapshot)) > 2 * 1024 ** 2:

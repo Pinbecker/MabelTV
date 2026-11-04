@@ -33,16 +33,17 @@ from .constants import (
 class TranscodingMixin:
     def video_info(self, path: Path) -> dict[str, Any]:
         try:
-            result = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=codec_type,codec_name,profile,pix_fmt,width,height,avg_frame_rate", "-of", "json", str(path)], check=False, capture_output=True, text=True, timeout=30)
+            result = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "stream=codec_type,codec_name,profile,pix_fmt,width,height,avg_frame_rate,channels,field_order,level", "-of", "json", str(path)], check=False, capture_output=True, text=True, timeout=15)
         except (OSError, subprocess.TimeoutExpired) as error:
             raise ValueError(f"{self.tv_identity()[1]} could not finish checking that video") from error
         try:
             streams = json.loads(result.stdout).get("streams", [])
         except (TypeError, ValueError):
             streams = []
-        if result.returncode != 0 or not streams or streams[0].get("codec_type") != "video":
+        video = next((stream for stream in streams if stream.get("codec_type") == "video"), None)
+        if result.returncode != 0 or video is None:
             raise ValueError(f"{self.tv_identity()[1]} could not find a video stream in that file")
-        return streams[0]
+        return {**video, "audio_streams": [stream for stream in streams if stream.get("codec_type") == "audio"]}
 
     @staticmethod
     def frame_rate(stream: dict[str, Any]) -> float:

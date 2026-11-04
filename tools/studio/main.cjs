@@ -18,6 +18,7 @@ const { policy: compressionPolicy } = require('./lib/compression.cjs');
 const { addDesktop } = require('./lib/desktop-flow.cjs');
 const { displayJobs } = require('./lib/job-display.cjs');
 const { openPortalWindow } = require('./lib/portal-window.cjs');
+const { readBackupKey } = require('./lib/backup-key.cjs');
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'studio', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 app.setName('MabelTV Studio');
@@ -89,7 +90,8 @@ async function start() {
   queue = new Queue(store, new Media(getTools), iplayer, portal);
   queue.afterPublish = (job, signal) => sendSubtitles(job, portal, getTools(), signal);
   queue.releaseCloudCaches = (remote, local, signal) => releaseCloudCaches(remote, local, store, portal, signal);
-  companion = new Companion(store, queue, iplayer, portal, new TorrentRuntime(app.getPath('userData'), resources, safeStorage));
+  companion = new Companion(store, queue, iplayer, portal, new TorrentRuntime(app.getPath('userData'), resources, safeStorage),
+    { backupKey: () => readBackupKey(store.root, safeStorage) });
   if (!process.env.STUDIO_TEST_DATA) {
     app.setLoginItemSettings({ openAtLogin: true, args: ['--background'] });
     tray = new Tray(path.join(__dirname, 'ui/studio.ico'));

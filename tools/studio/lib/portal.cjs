@@ -17,13 +17,13 @@ function endpoint(value) {
 }
 class Portal {
   constructor(store, transport = fetch) { this.store = store; this.transport = transport; this.current = null; this.catalogue = { channels: [], series: [] }; this.cloudConfirmations = new StageGate(4); }
-  async at(base, route, { method = 'GET', body, signal, offset, timeout = 30000 } = {}) {
+  async at(base, route, { method = 'GET', body, signal, offset, timeout = 30000, headers: suppliedHeaders = {} } = {}) {
     const controller = new AbortController();
     const abort = () => controller.abort(); signal?.addEventListener('abort', abort, { once: true });
     if (signal?.aborted) controller.abort();
     const timer = setTimeout(abort, timeout);
     try {
-      const headers = {};
+      const headers = { ...suppliedHeaders };
       if (offset !== undefined) { headers['Upload-Offset'] = String(offset); headers['Content-Type'] = 'application/octet-stream'; }
       else if (body !== undefined) headers['Content-Type'] = 'application/json';
       const response = await this.transport(base + route, { method, headers, credentials: 'include', redirect: 'manual',

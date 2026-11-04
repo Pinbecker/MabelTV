@@ -21,10 +21,10 @@ function progressBatch(states, progress, cursor = 0) {
 }
 
 class Companion {
-  constructor(store, queue, iplayer, portal, torrents = null) {
+  constructor(store, queue, iplayer, portal, torrents = null, options = {}) {
     Object.assign(this, { store, queue, iplayer, portal });
     this.runner = new CompanionJobs(store, queue, iplayer, portal);
-    this.backup = new BackupBridge(store, portal);
+    this.backup = new BackupBridge(store, portal, { key: options.backupKey });
     this.torrents = torrents;
     if (torrents) { this.downloads = new TorrentDownloads(store, torrents); this.torrentRunner = new CompanionTorrents(this.downloads, this.runner, queue.resources); }
     this.actives = new Map(); this.running = new Set(); this.responses = []; this.request = null; this.closed = false; this.busy = false;

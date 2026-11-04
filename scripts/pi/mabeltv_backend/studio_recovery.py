@@ -96,7 +96,8 @@ class StudioRecoveryMixin:
         for sidecar in replacement.parent.glob(replacement.stem + ".*"):
             if sidecar.suffix.lower() in {".srt", ".vtt"} and sidecar.is_file():
                 os.replace(sidecar, target.parent / (target.stem + sidecar.name[len(replacement.stem):]))
-        receipt = {"complete": True, "file": target_name}
+        published = {**frozen["receipt"], "file_name": target.name, "complete": True, "status": "complete", "bytes": target.stat().st_size}
+        receipt = {"complete": True, "file": target_name, "published": published}
         job["recoveryReceipt"] = receipt
         self.state_database.studio_add("job", job)
         if previous != target:

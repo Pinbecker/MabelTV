@@ -14,6 +14,9 @@ def studio_get(handler, path, query):
     if not path.startswith("/api/studio/"):
         return False
     library = handler.server.library
+    if path in {"/api/studio/backup/file", "/api/studio/backup/profile"} and not library.studio_backup_authorised(handler.headers.get("X-MabelTV-Backup-Key")):
+        handler.json(403, {"error": "Studio backup connection is not paired"})
+        return True
     if path == "/api/studio/status":
         result = library.studio_status()
     elif path == "/api/studio/cloud":
@@ -56,6 +59,9 @@ def studio_get(handler, path, query):
 
 
 def studio_post(handler, path, payload):
+    if path in {"/api/studio/backup/profile", "/api/studio/backup/confirm"} and not handler.server.library.studio_backup_authorised(handler.headers.get("X-MabelTV-Backup-Key")):
+        handler.json(403, {"error": "Studio backup connection is not paired"})
+        return True
     if path == "/api/studio/diagnostics":
         handler.json(200, record_diagnostics(handler.server.library, payload))
         return True

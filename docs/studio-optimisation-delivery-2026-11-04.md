@@ -10,7 +10,7 @@ restored. The implementation follows the saved
 
 ## Processing and destinations
 
-- Windows Studio 1.7.0 owns video preparation for desktop, portal, existing Pi
+- Windows Studio 1.7.1 owns video preparation for desktop, portal, existing Pi
   optimisation actions and incompatible phone/USB uploads. The Pi stages and
   publishes files. Its retired CPU encoder refuses to run.
 - Intel H.264 Quick Sync, slow preset and look-ahead are shared by Balanced,
@@ -101,6 +101,13 @@ the existing 7 recent, 35 daily, 12 weekly and 24 monthly policy and only prunes
 known, verified, unchanged remote archive identities. Local export copies keep
 seven verified recent archives. Media and disposable caches remain excluded.
 
+Archive bytes, recovery-profile reads/writes and backup confirmation additionally
+require a dedicated paired backup key, even when the normal portal PIN is off.
+The Windows copy uses Electron/Windows private storage; the Pi copy is a private
+secret file. A one-time pairing token is consumed after encryption. Different-
+device recovery requires pairing again. The key is absent from profile snapshots
+and ordinary portal responses, and no backup credential is embedded in URLs.
+
 The later bulk feeder can submit the shared `/api/studio/jobs` contract with
 frozen cloud source fields, per-item compression and `destination.unattended`.
 Risky items return `QUALITY_SKIPPED` for review, without unattended pop-ups or
@@ -114,8 +121,8 @@ Source checks completed before live delivery:
 
 | Boundary | Result |
 | --- | --- |
-| Complete Python Library/SQLite suite | 503 passed, 6 existing platform skips |
-| Studio Node suite | 81 passed, including required real Intel encoding |
+| Complete Python Library/SQLite suite | 505 tests: 499 passed, 6 existing platform skips |
+| Studio Node suite | 83 passed, including required real Intel encoding |
 | Latest stage/backup boundary tests | 13 passed |
 | Complete JavaScript owner groups | 22 passed |
 | Core iPhone WebKit/Chromium portal gate | 219 passed, 19 existing conditional skips |
