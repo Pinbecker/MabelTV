@@ -12,7 +12,9 @@ function studioRenderOptimiseHero(preview) {
   const meta = document.createElement('p')
   const runtime = preview.files.length === 1 && (preview.files[0].runtimeMinutes || title.runtime)
   meta.textContent = [title.year, runtime ? Math.floor(runtime / 60) + 'h ' + Math.round(runtime % 60) + 'm' : '', preview.files.length > 1 ? preview.files.length + ' files' : ''].filter(Boolean).join(' · ')
-  copy.append(overline, heading, meta); hero.append(art, copy)
+  copy.append(overline, heading, meta)
+  if (title.overview) { const summary = document.createElement('p'); summary.className = 'studio-optimise-overview'; summary.textContent = title.overview; copy.append(summary) }
+  hero.append(art, copy)
   const current = preview.files.reduce((total, file) => total + file.bytes, 0)
   $('#studioOptimiseCurrentSize').textContent = studioBytes(current)
   $('#studioOptimiseCurrentFormat').textContent = [...new Set(preview.files.map(file => file.type))].join(' + ')
@@ -33,23 +35,37 @@ async function studioOpenCloudOptimise() {
   try {
     studioOptimiseDraft = studioDraft
     $('#studioOptimiseCompression').value = $('#studioCompression').value
-    await studioRefreshOptimisePreview()
-    if (studioDraft !== studioOptimiseDraft) return
     $('#studioOptimiseSheet details').open = false
     $('#studioOptimiseError').classList.add('hidden')
     closeLibrarySheet($('#studioDestinationSheet'), false)
     closeLibrarySheet($('#studioActionsSheet'), false)
     openLibrarySheet($('#studioOptimiseSheet'))
-  } catch (error) { studioFailure(error) }
+    await studioRefreshOptimisePreview()
+  } catch (error) { $('#studioOptimiseError').textContent = error.message; $('#studioOptimiseError').classList.remove('hidden') }
   finally { button.disabled = false; button.setAttribute('aria-busy', 'false'); studioSyncSelects() }
 }
 async function studioRefreshOptimisePreview() {
   const generation = ++studioOptimiseGeneration, draft = studioOptimiseDraft
   studioOptimisePreview = null
   $('#studioOptimiseConfirm').disabled = true
-  $('#studioOptimiseNewSize').textContent = 'Calculating…'
-  const preview = await api('/api/studio/cloud/optimise-preview', { method: 'POST', body: JSON.stringify({
-    ids: draft.sources.map(source => source.id), compression: $('#studioOptimiseCompression').value }) })
+  $('#studioOptimiseNewSize').replaceChildren()
+  const spinner = document.createElement('span'); spinner.className = 'studio-spinner studio-inline-spinner'; spinner.setAttribute('aria-label', 'Calculating size')
+  $('#studioOptimiseNewSize').append(spinner, document.createTextNode(' Calculating…'))
+  $('#studioOptimiseSavings').replaceChildren()
+  $('#studioOptimiseFiles').replaceChildren()
+  $('#studioOptimiseOutput').textContent = ''
+  $('#studioOptimiseEstimate').textContent = ''
+  $('#studioOptimiseError').classList.add('hidden')
+  let preview
+  try {
+    preview = await api('/api/studio/cloud/optimise-preview', { method: 'POST', body: JSON.stringify({
+      ids: draft.sources.map(source => source.id), compression: $('#studioOptimiseCompression').value }) })
+  } catch (error) {
+    if (generation !== studioOptimiseGeneration || studioDraft !== draft) return
+    $('#studioOptimiseNewSize').textContent = 'Unavailable'
+    $('#studioOptimiseError').textContent = error.message; $('#studioOptimiseError').classList.remove('hidden')
+    return
+  }
   if (generation !== studioOptimiseGeneration || studioDraft !== draft) return
   studioOptimisePreview = preview
   studioRenderOptimiseHero(preview)
@@ -71,24 +87,27 @@ $('#studioOptimiseCompression').onchange = () => void studioRefreshOptimisePrevi
   $('#studioOptimiseError').textContent = error.message; $('#studioOptimiseError').classList.remove('hidden')
 })
 function studioCancelCloudOptimise() {
+  studioOptimiseGeneration++; studioOptimisePreview = null
   closeLibrarySheet($('#studioOptimiseSheet'), false)
-  openLibrarySheet($('#studioDestinationSheet'))
+  openLibrarySheet($('#studioActionsSheet'))
 }
 $('#studioCloudOptimise').onclick = studioOpenCloudOptimise
 $('#studioOptimiseConfirm').onclick = async () => {
   const button = $('#studioOptimiseConfirm'); button.disabled = true
   try {
     if (!studioOptimisePreview || studioDraft !== studioOptimiseDraft) throw new Error('Open this file again before confirming.')
+    const risky = studioOptimisePreview.files.some(file => file.risky)
+    if (risky && !await portalConfirm({ title: 'Compress this copy again?', message: 'This file is already heavily compressed. Further compression may reduce picture quality.', confirmLabel: 'Compress anyway' })) return
     const sources = studioOptimisePreview.files.map(file => ({ type: 'cloud', id: file.id,
       bytes: file.bytes, modified: file.modified, remoteId: file.remoteId }))
     await api('/api/studio/jobs', { method: 'POST', body: JSON.stringify({ sources,
-      destination: { kind: 'icloud', optimiseCloud: true, cloudCopies: 'optimised', saveCloud: true, compression: $('#studioOptimiseCompression').value },
+      destination: { kind: 'icloud', optimiseCloud: true, cloudCopies: 'optimised', saveCloud: true, allowRisk: risky, compression: $('#studioOptimiseCompression').value },
       replaceCloudOriginal: true }) })
     closeLibrarySheet($('#studioOptimiseSheet'))
     studioState.selected.clear(); studioState.selecting = false
     studioSetTab('activity', { historyEntry: true }); await studioTick()
   } catch (error) { $('#studioOptimiseError').textContent = error.message; $('#studioOptimiseError').classList.remove('hidden') }
-  finally { button.disabled = false }
+  finally { button.disabled = !studioOptimisePreview }
 }
 $('#studioOptimiseCancel').onclick = studioCancelCloudOptimise
 portalSheets.wire($('#studioOptimiseSheet'), { closeButton: $('#studioOptimiseClose'), close: studioCancelCloudOptimise })

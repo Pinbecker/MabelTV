@@ -205,6 +205,9 @@ class StudioCloudMetadataMixin:
             raise ValueError("Choose Films, TV or Kids")
         display_titles = self._studio_cloud_merge_versions(titles)
         collections = self._studio_collection_catalogue(display_titles, groups)
+        if category:
+            present = {item["collection"] for item in display_titles if item["category"] == category}
+            collections = [name for name in collections if name in present]
         collection = query.get("collection", [None])[0]
         visible = [item for item in display_titles if (not category or item["category"] == category)
                    and (collection is None or item["collection"] == collection)

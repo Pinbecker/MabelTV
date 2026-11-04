@@ -19,6 +19,8 @@ function destinationValid(value) {
   if (value.kind === 'film' && value.folder !== undefined && (typeof value.folder !== 'string' || value.folder.length > 80 || /[/\\\x00-\x1f]/.test(value.folder) || ['.', '..'].includes(value.folder))) throw new Error('Choose a My TV collection.');
   return { ...(value.kind === 'film' && value.folder ? { folder: value.folder } : {}), kind: value.kind, channel: value.channel, series: value.series, season: value.season,
     compression: compressionProfile(value.compression).id,
+    preparationIntent: value.preparationIntent === 'compatible' ? 'compatible' : 'compress', allowRisk: value.allowRisk === true,
+    spaceOnly: value.spaceOnly === true,
     ...(value.channelFolder ? { channelFolder: String(value.channelFolder).slice(0, 180) } : {}),
     label: String(value.label || 'Prepared locally').slice(0, 180), profile: value.profile === 'mabel' ? 'mabel' : 'mytv', downloadOnly: value.kind === 'local' && value.downloadOnly === true };
 }
@@ -56,7 +58,7 @@ class Queue extends EventEmitter {
       if (input.kind === 'file') {
         const stats = fs.statSync(input.path);
         if (!stats.isFile() || !/\.(mp4|m4v|mov|mkv|avi|webm|mpg|mpeg|ts)$/i.test(input.path)) throw new Error('Choose a supported video file.');
-        fingerprint = { size: stats.size, mtime: stats.mtimeMs };
+        fingerprint = { size: stats.size, mtime: stats.mtimeMs, inode: stats.ino };
       } else if (input.kind !== 'iplayer' || !/^[bmp][a-z0-9]{7}$/.test(input.metadata?.pid)) throw new Error('Choose an iPlayer programme.');
       const duplicate = this.store.state.jobs.some(job => !['complete', 'cancelled', 'failed'].includes(job.status) &&
         (input.kind === 'iplayer' ? job.metadata?.pid === input.metadata.pid : job.sourcePath === input.path) &&
@@ -66,6 +68,7 @@ class Queue extends EventEmitter {
       const title = input.kind === 'iplayer' ? input.metadata.title : path.basename(input.path, path.extname(input.path));
       const job = { id, source: input.kind, sourcePath: input.path || '', sourceFingerprint: fingerprint,
         remoteId: input.remoteId || '', reservationKey: input.reservationKey || '', preserveOriginal: input.preserveOriginal === true,
+        ...(input.piReturn ? { piReturn: input.piReturn } : {}), variantLabel: input.variantLabel || '',
         metadata: input.metadata || { title, episode: '', artwork: '' }, match: matches[index], destination, status: 'queued',
         percent: 0, message: 'Waiting to start', createdAt: Date.now(), updatedAt: Date.now(),
         directory: path.join(this.store.state.settings.workspace, safeName([title, input.metadata?.episode].filter(Boolean).join(' - ')).slice(0, 100) + ' - ' + id.slice(0, 8)), uploadId: '', preparedPath: '' };
@@ -111,11 +114,11 @@ class Queue extends EventEmitter {
           return this.iplayer.download(job.metadata, path.join(job.directory, 'Original'), profile, signal, fields => change(fields));
         });
       const stats = fs.statSync(download.file);
-      change({ sourcePath: download.file, metadata: download.metadata, sourceFingerprint: { size: stats.size, mtime: stats.mtimeMs } }, true);
+      change({ sourcePath: download.file, metadata: download.metadata, sourceFingerprint: { size: stats.size, mtime: stats.mtimeMs, inode: stats.ino } }, true);
     }
     if (!job.originalRemoved) {
       const stats = fs.statSync(job.sourcePath);
-      if (stats.size !== job.sourceFingerprint?.size || stats.mtimeMs !== job.sourceFingerprint?.mtime) throw new Error('The original file changed. Add it again so Studio can inspect the new version.');
+      if (stats.size !== job.sourceFingerprint?.size || stats.mtimeMs !== job.sourceFingerprint?.mtime || job.sourceFingerprint.inode !== undefined && stats.ino !== job.sourceFingerprint.inode) throw new Error('The original file changed. Add it again so Studio can inspect the new version.');
     }
     if (!job.preparedPath) {
       if (job.destination.downloadOnly) {
@@ -131,18 +134,24 @@ class Queue extends EventEmitter {
           change({ status: 'preparing', percent: 0, message: 'Checking and preparing video' }, true);
           return this.media.prepare(job.sourcePath, destination, profile, signal, percent => change({ percent }), analysis => {
             this.resources.reserve(job.reservationKey || job.id, analysis.bytes * 2);
-          }, job.destination.compression);
+          }, job.destination.preparationIntent === 'compatible' ? 'compatible' : job.destination.compression,
+          { allowRisk: job.destination.allowRisk, spaceOnly: job.destination.spaceOnly });
         });
       let publishName = stem + '.mp4';
       if (job.destination.kind === 'series' && job.metadata.episodeNumber) publishName = `S${String(job.destination.season).padStart(2, '0')}E${String(job.metadata.episodeNumber).padStart(2, '0')} - ${publishName}`;
       // For ready local files, retain the original name and extension.
       if (job.source === 'file' && !output.converted) publishName = path.basename(job.sourcePath);
       if (job.match?.title && job.destination.kind === 'film') publishName = safeName(job.match.title + (job.match.year ? ' (' + job.match.year + ')' : '')) + path.extname(output.file);
+      if (job.variantLabel) publishName = safeName(path.basename(publishName, path.extname(publishName)) + ' - ' + job.variantLabel) + path.extname(publishName);
       change({ preparedPath: output.file, analysis: output.analysis, sourceAnalysis: output.sourceAnalysis, converted: output.converted,
         preparedCompression: job.destination.compression || 'compact', publishName }, true);
     }
     await this.cleanupOriginal(job);
     if (job.destination.kind === 'local') { change({ status: 'prepared', percent: 100, message: job.originalRemoved ? 'Ready locally. Prepared copy kept; downloaded original removed.' : 'Ready locally. Your original file is unchanged.' }, true); return; }
+    if (job.piReturn?.replacePi && !job.converted) {
+      const result = await this.portal.api('/api/studio/pi/unchanged', { method: 'POST', body: job.piReturn, signal });
+      change({ result }, true); await this.finishMetadata(job, signal, change); return;
+    }
     change({ status: 'uploading', percent: 0, message: 'Connecting to MabelTV' }, true);
     await this.resources.upload.run(signal,
       () => change({ status: 'queued-upload', percent: 0, message: 'Waiting to send to the Pi' }, true), async () => {

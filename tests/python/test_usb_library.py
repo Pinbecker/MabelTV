@@ -254,10 +254,10 @@ class UsbLibraryTests(unittest.TestCase):
         folder = self.volume / "Films"
         folder.mkdir()
         (folder / "One.mp4").write_bytes(b"one" * 1000)
-        (folder / "Two.mkv").write_bytes(b"two" * 1000)
+        (folder / "Two.mp4").write_bytes(b"two" * 1000)
         (folder / "ignore.txt").write_text("no", encoding="utf-8")
         self.fixture.library.video_info = mock.Mock(return_value={
-            "codec_type": "video", "width": 1280, "height": 720,
+            "codec_type": "video", "codec_name": "h264", "pix_fmt": "yuv420p", "width": 1280, "height": 720,
             "avg_frame_rate": "25/1",
         })
         job = self.fixture.library.start_usb_import({
@@ -279,10 +279,10 @@ class UsbLibraryTests(unittest.TestCase):
     def test_usb_series_import_preserves_season_folders_without_refreshing_tv(self) -> None:
         season = self.volume / "Silicon Valley" / "Season 1"
         season.mkdir(parents=True)
-        episode = season / "Silicon.Valley.S01E06.720p.HDTV.x264.mkv"
+        episode = season / "Silicon.Valley.S01E06.720p.HDTV.x264.mp4"
         episode.write_bytes(b"episode" * 1000)
         self.fixture.library.video_info = mock.Mock(return_value={
-            "codec_type": "video", "width": 1280, "height": 720,
+            "codec_type": "video", "codec_name": "h264", "pix_fmt": "yuv420p", "width": 1280, "height": 720,
             "avg_frame_rate": "25/1",
         })
 

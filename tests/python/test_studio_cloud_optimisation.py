@@ -46,7 +46,7 @@ class StudioCloudOptimisationTests(unittest.TestCase):
         payload["destination"]["compression"] = "smallest"
         identity = self.library.studio_add_jobs(payload)["ids"][0]
         self.assertIsNone(self.library.studio_worker_poll({"id": "d" * 32, "capabilities": ["cloud-optimise"]})["job"])
-        worker = {"id": "e" * 32, "capabilities": ["cloud-optimise", "compression-presets"]}
+        worker = {"id": "e" * 32, "capabilities": ["cloud-optimise", "compression-presets", "intel-policy-v2"]}
         first = self.library.studio_worker_poll(worker)["job"]
         self.assertEqual(first["destination"]["compression"], "smallest")
         first.update(lease=0)
@@ -98,7 +98,7 @@ class StudioCloudOptimisationTests(unittest.TestCase):
         self.library.studio_add_jobs(self.payload())
         old = self.library.studio_worker_poll({"id": "d" * 32, "capabilities": ["torrent"]})
         self.assertIsNone(old["job"])
-        new = self.library.studio_worker_poll({"id": "e" * 32, "capabilities": ["torrent", "cloud-optimise"]})
+        new = self.library.studio_worker_poll({"id": "e" * 32, "capabilities": ["torrent", "cloud-optimise", "intel-policy-v2"]})
         self.assertTrue(new["job"]["destination"]["optimiseCloud"])
         payload = self.payload()
         payload["sources"] = [{"type": "iplayer", "pid": "m0000001"}]

@@ -137,13 +137,7 @@ const $ = selector => document.querySelector(selector)
     }
 
     async function api(path, options = {}) {
-      const response = await fetch(path, {
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
-        ...options
-      })
-      let invalidResponse = false
-      const body = await response.json().catch(() => { invalidResponse = true; return {} })
+      const { response, body, invalidResponse } = await portalReadResponse(path, options)
       if (response.status === 401) {
         portalConnectionState = 'auth-required'
         setOfflineProtectedAccess(false)
@@ -251,6 +245,7 @@ const $ = selector => document.querySelector(selector)
     }
 
     function showError(error) {
+      if (error?.expectedAbort) return
       notice(error?.message || String(error || 'Something went wrong'), true)
     }
 

@@ -17,7 +17,7 @@ class CompanionTorrents {
       const details = metadata(file, remote.title);
       const destination = { ...remote.destination };
       if (destination.kind === 'series' && destination.preserveSeasons && Number.isInteger(details.series)) destination.season = details.series;
-      const childRemote = { ...remote, destination, resourceKey: remote.id, localKey: remote.id + ':' + file.index,
+      const childRemote = { ...remote, destination, selectedFile: file.index, resourceKey: remote.id, localKey: remote.id + ':' + file.index,
         fileInput: { kind: 'file', path: file.file, metadata: details } };
       const child = { progress: {}, local: null, finishing: false };
       state.child = child;

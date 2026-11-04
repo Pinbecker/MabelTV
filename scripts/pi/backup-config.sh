@@ -118,4 +118,15 @@ chmod 0600 "$archive"
     sha256sum "$(basename -- "$archive")" > "$(basename -- "$archive").sha256"
 )
 chmod 0600 "$archive.sha256"
+if [[ "$database_only" != "--database-only" ]]; then
+    # A private, read-only handoff for the authenticated Windows companion.
+    # OneDrive delivery remains enabled until the iCloud route is verified.
+    export_root="$(dirname -- "$database")/backup-export"
+    owner_uid="$(stat -c %u "$database")"
+    owner_gid="$(stat -c %g "$database")"
+    install -d -o "$owner_uid" -g "$owner_gid" -m 0700 "$export_root"
+    install -o "$owner_uid" -g "$owner_gid" -m 0600 "$archive" "$export_root/.$(basename -- "$archive").partial"
+    mv -- "$export_root/.$(basename -- "$archive").partial" "$export_root/$(basename -- "$archive")"
+    install -o "$owner_uid" -g "$owner_gid" -m 0600 "$archive.sha256" "$export_root/$(basename -- "$archive").sha256"
+fi
 printf '%s\n' "$archive"

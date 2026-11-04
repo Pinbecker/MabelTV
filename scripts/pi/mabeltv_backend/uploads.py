@@ -13,7 +13,6 @@ import threading
 import time
 import uuid
 from .compression import compression_profile
-from .size_encoding import encode_size_profile
 from pathlib import Path
 from typing import Any
 
@@ -256,6 +255,9 @@ class UploadConversionMixin:
             lock = self.upload_locks.setdefault(upload_id, threading.Lock())
         with lock:
             metadata = self.upload_meta(upload_id)
+            if metadata.get("studioReplace"):
+                self.studio_pi_publish_replacement(upload_id, metadata)
+                return
             if metadata.get("kind") == "family":
                 self.process_family_conversion(upload_id, metadata)
                 return
@@ -278,7 +280,15 @@ class UploadConversionMixin:
                 metadata["updated"] = time.time()
                 metadata.pop("error", None)
                 self.write_json(self.incoming / f"{upload_id}.json", metadata)
-                self.video_info(part)
+                stream = self.video_info(part)
+                cap = (1920, 1080) if my_tv_film_upload or my_tv_series_upload else (1280, 720)
+                requires_laptop = (bool(metadata.get("compression")) or stream.get("codec_name") != "h264"
+                                   or stream.get("pix_fmt") != "yuv420p" or self.frame_rate(stream) > 30.1
+                                   or int(stream.get("width", 0)) > cap[0] or int(stream.get("height", 0)) > cap[1]
+                                   or Path(source_name).suffix.lower() not in {".mp4", ".m4v"})
+                if requires_laptop:
+                    self.studio_prepare_upload(upload_id, metadata)
+                    return
                 # Channel uploads are published exactly as supplied. Automatic
                 # optimisation made successful uploads look stuck and delayed
                 # films and episodes appearing in their chosen channel.
@@ -301,19 +311,8 @@ class UploadConversionMixin:
                 # than rejecting a file this very job already published.
                 self.video_info(destination)
             elif conversion_required:
-                metadata["status"] = "processing"
-                metadata["updated"] = time.time()
-                self.write_json(self.incoming / f"{upload_id}.json", metadata)
-                if metadata.get("compression"):
-                    def report(percent, message=""):
-                        metadata.update(processing_percent=percent, processing_message=message, updated=time.time())
-                        self.write_json(self.incoming / f"{upload_id}.json", metadata)
-                    encode_size_profile(self, part, destination, metadata["compression"],
-                                        report, target="mytv" if my_tv_film_upload or my_tv_series_upload else "mabel")
-                elif my_tv_film_upload:
-                    self.optimise_my_tv_for_playback(part, destination)
-                else:
-                    self.optimise_for_playback(part, destination)
+                self.studio_prepare_upload(upload_id, metadata)
+                return
             else:
                 metadata["status"] = "publishing"
                 metadata["updated"] = time.time()
@@ -377,6 +376,7 @@ class UploadConversionMixin:
             result["complete"] = True
             result["status"] = "complete" if refreshed else "refresh-error"
             self.write_json(result_path, result)
+            self.studio_finish_original_upload(metadata, result, destination)
             # Keep the manifest until the complete result is durably visible.
             # A status request can otherwise land between the manifest unlink
             # and result replacement and incorrectly report "Upload not found".
@@ -399,6 +399,8 @@ class UploadConversionMixin:
             try:
                 size = int(value.get("size", 0))
                 status = str(value.get("status", "uploading"))
+                if status == "cancelled":
+                    continue
                 # A create request is durable before its first chunk arrives.
                 # No .part therefore means 0% while uploading, not 100%.
                 # In publishing/finalising the source may already have been
@@ -444,7 +446,7 @@ class UploadConversionMixin:
                 "batch_id": value.get("batch_id"),
                 "source_available": source_available,
                 "cancelable": status in {
-                    "uploading", "queued", "paused", "error"
+                    "uploading", "queued", "paused", "error", "waiting-laptop"
                 },
                 "retryable": (status == "error"
                               and (family_source_ready or source_kind == "my-tv-copy" and source_available or part.is_file() and offset == size)),
@@ -797,6 +799,12 @@ class UploadConversionMixin:
                 result_path = self.incoming / f"{upload_id}.result.json"
                 metadata = self.read_json(manifest, None)
                 result = self.read_json(result_path, None)
+                if isinstance(metadata, dict) and metadata.get("studioPreparationJob") and action in {"pause", "resume", "retry", "cancel"}:
+                    self.studio_job_action({"id": metadata["studioPreparationJob"], "action": "resume" if action == "retry" else action})
+                    metadata.update(status="cancelled" if action == "cancel" else "paused" if action == "pause" else "waiting-laptop",
+                                    transfer_state="paused" if action == "pause" else "complete", updated=time.time())
+                    self.write_json(manifest, metadata)
+                    return {"ok": True, "message": "Laptop preparation " + ("cancelled" if action == "cancel" else "paused" if action == "pause" else "resumed")}
                 if action == "heartbeat":
                     if not isinstance(metadata, dict):
                         raise ValueError("Upload not found")
@@ -938,7 +946,7 @@ class UploadConversionMixin:
         part = self.incoming / f"{upload_id}.part"
         status = str(metadata.get("status", "uploading"))
         processing_statuses = {
-            "copying", "validating", "queued", "processing", "publishing", "finalising"
+            "copying", "validating", "queued", "processing", "publishing", "finalising", "waiting-laptop"
         }
         try:
             offset = part.stat().st_size if part.is_file() \

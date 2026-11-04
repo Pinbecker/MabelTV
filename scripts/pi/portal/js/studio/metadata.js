@@ -44,7 +44,7 @@ function studioDestinationMetadata() {
   studioMediaArt($('#studioDestinationArt'), title)
   const series = context?.titles.length === 1 && context.titles[0].kind === 'series'
   const choose = $('#studioChooseEpisodes')
-  choose.classList.toggle('hidden', !series || context.selectedEpisodes)
+  choose.classList.toggle('hidden', !series)
   choose.replaceChildren(document.createTextNode(studioDraft.sources.length + ' episodes '), librarySignalIcon('signal-chevron-down'))
   const bytes = studioDraft?.sources.reduce((total, source) => total + (Number(source.bytes) || 0), 0)
   $('#studioDestinationSummary').textContent = [title?.year, series ? 'iCloud' : bytes ? studioBytes(bytes) : first?.type === 'iplayer' ? 'BBC iPlayer' : ''].filter(Boolean).join(' · ')
@@ -58,13 +58,13 @@ function studioOpenActions() {
   studioDestinationMetadata()
   closeLibrarySheet($('#studioDestinationSheet'), false)
   openLibrarySheet($('#studioActionsSheet'))
+  void studioLoadOriginalAction().catch(() => {})
 }
 function studioCloseActions() {
-  closeLibrarySheet($('#studioActionsSheet'), false)
-  openLibrarySheet($('#studioDestinationSheet'))
+  closeLibrarySheet($('#studioActionsSheet'))
 }
 $('#studioDestinationMore').onclick = studioOpenActions
-$('#studioSendToTv').onclick = studioCloseActions
+$('#studioSendToTv').onclick = () => { closeLibrarySheet($('#studioActionsSheet'), false); openLibrarySheet($('#studioDestinationSheet')) }
 portalSheets.wire($('#studioActionsSheet'), { closeButton: $('#studioActionsClose'), close: studioCloseActions })
 $('#studioConnectionsDone').onclick = () => closeLibrarySheet($('#studioConnectionSheet'))
 async function studioOpenMetadataMatch(item) {
@@ -112,9 +112,14 @@ $('#studioCloudMatchUse').onclick = async () => {
 function studioCloseCloudMatch() {
   studioMetadata.revision++; studioMetadata.matching = null
   closeLibrarySheet($('#studioCloudMatchSheet'), false)
-  openLibrarySheet($('#studioDestinationSheet'))
+  openLibrarySheet($('#studioActionsSheet'))
 }
 $('#studioCloudEditMetadata').onclick = () => void studioOpenMetadataMatch(studioDraft.cloudContext.titles[0]).catch(studioFailure)
 $('#studioCloudMatchForm').onsubmit = event => { event.preventDefault(); void studioSearchCloudMetadata().catch(error => { $('#studioCloudMatchStatus').textContent = error.message }) }
 portalSheets.wire($('#studioCloudMatchSheet'), { closeButton: $('#studioCloudMatchClose'), close: studioCloseCloudMatch })
-$('#studioChooseEpisodes').onclick = () => { const title = studioDraft.cloudContext.titles[0]; closeLibrarySheet($('#studioDestinationSheet'), false); void openStudioCloudSeries(title).catch(studioFailure) }
+$('#studioChooseEpisodes').onclick = () => {
+  studioState.episodeDraft = studioDraft
+  const title = studioDraft.cloudContext.titles[0]
+  closeLibrarySheet($('#studioDestinationSheet'), false)
+  void openStudioCloudSeries(title).catch(studioFailure)
+}

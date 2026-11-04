@@ -21,6 +21,15 @@ function cleanWorkingCopies(remote, local, store) {
     }
   }
   const candidates = new Set();
+  function scratchFiles(root) {
+    for (const name of fs.readdirSync(root)) {
+      const file = path.join(root, name), stat = fs.lstatSync(file);
+      if (stat.isSymbolicLink()) continue;
+      if (stat.isDirectory()) scratchFiles(file);
+      else if (/\.size-pass-0\.log(?:\.mbtree)?$|\.part\.mp4$|^Subtitles(?:-[a-z]{2,3})?\.srt$/i.test(name)) candidates.add(file);
+    }
+  }
+  for (const root of roots) if (fs.existsSync(root)) scratchFiles(root);
   for (const file of [local.sourcePath, local.preparedPath, local.cloudPreparedPath]) {
     if (!file || !fs.existsSync(file)) continue;
     const resolved = fs.realpathSync(file);

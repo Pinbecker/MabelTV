@@ -50,13 +50,13 @@ test('non-saving cloud optimisation keeps the original and avoids another upload
   const directory = path.join(f.store.state.settings.workspace, 'Film - ' + id.slice(0, 8)); fs.mkdirSync(directory, { recursive: true });
   const source = path.join(directory, 'source.mkv'), prepared = path.join(directory, 'prepared.mp4');
   fs.writeFileSync(source, 'video'); fs.writeFileSync(prepared, 'larger video');
-  const local = { id, remoteId, status: 'prepared', sourcePath: source, preparedPath: prepared, directory };
+  const local = { id, remoteId, status: 'prepared', sourcePath: source, preparedPath: prepared, directory, destination: { compression: 'compact' } };
   f.store.add(local);
   const item = { id: 'cloud', path: path.basename(f.file), bytes: 5, modified: 'same', remoteId: 'remote' };
   const remote = { id: remoteId, source: { type: 'cloud', ...item }, destination: { kind: 'icloud', optimiseCloud: true, temporaryWork: true } };
   let released = 0;
   const queue = { releaseCloudCaches: async () => { if (!local.cloudCacheReleased) { released++; assert.ok(fs.existsSync(prepared)); local.cloudCacheReleased = true; } } };
-  const portal = { api: async route => { assert.ok(route.startsWith('/api/studio/cloud/item?') || route === '/api/studio/cloud/confirm'); return route.includes('/item?') ? item : { confirmed: true }; } };
+  const portal = { api: async route => { assert.ok(route.startsWith('/api/studio/cloud/item?') || ['/api/studio/cloud/confirm', '/api/studio/provenance'].includes(route)); return route.includes('/item?') ? item : { confirmed: true }; } };
   const state = {};
   await new CompanionJobs(f.store, queue, {}, portal).run(remote, state, f.signal);
   assert.equal(state.progress.result.unchanged, true); assert.equal(released, 1);

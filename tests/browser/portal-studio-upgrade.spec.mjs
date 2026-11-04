@@ -1,0 +1,77 @@
+import { test, expect } from './test-fixtures.mjs'
+import { openStudio } from './studio-fixtures.mjs'
+test.use({ serviceWorkers: 'block' })
+
+async function bounded(page, id) {
+  const viewport = page.viewportSize()
+  const panel = await page.locator(`#${id} > .library-sheet-panel`).boundingBox()
+  expect(panel.y).toBeGreaterThanOrEqual(0)
+  expect(panel.y + panel.height).toBeLessThanOrEqual(viewport.height + 1)
+  const close = await page.locator(`#${id} .portal-sheet-close`).boundingBox()
+  expect(close.y).toBeGreaterThanOrEqual(0)
+  expect(close.y + close.height).toBeLessThanOrEqual(viewport.height)
+}
+test('narrow collection and expanded optimisation stay inside the viewport with usable return paths', async ({ page }, info) => {
+  await page.setViewportSize({ width: 320, height: 568 })
+  await openStudio(page)
+  await page.locator('.studio-file').first().click()
+  await expect(page.locator('#studioActionsSheet')).toBeVisible()
+  await page.locator('#studioCloudMoveCollection').click()
+  await bounded(page, 'studioCloudCollectionSheet')
+  await page.locator('#studioCloudCollectionOptions label').last().click()
+  await page.locator('#studioCloudCollectionName').fill('Household favourites')
+  await page.setViewportSize({ width: 320, height: 400 })
+  await bounded(page, 'studioCloudCollectionSheet')
+  await page.locator('#studioCloudCollectionCancel').click()
+  await expect(page.locator('#studioActionsSheet')).toBeVisible()
+  await page.locator('#studioCloudOptimise').click()
+  await page.locator('#studioOptimiseSheet details').evaluate(node => { node.open = true })
+  await bounded(page, 'studioOptimiseSheet')
+  await expect(page.locator('#studioOptimiseConfirm')).toBeVisible()
+  await page.screenshot({ path: info.outputPath('optimisation-320-keyboard.png') })
+  await page.locator('#studioOptimiseCancel').click()
+  await expect(page.locator('#studioActionsSheet')).toBeVisible()
+})
+test('episode edits preserve selected quality and TV collection through repeated edits', async ({ page }) => {
+  await openStudio(page, { series: true })
+  await page.locator('#studioCloudCategory').selectOption('tv')
+  await page.evaluate(() => { library.my_tv_folders = ['MCU'] })
+  await page.locator('.studio-file[aria-label="Ludwig"]').click()
+  await page.locator('#studioSendToTv').click()
+  await page.locator('#studioCompression').selectOption('balanced')
+  await page.locator('#studioTargetCollection').selectOption('MCU')
+  for (let round = 0; round < 2; round++) {
+    await page.locator('#studioChooseEpisodes').click()
+    await page.locator('#studioEpisodes input').first().uncheck()
+    await page.locator('#studioEpisodesContinue').click()
+    await expect(page.locator('#studioCompression')).toHaveValue('balanced')
+    await expect(page.locator('#studioTargetCollection')).toHaveValue('MCU')
+    await expect(page.locator('#studioChooseEpisodes')).toBeVisible()
+  }
+})
+test('optimisation failure is visible in its own sheet and clears earlier savings', async ({ page }) => {
+  await openStudio(page)
+  await page.locator('.studio-file').first().click()
+  await page.locator('#studioCloudOptimise').click()
+  await expect(page.locator('#studioOptimiseConfirm')).toBeEnabled()
+  await expect(page.locator('#studioOptimiseSavings')).not.toBeEmpty()
+  await page.route('**/api/studio/cloud/optimise-preview', route => route.fulfill({ status: 400, json: { error: 'Preview unavailable' } }))
+  await page.locator('#studioOptimiseCompression').selectOption('balanced')
+  await expect(page.locator('#studioOptimiseError')).toHaveText('Preview unavailable')
+  await expect(page.locator('#studioOptimiseSavings')).toBeEmpty()
+  await expect(page.locator('#studioOptimiseFiles')).toBeEmpty()
+  await expect(page.locator('#studioOptimiseConfirm')).toBeDisabled()
+  await bounded(page, 'studioOptimiseSheet')
+})
+test('Remote keeps the last TV state after a failed read and resumes after returning to the app', async ({ page }) => {
+  let failing = false
+  await page.route('**/api/live', route => failing ? route.abort('failed') : route.fulfill({ json: { available: true, channel_number: 1, paused: false, standby: false } }))
+  await page.goto('/#live')
+  await expect(page.locator('#remotePause')).toBeEnabled()
+  failing = true
+  await expect(page.locator('#remoteFeedback')).toHaveText('Reconnecting…', { timeout: 10000 })
+  await expect(page.locator('#remotePause')).toBeEnabled()
+  failing = false
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
+  await expect(page.locator('#remoteFeedback')).not.toHaveText('Reconnecting…')
+})

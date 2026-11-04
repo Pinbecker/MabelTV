@@ -71,7 +71,7 @@ p{line-height:1.65}
 .selected-file button{font-size:18px;line-height:1;background:transparent;border:0;color:#839285}
 .destination-panel h2{margin-bottom:7px}
 .destination-panel>p{color:#939c92;font-size:11px;margin:0 0 22px}
-.target-options{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:21px}
+.target-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:21px}
 .target-option{background:#fff;border:1px solid #dfe5da;border-radius:10px;padding:16px 10px;display:flex;flex-direction:column;align-items:center;gap:9px;font-size:12px;font-weight:600}
 .target-option svg{width:22px;height:22px;color:#849b87}
 .target-option.selected{background:#f0f6e9;border-color:#91b682;color:#315b30}

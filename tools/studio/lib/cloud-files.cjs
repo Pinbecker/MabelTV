@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { pipeline } = require('node:stream/promises');
 const { setTimeout: delay } = require('node:timers/promises');
+const { writeJson, retry } = require('./atomic-json.cjs');
 
 function beneath(root, relative) {
   if (typeof relative !== 'string' || relative.includes('\\') || relative.split('/').some(p => p === '..') || path.isAbsolute(relative)) throw new Error('Invalid cloud media path.');
@@ -29,7 +30,7 @@ async function copy(source, target, signal, progress = () => {}, receipt = targe
   if (offset > stat.size || previous?.source !== identity) { if (offset) await fs.promises.unlink(partial); offset = 0; }
   const free = fs.statfsSync(path.dirname(target));
   if (free.bavail * free.bsize < stat.size - offset + 256 * 1024 * 1024) throw new Error('Not enough space to download this file. Free some space, then retry.');
-  await fs.promises.writeFile(receipt, JSON.stringify({ source: identity, complete: false }), { mode: 0o600 });
+  writeJson(receipt, { source: identity, complete: false });
   const input = fs.createReadStream(source, { start: offset });
   let bytes = offset;
   input.on('data', chunk => { bytes += chunk.length; progress({ percent: stat.size ? bytes / stat.size * 100 : 100, bytes, total: stat.size }); });
@@ -37,8 +38,8 @@ async function copy(source, target, signal, progress = () => {}, receipt = targe
   const after = await fs.promises.stat(source);
   if (JSON.stringify([path.resolve(source), after.size, after.mtimeMs, after.ino]) !== identity) throw new Error('The original changed while it was being copied. Retry to fetch the current version.');
   if (fs.statSync(partial).size !== stat.size) throw new Error('The cloud download is incomplete. Retry to resume it.');
-  await fs.promises.rename(partial, target);
-  await fs.promises.writeFile(receipt, JSON.stringify({ source: identity, complete: true, mtime: fs.statSync(target).mtimeMs }), { mode: 0o600 });
+  retry(() => fs.renameSync(partial, target));
+  writeJson(receipt, { source: identity, complete: true, mtime: fs.statSync(target).mtimeMs });
   return target;
 }
 async function fetchCloud(job, store, portal, signal, progress) {
@@ -56,7 +57,9 @@ async function fetchCloud(job, store, portal, signal, progress) {
     const ready = await Promise.all(files.map(async file => {
       try {
         const stat = await fs.promises.stat(beneath(media, file.path));
-        return stat.isFile() && (file.bytes === undefined || stat.size === file.bytes);
+        const expectedTime = file.path === item.path ? Date.parse(item.modified) : NaN;
+        return stat.isFile() && (file.bytes === undefined || stat.size === file.bytes)
+          && (!Number.isFinite(expectedTime) || Math.abs(stat.mtimeMs - expectedTime) <= 2000);
       } catch (error) {
         if (['ENOENT', 'EBUSY', 'EACCES'].includes(error.code)) return false;
         throw error;

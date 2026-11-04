@@ -2,6 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { writeJson } = require('./atomic-json.cjs');
 
 class Store {
   constructor(root) {
@@ -35,21 +36,7 @@ class Store {
     throw new Error('The transfer journal and its backup could not be read. Your media files are safe.');
   }
   save() {
-    const temporary = this.file + '.tmp';
-    const descriptor = fs.openSync(temporary, 'w', 0o600);
-    try { fs.writeFileSync(descriptor, JSON.stringify(this.state, null, 2)); fs.fsyncSync(descriptor); }
-    finally { fs.closeSync(descriptor); }
-    // Do not replace a good backup with a damaged primary during recovery.
-    if (fs.existsSync(this.file) && !this.warning) fs.copyFileSync(this.file, this.file + '.bak');
-    // Windows readers and antivirus can briefly deny replacement. Keep the
-    // durable temporary file and retry; never unlink the good primary.
-    for (let attempt = 0; ; attempt++) {
-      try { fs.renameSync(temporary, this.file); break; }
-      catch (error) {
-        if (attempt >= 5 || !['EPERM', 'EACCES', 'EBUSY'].includes(error.code)) throw error;
-        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25 * 2 ** attempt);
-      }
-    }
+    writeJson(this.file, this.state, { backup: !this.warning });
   }
   snapshot() { return structuredClone(this.state); }
   add(job) { this.state.jobs.push(job); this.save(); return job; }

@@ -9,7 +9,8 @@ async function subtitleFiles(job, tools, signal) {
   const sidecars = fs.existsSync(directory) ? fs.readdirSync(directory).filter(name => name.startsWith(stem + '.') && /\.(srt|vtt|ass)$/i.test(name)) : [];
   const subtitles = sidecars.slice(0, 8).map(name => ({ path: path.join(directory, name), language: name.slice(stem.length + 1, -4).match(/^[a-z]{2,3}$/)?.[0] || 'en' }));
   if (!subtitles.length && fs.existsSync(source)) {
-    const info = JSON.parse(await run(tools.ffprobe, ['-v', 'error', '-show_streams', '-of', 'json', source], { signal }));
+    const info = Array.isArray(job.sourceAnalysis?.subtitleStreams) ? { streams: job.sourceAnalysis.subtitleStreams }
+      : JSON.parse(await run(tools.ffprobe, ['-v', 'error', '-show_streams', '-of', 'json', source], { signal, timeout: 15000 }));
     const text = info.streams?.find(s => s.codec_type === 'subtitle' && ['subrip', 'ass', 'ssa', 'webvtt', 'mov_text', 'text'].includes(s.codec_name));
     if (text) {
       const target = path.join(job.directory, 'Prepared', 'Subtitles.srt');

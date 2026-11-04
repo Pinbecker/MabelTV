@@ -72,7 +72,7 @@ class UploadNotificationsMixin:
             if not isinstance(result, dict):
                 continue
             upload_id = result.get("id", "")
-            if not re.fullmatch(r"[a-f0-9]{32}", str(upload_id)) or result.get("status") != "complete" \
+            if result.get("suppressReadyNotice") or not re.fullmatch(r"[a-f0-9]{32}", str(upload_id)) or result.get("status") != "complete" \
                     or result.get("complete") is not True or result.get("refreshed") is not True \
                     or result.get("kind") not in {"my_tv", "my-tv-series", "channel"} \
                     or float(result.get("finished", 0)) < config["enabled_after"]:
@@ -85,12 +85,16 @@ class UploadNotificationsMixin:
                     continue
                 title = Path(str(result["file_name"])).stem.replace("_", " ")[:200]
                 label = self.upload_notice_label(result)
-                self.send_completion_notice(upload_id, config, "Ready on your TV", title +
+                self.send_completion_notice(str(result.get("noticeAlias") or upload_id), config, "Ready on your TV", title +
                     " is fully uploaded and available in " + label + ". Any iCloud archiving continues separately.")
             except Exception:
                 continue
         self.poll_cloud_completion_notices(config)
         self.poll_optimisation_completion_notices(config)
+        for job in self.state_database.studio_records("job"):
+            if job.get("status") == "failed" and job.get("errorCode") != "QUALITY_SKIPPED" and job.get("updated", 0) >= config["enabled_after"]:
+                self.send_completion_notice("attention-" + job["id"], config, "Studio needs attention",
+                    str(job.get("title", "Media"))[:180] + ": " + ("compression needs confirmation." if job.get("errorCode") == "QUALITY_REVIEW" else "Open Activity for details. Your existing files are kept."))
 
     def poll_optimisation_completion_notices(self, config):
         for relative, state in self.my_tv_media_states().items():
@@ -138,7 +142,7 @@ class UploadNotificationsMixin:
                 if unchanged else ": fully saved and verified in iCloud.")
             self.send_completion_notice("cloud-" + job["id"], config, title, message)
         for operation in self.state_database.studio_records("cloudop"):
-            if operation.get("status") == "complete" and not operation.get("archiveJob") \
+            if operation.get("status") == "complete" and not operation.get("archiveJob") and not operation.get("recoveryJob") \
                     and operation.get("updated", 0) >= config["enabled_after"]:
                 self.send_completion_notice("cloudop-" + operation["id"], config, "iCloud cleanup complete",
                     str(len(operation.get("items", []))) + " selected cloud files have been removed.")

@@ -1,15 +1,18 @@
 {
-  "version": 1,
+  "version": 2,
   "default": "compact",
   "muxMargin": 0.98,
-  "preset": "medium",
+  "preset": "slow",
+  "encoder": "h264_qsv",
+  "lookAhead": true,
+  "riskBitsPerPixel": 0.05,
   "threads": 8,
   "minimumVideoBitrate": 250000,
   "maximumVideoBitrate": 6500000,
   "bufferSize": 13000000,
   "profiles": [
-    { "id": "balanced", "label": "Balanced", "sourceFraction": 0.6, "audioBitrate": 192000 },
-    { "id": "compact", "label": "Compact", "sourceFraction": 0.4, "audioBitrate": 160000 },
-    { "id": "smallest", "label": "Smallest", "sourceFraction": 0.25, "audioBitrate": 128000 }
+    { "id": "balanced", "label": "Balanced", "sourceFraction": 0.6, "audioBitrate": 192000, "minimumBitsPerPixel": 0.04 },
+    { "id": "compact", "label": "Compact", "sourceFraction": 0.4, "audioBitrate": 160000, "minimumBitsPerPixel": 0.028 },
+    { "id": "smallest", "label": "Smallest", "sourceFraction": 0.25, "audioBitrate": 128000, "minimumBitsPerPixel": 0.02 }
   ]
 }

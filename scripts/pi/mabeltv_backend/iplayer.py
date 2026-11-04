@@ -113,12 +113,15 @@ class IPlayerLibraryMixin:
                     if not resolved.is_relative_to(self.media_root):
                         continue
                     stat = path.stat()
-                    signature = (stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+                    signature = (stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns, stat.st_ino)
                     key = str(resolved)
                     cached = self.iplayer_identity_cache.get(key)
-                    identity = cached[1] if cached and cached[0] == signature else media_identity(path)
+                    # Windows can coalesce timestamps on rapid same-size writes.
+                    # Read bounded tags again while newly changed, then cache.
+                    settled = time.time_ns() - stat.st_mtime_ns > 1_000_000_000
+                    identity = cached[1] if settled and cached and cached[0] == signature else media_identity(path)
                     final = path.stat()
-                    if (final.st_size, final.st_mtime_ns, final.st_ctime_ns) != signature:
+                    if (final.st_size, final.st_mtime_ns, final.st_ctime_ns, final.st_ino) != signature:
                         continue
                     active_paths.add(key)
                     self.iplayer_identity_cache[key] = (signature, identity)

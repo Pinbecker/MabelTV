@@ -34,7 +34,7 @@ test('temporary Windows replacement locks preserve the journal and its backup', 
     return rename(...args);
   });
   store.update('kept', { originalRemoved: true });
-  assert.equal(attempts, 2);
+  assert.equal(attempts, 3, 'one lock retry plus atomic backup and primary replacements');
   assert.equal(JSON.parse(fs.readFileSync(store.file, 'utf8')).jobs[0].originalRemoved, true);
   assert.equal(JSON.parse(fs.readFileSync(store.file + '.bak', 'utf8')).jobs[0].status, 'prepared');
 });

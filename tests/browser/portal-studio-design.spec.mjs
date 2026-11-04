@@ -3,7 +3,7 @@ import { openStudio } from './studio-fixtures.mjs'
 
 test.use({ serviceWorkers: 'block' })
 
-test('destination sheet stays fixed across destination, version and quality choices', async ({ page }, info) => {
+test('destination sheet fits its content and keeps controls reachable across choices', async ({ page }, info) => {
   await page.addInitScript(() => { localStorage.setItem('mabeltv-experience-theme', 'light'); localStorage.setItem('mabeltv-experience-accent-hue', '190') })
   const { writes } = await openStudio(page, { online: true })
   await page.getByRole('button', { name: 'BBC iPlayer', exact: true }).click()
@@ -19,9 +19,10 @@ test('destination sheet stays fixed across destination, version and quality choi
     for (const version of ['original', 'optimised', 'both']) {
       await page.locator(`input[name="studioCloudCopies"][value="${version}"]`).locator('..').click()
       const after = await sheet.boundingBox(), button = await page.locator('#studioDestinationSubmit').boundingBox()
-      expect(Math.abs(before.y - after.y)).toBeLessThan(1)
-      expect(Math.abs(before.height - after.height)).toBeLessThan(1)
-      expect(Math.abs(footer.y - button.y)).toBeLessThan(1)
+      expect(after.y).toBeGreaterThanOrEqual(0)
+      expect(after.y + after.height).toBeLessThanOrEqual(page.viewportSize().height)
+      expect(button.y + button.height).toBeLessThanOrEqual(page.viewportSize().height)
+      expect(button.height).toBeGreaterThanOrEqual(44)
       await expect(page.locator('#studioCloudCopiesLabel')).toHaveText(destination === 'icloud' ? 'Version' : 'iCloud copy')
     }
   }

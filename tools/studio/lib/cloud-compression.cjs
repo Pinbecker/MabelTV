@@ -18,7 +18,8 @@ async function prepareCloudCompression(remote, local, queue, store, signal, prog
       progress({ stage: 'preparing', percent: 0, message: 'Preparing the ' + plan.profile.label + ' iCloud copy' });
       return queue.media.prepare(local.sourcePath, destination, 'mytv', signal,
         percent => progress({ stage: 'preparing', percent, message: 'Preparing the ' + plan.profile.label + ' iCloud copy' }),
-        analysis => queue.resources.reserve(local.reservationKey || local.id, analysis.bytes * 2), plan.profile.id);
+        analysis => queue.resources.reserve(local.reservationKey || local.id, analysis.bytes * 2), plan.profile.id,
+        { allowRisk: remote.destination.allowRisk === true });
     });
   store.update(local.id, { cloudPreparedPath: output.file, cloudPreparedAnalysis: output.analysis });
 }

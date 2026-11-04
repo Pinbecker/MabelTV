@@ -13,7 +13,6 @@ import threading
 import time
 import uuid
 from .compression import compression_profile
-from .size_encoding import encode_size_profile
 from pathlib import Path
 from typing import Any
 
@@ -87,30 +86,21 @@ class TranscodingMixin:
         if not source.is_file():
             raise ValueError("Film not found")
         relative = self.my_tv_relative_path(source)
-        state = self.my_tv_media_states().get(relative, {})
-        if isinstance(state, dict) and state.get("state") in {"queued", "processing"}:
-            raise ValueError("This film is already being optimised")
-        # Keep the original until the new copy has passed validation and has
-        # been atomically published. Only then is the original removed.
-        reserve = source.stat().st_size + 512 * 1024 * 1024
-        if shutil.disk_usage(self.media_root).free < reserve:
-            raise ValueError("There is not enough free space to safely optimise this film")
-        with self.my_tv_optimisation_lock:
-            if relative in self.my_tv_optimisation_active:
-                raise ValueError("This film is already being optimised")
-            self.my_tv_optimisation_active.add(relative)
-        with self.config_lock:
-            self.set_my_tv_media_state(relative, "queued", progress=0, compression=profile["id"],
-                                       compressionOperation=uuid.uuid4().hex,
-                                       compressionOriginalBytes=source.stat().st_size)
-        threading.Thread(target=self.optimise_my_tv_file, args=(relative,),
-                         name="mabeltv-my-tv-optimise", daemon=True).start()
+        job = self.studio_pi_queue({"kind": "my_tv", "file": relative},
+                                   {"kind": "film"}, profile["id"], replace=True)
+        self.set_my_tv_media_state(relative, "queued", progress=0, compression=profile["id"],
+                                   compressionOperation=job["id"], message="Waiting for laptop")
 
     def my_tv_optimisation_action(self, file_name: str, action: str) -> None:
         if action not in {"pause", "resume", "cancel"}:
             raise ValueError("Unknown optimisation action")
         source = self.safe_my_tv_path(file_name)
         relative = self.my_tv_relative_path(source)
+        stored = self.my_tv_media_states().get(relative, {})
+        operation = stored.get("compressionOperation")
+        pending = next((job for job in self.state_database.studio_records("job") if job["id"] == operation), None)
+        if pending:
+            self.studio_job_action({"id": operation, "action": action})
         with self.config_lock:
             state = self.my_tv_media_states().get(relative, {})
             current = str(state.get("state", "")) if isinstance(state, dict) else ""
@@ -131,158 +121,11 @@ class TranscodingMixin:
                                            progress=int(state.get("progress", 0) or 0))
 
     def optimise_my_tv_file(self, file_name: str) -> None:
-        source = self.safe_my_tv_path(file_name)
-        try:
-            # One encoder at a time keeps temperature and memory use inside a
-            # predictable envelope even if two portal buttons are pressed.
-            with self.my_tv_optimisation_serial:
-                if not source.is_file():
-                    raise ValueError("Film not found")
-                destination = source.with_suffix(".mp4")
-                if destination != source and destination.exists():
-                    raise ValueError("An MP4 with this film name already exists")
-                with self.config_lock:
-                    started = time.time()
-                    self.set_my_tv_media_state(file_name, "processing", progress=0,
-                                               started=started, eta_seconds=None)
+        state = self.my_tv_media_states().get(file_name, {})
+        self.request_my_tv_optimisation(file_name, state.get("compression"))
 
-                def save_progress(percent: int, message: str = "") -> None:
-                    elapsed = max(0.0, time.time() - started)
-                    eta = int(elapsed * (100 - percent) / percent) if percent > 0 else 0
-                    with self.config_lock:
-                        current = self.my_tv_media_states().get(file_name, {})
-                        saved_state = "paused" if isinstance(current, dict) \
-                            and current.get("state") == "paused" else "processing"
-                        self.set_my_tv_media_state(
-                            file_name, saved_state, message, progress=percent,
-                            started=started, eta_seconds=eta or None)
-
-                self.my_tv_optimisation_progress_callback = save_progress
-                selected = self.my_tv_media_states().get(file_name, {}).get("compression")
-                if selected:
-                    encode_size_profile(self, source, destination, selected, save_progress)
-                else:
-                    self.optimise_my_tv_for_playback(source, destination)
-                if destination != source:
-                    source.unlink()
-                destination_relative = self.my_tv_relative_path(destination)
-                with self.config_lock:
-                    states = self.my_tv_media_states()
-                    current = states.pop(file_name, {})
-                    if not isinstance(current, dict):
-                        current = {}
-                    current.update({"state": "optimised", "message": "", "compressionCompleted": time.time(),
-                                    "progress": 100, "updated": time.time()})
-                    states[destination_relative] = current
-                    self.write_my_tv_media_states(states)
-                self.refresh_tv()
-        except Exception as error:
-            with self.config_lock:
-                self.set_my_tv_media_state(
-                    file_name, "error",
-                    str(error) if isinstance(error, ValueError)
-                    else f"{self.tv_identity()[1]} could not optimise this film")
-        finally:
-            self.my_tv_optimisation_progress_callback = None
-            with self.my_tv_optimisation_lock:
-                self.my_tv_optimisation_active.discard(file_name)
-
-    def _optimise_for_playback(self, source: Path, destination: Path,
-                               video_filter: str, bitrate: str,
-                               maximum_bitrate: str, buffer_size: str,
-                               progress_callback: Any = None) -> None:
-        token = uuid.uuid4().hex
-        temporary = self.incoming / f"{token}.optimising.mp4"
-        error_log = self.incoming / f"{token}.ffmpeg.log"
-        try:
-            duration_result = subprocess.run(
-                ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-                 "-of", "default=noprint_wrappers=1:nokey=1", str(source)],
-                check=False, capture_output=True, text=True, timeout=30)
-            duration = max(0.0, float(duration_result.stdout.strip()))
-        except (OSError, subprocess.TimeoutExpired, TypeError, ValueError):
-            duration = 0.0
-        command = ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
-                   "-threads", "2", "-filter_threads", "2", "-i", str(source),
-                   "-map", "0:v:0", "-map", "0:a:0?", "-vf", video_filter,
-                   # Debian 13 exposes Pi hardware decode but no usable V4L2
-                   # H.264 encoder node. A bounded two-thread software encode
-                   # is slower, but reliable; the resulting file is then
-                   # hardware-decoded during every actual TV playback.
-                   "-c:v", "libx264", "-preset", "veryfast", "-threads:v", "2",
-                   "-profile:v", "main", "-level:v", "3.1", "-b:v", bitrate,
-                   "-maxrate", maximum_bitrate, "-bufsize", buffer_size,
-                   "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart",
-                   "-progress", "pipe:1", "-nostats", str(temporary)]
-        process: subprocess.Popen[str] | None = None
-        paused = False
-        deadline = time.monotonic() + 45 * 60
-        last_percent = -1
-        try:
-            with error_log.open("wb") as errors:
-                process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=errors,
-                                           text=True, start_new_session=True)
-                while process.poll() is None:
-                    if time.monotonic() >= deadline:
-                        os.killpg(process.pid, signal.SIGTERM)
-                        raise ValueError(f"{self.tv_identity()[1]} stopped this optimisation because it took too long")
-                    saved = self.my_tv_media_states().get(self.my_tv_relative_path(source), {})
-                    requested_state = str(saved.get("state", "")) if isinstance(saved, dict) else ""
-                    if requested_state == "error" and str(saved.get("message", "")) == "Optimisation cancelled":
-                        os.killpg(process.pid, signal.SIGTERM)
-                        raise ValueError("Optimisation cancelled")
-                    user_paused = requested_state == "paused"
-                    temperature = self.cpu_temperature_c()
-                    if not paused and (user_paused or temperature >= MAX_CONVERSION_TEMP_C):
-                        os.killpg(process.pid, signal.SIGSTOP)
-                        paused = True
-                        if progress_callback:
-                            progress_callback(max(0, last_percent),
-                                              "Paused by you" if user_paused else f"Paused to cool at {temperature:.0f}°C")
-                        print(f"Paused video optimisation at {temperature:.1f}C", file=sys.stderr,
-                              flush=True)
-                    elif paused and not user_paused and temperature <= RESUME_CONVERSION_TEMP_C:
-                        os.killpg(process.pid, signal.SIGCONT)
-                        paused = False
-                        if progress_callback:
-                            progress_callback(max(0, last_percent), "")
-                        print(f"Resumed video optimisation at {temperature:.1f}C", file=sys.stderr,
-                              flush=True)
-                    if paused:
-                        time.sleep(2)
-                        continue
-                    line = process.stdout.readline() if process.stdout else ""
-                    if duration <= 0 or not line.startswith(
-                            ("out_time_us=", "out_time_ms=")):
-                        continue
-                    try:
-                        completed = float(line.split("=", 1)[1].strip()) / 1_000_000
-                    except (TypeError, ValueError):
-                        continue
-                    percent = min(99, max(0, int(completed * 100 / duration)))
-                    if percent <= last_percent:
-                        continue
-                    last_percent = percent
-                    if progress_callback:
-                        progress_callback(percent, "")
-                if process.returncode != 0:
-                    details = error_log.read_text(encoding="utf-8", errors="replace").strip()
-                    if details:
-                        print(details[-4000:], file=sys.stderr, flush=True)
-                    raise ValueError(f"{self.tv_identity()[1]} could not optimise this video for smooth playback")
-            self.video_info(temporary)
-            os.replace(temporary, destination)
-        finally:
-            if process is not None and process.poll() is None:
-                if paused:
-                    os.killpg(process.pid, signal.SIGCONT)
-                os.killpg(process.pid, signal.SIGTERM)
-                try:
-                    process.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    os.killpg(process.pid, signal.SIGKILL)
-            temporary.unlink(missing_ok=True)
-            error_log.unlink(missing_ok=True)
+    def _optimise_for_playback(self, source: Path, destination: Path, *args, **kwargs) -> None:
+        raise ValueError("Video preparation requires the Windows Studio laptop")
 
     @staticmethod
     def cpu_temperature_c() -> float:

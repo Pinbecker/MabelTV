@@ -127,6 +127,10 @@ function openStudioEpisodes(episodes, source = 'iplayer') {
   studioState.episodeSource = source
   studioState.episodes = [...episodes].sort((a, b) => ((a.series || 0) - (b.series || 0)) || (a.episodeNumber || 0) - (b.episodeNumber || 0))
   studioState.episodeSelection.clear()
+  if (studioState.episodeDraft && source === 'cloud') {
+    const selected = new Set(studioState.episodeDraft.sources.map(item => item.id))
+    for (const item of episodes) if (selected.has(item.id)) studioState.episodeSelection.set(item.id, item)
+  }
   const first = episodes[0]
   $('#studioEpisodesTitle').textContent = first.title
   $('#studioEpisodeHero').innerHTML = studioArtwork(first)
@@ -174,11 +178,15 @@ function renderStudioConnections() {
   $('#studioCloudConnectionState').classList.toggle('good', state.cloud.configured && !state.cloud.error)
   $('#studioCloudConnectionChecked').textContent = state.cloud.error || studioLastChecked(state.cloud.checked)
   $('#studioCloudConnect').textContent = state.cloud.configured ? 'Reconnect' : 'Connect'
+  const backup = state.backup, verified = backup?.verified?.[0]
+  $('#studioBackupState').textContent = verified ? 'Verified' : 'Waiting'
+  $('#studioBackupState').classList.toggle('good', Boolean(verified))
+  $('#studioBackupChecked').textContent = verified ? new Date(verified.verified * 1000).toLocaleString() : backup?.state || 'Waiting for Studio and scheduled Pi backup'
 }
 
 $$('[data-studio-tab]').forEach(button => button.onclick = () => studioSetTab(button.dataset.studioTab, { historyEntry: true }))
 $('#studioCloudSearch').oninput = () => { clearTimeout(studioCloudTimer); studioCloudTimer = setTimeout(() => void studioLoadCloud().catch(studioFailure), 250) }
-$('#studioCloudCategory').onchange = () => { studioState.selected.clear(); void studioLoadCloud().catch(studioFailure) }
+$('#studioCloudCategory').onchange = () => { studioState.selected.clear(); $('#studioCloudCollection').value = '*'; void studioLoadCloud().catch(studioFailure) }
 $('#studioCloudSort').onchange = () => { studioState.selected.clear(); void studioLoadCloud().catch(studioFailure) }
 $('#studioCloudCollection').onchange = () => { studioState.selected.clear(); void studioLoadCloud().catch(studioFailure) }
 $('#studioCloudMore').onclick = () => void studioLoadCloud({ more: true }).catch(studioFailure)
@@ -206,5 +214,11 @@ $('#studioEpisodesContinue').onclick = () => {
 }
 $('#studioConnection').onclick = () => { renderStudioConnections(); openLibrarySheet($('#studioConnectionSheet')) }
 for (const [sheet, close] of [['studioEpisodesSheet', 'studioEpisodesClose'], ['studioConnectionSheet', 'studioConnectionClose']]) {
-  portalSheets.wire($('#' + sheet), { closeButton: $('#' + close), close: () => closeLibrarySheet($('#' + sheet)) })
+  portalSheets.wire($('#' + sheet), { closeButton: $('#' + close), close: () => {
+    closeLibrarySheet($('#' + sheet), !studioState.episodeDraft)
+    if (sheet === 'studioEpisodesSheet' && studioState.episodeDraft) {
+      studioDraft = studioState.episodeDraft; studioState.episodeDraft = null
+      openLibrarySheet($('#studioDestinationSheet'))
+    }
+  } })
 }

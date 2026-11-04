@@ -319,7 +319,7 @@
       if (!jobs.length) { root.innerHTML = '<p class="muted">No videos are waiting.</p>'; return }
       const labels = {
         copying: 'Copying from My TV', uploading: 'Uploading', validating: 'Checking the video', queued: 'Waiting in the preparation queue',
-        processing: 'Preparing for smooth playback', publishing: 'Publishing', finalising: 'Refreshing the TV',
+        processing: 'Preparing for smooth playback', publishing: 'Publishing', finalising: 'Refreshing the TV', 'waiting-laptop': 'Waiting for laptop preparation',
         error: 'Needs attention', 'refresh-error': 'TV refresh needed'
       }
       root.innerHTML = jobs.map(job => {
@@ -337,7 +337,7 @@
     }
 
     async function uploadQueueAction(id, action) {
-      if (action === 'cancel' && !confirm('Remove this upload and free the space it is using?')) return
+      if (action === 'cancel' && !confirm('Cancel this upload?')) return
       try {
         await api('/api/uploads/' + id, {
           method: 'POST', body: JSON.stringify({ action })

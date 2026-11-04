@@ -4,9 +4,11 @@ let studioDraft = null, studioMatchTimer = null, studioAuth = null, studioAuthBu
 
 function openStudioDestination(sources, matchingJob = null, cloudContext = null) {
   studioDraft = { sources, targetCollections: {}, match: cloudContext?.titles.length === 1 ? cloudContext.titles[0].metadata : null, matchingJob, cloudContext }
+  studioState.episodeDraft = null
   $('#studioDestinationTitle').textContent = matchingJob ? matchingJob.title : sources.length === 1 ? sources[0].title : `${sources.length} items selected`
   $('#studioDestinationError').classList.add('hidden')
   $('#studioDestinationForm').reset()
+  $('#studioDestinationForm input[name="studioCloudCopies"][value="optimised"]').checked = true
   $('#studioMatchResults').replaceChildren()
   $('#studioMatchSelected').textContent = 'Studio will try an exact title match. Ambiguous matches can be chosen later.'
   $('#studioMatchQuery').value = matchingJob?.title || sources[0]?.title?.replace(/\.[^.]+$/, '').replace(/[._]/g, ' ') || ''
@@ -52,13 +54,19 @@ function studioSyncDestination() {
   const cloudCopies = $('#studioDestinationForm input[name="studioCloudCopies"]:checked')?.value || 'original'
   $('#studioCloudCopiesField').classList.toggle('hidden', Boolean(studioDraft?.matchingJob))
   const originalOnly = chosen === 'icloud' && cloudCopies === 'original'
+  const recovering = Boolean(studioDraft?.originalInfo)
+  $('#studioOriginalModeField').classList.toggle('hidden', !recovering)
+  $('#studioOriginalNote').classList.toggle('hidden', !recovering)
   $('#studioCompressionField').classList.toggle('hidden', Boolean(studioDraft?.matchingJob) || originalOnly)
   $('#studioOriginalQuality').classList.toggle('hidden', !originalOnly || Boolean(studioDraft?.matchingJob))
   $('#studioCloudCopiesLabel').textContent = chosen === 'icloud' ? 'Version' : 'iCloud copy'
   $('#studioCompression').dataset.studioDetail = chosen === 'mabel' ? 'Up to 720p' : 'Up to 1080p'
   const collections = chosen === 'icloud' ? studioState.cloud?.collections || [] : library.my_tv_folders || []
   const collection = $('#studioTargetCollection')
-  collection.replaceChildren(new Option('Unfiled', ''), ...collections.map(name => new Option(name, name)))
+  const scope = chosen === 'icloud' ? 'iCloud collection' : 'TV collection'
+  $('#studioTargetCollectionField > span').textContent = scope
+  collection.dataset.studioOptions = scope
+  collection.replaceChildren(new Option('Unfiled', ''), ...collections.map(name => new Option(name, name)), new Option('New collection…', '__new__'))
   collection.value = studioDraft?.targetCollections[chosen] || ''
   $('#studioTargetCollectionField').classList.toggle('hidden', chosen === 'mabel' || Boolean(studioDraft?.matchingJob))
   studioSyncSelects()
@@ -66,6 +74,13 @@ function studioSyncDestination() {
   $('#studioCloudReplaceWarning').classList.toggle('hidden', !fromCloud || cloudCopies !== 'optimised' || Boolean(studioDraft?.matchingJob))
   $('#studioMatchSection').classList.toggle('hidden', !studioDraft?.matchingJob)
   $('#studioDestinationSubmit').textContent = studioDraft?.matchingJob ? 'Save match and retry metadata' : 'Add to queue'
+  if (recovering) {
+    $('#studioCompressionField').classList.add('hidden'); $('#studioCloudCopiesField').classList.add('hidden')
+    $('#studioOriginalQuality').classList.remove('hidden')
+    $('#studioOriginalQuality .studio-quality-original').firstChild.textContent = chosen === 'icloud' ? 'Original' : 'Pi-compatible copy'
+    $('#studioOriginalQuality small').textContent = chosen === 'icloud' ? 'Unchanged source' : 'High quality · destination limits'
+    $('#studioDestinationSubmit').textContent = 'Download original'
+  }
 }
 function studioUpdateCompressionEstimate() {
   const select = $('#studioCompression'), option = select.selectedOptions[0]
@@ -112,7 +127,7 @@ async function studioSubmitDestination(event) {
       await api('/api/studio/action', { method: 'POST', body: JSON.stringify({ id: draft.matchingJob.id, action: 'metadata', match: draft.match }) })
     } else {
       const chosen = $('#studioDestinationForm input[name="studioDestination"]:checked').value
-      const replaceOriginal = draft.sources.length > 0 && draft.sources.every(source => source.type === 'cloud') && $('#studioDestinationForm input[name="studioCloudCopies"]:checked').value === 'optimised'
+      const replaceOriginal = !draft.originalInfo && draft.sources.length > 0 && draft.sources.every(source => source.type === 'cloud') && $('#studioDestinationForm input[name="studioCloudCopies"]:checked').value === 'optimised'
       if (replaceOriginal && !draft.replaceCloudOriginal) { studioOpenReplaceWarning(); return }
       const destination = { kind: chosen === 'film' ? $('#studioLibraryType').value : chosen,
         compression: $('#studioCompression').value,
@@ -127,7 +142,11 @@ async function studioSubmitDestination(event) {
         destination.season = Number($('#studioSeason').value)
         destination.preserveSeasons = new Set(draft.sources.flatMap(source => source.seasons || [source.series]).filter(value => Number.isInteger(value))).size > 1
       }
-      await api('/api/studio/jobs', { method: 'POST', body: JSON.stringify({ sources: draft.sources, destination, replaceCloudOriginal: draft.replaceCloudOriginal === true, match: chosen === 'film' ? draft.match : null }) })
+      if (draft.originalInfo) {
+        const mode = $('#studioOriginalMode').value
+        if (mode === 'replace' && !await portalConfirm({ title: 'Replace existing copy?', message: `Replace the existing ${chosen === 'icloud' ? 'iCloud' : 'TV'} version of ${draft.originalInfo.title} after the new copy is verified.`, confirmLabel: 'Download and replace' })) return
+        await api('/api/studio/download-originals', { method: 'POST', body: JSON.stringify({ ids: draft.originalInfo.items.map(item => item.deliveryId), destination, mode, confirmReplace: mode === 'replace' }) })
+      } else await api('/api/studio/jobs', { method: 'POST', body: JSON.stringify({ sources: draft.sources, destination, replaceCloudOriginal: draft.replaceCloudOriginal === true, match: chosen === 'film' ? draft.match : null }) })
     }
     closeLibrarySheet($('#studioDestinationSheet'))
     studioState.selected.clear(); studioState.selecting = false
@@ -146,7 +165,9 @@ function renderStudioJobs() {
   const organiser = studioState.status?.organiser
   const cloud = (studioState.status?.cloudOperations || []).map(op => ({ ...op, id: 'cloud:' + op.id, cloudOperation: true, title: 'Delete from iCloud', destination: { label: 'iCloud Drive' }, percent: op.items?.length ? op.completed / op.items.length * 100 : 0, message: op.error || `${op.completed || 0} of ${op.items?.length || 1} items` }))
   if (organiser) cloud.push({ ...organiser, id: 'organiser', cloudOperation: true, destination: { label: 'iCloud' } })
-  const jobs = [...(studioState.status?.jobs || []), ...cloud].filter(job => !['complete', 'cancelled'].includes(job.status) || job.status === 'complete' && job.metadataWarning).sort((a,b) => b.created-a.created), root = $('#studioJobs')
+  const all = [...(studioState.status?.jobs || []), ...cloud]
+  const recent = new Set(all.filter(job => job.status === 'complete').sort((a,b) => b.updated-a.updated).slice(0, 20).map(job => job.id))
+  const jobs = all.filter(job => job.status !== 'cancelled' && !(job.id === 'organiser' && job.status === 'complete') && (job.status !== 'complete' || recent.has(job.id) || job.metadataWarning)).sort((a,b) => b.created-a.created), root = $('#studioJobs')
   const rows = new Map([...root.querySelectorAll('[data-studio-job]')].map(row => [row.dataset.studioJob, row]))
   $('#studioJobCount').textContent = `${jobs.length} item${jobs.length === 1 ? '' : 's'}`
   for (const [index, job] of jobs.entries()) {
@@ -161,9 +182,10 @@ function renderStudioJobs() {
       const message = waitingCloud ? (job.destination.kind !== 'icloud' ? 'Available on your TV. ' : '') + 'Uploading to iCloud — waiting for upload confirmation.' : job.error ? studioJobFailureMessage(job.error) : job.message || 'Waiting for Studio'
       const destination = job.destination.kind === 'local' ? 'Download' : job.destination.label
       const percent = Math.round(Math.max(0, Math.min(100, Number(job.percent) || 0)))
+      const measurable = job.status === 'active' && (['downloading', 'preparing', 'uploading'].includes(job.stage) || job.cloudOperation && Number.isFinite(job.percent)) && !waitingCloud
       const source = job.source?.type === 'iplayer' ? 'BBC iPlayer' : job.source?.type === 'cloud' ? 'iCloud' : job.source?.type === 'torrent' ? 'Download' : 'Studio'
       row.innerHTML = `<div class="studio-job-head"><span class="studio-media-art"></span><div><strong>${escapeHtml(job.source?.type === 'torrent' ? studioVideoLabel(job.title) : job.title)}</strong><span class="studio-job-route">${escapeHtml(source)} <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-arrow-right"/></svg> ${escapeHtml(destination)}</span></div></div>
-        ${!waitingCloud ? `<div class="studio-job-progress"><div><span>${escapeHtml(status)}</span><span class="studio-job-percent">${percent}%</span></div>${['active','queued'].includes(job.status) ? `<progress max="100" value="${percent}" aria-label="${escapeHtml(job.title)} progress" aria-valuetext="${percent}%"></progress>` : ''}</div>` : ''}
+        ${!waitingCloud ? `<div class="studio-job-progress"><div><span>${escapeHtml(status)}</span>${measurable ? `<span class="studio-job-percent">${percent}%</span>` : ''}</div>${measurable ? `<progress max="100" value="${percent}" aria-label="${escapeHtml(job.title)} progress" aria-valuetext="${percent}%"></progress>` : ''}</div>` : ''}
         <p class="studio-job-wait"><span>${escapeHtml(message)}</span>${waitingCloud ? '<span class="studio-spinner studio-inline-spinner" aria-label="iCloud upload"></span>' : ''}</p>
         ${warning ? `<details class="studio-job-details"><summary>Details</summary><p>${escapeHtml(warning)}</p></details>` : ''}<div class="studio-job-actions"></div>`
       const cloudItem = studioState.items.find(item => item.id === job.source?.id)
@@ -181,6 +203,15 @@ function renderStudioJobs() {
       }
       if (!job.cloudOperation && !waitingCloud && ['queued', 'active'].includes(job.status)) add('Pause', 'pause')
       if (!job.cloudOperation && ['paused', 'failed'].includes(job.status)) add(job.status === 'failed' ? 'Retry' : 'Resume', 'resume')
+      if (job.status === 'failed' && job.errorCode === 'QUALITY_REVIEW') {
+        const proceed = document.createElement('button'); proceed.type = 'button'; proceed.className = 'studio-button compact'; proceed.textContent = 'Compress anyway'
+        proceed.onclick = async () => {
+          if (!await portalConfirm({ title: 'Compress this copy again?', message: 'This file is already heavily compressed. Further compression may reduce picture quality.', confirmLabel: 'Compress anyway' })) return
+          try { await api('/api/studio/action', { method: 'POST', body: JSON.stringify({ id: job.id, action: 'resume', allowRisk: true }) }); await studioTick() }
+          catch (error) { studioFailure(error) }
+        }
+        actions.append(proceed)
+      }
       if (!job.cloudOperation && !waitingCloud && !['complete', 'cancelled'].includes(job.status)) add('Cancel', 'cancel')
       if (job.status === 'failed' && job.source?.type === 'iplayer' && /^[bmp][a-z0-9]{7}$/.test(job.source.pid)) {
         const link = document.createElement('a'); link.className = 'studio-text-button'; link.textContent = 'Check BBC iPlayer'
@@ -240,7 +271,13 @@ for (const input of $$('#studioDestinationForm input[name="studioDestination"]')
 for (const input of $$('#studioDestinationForm input[name="studioCloudCopies"]')) input.onchange = () => { if (studioDraft) studioDraft.replaceCloudOriginal = false; studioSyncDestination() }
 for (const id of ['studioLibraryType', 'studioSeries']) $('#' + id).onchange = studioSyncDestination
 $('#studioCompression').onchange = studioUpdateCompressionEstimate
-$('#studioTargetCollection').onchange = () => { const chosen = $('#studioDestinationForm input[name="studioDestination"]:checked').value; studioDraft.targetCollections[chosen] = $('#studioTargetCollection').value; studioSyncSelects() }
+$('#studioTargetCollection').onchange = () => {
+  const chosen = $('#studioDestinationForm input[name="studioDestination"]:checked').value
+  if ($('#studioTargetCollection').value !== '__new__') studioDraft.targetCollections[chosen] = $('#studioTargetCollection').value
+  $('#studioNewCollectionField').classList.toggle('hidden', $('#studioTargetCollection').value !== '__new__')
+  if ($('#studioTargetCollection').value === '__new__') $('#studioNewCollectionName').focus()
+  studioSyncSelects()
+}
 $('#studioMatchQuery').oninput = () => { clearTimeout(studioMatchTimer); studioMatchTimer = setTimeout(() => void studioFindMatch().catch(studioFailure), 350) }
 $('#studioCloudConnect').onclick = () => void studioStartAuth()
 $('#studioAuthForm').onsubmit = async event => {

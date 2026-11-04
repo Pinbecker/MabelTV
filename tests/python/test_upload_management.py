@@ -47,7 +47,7 @@ class UploadManagementTests(unittest.TestCase):
         self.fixture.library.video_info = mock.Mock(
             side_effect=ValueError("Mabel TV could not find a video stream in that file"))
         created = self.fixture.library.upload_create({
-            "channel": 1, "file_name": "broken.mov", "size": 5,
+            "channel": 1, "file_name": "broken.mp4", "size": 5,
         })
         received = self.fixture.library.append_upload(created["id"], 0, b"nope!")
         self.assertEqual(received["status"], "validating")
@@ -58,7 +58,7 @@ class UploadManagementTests(unittest.TestCase):
         self.assertFalse((self.fixture.media / ".incoming" /
                           f"{created['id']}.part").exists())
         restarted = self.fixture.library.upload_create({
-            "channel": 1, "file_name": "broken.mov", "size": 5,
+            "channel": 1, "file_name": "broken.mp4", "size": 5,
         })
         self.assertNotEqual(restarted["id"], created["id"])
         self.assertEqual(restarted["offset"], 0)
@@ -66,7 +66,7 @@ class UploadManagementTests(unittest.TestCase):
                              for job in self.fixture.library.upload_jobs()))
 
         self.fixture.library.video_info = lambda path: {
-            "codec_type": "video", "width": 640, "height": 480,
+            "codec_type": "video", "codec_name": "h264", "pix_fmt": "yuv420p", "width": 640, "height": 480,
             "avg_frame_rate": "25/1",
         }
         self.fixture.library.refresh_tv = lambda: True
@@ -211,7 +211,7 @@ class UploadManagementTests(unittest.TestCase):
             "channels": mabeltv_library.DEFAULT_CHANNELS,
         })
         self.fixture.library.video_info = lambda path: {
-            "codec_type": "video", "width": 640, "height": 480,
+            "codec_type": "video", "codec_name": "h264", "pix_fmt": "yuv420p", "width": 640, "height": 480,
             "avg_frame_rate": "25/1",
         }
         self.fixture.library.refresh_tv = lambda: False

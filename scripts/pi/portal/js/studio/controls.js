@@ -1,5 +1,10 @@
 'use strict'
 
+function studioViewportBounds() { document.documentElement.style.setProperty('--studio-viewport-height', (window.visualViewport?.height || window.innerHeight) + 'px') }
+window.visualViewport?.addEventListener('resize', studioViewportBounds)
+window.addEventListener('resize', studioViewportBounds)
+studioViewportBounds()
+
 // Presentation helpers shared by Studio's source and destination owners.
 function studioVideoLabel(value) {
   return String(value || '').replace(/\.[a-z0-9]{2,4}$/i, '').replace(/[._]/g, ' ')
@@ -36,9 +41,11 @@ function studioSyncSelects() {
     trigger.disabled = select.disabled
   }
 }
-let studioOptionSelect = null
+let studioOptionSelect = null, studioOptionState = null
 function studioOpenOptions(select) {
   studioOptionSelect = select
+  studioOptionState = { value: select.value, name: $('#studioNewSeries').value, collections: { ...studioDraft?.targetCollections } }
+  $('#studioNewCollectionField').classList.add('hidden'); $('#studioNewCollectionError').textContent = ''
   $('#studioOptionTitle').textContent = select.dataset.studioOptions
   $('#studioNewSeriesField').classList.toggle('hidden', select.id !== 'studioSeries' || select.value !== 'new')
   const root = $('#studioOptions'); root.replaceChildren()
@@ -48,18 +55,43 @@ function studioOpenOptions(select) {
     input.checked = option.selected; input.disabled = option.disabled
     const text = document.createElement('span'); text.textContent = option.textContent.split(' · ')[0]
     row.append(input, text)
+    if (option.value === 'compact') { const marker = document.createElement('small'); marker.textContent = 'Recommended'; row.append(marker) }
     if (option.textContent.includes(' · ')) { const small = document.createElement('small'); small.textContent = option.textContent.split(' · ').slice(1).join(' · '); row.append(small) }
     input.onchange = () => { select.value = option.value; select.dispatchEvent(new Event('change', { bubbles: true })); studioSyncSelects() }
     root.append(row)
   }
   openLibrarySheet($('#studioOptionSheet'))
 }
-function studioCloseOptions() {
+function studioCloseOptions(commit = false) {
+  if (!commit && studioOptionSelect && studioOptionState) {
+    studioOptionSelect.value = studioOptionState.value
+    $('#studioNewSeries').value = studioOptionState.name
+    if (studioDraft) studioDraft.targetCollections = studioOptionState.collections
+    studioOptionSelect.dispatchEvent(new Event('change', { bubbles: true }))
+  }
+  if (studioOptionSelect?.id === 'studioTargetCollection' && studioOptionSelect.value === '__new__') {
+    const chosen = $('#studioDestinationForm input[name="studioDestination"]:checked').value
+    studioOptionSelect.value = studioDraft.targetCollections[chosen] || ''
+  }
+  $('#studioNewCollectionField').classList.add('hidden')
   $('#studioNewSeriesField').classList.add('hidden')
   closeLibrarySheet($('#studioOptionSheet'))
   studioOptionSelect?.nextElementSibling?.focus({ preventScroll: true }); studioOptionSelect = null
+  studioOptionState = null
 }
-$('#studioOptionDone').onclick = studioCloseOptions
-portalSheets.wire($('#studioOptionSheet'), { closeButton: $('#studioOptionClose'), close: studioCloseOptions })
+$('#studioOptionDone').onclick = async () => {
+  if (studioOptionSelect?.id !== 'studioTargetCollection' || studioOptionSelect.value !== '__new__') { studioCloseOptions(true); return }
+  const button = $('#studioOptionDone'); button.disabled = true
+  const chosen = $('#studioDestinationForm input[name="studioDestination"]:checked').value
+  try {
+    const result = await api('/api/studio/collections', { method: 'POST', body: JSON.stringify({ name: $('#studioNewCollectionName').value.trim(), scope: chosen === 'icloud' ? 'icloud' : 'pi' }) })
+    if (chosen === 'icloud') studioState.cloud.collections = result.collections
+    else library.my_tv_folders = result.collections
+    studioDraft.targetCollections[chosen] = result.name
+    studioSyncDestination(); studioCloseOptions(true); $('#studioNewCollectionName').value = ''
+  } catch (error) { $('#studioNewCollectionError').textContent = error.message }
+  finally { button.disabled = false }
+}
+portalSheets.wire($('#studioOptionSheet'), { closeButton: $('#studioOptionClose'), close: () => studioCloseOptions(false) })
 studioSyncSelects()
 $('#studioNewSeries').oninput = studioSyncSelects

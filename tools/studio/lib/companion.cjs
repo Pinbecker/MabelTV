@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 const { CompanionJobs } = require('./companion-jobs.cjs');
 const { TorrentDownloads } = require('./torrent-downloads.cjs');
 const { CompanionTorrents } = require('./companion-torrents.cjs');
+const { BackupBridge } = require('./backup.cjs');
 
 const backgroundStages = new Set(['saving-cloud', 'waiting-for-cloud', 'freeing-space']);
 function progressBatch(states, progress, cursor = 0) {
@@ -23,6 +24,7 @@ class Companion {
   constructor(store, queue, iplayer, portal, torrents = null) {
     Object.assign(this, { store, queue, iplayer, portal });
     this.runner = new CompanionJobs(store, queue, iplayer, portal);
+    this.backup = new BackupBridge(store, portal);
     this.torrents = torrents;
     if (torrents) { this.downloads = new TorrentDownloads(store, torrents); this.torrentRunner = new CompanionTorrents(this.downloads, this.runner, queue.resources); }
     this.actives = new Map(); this.running = new Set(); this.responses = []; this.request = null; this.closed = false; this.busy = false;
@@ -48,11 +50,12 @@ class Companion {
       this.progressCursor = batch.cursor;
       const reply = await this.portal.api('/api/studio/worker', { method: 'POST', body: {
         id: this.store.state.sourceId, session: this.workerSession, name: os.hostname(), activeJobs: batch.reports.map(item => item.value), responses,
-        capabilities: ['library-collections', 'parallel-stages', 'cloud-optimise', 'compression-presets', ...(this.torrents ? ['torrent'] : [])], requestActive: this.request ? { id: this.request.id, claim: this.request.claim } : null,
+        capabilities: ['intel-policy-v2', 'library-collections', 'parallel-stages', 'cloud-optimise', 'compression-presets', ...(this.torrents ? ['torrent'] : [])], requestActive: this.request ? { id: this.request.id, claim: this.request.claim } : null,
       } });
       if (this.closed) return;
       this.responses.splice(0, responses.length);
       this.status = { connected: true, message: this.actives.size ? 'Working for your portal' : 'Ready for portal requests' };
+      this.backupTask = this.backup.tick().catch(error => { this.store.warning = 'Backup delivery needs attention: ' + error.message; });
       await Promise.all(batch.reports.map(async ({ state, value, version }) => {
         const acknowledged = (reply.acknowledgedJobs || []).find(value => value.id === state.remote.id);
         if (!acknowledged || acknowledged.command) {
@@ -71,7 +74,9 @@ class Companion {
         this.actives.set(job.id, state);
         const runner = job.source.type === 'torrent' ? this.torrentRunner : this.runner;
         state.promise = runner.run(job, state, state.controller.signal).catch(error => {
-          state.progress = { status: state.controller.signal.aborted ? 'paused' : 'failed', stage: 'failed', error: error.message, message: error.message };
+          const skipped = job.destination?.unattended && error.code === 'QUALITY_REVIEW';
+          state.progress = { status: state.controller.signal.aborted ? 'paused' : 'failed', stage: 'failed', error: error.message,
+            errorCode: skipped ? 'QUALITY_SKIPPED' : error.code || '', message: skipped ? 'Skipped: already heavily compressed. Review before further compression.' : error.message };
           state.finishing = true;
         }).finally(() => { this.queue.resources?.release(job.id); state.done = true; this.running.delete(state.promise); });
         this.running.add(state.promise);
@@ -92,10 +97,12 @@ class Companion {
     } catch (error) {
       this.status = { connected: false, message: error.code === 'AUTH' ? 'Sign in to your portal in Studio Settings' : 'Waiting for portal connection' };
       // Work can finish locally while offline; its journal and result remain durable.
-    } finally { this.busy = false; }
+    } finally { this.busy = false; this.queue.changed?.(); }
   }
   async close() {
     this.closed = true; clearInterval(this.timer);
+    this.backup.close();
+    await this.backupTask;
     const active = [...this.actives.values()];
     for (const state of active) state.controller.abort();
     await Promise.allSettled([...this.running]);

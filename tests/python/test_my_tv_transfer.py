@@ -7,7 +7,7 @@ class MyTvTransferTests(unittest.TestCase):
         self.library = self.fixture.library
         self.library.queue_conversion = mock.Mock()
         self.library.refresh_tv = mock.Mock(return_value=True)
-        self.library.video_info = mock.Mock(return_value={})
+        self.library.video_info = mock.Mock(return_value={"codec_type": "video", "codec_name": "h264", "pix_fmt": "yuv420p", "width": 640, "height": 360, "avg_frame_rate": "25/1"})
         self.library._apply_management({"action":"add-channel", "number":1,
             "name":"Films", "folder":"films", "content_type":"films", "aspect":"fit"})
         self.source = self.library.my_tv_root / "Shrek.mp4"

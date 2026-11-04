@@ -51,9 +51,12 @@ class Portal {
         const library = await this.at(base, '/api/library', { signal, timeout: 15000 });
         this.current = { base, device: setup.device_name, name: setup.tv_name || 'Mabel TV',
           mode: base === endpoint(settings.localUrl) ? 'local' : 'remote', connected: true };
-        this.catalogue = { channels: library.channels.map(channel => ({ number: channel.number, name: channel.name })),
+        this.catalogue = { channels: library.channels.map(channel => ({ number: channel.number, name: channel.name, folder: channel.folder })),
+          collections: library.my_tv_folders || [], cloudCollections: [],
           series: (library.my_tv_series || []).map(series => ({ id: series.id, title: series.title, seasons: series.seasons || [] })) };
         this.store.state.catalogue = this.catalogue; this.store.save();
+        try { this.catalogue.cloudCollections = (await this.at(base, '/api/studio/collections', { signal, timeout: 6000 })).cloud || []; }
+        catch { /* Library connection remains useful when cloud catalogue is unavailable. */ }
         return { ...this.current, catalogue: this.catalogue };
       } catch (error) { failure = error; }
     }
@@ -147,7 +150,7 @@ class Portal {
       destination.channel = channel.number;
     }
     const body = { file_name: job.publishName || path.basename(file), size: stats.size, source_id: sourceId };
-    if (destination.compression) body.compression = destination.compression;
+    // Preparation is complete on Windows. Never ask the Pi to encode it again.
     if (destination.kind === 'film' && destination.folder) body.folder = destination.folder;
     if (destination.kind === 'mabel') body.channel = destination.channel;
     if (destination.kind === 'series') { body.series = destination.series; body.season = destination.season; }
@@ -155,7 +158,8 @@ class Portal {
     let state;
     if (job.uploadId) state = await request('/api/uploads/' + job.uploadId, { signal });
     else {
-      state = await request(routes[destination.kind], { method: 'POST', body, signal });
+      state = job.piReturn ? await request('/api/studio/pi/return', { method: 'POST', body: { ...body, ...job.piReturn }, signal })
+        : await request(routes[destination.kind], { method: 'POST', body, signal });
       change({ uploadId: state.id }, true);
     }
     const id = job.uploadId;

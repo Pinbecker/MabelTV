@@ -16,27 +16,29 @@
     <nav aria-label="Main navigation">
       <button data-view="add" class="nav-button active"><span data-icon="add"></span>Add media</button>
       <button data-view="iplayer" class="nav-button"><span data-icon="search"></span>BBC iPlayer</button>
+      <button data-studio-library="cloud" class="nav-button"><span data-icon="cloud"></span>iCloud library</button>
+      <button data-studio-library="torrents" class="nav-button"><span data-icon="download"></span>Find anything</button>
       <button data-view="queue" class="nav-button"><span data-icon="queue"></span>Queue<span class="nav-count" id="queue-count">0</span></button>
       <button data-view="completed" class="nav-button"><span data-icon="check"></span>Completed</button>
     </nav>
     <div class="sidebar-bottom">
       <div class="connection-card"><div class="connection-heading"><span class="status-dot" id="status-dot"></span><strong id="device-label">Your MabelTV</strong></div><span id="connection-label">Connecting…</span><button id="connection-settings">Connection settings <span>↗</span></button></div>
       <button data-view="settings" class="nav-button"><span data-icon="settings"></span>Settings</button>
-      <div class="sidebar-foot">A little less admin.<br>A lot more watching.</div>
+      <div class="sidebar-foot">Studio continues in the notification area.</div>
     </div>
   </aside>
   <main>
-    <header class="page-header"><div><div class="eyebrow" id="eyebrow">YOUR MEDIA, READY TO WATCH</div><h1 id="page-title">Make room for your next watch.</h1><p id="page-description">Find it, prepare it, send it. All from one place.</p></div><button class="button subtle" id="open-portal"><span data-icon="external"></span>Open portal</button></header>
+    <header class="page-header"><div><div class="eyebrow" id="eyebrow">STUDIO</div><h1 id="page-title">Add media</h1><p id="page-description">Choose files and a destination.</p></div><button class="button subtle" id="open-portal"><span data-icon="external"></span>Open portal</button></header>
     <section id="view-add" class="view">
       <div class="add-grid">
         <div class="panel media-panel"><div class="section-heading"><h2>Add your videos</h2><span class="tag">FROM YOUR COMPUTER</span></div>
-          <button class="dropzone" id="dropzone"><span class="drop-icon" data-icon="upload"></span><strong>Drop something good here.</strong><span>Films, episodes or family videos</span><span class="button primary">Choose video files <span>+</span></span><small>MP4, MOV, MKV and more</small></button>
+          <button class="dropzone" id="dropzone"><span class="drop-icon" data-icon="upload"></span><strong>Drop video files here</strong><span>Films, episodes or family videos</span><span class="button primary">Choose video files <span>+</span></span><small>MP4, MOV, MKV and more</small></button>
           <div id="selected-files" class="selected-files"></div>
-          <div class="reassurance"><span data-icon="shield"></span><div><strong>Your originals stay yours.</strong><span>Studio checks every file and prepares only what needs it.</span></div></div>
+          <div class="reassurance"><span data-icon="shield"></span><div><strong>Imported originals are kept.</strong><span>The selected compression is applied to prepared copies.</span></div></div>
         </div>
         <div class="panel destination-panel" id="add-destination"></div>
       </div>
-      <div class="workflow-panel"><div><span class="eyebrow">ONE SIMPLE WORKFLOW</span><h2>Prepare your next watch.</h2></div><div class="workflow-step"><span>01</span><strong>Add or find</strong><small>Your files or BBC iPlayer</small></div><div class="workflow-step"><span>02</span><strong>Make it ready</strong><small>Compatible, without the guesswork</small></div><div class="workflow-step"><span>03</span><strong>Send to your TV</strong><small>At home or away</small></div></div>
+      <div class="workflow-panel"><div><span class="eyebrow">PROCESSING</span><h2>Download, prepare and send</h2></div><div class="workflow-step"><span>01</span><strong>Add or find</strong><small>Your files or BBC iPlayer</small></div><div class="workflow-step"><span>02</span><strong>Make it ready</strong><small>Intel Quick Sync on this laptop</small></div><div class="workflow-step"><span>03</span><strong>Send to your TV</strong><small>At home or away</small></div></div>
       <div id="recent-preview"></div>
     </section>
     <section id="view-iplayer" class="view hidden">
@@ -46,7 +48,7 @@
       <div class="iplayer-grid"><div><div id="search-summary" class="list-heading"></div><div id="search-results"></div></div><div class="panel destination-panel" id="iplayer-destination"></div></div>
     </section>
     <section id="view-queue" class="view hidden"><div class="list-heading"><span>Your next additions</span><span id="queue-summary"></span></div><div id="queue-list"></div></section>
-    <section id="view-completed" class="view hidden"><div class="list-heading"><span>Ready for the sofa</span><button class="text-button" id="open-workspace">Open media folder <span>↗</span></button></div><div id="completed-list"></div></section>
+    <section id="view-completed" class="view hidden"><div class="list-heading"><span>Completed media</span><button class="text-button" id="open-workspace">Open media folder <span>↗</span></button></div><div id="completed-list"></div></section>
     <section id="view-settings" class="view hidden">
       <div class="settings-grid">
         <form id="settings-form" class="panel settings-panel"><div class="section-heading"><h2>Your MabelTV connection</h2><span data-icon="connection"></span></div><p>Use your local connection at home and your secure portal address when you are away.</p>
@@ -56,7 +58,7 @@
           <div class="connection-tests"><button type="button" class="text-button" id="test-local">Check local connection</button><button type="button" class="text-button" id="test-remote">Check remote connection</button><button type="button" class="text-button" id="pin-open">Enter portal PIN</button></div>
           <div id="connection-result" class="inline-message" role="status"></div>
         </form>
-        <div><div class="panel settings-panel"><h2>Files and storage</h2><p>All Studio downloads and converted copies are kept in this media folder. Validated iPlayer conversions replace their downloaded original. Imported source files stay where they are.</p><label>Media folder<div class="folder-picker"><input id="workspace" readonly><button class="button secondary" id="choose-workspace">Choose</button></div></label><small>Open media folder in Completed to review or clear these files. Nothing is automatically removed after uploading.</small></div>
+        <div><div class="panel settings-panel"><h2>Files and storage</h2><p>Downloads and conversions use this working folder. Imported source files stay where they are.</p><label>Media folder<div class="folder-picker"><input id="workspace" readonly><button class="button secondary" id="choose-workspace">Choose</button></div></label><small>Temporary copies are removed after the requested destinations are verified. Locally prepared files are kept.</small></div>
         <div class="panel settings-panel tools-panel"><div class="section-heading"><h2>Media tools</h2><span class="tag" id="tools-status"></span></div><div id="tools-detail"></div><p class="muted">Included with the installed app. An alternative tools folder can be selected if needed.</p><button class="text-button" id="choose-tools">Choose tools folder</button><small id="app-version"></small></div></div>
       </div>
     </section>

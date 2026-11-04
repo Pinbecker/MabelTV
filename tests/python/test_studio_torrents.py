@@ -11,7 +11,7 @@ class StudioTorrentTests(unittest.TestCase):
         self.fixture.close()
 
     def poll(self, identity='1'*32, **fields):
-        return self.library.studio_worker_poll({'id':identity, 'name':'Studio', 'capabilities':['torrent'], **fields})
+        return self.library.studio_worker_poll({'id':identity, 'name':'Studio', 'capabilities':['torrent', 'intel-policy-v2'], **fields})
 
     def answer(self, result, worker='1'*32):
         request = self.poll(worker)['requests'][0]

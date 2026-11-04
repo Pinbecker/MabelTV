@@ -18,7 +18,7 @@ function studioConfirmCloudDelete() {
 }
 function studioCancelCloudDelete() {
   closeLibrarySheet($('#studioCloudDeleteSheet'), false)
-  openLibrarySheet($('#studioDestinationSheet'))
+  openLibrarySheet($('#studioActionsSheet'))
 }
 function studioCloudOperationsStatus(operations) {
   const latest = [...(operations || [])].sort((a, b) => b.created - a.created)[0]

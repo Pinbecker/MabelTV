@@ -15,6 +15,9 @@ const { migrateWorkspace } = require('./lib/workspace.cjs');
 const { TorrentRuntime } = require('./lib/torrent-runtime.cjs');
 const { releaseCloudCaches } = require('./lib/cloud-cache.cjs');
 const { policy: compressionPolicy } = require('./lib/compression.cjs');
+const { addDesktop } = require('./lib/desktop-flow.cjs');
+const { displayJobs } = require('./lib/job-display.cjs');
+const { openPortalWindow } = require('./lib/portal-window.cjs');
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'studio', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 app.setName('MabelTV Studio');
@@ -100,7 +103,7 @@ async function start() {
     tray.on('double-click', () => { window?.show(); window?.focus(); });
     companion.start();
   } else if (process.env.STUDIO_TEST_COMPANION === '1') companion.start();
-  handler('snapshot', () => ({ ...store.snapshot(), compressionProfiles: compressionPolicy.profiles, connection: portal.current, companion: companion.status,
+  handler('snapshot', () => ({ ...store.snapshot(), jobs: displayJobs(store, companion), compressionProfiles: compressionPolicy.profiles, connection: portal.current, companion: companion.status,
     catalogue: portal.current ? portal.catalogue : store.state.catalogue || { channels: [], series: [] }, tools: getTools(), warning: store.warning, version: app.getVersion() }));
   handler('sourceSize', files => {
     if (!Array.isArray(files) || files.length > 200) throw new Error('Choose up to 200 videos.');
@@ -130,9 +133,35 @@ async function start() {
     const result = await dialog.showOpenDialog(window, { properties: ['openDirectory', 'createDirectory'] });
     return result.canceled ? '' : result.filePaths[0];
   });
-  handler('add', (inputs, destination) => queue.add(inputs, destination));
-  handler('action', (id, action, destination, match) => queue.action(id, action, destination, match));
+  handler('add', async (inputs, destination) => {
+    const jobs = await addDesktop(inputs, destination, store, queue, portal);
+    void companion.tick(); return jobs;
+  });
+  handler('action', async (id, action, destination, match) => {
+    const job = store.job(id);
+    if (action === 'compress-anyway') {
+      if (job.status !== 'failed' || job.errorCode !== 'QUALITY_REVIEW') throw new Error('This file is not awaiting compression confirmation.');
+      if (job.remoteId) {
+        await portal.api('/api/studio/action', { method: 'POST', body: { id: job.remoteId.split(':')[0], action: 'resume', allowRisk: true } });
+        await companion.tick(); return displayJobs(store, companion);
+      }
+      job.destination.allowRisk = true;
+      return queue.action(id, 'retry');
+    }
+    if (job.status === 'waiting' && ['resume', 'retry'].includes(action) && companion.actives.has(job.remoteId?.split(':')[0])) return queue.action(id, 'resume');
+    if (action === 'send' && job.status === 'prepared') return addDesktop([{ kind: 'file', path: job.preparedPath, metadata: job.metadata, match }], destination, store, queue, portal);
+    if (job.remoteId && ['pause', 'cancel', 'resume', 'retry', 'metadata'].includes(action)) {
+      await portal.api('/api/studio/action', { method: 'POST', body: { id: job.remoteId.split(':')[0], action: action === 'retry' ? 'resume' : action, match: job.match } });
+      await companion.tick(); return displayJobs(store, companion);
+    }
+    return queue.action(id, action, destination, match);
+  });
   handler('createSeries', (name, season) => portal.createSeries(name, season));
+  handler('createCollection', async (scope, name) => {
+    const result = await portal.api('/api/studio/collections', { method: 'POST', body: { scope, name } });
+    portal.catalogue[scope === 'icloud' ? 'cloudCollections' : 'collections'] = result.collections;
+    store.state.catalogue = portal.catalogue; store.save(); return result;
+  });
   handler('reveal', id => {
     const job = store.job(id), file = job.preparedPath || job.sourcePath;
     if (!file || !fs.existsSync(file)) throw new Error('This file is not available locally yet.');
@@ -140,6 +169,11 @@ async function start() {
   });
   handler('openWorkspace', () => shell.openPath(store.state.settings.workspace));
   handler('openPortal', () => shell.openExternal(endpoint(portal.current?.base || store.state.settings.remoteUrl)));
+  handler('openLibrary', async tab => {
+    if (!portal.current) await portal.connect();
+    openPortalWindow({ BrowserWindow, parent: window, session: portalSession, base: portal.current.base, tab });
+    return true;
+  });
   window = new BrowserWindow({ width: 1360, height: 900, minWidth: 1040, minHeight: 720,
     show: false, title: 'MabelTV Studio', backgroundColor: '#f5f6f2', icon: path.join(__dirname, 'ui/studio.ico'),
     titleBarStyle: 'hidden', titleBarOverlay: { color: '#f5f6f2', symbolColor: '#273a39', height: 38 },
@@ -155,9 +189,9 @@ async function start() {
     closing = true;
     searchController?.abort(); queue.shutdown().finally(() => app.quit());
   });
-  queue.on('change', jobs => {
+  queue.on('change', () => {
     if (!window.isDestroyed()) {
-      window.webContents.send('studio:queue', jobs);
+      window.webContents.send('studio:queue', displayJobs(store, companion));
       window.webContents.send('studio:connectionState', portal.current);
     }
   });

@@ -48,12 +48,23 @@ secondary service objects.
   owns delivery receipts; notification work never holds the media queue.
 - `studio_cloud_optimisation.py`: frozen cloud-video replacement previews and
   selected size-target estimates from the shared encoding profiles.
+- `studio_originals.py` and `studio_recovery.py`: authenticated original-source
+  recovery and verified retirement of a frozen previous variant.
+- `studio_desktop.py`: desktop imports and iPlayer requests enter the same queue;
+  imported paths remain bound to the worker that owns them.
+- `studio_pi.py`: frozen Pi inputs and resumable prepared returns from Windows;
+  the Pi validates and publishes without video encoding.
+- `studio_backups.py`: protected Studio recovery snapshots and checksummed iCloud
+  disaster-archive delivery, retaining the existing OneDrive backup.
+- `portal_diagnostics.py`: bounded, protected request failure breadcrumbs without
+  source URLs, request bodies, credentials or query values.
+- `repositories/studio_provenance.py`: durable acquisition and variant delivery
+  receipts in SQLite, independent of bounded Activity history.
 - `compression.py` and `compression-profiles.json`: immutable Balanced, Compact
   and Smallest policies shared by Windows encoding and Pi previews.
-- `size_encoding.py`: bounded two-pass preparation for explicitly selected Pi
-  size profiles, including pause/cancel, heat checks and verified publication.
-- `transcoding.py`: probing and media conversion/optimization policy used by
-  uploads and USB preparation.
+- `size_encoding.py`: explicit refusal boundary for retired Pi video encoding.
+- `transcoding.py`: lightweight probing and delegation of video preparation to
+  the Windows Studio queue, including existing My TV actions.
 - `viewing.py`: viewing sample/session lifecycle, stable catalogue identities,
   targeted session persistence, retention and the four scoped Insights APIs.
 - `viewing_analytics.py`: pure timezone-aware calendar allocation and aggregate

@@ -201,7 +201,7 @@ class DurableUsbTransferTests(unittest.TestCase):
         self.assertEqual(saved["source_kind"], "usb")
 
         library.video_info = mock.Mock(return_value={
-            "codec_type": "video", "width": 1280, "height": 720,
+            "codec_type": "video", "codec_name": "h264", "pix_fmt": "yuv420p", "width": 1280, "height": 720,
             "avg_frame_rate": "25/1",
         })
         library.upload_action(upload_id, "resume")

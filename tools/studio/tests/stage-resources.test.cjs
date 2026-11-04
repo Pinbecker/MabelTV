@@ -103,7 +103,7 @@ test('companion heartbeats every job and cancels only the commanded job', async 
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'studio-claims-')), store = new Store(root), actions = [], requests = [];
   const jobs = [1, 2, 3].map(i => ({ id: String(i), claim: 'claim-' + i, source: { type: 'cloud' } }));
   const queue = { action: async (...args) => actions.push(args), resources: { release() {} } };
-  const portal = { api: async (route, { body }) => { requests.push(body); return requests.length === 1 ? { jobs, acknowledgedJobs: [], requests: [] }
+  const portal = { api: async (route, { body } = {}) => { if (route !== '/api/studio/worker') return { available: false }; requests.push(body); return requests.length === 1 ? { jobs, acknowledgedJobs: [], requests: [] }
     : { jobs: [], acknowledgedJobs: jobs.map(job => ({ id: job.id, command: job.id === '2' ? 'cancel' : '' })), requests: [] }; } };
   const companion = new Companion(store, queue, {}, portal);
   t.after(async () => { await companion.close(); fs.rmSync(root, { recursive: true, force: true }); });
@@ -146,4 +146,18 @@ test('confirmation-query concurrency cannot block worker polling or Apple upload
   try { await until(() => confirmations === 4); await portal.api('/api/studio/worker', { method: 'POST', body: {} }); assert.equal(workerRequests, 1); }
   finally { release.resolve(); }
   await Promise.all(requests); assert.equal(confirmations, 20);
+});
+test('a staged Pi upload still returns a reusable prepared file; existing-film optimisation may keep it in place', async t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'studio-pi-return-'));
+  const store = new Store(root), source = path.join(root, 'prepared.mp4'); fs.writeFileSync(source, 'prepared test bytes');
+  let uploads = 0, unchanged = 0;
+  const portal = { upload: async () => { uploads++; return { complete: true }; },
+    api: async route => { assert.equal(route, '/api/studio/pi/unchanged'); unchanged++; return { complete: true, unchanged: true }; } };
+  const queue = new Queue(store, { prepare: async file => ({ file, converted: false, analysis: { ready: true } }) }, {}, portal);
+  t.after(async () => { await queue.shutdown(); fs.rmSync(root, { recursive: true, force: true }); });
+  queue.add([{ kind: 'file', path: source, preserveOriginal: true, piReturn: { job: 'staged', claim: 'c', replacePi: false } }], { kind: 'film' });
+  await until(() => store.state.jobs[0].status === 'complete');
+  queue.add([{ kind: 'file', path: source, preserveOriginal: true, piReturn: { job: 'existing', claim: 'c', replacePi: true } }], { kind: 'film' });
+  await until(() => store.state.jobs[1].status === 'complete');
+  assert.equal(uploads, 1); assert.equal(unchanged, 1); assert.ok(fs.existsSync(source));
 });

@@ -69,7 +69,7 @@ class StudioCollectionsTests(unittest.TestCase):
         self.library.studio_add_jobs({'sources': [{'type': 'iplayer', 'pid': 'm0000001'}],
                                      'destination': {'kind': 'film', 'collection': 'Local favourites'}})
         self.assertIsNone(self.library.studio_worker_poll({'id': 'a' * 32})['job'])
-        claimed = self.library.studio_worker_poll({'id': 'a' * 32, 'capabilities': ['library-collections']})['job']
+        claimed = self.library.studio_worker_poll({'id': 'a' * 32, 'capabilities': ['library-collections', 'intel-policy-v2']})['job']
         self.assertEqual(claimed['destination']['collection'], 'Local favourites')
 
     def test_confirmed_cloud_versions_inherit_the_selected_collection_without_moving_files(self):

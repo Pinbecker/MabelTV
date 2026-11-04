@@ -185,99 +185,34 @@ class LibraryAuthSettingsTests(unittest.TestCase):
                 "action": "set-tv-settings", "settings": updated,
             })
 
-    def test_channel_uploads_publish_originals_without_automatic_optimisation(self) -> None:
-        self.fixture.library.complete_setup({
-            "setup_code": "135790", "pin": "2468",
-            "channels": mabeltv_library.DEFAULT_CHANNELS,
-        })
-        self.fixture.library.video_info = lambda path: {
-            "codec_type": "video", "width": 3840, "height": 2160,
-            "avg_frame_rate": "60/1",
-        }
-        self.fixture.library.needs_playback_optimisation = mock.Mock(return_value=True)
-        self.fixture.library.optimise_for_playback = mock.Mock()
-        self.fixture.library.refresh_tv = lambda: True
-        uploads = []
-        for channel, name in ((1, "show.mov"), (3, "film.mkv")):
-            created = self.fixture.library.upload_create({
-                "channel": channel, "file_name": name, "size": 16,
-            })
-            result = self.fixture.library.append_upload(created["id"], 0, b"x" * 16)
-            self.assertTrue(result["processing"])
-            uploads.append((created["id"], channel, name))
+    def test_incompatible_channel_uploads_wait_for_laptop_without_pi_encoding(self) -> None:
+        library = self.fixture.library
+        library.complete_setup({"setup_code": "135790", "pin": "2468", "channels": mabeltv_library.DEFAULT_CHANNELS})
+        library.video_info = lambda _: {"codec_type": "video", "codec_name": "hevc", "pix_fmt": "yuv420p10le",
+                                         "width": 3840, "height": 2160, "avg_frame_rate": "60/1"}
+        library.optimise_for_playback = mock.Mock(side_effect=AssertionError("Pi encoder must not run"))
+        created = library.upload_create({"channel": 1, "file_name": "Film.mkv", "size": 16})
+        library.append_upload(created["id"], 0, b"x" * 16)
+        library.conversion_queue.join()
+        self.assertEqual(library.upload_status(created["id"])["status"], "waiting-laptop")
+        self.assertEqual((library.incoming / (created["id"] + ".part")).read_bytes(), b"x" * 16)
+        self.assertFalse((self.fixture.media / "kids-tv/Film.mkv").exists())
+        self.assertEqual(library.state_database.studio_records("job")[0]["source"]["type"], "pi")
+        library.optimise_for_playback.assert_not_called()
 
-        deadline = time.monotonic() + 4
-        states = []
-        while time.monotonic() < deadline:
-            states = [self.fixture.library.upload_status(upload_id)
-                      for upload_id, _, _ in uploads]
-            if all(state.get("complete") for state in states):
-                break
-            time.sleep(0.03)
-        self.assertTrue(all(state.get("complete") for state in states))
-        self.assertTrue(all(not state.get("optimised") for state in states))
-        self.assertTrue((self.fixture.media / "kids-tv" / "show.mov").is_file())
-        self.assertTrue((self.fixture.media / "films" / "film.mkv").is_file())
-        self.fixture.library.needs_playback_optimisation.assert_not_called()
-        self.fixture.library.optimise_for_playback.assert_not_called()
-
-    def test_my_tv_upload_stays_original_until_owner_requests_optimisation(self) -> None:
-        self.fixture.library.complete_setup({
-            "setup_code": "135790", "pin": "2468",
-            "channels": mabeltv_library.DEFAULT_CHANNELS,
-        })
-        self.fixture.library.video_info = lambda path: {
-            "codec_type": "video", "width": 3840, "height": 2160,
-            "avg_frame_rate": "60/1",
-        }
-        def optimise(source: Path, destination: Path) -> None:
-            destination.write_bytes(source.read_bytes())
-
-        self.fixture.library.optimise_my_tv_for_playback = mock.Mock(side_effect=optimise)
-        selected_encoder = mock.patch("mabeltv_backend.transcoding.encode_size_profile",
-            side_effect=lambda _library, source, destination, _selected, _callback: optimise(source, destination))
-        encoder = selected_encoder.start()
-        self.addCleanup(selected_encoder.stop)
-        self.fixture.library.refresh_tv = mock.Mock(return_value=True)
-
-        created = self.fixture.library.my_tv_upload_create({
-            "file_name": "My Film.mkv", "size": 16,
-        })
-        result = self.fixture.library.append_upload(created["id"], 0, b"raw-film-content")
-        self.assertTrue(result["processing"])
-
-        deadline = time.monotonic() + 3
-        state = {}
-        while time.monotonic() < deadline:
-            state = self.fixture.library.upload_status(created["id"])
-            if state.get("complete"):
-                break
-            time.sleep(0.02)
-
-        self.assertTrue(state.get("complete"))
-        self.assertFalse(state.get("optimised"))
-        self.assertEqual((self.fixture.library.my_tv_root / "My Film.mkv").read_bytes(),
-                         b"raw-film-content")
-        self.assertEqual(self.fixture.library.my_tv_library()[0]["display_name"],
-                         "My Film")
-        self.assertFalse(any((self.fixture.media / channel["folder"] / "My Film.mkv").exists()
-                             for channel in mabeltv_library.DEFAULT_CHANNELS))
-        self.fixture.library.optimise_my_tv_for_playback.assert_not_called()
-        self.fixture.library.refresh_tv.assert_called_once()
-
-        self.fixture.library.manage({"action": "optimise-my-tv", "file": "My Film.mkv", "compression": "smallest"})
-        deadline = time.monotonic() + 3
-        while time.monotonic() < deadline:
-            films = self.fixture.library.my_tv_library()
-            if films and films[0]["playback_state"] == "optimised":
-                break
-            time.sleep(0.02)
-        self.assertEqual((self.fixture.library.my_tv_root / "My Film.mp4").read_bytes(),
-                         b"raw-film-content")
-        self.assertFalse((self.fixture.library.my_tv_root / "My Film.mkv").exists())
-        self.assertEqual(self.fixture.library.my_tv_library()[0]["playback_state"], "optimised")
-        encoder.assert_called_once()
-        self.assertEqual(encoder.call_args.args[3], "smallest")
+    def test_my_tv_optimisation_queues_laptop_and_keeps_original_until_return(self) -> None:
+        library = self.fixture.library
+        source = library.my_tv_root / "My Film.mkv"
+        source.write_bytes(b"raw-film-content")
+        library.my_tv_library()
+        with mock.patch("mabeltv_backend.transcoding.subprocess.run", side_effect=AssertionError("Pi encoder must not run")):
+            library.manage({"action": "optimise-my-tv", "file": "My Film.mkv", "compression": "smallest"})
+        self.assertEqual(source.read_bytes(), b"raw-film-content")
+        self.assertFalse(source.with_suffix(".mp4").exists())
+        job = library.state_database.studio_records("job")[0]
+        self.assertEqual(job["destination"]["compression"], "smallest")
+        self.assertEqual(job["source"]["reference"], {"kind": "my_tv", "file": "My Film.mkv"})
+        self.assertEqual(library.my_tv_media_states()["My Film.mkv"]["message"], "Waiting for laptop")
 
     def test_my_tv_optimisation_progress_is_exposed_without_reloading_library(self) -> None:
         film = self.fixture.library.my_tv_root / "Long Film.mkv"

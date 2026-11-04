@@ -11,7 +11,7 @@ test('desktop navigation, rich search, settings and keyboard layout work in the 
   try {
     const page = await app.firstWindow(); const errors = [];
     page.on('pageerror', error => errors.push(error.message));
-    await expect(page.getByRole('heading', { name: 'Make room for your next watch.' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Add media' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Choose video files' })).toBeVisible();
     await expect(page.locator('#dropzone')).toBeVisible();
     expect(await page.evaluate(() => typeof window.require)).toBe('undefined');
@@ -19,7 +19,7 @@ test('desktop navigation, rich search, settings and keyboard layout work in the 
     await expect(page.locator('#connection-label')).toContainText('Connected', { timeout: 20000 });
     await page.screenshot({ path: 'test-results/add-media.png' });
     await page.getByRole('button', { name: 'BBC iPlayer', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'A world of BBC favourites.' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'BBC iPlayer' })).toBeVisible();
     await page.locator('#search-input').fill('Teletubbies');
     await page.locator('#search-button').click();
     await expect(page.locator('#search-summary')).toContainText(/episodes? found/, { timeout: 60000 });
@@ -31,7 +31,7 @@ test('desktop navigation, rich search, settings and keyboard layout work in the 
     await expect(page.locator('#iplayer-destination .submit-destination')).toContainText('1');
     await page.screenshot({ path: 'test-results/iplayer.png' });
     await page.getByRole('button', { name: 'Queue', exact: false }).first().click();
-    await expect(page.getByRole('heading', { name: 'Everything is caught up.' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'No pending jobs.' })).toBeVisible();
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await expect(page.locator('#remote-url')).toHaveValue('https://mabeltv.dancoakes.uk');
     await page.screenshot({ path: 'test-results/settings.png' });

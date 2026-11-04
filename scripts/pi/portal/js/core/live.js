@@ -52,6 +52,7 @@
 
     function setRemoteFeedback(message, tone = '', hold = 1100) {
       clearTimeout(remoteFeedbackTimer)
+      remoteFeedbackTimer = null
       const feedback = $('#remoteFeedback')
       const container = feedback.closest('.remote-feedback')
       feedback.textContent = message
@@ -232,17 +233,31 @@
       lgTvRemote.renderPowerState(state)
     }
 
+    let remoteStatusRequest = null, remoteStatusGeneration = 0
     async function refreshLiveTv(restartStream = false) {
+      if (document.hidden || remoteStatusRequest) return
+      const controller = new AbortController(), generation = ++remoteStatusGeneration
+      remoteStatusRequest = controller
       try {
-        const state = await api('/api/live')
+        const state = await api('/api/live', { signal: controller.signal, timeout: 6500 })
+        if (generation !== remoteStatusGeneration) return
         renderLiveTv(state)
         // The video element deliberately has no source when using the reliable
         // JPEG feed. Checking it here restarted the picture every 2.5 seconds.
         if (state.available && (restartStream || !$('#liveMjpeg').getAttribute('src'))) setLiveSource()
       } catch (error) {
-        renderLiveTv({ available: false, reason: error.message })
-      }
+        if (controller.signal.aborted || generation !== remoteStatusGeneration || error.status === 401) return
+        if (liveTvState?.available) setRemoteFeedback('Reconnecting…', '', 0)
+        else renderLiveTv({ available: false, reason: 'Reconnecting…' })
+      } finally { if (remoteStatusRequest === controller) remoteStatusRequest = null }
     }
+
+    document.addEventListener('visibilitychange', () => {
+      remoteStatusGeneration++; remoteStatusRequest?.abort(); remoteStatusRequest = null
+      if (document.hidden) {
+        clearTimeout(liveFrameTimer); $('#liveMjpeg')?.removeAttribute('src')
+      } else if (liveRefreshTimer) void refreshLiveTv(true)
+    })
 
     async function refreshHomePowerState() {
       const state = await api('/api/live')
@@ -402,6 +417,7 @@
     }
 
     function stopLiveTv() {
+      remoteStatusGeneration++; remoteStatusRequest?.abort(); remoteStatusRequest = null
       if (!liveRefreshTimer) return
       clearInterval(liveRefreshTimer)
       liveRefreshTimer = null

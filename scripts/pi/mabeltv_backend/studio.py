@@ -20,7 +20,7 @@ class StudioMixin:
             job.pop("claim", None)
             if job["status"] in {"queued", "active"} and not any(now - w["seen"] < 25 for w in workers):
                 job["displayStatus"] = "Queued"
-        return {"compressionProfiles": compression_choices(), "workers": [{**w, "online": now - w["seen"] < 25} for w in workers],
+        return {"compressionProfiles": compression_choices(), "backup": self.studio_backup_latest(), "workers": [{**w, "online": now - w["seen"] < 25} for w in workers],
                 "jobs": jobs, "cloudOperations": self.state_database.studio_records("cloudop"),
                 "organiser": self.studio_organiser_status(),
                 "organiserUsage": self.state_database.studio_records("aiusage"), "cloud": self.studio_cloud_status(), "now": now}
@@ -63,6 +63,8 @@ class StudioMixin:
                        "keepOptimised": value.get("keepOptimised", True) is True,
                        "saveCloud": value.get("saveCloud", False) is True, "preserveSeasons": value.get("preserveSeasons") is True}
         destination.update(temporaryWork=True, keepOptimised=False)
+        destination["allowRisk"] = value.get("allowRisk") is True
+        destination["unattended"] = value.get("unattended") is True
         if "compression" in value:
             destination["compression"] = compression_profile(value["compression"])["id"]
         if not isinstance(value.get("cloudCopies", "original"), str) or value.get("cloudCopies", "original") not in {"original", "optimised", "both"}:
@@ -114,6 +116,18 @@ class StudioMixin:
         return {"tmdb_id": match["tmdb_id"], "media_type": match["media_type"],
                 "title": str(match.get("title", ""))[:200], "year": str(match.get("year", ""))[:4]}
 
+    def studio_create_collection(self, payload):
+        name, scope = str(payload.get("name", "")).strip(), payload.get("scope")
+        if not name or len(name) > 80 or any(ord(c) < 32 or c in '/\\' for c in name) or name in {".", ".."}:
+            raise ValueError("Enter a collection name of up to 80 characters")
+        if scope == "icloud":
+            value = self.state_database.studio_assign_cloud_collection([], name, create=True)
+            return {"name": value, "collections": self.studio_cloud_catalogue({})["collections"]}
+        if scope == "pi":
+            self.manage({"action": "create-my-tv-folder", "name": name})
+            return {"name": self.normalise_my_tv_folder(name), "collections": self.my_tv_folders()}
+        raise ValueError("Choose TV or iCloud collection")
+
     def studio_add_jobs(self, payload):
         sources = payload.get("sources")
         if not isinstance(sources, list) or not 1 <= len(sources) <= 100:
@@ -137,6 +151,10 @@ class StudioMixin:
                           "modified": item.get("modified", ""), "remoteId": item.get("remoteId", "")}
                 origin["archiveGroup"] = cloud_records.get(item["id"], {}).get("archiveGroup") or hashlib.sha256(item["id"].encode()).hexdigest()[:32]
                 origin["variants"] = cloud_records.get(item["id"], {}).get("variants", [])
+                ancestor = next((delivery for delivery in self.state_database.studio_records("delivery")
+                                 if any(copy.get("id") == item["id"] for copy in delivery.get("provenance", {}).get("cloudCopies", {}).values())), None)
+                if ancestor:
+                    origin["acquisitionId"] = ancestor["acquisitionId"]
                 if destination["cloudCopies"] == "optimised":
                     if payload.get("replaceCloudOriginal") is not True or any(source.get(key) != item.get(key, "") for key in ("bytes", "modified", "remoteId")):
                         raise ValueError("Confirm that the original iCloud copy will be replaced. Choose Both to keep it.")
@@ -177,11 +195,17 @@ class StudioMixin:
                 continue
             jobs.append({"id": uuid.uuid4().hex, "fingerprint": fingerprint,
                 "source": origin, "title": title, "destination": chosen, "match": self.studio_match(source_match),
-                "status": "queued", "stage": "queued", "percent": 0, "created": time.time(), "updated": time.time()})
+                "status": "queued", "stage": "queued", "percent": 0, "policyVersion": 2, "created": time.time(), "updated": time.time()})
         jobs = self.state_database.studio_add_jobs(jobs)
         return {"ok": True, "ids": [j["id"] for j in jobs]}
 
     def studio_job_action(self, payload):
+        if payload.get("allowRisk") is True:
+            job = next((value for value in self.state_database.studio_records("job") if value["id"] == str(payload.get("id", ""))), None)
+            if not job or job.get("errorCode") != "QUALITY_REVIEW" or job["status"] != "failed":
+                raise ValueError("Choose a file awaiting compression confirmation")
+            job["destination"]["allowRisk"] = True
+            self.state_database.studio_add("job", job)
         self.state_database.studio_action(str(payload.get("id", "")), str(payload.get("action", "")),
                                           self.studio_match(payload.get("match")), payload.get("cloudCopies", "original"))
         return {"ok": True}
@@ -197,7 +221,7 @@ class StudioMixin:
         if not isinstance(responses, list) or len(json.dumps(responses)) > 2 * 1024 * 1024:
             raise ValueError("Invalid Studio search response")
         capabilities = payload.get("capabilities", [])
-        if not isinstance(capabilities, list) or len(capabilities) > 10 or any(not isinstance(item, str) or item not in {"torrent", "cloud-optimise", "parallel-stages", "compression-presets", "library-collections"} for item in capabilities):
+        if not isinstance(capabilities, list) or len(capabilities) > 10 or any(not isinstance(item, str) or item not in {"torrent", "cloud-optimise", "parallel-stages", "compression-presets", "library-collections", "intel-policy-v2"} for item in capabilities):
             raise ValueError("Invalid Studio capabilities")
         actives = payload.get("activeJobs")
         if actives is not None and ("parallel-stages" not in capabilities or not isinstance(actives, list)
@@ -213,8 +237,10 @@ class StudioMixin:
         if request_active is not None and (not isinstance(request_active, dict) or len(json.dumps(request_active)) > 300):
             raise ValueError("Invalid Studio request lease")
         responses = self.studio_torrent_worker_responses(responses)
-        return self.state_database.studio_poll(identity, str(payload.get("name", "Laptop"))[:80], active, responses,
-                                               capabilities, request_active, actives, worker_session)
+        result = self.state_database.studio_poll(identity, str(payload.get("name", "Laptop"))[:80], active, responses,
+                                                capabilities, request_active, actives, worker_session)
+        self.studio_pi_sync_progress()
+        return result
 
     def studio_subtitle(self, payload):
         """Attach text only to a server-confirmed publication, never an arbitrary path."""

@@ -7,11 +7,11 @@ import { reviewTitles } from './title-review.js';
 let snapshot = null, files = [], view = 'add';
 let sourceSizeGeneration = 0;
 const descriptions = {
-  add: ['YOUR MEDIA, READY TO WATCH', 'Make room for your next watch.', 'Find it, prepare it, send it. All from one place.'],
-  iplayer: ['FIND SOMETHING GOOD', 'A world of BBC favourites.', 'Choose the episodes you want. Studio takes care of the rest.'],
-  queue: ['EVERY STEP, IN ONE PLACE', 'Good things are on their way.', 'Downloads, preparation and transfers. Pick up right where you left off.'],
-  completed: ['READY WHEN YOU ARE', 'More watching. Less waiting.', 'Your finished additions, with local files safely kept.'],
-  settings: ['MAKE STUDIO YOURS', 'At home. Away. Connected.', 'Your connections, working folder and media tools.']
+  add: ['MABELTV STUDIO', 'Add media', 'Choose files, a destination and the copies to keep.'],
+  iplayer: ['MABELTV STUDIO', 'BBC iPlayer', 'Search programmes or paste an episode link.'],
+  queue: ['MABELTV STUDIO', 'Activity', 'Downloads, conversion, TV delivery and iCloud uploads.'],
+  completed: ['MABELTV STUDIO', 'Completed', 'Finished jobs and verified destinations.'],
+  settings: ['MABELTV STUDIO', 'Settings', 'Connections, working folder and media tools.']
 };
 const catalogue = () => ({ ...(snapshot?.catalogue || { channels: [], series: [] }), compressionProfiles: snapshot?.compressionProfiles || [] });
 const addDestination = new Destination('#add-destination', { catalogue, submit: async destination => {
@@ -80,6 +80,7 @@ async function connect(mode) {
   }
 }
 document.querySelectorAll('[data-view]').forEach(button => button.onclick = () => showView(button.dataset.view));
+document.querySelectorAll('[data-studio-library]').forEach(button => button.onclick = () => attempt(() => window.studio.openLibrary(button.dataset.studioLibrary)));
 $('#connection-settings').onclick = () => showView('settings');
 $('#dropzone').onclick = () => attempt(async () => addFiles(await window.studio.pickFiles()));
 $('#dropzone').ondragover = event => { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; $('#dropzone').classList.add('dragging'); };

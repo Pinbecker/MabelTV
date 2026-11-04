@@ -17,7 +17,7 @@ class StudioParallelTests(unittest.TestCase):
             for item in self.library.studio_cloud_files], "destination": {"kind": "film"}})
 
     def poll(self, worker="a" * 32, **fields):
-        return self.library.studio_worker_poll({"id": worker, "name": "Studio", "capabilities": ["parallel-stages"],
+        return self.library.studio_worker_poll({"id": worker, "name": "Studio", "capabilities": ["parallel-stages", "intel-policy-v2"],
                                                "activeJobs": [], **fields})
 
     def test_parallel_claims_are_bounded_and_keep_independent_leases(self):
@@ -60,9 +60,9 @@ class StudioParallelTests(unittest.TestCase):
         self.assertEqual(len(claimed), 15)
         self.assertEqual(len(set(claimed)), 15)
 
-    def test_legacy_worker_still_receives_one_job_and_cannot_claim_while_reporting_active(self):
-        first = self.library.studio_worker_poll({"id": "c" * 32})["job"]
-        reply = self.library.studio_worker_poll({"id": "c" * 32, "active": {"id": first["id"], "claim": first["claim"]}})
+    def test_single_stage_worker_receives_one_job_and_cannot_claim_while_reporting_active(self):
+        first = self.library.studio_worker_poll({"id": "c" * 32, "capabilities": ["intel-policy-v2"]})["job"]
+        reply = self.library.studio_worker_poll({"id": "c" * 32, "capabilities": ["intel-policy-v2"], "active": {"id": first["id"], "claim": first["claim"]}})
         self.assertIsNone(reply["job"])
         self.assertEqual(reply["acknowledged"]["id"], first["id"])
         self.assertFalse(reply["jobs"])

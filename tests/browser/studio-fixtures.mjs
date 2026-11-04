@@ -39,7 +39,7 @@ export async function openStudio(page, { online = false, series = false, organis
         modified: 'same-version', remoteId: 'remote-' + id, estimatedBytes: profileSize === undefined ?
           Math.floor(items.find(item => item.id === id).bytes * ({balanced:.6,compact:.4,smallest:.25}[payload.compression || 'compact']) * .98) : profileSize })),
         output: 'MP4 · H.264 video · AAC stereo · up to 1080p / 30 fps',
-        compression: payload.compression || 'compact', estimateNote: 'Estimated size from the selected two-pass target; measured size can vary.' }
+        compression: payload.compression || 'compact', estimateNote: 'Estimated size from the selected compression target; measured size can vary.' }
     } else if (path === '/api/studio/cloud/match') {
       const item = items.find(i => i.id === payload.id); item.metadata = {...item.metadata, ...payload.match}; json = {item}
     } else if (path === '/api/studio/jobs') {

@@ -21,7 +21,7 @@ class StudioCloudCopiesTests(unittest.TestCase):
     def claimed_replacement(self):
         identity = self.library.studio_add_jobs({'sources':[self.cloud_source()],
             'destination':{'kind':'film','cloudCopies':'optimised'},'replaceCloudOriginal':True})['ids'][0]
-        job = self.library.studio_worker_poll({'id':'c'*32,'name':'Worker'})['job']
+        job = self.library.studio_worker_poll({'id':'c'*32,'name':'Worker','capabilities':['intel-policy-v2']})['job']
         self.assertEqual(job['id'], identity)
         output = {**self.original,'id':'b'*24,'name':'Film [Optimised].mp4','path':'Films/Film [Optimised].mp4',
             'extension':'.mp4','bytes':60,'remoteId':'remote-optimised'}
@@ -153,7 +153,7 @@ class StudioCloudCopiesTests(unittest.TestCase):
     def test_archive_reservation_needs_a_current_claim_and_binds_arrival_before_filing(self):
         self.library.studio_add_jobs({'sources':[{'type':'iplayer','pid':'m0000001','title':'Incoming'}],
             'destination':{'kind':'film','cloudCopies':'optimised'}})
-        job=self.library.studio_worker_poll({'id':'1'*32})['job']
+        job=self.library.studio_worker_poll({'id':'1'*32,'capabilities':['intel-policy-v2']})['job']
         payload={'reserve':True,'publicationJob':job['id'],'claim':job['claim'],'archiveAsset':'a'*32+':optimised',
             'archiveGroup':'a'*32,'variants':['optimised'],'path':'Films/Incoming [Optimised].mp4','bytes':100,'title':'Incoming'}
         with self.assertRaises(ValueError):

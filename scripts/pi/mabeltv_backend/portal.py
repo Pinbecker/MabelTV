@@ -7,6 +7,7 @@ SERVICE_ROOT = Path(__file__).resolve().parent.parent
 
 PORTAL_APP_SOURCES = (
     "ui-components.js",
+    "core/requests.js",
     "core/foundation.js",
     "core/confirmation.js",
     "core/scroll.js",
@@ -63,6 +64,7 @@ PORTAL_APP_SOURCES = (
     "studio/metadata.js",
     "studio/cloud-delete.js",
     "studio/cloud-optimise.js",
+    "studio/originals.js",
     "studio/torrents.js",
     "actions.js",
     "lg-tv-remote.js",

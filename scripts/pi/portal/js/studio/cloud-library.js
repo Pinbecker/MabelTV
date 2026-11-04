@@ -85,7 +85,19 @@ async function studioOpenCloudTitles(titles, selectedEpisodes = null) {
         series: file.series, match: title.metadata || null })
     }
   }
-  openStudioDestination(sources, null, { titles, files, selectedEpisodes: Boolean(selectedEpisodes) })
+  const context = { titles, files, selectedEpisodes: Boolean(selectedEpisodes) }
+  if (selectedEpisodes && studioState.episodeDraft) {
+    studioDraft = studioState.episodeDraft; studioState.episodeDraft = null
+    const previousSeasons = new Set(studioDraft.sources.map(source => source.series))
+    const selectedSeasons = [...new Set(sources.map(source => source.series).filter(Number.isInteger))]
+    if (previousSeasons.size > 1 && selectedSeasons.length === 1) $('#studioSeason').value = selectedSeasons[0]
+    studioDraft.sources = sources; studioDraft.cloudContext = context
+    studioSyncDestination(); studioDestinationMetadata()
+    openLibrarySheet($('#studioDestinationSheet'))
+    return
+  }
+  openStudioDestination(sources, null, context)
+  studioOpenActions()
 }
 
 function studioOpenReplaceWarning() {
@@ -112,7 +124,7 @@ portalSheets.wire($('#studioReplaceSheet'), { closeButton: $('#studioReplaceClos
 
 function studioCloseCollection() {
   closeLibrarySheet($('#studioCloudCollectionSheet'), false)
-  openLibrarySheet($('#studioDestinationSheet'))
+  openLibrarySheet($('#studioActionsSheet'))
 }
 $('#studioCloudMoveCollection').onclick = () => {
   const titles = studioDraft?.cloudContext?.titles

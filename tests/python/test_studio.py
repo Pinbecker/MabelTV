@@ -24,7 +24,7 @@ class StudioTests(unittest.TestCase):
                                              "destination": destination or {"kind": "film"}})["ids"][0]
 
     def poll(self, worker="1" * 32, **extra):
-        return self.library.studio_worker_poll({"id": worker, "name": "Laptop", **extra})
+        return self.library.studio_worker_poll({"id": worker, "name": "Laptop", "capabilities": ["intel-policy-v2"], **extra})
 
     def test_queue_survives_settings_replacement_and_database_reopen(self):
         identity = self.add()

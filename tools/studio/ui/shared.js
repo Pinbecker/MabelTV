@@ -8,7 +8,7 @@ const paths = {
   external:'M14 3h7v7M21 3l-11 11M10 3H3v18h18v-7', refresh:'M20 7V3l-4 4M4 17v4l4-4M20 7a9 9 0 0 0-15-3M4 17a9 9 0 0 0 15 3',
   info:'M12 11v6M12 7h.01M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0', connection:'M8 8l8 8M7 14l-3 3a3 3 0 0 0 4 4l3-3M13 6l3-3a3 3 0 0 1 4 4l-3 3',
   tv:'M3 5h18v14H3zM8 22h8M12 19v3', film:'M3 3h18v18H3zM7 3v18M17 3v18M3 8h4M3 16h4M17 8h4M17 16h4',
-  folder:'M3 6h7l2 3h9v11H3z', download:'M12 3v13M7 11l5 5 5-5M4 17v4h16v-4'
+  folder:'M3 6h7l2 3h9v11H3z', cloud:'M6 18a4 4 0 0 1-1-8 7 7 0 0 1 13-1 5 5 0 0 1 0 10H6', download:'M12 3v13M7 11l5 5 5-5M4 17v4h16v-4'
 };
 export const icon = name => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${paths[name] || paths.film}"/></svg>`;
 export function icons(root = document) { root.querySelectorAll('[data-icon]').forEach(node => node.innerHTML = icon(node.dataset.icon)); }

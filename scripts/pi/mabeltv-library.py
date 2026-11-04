@@ -67,6 +67,11 @@ from mabeltv_backend.portal import (
 from mabeltv_backend.studio_cloud_metadata import StudioCloudMetadataMixin
 from mabeltv_backend.studio_cloud_manager import StudioCloudManagerMixin
 from mabeltv_backend.studio import StudioMixin
+from mabeltv_backend.studio_originals import StudioOriginalsMixin
+from mabeltv_backend.studio_pi import StudioPiMixin
+from mabeltv_backend.studio_backups import StudioBackupsMixin
+from mabeltv_backend.studio_recovery import StudioRecoveryMixin
+from mabeltv_backend.studio_desktop import StudioDesktopMixin
 from mabeltv_backend.studio_torrents import StudioTorrentsMixin
 from mabeltv_backend.studio_cloud import StudioCloudMixin
 from mabeltv_backend.studio_organiser import StudioOrganiserMixin
@@ -111,9 +116,9 @@ __all__ = [
     "urlopen",
 ]
 
-class Library(StudioMixin, StudioTorrentsMixin, StudioCloudMixin, StudioOrganiserMixin, StudioCloudFilingMixin, StudioCloudManagerMixin, StudioCloudMetadataMixin, StudioCloudOptimisationMixin, MyTvTransferMixin, PlaylistsMixin, FamilyMediaMixin, FamilyUploadsMixin,
+class Library(StudioMixin, StudioOriginalsMixin, StudioTorrentsMixin, StudioCloudMixin, StudioOrganiserMixin, StudioCloudFilingMixin, StudioCloudManagerMixin, StudioCloudMetadataMixin, StudioCloudOptimisationMixin, MyTvTransferMixin, PlaylistsMixin, FamilyMediaMixin, FamilyUploadsMixin,
               IPlayerLibraryMixin, MabelQueueMixin, ViewingMixin, UploadConversionMixin, UploadNotificationsMixin, TranscodingMixin, AuthenticationMixin,
-              ArtworkProxyMixin,
+              ArtworkProxyMixin, StudioPiMixin, StudioBackupsMixin, StudioRecoveryMixin, StudioDesktopMixin,
               MediaCatalogueMixin, ManagementMixin, RemotePlaybackMixin, PlaybackProgressMixin, LgControlMixin,
               UsbMixin,
               ProviderTransportMixin, NativeMyTvMixin, MyTvMetadataMixin, ProviderMetadataMixin,
@@ -248,6 +253,7 @@ class Library(StudioMixin, StudioTorrentsMixin, StudioCloudMixin, StudioOrganise
         self.usb_transfer_worker.start()
         self.init_upload_notifications()
         self.init_studio_cloud()
+        self.studio_backfill_history()
         self.live_stream = LiveStream(self)
         if os.name == "posix" and self.usb_requires_mount:
             self.usb_power_worker = threading.Thread(

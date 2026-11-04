@@ -259,7 +259,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def body(self) -> dict[str, Any]:
         length = int(self.headers.get("Content-Length", "0"));
-        limit = 2 * 1024 * 1024 if self.path in {"/api/studio/worker", "/api/studio/subtitle", "/api/studio/cloud/operation"} else 64 * 1024
+        limit = 2 * 1024 * 1024 if self.path in {"/api/studio/worker", "/api/studio/subtitle", "/api/studio/cloud/operation", "/api/studio/backup/profile"} else 64 * 1024
         if length < 0 or length > limit: raise ValueError("Request is too large")
         value = json.loads(self.rfile.read(length) or b"{}")
         if not isinstance(value, dict): raise ValueError("Request must be a JSON object")

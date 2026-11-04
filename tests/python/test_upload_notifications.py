@@ -15,7 +15,7 @@ class UploadNotificationTests(unittest.TestCase):
                        "topic": "isolated-unit-test-topic", "enabled_after": time.time() - 1}
         self.library.upload_notice_config.write_text(json.dumps(self.config))
         self.library.refresh_tv = lambda: True
-        self.library.video_info = lambda _: {"codec_type": "video", "width": 640, "height": 480,
+        self.library.video_info = lambda _: {"codec_type": "video", "codec_name": "h264", "pix_fmt": "yuv420p", "width": 640, "height": 480,
                                               "avg_frame_rate": "25/1"}
         self.requests = []
         def send(request, timeout):

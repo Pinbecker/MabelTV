@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import secrets
 import time
+from .studio_provenance import keep_acquisition, keep_delivery
 
 
 PREFIX = "studio."
@@ -48,8 +49,8 @@ class StudioRepositoryMixin:
     def studio_save_upload_notice(self, upload_id, receipt):
         with self.transaction() as db:
             self._studio_put(db, "uploadnotice", {**receipt, "id": upload_id})
-            db.execute("DELETE FROM application_settings WHERE key LIKE 'studio.uploadnotice.%' "
-                       "AND updated_at<?", (time.time() - 30 * 86400,))
+            # Delivery identities outlive Activity and age-based retention. A restored
+            # appliance must never announce an old publication again.
 
     @staticmethod
     def _studio_records(db, kind):
@@ -105,7 +106,8 @@ class StudioRepositoryMixin:
                 previous = next((item for item in records if item["id"] == value["id"]), None)
                 if previous:
                     return previous
-            if kind == "job" and sum(r["status"] not in FINISHED for r in records) >= 200:
+            if kind == "job" and not any(r["id"] == value["id"] for r in records) and sum(
+                    r["status"] not in FINISHED and r.get("stage") not in {"saving-cloud", "waiting-for-cloud", "freeing-space"} for r in records) >= 200:
                 raise ValueError("Your Studio queue is full. Finish or cancel some items first.")
             if kind in {"request", "cloudop"} and not any(r["id"] == value["id"] for r in records) and sum(r["status"] in {"queued", "active"} for r in records) >= (20 if kind == "request" else 200):
                 raise ValueError("There are too many waiting requests. Let the current work finish first.")
@@ -129,9 +131,11 @@ class StudioRepositoryMixin:
                 else:
                     pending.append(value)
                     result.append(value)
-            if len(active) + len(pending) > 200:
+            foreground = [r for r in active if r.get("stage") not in {"saving-cloud", "waiting-for-cloud", "freeing-space"}]
+            if len(foreground) + len(pending) > 200:
                 raise ValueError("Your Studio queue is full. Finish or cancel some items first.")
             for value in pending:
+                keep_acquisition(db, value)
                 self._studio_put(db, "job", value)
             for old in records[199:]:
                 if old["status"] in {"complete", "failed", "cancelled"}:
@@ -254,13 +258,15 @@ class StudioRepositoryMixin:
                 if current and current.get("worker") == worker and current.get("claim") == progress.get("claim"):
                     acknowledgements.append({"id": current["id"], "command": current.get("command", "")})
                     if current["status"] == "active":
-                        for key in ("stage", "message", "percent", "result", "error", "metadataWarning", "savedCloudPath", "matchedTitle"):
+                        for key in ("stage", "message", "percent", "result", "error", "errorCode", "metadataWarning", "savedCloudPath", "matchedTitle", "provenance"):
                             if key in progress:
                                 current[key] = progress[key]
                         if progress.get("status") in {"complete", "failed", "paused"}:
                             current["status"] = progress["status"]
                         current.update(updated=now, lease=now + 90)
                         self._studio_put(db, "job", current)
+                        if current.get("provenance") or current["status"] == "complete":
+                            keep_delivery(db, current)
             # An expired lease can be recovered by the same laptop or another paired Studio.
             claimed = []
             background = {"saving-cloud", "waiting-for-cloud", "freeing-space"}
@@ -275,6 +281,10 @@ class StudioRepositoryMixin:
             available = max(0, 12 - busy) if parallel else 0 if active else 1
             if available:
                 for item in sorted(jobs, key=lambda j: j["created"]):
+                    if item["source"].get("type") == "import" and item["source"].get("worker") != worker:
+                        continue
+                    if item.get("policyVersion", 0) >= 2 and "intel-policy-v2" not in (capabilities or []):
+                        continue
                     if item["source"].get("type") == "torrent" and "torrent" not in (capabilities or []):
                         continue
                     if item.get("destination", {}).get("optimiseCloud") and "cloud-optimise" not in (capabilities or []):
