@@ -1,5 +1,10 @@
 # Studio in the My TV portal
 
+Planned upgrade: [agreed portal and Windows Studio optimisation build](studio-optimisation-build-plan-2026-11-03.md).
+The [live Studio UX and styling audit](studio-portal-ux-audit-2026-11-03.md)
+records the menu, collection, layout and interaction corrections included in it.
+That specification describes future work; the behaviour below documents the current implementation.
+
 Open **My TV → Studio** at the normal HTTPS portal. The iCloud library groups
 recognisable series into one title, with seasons and episode selection inside.
 The phone and tablet library use four-column My Viewing poster cards and a

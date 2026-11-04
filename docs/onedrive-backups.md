@@ -1,5 +1,10 @@
 # OneDrive disaster-recovery backups
 
+Planned extension: the [Studio build specification](studio-optimisation-build-plan-2026-11-03.md#9a-back-up-and-restore-all-new-file-and-recovery-data)
+requires backup/restore coverage for new source, variant and Windows recovery
+records, plus verified offsite handover before OneDrive retirement. Those are
+future build requirements; the boundary below describes the current backup.
+
 MabelTV creates one immutable, dated archive per run and uploads it directly
 from the Raspberry Pi to the owner's private OneDrive folder at
 `Documents/MabelTV Backups/snapshots`. The Windows PC is needed only to complete

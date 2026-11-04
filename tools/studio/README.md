@@ -1,5 +1,8 @@
 # MabelTV Studio
 
+Planned upgrade: [agreed portal and Windows Studio optimisation build](../../docs/studio-optimisation-build-plan-2026-11-03.md).
+The build specification is planned work, separate from the current implementation described below.
+
 Installed Windows companion for finding, preparing and sending media to Mabel TV and My TV.
 
 ## Architecture
