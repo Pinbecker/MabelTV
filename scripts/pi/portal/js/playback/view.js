@@ -2,6 +2,47 @@
 
     const watchTabPositions = new Map()
     let renderedWatchKind = null
+    let mabelChannelKind = 'episodes'
+    const mabelFilmRailPositions = new Map()
+
+    function updateMabelChannelScrollFloor(scrollY = portalScrollTop()) {
+      const browser = $('#remoteMabel')
+      if (!browser?.offsetWidth || browser.classList.contains('hidden') || !$('#view-watch').classList.contains('active')) return
+      const panel = browser.querySelector('.mabel-channel-panel:not(.hidden)')
+      const toggle = browser.querySelector('.mabel-channel-toggle')
+      if (!panel || !toggle) return
+      const naturalHeight = panel.offsetHeight + toggle.offsetHeight + parseFloat(getComputedStyle(browser).rowGap || 0)
+      const outsideHeight = document.scrollingElement.scrollHeight - browser.offsetHeight
+      const floor = scrollY + window.innerHeight - outsideHeight
+      // Keep the current viewport in place when changing to a shorter list.
+      // Release that extra space as the parent scrolls upwards.
+      browser.style.minHeight = floor > naturalHeight ? `${Math.ceil(floor)}px` : ''
+    }
+
+    function selectMabelChannelKind(kind) {
+      if (!['episodes', 'films'].includes(kind) || kind === mabelChannelKind) return
+      const position = capturePortalPosition({ anchor: false })
+      const browser = $('#remoteMabel')
+      if (mabelChannelKind === 'films') browser.querySelectorAll('.watch-film-channel-rail').forEach(rail =>
+        mabelFilmRailPositions.set(rail.closest('[data-watch-channel-folder]').dataset.watchChannelFolder, rail.scrollLeft))
+      mabelChannelKind = kind
+      browser.querySelectorAll('[data-mabel-channel-kind]').forEach(button => {
+        const selected = button.dataset.mabelChannelKind === kind
+        button.setAttribute('aria-selected', String(selected))
+        button.tabIndex = selected ? 0 : -1
+      })
+      browser.querySelectorAll('.mabel-channel-panel').forEach(panel =>
+        panel.classList.toggle('hidden', panel.id !== `mabelChannel${kind === 'films' ? 'Films' : 'Episodes'}`))
+      updateMabelChannelScrollFloor(position.scrollY)
+      restorePortalPosition(position)
+      if (kind === 'films') browser.querySelectorAll('.watch-film-channel-rail').forEach(rail => {
+        rail.scrollLeft = mabelFilmRailPositions.get(rail.closest('[data-watch-channel-folder]').dataset.watchChannelFolder) || 0
+      })
+    }
+
+    window.addEventListener('scroll', () => {
+      if ($('#remoteMabel')?.style.minHeight) updateMabelChannelScrollFloor()
+    }, { passive: true })
 
     function renderRemoteViewing({ force = false } = {}) {
       const position = capturePortalPosition()
@@ -13,7 +54,9 @@
       if (changed) cancelPortalScrollSettlement()
       renderWatchSections()
       renderedWatchKind = renderedKey
-      restorePortalPosition(visible && changed ? watchTabPositions.get(renderedKey) || position : position)
+      const restored = visible && changed ? watchTabPositions.get(renderedKey) || position : position
+      if (visible && remoteKind === 'channel') updateMabelChannelScrollFloor(restored.scrollY)
+      restorePortalPosition(restored)
     }
 
     function renderWatchSections() {
@@ -36,13 +79,45 @@
         renderDownloads().catch(showError)
         return
       }
-      const mabel = $('#remoteMabel'); mabel.innerHTML = ''
+      const mabel = $('#remoteMabel'); mabel.innerHTML = ''; mabel.style.minHeight = ''
       const mabelFilms = mabelFilmEntries()
       renderMabelDiscovery(mabelFilms)
       const channels = [...(library?.channels || [])].sort((left, right) =>
         Number(left.number || 0) - Number(right.number || 0))
       const episodeChannels = channels.filter(channel => channel.content_type !== 'films')
       const filmChannels = channels.filter(channel => channel.content_type === 'films')
+      const toggle = document.createElement('div')
+      toggle.className = 'mabel-channel-toggle'
+      toggle.setAttribute('role', 'tablist')
+      toggle.setAttribute('aria-label', 'Browse TV channels')
+      const panels = {}
+      for (const [kind, label] of [['episodes', 'Episodes'], ['films', 'Films']]) {
+        const button = document.createElement('button')
+        button.type = 'button'; button.id = `mabelChannel${label}Tab`
+        button.dataset.mabelChannelKind = kind
+        button.textContent = label
+        button.setAttribute('role', 'tab')
+        button.setAttribute('aria-controls', `mabelChannel${label}`)
+        button.setAttribute('aria-selected', String(mabelChannelKind === kind))
+        button.tabIndex = mabelChannelKind === kind ? 0 : -1
+        button.onclick = () => selectMabelChannelKind(kind)
+        button.onkeydown = event => {
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+          event.preventDefault()
+          const next = event.key === 'Home' ? 'episodes' : event.key === 'End' ? 'films'
+            : mabelChannelKind === 'films' ? 'episodes' : 'films'
+          selectMabelChannelKind(next)
+          toggle.querySelector(`[data-mabel-channel-kind="${next}"]`).focus({ preventScroll: true })
+        }
+        toggle.append(button)
+        const panel = document.createElement('div')
+        panel.id = `mabelChannel${label}`
+        panel.className = `mabel-channel-panel${mabelChannelKind === kind ? '' : ' hidden'}`
+        panel.setAttribute('role', 'tabpanel')
+        panel.setAttribute('aria-labelledby', button.id)
+        panels[kind] = panel
+      }
+      mabel.append(toggle, panels.episodes, panels.films)
       const episodeArtworkPositions = {
         'mabel-show-1-1588.jpg': '82% center',
         'mabel-show-2-69926.jpg': '85% center',
@@ -51,9 +126,6 @@
       if (episodeChannels.length) {
         const section = document.createElement('section')
         section.className = 'watch-section mabel-episode-channel-section'
-        const head = document.createElement('header')
-        head.className = 'watch-section-head'
-        head.innerHTML = '<div><p class="watch-section-kicker">Shows on your channels</p><h2>Episode channels</h2></div>'
         const grid = document.createElement('div')
         grid.className = 'mabel-episode-channel-grid'
         episodeChannels.forEach(channel => {
@@ -88,7 +160,7 @@
           copy.className = 'watch-card-copy watch-mabel-channel-copy'
           const detail = document.createElement('small')
           detail.textContent = `CH ${channel.number} · ${channel.enabled
-            ? `${programmes.length} episode${programmes.length === 1 ? '' : 's'}`
+            ? `${programmes.length} EP`
             : 'Hidden from TV'}`
           const title = document.createElement('strong')
           title.textContent = metadata.title || channel.name
@@ -97,14 +169,8 @@
           card.onclick = () => openChannel(channel, true)
           grid.append(card)
         })
-        section.append(head, grid)
-        mabel.append(section)
-      }
-      if (filmChannels.length) {
-        const heading = document.createElement('section')
-        heading.className = 'watch-section mabel-film-channels-heading'
-        heading.innerHTML = '<header class="watch-section-head"><div><p class="watch-section-kicker">Films on your channels</p><h2>Film channels</h2></div></header>'
-        mabel.append(heading)
+        section.append(grid)
+        panels.episodes.append(section)
       }
       filmChannels.forEach(channel => {
         const programmes = channel.enabled
@@ -112,19 +178,8 @@
           : []
         const section = document.createElement('section'); section.className = 'watch-section mabel-channel-section mabel-film-channel'
         section.dataset.watchChannelFolder = String(channel.folder || '')
-        const artworks = [...new Set((channel.programmes || [])
-          .map(programme => programme.metadata?.poster)
-          .filter(Boolean))]
-        const firstArtwork = artworks.length ? Math.floor(Math.random() * artworks.length) : 0
         const head = document.createElement('button'); head.type = 'button'; head.className = 'watch-section-head mabel-film-head'
-        head.innerHTML = `<span class="mabel-film-head-art" aria-hidden="true"><span class="mabel-film-head-art-layer is-visible"></span><span class="mabel-film-head-art-layer"></span></span><span class="mabel-film-head-copy"><span>CH ${channel.number} · Film channel${channel.enabled ? '' : ' · Hidden from TV'}</span><h2>${escapeHtml(channel.name)}</h2></span>`
-        if (artworks.length) {
-          head.dataset.filmArt = 'true'
-          head._mabelFilmArtworks = artworks
-          head._mabelFilmArtIndex = firstArtwork
-          head._mabelFilmArtLayer = 0
-          head.querySelector('.mabel-film-head-art-layer').style.backgroundImage = `url('/api/channel/artwork/${encodeURIComponent(artworks[firstArtwork])}')`
-        }
+        head.innerHTML = `<span class="mabel-film-head-copy"><span>CH ${channel.number} · ${channel.enabled ? `${programmes.length} film${programmes.length === 1 ? '' : 's'}` : 'Hidden from TV'}</span><h2>${escapeHtml(channel.name)}</h2></span><svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-chevron-right"/></svg>`
         head.setAttribute('aria-label', `Open channel ${channel.number}, ${channel.name}`); head.onclick = () => openChannel(channel, true); section.append(head)
         if (programmes.length) {
           const rail = document.createElement('div')
@@ -181,12 +236,14 @@
         } else {
           const empty = document.createElement('p'); empty.className = 'watch-channel-empty'; empty.textContent = channel.enabled ? 'No programmes are currently shown. Open this channel to manage it.' : 'This channel is hidden from the television. Open it to make changes.'; section.append(empty)
         }
-        mabel.append(section)
+        panels.films.append(section)
       })
-      if (!mabel.children.length) mabel.append(portalEmptyState({
-        className: 'watch-empty',
-        message: `No ${tvName()} channels have been created yet.`,
-      }))
+      for (const [kind, panel] of Object.entries(panels)) {
+        if (!panel.children.length) panel.append(portalEmptyState({
+          className: 'watch-empty',
+          message: `No ${kind === 'films' ? 'film' : 'episode'} channels have been created yet.`,
+        }))
+      }
       startMabelFilmArtCycle()
       renderMyTvWatch()
       renderHomeLibrary()

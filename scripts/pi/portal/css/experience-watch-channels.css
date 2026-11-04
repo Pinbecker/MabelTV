@@ -6,7 +6,7 @@ body.portal-v2 .mabel-episode-channel-section {
 
 body.portal-v2 .mabel-episode-channel-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 11px;
 }
 
@@ -49,8 +49,114 @@ body.portal-v2 .watch-mabel-channel-copy small {
   text-transform: uppercase;
 }
 
-body.portal-v2 .mabel-film-channels-heading {
-  margin: 8px 0 0;
-  border-top: 1px solid var(--experience-line);
-  padding-top: 18px;
+body.portal-v2 #remoteMabel {
+  align-content: start;
+  overflow-anchor: none;
+}
+
+body.portal-v2 #remoteMabel.hidden {
+  display: none;
+}
+
+body.portal-v2 .mabel-channel-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--experience-line);
+  border-radius: 12px;
+  background: var(--experience-soft);
+}
+
+body.portal-v2 .mabel-channel-toggle button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--experience-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+body.portal-v2 .mabel-channel-toggle button[aria-selected="true"] {
+  background: var(--experience-raised);
+  color: var(--experience-accent);
+  box-shadow: 0 1px 5px #0002;
+}
+
+body.portal-v2 .mabel-channel-panel {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+body.portal-v2 .mabel-channel-panel.hidden {
+  display: none;
+}
+
+body.portal-v2 #remoteMabel .mabel-film-channel {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+body.portal-v2 #remoteMabel .mabel-film-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  margin: 0 0 9px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--experience-ink);
+}
+
+body.portal-v2 #remoteMabel .mabel-film-head-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  text-transform: none;
+}
+
+body.portal-v2 #remoteMabel .mabel-film-head-copy > span {
+  color: var(--experience-accent);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+body.portal-v2 #remoteMabel .mabel-film-head h2 {
+  margin: 0;
+  color: var(--experience-ink);
+  font-size: 20px;
+  line-height: 1.15;
+  letter-spacing: -.035em;
+}
+
+body.portal-v2 #remoteMabel .mabel-film-head > .icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  color: var(--experience-accent);
+}
+
+body.portal-v2 #remoteMabel .watch-film-channel-rail {
+  grid-auto-columns: calc((100% - 44px - 12px) / 4);
+  gap: 11px;
+  margin: 0;
+  padding: 0 0 3px;
+}
+
+body.portal-v2 #remoteMabel .watch-card-copy strong {
+  font-size: 11px;
+}
+
+body.portal-v2 #remoteMabel .watch-card-copy small {
+  font-size: 9px;
 }

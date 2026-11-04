@@ -511,7 +511,9 @@ function myTvDiscoveryCard(title) {
   card.append(art, copy)
   card.onclick = () => {
     if (!title.tmdb_id) {
-      notice('Match this local film to TMDB from Library settings first.', true)
+      const film = localMyTvFilmForTitle(title)
+      if (film) openMyTvFilmDetail(film)
+      else notice('That local film is no longer available. Refresh your library and try again.', true)
       return
     }
     if (person) openMyTvPerson(title, '')

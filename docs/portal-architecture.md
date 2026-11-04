@@ -67,6 +67,9 @@ order unless a change explicitly redefines the cascade.
 - `experience-shell.css`: fixed header, page frame, and bottom navigation.
 - `experience-home.css`, `experience-remote.css`, `experience-watch.css`,
   `experience-library.css`, and `experience-viewing.css`: route ownership.
+- `experience-downloads.css`: the shared device download library, progress
+  cards, filters and download-options/removal sheets. It follows theme layers
+  and uses their tokens for light, dark and true-black presentation.
 - `experience-explore.css`: the continuous My TV suggestion catalogue,
   its compact quick actions and catalogue-only title route.
 - `experience-personal-rating.css`: the thin reusable ten-star control and the

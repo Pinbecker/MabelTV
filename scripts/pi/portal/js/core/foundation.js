@@ -114,11 +114,7 @@ const $ = selector => document.querySelector(selector)
         setOfflineProtectedAccess(true)
         return true
       }
-      const pin = window.prompt('Enter the parent PIN to watch this My TV download offline.')
-      if (pin === null) return false
-      await window.MabelOffline.verifyPin(pin)
-      offlineProtectedAccess = true
-      return true
+      return unlockOfflineDownloads()
     }
 
     function lockPortalPlayerScroll(fixBody = true) {

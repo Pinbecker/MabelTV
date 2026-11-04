@@ -1,0 +1,22 @@
+<dialog id="downloadOptionsSheet" class="watch-programme-sheet download-options-sheet" aria-labelledby="downloadOptionsTitle">
+  <article>
+    <div class="dialog-close-bar"><button id="downloadOptionsClose" type="button" class="portal-sheet-close watch-film-close dialog-close" aria-label="Close download options"><svg class="icon"><use href="/portal/icons.svg#signal-x"/></svg></button></div>
+    <p id="downloadOptionsEyebrow" class="watch-film-eyebrow">Saved on this device</p>
+    <h2 id="downloadOptionsTitle">Download options</h2>
+    <div id="downloadOptionsContent" class="download-options-content"></div>
+  </article>
+</dialog>
+<dialog id="downloadUnlockSheet" class="watch-programme-sheet download-options-sheet" aria-labelledby="downloadUnlockTitle">
+  <article>
+    <div class="dialog-close-bar"><button id="downloadUnlockClose" type="button" class="portal-sheet-close watch-film-close dialog-close" aria-label="Close download unlock"><svg class="icon"><use href="/portal/icons.svg#signal-x"/></svg></button></div>
+    <p class="watch-film-eyebrow">Private offline library</p>
+    <h2 id="downloadUnlockTitle">Unlock My TV downloads</h2>
+    <form id="downloadUnlockForm" class="download-options-content">
+      <p class="download-menu-note">Enter your parent PIN to see and watch the My TV downloads saved on this device.</p>
+      <label class="download-pin-label" for="downloadUnlockPin">Parent PIN</label>
+      <input id="downloadUnlockPin" type="password" inputmode="numeric" autocomplete="off" required>
+      <p id="downloadUnlockError" class="download-pin-error hidden" role="alert"></p>
+      <button id="downloadUnlockSubmit" type="submit" class="download-primary">Unlock downloads</button>
+    </form>
+  </article>
+</dialog>
