@@ -47,6 +47,10 @@ function studioCloudCard(item) {
 function renderStudioCloud() {
   const cloud = studioState.cloud
   if (!cloud) return
+  const collectionSelect = $('#studioCloudCollection'), collection = collectionSelect.value
+  collectionSelect.replaceChildren(new Option('All collections', '*'), new Option('Unfiled', ''),
+    ...(cloud.collections || []).map(name => new Option(name, name)))
+  collectionSelect.value = collection === '*' || !collection || (cloud.collections || []).includes(collection) ? collection : '*'
   $('#studioCloudStatus').textContent = !cloud.configured ? 'Connect iCloud in Connections.'
     : cloud.scanning ? 'Refreshing iCloud…' : cloud.error || `${cloud.total} titles · ${studioLastChecked(cloud.checked)}`
   const grid = $('#studioCloudGrid'), existing = new Map([...grid.querySelectorAll('[data-cloud-id]')].map(row => [row.dataset.cloudId, row]))
@@ -63,8 +67,7 @@ function renderStudioCloud() {
   }
   for (const row of existing.values()) row.remove()
   grid.querySelector('.studio-cloud-empty')?.remove()
-  if (!studioState.items.length) grid.append(portalEmptyState({ className: 'studio-cloud-empty', title: 'Your iCloud library',
-    message: cloud.configured ? 'No matching films or TV programmes.' : 'Connect iCloud to see your films and TV.' }))
+  if (!studioState.items.length) { const empty = studioEmpty('Your iCloud library', cloud.configured ? 'No matching films or TV programmes.' : 'Connect iCloud to see your films and TV.', 'signal-folder'); empty.classList.add('studio-cloud-empty'); grid.append(empty) }
   $('#studioCloudMore').classList.toggle('hidden', studioState.items.length >= cloud.total)
   $('#studioCloudSelection').classList.toggle('hidden', !studioState.selected.size)
   $('#studioCloudSelectionCount').textContent = `${studioState.selected.size} selected`
@@ -106,3 +109,59 @@ $('#studioReplaceConfirm').onclick = () => {
   void studioSubmitDestination({ preventDefault() {} })
 }
 portalSheets.wire($('#studioReplaceSheet'), { closeButton: $('#studioReplaceClose'), close: studioCloseReplaceWarning })
+
+function studioCloseCollection() {
+  closeLibrarySheet($('#studioCloudCollectionSheet'), false)
+  openLibrarySheet($('#studioDestinationSheet'))
+}
+$('#studioCloudMoveCollection').onclick = () => {
+  const titles = studioDraft?.cloudContext?.titles
+  if (!titles?.length) return
+  const select = $('#studioCloudMoveSelect')
+  select.replaceChildren(new Option('Unfiled', ''),
+    ...(studioState.cloud?.collections || []).map(name => new Option(name, name)),
+    new Option('New collection…', '__new__'))
+  select.value = titles.length === 1 ? titles[0].collection || '' : ''
+  $('#studioCloudCollectionName').value = ''
+  $('#studioCloudNewCollection').classList.add('hidden')
+  $('#studioCloudCollectionError').textContent = ''
+  studioCollectionChoices()
+  $('#studioCloudCollectionSave').textContent = 'Move'
+  closeLibrarySheet($('#studioDestinationSheet'), false)
+  closeLibrarySheet($('#studioActionsSheet'), false)
+  openLibrarySheet($('#studioCloudCollectionSheet'))
+}
+function studioCollectionChoices() {
+  const select = $('#studioCloudMoveSelect'), root = $('#studioCloudCollectionOptions'); root.replaceChildren()
+  for (const option of select.options) {
+    const label = document.createElement('label'); label.className = 'studio-choice'
+    const radio = document.createElement('input'); radio.type = 'radio'; radio.name = 'studioMoveCollection'; radio.checked = option.selected
+    const text = document.createElement('span'); text.textContent = option.textContent
+    radio.onchange = () => { select.value = option.value; select.dispatchEvent(new Event('change')) }
+    label.append(radio, text); root.append(label)
+  }
+}
+$('#studioCloudCollectionCancel').onclick = studioCloseCollection
+$('#studioCloudMoveSelect').onchange = event => {
+  const creating = event.target.value === '__new__'
+  $('#studioCloudNewCollection').classList.toggle('hidden', !creating)
+  $('#studioCloudCollectionSave').textContent = creating ? 'Create & move' : 'Move'
+  studioCollectionChoices()
+  if (creating) $('#studioCloudCollectionName').focus()
+}
+$('#studioCloudCollectionForm').onsubmit = async event => {
+  event.preventDefault()
+  const button = $('#studioCloudCollectionSave'); button.disabled = true
+  const create = $('#studioCloudMoveSelect').value === '__new__'
+  const collection = create ? $('#studioCloudCollectionName').value.trim() : $('#studioCloudMoveSelect').value
+  try {
+    if (create && !collection) throw new Error('Enter a collection name')
+    await api('/api/studio/cloud/collection', { method: 'POST', body: JSON.stringify({
+      ids: studioDraft.cloudContext.titles.map(title => title.id), collection, create }) })
+    await studioLoadCloud()
+    for (const title of studioDraft.cloudContext.titles) title.collection = collection
+    studioCloseCollection()
+  } catch (error) { $('#studioCloudCollectionError').textContent = error.message }
+  finally { button.disabled = false }
+}
+portalSheets.wire($('#studioCloudCollectionSheet'), { closeButton: $('#studioCloudCollectionClose'), close: studioCloseCollection })

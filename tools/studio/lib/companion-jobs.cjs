@@ -20,10 +20,11 @@ class CompanionJobs {
     }
     if (chosen.kind === 'series') {
       const series = await this.portal.createSeries(chosen.name, chosen.season, chosen.series);
+      if (chosen.collection !== undefined) await this.portal.api('/api/manage', { method: 'POST', body: { action: 'move-my-tv-series-collection', series: series.id, folder: chosen.collection } });
       return { kind: 'series', series: series.id, season: series.season, label: chosen.label, compression: chosen.compression };
     }
     return { kind: chosen.kind === 'film' ? 'film' : 'local', profile: 'mytv', label: chosen.label,
-      compression: chosen.compression, downloadOnly: !chosen.prepare };
+      compression: chosen.compression, ...(chosen.kind === 'film' && chosen.collection ? { folder: chosen.collection } : {}), downloadOnly: !chosen.prepare };
   }
   async match(remote, metadata, destination) {
     const type = destination.kind === 'film' ? 'movie' : destination.kind === 'series' ? 'tv' : '';

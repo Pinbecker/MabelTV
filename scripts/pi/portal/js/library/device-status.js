@@ -98,7 +98,7 @@
     }
     $('#usbPlayTv').onclick = async () => {
       const entry = selectedUsbEntry
-      if (!entry || !confirm(`Play “${entry.name}” directly from the USB drive on the TV?`)) return
+      if (!entry || !await portalConfirm({ title: `Play “${entry.name}” on TV?`, message: 'Play directly from the USB drive.', confirmLabel: 'Play on TV' })) return
       const button = $('#usbPlayTv')
       button.disabled = true
       try {

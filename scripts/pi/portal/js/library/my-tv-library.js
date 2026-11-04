@@ -71,12 +71,7 @@ async function pollMyTvOptimisations() {
     }
 
 function renderMyTvLibraryControls() {
-      const films = library?.my_tv_library || []
       const folders = library?.my_tv_folders || []
-      if (myTvFolderFilter !== '*' && myTvFolderFilter !== '' &&
-          !folders.includes(myTvFolderFilter)) myTvFolderFilter = '*'
-      const folderName = myTvFolderFilter === '*'
-        ? 'All films' : (myTvFolderFilter || 'Unfiled')
       const uploadFolder = $('#myTvUploadFolder')
       const uploadChoice = uploadFolder.value
       uploadFolder.innerHTML = '<option value="">Unfiled</option>'
@@ -88,40 +83,7 @@ function renderMyTvLibraryControls() {
       })
       uploadFolder.value = folders.includes(uploadChoice) ? uploadChoice : ''
 
-      const tabs = document.createDocumentFragment()
-      const tabValues = [{ value: '*', name: 'All films' },
-        { value: '', name: 'Unfiled' },
-        ...folders.map(folder => ({ value: folder, name: folder }))]
-      tabValues.forEach(item => {
-        const count = item.value === '*' ? films.length
-          : films.filter(film => film.folder === item.value).length
-        if (item.value === '' && count === 0) return
-        const tab = portalButton({ iconName: 'folder', iconClass: 'icon' })
-        tab.className = `my-tv-folder-tab${myTvFolderFilter === item.value ? ' active' : ''}`
-        const copy = document.createElement('span')
-        const title = document.createElement('strong')
-        title.textContent = item.name
-        copy.append(title)
-        const badge = document.createElement('span')
-        badge.className = 'count-badge'
-        badge.textContent = count
-        tab.append(copy, badge)
-        tab.setAttribute('aria-pressed', String(myTvFolderFilter === item.value))
-        tab.onclick = () => {
-          myTvFolderFilter = item.value
-          renderMyTvLibraryControls()
-        }
-        tabs.append(tab)
-      })
-      $('#myTvFolderTabs').replaceChildren(tabs)
-      const realFolderSelected = myTvFolderFilter !== '*' && myTvFolderFilter !== ''
-      $('#myTvRenameFolder').disabled = !realFolderSelected
-      const selectedCount = films.filter(film => film.folder === myTvFolderFilter).length
-      $('#myTvDeleteFolder').disabled = !realFolderSelected || selectedCount > 0
-      $('#myTvFolderSelectionActions').classList.toggle('hidden', !realFolderSelected)
-      $('#myTvFolderSelectionActions [data-selected-collection]').textContent = folderName
-      $('#myTvDeleteFolderHint').textContent = selectedCount
-        ? 'Move its films first' : 'This folder is empty'
+
     }
 
     function openMyTvFilmSheet(film, returnTo = null) {
@@ -146,7 +108,11 @@ function renderMyTvLibraryControls() {
       $('#myTvFilmSheetPoster').replaceChildren(filmPoster(film))
       const select = $('#myTvFilmFolder'); select.innerHTML = '<option value="">Unfiled</option>'
       folders.forEach(folder => { const option = document.createElement('option'); option.value = folder; option.textContent = folder; select.append(option) })
+      select.add(new Option('New collection…', '__new__'))
       select.value = film.folder || ''
+      $('#myTvFilmNewCollection').classList.add('hidden')
+      $('#myTvFilmMove').disabled = false
+      $('#myTvFilmCollectionName').value = ''
       bindSendToMabel($('#myTvFilmSheet .watch-film-actions'), { kind: "my_tv", file: film.path }, title,
         () => openMyTvFilmSheet(film, returnTo))
       const busy = ['processing', 'queued'].includes(film.playback_state)
@@ -319,7 +285,6 @@ function renderMyTvLibraryControls() {
     })
     ;[
       [$('#myTvUploadSheet'), $('#myTvUploadClose')],
-      [$('#myTvCollectionSheet'), $('#myTvCollectionClose')],
       [$('#myTvFilmSheet'), $('#myTvFilmClose')],
     ].forEach(([dialog, closeButton]) => portalSheets.wire(dialog, {
       closeButton,
@@ -367,25 +332,28 @@ function renderMyTvLibraryControls() {
     }
     $('#myTvFilmRemove').onclick = () => { const film = selectedMyTvFilm; if (film && confirm(`Move “${film.display_name}” to the recycle bin?`)) { closeLibrarySheet($('#myTvFilmSheet'), false); manage('trash-my-tv', { file: film.path }) } }
 
-    $('#myTvCreateFolder').onclick = async () => {
-      const name = $('#myTvFolderName').value.trim()
-      if (!name) return
-      await manage('create-my-tv-folder', { name })
-      $('#myTvFolderName').value = ''
-      myTvFolderFilter = name
-      renderMyTvLibraryControls()
+    $('#myTvFilmFolder').onchange = event => {
+      const creating = event.target.value === '__new__'
+      $('#myTvFilmNewCollection').classList.toggle('hidden', !creating)
+      $('#myTvFilmMove').disabled = creating
+      if (creating) $('#myTvFilmCollectionName').focus()
     }
-    $('#myTvRenameFolder').onclick = async () => {
-      if (myTvFolderFilter === '*' || myTvFolderFilter === '') return
-      const name = prompt('Collection name:', myTvFolderFilter)
-      if (!name?.trim()) return
-      const oldFolder = myTvFolderFilter
-      myTvFolderFilter = name.trim()
-      await manage('rename-my-tv-folder', { folder: oldFolder, name: name.trim() })
-    }
-    $('#myTvDeleteFolder').onclick = async () => {
-      if (myTvFolderFilter === '*' || myTvFolderFilter === '') return
-      if (!confirm(`Delete the empty “${myTvFolderFilter}” folder?`)) return
-      const folder = myTvFolderFilter; myTvFolderFilter = '*'
-      await manage('delete-my-tv-folder', { folder })
+    $('#myTvFilmCreateCollection').onclick = async () => {
+      const name = $('#myTvFilmCollectionName').value.trim()
+      if (!name) { $('#myTvFilmCollectionName').focus(); return }
+      const button = $('#myTvFilmCreateCollection'); button.disabled = true
+      try {
+        const previous = new Set(library?.my_tv_folders || [])
+        await api('/api/manage', { method: 'POST', body: JSON.stringify({ action: 'create-my-tv-folder', name }) })
+        await reloadLibraryWithoutLosingPlace()
+        const select = $('#myTvFilmFolder')
+        select.replaceChildren(new Option('Unfiled', ''),
+          ...(library?.my_tv_folders || []).map(folder => new Option(folder, folder)),
+          new Option('New collection…', '__new__'))
+        select.value = (library?.my_tv_folders || []).includes(name) ? name
+          : (library?.my_tv_folders || []).find(folder => !previous.has(folder)) || ''
+        $('#myTvFilmNewCollection').classList.add('hidden')
+        $('#myTvFilmMove').disabled = false
+      } catch (error) { notice(error.message, true) }
+      finally { button.disabled = false }
     }

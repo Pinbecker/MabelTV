@@ -55,7 +55,7 @@ New Studio cloud copies receive metadata while their queue job finishes. Filing
 waits until the transfer releases them. The verified identity is reused for My
 TV metadata without another upload or another AI decision.
 
-**Where should it go? → Delete from iCloud** names the selected films or episodes
+**Title → More → Delete from iCloud** names the selected films or episodes
 and asks for confirmation. It deletes those videos and matching subtitle files
 from iCloud and synced devices; separate Pi copies remain. There is no general
 folder browser or rename/move interface. Frozen file versions are checked again
@@ -132,7 +132,12 @@ confirmation lists the frozen selected files, containers and existing sizes,
 plus a duration/maxrate size guide in the expandable file details when catalogue
 duration is available. This guide is not an output-size prediction: the main
 comparison labels the output size and space saving as unknown until conversion.
-Interface text is factual and contains no conversational or promotional copy.
+Studio uses compact grouped settings and fixed destination sheets. The body
+scrolls inside the sheet while its queue action stays in place. Secondary cloud
+actions are under More. Collection filters list saved names and filter the
+normal title grid; local and iCloud collections are separate. Create a local
+collection inside film/series settings or a cloud collection inside Move to
+collection. Studio 1.6.1 is required for local collection choices on new jobs.
 The existing version-consent, verified-output
 and deletion guards apply; no TV upload is required for this action. A larger
 replacement cannot delete the original. Completion produces one phone alert.

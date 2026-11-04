@@ -85,7 +85,7 @@ class ManagementMixin:
                 "optimise-my-tv", "set-remote-simultaneous",
                 "set-watchmode-availability", "set-my-tv-provider-badges",
                 "create-my-tv-series", "create-my-tv-season",
-                "trash-my-tv-series", "optimisation-action"}:
+                "trash-my-tv-series", "optimisation-action", "move-my-tv-series-collection"}:
             # These settings belong to the portal/library service.  In
             # particular, allowing a browser stream alongside the television
             # must never refresh or otherwise disturb the TV player.
@@ -113,6 +113,14 @@ class ManagementMixin:
         if action == "optimisation-action":
             self.my_tv_optimisation_action(str(payload.get("file", "")),
                                            str(payload.get("operation", "")))
+            return
+        if action == "move-my-tv-series-collection":
+            collection = str(payload.get("folder", "")).strip()
+            if collection:
+                collection = self.normalise_my_tv_folder(collection)
+                if collection not in self.my_tv_folders():
+                    raise ValueError("Choose an existing My TV collection")
+            self.state_database.set_my_tv_series_collection(str(payload.get("series", "")), collection)
             return
         if action == "create-my-tv-series":
             self.create_my_tv_series(str(payload.get("name", "")))

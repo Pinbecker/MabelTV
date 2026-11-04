@@ -8,6 +8,7 @@ SERVICE_ROOT = Path(__file__).resolve().parent.parent
 PORTAL_APP_SOURCES = (
     "ui-components.js",
     "core/foundation.js",
+    "core/confirmation.js",
     "core/scroll.js",
     "core/navigation.js",
     "core/live.js",
@@ -15,6 +16,7 @@ PORTAL_APP_SOURCES = (
     "channel-page.js",
     "library/compression.js",
     "library/my-tv-library.js",
+    "library/my-tv-collections.js",
     "library/usb-browser.js",
     "library/viewing-insights.js",
     "library/my-tv-insights.js",
@@ -54,6 +56,7 @@ PORTAL_APP_SOURCES = (
     "my-tv-viewing/local-library.js",
     "my-tv-viewing/filmography.js",
     "my-tv-viewing/rating.js",
+    "studio/controls.js",
     "studio/library.js",
     "studio/queue.js",
     "studio/cloud-library.js",

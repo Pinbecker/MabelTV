@@ -1,0 +1,10 @@
+body.portal-experience dialog.portal-confirmation[id] { width:min(420px,calc(100vw - 32px)); max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 32px); }
+body.portal-experience dialog.portal-confirmation[id] > .library-sheet-panel { background:var(--experience-raised); border:1px solid var(--experience-line); border-radius:18px; }
+body.portal-experience .portal-confirmation-copy { padding:24px 22px 20px; }
+body.portal-experience .portal-confirmation-icon { display:grid; place-items:center; width:42px; height:42px; margin-bottom:16px; border-radius:12px; color:var(--experience-accent-ink); background:var(--experience-accent-soft); }
+body.portal-experience .portal-confirmation-copy h2 { margin:0; font-size:22px; font-weight:700; letter-spacing:-.03em; line-height:1.25; }
+body.portal-experience .portal-confirmation-copy p { margin:10px 0 0; color:var(--experience-muted); font-size:14px; line-height:1.55; }
+body.portal-experience .portal-confirmation-actions { display:grid; gap:10px; padding:0 22px 22px; }
+body.portal-experience .portal-confirmation-actions button { width:100%; min-height:52px; margin:0; padding:14px; border:1px solid var(--experience-line); border-radius:10px; font-size:15px; font-weight:650; }
+body.portal-experience .portal-confirmation-actions .primary { color:var(--experience-on-orange); background:var(--experience-accent); border-color:var(--experience-accent); }
+body.portal-experience .portal-confirmation-actions .secondary { color:var(--experience-ink); background:var(--experience-elevated); }

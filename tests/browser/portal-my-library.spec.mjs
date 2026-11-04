@@ -3,9 +3,9 @@ import { test, expect } from './test-fixtures.mjs'
 test.use({ serviceWorkers: 'block' })
 
 const films = [
-  { path: 'Harry Potter 1.mp4', library_id: 'potter-1', added_at: 20,
+  { path: 'Harry Potter 1.mp4', library_id: 'potter-1', added_at: 20, folder: 'Harry Potter',
     metadata: { tmdb_id: 671, title: 'Harry Potter and the Philosopher’s Stone', year: '2001' } },
-  { path: 'Harry Potter 2.mp4', library_id: 'potter-2', added_at: 30,
+  { path: 'Harry Potter 2.mp4', library_id: 'potter-2', added_at: 30, folder: 'Harry Potter',
     metadata: { tmdb_id: 672, title: 'Harry Potter and the Chamber of Secrets', year: '2002' } },
   { path: 'Alien.mp4', library_id: 'alien', added_at: 10,
     metadata: { tmdb_id: 348, title: 'Alien', year: '1979', genres: ['Horror'] } },
@@ -31,11 +31,11 @@ async function openLibrary(page, { fail = false, many = false } = {}) {
       path: `Extra ${i}.mp4`, display_name: `Extra ${i}`, library_id: `extra-${i}`, metadata: {},
     }))] : films
     library.my_tv_series = series
+    library.my_tv_folders = ['Harry Potter']
   }, { films, series, many })
   await page.locator('[data-view-button="my-tv-home"]').click()
   await page.locator('#myTvMyLibrary').click()
   await expect(page.locator('#view-my-tv-library')).toHaveClass(/active/)
-  await expect(page.locator('#myLibraryMetadataStatus')).not.toContainText('Finding')
 }
 
 test('My Library is local-only, includes unmatched files, and filters and sorts without discovery', async ({ page }) => {
@@ -53,7 +53,7 @@ test('My Library is local-only, includes unmatched files, and filters and sorts 
   await page.locator('#myLibraryType').selectOption('movie')
   await page.locator('#myLibrarySort').selectOption('oldest')
   await expect(page.locator('#myLibraryGrid > button').first()).toHaveAttribute('data-library-id', 'film:alien')
-  await page.locator('#myLibraryGenre').selectOption('Fantasy')
+  await page.locator('#myLibraryGenre').selectOption('Harry Potter')
   await expect(page.locator('#myLibraryGrid > button')).toHaveCount(2)
   const requests = []
   page.on('request', request => requests.push(request.url()))
@@ -62,7 +62,7 @@ test('My Library is local-only, includes unmatched files, and filters and sorts 
   expect(requests.filter(url => /discovery|search/.test(url))).toEqual([])
   await page.locator('#myLibrarySearchClear').click()
   await expect(page.locator('#myLibraryGrid > button')).toHaveCount(2)
-  await page.locator('#myLibraryGenre').selectOption('')
+  await page.locator('#myLibraryGenre').selectOption('*')
   await page.locator('#myLibraryType').selectOption('tv')
   await expect(page.locator('#myLibraryGrid > button')).toHaveCount(1)
   await page.locator('#myLibraryGrid > button').click()
@@ -70,40 +70,73 @@ test('My Library is local-only, includes unmatched files, and filters and sorts 
   await expect(page.locator('#myTvSeriesSheet')).toContainText('Local Show')
 })
 
-test('metadata collections contain only owned films and restore the overlay after title Back', async ({ page }) => {
+test('the collection dropdown shows its titles directly and title Back keeps that filter', async ({ page }) => {
   await openLibrary(page)
-  await page.locator('[data-library-mode="collections"]').click()
-  await expect(page.locator('#myLibraryGrid > button')).toHaveCount(4)
-  const stack = page.locator('.my-library-stack')
-  await expect(stack).toContainText('2 films on your Pi')
-  await stack.click()
-  await expect(page.locator('#myLibraryCollectionName')).toHaveText('Harry Potter')
-  await expect(page.locator('#myLibraryCollectionGrid > button')).toHaveCount(2)
-  await expect(page.locator('#myLibraryCollectionSheet')).not.toContainText('Prisoner')
-  await page.locator('#myLibraryCollectionGrid > button').first().click()
+  await page.locator('#myLibraryGenre').selectOption('Harry Potter')
+  await expect(page.locator('#myLibraryGrid > .watch-card')).toHaveCount(2)
+  await expect(page.locator('#myLibraryHeading')).toHaveText('Harry Potter')
+  await expect(page.locator('#myLibraryGrid .my-library-stack')).toHaveCount(0)
+  await expect(page.locator('[data-library-mode]')).toHaveCount(0)
+  await page.locator('#myLibraryGrid > button').first().click()
   await expect(page.locator('#myTvTitleSheet')).toBeVisible()
-  await expect(page.locator('#myLibraryCollectionSheet')).not.toBeVisible()
-  await page.locator('#myTvTitleSheet > .watch-film-panel .portal-card-back').click()
-  await expect(page.locator('#myLibraryCollectionSheet')).toBeVisible()
-  await page.locator('#myLibraryCollectionClose').click()
-  await expect(page.locator('#myLibraryGrid .my-library-stack')).toBeVisible()
+  await page.locator('#myTvTitleClose').click()
+  await expect(page.locator('#view-my-tv-library')).toHaveClass(/active/)
+  await expect(page.locator('#myLibraryGenre')).toHaveValue('Harry Potter')
+  await expect(page.locator('#myLibraryGrid > button')).toHaveCount(2)
   await page.locator('#myLibrarySearch').fill('Chamber')
   await expect(page.locator('#myLibraryGrid > button')).toHaveCount(1)
-  await expect(page.locator('#myLibraryGrid .my-library-stack')).toHaveCount(0)
+  await expect(page.locator('#myLibraryGrid')).toContainText('Chamber')
 })
 
-test('failed enrichment leaves all titles usable and Retry restores collections', async ({ page }) => {
+test('saved collections work without metadata requests and the phone grid is four across', async ({ page }, info) => {
+  const requests = []
+  page.on('request', request => { if (request.url().includes('/api/my-tv/library/metadata')) requests.push(request.url()) })
   await openLibrary(page, { fail: true })
-  await expect(page.locator('#myLibraryGrid > button')).toHaveCount(5)
-  await expect(page.locator('#myLibraryMetadataRetry')).toBeVisible()
-  await page.locator('[data-library-mode="collections"]').click()
-  await expect(page.locator('#myLibraryGrid > button')).toHaveCount(5)
-  await page.route('**/api/my-tv/library/metadata?*', route => route.fulfill({ json: {
-    genres: ['Fantasy'], collection: { tmdb_id: 1241, name: 'Harry Potter Collection' },
-  } }))
-  await page.locator('#myLibraryMetadataRetry').click()
-  await expect(page.locator('#myLibraryMetadataRetry')).toBeHidden()
-  await expect(page.locator('.my-library-stack')).toHaveCount(1)
+  await expect(page.getByRole('combobox', { name: 'Library collection', exact: true })).toContainText('Harry Potter')
+  await expect(page.getByRole('button', { name: 'Manage library folders' })).toHaveCount(0)
+  const columns = await page.locator('#myLibraryGrid').evaluate(grid => getComputedStyle(grid).gridTemplateColumns.split(' ').length)
+  expect(columns).toBe(info.project.name === 'ipad-webkit' ? 6 : 4)
+  const titles = await page.locator('#myLibraryGrid .watch-card-copy strong').evaluateAll(nodes => nodes.map(node => {
+    const style = getComputedStyle(node), box = node.getBoundingClientRect()
+    return { height: box.height, top: box.top, line: parseFloat(style.lineHeight),
+      overflow: style.textOverflow, nowrap: style.whiteSpace, width: node.clientWidth, textWidth: node.scrollWidth }
+  }))
+  for (const title of titles) {
+    expect(title.height).toBeLessThanOrEqual(title.line + 1)
+    expect(title.overflow).toBe('ellipsis')
+    expect(title.nowrap).toBe('nowrap')
+  }
+  expect(titles.some(title => title.textWidth > title.width)).toBe(true)
+  expect(Math.max(...titles.slice(0, 4).map(title => title.top)) - Math.min(...titles.slice(0, 4).map(title => title.top))).toBeLessThan(1)
+  await page.locator('#myLibraryGenre').selectOption('Harry Potter')
+  await expect(page.locator('#myLibraryGrid > .watch-card')).toHaveCount(2)
+  expect(requests).toEqual([])
+})
+
+test('a collection can be created directly from film settings and selected for a move', async ({ page }) => {
+  await openLibrary(page)
+  const writes = []
+  await page.route('**/api/manage', route => {
+    writes.push(route.request().postDataJSON())
+    return route.fulfill({ json: { ok: true } })
+  })
+  await page.evaluate(() => {
+    reloadLibraryWithoutLosingPlace = async () => {
+      library.my_tv_folders.push('Weekend')
+      renderMyLibrary()
+    }
+    openMyTvFilmSheet(library.my_tv_library[0])
+  })
+  await page.locator('#myTvFilmFolder').selectOption('__new__')
+  await page.locator('#myTvFilmCollectionName').fill('Weekend')
+  await page.locator('#myTvFilmCreateCollection').click()
+  await expect(page.locator('#myTvFilmFolder')).toHaveValue('Weekend')
+  await expect(page.locator('#myTvFilmNewCollection')).toBeHidden()
+  await page.locator('#myTvFilmMove').click()
+  expect(writes).toEqual([
+    { action: 'create-my-tv-folder', name: 'Weekend' },
+    { action: 'move-my-tv', file: 'Harry Potter 1.mp4', folder: 'Weekend' },
+  ])
 })
 
 test('library state and scroll survive title journeys, browser Back and primary navigation', async ({ page }) => {
@@ -126,16 +159,15 @@ test('library state and scroll survive title journeys, browser Back and primary 
   await expect(page.locator('#view-my-tv-home')).toHaveClass(/active/)
 })
 
-test('library updates remove deleted films from an already open collection', async ({ page }) => {
+test('library updates remove deleted films from the selected collection grid', async ({ page }) => {
   await openLibrary(page)
-  await page.locator('[data-library-mode="collections"]').click()
-  await page.locator('.my-library-stack').click()
+  await page.locator('#myLibraryGenre').selectOption('Harry Potter')
   await page.evaluate(() => {
     library.my_tv_library = library.my_tv_library.filter(film => film.library_id !== 'potter-2')
     renderMyLibrary()
   })
-  await expect(page.locator('#myLibraryCollectionGrid > button')).toHaveCount(1)
-  await expect(page.locator('#myLibraryCollectionGrid')).not.toContainText('Chamber')
+  await expect(page.locator('#myLibraryGrid > button')).toHaveCount(1)
+  await expect(page.locator('#myLibraryGrid')).not.toContainText('Chamber')
 })
 
 test('My Library phone and tablet layout, collections and light theme @visual', async ({ page }, testInfo) => {
@@ -156,11 +188,10 @@ test('My Library phone and tablet layout, collections and light theme @visual', 
   expect(Math.abs(libraryBack.x - viewingBack.x)).toBeLessThan(1)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: testInfo.outputPath('my-library-titles.png'), fullPage: true })
-  await page.locator('[data-library-mode="collections"]').click()
-  await page.screenshot({ path: testInfo.outputPath('my-library-collections.png'), fullPage: true })
-  await page.locator('.my-library-stack').click()
-  await page.screenshot({ path: testInfo.outputPath('my-library-overlay.png') })
-  await page.locator('#myLibraryCollectionClose').click()
+  await page.locator('#myLibraryGenre').selectOption('Harry Potter')
+  await expect(page.locator('#myLibraryGrid > .watch-card')).toHaveCount(2)
+  await page.screenshot({ path: testInfo.outputPath('my-library-collection-filter.png'), fullPage: true })
+  await page.locator('#myLibraryGenre').selectOption('*')
   await page.evaluate(() => window.MabelExperienceTheme.set('light'))
   await page.screenshot({ path: testInfo.outputPath('my-library-light.png'), fullPage: true })
 })

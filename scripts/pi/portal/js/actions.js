@@ -41,7 +41,7 @@ let managementBusy = false
     }
 
     async function playOnTv(payload, title) {
-      if (!confirm(`Play “${title}” on ${tvName()} now? This will replace what is currently playing.`)) return
+      if (!await portalConfirm({ title: `Play “${title}” on ${tvName()}?`, message: 'This will replace what is currently playing.', confirmLabel: 'Play on TV' })) return
       try {
         await api('/api/play-on-tv', {
           method: 'POST', body: JSON.stringify(payload)
@@ -580,9 +580,9 @@ let managementBusy = false
       setRemoteFeedback(`Opening channel ${channel}`, 'success')
     }
 
-      $$('[data-live-command]').forEach(button => button.onclick = () => {
+      $$('[data-live-command]').forEach(button => button.onclick = async () => {
         const command = button.dataset.liveCommand
-        if (command === 'restart-programme' && !confirm('Restart this programme from the beginning?')) return
+        if (command === 'restart-programme' && !await portalConfirm({ title: 'Restart this programme?', message: 'Playback will start from the beginning.', confirmLabel: 'Restart programme' })) return
         sendLiveCommand(command, button)
       })
       const remoteKeyboard = $('#remoteKeyboard')

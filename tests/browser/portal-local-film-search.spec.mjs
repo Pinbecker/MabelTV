@@ -34,8 +34,8 @@ for (const destination of ['device', 'TV']) {
     await expect(page.locator('#watchFilmManage')).toBeVisible()
     await expect(page.locator('#notice')).not.toContainText('Match this local film')
     const request = page.waitForRequest(request => new URL(request.url()).pathname === routePath)
-    if (destination === 'TV') page.once('dialog', dialog => dialog.accept())
     await page.locator(destination === 'TV' ? '#watchFilmTv' : '#watchFilmHere').click()
+    if (destination === 'TV') await page.locator('#portalConfirmationAccept').click()
     expect((await request).postDataJSON()).toEqual({ kind: 'my_tv', file: 'Shrek.mp4' })
     if (destination === 'device') {
       await expect(page.locator('#iosWatchPlayer')).toBeVisible()

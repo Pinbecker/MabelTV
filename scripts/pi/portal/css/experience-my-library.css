@@ -1,3 +1,7 @@
+body.portal-v2 .my-tv-home-discovery { row-gap: 6px; }
+body.portal-v2 .studio-home-entry { min-height: 48px; margin-top: 0; }
+body.portal-v2 .my-tv-home-discovery :is(.my-tv-home-viewing, .studio-home-entry) { height: 48px; padding-block: 8px; }
+body.portal-v2 .my-tv-home-discovery :is(.my-tv-home-viewing, .studio-home-entry) :is(strong, small) { line-height: 1.3; }
 body.portal-v2 .my-tv-home-shortcuts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -7,24 +11,20 @@ body.portal-v2 .my-tv-home-shortcuts {
 body.portal-v2 .my-tv-home-shortcuts .my-tv-home-viewing {
   width: 100%;
   min-width: 0;
-  min-height: 58px;
+  min-height: 48px;
   gap: 7px;
-  padding: 10px;
+  padding: 8px 10px;
 }
 body.portal-v2 .my-tv-home-shortcuts .my-tv-home-viewing > .icon { width: 17px; height: 17px; }
 body.portal-v2 .my-tv-home-shortcuts .my-tv-home-viewing > .icon:last-child { width: 12px; height: 12px; }
 body.portal-v2 .my-tv-home-shortcuts .my-tv-home-viewing small { font-size: 9px; }
 body.portal-v2 .my-library-page { width: min(100%, 1280px); margin-inline: auto; }
-body.portal-v2 .my-library-switch button[aria-pressed="true"] {
-  box-shadow: inset 0 -2px var(--experience-orange);
-  color: var(--experience-orange);
-}
 body.portal-v2 .my-library-filters {
   grid-template-columns: .9fr 1.15fr 1fr;
 }
 body.portal-v2 .my-library-page .my-library-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: start;
   gap: 18px 10px;
 }
@@ -32,73 +32,18 @@ body.portal-v2 .my-library-grid .watch-card { min-width: 0; width: 100%; }
 body.portal-v2 .my-library-grid .watch-card-art { width: 100%; aspect-ratio: 2 / 3; }
 body.portal-v2 .my-library-grid .watch-card-copy { padding-top: 7px; }
 body.portal-v2 .my-library-grid .watch-card-copy strong {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  white-space: normal;
-  font-size: 11px;
-  line-height: 1.35;
-}
-body.portal-v2 .my-library-grid .watch-card-copy small { font-size: 9px; line-height: 1.4; }
-body.portal-v2 .my-library-grid .watch-empty { grid-column: 1 / -1; }
-body.portal-v2 .my-library-stack { background: transparent; overflow: visible; }
-body.portal-v2 .my-library-stack-art { position: relative; display: block; aspect-ratio: 2 / 3; width: 100%; }
-body.portal-v2 .my-library-stack-poster {
-  position: absolute;
-  inset: 7% 8% 2%;
   display: block;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--experience-ink) 22%, var(--experience-line));
-  border-radius: 7px;
-  background: var(--experience-raised);
-  box-shadow: 0 3px 9px rgba(0, 0, 0, .24);
-  transform-origin: center 90%;
-}
-body.portal-v2 .my-library-stack-poster:first-child { transform: rotate(-9deg) translateX(-3%); }
-body.portal-v2 .my-library-stack-poster:nth-child(2) { transform: rotate(9deg) translateX(3%); }
-body.portal-v2 .my-library-stack-poster:last-child { transform: none; }
-body.portal-v2 .my-library-stack-poster img { display: block; width: 100%; height: 100%; object-fit: cover; }
-body.portal-v2 .my-library-stack-poster .watch-card-placeholder {
-  display: grid;
   width: 100%;
-  height: 100%;
-  place-items: center;
-  background: var(--experience-raised);
-  color: var(--experience-dim);
-  font-size: 30px;
-  font-weight: 850;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px;
+  line-height: 1.18;
 }
-body.portal-v2 .my-library-status { margin: 0 0 13px; color: var(--experience-dim); font-size: 11px; }
-body.portal-v2 .my-library-retry { margin: 0 0 8px; min-height: 36px; font-size: 11px; }
-body.portal-v2 #myLibraryCollectionSheet > .library-sheet-panel {
-  background: color-mix(in srgb, var(--experience-raised) 89%, transparent);
-  -webkit-backdrop-filter: blur(24px);
-  backdrop-filter: blur(24px);
-}
-body.portal-v2 #myLibraryCollectionSheet .library-sheet-head { padding-bottom: 14px; }
-body.portal-v2 #myLibraryCollectionSheet .library-sheet-body { padding-top: 5px; }
-body.portal-v2 #myLibraryCollectionSheet .my-library-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px 14px; }
+body.portal-v2 .my-library-grid .watch-card-copy small { font-size: 8px; line-height: 1.4; }
+body.portal-v2 .my-library-grid .watch-empty { grid-column: 1 / -1; }
 @media (min-width: 740px) {
   body.portal-v2 .my-library-page .my-library-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 24px 18px; }
   body.portal-v2 .my-library-grid .watch-card-copy strong { font-size: 13px; }
   body.portal-v2 .my-library-grid .watch-card-copy small { font-size: 11px; }
-  body.portal-v2 #myLibraryCollectionSheet .my-library-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-}
-
-body.portal-v2 #myLibraryCollectionSheet {
-  height: fit-content;
-  min-height: 0;
-  max-height: 82dvh;
-  inset: 0;
-  margin: auto;
-}
-body.portal-v2 #myLibraryCollectionSheet > .library-sheet-panel {
-  height: auto;
-  min-height: 0;
-  max-height: 82dvh;
-}
-body.portal-v2 #myLibraryCollectionSheet .library-sheet-body {
-  flex: 0 1 auto;
-  min-height: 0;
-  padding-bottom: 22px;
 }

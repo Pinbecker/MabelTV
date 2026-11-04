@@ -321,3 +321,10 @@ Prompt/model-versioned AI response memos protect retries after interruption;
 they contain search hints or catalogue IDs, never canonical descriptions or
 credentials. The bounded request cache and monthly aggregate request/token
 receipts use independent reserved fields through `repositories/studio.py`.
+Local series collection changes update only `my_tv_series.extra_json` through
+`set_my_tv_series_collection`, within a transaction with the library revision.
+Episode roots, identities and metadata remain independently owned. Cloud
+collection definitions/memberships use reserved `studio.cloudcollection.*` and
+`studio.cloudmembership.*` fields; their catalogue revision is independent of
+local My TV collections. Confirmed Studio cloud archives inherit only their
+explicit cloud destination collection.

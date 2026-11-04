@@ -3,8 +3,8 @@
 let studioDraft = null, studioMatchTimer = null, studioAuth = null, studioAuthBusy = false
 
 function openStudioDestination(sources, matchingJob = null, cloudContext = null) {
-  studioDraft = { sources, match: cloudContext?.titles.length === 1 ? cloudContext.titles[0].metadata : null, matchingJob, cloudContext }
-  $('#studioDestinationSummary').textContent = matchingJob ? matchingJob.title : sources.length === 1 ? sources[0].title : `${sources.length} items selected`
+  studioDraft = { sources, targetCollections: {}, match: cloudContext?.titles.length === 1 ? cloudContext.titles[0].metadata : null, matchingJob, cloudContext }
+  $('#studioDestinationTitle').textContent = matchingJob ? matchingJob.title : sources.length === 1 ? sources[0].title : `${sources.length} items selected`
   $('#studioDestinationError').classList.add('hidden')
   $('#studioDestinationForm').reset()
   $('#studioMatchResults').replaceChildren()
@@ -41,17 +41,27 @@ function openStudioDestination(sources, matchingJob = null, cloudContext = null)
 function studioSyncDestination() {
   const chosen = $('#studioDestinationForm input[name="studioDestination"]:checked').value
   const series = chosen === 'film' && $('#studioLibraryType').value === 'series'
-  const multipleSeasons = new Set(studioDraft?.sources.map(source => source.series).filter(value => Number.isInteger(value))).size > 1
+  const multipleSeasons = new Set(studioDraft?.sources.flatMap(source => source.seasons || [source.series]).filter(value => Number.isInteger(value))).size > 1
   $('#studioSeasonField').classList.toggle('hidden', multipleSeasons)
   $('#studioSeasonNotice').classList.toggle('hidden', !multipleSeasons)
   $('#studioLibraryTypeField').classList.toggle('hidden', chosen !== 'film')
   $('#studioChannelField').classList.toggle('hidden', chosen !== 'mabel')
   $('#studioSeriesFields').classList.toggle('hidden', !series)
-  $('#studioNewSeriesField').classList.toggle('hidden', $('#studioSeries').value !== 'new')
+  $('#studioNewSeriesField').classList.toggle('hidden', $('#studioSeries').value !== 'new' || studioOptionSelect?.id !== 'studioSeries')
   const fromCloud = studioDraft?.sources.length > 0 && studioDraft.sources.every(source => source.type === 'cloud')
   const cloudCopies = $('#studioDestinationForm input[name="studioCloudCopies"]:checked')?.value || 'original'
   $('#studioCloudCopiesField').classList.toggle('hidden', Boolean(studioDraft?.matchingJob))
-  $('#studioCompressionField').classList.toggle('hidden', Boolean(studioDraft?.matchingJob) || chosen === 'icloud' && cloudCopies === 'original')
+  const originalOnly = chosen === 'icloud' && cloudCopies === 'original'
+  $('#studioCompressionField').classList.toggle('hidden', Boolean(studioDraft?.matchingJob) || originalOnly)
+  $('#studioOriginalQuality').classList.toggle('hidden', !originalOnly || Boolean(studioDraft?.matchingJob))
+  $('#studioCloudCopiesLabel').textContent = chosen === 'icloud' ? 'Version' : 'iCloud copy'
+  $('#studioCompression').dataset.studioDetail = chosen === 'mabel' ? 'Up to 720p' : 'Up to 1080p'
+  const collections = chosen === 'icloud' ? studioState.cloud?.collections || [] : library.my_tv_folders || []
+  const collection = $('#studioTargetCollection')
+  collection.replaceChildren(new Option('Unfiled', ''), ...collections.map(name => new Option(name, name)))
+  collection.value = studioDraft?.targetCollections[chosen] || ''
+  $('#studioTargetCollectionField').classList.toggle('hidden', chosen === 'mabel' || Boolean(studioDraft?.matchingJob))
+  studioSyncSelects()
   studioUpdateCompressionEstimate()
   $('#studioCloudReplaceWarning').classList.toggle('hidden', !fromCloud || cloudCopies !== 'optimised' || Boolean(studioDraft?.matchingJob))
   $('#studioMatchSection').classList.toggle('hidden', !studioDraft?.matchingJob)
@@ -63,9 +73,19 @@ function studioUpdateCompressionEstimate() {
   const sizes = sources.map(source => Number(source.bytes) || source.files?.reduce((n, f) => n + Number(f.bytes || f.size || 0), 0) || 0)
   const total = sizes.reduce((a, b) => a + b, 0)
   const fraction = Number(option?.dataset.fraction || .4) * .98
-  $('#studioCompressionEstimate').textContent = total && sizes.every(n => n > 0)
-    ? `Estimated compressed size: ${studioBytes(total * fraction)} · about ${Math.round((1-fraction)*100)}% smaller`
-    : 'Finished size can be estimated after the download size is known.'
+  const chosen = $('#studioDestinationForm input[name="studioDestination"]:checked')?.value
+  const originalOnly = chosen === 'icloud' && $('#studioDestinationForm input[name="studioCloudCopies"]:checked')?.value === 'original'
+  const known = total > 0 && sizes.every(n => n > 0), panel = $('#studioCompressionEstimate')
+  panel.classList.toggle('is-pending', !known || originalOnly)
+  panel.classList.toggle('hidden', Boolean(studioDraft?.matchingJob))
+  const values = originalOnly ? [['Stored size', known ? studioBytes(total) : 'Pending'], ['Quality', 'Original']]
+    : known ? [[chosen === 'icloud' ? 'Estimated iCloud copy' : 'Estimated TV copy', studioBytes(total * fraction)], ['Smaller by', Math.round((1-fraction)*100) + '%']]
+      : [['Source size', 'Pending'], ['Finished size', 'Pending']]
+  panel.replaceChildren(...values.map(([label, value]) => {
+    const section = document.createElement('section'), name = document.createElement('span'), size = document.createElement('strong')
+    name.textContent = label; size.textContent = value; section.append(name, size); return section
+  }))
+  studioSyncSelects()
 }
 async function studioFindMatch() {
   const query = $('#studioMatchQuery').value.trim()
@@ -96,6 +116,7 @@ async function studioSubmitDestination(event) {
       if (replaceOriginal && !draft.replaceCloudOriginal) { studioOpenReplaceWarning(); return }
       const destination = { kind: chosen === 'film' ? $('#studioLibraryType').value : chosen,
         compression: $('#studioCompression').value,
+        collection: $('#studioTargetCollection').value,
         prepare: chosen !== 'icloud' || $('#studioDestinationForm input[name="studioCloudCopies"]:checked').value !== 'original', keepOptimised: false,
         saveCloud: !$('#studioCloudCopiesField').classList.contains('hidden') }
       if (destination.saveCloud) destination.cloudCopies = $('#studioDestinationForm input[name="studioCloudCopies"]:checked').value
@@ -132,7 +153,7 @@ function renderStudioJobs() {
     let row = rows.get(job.id)
     if (!row) { row = document.createElement('article'); row.className = 'studio-job'; row.dataset.studioJob = job.id }
     const waitingCloud = job.status === 'active' && (job.stage === 'waiting-for-cloud' || job.stage === 'saving-cloud' && /waiting for iCloud|iCloud.*confirm/i.test(job.message || ''))
-    const version = JSON.stringify([job.status, job.stage, job.percent, job.message, job.error, job.metadataWarning, job.displayStatus])
+    const version = JSON.stringify([job.title, job.destination, job.status, job.stage, job.percent, job.message, job.error, job.metadataWarning, job.displayStatus])
     if (row.dataset.studioVersion !== version) {
       row.dataset.studioVersion = version
       const status = job.status === 'complete' && job.metadataWarning ? 'Needs attention' : job.displayStatus || ({ queued: 'Queued', active: 'Working', complete: 'Complete', failed: 'Needs attention', paused: 'Paused', cancelled: 'Cancelled' }[job.status] || job.status)
@@ -140,10 +161,16 @@ function renderStudioJobs() {
       const message = waitingCloud ? (job.destination.kind !== 'icloud' ? 'Available on your TV. ' : '') + 'Uploading to iCloud — waiting for upload confirmation.' : job.error ? studioJobFailureMessage(job.error) : job.message || 'Waiting for Studio'
       const destination = job.destination.kind === 'local' ? 'Download' : job.destination.label
       const percent = Math.round(Math.max(0, Math.min(100, Number(job.percent) || 0)))
-      row.innerHTML = `<div class="studio-job-head"><strong>${escapeHtml(job.title)}</strong><small>${waitingCloud ? '<span class="studio-spinner studio-inline-spinner" aria-hidden="true"></span> iCloud upload' : `${escapeHtml(status)} · <span class="studio-job-percent">${percent}%</span>`}</small></div><p>${escapeHtml(destination)} · ${escapeHtml(message)}</p>${['active', 'queued'].includes(job.status) && !waitingCloud ? `<progress max="100" value="${percent}" aria-label="${escapeHtml(job.title)} progress" aria-valuetext="${percent}%"></progress>` : ''}${warning ? `<details class="studio-job-details"><summary>Details</summary><p>${escapeHtml(warning)}</p></details>` : ''}<div class="studio-job-actions"></div>`
+      const source = job.source?.type === 'iplayer' ? 'BBC iPlayer' : job.source?.type === 'cloud' ? 'iCloud' : job.source?.type === 'torrent' ? 'Download' : 'Studio'
+      row.innerHTML = `<div class="studio-job-head"><span class="studio-media-art"></span><div><strong>${escapeHtml(job.source?.type === 'torrent' ? studioVideoLabel(job.title) : job.title)}</strong><span class="studio-job-route">${escapeHtml(source)} <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-arrow-right"/></svg> ${escapeHtml(destination)}</span></div></div>
+        ${!waitingCloud ? `<div class="studio-job-progress"><div><span>${escapeHtml(status)}</span><span class="studio-job-percent">${percent}%</span></div>${['active','queued'].includes(job.status) ? `<progress max="100" value="${percent}" aria-label="${escapeHtml(job.title)} progress" aria-valuetext="${percent}%"></progress>` : ''}</div>` : ''}
+        <p class="studio-job-wait"><span>${escapeHtml(message)}</span>${waitingCloud ? '<span class="studio-spinner studio-inline-spinner" aria-label="iCloud upload"></span>' : ''}</p>
+        ${warning ? `<details class="studio-job-details"><summary>Details</summary><p>${escapeHtml(warning)}</p></details>` : ''}<div class="studio-job-actions"></div>`
+      const cloudItem = studioState.items.find(item => item.id === job.source?.id)
+      studioMediaArt(row.querySelector('.studio-media-art'), cloudItem ? studioCloudTitle(cloudItem) : job.matchedTitle || job.match)
       const actions = row.querySelector('.studio-job-actions')
       const add = (label, action) => {
-        const button = document.createElement('button'); button.type = 'button'; button.className = 'studio-text-button'; button.textContent = label
+        const button = document.createElement('button'); button.type = 'button'; button.className = 'studio-button compact'; button.textContent = label
         button.onclick = async () => {
           button.disabled = true
           try { await api('/api/studio/action', { method: 'POST', body: JSON.stringify({ id: job.id, action }) }); await studioTick() }
@@ -169,7 +196,7 @@ function renderStudioJobs() {
     rows.delete(job.id)
   }
   for (const row of rows.values()) row.remove()
-  if (!jobs.length && !root.querySelector('.studio-jobs-empty')) root.append(portalEmptyState({ className: 'studio-jobs-empty', title: 'All caught up', message: 'Choose something from iCloud or BBC iPlayer. Its progress will appear here.' }))
+  if (!jobs.length && !root.querySelector('.studio-jobs-empty')) { const empty = studioEmpty('All caught up', 'Downloads and transfers appear here.', 'signal-check'); empty.classList.add('studio-jobs-empty'); root.append(empty) }
   if (jobs.length) root.querySelector('.studio-jobs-empty')?.remove()
 }
 async function studioStartAuth() {
@@ -213,6 +240,7 @@ for (const input of $$('#studioDestinationForm input[name="studioDestination"]')
 for (const input of $$('#studioDestinationForm input[name="studioCloudCopies"]')) input.onchange = () => { if (studioDraft) studioDraft.replaceCloudOriginal = false; studioSyncDestination() }
 for (const id of ['studioLibraryType', 'studioSeries']) $('#' + id).onchange = studioSyncDestination
 $('#studioCompression').onchange = studioUpdateCompressionEstimate
+$('#studioTargetCollection').onchange = () => { const chosen = $('#studioDestinationForm input[name="studioDestination"]:checked').value; studioDraft.targetCollections[chosen] = $('#studioTargetCollection').value; studioSyncSelects() }
 $('#studioMatchQuery').oninput = () => { clearTimeout(studioMatchTimer); studioMatchTimer = setTimeout(() => void studioFindMatch().catch(studioFailure), 350) }
 $('#studioCloudConnect').onclick = () => void studioStartAuth()
 $('#studioAuthForm').onsubmit = async event => {

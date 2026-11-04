@@ -131,7 +131,8 @@ ship the fixture form to preserve a test shortcut.
    separate database. `core/assets.js` owns deferred third-party loading.
 2. `portal/js/ui-components.js`: shared DOM components and dialog lifecycle.
 3. `portal/js/core/foundation.js`: shared state, API, escaping, auth, and base
-   helpers.
+   helpers. `core/confirmation.js` follows it and owns asynchronous playback
+   confirmation with large touch controls; cancellation sends no command.
 4. `portal/js/core/scroll.js`: viewport snapshots, shared render preservation,
    horizontal rail restoration and screen positions. It precedes
    `portal/js/core/navigation.js`, which owns routes, views and history.
@@ -139,6 +140,8 @@ ship the fixture form to preserve a test shortcut.
 6. `portal/js/core/load.js`: initial portal boot and data loading.
 7. `portal/js/channel-page.js`: reusable channel detail renderer.
 8. `portal/js/library/my-tv-library.js`: My TV film catalogue management.
+   `library/my-tv-collections.js` owns the series collection controls and inline
+   creation using the existing local collection names.
 9. `portal/js/library/usb-browser.js`: USB browsing, selection, and import.
 10. `portal/js/library/viewing-insights.js`: MabelTV viewing dashboard,
     lifetime catalogue, independently ranged item detail and one-day diary.
@@ -224,6 +227,12 @@ Watchmode records already present in SQLite; card rendering never spends a
 Watchmode request. `my_tv_provider_badges_enabled` is the SQLite-backed display
 preference and does not disable title-sheet availability lookups.
 
+
+Studio presentation helpers live in `studio/controls.js`; source browsing,
+destination/queue, cloud metadata, deletion and optimisation retain their
+separate owners. Studio sheets scroll within a stable frame and anchored action
+footer. `experience-studio.css` owns this layout without changing shared title-card
+typography. Playback confirmation has its own theme-aware stylesheet.
 
 ## Startup, caching, and offline ownership
 
@@ -472,26 +481,28 @@ The story destination sheet includes Listen on TV - audio only. It sends a stric
 ## My Library
 
 `my-tv-viewing/local-library.js` owns `#my-tv-library`, its local search,
-type/genre/sort filters, and metadata-driven film collection stacks. The My TV
+type/collection/sort filters and the normal title grid. The My TV
 homepage has equal My Viewing and My Library shortcuts. The library uses the My Viewing subpage layout: top Back control, My Library
-heading, Titles/Collections tabs, shared search and compact filters. The My TV
+heading, shared search and compact filters. The My TV
 domain Watch/Insights/Downloads tabs remain on the parent homepage. Title and
 season playback use the existing sheets.
 Membership comes only from `library.my_tv_library` and series with local episodes.
 Unmatched and non-browser-ready files remain visible; family channels and
-streaming-only viewing records never contribute membership. Folder management
-is retained under Folders on this page, independently of film collections.
+streaming-only viewing records never contribute membership. The Collections
+dropdown lists the existing My TV folders. Selecting a name filters titles
+directly in the same grid; there is no collection-tile view or extra picker.
+New collections are created
+inside Film settings' Move to collection control; there is no separate Folders
+management sheet. Phone title and collection-content grids are four across.
 
 The authenticated `/api/my-tv/library/metadata` endpoint validates the title
 against the current local catalogue, then returns cached TMDB genres and the
-film collection identity without provider requests or viewing mutations. Two
-client workers enrich progressively; daily disposable metadata snapshots retain
-warm grouping. Failed enrichment never removes local titles and offers Retry.
-Grouping and overlays contain only filtered local members, with at least two
-different film identities per stack. Collection overlays return to the same
-filtered library; nested title Back restores the collection.
+film collection identity without provider requests or viewing mutations. This
+endpoint remains available, but My Library's saved collections need no metadata
+enrichment requests. Title Back restores the same collection filter and grid.
 
-`experience-my-library.css` owns the layout and translucent collection sheet.
+`experience-my-library.css` owns the grid, including compact single-line titles
+with an ellipsis. Existing four-column surfaces retain their approved typography.
 `added_at` is an optional local-media state extension, set on first discovery
 for new files. Existing files use their filesystem modification dates when no
 recorded arrival exists. Series recency follows its newest local episode.
@@ -531,6 +542,6 @@ the normal Studio route and Back behaviour, including `/torrents` deep links.
 
 The laptop's durable worker reports independent stage progress without refreshing the library or losing form focus. iCloud refresh keeps the previous catalogue on failure. Search requests wait on the Pi while the laptop is offline. Cloud sign-in runs only through the owner-authenticated HTTPS portal and never browser storage. A private Unix socket carries rclone's configuration protocol.
 
-`studio/cloud-library.js` owns four-column My Viewing poster cards and grouped cloud series. `studio/metadata.js` owns background exact matching and explicit rich metadata correction before publishing. `studio/cloud-delete.js` owns only the named deletion confirmation reached from the destination sheet. The library exposes one Films/TV/Kids filter, no folder browser or file-format labels. Activity keeps keyed rows with a Studio-specific version marker, compact status/actions and collapsed diagnostics; the portal system-version marker is reserved for actual version labels.
+`studio/cloud-library.js` owns four-column My Viewing poster cards, grouped cloud series and the cloud collection picker. `studio/metadata.js` owns background exact matching and explicit rich metadata correction before publishing. `studio/cloud-delete.js` owns only the named deletion confirmation reached from the destination sheet. The library exposes Films/TV/Kids, sort and Collections filters. Cloud collections are independent of My Library folders: the owner can create and assign them from the title's Move to collection action. Existing cloud folders seed the choices; explicit associations use SQLite's reserved Studio records and stable title/file identities without moving files or changing automatic filing. A separate collection revision refreshes other open portals. Activity keeps keyed rows with a Studio-specific version marker, compact status/actions and collapsed diagnostics; the portal system-version marker is reserved for actual version labels.
 
 Studio keeps catalogue matching quiet and exposes corrections per title. The library toolbar contains the category selector and Select; refresh sits beside the connection status. Selection mode replaces personal artwork status with an empty circle on each card and a filled tick for chosen titles. Activity lists pending work and actionable failures/metadata warnings; successful completed and cancelled records remain durable but leave the visible list.

@@ -49,6 +49,7 @@ def studio_post(handler, path, payload):
     routes["/api/studio/cloud/replace-original"] = "studio_cloud_replace_original"
     routes["/api/studio/cloud/optimise-preview"] = "studio_cloud_optimise_preview"
     routes["/api/studio/cloud/match"] = "studio_cloud_match"
+    routes["/api/studio/cloud/collection"] = "studio_cloud_collection"
     routes["/api/studio/subtitle"] = "studio_subtitle"
     routes["/api/studio/torrents/search"] = "studio_torrent_search"
     routes["/api/studio/torrents/inspect"] = "studio_torrent_inspect"

@@ -399,5 +399,4 @@
     }))
     $('#watchAddMyTv').onclick = () =>
       openLibrarySheet($('#myTvUploadSheet'), $('#myTvFile'))
-    $('#watchManageMyTv').onclick = () => openLibrarySheet($('#myTvCollectionSheet'))
     $('#remoteConcurrentToggle').onclick = () => saveSettingsPreference($('#remoteConcurrentToggle'), 'set-remote-simultaneous', { enabled: library?.remote_viewing?.allow_simultaneous !== true }, 'Simultaneous playback')

@@ -1116,6 +1116,18 @@ class StateDatabase(PlaybackRepositoryMixin, StudioRepositoryMixin, ChannelOrder
                 (owner_id, media_type, tmdb_id),
             )
 
+    def set_my_tv_series_collection(self, series_id: str, collection: str) -> None:
+        """Change only this series' collection; preserve metadata and episode state."""
+        with self.transaction() as db:
+            row = db.execute("SELECT extra_json FROM my_tv_series WHERE id=?", (series_id,)).fetchone()
+            if row is None:
+                raise ValueError("Choose an existing My TV series")
+            extra = _load(row[0], {})
+            if extra.get("folder", "") != collection:
+                extra["folder"] = collection
+                db.execute("UPDATE my_tv_series SET extra_json=? WHERE id=?", (_dump(extra), series_id))
+                self._bump_revisions(db, "my_tv_series")
+
     @staticmethod
     def _read_my_tv_series(db: sqlite3.Connection) -> dict[str, Any]:
         root: dict[str, Any] = {"series": {}, "episodes": {}}

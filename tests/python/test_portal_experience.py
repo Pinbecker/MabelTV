@@ -569,11 +569,11 @@ class PortalExperienceTests(unittest.TestCase):
         self.assertIn("function configureFilmPlaybackActions(film, context, controls)", index)
         self.assertIn("restartAction: () => playOnTvNow(0)", index)
         self.assertIn('id="watchProgrammeSheet"', index)
-        self.assertIn('id="watchManageMyTv"', index)
+        self.assertIn('id="myTvFilmCreateCollection"', index)
         self.assertRegex(index, r'id="watchFilmManage"\s+type="button"\s+class="card-settings-trigger hidden"')
         self.assertIn(
             "openMyTvFilmSheet(film, () => openWatchFilmSheet", index)
-        self.assertIn("openLibrarySheet($('#myTvCollectionSheet'))", index)
+        self.assertNotIn('id="myTvCollectionSheet"', index)
         self.assertNotIn('id="watchManageMabel"', index)
         self.assertNotIn('id="overviewChannels"', index)
         self.assertIn("const episodeChannels = channels.filter", index)

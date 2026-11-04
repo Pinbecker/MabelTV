@@ -5,18 +5,14 @@ function studioRenderOptimiseHero(preview) {
   const context = studioOptimiseDraft.cloudContext, single = context.titles.length === 1
   const title = single ? studioCloudTitle(context.titles[0]) : { title: `${context.titles.length} selected titles` }
   const hero = $('#studioOptimiseHero'); hero.replaceChildren()
-  const poster = single && myTvViewingPosterUrl(title)
-  if (poster) { const image = myTvArtworkImage(poster); image.alt = ''; hero.append(image) }
-  else { const placeholder = document.createElement('span'); placeholder.className = 'studio-optimise-poster'; placeholder.append(librarySignalIcon('signal-film')); hero.append(placeholder) }
-  const copy = document.createElement('div'), heading = document.createElement('h3'), meta = document.createElement('p')
-  heading.textContent = title.title
+  const art = document.createElement('span'); art.className = 'studio-media-art'; studioMediaArt(art, single ? title : null)
+  const copy = document.createElement('div'); copy.className = 'studio-media-copy'
+  const overline = document.createElement('p'); overline.className = 'section-kicker'; overline.textContent = 'Optimise iCloud copy'
+  const heading = document.createElement('h2'); heading.id = 'studioOptimiseTitle'; heading.textContent = title.title
+  const meta = document.createElement('p')
   const runtime = preview.files.length === 1 && (preview.files[0].runtimeMinutes || title.runtime)
-  meta.className = 'studio-optimise-meta'; meta.textContent = [title.year,
-    runtime ? `${Math.floor(runtime / 60)}h ${Math.round(runtime % 60)}m` : '',
-    preview.files.length > 1 ? `${preview.files.length} files` : ''].filter(Boolean).join(' · ')
-  copy.append(heading, meta)
-  if (title.overview) { const overview = document.createElement('p'); overview.className = 'studio-optimise-overview'; overview.textContent = title.overview; copy.append(overview) }
-  hero.append(copy)
+  meta.textContent = [title.year, runtime ? Math.floor(runtime / 60) + 'h ' + Math.round(runtime % 60) + 'm' : '', preview.files.length > 1 ? preview.files.length + ' files' : ''].filter(Boolean).join(' · ')
+  copy.append(overline, heading, meta); hero.append(art, copy)
   const current = preview.files.reduce((total, file) => total + file.bytes, 0)
   $('#studioOptimiseCurrentSize').textContent = studioBytes(current)
   $('#studioOptimiseCurrentFormat').textContent = [...new Set(preview.files.map(file => file.type))].join(' + ')
@@ -26,13 +22,14 @@ function studioRenderOptimiseHero(preview) {
   $('#studioOptimiseNewSize').classList.toggle('is-unknown', estimated === null)
   const savings = $('#studioOptimiseSavings'); savings.replaceChildren()
   const label = document.createElement('span'), value = document.createElement('strong')
-  label.textContent = 'Estimated space saving'
-  value.textContent = estimated === null ? 'Known after conversion' : `${studioBytes(current-estimated)} · ${Math.round((current-estimated)/current*100)}%`
+  label.textContent = 'Space saved'
+  value.textContent = estimated === null ? 'Pending' : studioBytes(current-estimated)
   savings.append(label, value)
+  if (estimated !== null) { const percent = document.createElement('span'); percent.className = 'studio-chip'; percent.textContent = Math.round((current-estimated)/current*100) + '%'; savings.append(percent) }
 }
 async function studioOpenCloudOptimise() {
   const button = $('#studioCloudOptimise'); button.disabled = true
-  button.setAttribute('aria-busy', 'true'); button.innerHTML = '<span class="studio-spinner studio-inline-spinner" aria-hidden="true"></span> Preparing preview…'
+  button.setAttribute('aria-busy', 'true')
   try {
     studioOptimiseDraft = studioDraft
     $('#studioOptimiseCompression').value = $('#studioCompression').value
@@ -41,9 +38,10 @@ async function studioOpenCloudOptimise() {
     $('#studioOptimiseSheet details').open = false
     $('#studioOptimiseError').classList.add('hidden')
     closeLibrarySheet($('#studioDestinationSheet'), false)
+    closeLibrarySheet($('#studioActionsSheet'), false)
     openLibrarySheet($('#studioOptimiseSheet'))
   } catch (error) { studioFailure(error) }
-  finally { button.disabled = false; button.setAttribute('aria-busy', 'false'); button.textContent = 'Optimise iCloud version' }
+  finally { button.disabled = false; button.setAttribute('aria-busy', 'false'); studioSyncSelects() }
 }
 async function studioRefreshOptimisePreview() {
   const generation = ++studioOptimiseGeneration, draft = studioOptimiseDraft
@@ -67,6 +65,7 @@ async function studioRefreshOptimisePreview() {
     $('#studioOptimiseEstimate').textContent = preview.estimateNote || 'Estimated size from the selected size target. The measured result can vary. The original is kept if the result does not meet the target.'
     $('#studioOptimiseError').classList.add('hidden')
   $('#studioOptimiseConfirm').disabled = false
+  studioSyncSelects()
 }
 $('#studioOptimiseCompression').onchange = () => void studioRefreshOptimisePreview().catch(error => {
   $('#studioOptimiseError').textContent = error.message; $('#studioOptimiseError').classList.remove('hidden')

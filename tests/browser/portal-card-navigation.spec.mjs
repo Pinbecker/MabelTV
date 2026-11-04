@@ -96,8 +96,8 @@ test('@visual content cards share compact Back and journey-closing X controls', 
   await expect.poll(() => page.evaluate(() =>
     history.state?.mabelCardJourney?.depth || 0)).toBe(0)
 
-  await page.evaluate(() => portalSheets.open($('#myTvCollectionSheet')))
-  const utilityClose = await page.locator('#myTvCollectionSheet').evaluate(sheet => {
+  await page.evaluate(() => portalSheets.open($('#myTvUploadSheet')))
+  const utilityClose = await page.locator('#myTvUploadSheet').evaluate(sheet => {
     const panel = sheet.querySelector('.library-sheet-panel').getBoundingClientRect()
     const close = sheet.querySelector('.portal-sheet-close').getBoundingClientRect()
     return {
@@ -113,7 +113,7 @@ test('@visual content cards share compact Back and journey-closing X controls', 
     top: geometry.closeTop,
     right: geometry.closeRight,
   })
-  await page.evaluate(() => portalSheets.dismiss($('#myTvCollectionSheet')))
+  await page.evaluate(() => portalSheets.dismiss($('#myTvUploadSheet')))
 
   await page.evaluate(() => portalSheets.open($('#watchProgrammeSheet')))
   const programmeMenu = page.locator('#watchProgrammeSheet')

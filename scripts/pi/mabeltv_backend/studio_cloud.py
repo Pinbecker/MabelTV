@@ -123,6 +123,7 @@ class StudioCloudMixin:
         return {"configured": self.studio_cloud_config.is_file(), "checked": self.studio_cloud_checked,
                 "scanning": self.studio_cloud_scanning, "error": self.studio_cloud_error,
                 "count": sum(self._studio_media_file(item) for item in self.studio_cloud_files), "root": "Media",
+                "collectionRevision": max((item.get("updated", 0) for item in self.state_database.studio_records("cloudmembership")), default=0),
                 "metadataRevision": max((item.get("updated", 0) for item in self.state_database.studio_records("cloudmetadata")), default=0)}
 
     def studio_cloud_refresh(self, payload=None):
