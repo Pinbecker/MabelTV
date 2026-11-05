@@ -127,6 +127,11 @@ Failures retain Playwright screenshots/traces, and CTest emits its causal
 `LastTest.log` as an annotation. Diagnose that first failure before changing
 source or rerunning everything.
 
+The Ubuntu job installs QML runtime modules and image-format plugins explicitly:
+Qt development headers alone do not supply WorkerScript or the WebP decoder
+when recommended packages are disabled. Xvfb and xauth are also explicit so the
+OpenGL test groups do not depend on incidental runner-image packages.
+
 ## Deployment gates
 
 Deployment is a runtime safety boundary, not a second complete qualification
