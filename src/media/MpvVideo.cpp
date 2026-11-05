@@ -139,6 +139,7 @@ public:
         if (context == nullptr || target == nullptr) {
             return;
         }
+        QQuickOpenGLUtils::resetOpenGLState(); // libmpv requires default GL state on entry.
 
         const auto flags = mpv_render_context_update(context);
         // Qt can redraw the surround without a new video frame. Keep the
@@ -159,11 +160,9 @@ public:
         // orientation expected by the Qt Quick scene. Asking libmpv to flip
         // the FBO as well turns the finished television picture upside down.
         int flipVertically = 0;
-        int blockForTargetTime = 0; // Qt owns the final vsync after composition.
         mpv_render_param parameters[] = {
             {MPV_RENDER_PARAM_OPENGL_FBO, &targetFbo},
             {MPV_RENDER_PARAM_FLIP_Y, &flipVertically},
-            {MPV_RENDER_PARAM_BLOCK_FOR_TARGET_TIME, &blockForTargetTime},
             {MPV_RENDER_PARAM_INVALID, nullptr},
         };
 
@@ -267,6 +266,7 @@ MpvVideo::MpvVideo(QQuickItem *parent)
     checkMpv(mpv_set_option_string(m_state->handle, "vo", "libmpv"), "Setting mpv video output");
     checkMpv(mpv_set_option_string(m_state->handle, "terminal", "no"), "Disabling mpv terminal output");
     checkMpv(mpv_set_option_string(m_state->handle, "osc", "no"), "Disabling mpv controls");
+    checkMpv(mpv_set_option_string(m_state->handle, "osd-level", "0"), "Keeping playback overlays in the native interface");
     checkMpv(mpv_set_option_string(m_state->handle, "input-default-bindings", "no"),
              "Disabling mpv input bindings");
     checkMpv(mpv_set_option_string(m_state->handle, "input-vo-keyboard", "no"),
@@ -300,15 +300,12 @@ MpvVideo::MpvVideo(QQuickItem *parent)
     checkMpv(mpv_set_option_string(m_state->handle, "demuxer-max-back-bytes", "8388608"),
              "Limiting mpv back-buffer memory");
 #ifdef Q_OS_LINUX
-    checkMpv(mpv_set_option_string(m_state->handle, "vd-lavc-threads", "2"),
+    checkMpv(mpv_set_option_string(m_state->handle, "vd-lavc-threads", "3"),
              "Limiting decoder threads for Raspberry Pi");
 #endif
     checkMpv(mpv_set_option_string(m_state->handle, "keep-open", "no"),
              "Configuring mpv end-of-file behaviour");
     checkMpv(mpv_set_option_string(m_state->handle, "idle", "yes"), "Configuring mpv idle mode");
-    // Prepare one 50 Hz frame ahead; never block the shared Qt render thread
-    // at mpv's target time and then miss Qt's following presentation deadline.
-    checkMpv(mpv_set_option_string(m_state->handle, "video-timing-offset", "0.02"), "Setting video preparation lead time");
     checkMpv(mpv_set_option_string(m_state->handle, "volume-max", "160"),
              "Allowing amplified Mabel TV playback volume");
     checkMpv(mpv_set_option_string(m_state->handle, "volume", "20"), "Setting initial mpv volume");

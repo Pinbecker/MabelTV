@@ -12,9 +12,13 @@ The libmpv renderer services every update notification, renders only new frames
 or a resized target, and coalesces queued GUI updates. Thirty-second diagnostic
 samples report render rate, decoder/display drops and audio/video timing without
 blocking the decoder; display geometry and refresh are logged at startup.
-The embedded renderer prepares frames with a bounded 20 ms lead and leaves the
-final presentation wait to Qt's vsync rather than blocking the shared render
-thread at mpv's deadline before Qt can composite and present the frame.
+The Pi decoder uses three software threads, retaining the safe H.264 handoff
+without the unstable MMAL hardware path. The renderer retains mpv's normal
+intermediate precision.
+Qt's OpenGL state is reset before as well as after every libmpv render. The
+render API requires standard defaults on entry; leaving Qt's state active can
+corrupt picture pixels. The texture test uses a multi-frame two-colour video
+and checks solid regions for corruption before validating the shader adapter.
 
 ## QML composition
 

@@ -15,11 +15,17 @@ private slots:
     void textureProviderWorksWithoutAnUnwarpedQuad() {
         QTemporaryDir directory;
         QVERIFY(directory.isValid());
-        QFile image(directory.filePath("colours.ppm"));
+        QFile image(directory.filePath("colours.y4m"));
         QVERIFY(image.open(QIODevice::WriteOnly));
-        image.write("P6\n64 32\n255\n");
-        for (int y=0;y<32;++y) for (int x=0;x<64;++x)
-            image.write(y<16 ? QByteArray::fromHex("ff0000") : QByteArray::fromHex("00ff00"));
+        image.write("YUV4MPEG2 W64 H32 F25:1 Ip A1:1 C420jpeg\n");
+        // A real multi-frame video avoids image-demuxer EOF while waiting for
+        // the first displayed picture on different libmpv/Qt versions.
+        for (int frame=0;frame<250;++frame) {
+            image.write("FRAME\n");
+            image.write(QByteArray(64*16,char(81))+QByteArray(64*16,char(145)));
+            image.write(QByteArray(32*8,char(90))+QByteArray(32*8,char(54)));
+            image.write(QByteArray(32*8,char(240))+QByteArray(32*8,char(34)));
+        }
         image.close();
         QQuickWindow window;
         const QColor background(18,52,86);
@@ -31,13 +37,19 @@ private slots:
         // Header discovery precedes the first rendered frame. Pausing on width
         // alone can freeze a still-empty framebuffer on a slower CI worker.
         // Keep the GUI event loop free while libmpv finishes that frame.
-        QTRY_VERIFY_WITH_TIMEOUT(video->renderedFrameCount()>0,5000);
+        QTRY_VERIFY_WITH_TIMEOUT(video->renderedFrameCount()>=3,5000);
         video->togglePause();
         QTRY_VERIFY_WITH_TIMEOUT(video->paused(),5000);
         const QImage original=window.grabWindow();
+        if (!original.isNull() && original.pixelColor(48,16).red()<=200)
+            original.save(QDir::current().filePath("mpv-texture-original.png"));
         QVERIFY(!original.isNull());
-        QVERIFY(original.pixelColor(48,16).red()>200);
-        QVERIFY(original.pixelColor(48,48).green()>200);
+        QVERIFY2(original.pixelColor(48,16).red()>200,qPrintable(QStringLiteral("top=%1 bottom=%2").arg(original.pixelColor(48,16).name(),original.pixelColor(48,48).name())));
+        QVERIFY2(original.pixelColor(48,48).green()>200,qPrintable(original.pixelColor(48,48).name()));
+        for (int y=12;y<28;++y) for (int x=12;x<84;++x) {
+            QVERIFY2(original.pixelColor(x,y).red()>200,"The solid red picture contains corrupted pixels");
+            QVERIFY2(original.pixelColor(x,y+24).green()>200,"The solid green picture contains corrupted pixels");
+        }
         video->setTextureOnly(true); QTest::qWait(100);
         const QImage hidden=window.grabWindow();
         QCOMPARE(hidden.pixelColor(48,16),background);
