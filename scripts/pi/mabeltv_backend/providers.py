@@ -282,7 +282,7 @@ class ProviderMetadataMixin:
 
     def my_tv_series_artwork(self, name: str) -> Path:
         if not re.fullmatch(
-                r"my-tv-(?:series-[a-f0-9]{32}-[0-9]+|episode-[a-f0-9]{32}-[0-9]+-[0-9]+)\.jpg",
+                r"(?:my-tv|adult)-(?:series-[a-f0-9]{32}-[0-9]+|episode-[a-f0-9]{32}-[0-9]+-[0-9]+)\.jpg",
                 name):
             raise ValueError("Series artwork not found")
         path = self.my_tv_series_artwork_root / name
@@ -439,6 +439,11 @@ class ProviderMetadataMixin:
 
     def tmdb_apply(self, payload: dict[str, Any]) -> dict[str, Any]:
         file_name = str(payload.get("file", ""))
+        publication = None
+        if payload.get("studio_upload"):
+            from .studio_publication import publication_file, rename_publication
+            publication, published = publication_file(self, payload["studio_upload"])
+            file_name = self.my_tv_relative_path(published)
         source = self.safe_my_tv_path(file_name)
         if not source.is_file():
             raise ValueError("Film not found")
@@ -446,6 +451,10 @@ class ProviderMetadataMixin:
         if tmdb_id <= 0:
             raise ValueError("Choose a TMDB match")
         value = self.tmdb_request(f"movie/{tmdb_id}", {"language": "en-GB"})
+        if publication is not None:
+            publication = rename_publication(self, publication, value)
+            source = self.upload_destination(publication)
+            file_name = self.my_tv_relative_path(source)
         poster_path = str(value.get("poster_path") or "")
         poster_name = ""
         if poster_path:
@@ -482,6 +491,7 @@ class ProviderMetadataMixin:
             self.write_my_tv_media_states(states)
         refreshed = self.refresh_tv()
         return {"ok": True, "file": file_name, "metadata": metadata,
+                **({"publication": publication} if publication is not None else {}),
                 "refreshed": refreshed}
 
     def my_tv_artwork(self, name: str) -> Path:

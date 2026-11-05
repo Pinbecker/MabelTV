@@ -81,13 +81,39 @@ function myTvArtworkImage(source, alt = '') {
   return image
 }
 
+// Keep decoded images when a surface changes controls, ordering or metadata.
+// Each occurrence has its own node; identical posters in other cards stay put.
+function retainMyTvArtwork(previous, target) {
+  const images = new Map()
+  for (const image of previous) {
+    if (image.dataset.myTvArtworkFailed) continue
+    const key = image.dataset.myTvArtworkSource || image.getAttribute('src')
+    if (!images.has(key)) images.set(key, [])
+    images.get(key).push(image)
+  }
+  for (const image of target.querySelectorAll('img')) {
+    const key = image.dataset.myTvArtworkSource || image.getAttribute('src')
+    const retained = images.get(key)?.shift()
+    if (!retained || retained === image) continue
+    retained.alt = image.alt; retained.title = image.title
+    retained.className = image.className; retained.loading = image.loading
+    image.replaceWith(retained)
+  }
+}
+function replaceMyTvArtworkChildren(root, ...nodes) {
+  const previous = [...root.querySelectorAll('img')]
+  const fragment = document.createDocumentFragment(); fragment.append(...nodes)
+  retainMyTvArtwork(previous, fragment)
+  root.replaceChildren(fragment)
+}
+
 function myTvViewingPosterUrl(item) {
   if (item.poster_path) return myTvPosterUrl(item.poster_path)
   const localPoster = item.local?.poster
   if (!localPoster) return ''
   return item.local?.kind === 'channel-film'
     ? `/api/channel/artwork/${encodeURIComponent(localPoster)}`
-    : `/api/my-tv/artwork/${encodeURIComponent(localPoster)}`
+    : `/api/my-tv/${item.local?.kind === 'series' ? 'series/artwork' : 'artwork'}/${encodeURIComponent(localPoster)}`
 }
 
 function rememberMyTvTitleMetadata(detail, original = null) {

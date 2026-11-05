@@ -8,11 +8,11 @@ test('destination sheet fits its content and keeps controls reachable across cho
   const { writes } = await openStudio(page, { online: true })
   await page.getByRole('button', { name: 'BBC iPlayer', exact: true }).click()
   await page.locator('#studioIplayerSearch').fill('Ludwig')
-  await page.locator('#studioIplayerSearchForm button').click()
+  await page.locator('#studioIplayerSearch').press('Enter')
   await page.locator('.studio-programme').click()
   await page.locator('#studioEpisodesAll').click()
   await page.locator('#studioEpisodesContinue').click()
-  const sheet = page.locator('#studioDestinationSheet > section')
+  const sheet = page.locator('#studioDestinationSheet > article')
   const before = await sheet.boundingBox(), footer = await page.locator('#studioDestinationSubmit').boundingBox()
   for (const destination of ['mabel', 'icloud', 'film']) {
     await page.locator(`input[name="studioDestination"][value="${destination}"]`).locator('..').click()
@@ -26,12 +26,8 @@ test('destination sheet fits its content and keeps controls reachable across cho
       await expect(page.locator('#studioCloudCopiesLabel')).toHaveText(destination === 'icloud' ? 'Version' : 'iCloud copy')
     }
   }
-  await page.locator('#studioCompression + button').click()
-  await expect(page.locator('#studioOptionSheet')).toBeVisible()
-  await page.locator('#studioOptions input[value="balanced"]').check()
-  await page.locator('#studioOptionDone').click()
+  await page.locator('#studioCompression').selectOption('balanced')
   await expect(page.locator('#studioCompression')).toHaveValue('balanced')
-  await expect(page.locator('#studioCompression + button')).toContainText('Balanced')
   expect(writes.some(write => write.path === '/api/studio/jobs')).toBe(false)
   expect(await sheet.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true)
   await page.screenshot({ path: info.outputPath('approved-destination.png') })

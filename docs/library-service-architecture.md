@@ -43,6 +43,11 @@ secondary service objects.
   the recycle bin and staging files never establish availability.
 - `uploads.py`: resumable upload records, queueing, publication and worker
   lifecycle. `.incoming` manifests are operational journals.
+- `studio_publication.py`: canonical film naming after a confirmed Studio title
+  match. A completed upload receipt binds the file; its rename journal recovers
+  interrupted video/sidecar moves and keeps the existing library identity and
+  original-recovery receipts. Existing targets are never overwritten. Ordinary
+  manual TMDB matching does not rename files.
 - `upload_notifications.py`: source-independent phone alerts after verified Pi
   publication, private ntfy configuration and bounded delivery retries. SQLite
   owns delivery receipts; notification work never holds the media queue.
@@ -195,6 +200,18 @@ authorization. See `quality-gates.md` and `state-database.md`.
 
 ## Native My TV projections
 
+The authenticated portal `GET /api/my-tv/local-title` returns the current film
+or series records for one canonical identity. It uses the local catalogue only,
+with no TMDB/provider lookup, and does not imply membership from a Studio job.
+Activity can therefore show a title before metadata finishes while checking its
+actual playback actions. Full-library enumeration, bootstrap and device-cache
+writes do not gate the card opening.
+
+The HTTP worker ceiling remains 24. Saturation returns a bounded 503 JSON
+response with Retry-After instead of resetting the upstream connection; bounded
+request-header/body consumption avoids discarding that response with a TCP
+reset. Upload/stream capacity and ordinary authentication remain unchanged.
+
 `native_my_tv.py` owns the loopback-only TV card, title, season and app-launch
 contract. Home and search return compact cards; episodes and cast are loaded
 only for a selected title. Local artwork URLs retain the filenames already
@@ -285,6 +302,10 @@ bounded and canonicalised before storage/rendering. Requests and jobs retain
 the existing Studio leases in SQLite, with capability-aware claims so older
 companions cannot consume torrent work. Search, peer transfer and media work
 remain on Windows; no torrent client or video payload is run on the Pi.
+
+`studio_cloud.py` groups videos beneath an explicit TV/show directory with that
+show even when the filename lacks an episode number. Unnumbered extras and
+specials are retained as distinct season-zero entries; they are not film titles.
 
 `studio_organiser.py` quietly resolves one film/series per catalogue-loop step.
 `studio_organiser_model.py` uses bounded, non-stored Responses requests to

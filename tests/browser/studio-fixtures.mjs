@@ -30,6 +30,8 @@ export async function openStudio(page, { online = false, series = false, organis
       if (url.searchParams.get('sort') === 'size-desc') filtered.sort((a, b) => b.bytes - a.bytes)
       if (url.searchParams.get('sort') === 'size-asc') filtered.sort((a, b) => a.bytes - b.bytes)
       json = { ...cloud, collections, items: filtered, total: filtered.length, folders: ['Films', 'Family Videos', 'Audiobooks'] }
+    } else if (path === '/api/studio/collections') {
+      json = { name: payload.name, collections: [payload.name] }
     } else if (path === '/api/studio/cloud/collection') {
       if (payload.create) collections.push(payload.collection)
       items.filter(item => payload.ids.includes(item.id)).forEach(item => { item.collection = payload.collection })
@@ -68,5 +70,5 @@ export async function openStudio(page, { online = false, series = false, organis
   await expect(page.locator('#view-my-tv-studio')).toBeVisible()
   await expect(page.locator('.studio-file')).toHaveCount(series ? 8 : 9)
   await expect(page.locator('#studioCloudSelection')).toBeHidden()
-  return { writes, jobs }
+  return { writes, jobs, collections }
 }

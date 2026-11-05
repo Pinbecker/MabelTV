@@ -16,7 +16,20 @@ The desktop app owns only local preferences, metadata caches and operational tra
 - `lib/tools.cjs` discovers packaged or installed media tools.
 - `lib/iplayer.cjs` adapts get_iplayer search, metadata and downloads using BBC PIDs.
 - `lib/media.cjs` probes and prepares media without modifying source files.
+- `lib/media-policy.cjs` owns geometry, source frame rate, quality floors and
+  size estimates shared with the Pi policy. All four preparation choices retain
+  progressive source cadence through 60 fps; interlaced 25 fps retains both
+  fields as 50 progressive frames. Unsupported rates keep the source intact.
 - `lib/portal.cjs` owns endpoint selection, authentication and resumable uploads.
+- `lib/desktop-library.cjs` owns the bounded desktop iCloud/torrent IPC actions.
+  It calls the existing authenticated Pi APIs; it does not load portal pages or
+  admit renderer-supplied URLs, magnets or filesystem paths.
+- `ui/cloud-library.js` and `ui/torrents.js` own the desktop library and search
+  screens. `library-send.js` reuses Studio's destination form; `cloud-tools.js`
+  owns native cloud settings, preview, matching, deletion and original recovery.
+  `ui/activity.js` joins queued server work with local conversion journals so
+  downloads are visible before a local file exists. Matching artwork nodes are
+  retained as progress and selections change.
 - `lib/queue.cjs` coordinates durable jobs and recovery.
 - `lib/library-presence.cjs` matches current Pi file identities to BBC results.
 - `lib/title-match.cjs` validates explicitly confirmed TMDB identities, separate
@@ -63,6 +76,14 @@ Each phase is checked before handover. No Pi source changes are required when it
 
 Run `npm ci`, then `npm start`. `npm test` exercises desktop owners; `npm run test:ui` exercises the actual Electron window. `npm run package` creates a per-user Windows installer under `dist/`.
 
+`node scripts/verify-frame-rates.cjs <output-folder>` exercises the installed
+Intel hardware with generated motion, retaining proofs for optional browser
+and isolated Pi decoder checks. It compares decoded source/output frame counts,
+checks all preparation choices, fractional rates and interlacing, and never
+touches a library or cloud copy. `verify-frame-rate-browser.cjs` checks actual
+moving video and seeking in WebKit/Chromium; Windows WebKit does not expose
+decoded-frame counters, so canvas samples verify moving pictures independently.
+
 Run `npm run bundle:tools` before packaging to copy the installed get_iplayer runtime and FFmpeg tools, together with license notices, into ignored build resources. No user get_iplayer settings, history or recordings are packaged.
 It also runs `scripts/bundle-torrents.cjs`, which downloads checksum-pinned
 qBittorrent 5.3.0, Python 3.14.10 and the reviewed Pirate Bay plugin, extracts
@@ -85,6 +106,19 @@ Launch **MabelTV Studio** from the desktop or Start menu. It opens directly as a
 - **Add media:** choose or drop videos, select Mabel TV and a channel, or My TV and its film/series destination, then prepare and send. You can also prepare locally and send later from Completed.
 - **BBC iPlayer:** search a programme name or paste an episode link/PID, review artwork and programme details, select episodes, and add them to the queue. The search catalogue mainly covers recent broadcasts; an episode link can find programmes outside it.
 - **Queue:** follow downloading, preparation, sending and publication. Pause, resume or retry individual items. Closing the installed window keeps Studio in the notification area; **Quit Studio and pause work** pauses it explicitly.
+- **iCloud library:** browse poster cards, filter Films/TV/Kids, search, sort
+  by title, stored size or release year, select episodes or multiple titles and
+  send them through the normal destination form. The gear opens Studio's own
+  matching, original recovery, optimisation and deletion actions. Replacement
+  previews retain frozen file identities; destructive choices need explicit
+  confirmation. Separate TV copies are preserved by cloud deletion.
+- **Find anything:** Enter starts a search. Choose a result, wait for its file
+  list, select the required videos/seasons and choose My TV, Mabel TV or iCloud.
+  Search and inspection show moving indicators; the clear cross discards stale
+  results. No media downloads until the destination is confirmed.
+- These desktop sections use the same Studio window, sidebar, typography,
+  cards and forms as Add media/iPlayer. They contain no portal window, iframe
+  or webview. Search/queue state stays in Studio when switching sections.
 - **My TV title check:** before sending a film, choose and confirm its title,
   year and poster. Edit the search or optional year to correct the match. For
   TV series, confirm the show once for the selected episodes; your chosen

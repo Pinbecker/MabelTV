@@ -5,14 +5,19 @@ class CompanionTorrents {
   async run(remote, state, signal) {
     state.finishing = true;
     const fetch = () => this.downloads.download(remote, signal, progress => { state.progress = progress; });
-    const downloaded = this.resources ? await this.resources.downloads.run(signal,
+    const published = remote.metadata_only ? remote.source.files.map(file => {
+      const local = this.jobs.store.state.jobs.find(job => job.remoteId === remote.id + ':' + file.index);
+      if (!local?.result?.complete) throw new Error('This file has not been published yet.');
+      return { ...file, file: local.sourcePath };
+    }) : null;
+    const downloaded = published ? { files: published } : this.resources ? await this.resources.downloads.run(signal,
       () => { state.progress = { stage: 'queued-download', percent: 0, message: 'Waiting for a download slot' }; }, async () => {
         const bytes = remote.source.files.reduce((sum, file) => sum + file.bytes, 0);
         await this.resources.admit(remote.id, bytes * 3, signal,
           () => { state.progress = { stage: 'queued-download', percent: 0, message: 'Waiting for disk space' }; });
         return fetch();
       }) : await fetch();
-    let warning = '', result, cloudPath = '';
+    let warning = '', result, cloudPath = '', matchedTitle = null;
     for (const [index, file] of downloaded.files.entries()) {
       const details = metadata(file, remote.title);
       const destination = { ...remote.destination };
@@ -37,10 +42,11 @@ class CompanionTorrents {
       finally { clearInterval(timer); }
       if (child.progress.metadataWarning) warning = child.progress.metadataWarning;
       result = child.progress.result; cloudPath = child.progress.savedCloudPath || cloudPath;
+      if (downloaded.files.length === 1) matchedTitle = child.progress.matchedTitle || null;
     }
-    if (!warning) this.downloads.cleanup(downloaded);
+    if (!warning && !published) this.downloads.cleanup(downloaded);
     state.progress = { status: 'complete', stage: 'complete', percent: 100, message: 'Saved to iCloud' + (remote.destination.kind !== 'icloud' ? ' and available on TV' : ''),
-      result, savedCloudPath: cloudPath, metadataWarning: warning };
+      result, savedCloudPath: cloudPath, matchedTitle, metadataWarning: warning };
   }
 }
 module.exports = { CompanionTorrents };

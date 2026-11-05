@@ -15,7 +15,7 @@ class StudioMixin:
     def studio_status(self):
         now = time.time()
         workers = self.state_database.studio_records("worker")
-        jobs = self.state_database.studio_records("job")
+        jobs = [job for job in self.state_database.studio_records("job") if not job.get("historyHidden")]
         for job in jobs:
             job.pop("claim", None)
             if job["status"] in {"queued", "active"} and not any(now - w["seen"] < 25 for w in workers):
@@ -65,12 +65,15 @@ class StudioMixin:
         destination.update(temporaryWork=True, keepOptimised=False)
         destination["allowRisk"] = value.get("allowRisk") is True
         destination["unattended"] = value.get("unattended") is True
+        destination["preparationIntent"] = "compatible" if value.get("preparationIntent") == "compatible" else "compress"
         if "compression" in value:
             destination["compression"] = compression_profile(value["compression"])["id"]
         if not isinstance(value.get("cloudCopies", "original"), str) or value.get("cloudCopies", "original") not in {"original", "optimised", "both"}:
             raise ValueError("Choose Original, Optimised or Both for iCloud")
         destination["cloudCopies"] = value.get("cloudCopies", "original")
         if value.get("optimiseCloud") is True:
+            if destination["preparationIntent"] == "compatible":
+                raise ValueError("Choose a compression profile for an iCloud space-saving replacement")
             if value["kind"] != "icloud" or destination["cloudCopies"] != "optimised":
                 raise ValueError("Choose an optimised iCloud replacement")
             destination["optimiseCloud"] = True

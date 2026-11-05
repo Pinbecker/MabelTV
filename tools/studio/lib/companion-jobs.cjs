@@ -34,11 +34,14 @@ class CompanionJobs {
     if (!type) return null;
     await this.portal.connect();
     if (remote.match) return { ...remote.match, device: this.portal.current.device };
-    const query = String(metadata.title || remote.title).replace(/[._]/g, ' ').replace(/\b(19|20)\d{2}\b.*$/, '').replace(/\bS\d{1,2}E\d{1,3}\b.*$/i, '').trim();
+    const title = String(metadata.title || remote.title).replace(/[._]/g, ' ');
+    const stamp = [...title.matchAll(/\b(?:19|20)\d{2}\b/g)].filter(value => value.index > 0).at(-1);
+    const year = String(metadata.year || stamp?.[0] || '');
+    const query = (stamp ? title.slice(0, stamp.index) : title).replace(/\bS\d{1,2}E\d{1,3}\b.*$/i, '').replace(/[([\s-]+$/, '').trim();
     try {
       const result = await this.portal.searchTitles(query, type);
       const normal = value => value.toLowerCase().replace(/[^a-z0-9]/g, '');
-      const exact = result.results.filter(i => normal(i.title) === normal(query));
+      const exact = result.results.filter(i => normal(i.title) === normal(query) && (!year || String(i.year) === year));
       return exact.length === 1 ? { ...exact[0], device: this.portal.current.device } : null;
     } catch { return null; }
   }
@@ -109,6 +112,12 @@ class CompanionJobs {
     if (local.status === 'failed') throw Object.assign(new Error(local.message), { code: local.errorCode });
     if (local.status === 'paused' || local.status === 'cancelled') throw new Error('Stopped');
     state.finishing = true;
+    if (remote.metadata_only) {
+      state.progress = { status: 'complete', stage: 'complete', percent: 100, message: 'Title details updated',
+        result: local.result, matchedTitle: local.match || null, savedCloudPath: local.savedCloudPath || '',
+        metadataWarning: local.metadataWarning || local.subtitleWarning || '' };
+      return;
+    }
     if (remote.destination.piReturn) {
       await recordProvenance(remote, local, this.portal, signal);
       cleanWorkingCopies(remote, local, this.store);
@@ -137,7 +146,7 @@ class CompanionJobs {
     if ((remote.destination.saveCloud || remote.destination.kind === 'icloud') && !cloudCopiesComplete(remote, local)) {
       state.progress = { stage: 'saving-cloud', percent: 0, message: 'Saving to iCloud' };
       cloudPath = await saveCloud(remote, local, this.store, this.portal, signal, progress => {
-        state.progress = { stage: 'saving-cloud', ...progress, message: progress.syncing ? 'Waiting for iCloud to confirm the file' : 'Saving to iCloud' };
+        state.progress = { stage: 'saving-cloud', ...progress, message: progress.waitingForFile ? progress.message : progress.syncing ? 'Waiting for iCloud to confirm the file' : 'Saving to iCloud' };
       }, this.queue.media.getTools?.());
       this.store.update(local.id, { savedCloudPath: cloudPath });
     }

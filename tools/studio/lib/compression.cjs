@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { run } = require('./process.cjs');
 const mediaPolicy = require('./media-policy.cjs');
-const { policy, compressionPlan, outputGeometry } = mediaPolicy;
+const { policy, compressionPlan, outputGeometry, outputFrameRate, outputLevel } = mediaPolicy;
 const availability = new Map();
 async function ensureIntel(tools, signal) {
   if (!tools.ffmpeg) throw new Error('FFmpeg is unavailable. Check Settings.');
@@ -22,26 +22,31 @@ function videoFilters(analysis, target) {
   const canvasHeight = Math.max(height, Math.min(target === 'mabel' ? 720 : 1080, Math.ceil(width * 9 / 32) * 2));
   const hdr = ['smpte2084', 'arib-std-b67'].includes(analysis.colorTransfer);
   const toneMap = hdr ? 'zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,' : '';
-  const deinterlace = analysis.interlaced ? 'bwdif=mode=send_frame:parity=auto:deint=interlaced,' : '';
+  const deinterlace = analysis.interlaced ? 'bwdif=mode=send_field:parity=auto:deint=all,' : '';
   return deinterlace + toneMap + `scale=trunc(iw*sar/2)*2:ih,setsar=1,scale=${width}:${height}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,pad=${width}:${canvasHeight}:(ow-iw)/2:(oh-ih)/2,format=yuv420p,setparams=range=limited:color_primaries=bt709:color_trc=bt709:colorspace=bt709`;
 }
 async function encodeCompression({ file, destination, target, analysis, tools, signal, progress, inspect, compression, allowRisk = false }) {
   const compatible = compression === 'compatible';
+  const expectedFps = outputFrameRate(analysis, true);
   const plan = compatible ? null : compressionPlan(analysis, compression, target);
   if (plan?.risky && !allowRisk) { const error = new Error(plan.warning + ' Confirm compression or keep the existing copy.'); error.code = 'QUALITY_REVIEW'; throw error; }
   if (path.resolve(file) === path.resolve(destination)) throw new Error('The original and output paths must be different.');
   await ensureIntel(tools, signal);
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   const stats = fs.statSync(file), free = fs.statfsSync(path.dirname(destination));
-  if (Number(free.bavail) * Number(free.bsize) < (plan?.targetBytes || analysis.bytes) + 256 * 1024 ** 2) throw new Error('Not enough free space for safe preparation.');
   const partial = destination + '.part.mp4', maximumRate = target === 'mabel' ? 2500000 : policy.maximumVideoBitrate;
-  const rate = compatible ? ['-global_quality', '20'] : ['-b:v', String(plan.videoBitrate)];
+  const expectedBytes = plan?.targetBytes || Math.ceil((maximumRate + 192000) * analysis.duration / 8);
+  if (Number(free.bavail) * Number(free.bsize) < expectedBytes + 256 * 1024 ** 2) throw new Error('Not enough free space for safe preparation.');
+  // LA_ICQ ignores VBV limits. Use the destination ceiling for compatibility,
+  // independent of source size, so the output passes the same playback checks.
+  const rate = ['-b:v', String(compatible ? maximumRate : plan.videoBitrate)];
   const proof = { version: policy.version, profile: plan?.profile.id || 'compatible', encoder: policy.encoder,
-    preset: policy.preset, lookAhead: true, sourceBytes: plan?.sourceBytes || analysis.bytes, duration: analysis.duration };
+    preset: policy.preset, lookAhead: true, sourceBytes: plan?.sourceBytes || analysis.bytes, duration: analysis.duration,
+    sourceFps: analysis.fps, outputFps: expectedFps };
   const args = ['-nostdin', '-hide_banner', '-loglevel', 'warning', '-y', '-i', file, '-map', '0:v:0',
     '-vf', videoFilters(analysis, target), '-c:v', policy.encoder, '-preset', policy.preset, '-look_ahead', '1', ...rate,
     '-maxrate', String(maximumRate), '-bufsize', String(target === 'mabel' ? 5000000 : policy.bufferSize),
-    '-profile:v', 'high', '-level:v', '4.1', '-pix_fmt', 'yuv420p', '-fpsmax', '30',
+    '-profile:v', 'high', '-level:v', outputLevel(analysis, target), '-pix_fmt', 'yuv420p', '-fps_mode', 'passthrough',
     '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709',
     '-bsf:v', 'h264_metadata=colour_primaries=1:transfer_characteristics=1:matrix_coefficients=1:video_full_range_flag=0',
     '-map', '0:a:0?', '-c:a', 'aac', '-b:a', String(plan?.audioBitrate || 192000), '-ac', '2',
@@ -55,6 +60,10 @@ async function encodeCompression({ file, destination, target, analysis, tools, s
     const now = fs.statSync(file);
     if (now.size !== stats.size || now.mtimeMs !== stats.mtimeMs || now.ino !== stats.ino) throw new Error('The original changed during conversion. It was kept.');
     const validated = await inspect(partial, target, signal);
+    const expectedFrames = analysis.frameCount * (analysis.interlaced ? 2 : 1);
+    if (Math.abs(validated.fps - expectedFps) > .005
+        || expectedFrames && validated.frameCount && expectedFrames !== validated.frameCount)
+      throw new Error('The prepared video did not preserve the source motion. The original was kept.');
     if (!validated.ready || Math.abs(validated.duration - analysis.duration) > 2 || validated.hasAudio !== analysis.hasAudio)
       throw new Error('The prepared video failed validation. The original was kept.');
     if (!compatible && validated.bytes >= analysis.bytes)

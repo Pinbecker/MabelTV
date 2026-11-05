@@ -13,6 +13,7 @@ test('film review can cancel, correct and confirm; metadata retry survives resta
   const file = path.join(root, 'Shrek (2001).mp4');
   await run(resolveTools('').ffmpeg, ['-v','error','-y','-f','lavfi','-i','testsrc2=size=1280x720:rate=25','-t','3','-c:v','libx264','-b:v','4000k','-pix_fmt','yuv420p','-movflags','+faststart',file]);
   let creates = 0, chunks = 0, bytes = 0, total = 0, applies = 0, uploadsConfirmed = false;
+  let remoteJob = null;
   const id = 'a'.repeat(32), queries = [];
   const server = http.createServer(async (request, response) => {
     const json = (value, code = 200) => { response.writeHead(code, { 'Content-Type': 'application/json' }); response.end(JSON.stringify(value)); };
@@ -28,6 +29,24 @@ test('film review can cancel, correct and confirm; metadata retry survives resta
         { media_type: 'movie', tmdb_id: 100, title: 'Shrek the Musical', year: '2013', overview: 'A stage performance.' }
       ] });
     }
+    if (request.url === '/api/studio/desktop') {
+      const input = await body(), source = input.inputs[0];
+      remoteJob = {id:'b'.repeat(32),claim:'fixture-claim',source:{type:'import',path:source.path,
+        worker:input.worker,bytes:source.bytes,mtime:source.mtime},title:source.title,match:source.match,
+        destination:{...input.destination,saveCloud:false,temporaryWork:false,keepOptimised:true}};
+      return json({jobs:[remoteJob]});
+    }
+    if (request.url === '/api/studio/worker') {
+      const input=await body(), jobs=remoteJob && !remoteJob.claimed ? [{...remoteJob}] : [];
+      if(remoteJob) remoteJob.claimed=true;
+      return json({jobs,requests:[],acknowledgedJobs:(input.activeJobs||[]).map(value=>({id:value.id,command:''}))});
+    }
+    if (request.url === '/api/studio/backup') return json({available:false});
+    if (request.url === '/api/studio/provenance' || request.url === '/api/studio/backup/profile') return json({ok:true});
+    if (request.url === '/api/studio/action') {
+      const input=await body();remoteJob.claimed=false;remoteJob.metadata_only=input.action==='metadata';
+      if(input.match)remoteJob.match=input.match;return json({ok:true});
+    }
     if (request.url === '/api/my-tv/uploads') {
       creates++; expect(uploadsConfirmed).toBe(true); const input = await body(); total = input.size;
       return json({ id, offset: 0, transfer_state: 'active' });
@@ -37,7 +56,7 @@ test('film review can cancel, correct and confirm; metadata retry survives resta
     }
     if (request.url === '/api/uploads/' + id) return json({ id, offset: bytes, status: bytes === total && total ? 'complete' : 'uploading', complete: bytes === total && !!total, file_name: 'Actual Shrek.mp4' });
     if (request.url === '/api/tmdb/apply') {
-      applies++; expect(await body()).toEqual({ file: 'Actual Shrek.mp4', tmdb_id: 808 });
+      applies++; expect(await body()).toEqual({ file: 'Actual Shrek.mp4', tmdb_id: 808, studio_upload: id });
       return applies === 1 ? json({ error: 'Metadata service temporarily unavailable' }, 503) : json({ ok: true, metadata: { tmdb_id: 808 } });
     }
     return json({ error: 'Not found' }, 404);
@@ -45,7 +64,7 @@ test('film review can cancel, correct and confirm; metadata retry survives resta
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const store = new Store(root); store.state.settings.localUrl = 'http://127.0.0.1:' + server.address().port;
   store.state.settings.connectionMode = 'local'; store.state.settings.remoteUrl = ''; store.save();
-  const env = { ...process.env, STUDIO_TEST_DATA: root }; delete env.ELECTRON_RUN_AS_NODE;
+  const env = { ...process.env, STUDIO_TEST_DATA: root, STUDIO_TEST_COMPANION: '1' }; delete env.ELECTRON_RUN_AS_NODE;
   let app;
   try {
     app = await electron.launch({ args: [path.resolve(__dirname, '..')], env }); const page = await app.firstWindow();
@@ -78,7 +97,7 @@ test('film review can cancel, correct and confirm; metadata retry survives resta
     uploadsConfirmed = true; await page.getByRole('button', { name: 'Confirm Shrek', exact: true }).click();
     await page.getByRole('button', { name: 'Completed', exact: true }).click();
     await expect(page.locator('#completed-list .job-metadata-warning')).toContainText('temporarily unavailable', { timeout: 20000 });
-    await expect(page.locator('#completed-list .job-status')).toHaveText('Added to library');
+    await expect(page.locator('#completed-list .job-status')).toHaveText('Complete');
     await page.screenshot({ path: 'test-results/title-metadata-retry.png' });
     await app.close(); fs.unlinkSync(file);
     app = await electron.launch({ args: [path.resolve(__dirname, '..')], env }); const reopened = await app.firstWindow();

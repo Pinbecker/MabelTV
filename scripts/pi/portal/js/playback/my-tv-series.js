@@ -736,7 +736,7 @@
       syncSeriesHeader()
       $('#myTvSeriesOverview').textContent = current.metadata?.overview
         || 'Choose an episode, or match this series with TMDB to add descriptions and artwork.'
-      $('#myTvSeriesSheetPoster').replaceChildren(myTvSeriesArtwork(
+      replaceMyTvArtworkChildren($('#myTvSeriesSheetPoster'), myTvSeriesArtwork(
         current, 'my-tv-series-sheet-art'))
       const favourite = $('#myTvSeriesFavourite')
       favourite.classList.toggle('active', current.favourite === true)

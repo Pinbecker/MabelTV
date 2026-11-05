@@ -5,12 +5,21 @@ studioState.torrentSearch = null
 studioState.torrentInspection = null
 studioState.torrentSelected = new Map()
 let studioTorrentSearching = false, studioTorrentInspecting = null
+let studioTorrentGeneration = 0
+$('#studioTorrentSearch').addEventListener('input', () => {
+  if ($('#studioTorrentSearch').value.trim()) return
+  studioTorrentGeneration++; studioState.torrentRequest = null
+  studioState.torrentSearch = null; studioState.torrentInspection = null; studioState.torrentSelected.clear()
+  studioTorrentInspectionLoading(null); studioTorrentSearchLoading(false)
+  $('#studioTorrentStatus').textContent = ''
+  $('#studioTorrentResults').classList.remove('has-results')
+  $('#studioTorrentResults').replaceChildren(studioEmpty('Find a film or series', 'Search by title, then choose your files.'))
+})
 
 function studioTorrentSearchLoading(busy) {
   studioTorrentSearching = busy
   const root = $('#studioTorrentResults')
   root.setAttribute('aria-busy', String(busy))
-  $('#studioTorrentSearchForm button').disabled = busy || Boolean(studioTorrentInspecting)
   root.querySelector('.studio-search-loading')?.remove()
   if (busy) root.classList.remove('has-results')
   if (busy) {
@@ -21,7 +30,6 @@ function studioTorrentSearchLoading(busy) {
 }
 function studioTorrentInspectionLoading(hash) {
   studioTorrentInspecting = hash
-  $('#studioTorrentSearchForm button').disabled = Boolean(hash) || studioTorrentSearching
   for (const row of $$('#studioTorrentResults .studio-torrent-result')) {
     const busy = row.dataset.torrentHash === hash
     row.disabled = Boolean(hash); row.classList.toggle('is-loading', busy)
@@ -32,15 +40,22 @@ function studioTorrentInspectionLoading(hash) {
   }
 }
 
-async function studioSearchTorrents() {
+async function studioSearchTorrents(replace = false) {
   const query = $('#studioTorrentSearch').value.trim()
+  if (replace) { studioState.torrentRequest = null; studioTorrentSearching = false; studioTorrentInspectionLoading(null) }
   if (query.length < 2 || studioTorrentSearching || studioTorrentInspecting) return
+  const generation = ++studioTorrentGeneration
   studioTorrentSearchLoading(true)
   $('#studioTorrentStatus').textContent = ''
   try {
-    studioState.torrentRequest = await api('/api/studio/torrents/search', { method: 'POST', body: JSON.stringify({ query }) })
+    const request = await api('/api/studio/torrents/search', { method: 'POST', body: JSON.stringify({ query }) })
+    if (generation !== studioTorrentGeneration) return
+    studioState.torrentRequest = request
     await studioApplyTorrents(studioState.torrentRequest)
-  } catch (error) { studioTorrentSearchLoading(false); throw error }
+  } catch (error) {
+    if (generation !== studioTorrentGeneration) return
+    studioTorrentSearchLoading(false); throw error
+  }
 }
 async function studioPollTorrents() {
   const pending = studioState.torrentRequest
@@ -69,12 +84,19 @@ async function studioApplyTorrents(request) {
     row.dataset.torrentHash = item.hash
     row.innerHTML = `<span class="studio-torrent-icon"><svg class="icon"><use href="/portal/icons.svg#signal-film"/></svg></span><span><strong>${escapeHtml(studioVideoLabel(item.title))}</strong><span class="studio-result-facts"><span class="studio-chip">${Number(item.seeders) || 0} seeders</span><span class="studio-result-size">${studioBytes(item.bytes)}</span></span></span><span class="studio-torrent-trailing"><svg class="icon"><use href="/portal/icons.svg#signal-chevron-right"/></svg></span>`
     row.onclick = async () => {
+      const generation = studioTorrentGeneration
+      studioCancelAcquisition()
       studioTorrentInspectionLoading(item.hash)
       status.textContent = 'Loading file details…'
       try {
-        studioState.torrentRequest = await api('/api/studio/torrents/inspect', { method: 'POST', body: JSON.stringify({ request: request.id, hash: item.hash }) })
+        const inspection = await api('/api/studio/torrents/inspect', { method: 'POST', body: JSON.stringify({ request: request.id, hash: item.hash }) })
+        if (generation !== studioTorrentGeneration) return
+        studioState.torrentRequest = inspection
         await studioApplyTorrents(studioState.torrentRequest)
-      } catch (error) { studioTorrentInspectionLoading(null); studioFailure(error) }
+      } catch (error) {
+        if (generation !== studioTorrentGeneration) return
+        studioTorrentInspectionLoading(null); studioFailure(error)
+      }
     }
     root.append(row)
   }
@@ -88,7 +110,6 @@ function studioOpenTorrentReview(request) {
   $('#studioTorrentTitle').textContent = studioVideoLabel(request.result.title)
   $('#studioTorrentSheet').classList.toggle('is-single', files.length === 1)
   $('#studioTorrentFileInfo').textContent = [request.result.title, ...files.map(file => file.path)].join('\n')
-  $('#studioTorrentSheet details').open = false
   $('#studioTorrentFileCount').textContent = `${files.length} video${files.length === 1 ? '' : 's'}`
   $('#studioTorrentReviewError').classList.add('hidden')
   const seasons = [...new Set(files.map(file => file.series).filter(Number.isInteger))].sort((a,b) => a-b), select = $('#studioTorrentSeason')

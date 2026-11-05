@@ -17,10 +17,24 @@ function outputGeometry(analysis, target = 'mytv') {
   return { width: Math.max(2, Math.floor(displayWidth * ratio / 2) * 2),
     height: Math.max(2, Math.floor(analysis.height * ratio / 2) * 2) };
 }
+function outputFrameRate(analysis, required = false) {
+  const source = analysis.fps;
+  if (required && !(Number.isFinite(source) && source > 0))
+    throw Object.assign(new Error('The source frame rate could not be read. The original was kept.'), { code: 'FRAME_RATE' });
+  const fps = (source > 0 ? source : 24) * (analysis.interlaced ? 2 : 1);
+  if (fps > policy.maximumFrameRate + .001)
+    throw Object.assign(new Error(`This video needs ${fps.toFixed(2)} fps. Studio supports up to ${policy.maximumFrameRate} fps without reducing motion. The original was kept.`), { code: 'FRAME_RATE' });
+  return fps;
+}
+function outputLevel(analysis, target) {
+  const { width, height } = outputGeometry(analysis, target);
+  const canvas = Math.max(height, Math.min(target === 'mabel' ? 720 : 1080, Math.ceil(width * 9 / 32) * 2));
+  return Math.ceil(width / 16) * Math.ceil(canvas / 16) * outputFrameRate(analysis, true) > 245760 ? '4.2' : '4.1';
+}
 function compressionProof(probe, bytes, duration) {
   try {
     const value = JSON.parse(probe.format?.tags?.comment || '{}').mabeltv;
-    if (![1, policy.version].includes(value?.version) || !policy.profiles.some(p => p.id === value.profile)
+    if (![1, 2, policy.version].includes(value?.version) || !policy.profiles.some(p => p.id === value.profile)
         || !Number.isSafeInteger(value.sourceBytes) || value.sourceBytes < bytes || !Number.isFinite(value.duration)
         || Math.abs(value.duration - duration) > 2) return null;
     return value;
@@ -31,7 +45,7 @@ function compressionPlan(analysis, value, target = 'mytv') {
   if (!(analysis.duration > 0)) throw new Error('The video duration could not be read. The original was kept.');
   const sourceBytes = analysis.compressionProof?.sourceBytes || analysis.bytes;
   const audioBitrate = analysis.hasAudio === false ? 0 : profile.audioBitrate;
-  const geometry = outputGeometry(analysis, target), fps = Math.min(30, analysis.fps || 24);
+  const geometry = outputGeometry(analysis, target), fps = outputFrameRate(analysis);
   const pixelsPerSecond = Number.isFinite(geometry.width * geometry.height) ? geometry.width * geometry.height * fps : 0;
   const sourceRate = Math.max(0, analysis.bytes * 8 / analysis.duration - audioBitrate);
   const desired = Math.floor(sourceBytes * profile.sourceFraction * policy.muxMargin * 8 / analysis.duration - audioBitrate);
@@ -49,4 +63,4 @@ function compressionPlan(analysis, value, target = 'mytv') {
 function reusableCompression(analysis, value, target) {
   return compressionPlan(analysis, value, target).keepExisting;
 }
-module.exports = { policy, qualityWarning, compressionProfile, compressionProof, compressionPlan, reusableCompression, outputGeometry };
+module.exports = { policy, qualityWarning, compressionProfile, compressionProof, compressionPlan, reusableCompression, outputGeometry, outputFrameRate, outputLevel };

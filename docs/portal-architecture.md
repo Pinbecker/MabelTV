@@ -130,9 +130,15 @@ ship the fixture form to preserve a test shortcut.
    `core/app-cache.js` owns disposable authorised response snapshots in a
    separate database. `core/assets.js` owns deferred third-party loading.
 2. `portal/js/ui-components.js`: shared DOM components and dialog lifecycle.
+   It also decorates uncovered search fields with the existing Home clear-cross
+   control, retaining existing domain-specific clear handlers. Enter submits
+   Studio searches; their clear controls remain available while loading.
 3. `portal/js/core/foundation.js`: shared state, API, escaping, auth, and base
    helpers. `core/confirmation.js` follows it and owns asynchronous playback
    confirmation with large touch controls; cancellation sends no command.
+   Upload source identities use the shared UUID helper: HTTPS can use
+   `crypto.randomUUID`, while LAN HTTP uses `crypto.getRandomValues` with the
+   same UUID format. A missing secure-context API must not prevent portal boot.
 4. `portal/js/core/scroll.js`: viewport snapshots, shared render preservation,
    horizontal rail restoration and screen positions. It precedes
    `portal/js/core/navigation.js`, which owns routes, views and history.
@@ -538,10 +544,90 @@ requests use the shared Studio polling lifecycle; provider text is escaped and
 only hash-bound server selections reach the queue. The four compact tabs share
 the normal Studio route and Back behaviour, including `/torrents` deep links.
 
-`studio/library.js` owns the My TV Studio route, independent iCloud catalogue and BBC iPlayer programme/episode browser. `studio/queue.js` owns shared destination, metadata matching, activity and private connection sheets. `experience-studio.css` uses shared theme tokens with compact segmented tabs, quiet headings, custom select controls and content-sized dialogs matching the refined portal. Destructive confirmation keeps the named selection, one full-width action and a separate cancel control. My TV Home and My Library link to Studio; primary navigation, Back and offline handling remain shared.
+`studio/library.js` owns the My TV Studio route, independent iCloud catalogue and BBC iPlayer programme/episode browser. `studio/queue.js` owns shared destination, metadata matching, activity and private connection sheets. `experience-studio.css` uses shared theme tokens with compact segmented tabs, quiet headings and the shared film header, settings cog and action cards. Destination choices use visible native selects; there are no duplicate option-page triggers. The destination and optimisation sheets retain bounded scrollable bodies; file settings size to their content like My TV film settings. Destructive confirmation keeps the named selection, one full-width action and a separate cancel control. My TV Home and My Library link to Studio; primary navigation, Back and offline handling remain shared.
 
 The laptop's durable worker reports independent stage progress without refreshing the library or losing form focus. iCloud refresh keeps the previous catalogue on failure. Search requests wait on the Pi while the laptop is offline. Cloud sign-in runs only through the owner-authenticated HTTPS portal and never browser storage. A private Unix socket carries rclone's configuration protocol.
 
-`studio/cloud-library.js` owns four-column My Viewing poster cards, grouped cloud series and the cloud collection picker. `studio/metadata.js` owns background exact matching and explicit rich metadata correction before publishing. `studio/cloud-delete.js` owns only the named deletion confirmation reached from the destination sheet. The library exposes Films/TV/Kids, sort and Collections filters. Cloud collections are independent of My Library folders: the owner can create and assign them from the title's Move to collection action. Existing cloud folders seed the choices; explicit associations use SQLite's reserved Studio records and stable title/file identities without moving files or changing automatic filing. A separate collection revision refreshes other open portals. Activity keeps keyed rows with a Studio-specific version marker, compact status/actions and collapsed diagnostics; the portal system-version marker is reserved for actual version labels.
+`studio/cloud-library.js` owns four-column My Viewing poster cards, grouped cloud series. iCloud collections are no longer exposed in the portal. `studio/metadata.js` owns background exact matching and explicit rich metadata correction before publishing. `studio/cloud-delete.js` owns only the named deletion confirmation reached from the destination sheet. The library exposes Films/TV/Kids and sorting. My TV collections remain destination choices for Pi filing; cloud collection assignment and filtering are removed. Historical cloud associations remain stored without moving or deleting media. Activity keeps keyed rows with a Studio-specific version marker, compact status/actions with one visible failure message; the portal system-version marker is reserved for actual version labels.
 
-Studio keeps catalogue matching quiet and exposes corrections per title. The library toolbar contains the category selector and Select; refresh sits beside the connection status. Selection mode replaces personal artwork status with an empty circle on each card and a filled tick for chosen titles. Activity lists pending work and actionable failures/metadata warnings; successful completed and cancelled records remain durable but leave the visible list.
+Studio keeps catalogue matching quiet and exposes corrections per title. The library toolbar contains the category selector and Select; refresh sits beside the connection status. Selection mode replaces personal artwork status with an empty circle on each card and a filled tick for chosen titles. Activity lists pending work, actionable failures and the twenty most recent completion receipts. Cancelled records remain durable but leave the visible list.
+
+Activity presentation derives from the actual transfer stage, distinguishing a
+downloaded source, Pi delivery and subsequent iCloud upload confirmation. Legacy
+quality-blocked delivery jobs resume with compatibility checks and without
+consenting to another size reduction. Compress anyway is limited to explicit
+iCloud optimisation requests. A small source is never assumed Pi-compatible.
+
+iCloud title taps open Send to TV directly. The shared film settings cog opens a content-sized sheet for original recovery, title matching, optimisation and deletion. Native dropdowns handle destination, My TV collection and quality without intermediate pages. Sheet bodies own scrolling. Optimisation shows current and estimated size with a plain saving and replacement note, without format tags, percentage badges or expandable technical copy. BBC search has no separate refresh control.
+
+Studio title sheets keep their layout-viewport height when the iOS keyboard
+overlays them. `studio/controls.js` responds to visual-viewport resize and pan
+events by scrolling the whole card while typing, including the large artwork
+header, with trailing space for the occluded area. It keeps the focused field
+and its inline action above the keyboard without scrolling the document. Normal
+body scrolling returns when the keyboard closes; other portal sheets retain
+their existing behaviour.
+
+
+Studio Activity keeps artwork, progress meters and action buttons mounted during
+percentage/speed updates. Its rate comes from the worker's download message.
+The controls owner performs cached, non-blocking artwork-only title lookups when
+no poster is recorded; uncertain matches retain the generic icon. These lookups
+never approve a metadata match or delay a transfer.
+
+The portal assembler embeds `PORTAL_BUILD` from the immutable service-worker
+`SHELL_RELEASE` in `/portal-app.js`. System and help displays this loaded bundle's
+build, not the latest server version or worker-registration state, so an older
+PWA accurately identifies its cached interface.
+
+Studio artwork-only matching treats ampersands and "and" equivalently and can
+match an explicit franchise-prefix subtitle when exactly one movie result fits.
+Recorded TMDB identities take precedence; ambiguous results keep the icon.
+
+### Studio title acquisition and Activity
+
+`studio/acquire.js` owns the Get action on unowned title cards. Its own BBC
+request never changes the iPlayer tab state. Exact numbered series or a film
+with a unique exact title and plausible complete runtime may offer the existing BBC
+download flow; uncertain matches stay silent. Navigation, a changed query,
+inspection and hidden-document transitions invalidate the offer. Cloud
+ownership uses canonical identity across the complete cached catalogue, with
+an exact name/year fallback for unmatched files, rather than the visible page.
+Activity opens the shared title card immediately, without a full-library or
+bootstrap refresh. A targeted local-membership request runs independently of
+metadata and device-cache reads; playback waits only for that Pi check.
+Cloud-only copies do not acquire playback controls from a completed job label.
+Closing or replacing a title aborts its outstanding title/membership requests.
+Failed artwork searches are evicted so a later tap can retry.
+
+The BBC's short film synopsis need not contain its production year. Explicit
+structured/descriptive years must agree, and ambiguous exact films, related
+titles and incompatible runtimes are rejected. An early Get tap can complete
+its runtime metadata lookup independently of the torrent search.
+
+`my-tv-viewing/artwork.js` retains decoded image nodes while a surface updates
+its controls, metadata or ordering. Cloud and My Library grids reconcile stable
+cards; selection changes only selection/action controls. Provider strips retain
+unchanged nodes and back off temporarily unavailable availability summaries.
+Film/series posters, streaming and rental logos, Home rails and season artwork
+reuse matching images. Failed artwork still uses the bounded retry path.
+
+`studio/activity.js` owns Activity rendering and swipe-to-remove for finished
+entries. Active and paused work cannot be dismissed. The repository records
+historyHidden while retaining job status, acquisition/delivery receipts, media
+and recovery provenance; status omits those hidden rows. Activity uses existing
+local film, series and channel metadata before a presentation-only search.
+An identity without a poster is sufficient to open its card, but does not end
+artwork lookup. Existing older adult-series artwork filenames remain bounded
+read-only names within the series artwork cache.
+
+Request diagnostics include failed reads and actions, with route/status/timing
+only and no bodies or query values. Transient gateway/busy GETs have one bounded
+delayed retry; actions are never automatically replayed. Invalid JSON is also
+recorded. The loaded bundle still identifies its own immutable PWA build.
+
+Cloud-to-Pi destinations offer Compatibility only alongside the three
+compression profiles. This sets preparationIntent=compatible; it is not a
+fourth size target. The Windows worker reuses a compatible input, otherwise
+remuxes or performs the required destination conversion. The separate iCloud
+space-saving action still requires a compression profile.

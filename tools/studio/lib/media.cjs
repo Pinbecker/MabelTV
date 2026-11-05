@@ -2,7 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { run } = require('./process.cjs');
-const { compressionProof, reusableCompression, encodeCompression, policy } = require('./compression.cjs');
+const { compressionProof, compressionPlan, reusableCompression, encodeCompression, policy } = require('./compression.cjs');
 const { remuxCompatible } = require('./compatible-media.cjs');
 
 function frameRate(value) { const parts = String(value).split('/').map(Number); return parts.length === 2 ? parts[0] / parts[1] : parts[0]; }
@@ -30,19 +30,19 @@ function analyse(probe, file, target) {
   const myTv = target !== 'mabel'; const reasons = [];
   if (!['.mp4', '.m4v'].includes(path.extname(file).toLowerCase())) reasons.push('MP4 container');
   if (video.codec_name !== 'h264' || video.pix_fmt !== 'yuv420p') reasons.push('compatible H.264 video');
-  if (video.level > 41) reasons.push('playback level');
+  if (video.level > policy.maximumH264Level) reasons.push('playback level');
   if (!['progressive', 'unknown', undefined].includes(video.field_order)) reasons.push('progressive video');
   if (audio.some(stream => stream.codec_name !== 'aac')) reasons.push('AAC audio');
   if (audio.some(stream => stream.channels > 2)) reasons.push('stereo audio');
   if (video.width > (myTv ? 1920 : 1280) || video.height > (myTv ? 1080 : 720)) reasons.push(myTv ? '1080p maximum' : '720p maximum');
-  const fps = frameRate(video.avg_frame_rate || video.r_frame_rate);
-  if (!Number.isFinite(fps) || fps > 30.1) reasons.push('30 fps maximum');
+  const average = frameRate(video.avg_frame_rate), fps = average > 0 ? average : frameRate(video.r_frame_rate);
+  if (!Number.isFinite(fps) || fps <= 0 || fps > policy.maximumFrameRate + .001) reasons.push('supported source frame rate');
   if (Number(probe.format?.bit_rate) > (myTv ? 7000000 : 2800000)) reasons.push('playback bitrate');
   if (!fastStart(file)) reasons.push('fast-start playback');
   const duration = Number(probe.format?.duration) || 0, bytes = fs.statSync(file).size;
   const sar = String(video.sample_aspect_ratio || '1:1').split(':').map(Number);
   return { ready: reasons.length === 0, reasons, width: video.width, height: video.height,
-    fps, duration, bytes, sar: sar[1] > 0 && sar[0] > 0 ? sar[0] / sar[1] : 1, hasAudio: audio.length > 0, colorTransfer: video.color_transfer,
+    fps, frameCount: Number(video.nb_frames) || null, duration, bytes, sar: sar[1] > 0 && sar[0] > 0 ? sar[0] / sar[1] : 1, hasAudio: audio.length > 0, colorTransfer: video.color_transfer,
     codec: video.codec_name, pixelFormat: video.pix_fmt, bitrate: Number(probe.format?.bit_rate) || bytes * 8 / duration,
     subtitleStreams: (probe.streams || []).filter(stream => stream.codec_type === 'subtitle')
       .map(({ index, codec_type, codec_name, tags }) => ({ index, codec_type, codec_name, tags: { language: tags?.language } })),
@@ -63,6 +63,10 @@ class Media {
   }
   async prepare(file, destination, target, signal, progress, reserve, compression = policy.default, options = {}) {
     const analysis = await this.inspect(file, target, signal);
+    // Normal delivery must not demand another lossy size reduction. Compatibility
+    // is still checked below; only a dedicated space-saving request asks for consent.
+    if (compression !== 'compatible' && !options.spaceOnly && !options.allowRisk
+        && compressionPlan(analysis, compression, target).risky) compression = 'compatible';
     if (compression === 'compatible' ? analysis.ready : reusableCompression(analysis, compression, target))
       return { file, analysis, sourceAnalysis: analysis, converted: false, compression };
     reserve?.(analysis);
@@ -75,6 +79,8 @@ class Media {
     try { output = await encodeCompression({ file, destination, target, analysis, tools, signal, progress,
       inspect: this.inspect.bind(this), compression, allowRisk: options.allowRisk === true }); }
     catch (error) {
+      if (!options.spaceOnly && error.code === 'NOT_SMALLER')
+        return this.prepare(file, destination, target, signal, progress, reserve, 'compatible', options);
       if (options.spaceOnly && error.code === 'NOT_SMALLER') return { file, analysis, sourceAnalysis: analysis, converted: false, compression, unchanged: true };
       throw error;
     }

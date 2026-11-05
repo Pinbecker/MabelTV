@@ -205,9 +205,14 @@ class StudioRepositoryMixin:
             job = next((j for j in self._studio_records(db, "job") if j["id"] == identity), None)
             if not job:
                 raise ValueError("That Studio item could not be found")
-            if action not in {"pause", "cancel", "resume", "retry", "metadata", "archive"}:
+            if action not in {"pause", "cancel", "resume", "retry", "metadata", "archive", "dismiss"}:
                 raise ValueError("Choose a Studio queue action")
-            if action in {"pause", "cancel"}:
+            if action == "dismiss":
+                if job["status"] not in {"complete", "failed", "cancelled"}:
+                    raise ValueError("Finish or cancel this item before removing it from Activity")
+                keep_delivery(db, job)
+                job["historyHidden"] = True
+            elif action in {"pause", "cancel"}:
                 if job["status"] in {"complete", "cancelled"}:
                     raise ValueError("This item has already finished")
                 job.update(status="paused" if action == "pause" else "cancelled", command=action)
@@ -229,6 +234,7 @@ class StudioRepositoryMixin:
                     job["metadata_only"] = False
                     job.update(stage="saving-cloud", message="Waiting to save to iCloud", percent=0)
                 job.update(status="queued", command="", worker="", claim="", lease=0, error="")
+                job.pop("historyHidden", None)
             job["updated"] = time.time()
             self._studio_put(db, "job", job)
             return job

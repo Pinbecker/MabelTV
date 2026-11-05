@@ -1,5 +1,60 @@
 # Studio validation — 3 October 2026
 
+## Studio 1.8.0 native desktop library — 5 November 2026
+
+Studio 1.8.0 is installed. The owner completed installation after automatic
+approval review blocked the original installer launch. The installed archive
+exactly matches the tested package. All 25 existing queue IDs and the worker
+identity are preserved. A fresh installed-executable check against the real Pi
+opens 100 cloud cards, its episode selector and Find anything inside one Studio
+window at studio://app/index.html, with no page errors.
+
+iCloud library and Find anything now use the bundled desktop interface at
+`studio://app/index.html`, with Studio's sidebar, typography, cards, dialogs
+and destination forms. The old portal-window owner and openLibrary IPC were
+removed. These sections contain no iframe, webview or external page.
+The bounded desktop-library adapter calls existing authenticated Pi APIs;
+renderer code cannot supply arbitrary endpoint URLs, magnets or local paths.
+No Pi runtime or PWA changes are required; the portal remains Build 344.
+
+Coverage includes cloud filters/sort/selection, retained decoded artwork,
+episode/season choices, original/optimised/both retention, compatibility-only
+delivery, torrent search/inspection/file selection, moving loading indicators,
+clear/stale-search handling, optimisation preview and profile selection,
+original recovery, explicit deletion/replacement confirmation and visible
+changed-file errors. Server jobs appear in the native Activity before local
+conversion journals exist. Active download speed and percentage are retained,
+and queue artwork survives progress updates. Cloud operation completion and
+catalogue revisions update the existing native library without clearing an
+active selection. Conversion, notification, provenance and backup pipelines
+are reused unchanged.
+
+Validation on the final desktop source:
+
+- `MABEL_STUDIO_REQUIRE_INTEL=1 npm test`: 110 passed, no skips or failures.
+- `npm run test:ui`: all 11 actual Electron workflows passed, including the
+  existing iPlayer, presence, title-review, interrupted-upload and restart flows.
+- Architecture: 11 passed. Changed source syntax and diff checks passed.
+- Native light layouts reviewed at 1360 x 900 and 1040 x 720.
+- Development and packaged executables read the real Pi catalogue in isolated
+  profiles: 100 film cards, an episode selector, one Studio window, no page
+  errors. No live media job, download, deletion or conversion was queued.
+- All 58 packaged runtime source files match the tested tree; bundled policy
+  matches the Pi policy. The obsolete portal-window module is absent.
+- Pi player and Library service PIDs/restart counts match before/after.
+
+Installer: `dist/native-library-20261105/MabelTV Studio Setup 1.8.0.exe`
+(231,627,494 bytes), SHA-256
+`4461693cd5041e6675342678ced160a26ba7c1715cf0a326c3ebd3984905a0b3`.
+Application archive SHA-256:
+`fba945fc958dd4f2be421494d6512d1a7e16fd10e2af082c345c8c3caf91e8e9`.
+
+Logs, source/archive hashes, real/synthetic screenshots, the previous installed
+archive and pre-upgrade journal are in ignored
+`out/studio-native-library-20261105`. Installed-archive equality, preserved
+state and the two native screens were verified during source synchronisation.
+The desktop update did not restart either Pi service.
+
 ## Studio 1.2.0 title matching
 
 My TV films now receive an explicit title/year/artwork review before entering

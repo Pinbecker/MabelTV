@@ -125,7 +125,9 @@ class Portal {
     const file = film && job.result.folder && published && !published.includes('/') ? job.result.folder + '/' + published : published;
     if (film && (!job.result?.complete || typeof file !== 'string' || !file)) throw new Error('The portal has not confirmed the published filename. The video is safe; check its metadata in the portal.');
     const result = await this.at(connection.base, film ? '/api/tmdb/apply' : '/api/tmdb/my-tv-series/apply', {
-      method: 'POST', body: film ? { file, tmdb_id: job.match.tmdb_id } : { series: job.destination.series, tmdb_id: job.match.tmdb_id }, signal, timeout: 120000 });
+      method: 'POST', body: film ? { file, tmdb_id: job.match.tmdb_id,
+        ...(job.uploadId && !job.variantLabel && !job.piReturn ? { studio_upload: job.uploadId } : {}) }
+        : { series: job.destination.series, tmdb_id: job.match.tmdb_id }, signal, timeout: 120000 });
     if (!result.ok || result.metadata?.tmdb_id !== job.match.tmdb_id) throw new Error('The portal did not confirm the selected title. Retry metadata or check Library settings.');
     return result;
   }

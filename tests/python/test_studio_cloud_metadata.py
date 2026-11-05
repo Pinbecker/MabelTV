@@ -22,6 +22,16 @@ class StudioCloudMetadataTests(unittest.TestCase):
         return {'title': 'Arrival', 'release_date': '2016-11-10', 'poster_path': '/arrival.jpg',
                 'overview': 'A linguist makes contact.', 'runtime': 116}
 
+    def test_title_ownership_checks_whole_catalogue_and_distinguishes_remakes(self):
+        query = {'tmdb_id': ['329865'], 'media_type': ['movie'], 'title': ['Arrival'], 'year': ['2016']}
+        self.assertEqual(self.library.studio_cloud_catalogue(query)['total'], 1)
+        self.assertEqual(self.library.studio_cloud_catalogue({**query, 'year': ['1996']})['total'], 0)
+        self.assertEqual(self.library.studio_cloud_catalogue({**query, 'media_type': ['tv']})['total'], 0)
+        with mock.patch.object(self.library, 'my_tv_cached_tmdb_request', side_effect=self.tmdb):
+            self.library.studio_cloud_match({'id': 'one', 'automatic': True})
+        self.assertEqual(self.library.studio_cloud_catalogue({**query, 'title': ['Another title']})['total'], 1)
+        self.assertEqual(self.library.studio_cloud_catalogue({**query, 'tmdb_id': ['999']})['total'], 0)
+
     def test_catalogue_only_contains_video_titles_in_films_tv_and_kids(self):
         self.library.studio_cloud_files += [self.file('audio', 'Audiobooks/Book.mp4'),
             self.file('family', 'Family Videos/Holiday.mp4'), self.file('podcast', 'Podcasts & Radio/Show.mp4'),
@@ -37,6 +47,28 @@ class StudioCloudMetadataTests(unittest.TestCase):
         self.assertEqual((series['title'], series['episode_count']), ('Ludwig', 2))
         with self.assertRaises(ValueError):
             self.library.studio_cloud_catalogue({'category': ['audio']})
+
+    def test_tv_extras_and_specials_stay_with_the_show_without_moving_files(self):
+        paths = ['TV/The Office (UK)/Season 01/The Office S01E01.avi',
+                 'TV/The Office (UK)/Extras/Bloopers.avi',
+                 'TV/The Office (UK)/Specials/Christmas Special Part 1.avi',
+                 'TV/The Office (UK)/Specials/Christmas Special Part 2.avi']
+        self.library.studio_cloud_files += [self.file(str(i), path) for i, path in enumerate(paths)]
+        films = self.library.studio_cloud_catalogue({'category': ['films']})['items']
+        self.assertEqual([item['id'] for item in films], ['one'])
+        show = self.library.studio_cloud_catalogue({'category': ['tv']})['items'][0]
+        self.assertEqual(show['path'], 'TV/The Office (UK)')
+        self.assertEqual(show['episode_count'], 4)
+        episodes = self.library.studio_cloud_catalogue({'series': [show['id']]})['items']
+        self.assertEqual({item['path'] for item in episodes}, set(paths))
+        self.assertEqual([item['series'] for item in episodes], [0, 0, 0, 1])
+        self.assertFalse(show['virtualSeries'])
+
+    def test_kids_tv_bonus_files_group_but_film_extras_do_not_become_tv(self):
+        self.library.studio_cloud_files = [self.file('bonus', 'Kids/TV/Puffin Rock/Extras/Behind the scenes.mp4'),
+                                         self.file('film', 'Films/Arrival/Extras/Featurette.mp4')]
+        titles = self.library.studio_cloud_catalogue({})['items']
+        self.assertEqual([(item['kind'], item['category']) for item in titles], [('video', 'films'), ('series', 'kids')])
 
     def test_automatic_match_persists_canonical_metadata_without_publishing_or_player_refresh(self):
         self.library.refresh_tv = mock.Mock()

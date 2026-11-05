@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { pipeline } = require('node:stream/promises');
 const { setTimeout: delay } = require('node:timers/promises');
-const { writeJson, retry } = require('./atomic-json.cjs');
+const { writeJson } = require('./atomic-json.cjs');
 
 function beneath(root, relative) {
   if (typeof relative !== 'string' || relative.includes('\\') || relative.split('/').some(p => p === '..') || path.isAbsolute(relative)) throw new Error('Invalid cloud media path.');
@@ -38,7 +38,21 @@ async function copy(source, target, signal, progress = () => {}, receipt = targe
   const after = await fs.promises.stat(source);
   if (JSON.stringify([path.resolve(source), after.size, after.mtimeMs, after.ino]) !== identity) throw new Error('The original changed while it was being copied. Retry to fetch the current version.');
   if (fs.statSync(partial).size !== stat.size) throw new Error('The cloud download is incomplete. Retry to resume it.');
-  retry(() => fs.renameSync(partial, target));
+  // Cloud providers can hold a completed file well beyond a short filesystem
+  // retry. Keep this job resumable and yield the event loop while the lock lasts.
+  for (;;) {
+    if (signal.aborted) throw new Error('Stopped');
+    const current = await fs.promises.stat(source);
+    if (JSON.stringify([path.resolve(source), current.size, current.mtimeMs, current.ino]) !== identity) throw new Error('The original changed while finishing the copy. Its files were kept.');
+    if ((await fs.promises.stat(partial)).size !== stat.size) throw new Error('The temporary copy changed. Its files were kept.');
+    try { await fs.promises.rename(partial, target); break; }
+    catch (error) {
+      if (!['EBUSY', 'EPERM', 'EACCES'].includes(error.code)) throw error;
+      progress({ percent: 100, bytes: stat.size, total: stat.size, waitingForFile: true,
+        message: 'iCloud file is busy. Retrying automatically.' });
+      await delay(2000, undefined, { signal });
+    }
+  }
   writeJson(receipt, { source: identity, complete: true, mtime: fs.statSync(target).mtimeMs });
   return target;
 }

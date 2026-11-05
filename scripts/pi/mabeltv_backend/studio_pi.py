@@ -8,6 +8,7 @@ import re
 import shutil
 import time
 import uuid
+from .compression import POLICY
 
 
 class StudioPiMixin:
@@ -169,7 +170,12 @@ class StudioPiMixin:
         else:
             source = self.studio_pi_source_path(job["source"])
             stream = self.video_info(part)
-            if stream.get("codec_name") != "h264" or stream.get("pix_fmt") != "yuv420p" or int(stream.get("width", 0)) > 1920 or int(stream.get("height", 0)) > 1080 or self.frame_rate(stream) > 30.1 or any(audio.get("codec_name") != "aac" or int(audio.get("channels", 0)) > 2 for audio in stream.get("audio_streams", [])):
+            if (stream.get("codec_name") != "h264" or stream.get("pix_fmt") != "yuv420p"
+                    or int(stream.get("width", 0)) > 1920 or int(stream.get("height", 0)) > 1080
+                    or not 0 < self.frame_rate(stream) <= POLICY["maximumFrameRate"] + .001
+                    or int(stream.get("level", 0)) > POLICY["maximumH264Level"]
+                    or stream.get("field_order") not in {None, "unknown", "progressive"}
+                    or any(audio.get("codec_name") != "aac" or int(audio.get("channels", 0)) > 2 for audio in stream.get("audio_streams", []))):
                 raise ValueError("The laptop return is not Pi compatible")
             if part.stat().st_size >= source.stat().st_size:
                 raise ValueError("The replacement would not save space. The original was kept")

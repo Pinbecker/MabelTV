@@ -17,7 +17,7 @@ const { releaseCloudCaches } = require('./lib/cloud-cache.cjs');
 const { policy: compressionPolicy } = require('./lib/compression.cjs');
 const { addDesktop } = require('./lib/desktop-flow.cjs');
 const { displayJobs } = require('./lib/job-display.cjs');
-const { openPortalWindow } = require('./lib/portal-window.cjs');
+const { DesktopLibrary } = require('./lib/desktop-library.cjs');
 const { readBackupKey } = require('./lib/backup-key.cjs');
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'studio', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
@@ -86,6 +86,7 @@ async function start() {
     return net.fetch(pathToFileURL(file).href);
   });
   portal = new Portal(store, (url, options) => portalSession.fetch(url, options));
+  const desktopLibrary = new DesktopLibrary(portal);
   iplayer = new IPlayer(app.getPath('userData'), getTools);
   queue = new Queue(store, new Media(getTools), iplayer, portal);
   queue.afterPublish = (job, signal) => sendSubtitles(job, portal, getTools(), signal);
@@ -140,6 +141,11 @@ async function start() {
     void companion.tick(); return jobs;
   });
   handler('action', async (id, action, destination, match) => {
+    if (/^remote:[a-f0-9]{32}$/.test(id)) {
+      if (!['pause', 'cancel', 'resume', 'retry', 'compress-anyway'].includes(action)) throw new Error('Choose an available queue action.');
+      await portal.api('/api/studio/action', { method: 'POST', body: { id: id.slice(7), action: ['retry','compress-anyway'].includes(action) ? 'resume' : action, ...(action === 'compress-anyway' ? { allowRisk: true } : {}) } });
+      void companion.tick(); return displayJobs(store, companion);
+    }
     const job = store.job(id);
     if (action === 'compress-anyway') {
       if (job.status !== 'failed' || job.errorCode !== 'QUALITY_REVIEW') throw new Error('This file is not awaiting compression confirmation.');
@@ -171,10 +177,11 @@ async function start() {
   });
   handler('openWorkspace', () => shell.openPath(store.state.settings.workspace));
   handler('openPortal', () => shell.openExternal(endpoint(portal.current?.base || store.state.settings.remoteUrl)));
-  handler('openLibrary', async tab => {
-    if (!portal.current) await portal.connect();
-    openPortalWindow({ BrowserWindow, parent: window, session: portalSession, base: portal.current.base, tab });
-    return true;
+  handler('libraryRead', (action, value) => desktopLibrary.read(action, value));
+  handler('libraryWrite', async (action, value) => {
+    const result = await desktopLibrary.write(action, value);
+    if (!process.env.STUDIO_TEST_DATA || process.env.STUDIO_TEST_COMPANION === '1') void companion.tick();
+    return result;
   });
   window = new BrowserWindow({ width: 1360, height: 900, minWidth: 1040, minHeight: 720,
     show: false, title: 'MabelTV Studio', backgroundColor: '#f5f6f2', icon: path.join(__dirname, 'ui/studio.ico'),

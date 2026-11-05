@@ -72,6 +72,10 @@ test('prepare locally, send later, recover a lost chunk acknowledgement and reta
     await app.evaluate(({ dialog }, file) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] }); }, original);
     await page.locator('#dropzone').click();
     await expect(page.locator('.selected-file')).toContainText('Studio & sample.mkv');
+    await page.locator('#add-destination [data-target="icloud"]').click();
+    await expect(page.locator('#add-destination [data-collection]')).toHaveCount(0);
+    await page.locator('#add-destination [data-target="mytv"]').click();
+    await expect(page.locator('#add-destination [data-collection]')).toBeVisible();
     await expect(page.locator('#add-destination [data-field="compression"]')).toHaveValue('compact');
     await expect(page.locator('#add-destination [data-field="compression"] option')).toHaveCount(3);
     await page.locator('#add-destination [data-field="compression"]').selectOption('smallest');

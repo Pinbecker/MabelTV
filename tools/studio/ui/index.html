@@ -7,6 +7,7 @@
   <title>MabelTV Studio</title>
   <link rel="stylesheet" href="studio.css">
   <link rel="stylesheet" href="title-review.css">
+  <link rel="stylesheet" href="library.css">
 </head>
 <body>
   <div class="titlebar"><span>MabelTV Studio</span></div>
@@ -16,8 +17,8 @@
     <nav aria-label="Main navigation">
       <button data-view="add" class="nav-button active"><span data-icon="add"></span>Add media</button>
       <button data-view="iplayer" class="nav-button"><span data-icon="search"></span>BBC iPlayer</button>
-      <button data-studio-library="cloud" class="nav-button"><span data-icon="cloud"></span>iCloud library</button>
-      <button data-studio-library="torrents" class="nav-button"><span data-icon="download"></span>Find anything</button>
+      <button data-view="cloud" class="nav-button"><span data-icon="cloud"></span>iCloud library</button>
+      <button data-view="torrents" class="nav-button"><span data-icon="download"></span>Find anything</button>
       <button data-view="queue" class="nav-button"><span data-icon="queue"></span>Queue<span class="nav-count" id="queue-count">0</span></button>
       <button data-view="completed" class="nav-button"><span data-icon="check"></span>Completed</button>
     </nav>
@@ -47,6 +48,11 @@
       <div class="library-check"><span id="library-check-status">Search results are checked against files currently on your TV.</span><button type="button" class="text-button" id="check-library">Check TV library</button></div>
       <div class="iplayer-grid"><div><div id="search-summary" class="list-heading"></div><div id="search-results"></div></div><div class="panel destination-panel" id="iplayer-destination"></div></div>
     </section>
+    <section id="view-cloud" class="view hidden">
+      <div class="library-toolbar"><form id="cloud-search-form" class="library-search"><span data-icon="search"></span><input id="cloud-query" type="search" aria-label="Search iCloud library" placeholder="Search your films and TV" autocomplete="off" maxlength="160"><button type="button" class="icon-button" id="cloud-clear" aria-label="Clear iCloud search" hidden>×</button></form><label><select id="cloud-category" aria-label="Library section"><option value="films">Films</option><option value="tv">TV series</option><option value="kids">Kids</option></select></label><label><select id="cloud-sort" aria-label="Sort library"><option value="name-asc">A to Z</option><option value="name-desc">Z to A</option><option value="size-desc">Largest first</option><option value="size-asc">Smallest first</option><option value="date-desc">Newest releases</option><option value="date-asc">Oldest releases</option></select></label><button type="button" class="button secondary" id="cloud-select">Select</button></div>
+      <div class="list-heading"><span id="cloud-status" role="status"></span><button class="text-button" id="cloud-reload">Reload library</button></div><p id="cloud-operation-status" role="status"></p><div id="cloud-grid" class="library-grid"></div><button type="button" class="button secondary library-more hidden" id="cloud-more">Show more titles</button><div id="cloud-selection" class="library-selection hidden"><span id="cloud-selection-count"></span><button type="button" class="button primary" id="cloud-send-selection">Choose destination</button></div>
+    </section>
+    <section id="view-torrents" class="view hidden"><form id="torrent-form" class="library-search"><span data-icon="search"></span><input id="torrent-query" type="search" aria-label="Find a film or TV series" placeholder="Find a film or TV series" autocomplete="off" minlength="2" maxlength="160"><button type="button" class="icon-button" id="torrent-clear" aria-label="Clear download search" hidden>×</button></form><div class="list-heading"><span id="torrent-status" role="status"></span></div><div id="torrent-results"></div></section>
     <section id="view-queue" class="view hidden"><div class="list-heading"><span>Your next additions</span><span id="queue-summary"></span></div><div id="queue-list"></div></section>
     <section id="view-completed" class="view hidden"><div class="list-heading"><span>Completed media</span><button class="text-button" id="open-workspace">Open media folder <span>↗</span></button></div><div id="completed-list"></div></section>
     <section id="view-settings" class="view hidden">

@@ -11,6 +11,7 @@ function studioBytes(bytes) {
   return `${(bytes / 1024 ** unit).toFixed(unit > 1 ? 1 : 0)} ${['B', 'KB', 'MB', 'GB'][unit]}`
 }
 function studioFailure(error) {
+  if (error?.expectedAbort) return
   $('#studioError').textContent = error.message || 'Studio could not connect. Try again.'
   $('#studioError').classList.remove('hidden')
 }
@@ -18,6 +19,8 @@ function studioLastChecked(time) {
   return time ? `Checked ${new Date(time * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Not checked yet'
 }
 function studioSetTab(tab, { historyEntry = false } = {}) {
+  if (tab !== 'torrents') studioCancelAcquisition()
+  else if (studioState.tab !== 'torrents') studioJobOpenRevision++
   studioState.tab = ['cloud', 'iplayer', 'torrents', 'activity'].includes(tab) ? tab : 'cloud'
   for (const [key, id] of [['cloud', 'studioCloudPane'], ['iplayer', 'studioIplayerPane'], ['torrents', 'studioTorrentPane'], ['activity', 'studioActivityPane']]) {
     $('#' + id).classList.toggle('hidden', studioState.tab !== key)
@@ -54,13 +57,13 @@ async function studioTick() {
     if (studioState.tab === 'cloud' && (status.cloud.checked !== studioLastCloudScan || status.cloud.metadataRevision !== studioState.cloud?.metadataRevision || status.cloud.collectionRevision !== studioState.cloud?.collectionRevision)) await studioLoadCloud()
     if (studioState.request && ['queued', 'active'].includes(studioState.request.status)) await studioPollSearch()
     if (studioState.torrentRequest && ['queued', 'active'].includes(studioState.torrentRequest.status)) await studioPollTorrents()
+    void studioPollIplayerOffer()
     $('#studioError').classList.add('hidden')
   } finally { studioLoading = false }
 }
 async function studioLoadCloud({ more = false } = {}) {
   const query = new URLSearchParams({ q: $('#studioCloudSearch').value, category: $('#studioCloudCategory').value,
     sort: $('#studioCloudSort').value, offset: more ? studioState.items.length : 0 })
-  if ($('#studioCloudCollection').value !== '*') query.set('collection', $('#studioCloudCollection').value)
   const response = await api('/api/studio/cloud?' + query)
   studioState.cloud = response
   studioLastCloudScan = response.checked
@@ -76,14 +79,23 @@ function studioArtwork(item) {
 async function studioSearchIplayer(refresh = false) {
   const query = $('#studioIplayerSearch').value.trim()
   if (!query) return
-  studioState.request = await api('/api/studio/iplayer', { method: 'POST', body: JSON.stringify({ query, refresh }) })
+  let request
+  try { request = await api('/api/studio/iplayer', { method: 'POST', body: JSON.stringify({ query, refresh }) }) }
+  catch (error) {
+    if ($('#studioIplayerSearch').value.trim() !== query) return
+    throw error
+  }
+  if ($('#studioIplayerSearch').value.trim() !== query) return
+  studioState.request = request
   await studioApplySearch(studioState.request)
   void api('/api/iplayer/library').then(inventory => {
     studioState.presence = new Set((inventory.items || []).map(item => item.pid).filter(Boolean))
   }).catch(() => {})
 }
 async function studioPollSearch() {
-  const request = await api('/api/studio/request?id=' + encodeURIComponent(studioState.request.id))
+  const pending = studioState.request
+  const request = await api('/api/studio/request?id=' + encodeURIComponent(pending.id))
+  if (studioState.request?.id !== pending.id) return
   studioState.request = request
   await studioApplySearch(request)
 }
@@ -186,9 +198,8 @@ function renderStudioConnections() {
 
 $$('[data-studio-tab]').forEach(button => button.onclick = () => studioSetTab(button.dataset.studioTab, { historyEntry: true }))
 $('#studioCloudSearch').oninput = () => { clearTimeout(studioCloudTimer); studioCloudTimer = setTimeout(() => void studioLoadCloud().catch(studioFailure), 250) }
-$('#studioCloudCategory').onchange = () => { studioState.selected.clear(); $('#studioCloudCollection').value = '*'; void studioLoadCloud().catch(studioFailure) }
+$('#studioCloudCategory').onchange = () => { studioState.selected.clear(); void studioLoadCloud().catch(studioFailure) }
 $('#studioCloudSort').onchange = () => { studioState.selected.clear(); void studioLoadCloud().catch(studioFailure) }
-$('#studioCloudCollection').onchange = () => { studioState.selected.clear(); void studioLoadCloud().catch(studioFailure) }
 $('#studioCloudMore').onclick = () => void studioLoadCloud({ more: true }).catch(studioFailure)
 $('#studioCloudSelect').onclick = () => { studioState.selecting = !studioState.selecting; if (!studioState.selecting) studioState.selected.clear(); renderStudioCloud() }
 $('#studioCloudContinue').onclick = () => void studioOpenCloudTitles([...studioState.selected.values()]).catch(studioFailure)
@@ -203,7 +214,13 @@ $('#studioCloudRefresh').onclick = async () => {
   finally { button.disabled = false }
 }
 $('#studioIplayerSearchForm').onsubmit = event => { event.preventDefault(); void studioSearchIplayer().catch(studioFailure) }
-$('#studioIplayerRefresh').onclick = () => void studioSearchIplayer(true).catch(studioFailure)
+$('#studioIplayerSearch').addEventListener('input', () => {
+  if ($('#studioIplayerSearch').value.trim()) return
+  studioState.request = null; studioState.programmes = []
+  $('#studioIplayerStatus').textContent = ''
+  $('#studioIplayerPane .studio-iplayer-intro').classList.remove('has-results')
+  $('#studioIplayerGrid').replaceChildren(studioEmpty('Search BBC iPlayer', 'Find a programme or paste an episode link.'))
+})
 $('#studioEpisodeSeason').onchange = renderStudioEpisodes
 $('#studioEpisodesAll').onclick = () => { const inputs = [...$('#studioEpisodes').querySelectorAll('input')]; const all = inputs.some(i => !i.checked); inputs.forEach(input => { input.checked = all; const item = studioState.episodes.find(i => (i.id || i.pid) === input.value); if (all) studioState.episodeSelection.set(input.value, item); else studioState.episodeSelection.delete(input.value) }); studioEpisodeCount() }
 $('#studioEpisodesContinue').onclick = () => {

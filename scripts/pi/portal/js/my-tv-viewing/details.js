@@ -1,5 +1,9 @@
 'use strict'
 
+let myTvTitleRequest = null
+let myTvTitleMembershipPending = false
+let myTvTitleMembershipKnown
+
 function myTvExactDateLabel(value) {
   const source = String(value || '').slice(0, 10)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(source)) return ''
@@ -382,10 +386,15 @@ async function wireLocalSeriesViewingActions(root, series, onUpdate) {
 function renderMyTvTitleDetail(detail, refreshProviders = true,
                                 revision = myTvTitleOpenRevision, syncProgress = true) {
   const sheet = $('#myTvTitleSheet')
-  const localSeries = detail.media_type === 'tv' ? localMyTvSeriesForTitle(detail) : null
-  const localFilm = localMyTvFilmForTitle(detail)
+  if (typeof myTvTitleMembershipKnown === 'boolean') {
+    detail.on_mabeltv = myTvTitleMembershipKnown
+    if (!myTvTitleMembershipKnown) detail.local = null
+  }
+  const localSeries = !myTvTitleMembershipPending && detail.media_type === 'tv' ? localMyTvSeriesForTitle(detail) : null
+  const localFilm = myTvTitleMembershipPending ? null : localMyTvFilmForTitle(detail)
   if (localSeries) {
     detail.local = { kind: 'series', series: localSeries.id,
+      poster: localSeries.metadata?.poster,
       watched_count: Number(localSeries.watched_count || 0) }
   }
   if (detail.media_type === 'tv') detail.on_mabeltv = Boolean((localSeries?.episodes || []).length)
@@ -428,20 +437,20 @@ function renderMyTvTitleDetail(detail, refreshProviders = true,
   })
   renderMyTvPersonalRating($('#myTvTitlePersonalRating'), detail)
   const poster = $('#myTvTitlePoster')
-  poster.replaceChildren()
-  if (detail.poster_path) {
+  const posterSource = detail.poster_path ? myTvPosterUrl(detail.poster_path, 'w500') : myTvViewingPosterUrl(detail)
+  if (posterSource) {
     const image = document.createElement('img')
     image.loading = 'lazy'
     image.decoding = 'async'
-    image.src = myTvPosterUrl(detail.poster_path, 'w500')
+    image.src = posterSource
     image.alt = `Poster for ${detail.title}`
-    poster.append(image)
-  }
+    replaceMyTvArtworkChildren(poster, image)
+  } else if (!poster.querySelector('img')) poster.replaceChildren()
   $('#myTvTitleBackdrop').style.setProperty('--watch-film-art', detail.backdrop_path
     ? `url("${myTvPosterUrl(detail.backdrop_path, 'w1280')}")`
     : 'linear-gradient(135deg,#2e3a34,#101513)')
-  $('#myTvTitleLocal').classList.toggle('hidden', !detail.on_mabeltv || Boolean(localFilm))
-  $('#myTvTitleLocalCopy').textContent = detail.on_mabeltv && !localFilm
+  $('#myTvTitleLocal').classList.toggle('hidden', !myTvTitleMembershipPending && (!detail.on_mabeltv || Boolean(localFilm)))
+  $('#myTvTitleLocalCopy').textContent = myTvTitleMembershipPending ? 'Checking Pi copy…' : detail.on_mabeltv && !localFilm
     ? `Available locally on ${tvName()}. Stored episodes offer Play on TV and Watch on this device.` : ''
   const filmActions = $('#myTvTitleFilmActions')
   filmActions.classList.remove('is-loading-placeholder')
@@ -466,6 +475,7 @@ function renderMyTvTitleDetail(detail, refreshProviders = true,
     portalSheets.dismiss(sheet)
     openMyTvSeriesMoreSheet(localSeries, null, () => restoreMyTvTitleSheet(detail))
   } : null
+  studioTitleGetAction(detail, Boolean(myTvTitleMembershipPending || localFilm || localSeriesActions || detail.on_mabeltv), revision)
   const returnTo = portalSheets.returnTo(sheet)
   const restoreTitle = () => restoreMyTvTitleSheet(detail, returnTo)
   renderMyTvTitleEnrichment(detail, 'myTvTitle', part => {
@@ -599,6 +609,7 @@ function prepareMyTvTitleSheet(title) {
   $('#myTvTitleFilmTv').onclick = null
   $('#myTvTitleFilmHere').onclick = null
   $('#myTvTitleMore').classList.add('hidden')
+  $('#myTvTitleGet').classList.add('hidden')
   $('#myTvTitleMore').onclick = null
   $('#myTvTitleRentBuy').classList.add('hidden')
   $('#myTvTitleRentBuyList').replaceChildren()
@@ -609,7 +620,30 @@ function prepareMyTvTitleSheet(title) {
   return sheet
 }
 
-async function openMyTvTitle(title, returnTo = null) {
+async function refreshMyTvTitleMembership(title, revision, signal) {
+  try {
+    const data = await api(`/api/my-tv/local-title?media_type=${title.media_type}&tmdb_id=${title.tmdb_id}`, {signal})
+    if (revision !== myTvTitleOpenRevision || signal.aborted) return
+    for (const [field, items] of [['my_tv_library', data.films], ['my_tv_series', data.series]]) {
+      library[field] = [...(library[field] || []).filter(item =>
+        Number(item.metadata?.tmdb_id) !== Number(title.tmdb_id)
+        || (field === 'my_tv_library' ? 'movie' : 'tv') !== title.media_type), ...(items || [])]
+    }
+    myTvTitleMembershipPending = false
+    myTvTitleMembershipKnown = Boolean(data.films?.length || data.series?.some(item => item.episodes?.length))
+    const fresh = {...selectedMyTvTitle, on_mabeltv: myTvTitleMembershipKnown}
+    renderMyTvTitleDetail(fresh, false, revision, false)
+  } catch (error) {
+    if (revision !== myTvTitleOpenRevision || error.expectedAbort) return
+    $('#myTvTitleLocalCopy').textContent = 'Pi copy could not be checked. Reopen the card to retry.'
+  }
+}
+
+async function openMyTvTitle(title, returnTo = null, {verifyLocal = false} = {}) {
+  myTvTitleRequest?.abort()
+  const request = myTvTitleRequest = new AbortController()
+  myTvTitleMembershipPending = verifyLocal
+  myTvTitleMembershipKnown = undefined
   const revision = ++myTvTitleOpenRevision
   const localContext = title.local_context || 'library'
   const sheet = prepareMyTvTitleSheet(title)
@@ -622,20 +656,23 @@ async function openMyTvTitle(title, returnTo = null) {
     catalogue_only: title.catalogue_only === true,
   }
   renderMyTvTitleDetail(preview, false, revision, false)
+  if (verifyLocal) void refreshMyTvTitleMembership(title, revision, request.signal)
+  let cached = null, displayed = preview, networkApplied = false
+  // Device cache reads may be delayed by iOS storage work. They must not hold
+  // either the visible card or its network request behind an IndexedDB queue.
+  void readPortalDataCache(cacheKey).then(value => {
+    if (!value || networkApplied || request.signal.aborted || revision !== myTvTitleOpenRevision) return
+    cached = value
+    displayed = {...value.data, viewing: myTvViewingRecord(title),
+      local_context: localContext, catalogue_only: title.catalogue_only === true}
+    renderMyTvTitleDetail(displayed, false, revision, false)
+    rememberMyTvTitleMetadata(displayed, title)
+  })
   try {
-    const cached = await readPortalDataCache(cacheKey)
-    let displayed = preview
-    if (cached && revision === myTvTitleOpenRevision) {
-      displayed = {
-        ...cached.data, viewing: myTvViewingRecord(title),
-        local_context: localContext, catalogue_only: title.catalogue_only === true,
-      }
-      renderMyTvTitleDetail(displayed, false, revision, false)
-      rememberMyTvTitleMetadata(displayed, title)
-    }
     const detail = await api(
-      `/api/my-tv/title?media_type=${title.media_type}&tmdb_id=${title.tmdb_id}`)
-    if (revision !== myTvTitleOpenRevision) return
+      `/api/my-tv/title?media_type=${title.media_type}&tmdb_id=${title.tmdb_id}`, {signal: request.signal})
+    if (revision !== myTvTitleOpenRevision || request.signal.aborted) return
+    networkApplied = true
     const fresh = { ...detail, viewing: myTvViewingRecord(title),
       local_context: localContext,
       catalogue_only: title.catalogue_only === true }
@@ -655,7 +692,7 @@ async function openMyTvTitle(title, returnTo = null) {
       void writePortalDataCache(cacheKey, detail)
     }
   } catch (error) {
-    if (revision !== myTvTitleOpenRevision) return
+    if (revision !== myTvTitleOpenRevision || error.expectedAbort) return
     sheet.classList.remove('is-loading-title')
     sheet.removeAttribute('aria-busy')
     $('#myTvTitleMeta').classList.remove('is-loading-placeholder')
@@ -698,6 +735,7 @@ $('#myTvViewingBack')?.addEventListener('click', () => {
 })
 
 function closeMyTvTitleSheet() {
+  myTvTitleRequest?.abort()
   myTvTitleOpenRevision += 1
   selectedMyTvTitle = null
   portalSheets.dismissJourney()

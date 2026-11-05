@@ -26,7 +26,14 @@ class Companion {
     this.runner = new CompanionJobs(store, queue, iplayer, portal);
     this.backup = new BackupBridge(store, portal, { key: options.backupKey });
     this.torrents = torrents;
-    if (torrents) { this.downloads = new TorrentDownloads(store, torrents); this.torrentRunner = new CompanionTorrents(this.downloads, this.runner, queue.resources); }
+    if (torrents) {
+      this.downloads = new TorrentDownloads(store, torrents, { isCancelled: async id => {
+        if (this.actives.has(id)) return false;
+        const status = await this.portal.api('/api/studio/status');
+        return status.jobs?.some(job => job.id === id && job.status === 'cancelled') === true;
+      } });
+      this.torrentRunner = new CompanionTorrents(this.downloads, this.runner, queue.resources);
+    }
     this.actives = new Map(); this.running = new Set(); this.responses = []; this.request = null; this.closed = false; this.busy = false;
     this.workerSession = crypto.randomBytes(16).toString('hex'); this.progressCursor = 0;
     this.status = { connected: false, message: 'Connecting to your portal' };

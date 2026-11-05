@@ -61,10 +61,10 @@ function studioOpenActions() {
   void studioLoadOriginalAction().catch(() => {})
 }
 function studioCloseActions() {
-  closeLibrarySheet($('#studioActionsSheet'))
+  closeLibrarySheet($('#studioActionsSheet'), false)
+  openLibrarySheet($('#studioDestinationSheet'))
 }
 $('#studioDestinationMore').onclick = studioOpenActions
-$('#studioSendToTv').onclick = () => { closeLibrarySheet($('#studioActionsSheet'), false); openLibrarySheet($('#studioDestinationSheet')) }
 portalSheets.wire($('#studioActionsSheet'), { closeButton: $('#studioActionsClose'), close: studioCloseActions })
 $('#studioConnectionsDone').onclick = () => closeLibrarySheet($('#studioConnectionSheet'))
 async function studioOpenMetadataMatch(item) {
@@ -116,6 +116,12 @@ function studioCloseCloudMatch() {
 }
 $('#studioCloudEditMetadata').onclick = () => void studioOpenMetadataMatch(studioDraft.cloudContext.titles[0]).catch(studioFailure)
 $('#studioCloudMatchForm').onsubmit = event => { event.preventDefault(); void studioSearchCloudMetadata().catch(error => { $('#studioCloudMatchStatus').textContent = error.message }) }
+$('#studioCloudMatchSearch').addEventListener('input', () => {
+  if ($('#studioCloudMatchSearch').value.trim()) return
+  studioMetadata.revision++; studioMetadata.candidate = null
+  $('#studioCloudMatchResults').replaceChildren(); $('#studioCloudMatchStatus').textContent = ''
+  $('#studioCloudMatchUse').disabled = true
+})
 portalSheets.wire($('#studioCloudMatchSheet'), { closeButton: $('#studioCloudMatchClose'), close: studioCloseCloudMatch })
 $('#studioChooseEpisodes').onclick = () => {
   studioState.episodeDraft = studioDraft

@@ -14,6 +14,7 @@ export const icon = name => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d
 export function icons(root = document) { root.querySelectorAll('[data-icon]').forEach(node => node.innerHTML = icon(node.dataset.icon)); }
 export function art(metadata, extra = '') {
   const source = metadata?.artwork || '';
+  if (/^\/[A-Za-z0-9_-]+\.(jpg|png)$/.test(metadata?.poster_path || '')) return `<img class="artwork ${extra}" src="https://image.tmdb.org/t/p/w185${escape(metadata.poster_path)}" alt="" loading="lazy">`;
   return /^https:\/\/ichef\.(?:bbci|bbc)\.co\.uk\//.test(source)
     ? `<img class="artwork ${extra}" src="${escape(source)}" alt="" loading="lazy">`
     : `<span class="artwork artwork-placeholder ${extra}">${icon('film')}</span>`;

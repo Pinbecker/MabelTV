@@ -9,6 +9,7 @@ import re
 import shutil
 import sys
 import threading
+import time
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -654,6 +655,8 @@ class Handler(BaseHTTPRequestHandler):
                 str(query.get("media_type", [""])[0]), str(query.get("tmdb_id", [""])[0])),
             "/api/my-tv/title": lambda: self.server.library.my_tv_title_detail(
                 str(query.get("media_type", [""])[0]), str(query.get("tmdb_id", [""])[0])),
+            "/api/my-tv/local-title": lambda: self.server.library.my_tv_local_membership(
+                str(query.get("media_type", [""])[0]), str(query.get("tmdb_id", [""])[0])),
             "/api/my-tv/person": lambda: self.server.library.my_tv_person_detail(
                 str(query.get("tmdb_id", [""])[0])),
             "/api/my-tv/season": lambda: self.server.library.my_tv_title_season(
@@ -858,6 +861,34 @@ class LibraryServer(ThreadingHTTPServer):
 
     def process_request(self, request: Any, client_address: Any) -> None:
         if not self.worker_slots.acquire(blocking=False):
+            # An abrupt EOF becomes an opaque Cloudflare 502. Keep the worker
+            # ceiling, but make saturation a bounded, retryable HTTP response.
+            data = b'{"error":"The Pi is busy. Try again shortly.","code":"busy"}'
+            try:
+                # Consume the bounded request headers before closing. Closing
+                # with unread bytes can reset TCP and discard the 503 itself.
+                deadline = time.monotonic() + 0.1
+                incoming = b""
+                required = None
+                while len(incoming) < 65536 and time.monotonic() < deadline:
+                    request.settimeout(max(0.001, deadline - time.monotonic()))
+                    part = request.recv(min(4096, 65536 - len(incoming)))
+                    if not part:
+                        break
+                    incoming += part
+                    if b"\r\n\r\n" in incoming and required is None:
+                        header, _ = incoming.split(b"\r\n\r\n", 1)
+                        length = re.search(br"(?im)^content-length:\s*(\d+)", header)
+                        required = len(header) + 4 + (int(length[1]) if length else 0)
+                    if required is not None and (len(incoming) >= required or required > 65536):
+                        break
+                request.settimeout(max(0.001, deadline - time.monotonic()))
+                request.sendall(b"HTTP/1.1 503 Service Unavailable\r\n"
+                    b"Content-Type: application/json\r\nRetry-After: 1\r\n"
+                    b"Connection: close\r\nCache-Control: no-store\r\nContent-Length: "
+                    + str(len(data)).encode() + b"\r\n\r\n" + data)
+            except OSError:
+                pass
             self.shutdown_request(request)
             return
         try:

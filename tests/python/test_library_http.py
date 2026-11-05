@@ -4,6 +4,35 @@ from tests.python.library_test_support import *
 
 
 class LibraryHttpTests(unittest.TestCase):
+    def test_capacity_rejection_is_retryable_json_not_an_abrupt_disconnect(self):
+        for _ in range(24):
+            self.assertTrue(self.server.worker_slots.acquire(False))
+        try:
+            status, body = self.request("/api/setup")
+            self.assertEqual(status, 503)
+            self.assertEqual(body["code"], "busy")
+        finally:
+            for _ in range(24):
+                self.server.worker_slots.release()
+        self.assertEqual(self.request("/api/setup")[0], 200)
+
+    def test_local_title_membership_is_authenticated_fresh_and_has_no_tmdb_dependency(self):
+        self.request("/api/setup", {"setup_code": "135790", "pin": "8642", "channels": mabeltv_library.DEFAULT_CHANNELS})
+        self.cookies.clear()
+        path = "/api/my-tv/local-title?media_type=movie&tmdb_id=85"
+        self.assertEqual(self.request(path)[0], 401)
+        self.request("/api/login", {"pin": "8642"})
+        library = self.fixture.library
+        file = library.my_tv_root / "Raiders.mp4"
+        file.write_bytes(b"film")
+        library.write_my_tv_media_states({file.name: {"library_id": "a" * 32, "metadata": {"tmdb_id": 85}}})
+        with mock.patch.object(library, "tmdb_request", side_effect=AssertionError("Membership must stay local")):
+            status, result = self.request(path)
+            self.assertEqual(status, 200)
+            self.assertEqual(result["films"][0]["path"], file.name)
+            file.unlink()
+            self.assertEqual(self.request(path)[1]["films"], [])
+
     def test_progress_authentication_and_control_capacity_during_bulk_transfers(self):
         self.request("/api/setup", {"setup_code": "135790", "pin": "8642",
                                    "channels": mabeltv_library.DEFAULT_CHANNELS})

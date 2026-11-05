@@ -50,59 +50,49 @@ function studioSyncDestination() {
   $('#studioLibraryTypeField').classList.toggle('hidden', chosen !== 'film')
   $('#studioChannelField').classList.toggle('hidden', chosen !== 'mabel')
   $('#studioSeriesFields').classList.toggle('hidden', !series)
-  $('#studioNewSeriesField').classList.toggle('hidden', $('#studioSeries').value !== 'new' || studioOptionSelect?.id !== 'studioSeries')
+  $('#studioNewSeriesField').classList.toggle('hidden', $('#studioSeries').value !== 'new' || !series)
   const fromCloud = studioDraft?.sources.length > 0 && studioDraft.sources.every(source => source.type === 'cloud')
+  const compression = $('#studioCompression')
+  let compatibility = compression.querySelector('[value="compatible"]')
+  if (fromCloud && chosen !== 'icloud' && !compatibility) compression.add(new Option('Compatibility only', 'compatible'))
+  if ((!fromCloud || chosen === 'icloud') && compatibility) {
+    if (compression.value === 'compatible') compression.value = 'compact'
+    compatibility.remove()
+  }
   const cloudCopies = $('#studioDestinationForm input[name="studioCloudCopies"]:checked')?.value || 'original'
   $('#studioCloudCopiesField').classList.toggle('hidden', Boolean(studioDraft?.matchingJob))
   const originalOnly = chosen === 'icloud' && cloudCopies === 'original'
   const recovering = Boolean(studioDraft?.originalInfo)
+  $('#studioDestinationHeading').textContent = recovering ? 'Download original' : chosen === 'icloud' ? 'Save to iCloud' : 'Send to TV'
   $('#studioOriginalModeField').classList.toggle('hidden', !recovering)
   $('#studioOriginalNote').classList.toggle('hidden', !recovering)
   $('#studioCompressionField').classList.toggle('hidden', Boolean(studioDraft?.matchingJob) || originalOnly)
   $('#studioOriginalQuality').classList.toggle('hidden', !originalOnly || Boolean(studioDraft?.matchingJob))
   $('#studioCloudCopiesLabel').textContent = chosen === 'icloud' ? 'Version' : 'iCloud copy'
   $('#studioCompression').dataset.studioDetail = chosen === 'mabel' ? 'Up to 720p' : 'Up to 1080p'
-  const collections = chosen === 'icloud' ? studioState.cloud?.collections || [] : library.my_tv_folders || []
+  const collections = library.my_tv_folders || []
   const collection = $('#studioTargetCollection')
-  const scope = chosen === 'icloud' ? 'iCloud collection' : 'TV collection'
-  $('#studioTargetCollectionField > span').textContent = scope
+  const scope = 'My TV collection'
+  $('#studioTargetCollectionField label strong').textContent = scope
   collection.dataset.studioOptions = scope
   collection.replaceChildren(new Option('Unfiled', ''), ...collections.map(name => new Option(name, name)), new Option('New collection…', '__new__'))
   collection.value = studioDraft?.targetCollections[chosen] || ''
-  $('#studioTargetCollectionField').classList.toggle('hidden', chosen === 'mabel' || Boolean(studioDraft?.matchingJob))
+  $('#studioTargetCollectionField').classList.toggle('hidden', chosen !== 'film' || Boolean(studioDraft?.matchingJob))
+  $('#studioNewCollectionField').classList.toggle('hidden', chosen !== 'film' || collection.value !== '__new__')
   studioSyncSelects()
   studioUpdateCompressionEstimate()
   $('#studioCloudReplaceWarning').classList.toggle('hidden', !fromCloud || cloudCopies !== 'optimised' || Boolean(studioDraft?.matchingJob))
   $('#studioMatchSection').classList.toggle('hidden', !studioDraft?.matchingJob)
-  $('#studioDestinationSubmit').textContent = studioDraft?.matchingJob ? 'Save match and retry metadata' : 'Add to queue'
+  $('#studioDestinationSubmitLabel').textContent = studioDraft?.matchingJob ? 'Save title match' : chosen === 'icloud' ? 'Save to iCloud' : chosen === 'mabel' ? 'Send to Mabel TV' : 'Send to My TV'
   if (recovering) {
     $('#studioCompressionField').classList.add('hidden'); $('#studioCloudCopiesField').classList.add('hidden')
     $('#studioOriginalQuality').classList.remove('hidden')
     $('#studioOriginalQuality .studio-quality-original').firstChild.textContent = chosen === 'icloud' ? 'Original' : 'Pi-compatible copy'
     $('#studioOriginalQuality small').textContent = chosen === 'icloud' ? 'Unchanged source' : 'High quality · destination limits'
-    $('#studioDestinationSubmit').textContent = 'Download original'
+    $('#studioDestinationSubmitLabel').textContent = 'Download original'
   }
 }
-function studioUpdateCompressionEstimate() {
-  const select = $('#studioCompression'), option = select.selectedOptions[0]
-  const sources = studioDraft?.sources || []
-  const sizes = sources.map(source => Number(source.bytes) || source.files?.reduce((n, f) => n + Number(f.bytes || f.size || 0), 0) || 0)
-  const total = sizes.reduce((a, b) => a + b, 0)
-  const fraction = Number(option?.dataset.fraction || .4) * .98
-  const chosen = $('#studioDestinationForm input[name="studioDestination"]:checked')?.value
-  const originalOnly = chosen === 'icloud' && $('#studioDestinationForm input[name="studioCloudCopies"]:checked')?.value === 'original'
-  const known = total > 0 && sizes.every(n => n > 0), panel = $('#studioCompressionEstimate')
-  panel.classList.toggle('is-pending', !known || originalOnly)
-  panel.classList.toggle('hidden', Boolean(studioDraft?.matchingJob))
-  const values = originalOnly ? [['Stored size', known ? studioBytes(total) : 'Pending'], ['Quality', 'Original']]
-    : known ? [[chosen === 'icloud' ? 'Estimated iCloud copy' : 'Estimated TV copy', studioBytes(total * fraction)], ['Smaller by', Math.round((1-fraction)*100) + '%']]
-      : [['Source size', 'Pending'], ['Finished size', 'Pending']]
-  panel.replaceChildren(...values.map(([label, value]) => {
-    const section = document.createElement('section'), name = document.createElement('span'), size = document.createElement('strong')
-    name.textContent = label; size.textContent = value; section.append(name, size); return section
-  }))
-  studioSyncSelects()
-}
+function studioUpdateCompressionEstimate() { studioSyncSelects() }
 async function studioFindMatch() {
   const query = $('#studioMatchQuery').value.trim()
   if (query.length < 2 || !studioDraft) return
@@ -128,11 +118,13 @@ async function studioSubmitDestination(event) {
       await api('/api/studio/action', { method: 'POST', body: JSON.stringify({ id: draft.matchingJob.id, action: 'metadata', match: draft.match }) })
     } else {
       const chosen = $('#studioDestinationForm input[name="studioDestination"]:checked').value
+      if (chosen === 'film' && $('#studioTargetCollection').value === '__new__') throw new Error('Create the collection first.')
       const replaceOriginal = !draft.originalInfo && draft.sources.length > 0 && draft.sources.every(source => source.type === 'cloud') && $('#studioDestinationForm input[name="studioCloudCopies"]:checked').value === 'optimised'
       if (replaceOriginal && !draft.replaceCloudOriginal) { studioOpenReplaceWarning(); return }
       const destination = { kind: chosen === 'film' ? $('#studioLibraryType').value : chosen,
-        compression: $('#studioCompression').value,
-        collection: $('#studioTargetCollection').value,
+        compression: $('#studioCompression').value === 'compatible' ? 'compact' : $('#studioCompression').value,
+        preparationIntent: $('#studioCompression').value === 'compatible' ? 'compatible' : 'compress',
+        collection: chosen === 'film' ? $('#studioTargetCollection').value : '',
         prepare: chosen !== 'icloud' || $('#studioDestinationForm input[name="studioCloudCopies"]:checked').value !== 'original', keepOptimised: false,
         saveCloud: !$('#studioCloudCopiesField').classList.contains('hidden') }
       if (destination.saveCloud) destination.cloudCopies = $('#studioDestinationForm input[name="studioCloudCopies"]:checked').value
@@ -161,75 +153,6 @@ async function studioSubmitDestination(event) {
 function studioJobFailureMessage(error) {
   if (/programme may not be available|unsupported format|VPN\/VPS/i.test(error)) return 'BBC could not provide this programme. Check its current availability or retry another episode.'
   return String(error).split('\n')[0].replace(/^(?:ERROR|WARNING):\s*/i, '').slice(0, 220)
-}
-function renderStudioJobs() {
-  const organiser = studioState.status?.organiser
-  const cloud = (studioState.status?.cloudOperations || []).map(op => ({ ...op, id: 'cloud:' + op.id, cloudOperation: true, title: 'Delete from iCloud', destination: { label: 'iCloud Drive' }, percent: op.items?.length ? op.completed / op.items.length * 100 : 0, message: op.error || `${op.completed || 0} of ${op.items?.length || 1} items` }))
-  if (organiser) cloud.push({ ...organiser, id: 'organiser', cloudOperation: true, destination: { label: 'iCloud' } })
-  const all = [...(studioState.status?.jobs || []), ...cloud]
-  const recent = new Set(all.filter(job => job.status === 'complete').sort((a,b) => b.updated-a.updated).slice(0, 20).map(job => job.id))
-  const jobs = all.filter(job => job.status !== 'cancelled' && !(job.id === 'organiser' && job.status === 'complete') && (job.status !== 'complete' || recent.has(job.id) || job.metadataWarning)).sort((a,b) => b.created-a.created), root = $('#studioJobs')
-  const rows = new Map([...root.querySelectorAll('[data-studio-job]')].map(row => [row.dataset.studioJob, row]))
-  $('#studioJobCount').textContent = `${jobs.length} item${jobs.length === 1 ? '' : 's'}`
-  for (const [index, job] of jobs.entries()) {
-    let row = rows.get(job.id)
-    if (!row) { row = document.createElement('article'); row.className = 'studio-job'; row.dataset.studioJob = job.id }
-    const waitingCloud = job.status === 'active' && (job.stage === 'waiting-for-cloud' || job.stage === 'saving-cloud' && /waiting for iCloud|iCloud.*confirm/i.test(job.message || ''))
-    const version = JSON.stringify([job.title, job.destination, job.status, job.stage, job.percent, job.message, job.error, job.metadataWarning, job.displayStatus])
-    if (row.dataset.studioVersion !== version) {
-      row.dataset.studioVersion = version
-      const status = job.status === 'complete' && job.metadataWarning ? 'Needs attention' : job.displayStatus || ({ queued: 'Queued', active: 'Working', complete: 'Complete', failed: 'Needs attention', paused: 'Paused', cancelled: 'Cancelled' }[job.status] || job.status)
-      const warning = job.error || job.metadataWarning || ''
-      const message = waitingCloud ? (job.destination.kind !== 'icloud' ? 'Available on your TV. ' : '') + 'Uploading to iCloud — waiting for upload confirmation.' : job.error ? studioJobFailureMessage(job.error) : job.message || 'Waiting for Studio'
-      const destination = job.destination.kind === 'local' ? 'Download' : job.destination.label
-      const percent = Math.round(Math.max(0, Math.min(100, Number(job.percent) || 0)))
-      const measurable = job.status === 'active' && (['downloading', 'preparing', 'uploading'].includes(job.stage) || job.cloudOperation && Number.isFinite(job.percent)) && !waitingCloud
-      const source = job.source?.type === 'iplayer' ? 'BBC iPlayer' : job.source?.type === 'cloud' ? 'iCloud' : job.source?.type === 'torrent' ? 'Download' : 'Studio'
-      row.innerHTML = `<div class="studio-job-head"><span class="studio-media-art"></span><div><strong>${escapeHtml(job.source?.type === 'torrent' ? studioVideoLabel(job.title) : job.title)}</strong><span class="studio-job-route">${escapeHtml(source)} <svg class="icon" aria-hidden="true"><use href="/portal/icons.svg#signal-arrow-right"/></svg> ${escapeHtml(destination)}</span></div></div>
-        ${!waitingCloud ? `<div class="studio-job-progress"><div><span>${escapeHtml(status)}</span>${measurable ? `<span class="studio-job-percent">${percent}%</span>` : ''}</div>${measurable ? `<progress max="100" value="${percent}" aria-label="${escapeHtml(job.title)} progress" aria-valuetext="${percent}%"></progress>` : ''}</div>` : ''}
-        <p class="studio-job-wait"><span>${escapeHtml(message)}</span>${waitingCloud ? '<span class="studio-spinner studio-inline-spinner" aria-label="iCloud upload"></span>' : ''}</p>
-        ${warning ? `<details class="studio-job-details"><summary>Details</summary><p>${escapeHtml(warning)}</p></details>` : ''}<div class="studio-job-actions"></div>`
-      const cloudItem = studioState.items.find(item => item.id === job.source?.id)
-      studioMediaArt(row.querySelector('.studio-media-art'), cloudItem ? studioCloudTitle(cloudItem) : job.matchedTitle || job.match)
-      const actions = row.querySelector('.studio-job-actions')
-      const add = (label, action) => {
-        const button = document.createElement('button'); button.type = 'button'; button.className = 'studio-button compact'; button.textContent = label
-        button.onclick = async () => {
-          button.disabled = true
-          try { await api('/api/studio/action', { method: 'POST', body: JSON.stringify({ id: job.id, action }) }); await studioTick() }
-          catch (error) { studioFailure(error) }
-          finally { button.disabled = false }
-        }
-        actions.append(button)
-      }
-      if (!job.cloudOperation && !waitingCloud && ['queued', 'active'].includes(job.status)) add('Pause', 'pause')
-      if (!job.cloudOperation && ['paused', 'failed'].includes(job.status)) add(job.status === 'failed' ? 'Retry' : 'Resume', 'resume')
-      if (job.status === 'failed' && job.errorCode === 'QUALITY_REVIEW') {
-        const proceed = document.createElement('button'); proceed.type = 'button'; proceed.className = 'studio-button compact'; proceed.textContent = 'Compress anyway'
-        proceed.onclick = async () => {
-          if (!await portalConfirm({ title: 'Compress this copy again?', message: 'This file is already heavily compressed. Further compression may reduce picture quality.', confirmLabel: 'Compress anyway' })) return
-          try { await api('/api/studio/action', { method: 'POST', body: JSON.stringify({ id: job.id, action: 'resume', allowRisk: true }) }); await studioTick() }
-          catch (error) { studioFailure(error) }
-        }
-        actions.append(proceed)
-      }
-      if (!job.cloudOperation && !waitingCloud && !['complete', 'cancelled'].includes(job.status)) add('Cancel', 'cancel')
-      if (job.status === 'failed' && job.source?.type === 'iplayer' && /^[bmp][a-z0-9]{7}$/.test(job.source.pid)) {
-        const link = document.createElement('a'); link.className = 'studio-text-button'; link.textContent = 'Check BBC iPlayer'
-        link.href = 'https://www.bbc.co.uk/iplayer/episode/' + job.source.pid; link.target = '_blank'; link.rel = 'noopener noreferrer'
-        actions.append(link)
-      }
-      if (job.status === 'complete' && job.metadataWarning && ['film', 'series'].includes(job.destination.kind)) {
-        const button = document.createElement('button'); button.type = 'button'; button.className = 'studio-text-button'; button.textContent = job.matchedTitle ? 'Retry details' : 'Match title'
-        button.onclick = () => { if (job.matchedTitle) void api('/api/studio/action', { method: 'POST', body: JSON.stringify({ id: job.id, action: 'metadata', match: job.matchedTitle }) }).then(studioTick).catch(studioFailure); else openStudioDestination([], job) }; actions.append(button)
-      }
-    }
-    if (root.children[index] !== row) root.insertBefore(row, root.children[index] || null)
-    rows.delete(job.id)
-  }
-  for (const row of rows.values()) row.remove()
-  if (!jobs.length && !root.querySelector('.studio-jobs-empty')) { const empty = studioEmpty('All caught up', 'Downloads and transfers appear here.', 'signal-check'); empty.classList.add('studio-jobs-empty'); root.append(empty) }
-  if (jobs.length) root.querySelector('.studio-jobs-empty')?.remove()
 }
 async function studioStartAuth() {
   if (location.protocol !== 'https:' && !['127.0.0.1', 'localhost'].includes(location.hostname)) {
@@ -276,10 +199,19 @@ $('#studioTargetCollection').onchange = () => {
   const chosen = $('#studioDestinationForm input[name="studioDestination"]:checked').value
   if ($('#studioTargetCollection').value !== '__new__') studioDraft.targetCollections[chosen] = $('#studioTargetCollection').value
   $('#studioNewCollectionField').classList.toggle('hidden', $('#studioTargetCollection').value !== '__new__')
-  if ($('#studioTargetCollection').value === '__new__') $('#studioNewCollectionName').focus()
+  if ($('#studioTargetCollection').value === '__new__') $('#studioNewCollectionName').focus({ preventScroll: true })
   studioSyncSelects()
 }
-$('#studioMatchQuery').oninput = () => { clearTimeout(studioMatchTimer); studioMatchTimer = setTimeout(() => void studioFindMatch().catch(studioFailure), 350) }
+$('#studioMatchQuery').oninput = () => {
+  clearTimeout(studioMatchTimer)
+  if (!$('#studioMatchQuery').value.trim()) { $('#studioMatchResults').replaceChildren(); return }
+  studioMatchTimer = setTimeout(() => void studioFindMatch().catch(studioFailure), 350)
+}
+$('#studioMatchQuery').onkeydown = event => {
+  if (event.key !== 'Enter') return
+  event.preventDefault(); clearTimeout(studioMatchTimer)
+  void studioFindMatch().catch(studioFailure)
+}
 $('#studioCloudConnect').onclick = () => void studioStartAuth()
 $('#studioAuthForm').onsubmit = async event => {
   event.preventDefault()

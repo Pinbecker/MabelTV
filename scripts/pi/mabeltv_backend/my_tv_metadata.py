@@ -31,6 +31,19 @@ from .constants import (
 
 
 class MyTvMetadataMixin:
+    def my_tv_local_membership(self, media_type: str, tmdb_id: Any) -> dict[str, Any]:
+        """Fresh playback membership for one title, without external metadata I/O."""
+        key = self.my_tv_title_key(media_type, tmdb_id)
+        media_type = key.split(":")[0]
+        identity = int(key.split(":")[1])
+        def matches(item):
+            return str(item.get("metadata", {}).get("tmdb_id", "")) == str(identity)
+        return {"key": key,
+                "films": [item for item in self.my_tv_library() if matches(item)]
+                if media_type == "movie" else [],
+                "series": [item for item in self.my_tv_series_library() if matches(item)]
+                if media_type == "tv" else []}
+
     def my_tv_library_metadata(self, media_type: str, tmdb_id: Any) -> dict[str, Any]:
         """Enrich an existing local title without provider or viewing-state work.
 

@@ -67,7 +67,8 @@ test('destination caps, high frame rates, HDR and anamorphic interlace use the s
       '-t', '3', '-vf', item.filters, '-c:v', 'ffv1', ...item.tags, file]);
     const prepared = await media.prepare(file, destination, item.target, undefined, () => {}, undefined, 'compact');
     assert.equal(prepared.analysis.ready, true); assert.equal(prepared.analysis.width, item.width);
-    assert.ok(prepared.analysis.height <= (item.target === 'mabel' ? 720 : 1080)); assert.ok(prepared.analysis.fps <= 30.1);
+    assert.ok(prepared.analysis.height <= (item.target === 'mabel' ? 720 : 1080));
+    assert.ok(Math.abs(prepared.analysis.fps - Number(item.rate) * (item.name === 'interlace-sar' ? 2 : 1)) < .005);
     assert.equal(prepared.analysis.sar, 1); assert.equal(prepared.analysis.colorTransfer, 'bt709');
     assert.ok(prepared.analysis.bytes < fs.statSync(file).size); assert.ok(fs.existsSync(file));
     await run(tools.ffmpeg, ['-v', 'error', '-xerror', '-i', prepared.file, '-f', 'null', '-']);

@@ -141,13 +141,19 @@ class StudioCloudMixin:
             episode = re.search(r"\bS(\d{1,2})E(\d{1,3})\b", path.stem, re.I) if item["kind"] == "video" else None
             season = next(((index, re.fullmatch(r"(?:Season|Series)\s*(\d{1,2})", part, re.I))
                            for index, part in enumerate(path.parts[:-1]) if re.fullmatch(r"(?:Season|Series)\s*(\d{1,2})", part, re.I)), None) if item["kind"] == "video" else None
-            if not episode and not season:
+            tv_folder = next((index for index, part in enumerate(path.parts[:-2])
+                              if part.casefold() in {"tv", "tv shows", "tv series"}), None) if item["kind"] == "video" else None
+            if not episode and not season and tv_folder is None:
                 titles.append(item)
                 continue
             if season:
                 root = PurePosixPath(*path.parts[:season[0]]) if season[0] > 0 else path.parent
                 name = root.name
                 season_number = int(season[1].group(1))
+            elif tv_folder is not None:
+                root = PurePosixPath(*path.parts[:tv_folder + 2])
+                name = root.name
+                season_number = int(episode.group(1)) if episode else 0
             else:
                 name = path.stem[:episode.start()].strip(" ._-") or path.parent.name
                 root = path.parent / name
@@ -156,7 +162,7 @@ class StudioCloudMixin:
             if identity not in groups:
                 groups[identity] = {"title": {"id": identity, "name": name, "path": str(root),
                     "folder": str(root.parent), "kind": "series", "extension": ".series", "bytes": 0,
-                    "virtualSeries": not bool(season)}, "episodes": []}
+                    "virtualSeries": not bool(season) and tv_folder is None}, "episodes": []}
             group = groups[identity]
             group["title"]["bytes"] += item["bytes"]
             group["episodes"].append({**item, "series_title": name, "series": season_number,

@@ -66,6 +66,39 @@
     })
   }
 
+  const searchControls = new WeakMap()
+  function syncSearchField(input) {
+    if (!input?.matches?.('input[type="search"]')) return
+    let control = searchControls.get(input)
+    if (!control) {
+      input.setAttribute('enterkeyhint', 'search')
+      let host = input.closest('.portal-search,.viewing-search,.channel-page-search')
+      if (host) host.classList.add('portal-search')
+      else {
+        host = document.createElement('span'); host.className = 'portal-search'
+        input.before(host); host.append(icon('signal-search'), input)
+      }
+      control = host.querySelector('button[type="button"]')
+      if (!control) {
+        control = document.createElement('button'); control.type = 'button'
+        control.setAttribute('aria-label', 'Clear ' + (input.getAttribute('aria-label') || input.placeholder || 'search'))
+        control.append(icon('signal-x')); host.append(control)
+        control.onclick = event => {
+          event.preventDefault(); input.value = ''
+          input.dispatchEvent(new Event('input', {bubbles:true})); input.focus()
+        }
+      }
+      searchControls.set(input, control)
+    }
+    control.classList.toggle('hidden', !input.value)
+  }
+  function syncSearchFields() {
+    document.querySelectorAll('input[type="search"]').forEach(syncSearchField)
+  }
+  for (const name of ['input', 'search', 'focusin']) {
+    document.addEventListener(name, event => syncSearchField(event.target), true)
+  }
+
   function cardBackControl(dialog) {
     if (!dialog?.hasAttribute('data-card-sheet')) return null
     const panel = cardPanel(dialog)
@@ -390,6 +423,7 @@
 
   function openDialog(dialog, { returnTo = null, focus = null, lockScroll = true } = {}) {
     if (!dialog) return
+    syncSearchFields()
     const position = capturePortalPosition()
     const snapshot = pendingCardSnapshot
     pendingCardSnapshot = null
@@ -500,6 +534,7 @@
 
   window.MabelPortalUI = Object.freeze({
     icon,
+    syncSearchFields,
     button,
     emptyState,
     artworkStatus,
@@ -519,5 +554,6 @@
   if (cardHistoryMarker()) history.replaceState(cardHistoryState('', 0), '', location.href)
   window.addEventListener('popstate', handleCardHistoryPop, true)
   decorateExperienceCloseButtons()
+  syncSearchFields()
   decorateViewingIntentActions()
 })()

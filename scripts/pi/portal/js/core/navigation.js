@@ -441,6 +441,7 @@
     }
 
     function openView(name, options = {}) {
+      if (name !== 'my-tv-studio') studioCancelAcquisition()
       cancelPortalScrollSettlement()
       // A status belongs to the action that created it, not every page the
       // parent subsequently visits. Clear it whenever navigation begins.
@@ -525,6 +526,7 @@
       if (name === 'my-tv-filmography') renderMyTvFilmography()
       const savedPosition = portalViewPositions.get(`view-${name}`)
       if (!options.restoreScroll && !options.resetScroll && savedPosition) settlePortalPosition(savedPosition)
+      MabelPortalUI.syncSearchFields()
     }
 
     $('#offlineOpenDownloads').onclick = () => {

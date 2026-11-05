@@ -43,7 +43,7 @@ function renderMyTvHomeGrid(root, values, context = 'my-tv-home') {
   const signature = values.map(title => title.key).join('|')
   if (root.dataset.homeTitles === signature && root.children.length) return
   root.dataset.homeTitles = signature
-  root.replaceChildren(...values.map(title => myTvExploreCard(title, {
+  replaceMyTvArtworkChildren(root, ...values.map(title => myTvExploreCard(title, {
     context,
   })))
   if (!values.length) {
@@ -73,7 +73,7 @@ function renderMyTvHomeContinue() {
   }).join('|')
   if (root.dataset.homeTitles !== signature || !root.children.length) {
     root.dataset.homeTitles = signature
-    root.replaceChildren(...resumable.map(value => continueWatchCard(value)))
+    replaceMyTvArtworkChildren(root, ...resumable.map(value => continueWatchCard(value)))
   }
 }
 

@@ -1,14 +1,21 @@
 import { $, escape, icons, attempt, toast } from './shared.js';
 import { Destination } from './destination.js';
 import { Search } from './search.js';
-import { renderJobs } from './jobs.js';
+import { Activity } from './activity.js';
 import { reviewTitles } from './title-review.js';
+import { LibrarySend } from './library-send.js';
+import { CloudLibrary } from './cloud-library.js';
+import { CloudTools } from './cloud-tools.js';
+import { Torrents } from './torrents.js';
 
 let snapshot = null, files = [], view = 'add';
+const activity = new Activity();
 let sourceSizeGeneration = 0;
 const descriptions = {
   add: ['MABELTV STUDIO', 'Add media', 'Choose files, a destination and the copies to keep.'],
   iplayer: ['MABELTV STUDIO', 'BBC iPlayer', 'Search programmes or paste an episode link.'],
+  cloud: ['MABELTV STUDIO', 'iCloud library', 'Your films and TV, ready to send or manage.'],
+  torrents: ['MABELTV STUDIO', 'Find anything', 'Find a film or series and choose your files.'],
   queue: ['MABELTV STUDIO', 'Activity', 'Downloads, conversion, TV delivery and iCloud uploads.'],
   completed: ['MABELTV STUDIO', 'Completed', 'Finished jobs and verified destinations.'],
   settings: ['MABELTV STUDIO', 'Settings', 'Connections, working folder and media tools.']
@@ -23,6 +30,11 @@ const addDestination = new Destination('#add-destination', { catalogue, submit: 
 let search;
 const searchDestination = new Destination('#iplayer-destination', { catalogue, search: true, submit: destination => search.submit(destination) });
 search = new Search(searchDestination);
+const cloudTools = new CloudTools(() => cloud.load());
+const librarySend = new LibrarySend(catalogue, send => cloudTools.open(send));
+const cloud = new CloudLibrary(librarySend);
+activity.onStatus = status => cloud.status(status);
+const torrents = new Torrents(librarySend);
 window.showStudioView = showView;
 window.refreshStudio = refresh;
 
@@ -34,6 +46,8 @@ function showView(name) {
   $('main').scrollTo(0, 0);
   if (name === 'settings') renderSettings();
   if (name === 'iplayer') search?.checkPresence();
+  if (name === 'cloud') { cloud.enter(); void activity.refresh(true); }
+  if (['queue','completed'].includes(name)) void activity.refresh(true);
 }
 function renderFiles() {
   $('#selected-files').innerHTML = files.map((file, index) => `<div class="selected-file"><span title="${escape(file)}">${escape(file.split(/[\\/]/).pop())}</span><button data-remove="${index}" aria-label="Remove ${escape(file.split(/[\\/]/).pop())}">×</button></div>`).join('');
@@ -50,7 +64,7 @@ function addFiles(values) {
 async function refresh() {
   snapshot = await window.studio.snapshot();
   addDestination.render(); searchDestination.render();
-  renderJobs(snapshot.jobs); updateConnection(snapshot.connection);
+  activity.setLocal(snapshot.jobs); updateConnection(snapshot.connection);
   return snapshot;
 }
 function updateConnection(connection) {
@@ -80,7 +94,6 @@ async function connect(mode) {
   }
 }
 document.querySelectorAll('[data-view]').forEach(button => button.onclick = () => showView(button.dataset.view));
-document.querySelectorAll('[data-studio-library]').forEach(button => button.onclick = () => attempt(() => window.studio.openLibrary(button.dataset.studioLibrary)));
 $('#connection-settings').onclick = () => showView('settings');
 $('#dropzone').onclick = () => attempt(async () => addFiles(await window.studio.pickFiles()));
 $('#dropzone').ondragover = event => { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; $('#dropzone').classList.add('dragging'); };
@@ -90,6 +103,8 @@ document.addEventListener('dragover', event => event.preventDefault());
 document.addEventListener('drop', event => event.preventDefault());
 document.addEventListener('error', event => {
   if (event.target.tagName !== 'IMG') return;
+  const libraryArt = event.target.closest('.library-art');
+  if (libraryArt) { libraryArt.innerHTML = '<span data-icon="film"></span>'; icons(libraryArt); return; }
   const review = event.target.closest('.review-result');
   event.target.replaceWith(Object.assign(document.createElement('span'), {
     className: review ? 'review-no-art' : 'artwork artwork-placeholder', textContent: review ? 'No artwork' : 'BBC'
@@ -141,7 +156,7 @@ window.studio.onQueue(jobs => {
   search.libraryChanged(jobs);
   const focus = document.activeElement?.dataset;
   const restore = focus?.jobAction ? { id: focus.id, action: focus.jobAction } : null;
-  renderJobs(jobs);
+  activity.setLocal(jobs); void activity.refresh();
   if (restore && ['queue', 'completed'].includes(view)) document.querySelector(`#view-${view} [data-id="${restore.id}"][data-job-action="${restore.action}"]`)?.focus({ preventScroll: true });
 });
 window.studio.onConnection(async value => { await refresh(); updateConnection(value); toast('Remote access is connected.'); });

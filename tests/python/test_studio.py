@@ -26,6 +26,17 @@ class StudioTests(unittest.TestCase):
     def poll(self, worker="1" * 32, **extra):
         return self.library.studio_worker_poll({"id": worker, "name": "Laptop", "capabilities": ["intel-policy-v2"], **extra})
 
+    def test_cloud_compatibility_intent_survives_queue_and_worker_claim(self):
+        identity = self.add({"kind": "film", "compression": "compact", "preparationIntent": "compatible"})
+        destination = self.database.studio_records("job")[0]["destination"]
+        self.assertEqual(destination["preparationIntent"], "compatible")
+        claimed = self.poll(capabilities=["intel-policy-v2", "compression-presets"])["job"]
+        self.assertEqual(claimed["id"], identity)
+        self.assertEqual(claimed["destination"]["preparationIntent"], "compatible")
+        self.assertEqual(self.library.studio_destination({"kind": "film"})["preparationIntent"], "compress")
+        with self.assertRaisesRegex(ValueError, "compression profile"):
+            self.library.studio_destination({"kind": "icloud", "cloudCopies": "optimised", "optimiseCloud": True, "preparationIntent": "compatible"})
+
     def test_queue_survives_settings_replacement_and_database_reopen(self):
         identity = self.add()
         self.assertNotIn("studio.job." + identity, self.library.settings())

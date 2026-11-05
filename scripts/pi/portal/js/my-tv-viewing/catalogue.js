@@ -285,6 +285,7 @@ function myTvPurchaseProviderAsset(group, detail) {
 
 function renderMyTvPurchaseOffersInto(section, root, detail, result) {
   if (!section || !root) return
+  const previousArtwork = [...root.querySelectorAll('img')]
   root.replaceChildren()
   root.hidden = true
   section.classList.remove('is-expanded')
@@ -384,6 +385,7 @@ function renderMyTvPurchaseOffersInto(section, root, detail, result) {
     }
   }
   section.classList.toggle('hidden', !root.children.length)
+  retainMyTvArtwork(previousArtwork, root)
 }
 
 function openNetflixLaunchChoice(detail, provider, brand, source) {
@@ -625,6 +627,7 @@ function localMyTvAction(detail) {
 }
 
 function renderMyTvProviderLinksInto(root, detail, result, options = {}) {
+  const previousArtwork = [...root.querySelectorAll('img')]
   root.replaceChildren()
   const localAction = Object.prototype.hasOwnProperty.call(options, 'localAction')
     ? options.localAction : localMyTvAction(detail)
@@ -692,6 +695,7 @@ function renderMyTvProviderLinksInto(root, detail, result, options = {}) {
   })
   if (streaming.children.length) root.append(streaming)
   if (!root.children.length) root.innerHTML = '<p>No direct streaming destinations were found in Great Britain.</p>'
+  retainMyTvArtwork(previousArtwork, root)
   renderMyTvPurchaseOffersInto(options.purchaseSection, options.purchaseRoot,
     detail, result)
 }

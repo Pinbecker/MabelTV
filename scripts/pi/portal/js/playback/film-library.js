@@ -470,8 +470,7 @@
       $('#homeSearchSection').classList.toggle('hidden', !query)
       $('#homeSearchCount').textContent = query ? `${results.length} found` : ''
       const searchRail = $('#homeSearchRail')
-      searchRail.innerHTML = ''
-      results.forEach(entry => searchRail.append(homePosterTile(entry)))
+      replaceMyTvArtworkChildren(searchRail, ...results.map(entry => homePosterTile(entry)))
       if (query && !results.length) {
         const empty = document.createElement('p')
         empty.className = 'home-media-empty'
@@ -494,8 +493,7 @@
       $('#homeFavouritesCount').textContent = favourites.length
         ? `${favourites.length} item${favourites.length === 1 ? '' : 's'}` : ''
       const favouriteRail = $('#homeFavouritesRail')
-      favouriteRail.innerHTML = ''
-      favourites.forEach(value => favouriteRail.append(value.type === 'film'
+      replaceMyTvArtworkChildren(favouriteRail, ...favourites.map(value => value.type === 'film'
         ? homePosterTile(value.entry, 'favourite')
         : value.type === 'my-tv-series' ? homeMyTvSeriesTile(value.series)
           : homeChannelTile(value.channel)))
@@ -515,7 +513,7 @@
         entry.kind, entry.channel.number, entry.channel.name, entry.channel.metadata, entry.film,
       ]))
       if (continueRail.dataset.renderSignature !== signature) {
-        continueRail.replaceChildren(...continuing.map(continueWatchCard))
+        replaceMyTvArtworkChildren(continueRail, ...continuing.map(continueWatchCard))
         continueRail.dataset.renderSignature = signature
       } else {
         continuing.forEach((entry, index) => {
@@ -662,7 +660,7 @@
       const poster = metadata.poster ? artworkUrl(metadata.poster) : ''
       $('#watchFilmBackdrop').style.setProperty('--watch-film-art', poster ? `url("${poster}")` : 'linear-gradient(135deg,#2e3a34,#101513)')
       const posterRoot = $('#watchFilmPoster')
-      posterRoot.replaceChildren(filmPoster(film))
+      replaceMyTvArtworkChildren(posterRoot, filmPoster(film))
       const eyebrow = $('#watchFilmEyebrow')
       eyebrow.textContent = `On ${tvName()}`
       eyebrow.classList.add('is-mabeltv')

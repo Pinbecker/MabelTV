@@ -60,12 +60,14 @@ PORTAL_APP_SOURCES = (
     "studio/controls.js",
     "studio/library.js",
     "studio/queue.js",
+    "studio/activity.js",
     "studio/cloud-library.js",
     "studio/metadata.js",
     "studio/cloud-delete.js",
     "studio/cloud-optimise.js",
     "studio/originals.js",
     "studio/torrents.js",
+    "studio/acquire.js",
     "actions.js",
     "lg-tv-remote.js",
 )
@@ -107,7 +109,10 @@ def load_portal_app_script(*, private_scope: bool = True) -> str:
         if root not in candidate.parents or not candidate.is_file():
             raise OSError(f"Portal script is unavailable: {relative}")
         sources.append(f"\n/* {relative} */\n{candidate.read_text(encoding='utf-8').rstrip()}\n")
-    body = "'use strict'\n" + "".join(sources)
+    release = re.search(r"const SHELL_RELEASE = '([0-9]+)'", (SERVICE_ROOT / "service-worker.js").read_text(encoding="utf-8"))
+    if not release:
+        raise OSError("Portal shell build is missing")
+    body = "'use strict'\n" + f"const PORTAL_BUILD = '{release.group(1)}'\n" + "".join(sources)
     return "(() => {\n" + body + "})()\n" if private_scope else body
 
 

@@ -12,6 +12,7 @@ const myTvProviderSummaryPending = new Map()
 let myTvProviderSummaryFlushQueued = false
 let myTvProviderSummaryFlushRunning = false
 let myTvProviderSummaryRetryAfter = 0
+const myTvProviderSummaryFailures = new Map()
 
 function myTvProviderBadgesEnabled() {
   return library?.my_tv_settings?.provider_badges_enabled !== false
@@ -72,7 +73,8 @@ async function flushMyTvProviderSummaries() {
         })) }),
       })
       ;(result.items || []).forEach(item => {
-        if (item.available === false) return
+        if (item.available === false) { myTvProviderSummaryFailures.set(item.key, Date.now() + 60000); return }
+        myTvProviderSummaryFailures.delete(item.key)
         myTvProviderSummaries[item.key] = {
           providers: item.providers || [], sources: item.sources || [], checked: Date.now(),
         }
@@ -90,7 +92,7 @@ async function flushMyTvProviderSummaries() {
 function queueMyTvProviderSummary(title) {
   if (!myTvProviderBadgesEnabled()) return
   const key = myTvProviderSummaryKey(title)
-  if (!key) return
+  if (!key || Date.now() < (myTvProviderSummaryFailures.get(key) || 0)) return
   void restoreMyTvProviderSummaries().then(() => {
     applyMyTvProviderSummary(title)
     if ((myTvProviderSummaries[key]
@@ -125,9 +127,10 @@ function refreshMyTvProviderBadges() {
 function renderMyTvProviderBadges(root, title) {
   root.classList.add('my-tv-provider-badge-host')
   root._myTvProviderTitle = title
-  root.querySelector(':scope > .my-tv-provider-strip')?.remove()
   applyMyTvProviderSummary(title)
-  if (!myTvProviderBadgesEnabled() || title.cinema_only === true) return
+  if (!myTvProviderBadgesEnabled() || title.cinema_only === true) {
+    root.querySelector(':scope > .my-tv-provider-strip')?.remove(); delete root.dataset.providerBadges; return
+  }
   queueMyTvProviderSummary(title)
   const available = []
   if (title.on_mabeltv) {
@@ -151,10 +154,15 @@ function renderMyTvProviderBadges(root, title) {
       available.push({ id: brand.id, label: brand.label, asset: myTvProviderAssetUrl(brand) })
     })
   }
-  if (!available.length) return
+  if (!available.length) { root.querySelector(':scope > .my-tv-provider-strip')?.remove(); delete root.dataset.providerBadges; return }
   available.sort((left, right) =>
     (MY_TV_PROVIDER_BADGE_PRIORITY.get(left.id) ?? 100)
     - (MY_TV_PROVIDER_BADGE_PRIORITY.get(right.id) ?? 100))
+  const signature = JSON.stringify(available.slice(0, 2))
+  if (root.dataset.providerBadges === signature && root.querySelector(':scope > .my-tv-provider-strip')) return
+  root.dataset.providerBadges = signature
+  const previous = [...root.querySelectorAll(':scope > .my-tv-provider-strip img')]
+  root.querySelector(':scope > .my-tv-provider-strip')?.remove()
   const strip = document.createElement('span')
   strip.className = 'my-tv-provider-strip'
   strip.setAttribute('aria-label', `Available on ${available.map(value => value.label).join(', ')}`)
@@ -168,5 +176,6 @@ function renderMyTvProviderBadges(root, title) {
     image.title = provider.label
     strip.append(image)
   })
+  retainMyTvArtwork(previous, strip)
   root.append(strip)
 }

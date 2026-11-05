@@ -12,7 +12,7 @@ import sys
 import threading
 import time
 import uuid
-from .compression import compression_profile
+from .compression import compression_profile, POLICY as COMPRESSION_POLICY
 from pathlib import Path
 from typing import Any
 
@@ -33,7 +33,7 @@ from .constants import (
 class TranscodingMixin:
     def video_info(self, path: Path) -> dict[str, Any]:
         try:
-            result = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "stream=codec_type,codec_name,profile,pix_fmt,width,height,avg_frame_rate,channels,field_order,level", "-of", "json", str(path)], check=False, capture_output=True, text=True, timeout=15)
+            result = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "stream=codec_type,codec_name,profile,pix_fmt,width,height,avg_frame_rate,r_frame_rate,channels,field_order,level", "-of", "json", str(path)], check=False, capture_output=True, text=True, timeout=15)
         except (OSError, subprocess.TimeoutExpired) as error:
             raise ValueError(f"{self.tv_identity()[1]} could not finish checking that video") from error
         try:
@@ -47,19 +47,20 @@ class TranscodingMixin:
 
     @staticmethod
     def frame_rate(stream: dict[str, Any]) -> float:
-        try:
-            numerator, denominator = str(stream.get("avg_frame_rate", "0/1")).split("/", 1)
-            return float(numerator) / float(denominator)
-        except (TypeError, ValueError, ZeroDivisionError):
-            return 0.0
+        for key in ("avg_frame_rate", "r_frame_rate"):
+            try:
+                parts = str(stream.get(key, "0/1")).split("/")
+                rate = float(parts[0]) / (float(parts[1]) if len(parts) == 2 else 1)
+                if 0 < rate < float("inf"):
+                    return rate
+            except (TypeError, ValueError, ZeroDivisionError):
+                pass
+        return 0.0
 
     def needs_playback_optimisation(self, source: Path, stream: dict[str, Any]) -> bool:
-        # Preserve ordinary prepared programmes. High-frame-rate footage is an
-        # exception irrespective of container: this Pi software-decodes it and
-        # cannot sustain 50/60fps playback safely. MOV uploads are also
-        # normalised when they exceed the supported playback dimensions.
+        # 50/60 fps is supported; preparation must preserve the source motion.
         frame_rate = self.frame_rate(stream)
-        return (frame_rate > PLAYBACK_FPS + 0.1
+        return (frame_rate > COMPRESSION_POLICY["maximumFrameRate"] + .001
                 or (source.suffix.lower() == ".mov"
                     and (int(stream.get("width", 0)) > PLAYBACK_WIDTH
                          or int(stream.get("height", 0)) > PLAYBACK_HEIGHT)))
@@ -67,7 +68,7 @@ class TranscodingMixin:
     def optimise_for_playback(self, source: Path, destination: Path) -> None:
         self._optimise_for_playback(
             source, destination,
-            "scale=1280:720:force_original_aspect_ratio=decrease:force_divisible_by=2,fps=30",
+            "scale=1280:720:force_original_aspect_ratio=decrease:force_divisible_by=2",
             "2500k", "3000k", "5000k")
 
     def optimise_my_tv_for_playback(self, source: Path, destination: Path,

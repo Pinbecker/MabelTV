@@ -144,7 +144,7 @@ class Queue extends EventEmitter {
       if (job.match?.title && job.destination.kind === 'film') publishName = safeName(job.match.title + (job.match.year ? ' (' + job.match.year + ')' : '')) + path.extname(output.file);
       if (job.variantLabel) publishName = safeName(path.basename(publishName, path.extname(publishName)) + ' - ' + job.variantLabel) + path.extname(publishName);
       change({ preparedPath: output.file, analysis: output.analysis, sourceAnalysis: output.sourceAnalysis, converted: output.converted,
-        preparedCompression: job.destination.compression || 'compact', publishName }, true);
+        preparedCompression: output.compression || job.destination.compression || 'compact', publishName }, true);
     }
     await this.cleanupOriginal(job);
     if (job.destination.kind === 'local') { change({ status: 'prepared', percent: 100, message: job.originalRemoved ? 'Ready locally. Prepared copy kept; downloaded original removed.' : 'Ready locally. Your original file is unchanged.' }, true); return; }
@@ -173,8 +173,9 @@ class Queue extends EventEmitter {
     if (job.match && !job.matchApplied) {
       change({ status: 'matching', percent: 100, message: 'Video added. Applying ' + job.match.title + ' metadata and artwork…' }, true);
       try {
-        await this.portal.applyMatch(job, signal);
-        change({ matchApplied: true, metadataWarning: '' }, true);
+        const applied = await this.portal.applyMatch(job, signal);
+        change({ matchApplied: true, metadataWarning: '', ...(applied?.publication ? { result: applied.publication,
+          publishName: applied.publication.file_name } : {}) }, true);
       } catch (error) {
         if (signal.aborted) throw error;
         metadataWarning = error.message;

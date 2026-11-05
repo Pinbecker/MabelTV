@@ -1,5 +1,7 @@
 {
-  "version": 2,
+  "version": 3,
+  "maximumFrameRate": 60,
+  "maximumH264Level": 42,
   "default": "compact",
   "muxMargin": 0.98,
   "preset": "slow",

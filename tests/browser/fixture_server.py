@@ -50,6 +50,12 @@ class FixtureLibrary(MabelQueueFixtureMixin):
     def family_media(self):
         return {"assets": [], "stories": [], "memory_settings": []}
 
+    def mabel_playlists(self):
+        return {"playlists": []}
+
+    def studio_cloud_catalogue(self, query):
+        return {"items": [], "total": 0, "configured": False}
+
     def reset_test_state(self) -> None:
         self.pin_required = False
         self.sessions.clear()

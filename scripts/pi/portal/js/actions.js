@@ -5,7 +5,7 @@ let managementBusy = false
       const key = 'mabeltv-upload-source-id'
       let value = localStorage.getItem(key)
       if (!/^[a-f0-9]{32}$/.test(value || '')) {
-        value = crypto.randomUUID().replace(/-/g, '')
+        value = portalRandomUuid().replace(/-/g, '')
         localStorage.setItem(key, value)
       }
       return value

@@ -86,3 +86,48 @@ test('episode cleanup preserves a shared torrent pack until its parent completes
   assert.ok(fs.existsSync(result.files[0].file)); assert.equal(fs.existsSync(prepared), false);
   f.downloader.cleanup(result); assert.equal(fs.existsSync(result.files[0].file), false);
 });
+
+test('a cancelled owner releases its torrent without deleting retained data and a new request proceeds', async t => {
+  const f = fixture(t); f.setComplete(false);
+  const controller = new AbortController();
+  await assert.rejects(f.downloader.download(f.remote, controller.signal, () => controller.abort()), /abort|Stopped/i);
+  const previous = f.downloader.load(f.remote.id), retained = path.join(previous.directory, 'partial.bin');
+  fs.writeFileSync(retained, 'partial download');
+  const next = { ...f.remote, id: 'd'.repeat(32) };
+  f.downloader.options.isCancelled = async id => id === f.remote.id;
+  f.setComplete(true);
+  const result = await f.downloader.download(next, undefined, () => {});
+  assert.ok(result.complete && result.removed);
+  assert.equal(f.downloader.load(f.remote.id).cancelled, true);
+  assert.equal(fs.readFileSync(retained, 'utf8'), 'partial download');
+  assert.ok(f.calls.filter(call => call.route === 'torrents/delete').every(call => call.deleteFiles === false));
+});
+test('paused or unknown owners are never released for a new request', async t => {
+  const f = fixture(t); f.setComplete(false);
+  const controller = new AbortController();
+  await assert.rejects(f.downloader.download(f.remote, controller.signal, () => controller.abort()), /abort|Stopped/i);
+  f.downloader.options.isCancelled = async () => false;
+  await assert.rejects(f.downloader.download({ ...f.remote, id: 'd'.repeat(32) }, undefined, () => {}), /Another queued transfer/);
+  assert.equal(f.calls.some(call => call.route === 'torrents/delete'), false);
+});
+test('a lost cancelled-removal acknowledgement recovers without touching its files', async t => {
+  const f = fixture(t); f.setComplete(false);
+  const controller = new AbortController();
+  await assert.rejects(f.downloader.download(f.remote, controller.signal, () => controller.abort()), /abort|Stopped/i);
+  f.downloader.options.isCancelled = async () => true; f.loseDelete();
+  const next = { ...f.remote, id: 'd'.repeat(32) };
+  await assert.rejects(f.downloader.download(next, undefined, () => {}), /Lost response/);
+  f.setComplete(true);
+  assert.equal((await f.downloader.download(next, undefined, () => {})).complete, true);
+});
+
+test('simultaneous requests for one torrent cannot race its ownership handoff', async t => {
+  const f = fixture(t); let release;
+  const ready = new Promise(resolve => { release = resolve; });
+  f.runtime.ensure = () => ready;
+  const first = f.downloader.download(f.remote, undefined, () => {});
+  await assert.rejects(f.downloader.download({ ...f.remote, id: 'd'.repeat(32) }, undefined, () => {}), /already running/);
+  release(); await first;
+  assert.equal(f.downloader.activeHashes.size, 0);
+  assert.equal(f.calls.filter(call => call.route === 'torrents/add').length, 1);
+});

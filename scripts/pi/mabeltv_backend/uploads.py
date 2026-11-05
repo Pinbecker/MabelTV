@@ -12,7 +12,7 @@ import sys
 import threading
 import time
 import uuid
-from .compression import compression_profile
+from .compression import compression_profile, POLICY as COMPRESSION_POLICY
 from pathlib import Path
 from typing import Any
 
@@ -283,8 +283,8 @@ class UploadConversionMixin:
                 stream = self.video_info(part)
                 cap = (1920, 1080) if my_tv_film_upload or my_tv_series_upload else (1280, 720)
                 requires_laptop = (bool(metadata.get("compression")) or stream.get("codec_name") != "h264"
-                                   or stream.get("pix_fmt") != "yuv420p" or self.frame_rate(stream) > 30.1
-                                   or stream.get("field_order") not in {None, "unknown", "progressive"} or int(stream.get("level", 0)) > 41
+                                   or stream.get("pix_fmt") != "yuv420p" or not 0 < self.frame_rate(stream) <= COMPRESSION_POLICY["maximumFrameRate"] + .001
+                                   or stream.get("field_order") not in {None, "unknown", "progressive"} or int(stream.get("level", 0)) > COMPRESSION_POLICY["maximumH264Level"]
                                    or any(audio.get("codec_name") != "aac" or int(audio.get("channels", 0)) > 2 for audio in stream.get("audio_streams", []))
                                    or int(stream.get("width", 0)) > cap[0] or int(stream.get("height", 0)) > cap[1]
                                    or Path(source_name).suffix.lower() not in {".mp4", ".m4v"})

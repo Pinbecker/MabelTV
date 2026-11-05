@@ -37,6 +37,12 @@ visible below each title. Activity displays numeric percentages for measured
 work. During iCloud upload confirmation it instead shows a live upload status,
 with no misleading full progress bar or Pause/Cancel controls: stopping Studio's
 wait would not stop the Windows iCloud provider's upload.
+
+Finished Activity entries support a left swipe and Remove (or keyboard Delete).
+This hides only the history entry; media and original-source recovery records
+remain. Queued, active and paused work must finish or be cancelled first.
+Existing local posters appear without a fresh title search. Cloud selection and
+sorting, card updates and streaming-service badges keep matching images mounted.
 Real franchises have a folder only when at least two different owned films
 belong to that series; multiple copies of one film count once. Single-film
 series stay loose, and adding/removing a second film rechecks only that series
@@ -100,7 +106,11 @@ default cloud root is `%USERPROFILE%\iCloudDrive`; its working media folder on
 this installation is `%USERPROFILE%\Videos\MabelTV Studio`. Windows can update a
 file's change timestamp while hydrating it, so copy receipts use its size,
 modification time and file identity instead. Interrupted copies resume only
-against the same source version.
+against the same source version. A Windows provider lock at final rename keeps
+the completed partial and retries asynchronously until released or paused/cancelled.
+Source identity and partial size are rechecked before each attempt. Activity
+explains the automatic retry; other downloads, conversions and cloud saves
+continue. Non-lock filesystem errors still preserve the files and report failure.
 
 Choose My TV films/series, a Mabel TV channel, or iCloud. TV uploads are always
 prepared for their destination: Mabel TV uses 720p, My TV uses up to 1080p.
@@ -235,13 +245,24 @@ size, with a small mux allowance. Known source sizes produce an estimate before
 confirmation; BBC recordings without a known download size do not invent one.
 The selected profile persists with the job and old companions cannot claim it.
 
-Preparation uses two-pass H.264/AAC MP4, fast-start playback, and up to 1080p for
+Preparation uses single-pass Intel Quick Sync H.264/AAC MP4, fast-start playback, and up to 1080p for
 My TV/iCloud. Mabel TV channel copies retain their 720p playback cap; an optimised
 iCloud copy is prepared separately from the original when that cap would reduce
 the cloud version. Lower-resolution originals are not upscaled. Each output is
 validated and must be smaller before replacing an original. Embedded encoding
 proof retains the original size basis so repeated sends do not repeatedly
 multiply the reduction; an already smaller compatible prepared copy is reused.
+
+Policy v3 preserves source frame rates up to 60 fps for every choice, including
+Compatibility only. Progressive 50 fps stays 50; interlaced 25 fps becomes 50
+progressive frames to retain field motion. Unsupported rates fail with the
+original kept rather than silently losing frames. Source-frame-aware quality
+floors drive both Windows encoding and metadata-only Pi estimates. 1080p50/60
+uses H.264 level 4.2; 720p50/60 stays within level 4.1 limits. The Pi accepts prepared high
+frame rates without queuing another conversion. Existing v1/v2 encoding records
+remain recognised. Compatibility-only encoding uses the destination bitrate
+ceiling without a source-size reduction target; already compatible files reuse
+or remux their existing video.
 
 ## Validation for the November 2026 build
 

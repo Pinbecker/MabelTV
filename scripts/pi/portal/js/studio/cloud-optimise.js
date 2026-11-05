@@ -5,9 +5,9 @@ function studioRenderOptimiseHero(preview) {
   const context = studioOptimiseDraft.cloudContext, single = context.titles.length === 1
   const title = single ? studioCloudTitle(context.titles[0]) : { title: `${context.titles.length} selected titles` }
   const hero = $('#studioOptimiseHero'); hero.replaceChildren()
-  const art = document.createElement('span'); art.className = 'studio-media-art'; studioMediaArt(art, single ? title : null)
-  const copy = document.createElement('div'); copy.className = 'studio-media-copy'
-  const overline = document.createElement('p'); overline.className = 'section-kicker'; overline.textContent = 'Optimise iCloud copy'
+  const art = document.createElement('span'); art.className = 'watch-film-poster'; studioMediaArt(art, single ? title : null)
+  const copy = document.createElement('div'); copy.className = 'watch-film-heading'
+  const overline = document.createElement('p'); overline.className = 'watch-film-eyebrow'; overline.textContent = 'Optimise iCloud copy'
   const heading = document.createElement('h2'); heading.id = 'studioOptimiseTitle'; heading.textContent = title.title
   const meta = document.createElement('p')
   const runtime = preview.files.length === 1 && (preview.files[0].runtimeMinutes || title.runtime)
@@ -17,17 +17,16 @@ function studioRenderOptimiseHero(preview) {
   hero.append(art, copy)
   const current = preview.files.reduce((total, file) => total + file.bytes, 0)
   $('#studioOptimiseCurrentSize').textContent = studioBytes(current)
-  $('#studioOptimiseCurrentFormat').textContent = [...new Set(preview.files.map(file => file.type))].join(' + ')
   const estimated = preview.files.every(file => Number.isFinite(file.estimatedBytes) && file.estimatedBytes <= file.bytes)
     ? preview.files.reduce((total, file) => total + file.estimatedBytes, 0) : null
   $('#studioOptimiseNewSize').textContent = estimated === null ? 'Not calculated' : `≈ ${studioBytes(estimated)}`
   $('#studioOptimiseNewSize').classList.toggle('is-unknown', estimated === null)
   const savings = $('#studioOptimiseSavings'); savings.replaceChildren()
   const label = document.createElement('span'), value = document.createElement('strong')
-  label.textContent = 'Space saved'
+  label.textContent = 'Estimated saving'
   value.textContent = estimated === null ? 'Pending' : studioBytes(current-estimated)
   savings.append(label, value)
-  if (estimated !== null) { const percent = document.createElement('span'); percent.className = 'studio-chip'; percent.textContent = Math.round((current-estimated)/current*100) + '%'; savings.append(percent) }
+
 }
 async function studioOpenCloudOptimise() {
   const button = $('#studioCloudOptimise'); button.disabled = true
@@ -35,7 +34,6 @@ async function studioOpenCloudOptimise() {
   try {
     studioOptimiseDraft = studioDraft
     $('#studioOptimiseCompression').value = $('#studioCompression').value
-    $('#studioOptimiseSheet details').open = false
     $('#studioOptimiseError').classList.add('hidden')
     closeLibrarySheet($('#studioDestinationSheet'), false)
     closeLibrarySheet($('#studioActionsSheet'), false)
@@ -54,8 +52,7 @@ async function studioRefreshOptimisePreview() {
   $('#studioOptimiseNewSize').append(spinner, document.createTextNode(' Calculating…'))
   $('#studioOptimiseSavings').replaceChildren()
   $('#studioOptimiseFiles').replaceChildren()
-  $('#studioOptimiseOutput').textContent = ''
-  $('#studioOptimiseEstimate').textContent = ''
+
   $('#studioOptimiseError').classList.add('hidden')
   let preview
   try {
@@ -79,8 +76,8 @@ async function studioRefreshOptimisePreview() {
         (file.estimatedBytes ? `estimated size: ${studioBytes(file.estimatedBytes)}` : 'size estimate unavailable')
       row.append(name, detail); files.append(row)
     }
-    $('#studioOptimiseOutput').textContent = preview.output
-    $('#studioOptimiseEstimate').textContent = preview.estimateNote || 'Estimated size from the selected size target. The measured result can vary. The original is kept if the result does not meet the target.'
+    files.classList.toggle('hidden', preview.files.length < 2)
+
     $('#studioOptimiseError').classList.add('hidden')
   $('#studioOptimiseConfirm').disabled = false
   studioSyncSelects()

@@ -8,7 +8,7 @@ function studioCloudTitle(item) {
 }
 function studioCloudCard(item) {
   const title = studioCloudTitle(item)
-  const row = document.createElement('article'); row.className = 'my-tv-viewing-row studio-cloud-card'; row.dataset.cloudId = item.id
+  const row = document.createElement('article'); row.className = 'my-tv-viewing-row studio-cloud-card'; row.dataset.cloudId = item.id; row._studioItem = item
   const opener = document.createElement('button'); opener.type = 'button'; opener.className = 'my-tv-viewing-card-open studio-file'
   opener.setAttribute('aria-label', title.title)
   opener.setAttribute('aria-pressed', String(studioState.selected.has(item.id)))
@@ -16,7 +16,7 @@ function studioCloudCard(item) {
   const poster = myTvViewingPosterUrl(title)
   if (poster) art.append(myTvArtworkImage(poster))
   else { const placeholder = document.createElement('span'); placeholder.className = 'my-tv-viewing-placeholder'; placeholder.append(librarySignalIcon(title.media_type === 'tv' ? 'signal-tv' : 'signal-film')); art.append(placeholder) }
-  if (studioState.selecting) {
+  {
     const selected = document.createElement('span'); selected.className = 'studio-file-tick'; selected.setAttribute('aria-hidden', 'true')
     if (studioState.selected.has(item.id)) { selected.classList.add('is-selected'); selected.append(librarySignalIcon('signal-check')) }
     art.append(selected)
@@ -26,6 +26,7 @@ function studioCloudCard(item) {
   const subtitle = document.createElement('span'); subtitle.textContent = [title.year, studioBytes((item.versions || [item]).reduce((bytes, file) => bytes + file.bytes, 0))].filter(Boolean).join(' · ')
   copy.append(heading, subtitle); opener.append(art, copy)
   opener.onclick = () => {
+    const item = row._studioItem
     if (studioState.selecting) {
       if (studioState.selected.has(item.id)) studioState.selected.delete(item.id)
       else studioState.selected.set(item.id, item)
@@ -34,9 +35,9 @@ function studioCloudCard(item) {
   }
   row.append(opener)
   if (title.tmdb_id) {
-    if (!studioState.selecting) appendMyTvArtworkStatus(art, title)
+    appendMyTvArtworkStatus(art, title)
     renderMyTvProviderBadges(art, title)
-    if (!studioState.selecting) {
+    {
       const actions = myTvExploreActions(title, row, 'studio')
       actions.classList.add('my-tv-viewing-quick-actions'); row.append(actions)
       syncMyTvExploreActions(row, title)
@@ -47,21 +48,33 @@ function studioCloudCard(item) {
 function renderStudioCloud() {
   const cloud = studioState.cloud
   if (!cloud) return
-  const collectionSelect = $('#studioCloudCollection'), collection = collectionSelect.value
-  collectionSelect.replaceChildren(new Option('All collections', '*'), new Option('Unfiled', ''),
-    ...(cloud.collections || []).map(name => new Option(name, name)))
-  collectionSelect.value = collection === '*' || !collection || (cloud.collections || []).includes(collection) ? collection : '*'
   $('#studioCloudStatus').textContent = !cloud.configured ? 'Connect iCloud in Connections.'
     : cloud.scanning ? 'Refreshing iCloud…' : cloud.error || `${cloud.total} titles · ${studioLastChecked(cloud.checked)}`
   const grid = $('#studioCloudGrid'), existing = new Map([...grid.querySelectorAll('[data-cloud-id]')].map(row => [row.dataset.cloudId, row]))
   for (const [index, item] of studioState.items.entries()) {
-    const version = JSON.stringify([item.metadata, item.title, item.year, item.bytes, item.versions, studioState.selecting, studioState.selected.has(item.id)])
+    const version = JSON.stringify([item.metadata, item.title, item.year, item.bytes, item.versions])
     let row = existing.get(item.id)
     if (!row || row.dataset.studioVersion !== version) {
       const replacement = studioCloudCard(item); replacement.dataset.studioVersion = version
-      if (row) row.replaceWith(replacement)
+      if (row) { retainMyTvArtwork([...row.querySelectorAll('img')], replacement); row.replaceWith(replacement) }
       row = replacement
     }
+    row._studioItem = item
+    row.querySelector('.studio-file').setAttribute('aria-pressed', String(studioState.selected.has(item.id)))
+    let tick = row.querySelector('.studio-file-tick')
+    if (!studioState.selecting) tick?.remove()
+    else {
+      if (!tick) { tick=document.createElement('span'); tick.className='studio-file-tick'; tick.setAttribute('aria-hidden','true'); row.querySelector('.studio-file-art').append(tick) }
+      const selected = studioState.selected.has(item.id)
+      if (tick.classList.contains('is-selected') !== selected) {
+        tick.classList.toggle('is-selected', selected)
+        tick.replaceChildren(...(selected ? [librarySignalIcon('signal-check')] : []))
+      }
+    }
+    const actions = row.querySelector('.my-tv-viewing-quick-actions')
+    if (studioState.selecting && actions) { row._studioActions=actions; actions.remove() }
+    else if (!studioState.selecting && !actions && row._studioActions) row.append(row._studioActions)
+    row.querySelectorAll('.my-tv-artwork-status').forEach(control => control.classList.toggle('hidden', studioState.selecting))
     if (grid.children[index] !== row) grid.insertBefore(row, grid.children[index] || null)
     existing.delete(item.id)
   }
@@ -97,7 +110,6 @@ async function studioOpenCloudTitles(titles, selectedEpisodes = null) {
     return
   }
   openStudioDestination(sources, null, context)
-  studioOpenActions()
 }
 
 function studioOpenReplaceWarning() {
@@ -121,59 +133,3 @@ $('#studioReplaceConfirm').onclick = () => {
   void studioSubmitDestination({ preventDefault() {} })
 }
 portalSheets.wire($('#studioReplaceSheet'), { closeButton: $('#studioReplaceClose'), close: studioCloseReplaceWarning })
-
-function studioCloseCollection() {
-  closeLibrarySheet($('#studioCloudCollectionSheet'), false)
-  openLibrarySheet($('#studioActionsSheet'))
-}
-$('#studioCloudMoveCollection').onclick = () => {
-  const titles = studioDraft?.cloudContext?.titles
-  if (!titles?.length) return
-  const select = $('#studioCloudMoveSelect')
-  select.replaceChildren(new Option('Unfiled', ''),
-    ...(studioState.cloud?.collections || []).map(name => new Option(name, name)),
-    new Option('New collection…', '__new__'))
-  select.value = titles.length === 1 ? titles[0].collection || '' : ''
-  $('#studioCloudCollectionName').value = ''
-  $('#studioCloudNewCollection').classList.add('hidden')
-  $('#studioCloudCollectionError').textContent = ''
-  studioCollectionChoices()
-  $('#studioCloudCollectionSave').textContent = 'Move'
-  closeLibrarySheet($('#studioDestinationSheet'), false)
-  closeLibrarySheet($('#studioActionsSheet'), false)
-  openLibrarySheet($('#studioCloudCollectionSheet'))
-}
-function studioCollectionChoices() {
-  const select = $('#studioCloudMoveSelect'), root = $('#studioCloudCollectionOptions'); root.replaceChildren()
-  for (const option of select.options) {
-    const label = document.createElement('label'); label.className = 'studio-choice'
-    const radio = document.createElement('input'); radio.type = 'radio'; radio.name = 'studioMoveCollection'; radio.checked = option.selected
-    const text = document.createElement('span'); text.textContent = option.textContent
-    radio.onchange = () => { select.value = option.value; select.dispatchEvent(new Event('change')) }
-    label.append(radio, text); root.append(label)
-  }
-}
-$('#studioCloudCollectionCancel').onclick = studioCloseCollection
-$('#studioCloudMoveSelect').onchange = event => {
-  const creating = event.target.value === '__new__'
-  $('#studioCloudNewCollection').classList.toggle('hidden', !creating)
-  $('#studioCloudCollectionSave').textContent = creating ? 'Create & move' : 'Move'
-  studioCollectionChoices()
-  if (creating) $('#studioCloudCollectionName').focus()
-}
-$('#studioCloudCollectionForm').onsubmit = async event => {
-  event.preventDefault()
-  const button = $('#studioCloudCollectionSave'); button.disabled = true
-  const create = $('#studioCloudMoveSelect').value === '__new__'
-  const collection = create ? $('#studioCloudCollectionName').value.trim() : $('#studioCloudMoveSelect').value
-  try {
-    if (create && !collection) throw new Error('Enter a collection name')
-    await api('/api/studio/cloud/collection', { method: 'POST', body: JSON.stringify({
-      ids: studioDraft.cloudContext.titles.map(title => title.id), collection, create }) })
-    await studioLoadCloud()
-    for (const title of studioDraft.cloudContext.titles) title.collection = collection
-    studioCloseCollection()
-  } catch (error) { $('#studioCloudCollectionError').textContent = error.message }
-  finally { button.disabled = false }
-}
-portalSheets.wire($('#studioCloudCollectionSheet'), { closeButton: $('#studioCloudCollectionClose'), close: studioCloseCollection })

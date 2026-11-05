@@ -1,8 +1,19 @@
 """Immutable size-target profiles shared by Studio, previews and Pi preparation."""
 import json
+import math
 from pathlib import Path
 
 POLICY = json.loads(Path(__file__).with_name("compression-profiles.json").read_text())
+
+
+def output_frame_rate(facts):
+    fps = facts.get("fps") or 24
+    if not isinstance(fps, (int, float)):
+        raise ValueError("The source frame rate could not be read. The original was kept.")
+    fps *= 2 if facts.get("interlaced") else 1
+    if not isinstance(fps, (int, float)) or not math.isfinite(fps) or fps <= 0 or fps > POLICY["maximumFrameRate"] + .001:
+        raise ValueError("The source frame rate is outside the supported range. The original was kept.")
+    return fps
 
 
 def compression_profile(value=None):
@@ -32,7 +43,7 @@ def compression_estimate(size, profile_id=None, facts=None, source_bytes=None, p
     if all(isinstance(value, (float, int)) and value > 0 for value in (duration, width, height)):
         width *= facts.get("sar") or 1
         ratio = min(1, (1280 if target == "mabel" else 1920) / width, (720 if target == "mabel" else 1080) / height)
-        pixels = int(width * ratio / 2) * 2 * int(height * ratio / 2) * 2 * min(30, facts.get("fps") or 24)
+        pixels = int(width * ratio / 2) * 2 * int(height * ratio / 2) * 2 * output_frame_rate(facts)
         audio = profile["audioBitrate"] if facts.get("hasAudio", True) else 0
         video = max(basis * profile["sourceFraction"] * POLICY["muxMargin"] * 8 / duration - audio,
                     POLICY["minimumVideoBitrate"], pixels * profile["minimumBitsPerPixel"])

@@ -4,7 +4,7 @@ const path = require('node:path');
 const { setTimeout: delay } = require('node:timers/promises');
 const { fileList, ownedFile } = require('./torrent-media.cjs');
 class TorrentDownloads {
-  constructor(store, runtime, options = {}) { Object.assign(this, { store, runtime, options }); this.root = path.join(store.root, 'torrent-journals'); fs.mkdirSync(this.root, { recursive: true }); }
+  constructor(store, runtime, options = {}) { Object.assign(this, { store, runtime, options }); this.activeHashes = new Set(); this.root = path.join(store.root, 'torrent-journals'); fs.mkdirSync(this.root, { recursive: true }); }
   journal(id) {
     if (!/^(?:[a-f0-9]{32}|inspect-[a-f0-9]{40})$/.test(id)) throw new Error('Choose a valid download job.');
     return path.join(this.root, id + '.json');
@@ -71,11 +71,30 @@ class TorrentDownloads {
     return fs.readdirSync(this.root).filter(name => /^[a-f0-9]{32}\.json$/.test(name)).map(name => this.load(name.slice(0, -5))).find(record => record.hash === hash && !record.removed);
   }
   async download(remote, signal, progress) {
+    const hash = remote.source.hash;
+    if (this.activeHashes.has(hash)) throw new Error('This download is already running. Retry after it finishes.');
+    this.activeHashes.add(hash);
+    try { return await this.downloadOwned(remote, signal, progress); }
+    finally { this.activeHashes.delete(hash); }
+  }
+  async downloadOwned(remote, signal, progress) {
     await this.runtime.ensure();
     const source = remote.source, selected = source.files;
     let record = this.load(remote.id);
     if (!record) {
-      if (this.findHash(source.hash)) throw new Error('Another queued transfer is using this download. Finish it before retrying.');
+      const previous = this.findHash(source.hash);
+      if (previous) {
+        // Only an explicitly cancelled portal job can release a saved owner.
+        // Paused, failed, offline or unknown jobs still own their recovery data.
+        if (!await this.options.isCancelled?.(previous.id)) throw new Error('Another queued transfer is using this download. Finish it before retrying.');
+        const info = await this.owned(previous, signal);
+        if (info) {
+          await this.runtime.api('torrents/stop', { hashes: previous.hash }, { signal });
+          await this.runtime.api('torrents/delete', { hashes: previous.hash, deleteFiles: false }, { signal });
+          if (await this.info(previous.hash, signal)) throw new Error('The cancelled download is still closing. Retry in a moment.');
+        }
+        this.save({ ...previous, removed: true, cancelled: true });
+      }
       const inspection = this.load('inspect-' + source.hash);
       const directory = path.join(this.store.state.settings.workspace, 'Torrents', remote.id);
       fs.mkdirSync(directory, { recursive: true });

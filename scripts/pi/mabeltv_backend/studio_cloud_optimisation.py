@@ -43,7 +43,7 @@ class StudioCloudOptimisationMixin:
                           "risky": decision["risky"], "warning": decision["warning"], "recommended": decision["recommended"],
                           "series": item.get("series"), "episodeNumber": item.get("episodeNumber")})
         return {"files": files, "compression": profile["id"], "profiles": compression_choices(),
-                "output": f"{profile['label']} · MP4 · H.264 video · AAC stereo · up to 1080p / 30 fps",
+                "output": f"{profile['label']} · MP4 · H.264 video · AAC stereo · up to 1080p · source frame rate",
                 "estimateNote": "Estimated size from the selected profile. Source quality safeguards can increase this estimate. "
                                 "An existing smaller prepared copy is kept without another conversion. "
                                 "The original is kept if conversion would not save space."}

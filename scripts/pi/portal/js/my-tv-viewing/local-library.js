@@ -99,7 +99,15 @@ function renderMyLibrary() {
     entry.year, entry.source])])
   if (grid.dataset.contents !== signature) {
     grid.dataset.contents = signature
-    grid.replaceChildren(...visible.map(entry => myLibraryTitleCard(entry)))
+    const existing = new Map([...grid.querySelectorAll('[data-library-id]')].map(card => [card.dataset.libraryId, card]))
+    const cards = visible.map(entry => {
+      const version = JSON.stringify(entry), previous = existing.get(entry.id)
+      if (previous?.dataset.libraryVersion === version) return previous
+      const card = myLibraryTitleCard(entry); card.dataset.libraryVersion = version
+      if (previous) retainMyTvArtwork([...previous.querySelectorAll('img')], card)
+      return card
+    })
+    reconcileMyTvViewingRows(grid, cards)
     if (!visible.length) grid.append(portalEmptyState({ className: 'watch-empty',
       title: entries.length ? 'No matching titles' : 'Your library is empty',
       message: entries.length ? 'Try another search or clear your filters.' : 'Add films or series using Studio, Add or USB.' }))

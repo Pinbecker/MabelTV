@@ -66,7 +66,8 @@ test('metadata failure retains publication; retry after restart and local cleanu
   const store = new Store(root); let uploads = 0, preparations = 0, applies = 0;
   const portal = {
     upload: async (_job, _source, _signal, change) => { uploads++; change({ device: 'pi' }, true); return { complete: true, status: 'complete', file_name: 'Shrek.mp4' }; },
-    applyMatch: async job => { applies++; assert.equal(job.result.complete, true); if (applies === 1) throw new Error('Metadata is temporarily offline'); }
+    applyMatch: async job => { applies++; assert.equal(job.result.complete, true); if (applies === 1) throw new Error('Metadata is temporarily offline');
+      return { publication: { ...job.result, file_name: 'Shrek (2001).mp4' } }; }
   };
   let queue = new Queue(store, { prepare: async () => { preparations++; return { file, converted: false }; } }, {}, portal);
   t.after(async () => { await queue.shutdown(); fs.rmSync(root, { recursive: true, force: true }); });
@@ -80,6 +81,8 @@ test('metadata failure retains publication; retry after restart and local cleanu
   await queue.action(job.id, 'metadata'); await settled(queue, recovered);
   assert.equal(uploads, 1); assert.equal(preparations, 1); assert.equal(applies, 2);
   assert.equal(recovered.status, 'complete'); assert.equal(recovered.matchApplied, true); assert.equal(recovered.metadataWarning, '');
+  assert.equal(recovered.result.file_name, 'Shrek (2001).mp4');
+  assert.equal(new Store(root).job(job.id).result.file_name, 'Shrek (2001).mp4');
   await assert.rejects(queue.action(job.id, 'metadata'), /does not need/);
 });
 test('interruption after publication resumes only enrichment', async t => {

@@ -456,10 +456,10 @@ function renderMyTvTitleSeasonResult(detail, season, card, result, targetEpisode
   const overview = $('#myTvTitleSeasonOverview')
   overview.textContent = result.overview || season.overview || ''
   overview.classList.toggle('hidden', !overview.textContent)
-  $('#myTvTitleSeasonArtwork').replaceChildren(myTvStreamingArtwork(
+  replaceMyTvArtworkChildren($('#myTvTitleSeasonArtwork'), myTvStreamingArtwork(
     detail, season, result, 'my-tv-season-sheet-artwork'))
   const root = $('#myTvTitleSeasonEpisodes')
-  root.replaceChildren(...result.episodes.map(episode =>
+  replaceMyTvArtworkChildren(root, ...result.episodes.map(episode =>
     myTvStreamingEpisodeRow(detail, season, result, episode, card)))
   if (!result.episodes.length) root.replaceChildren(portalEmptyState({
     className: 'my-tv-series-empty',
@@ -520,7 +520,7 @@ async function openMyTvTitleSeason(detail, season, card, targetEpisode = 0) {
   $('#myTvTitleSeasonEpisodeHeading').textContent = `Series ${season.number} episodes`
   $('#myTvTitleSeasonEpisodeCount').textContent = `${Number(season.episodes || 0)} total`
   $('#myTvTitleSeasonOverview').classList.add('hidden')
-  $('#myTvTitleSeasonArtwork').replaceChildren(myTvStreamingArtwork(
+  replaceMyTvArtworkChildren($('#myTvTitleSeasonArtwork'), myTvStreamingArtwork(
     detail, season, null, 'my-tv-season-sheet-artwork'))
   const bulk = $('#myTvTitleSeasonWatched')
   bulk.disabled = true
@@ -572,6 +572,7 @@ function renderMyTvTitleSeasons(detail) {
   const wrapper = $('#myTvTitleSeriesLibrary')
   wrapper.classList.remove('is-loading-placeholder')
   const seasons = $('#myTvTitleSeasons')
+  const previousArtwork = [...seasons.querySelectorAll('img')]
   seasons.replaceChildren()
   const visible = detail.media_type === 'tv' && (detail.seasons || []).length
   wrapper.classList.toggle('hidden', !visible)
@@ -629,4 +630,5 @@ function renderMyTvTitleSeasons(detail) {
     seasons.append(card)
   })
   syncMyTvTitleNextEpisode(detail)
+  retainMyTvArtwork(previousArtwork, seasons)
 }

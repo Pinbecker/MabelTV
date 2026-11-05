@@ -2,6 +2,15 @@
 
 const $ = selector => document.querySelector(selector)
     const $$ = selector => [...document.querySelectorAll(selector)]
+    function portalRandomUuid() {
+      if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+      // LAN HTTP pages expose secure random bytes, but not randomUUID.
+      const bytes = crypto.getRandomValues(new Uint8Array(16))
+      bytes[6] = (bytes[6] & 15) | 64
+      bytes[8] = (bytes[8] & 63) | 128
+      const hex = Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('')
+      return [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join('-')
+    }
     const portalSheets = window.MabelPortalUI?.dialogs
     if (!portalSheets) throw new Error('TV portal UI components are unavailable')
     const portalEmptyState = window.MabelPortalUI.emptyState
@@ -150,7 +159,8 @@ const $ = selector => document.querySelector(selector)
         throw error
       }
       if (!response.ok) {
-        const error = new Error(body.error || `${tvName()} could not complete that request`)
+        const error = new Error(body?.error || ([502,503,504].includes(response.status)
+          ? `Connection to ${tvName()} was interrupted. Try again.` : `${tvName()} could not complete that request`))
         error.status = response.status
         error.code = body.code
         throw error

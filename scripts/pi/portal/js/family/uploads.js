@@ -67,7 +67,7 @@ async function uploadFamilyFiles(files, target) {
 function familyUploadSourceId() {
   let value = sessionStorage.getItem('mabel-family-upload-source')
   if (!value) {
-    value = crypto.randomUUID(); sessionStorage.setItem('mabel-family-upload-source', value)
+    value = portalRandomUuid(); sessionStorage.setItem('mabel-family-upload-source', value)
   }
   return value
 }

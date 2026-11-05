@@ -8,7 +8,7 @@ function portalRequestEvent(path, method, started, code, requestId) {
     duration: Math.round(performance.now() - started), code: String(code).slice(0, 32), requestId,
     visible: document.visibilityState, online: navigator.onLine, time: Date.now() }
   portalRequestEvents.push(event); if (portalRequestEvents.length > 40) portalRequestEvents.shift()
-  if (portalDiagnosticFlush || method !== 'GET' || code === 'aborted' || code === 401) return
+  if (portalDiagnosticFlush || code === 'aborted' || code === 401) return
   portalDiagnosticFlush = true
   const events = portalRequestEvents.slice(-10)
   void fetch('/api/studio/diagnostics', { method: 'POST', credentials: 'same-origin',
@@ -26,10 +26,15 @@ async function portalReadResponse(path, options = {}) {
     try {
       const response = await fetch(path, { ...options, credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json', ...options.headers, 'X-Mabel-Request-ID': requestId }, signal: controller.signal })
-      if ([502, 503, 504].includes(response.status) && attempt + 1 < attempts) { await response.body?.cancel(); continue }
+      if ([502, 503, 504].includes(response.status) && attempt + 1 < attempts) {
+        await response.body?.cancel()
+        await new Promise(resolve => setTimeout(resolve, Math.min(1000, Math.max(250, Number(response.headers.get('Retry-After') || 0) * 1000))))
+        continue
+      }
       let invalidResponse = false
       const body = await response.json().catch(error => { if (controller.signal.aborted) throw error; invalidResponse = true; return {} })
       if (!response.ok) portalRequestEvent(path, method, started, response.status, requestId)
+      else if (invalidResponse) portalRequestEvent(path, method, started, 'invalid-response', requestId)
       return { response, body, invalidResponse }
     } catch (error) {
       if (options.signal?.aborted) { error.expectedAbort = true; throw error }

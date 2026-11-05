@@ -6,6 +6,7 @@ import json
 from pathlib import PurePosixPath
 import re
 import time
+import unicodedata
 
 
 class StudioCloudMetadataMixin:
@@ -212,6 +213,18 @@ class StudioCloudMetadataMixin:
         visible = [item for item in display_titles if (not category or item["category"] == category)
                    and (collection is None or item["collection"] == collection)
                    and (not search or search in (item["title"] + " " + item["name"] + " " + item["year"]).casefold())]
+        if query.get("tmdb_id"):
+            tmdb_id, media_type = int(query["tmdb_id"][0]), str(query.get("media_type", [""])[0])
+            if tmdb_id <= 0 or media_type not in {"movie", "tv"}:
+                raise ValueError("Choose a film or TV title")
+            normal = lambda value: re.sub(r"[^a-z0-9]", "", unicodedata.normalize("NFKD", str(value).casefold().replace("&", "and")))
+            title, year = str(query.get("title", [""])[0]), str(query.get("year", [""])[0])
+            visible = [item for item in visible if (
+                item.get("metadata") and item["metadata"].get("media_type") == media_type
+                and int(item["metadata"].get("tmdb_id") or 0) == tmdb_id) or (
+                not item.get("metadata") and item.get("media_type") == media_type and title
+                and normal(item["title"]) == normal(title)
+                and (not year or not item.get("year") or item["year"] == year))]
         order = str(query.get("sort", ["name-asc"])[0])
         if order not in {"name-asc", "name-desc", "size-desc", "size-asc", "date-desc", "date-asc"}:
             raise ValueError("Choose a library sort order")

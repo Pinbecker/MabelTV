@@ -6,10 +6,15 @@ export function renderJobs(jobs) {
   const pending = jobs.filter(job => !['complete', 'prepared', 'cancelled'].includes(job.status));
   $('#queue-count').textContent = pending.length;
   $('#queue-summary').textContent = `${pending.length} item${pending.length === 1 ? '' : 's'} · prepared copies kept safely`;
-  $('#queue-list').innerHTML = pending.length ? pending.map(card).join('') : empty('No pending jobs.', 'Add files or choose a download.', 'check');
-  $('#completed-list').innerHTML = completed.length ? completed.map(card).join('') : empty('No completed jobs.', 'Finished jobs appear here.', 'check');
+  renderList($('#queue-list'), pending, empty('No pending jobs.', 'Add files or choose a download.', 'check'));
+  renderList($('#completed-list'), completed, empty('No completed jobs.', 'Finished jobs appear here.', 'check'));
   const recent = jobs.filter(job => job.status !== 'cancelled').slice(-2).reverse();
-  $('#recent-preview').innerHTML = recent.length ? '<div class="list-heading"><span>Latest activity</span><button class="text-button recent-queue">View queue ↗</button></div>' + recent.map(card).join('') : '';
+  const preview = $('#recent-preview');
+  if (!recent.length) preview.replaceChildren();
+  else {
+    if (!preview.querySelector('.recent-jobs')) preview.innerHTML = '<div class="list-heading"><span>Latest activity</span><button class="text-button recent-queue">View queue ↗</button></div><div class="recent-jobs"></div>';
+    renderList(preview.querySelector('.recent-jobs'),recent,'');
+  }
   const recentButton = $('.recent-queue'); if (recentButton) recentButton.onclick = () => window.showStudioView('queue');
   document.querySelectorAll('[data-job-action]').forEach(button => button.onclick = () => attempt(async () => {
     button.disabled = true;
@@ -22,6 +27,23 @@ export function renderJobs(jobs) {
     else { await window.studio.action(id, jobAction); if (jobAction === 'cancel') toast('Cancelled. Your local files have been kept.'); }
     button.disabled = false;
   }));
+}
+function renderList(root, jobs, fallback) {
+  if (!jobs.length) { if (!root.querySelector('.empty-state')) root.innerHTML = fallback; return; }
+  root.querySelectorAll('.empty-state').forEach(node => node.remove());
+  const existing = new Map([...root.querySelectorAll('[data-job]')].map(node => [node.dataset.job,node]));
+  jobs.forEach((job,index) => {
+    const html = card(job); let row = existing.get(job.id);
+    if (!row || row._jobHtml !== html) {
+      const template = document.createElement('template'); template.innerHTML = html;
+      const next = template.content.firstElementChild, image = row?.querySelector('img'), newImage = next.querySelector('img');
+      if (image && image.getAttribute('src') === newImage?.getAttribute('src')) newImage.replaceWith(image);
+      if (row) row.replaceWith(next); row = next; row._jobHtml = html;
+    }
+    if (root.children[index] !== row) root.insertBefore(row,root.children[index] || null);
+    existing.delete(job.id);
+  });
+  existing.forEach(node => node.remove());
 }
 function button(job, action, text) { return `<button class="button secondary" data-id="${job.id}" data-job-action="${action}">${text}</button>`; }
 function card(job) {
@@ -38,5 +60,5 @@ function card(job) {
   const label = job.status === 'downloading' && ['audio', 'video'].includes(job.downloadStage) ? 'Downloading ' + job.downloadStage : labels[job.status] || job.status;
   const message = job.status === 'prepared' && job.originalRemoved ? 'Ready locally. Your prepared copy is kept in the media folder.' : job.message;
   const progress = ['downloading', 'assembling', 'preparing', 'uploading'].includes(job.status) ? `<span class="job-percent">${job.percent == null ? '' : Math.round(job.percent) + '%'}</span><progress max="100" ${job.percent === null ? '' : `value="${Math.max(0, Math.min(100, job.percent || 0))}"`} aria-label="${escape(label)} progress"></progress>` : '';
-  return `<article class="job-card" data-job="${job.id}">${art(job.metadata)}<div class="job-copy"><div class="job-title"><strong title="${escape(title)}">${escape(title)}</strong><span class="job-status ${escape(job.status)}">${escape(label)}</span></div><div class="job-destination">${job.source === 'iplayer' ? 'BBC iPlayer' : 'Your computer'} <span>→</span> ${escape(job.destination.label)}</div>${progress}<div class="job-message">${escape(message)}</div>${job.match ? `<div class="job-match">${job.matchApplied ? 'Matched' : 'Confirmed match'}: ${escape(job.match.title)}${job.match.year ? ' · ' + escape(job.match.year) : ''}</div>` : ''}${job.metadataWarning ? `<div class="job-metadata-warning">${escape(job.metadataWarning)}</div>` : ''}<div class="job-actions">${actions}</div></div></article>`;
+  return `<article class="job-card" data-job="${job.id}">${art(job.match?.poster_path ? job.match : job.metadata)}<div class="job-copy"><div class="job-title"><strong title="${escape(title)}">${escape(title)}</strong><span class="job-status ${escape(job.status)}">${escape(label)}</span></div><div class="job-destination">${{iplayer:'BBC iPlayer',cloud:'iCloud',torrent:'Download'}[job.source] || 'Your computer'} <span>→</span> ${escape(job.destination.label)}</div>${progress}<div class="job-message">${escape(message)}</div>${job.match ? `<div class="job-match">${job.matchApplied ? 'Matched' : 'Confirmed match'}: ${escape(job.match.title)}${job.match.year ? ' · ' + escape(job.match.year) : ''}</div>` : ''}${job.metadataWarning ? `<div class="job-metadata-warning">${escape(job.metadataWarning)}</div>` : ''}<div class="job-actions">${actions}</div></div></article>`;
 }
