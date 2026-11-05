@@ -28,9 +28,17 @@ private slots:
         video->setSize(QSizeF(96,64)); video->setAspectMode("fit");
         window.show(); video->setSource(QUrl::fromLocalFile(image.fileName()));
         QTRY_VERIFY_WITH_TIMEOUT(video->videoWidth()==64,5000);
+        QImage original;
+        const auto picturePresented = [&] {
+            original = window.grabWindow();
+            return !original.isNull() && original.pixelColor(48,16).red()>200
+                && original.pixelColor(48,48).green()>200;
+        };
+        // Header discovery precedes the first rendered frame. Pausing on width
+        // alone can freeze a still-empty framebuffer on a slower CI worker.
+        QTRY_VERIFY_WITH_TIMEOUT(picturePresented(),5000);
         video->togglePause();
-        QTest::qWait(250);
-        const QImage original=window.grabWindow();
+        QTRY_VERIFY_WITH_TIMEOUT(video->paused(),5000);
         QVERIFY(!original.isNull());
         QVERIFY(original.pixelColor(48,16).red()>200);
         QVERIFY(original.pixelColor(48,48).green()>200);
