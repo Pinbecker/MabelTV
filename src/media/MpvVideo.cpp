@@ -9,6 +9,7 @@
 #include <QFileInfo>
 #include <QMetaObject>
 #include <QOpenGLContext>
+#include <QOpenGLFunctions>
 #include <QOpenGLFramebufferObject>
 #include <QOpenGLFramebufferObjectFormat>
 #include <QQuickOpenGLUtils>
@@ -221,14 +222,18 @@ private:
             return;
         }
         m_state->renderContext.store(context);
-        m_state->renderReady.store(true);
+        const auto driver = QByteArray(reinterpret_cast<const char *>(
+            QOpenGLContext::currentContext()->functions()->glGetString(GL_RENDERER))).toLower();
+        const bool softwareMesa = driver.startsWith("llvmpipe") || driver.startsWith("softpipe");
         m_swapConnection = QObject::connect(m_item->window(), &QQuickWindow::frameSwapped,
             m_item->window(), [state = m_state] {
                 if (auto *render = state->renderContext.load()) mpv_render_context_report_swap(render);
             }, Qt::DirectConnection);
         mpv_render_context_set_update_callback(context, requestFrame, m_item);
         QMetaObject::invokeMethod(m_item,
-                                  &MpvVideo::handleRenderContextReady,
+                                  [item = m_item, softwareMesa] {
+                                      item->handleRenderContextReady(softwareMesa);
+                                  },
                                   Qt::QueuedConnection);
     }
 
@@ -667,8 +672,17 @@ void MpvVideo::wakeup(void *context)
     QMetaObject::invokeMethod(item, &MpvVideo::processMpvEvents, Qt::QueuedConnection);
 }
 
-void MpvVideo::handleRenderContextReady()
+void MpvVideo::handleRenderContextReady(bool softwareMesa)
 {
+    if (softwareMesa) {
+        // Older mpv scaler LUTs contain uninitialised padding. Mesa's CPU
+        // sampler can propagate its NaNs into black frames. Its simple path
+        // avoids those LUTs; hardware renderers retain their normal settings.
+        const char *command[] = {"set", "gpu-dumb-mode", "yes", nullptr};
+        checkMpv(mpv_command_async(m_state->handle, 0, command), "Selecting software graphics fallback");
+        qInfo() << "Using simple video scaling for Mesa software graphics";
+    }
+    m_state->renderReady.store(true);
     if (m_state->handle != nullptr && !m_source.isEmpty()) {
         loadCurrentSource();
     }

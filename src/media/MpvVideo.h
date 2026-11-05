@@ -101,7 +101,7 @@ protected:
     QSGNode *updatePaintNode(QSGNode *node, UpdatePaintNodeData *data) override;
 
 private slots:
-    void handleRenderContextReady();
+    void handleRenderContextReady(bool softwareMesa);
     void processMpvEvents();
 
 private:

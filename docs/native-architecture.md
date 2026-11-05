@@ -21,6 +21,12 @@ Qt's OpenGL state is reset before as well as after every libmpv render. The
 render API requires standard defaults on entry; leaving Qt's state active can
 corrupt picture pixels. The texture test uses a multi-frame two-colour video
 and checks solid regions for corruption before validating the shader adapter.
+Mesa CPU renderers (`llvmpipe`/`softpipe`) use mpv's simple scaling path: older
+mpv versions leave scaler-table padding uninitialised, and the software sampler
+can propagate those invalid values into black frames. Graphics-trace inspection
+confirmed valid input textures becoming NaNs in the scaler. The fallback is
+queued before loading media; hardware renderers, including the Pi, keep their
+normal settings. Pixel assertions run unchanged on both paths.
 
 My TV opts into `MpvSubtitles`, a child of its existing video surface. Ordinary
 SRT cues are decoded/timed by mpv and rasterised into a small cached Qt image

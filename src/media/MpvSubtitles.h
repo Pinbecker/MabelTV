@@ -2,6 +2,7 @@
 
 #include <QQuickPaintedItem>
 #include <QImage>
+#include <atomic>
 #include <cstdint>
 
 struct mpv_handle;
@@ -22,7 +23,7 @@ public:
     void setShown(bool shown);
     bool active() const { return m_active; }
     QString caption() const { return m_html; }
-    std::uint64_t paintCount() const { return m_paints; }
+    std::uint64_t paintCount() const { return m_paints.load(std::memory_order_relaxed); }
     void paint(QPainter *painter) override;
 
 private:
@@ -46,5 +47,5 @@ private:
     bool m_rejected = false, m_haveCue = false, m_active = false;
     bool m_nativeVisible = true, m_visibilityConfirmed = false;
     std::uint64_t m_sequence = 2000, m_visibilityRequest = 0, m_cueRequest = 0;
-    std::uint64_t m_paints = 0;
+    std::atomic<std::uint64_t> m_paints = 0;
 };
