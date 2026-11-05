@@ -600,6 +600,7 @@ Item {
         muted: controller.muted
         aspectMode: "fit"
         subtitleDefaultOn: true
+        cachedSubtitles: true
 
         onPlaybackFinished: {
             if (episodePlayback.finished()) return

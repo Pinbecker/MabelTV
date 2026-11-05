@@ -12,6 +12,7 @@ Item {
     property bool subtitlesAvailable: false
     property bool subtitlesVisible: false
     property bool subtitleDefaultOn: false
+    property bool cachedSubtitles: false
     property int starts: 0
     signal playbackFinished()
     signal playbackStopped()

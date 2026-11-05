@@ -22,6 +22,22 @@ render API requires standard defaults on entry; leaving Qt's state active can
 corrupt picture pixels. The texture test uses a multi-frame two-colour video
 and checks solid regions for corruption before validating the shader adapter.
 
+My TV opts into `MpvSubtitles`, a child of its existing video surface. Ordinary
+SRT cues are decoded/timed by mpv and rasterised into a small cached Qt image
+only when the cue or display geometry changes. Speaker colours, emphasis,
+font sizing, outlines and subtitle controls are retained. Observed text/start
+changes trigger asynchronous formatted-cue reads, including on mpv 0.35; no
+GUI callback waits synchronously for the decoder. The cached image becomes
+visible only after mpv confirms it has hidden its own subtitle composition.
+ASS, bitmap tracks, unsupported positioning/style tags and oversized cues keep
+the native renderer. A rejected SRT track stays native until the track changes.
+`SubtitleText` owns the conservative, escaped inline-format conversion;
+`MpvVideoSubtitles` keeps the existing QML controls independent of rendering.
+Children's/CRT players do not enable this path. Tests cover real cue pixels,
+colour/emphasis, pause/seek/toggle, native fallback, source changes and reuse of
+the same caption texture across advancing video frames. Pi frame-rate acceptance
+must still be measured on hardware before calling this a verified speed fix.
+
 ## QML composition
 
 `Main.qml` is the application coordinator. It owns cross-cutting state such as

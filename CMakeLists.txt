@@ -92,6 +92,11 @@ qt_add_executable(mabeltv WIN32
     src/diagnostics/FrameCapture.h
     src/media/MpvVideo.cpp
     src/media/MpvVideoTexture.cpp
+    src/media/MpvVideoSubtitles.cpp
+    src/media/MpvSubtitles.cpp
+    src/media/MpvSubtitles.h
+    src/media/SubtitleText.cpp
+    src/media/SubtitleText.h
     src/media/MpvVideo.h
     src/media/SoundEffects.cpp
     src/media/SoundEffects.h
@@ -316,9 +321,14 @@ if(BUILD_TESTING)
     set_tests_properties(mabeltv_storytime_library_tests PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software" TIMEOUT 15)
     qt_add_executable(mabeltv_crt_effect_tests tests/unit/CrtEffectTests.cpp)
-    qt_add_executable(mabeltv_mpv_texture_tests tests/unit/MpvTextureTests.cpp src/media/MpvVideo.cpp src/media/MpvVideoTexture.cpp src/media/MpvVideo.h)
+    qt_add_executable(mabeltv_mpv_texture_tests tests/unit/MpvTextureTests.cpp src/media/MpvVideo.cpp src/media/MpvVideoTexture.cpp src/media/MpvVideoSubtitles.cpp src/media/MpvSubtitles.cpp src/media/SubtitleText.cpp src/media/MpvVideo.h)
     target_include_directories(mabeltv_mpv_texture_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" ${MPV_INCLUDE_DIRS} ${MPV_INCLUDE_DIR})
     target_link_libraries(mabeltv_mpv_texture_tests PRIVATE mabeltv_display Qt6::Test Qt6::Quick Qt6::Qml Qt6::OpenGL ${MPV_LINK_LIBRARIES} ${MPV_LIBRARY})
+    qt_add_executable(mabeltv_subtitle_tests tests/unit/SubtitleTests.cpp src/media/MpvVideo.cpp
+        src/media/MpvVideoTexture.cpp src/media/MpvVideoSubtitles.cpp src/media/MpvSubtitles.cpp
+        src/media/SubtitleText.cpp src/media/MpvVideo.h)
+    target_include_directories(mabeltv_subtitle_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" ${MPV_INCLUDE_DIRS} ${MPV_INCLUDE_DIR})
+    target_link_libraries(mabeltv_subtitle_tests PRIVATE mabeltv_display Qt6::Test Qt6::Quick Qt6::Qml Qt6::OpenGL ${MPV_LINK_LIBRARIES} ${MPV_LIBRARY})
     qt_add_shaders(mabeltv_mpv_texture_tests "mpv_texture_shader" PREFIX "/shaders" BASE "tests/shaders" FILES tests/shaders/texture-copy.frag)
     target_link_libraries(mabeltv_crt_effect_tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml)
     target_compile_definitions(mabeltv_crt_effect_tests PRIVATE TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/qml"
@@ -331,6 +341,8 @@ if(BUILD_TESTING)
     if(UNIX)
         find_program(XVFB_RUN_EXECUTABLE xvfb-run)
         if(XVFB_RUN_EXECUTABLE)
+            add_test(NAME mabeltv_subtitle_tests COMMAND "${XVFB_RUN_EXECUTABLE}" -a $<TARGET_FILE:mabeltv_subtitle_tests>)
+            set_tests_properties(mabeltv_subtitle_tests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=xcb;QT_QUICK_BACKEND=rhi;QSG_RHI_BACKEND=opengl;MABELTV_HWDEC=no" TIMEOUT 40)
             add_test(NAME mabeltv_mpv_texture_tests COMMAND "${XVFB_RUN_EXECUTABLE}" -a $<TARGET_FILE:mabeltv_mpv_texture_tests>)
             set_tests_properties(mabeltv_mpv_texture_tests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=xcb;QT_QUICK_BACKEND=rhi;QSG_RHI_BACKEND=opengl;MABELTV_HWDEC=no" TIMEOUT 20)
             add_test(NAME mabeltv_crt_effect_tests COMMAND "${XVFB_RUN_EXECUTABLE}" -a $<TARGET_FILE:mabeltv_crt_effect_tests>)
@@ -348,6 +360,9 @@ if(BUILD_TESTING)
             set_tests_properties(mabeltv_memories_opengl_tests PROPERTIES
                 ENVIRONMENT "QT_QPA_PLATFORM=xcb;QT_QUICK_BACKEND=rhi;QSG_RHI_BACKEND=opengl" TIMEOUT 30)
         endif()
+    elseif(WIN32)
+        add_test(NAME mabeltv_subtitle_tests COMMAND mabeltv_subtitle_tests)
+        set_tests_properties(mabeltv_subtitle_tests PROPERTIES ENVIRONMENT "QT_QUICK_BACKEND=rhi;QSG_RHI_BACKEND=opengl;MABELTV_HWDEC=no" TIMEOUT 40)
     endif()
     add_test(
         NAME mabeltv_library_service_tests

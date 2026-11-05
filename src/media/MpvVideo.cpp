@@ -1,4 +1,5 @@
 #include "MpvVideo.h"
+#include "MpvSubtitles.h"
 #include "hardware/DisplayRefresh.h"
 
 #include <QDir>
@@ -249,6 +250,7 @@ void MpvVideo::requestRenderUpdate()
 MpvVideo::MpvVideo(QQuickItem *parent)
     : QQuickFramebufferObject(parent)
     , m_state(std::make_shared<SharedState>())
+    , m_subtitles(new MpvSubtitles(this))
 {
     setMirrorVertically(false);
     m_stopTimeout.setSingleShot(true);
@@ -332,6 +334,7 @@ MpvVideo::MpvVideo(QQuickItem *parent)
         return;
     }
     qInfo().noquote() << "libmpv hardware decoding:" << hardwareDecoder;
+    m_subtitles->attach(m_state->handle);
 
     checkMpv(mpv_observe_property(m_state->handle, 1, "pause", MPV_FORMAT_FLAG),
              "Observing mpv pause state");
@@ -404,26 +407,6 @@ QString MpvVideo::status() const
 bool MpvVideo::paused() const
 {
     return m_paused;
-}
-
-bool MpvVideo::subtitlesVisible() const
-{
-    return m_subtitlesVisible;
-}
-
-bool MpvVideo::subtitlesAvailable() const
-{
-    return m_subtitlesAvailable;
-}
-
-bool MpvVideo::subtitleDefaultOn() const
-{
-    return m_subtitleDefaultOn;
-}
-
-void MpvVideo::setSubtitleDefaultOn(bool enabled)
-{
-    m_subtitleDefaultOn = enabled;
 }
 
 int MpvVideo::volume() const
@@ -617,6 +600,10 @@ void MpvVideo::toggleSubtitles()
         return;
     }
     const bool showSubtitles = !m_subtitlesVisible;
+    if (cachedSubtitles()) {
+        setSubtitlesVisible(showSubtitles);
+        return;
+    }
     const char *command[] = {"set", "sub-visibility", showSubtitles ? "yes" : "no", nullptr};
     if (checkMpv(mpv_command_async(m_state->handle, 0, command), "Toggling subtitles")) {
         setSubtitlesVisible(showSubtitles);
@@ -712,8 +699,8 @@ void MpvVideo::loadCurrentSource()
     checkMpv(mpv_command_async(m_state->handle, 0, subtitleSelection),
              "Choosing subtitle default for new media");
     const char *showSubtitles[] = {"set", "sub-visibility", "yes", nullptr};
-    checkMpv(mpv_command_async(m_state->handle, 0, showSubtitles),
-             "Enabling subtitles for new media");
+    if (!cachedSubtitles())
+        checkMpv(mpv_command_async(m_state->handle, 0, showSubtitles), "Enabling subtitles for new media");
     const char *unpause[] = {"set", "pause", "no", nullptr};
     if (!checkMpv(mpv_command_async(m_state->handle, 0, unpause),
                   "Clearing pause for new media")) {
@@ -768,12 +755,6 @@ void MpvVideo::resetPlaybackTelemetry(double positionSeconds)
     setVideoAspectRatio(0.0);
 }
 
-void MpvVideo::resetSubtitleState()
-{
-    setSubtitlesAvailable(false);
-    setSubtitlesVisible(true);
-}
-
 void MpvVideo::setPlaybackPosition(double positionSeconds)
 {
     const double safePosition = std::isfinite(positionSeconds)
@@ -810,24 +791,6 @@ void MpvVideo::setVideoAspectRatio(double aspectRatio)
     emit videoAspectRatioChanged();
 }
 
-void MpvVideo::setSubtitlesVisible(bool visible)
-{
-    if (m_subtitlesVisible == visible) {
-        return;
-    }
-    m_subtitlesVisible = visible;
-    emit subtitlesVisibleChanged();
-}
-
-void MpvVideo::setSubtitlesAvailable(bool available)
-{
-    if (m_subtitlesAvailable == available) {
-        return;
-    }
-    m_subtitlesAvailable = available;
-    emit subtitlesAvailableChanged();
-}
-
 void MpvVideo::processMpvEvents()
 {
     if (m_state->handle == nullptr) {
@@ -838,6 +801,7 @@ void MpvVideo::processMpvEvents()
         if (event == nullptr || event->event_id == MPV_EVENT_NONE) {
             return;
         }
+        m_subtitles->process(*event);
 
         switch (event->event_id) {
         case MPV_EVENT_COMMAND_REPLY:
@@ -962,7 +926,7 @@ void MpvVideo::processMpvEvents()
                     setPlaybackDuration(0.0);
                 }
             } else if (QByteArray(change->name) == QByteArrayLiteral("sub-visibility")
-                       && change->format == MPV_FORMAT_FLAG && change->data != nullptr) {
+                       && !cachedSubtitles() && change->format == MPV_FORMAT_FLAG && change->data != nullptr) {
                 setSubtitlesVisible(*static_cast<int *>(change->data) != 0);
             } else if (QByteArray(change->name) == QByteArrayLiteral("sid")) {
                 const auto subtitleTrack = change->format == MPV_FORMAT_INT64 && change->data != nullptr

@@ -11,6 +11,7 @@
 #include <memory>
 
 class MpvRenderer;
+class MpvSubtitles;
 
 class MpvVideo : public QQuickFramebufferObject
 {
@@ -23,6 +24,7 @@ class MpvVideo : public QQuickFramebufferObject
     Q_PROPERTY(bool subtitlesVisible READ subtitlesVisible NOTIFY subtitlesVisibleChanged)
     Q_PROPERTY(bool subtitlesAvailable READ subtitlesAvailable NOTIFY subtitlesAvailableChanged)
     Q_PROPERTY(bool subtitleDefaultOn READ subtitleDefaultOn WRITE setSubtitleDefaultOn)
+    Q_PROPERTY(bool cachedSubtitles READ cachedSubtitles WRITE setCachedSubtitles)
     Q_PROPERTY(int volume READ volume WRITE setVolume NOTIFY volumeChanged)
     Q_PROPERTY(bool muted READ muted WRITE setMuted NOTIFY mutedChanged)
     Q_PROPERTY(QString aspectMode READ aspectMode WRITE setAspectMode NOTIFY aspectModeChanged)
@@ -47,6 +49,8 @@ public:
     [[nodiscard]] bool subtitlesAvailable() const;
     [[nodiscard]] bool subtitleDefaultOn() const;
     void setSubtitleDefaultOn(bool enabled);
+    bool cachedSubtitles() const;
+    void setCachedSubtitles(bool enabled);
     [[nodiscard]] int volume() const;
     void setVolume(int volume);
     [[nodiscard]] bool muted() const;
@@ -121,6 +125,7 @@ private:
     void reportFatalFailure(const QString &message);
 
     std::shared_ptr<SharedState> m_state;
+    MpvSubtitles *m_subtitles;
     QUrl m_source;
     QString m_status = QStringLiteral("Ready");
     bool m_paused = false;
