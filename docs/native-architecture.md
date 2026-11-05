@@ -12,6 +12,9 @@ The libmpv renderer services every update notification, renders only new frames
 or a resized target, and coalesces queued GUI updates. Thirty-second diagnostic
 samples report render rate, decoder/display drops and audio/video timing without
 blocking the decoder; display geometry and refresh are logged at startup.
+The embedded renderer prepares frames with a bounded 20 ms lead and leaves the
+final presentation wait to Qt's vsync rather than blocking the shared render
+thread at mpv's deadline before Qt can composite and present the frame.
 
 ## QML composition
 
@@ -140,8 +143,8 @@ request cancels a pending handoff. The final episode returns to the library.
 Menus distinguish resuming an episode, starting the next episode and a completed
 series. The display-resolution setting starts 1080p menus at 60 Hz. During video,
 `hardware/DisplayRefresh` selects an advertised progressive mode at the same
-resolution whose refresh matches the source cadence (including 50 Hz for 25/50
-fps and 23.976/24 Hz for films). It uses the application's existing DRM master
+resolution whose refresh best matches the source cadence (50 Hz for 25/50 fps,
+and 23.976/24 Hz for films when advertised by the display). It uses the application's existing DRM master
 at a Qt render boundary, validates an atomic MODE_ID-only change before applying
 it, and leaves the previous mode intact on failure. Stale playback requests are
 discarded, an inactive player cannot override the current owner, and menus

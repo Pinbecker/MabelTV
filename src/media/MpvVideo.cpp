@@ -159,9 +159,11 @@ public:
         // orientation expected by the Qt Quick scene. Asking libmpv to flip
         // the FBO as well turns the finished television picture upside down.
         int flipVertically = 0;
+        int blockForTargetTime = 0; // Qt owns the final vsync after composition.
         mpv_render_param parameters[] = {
             {MPV_RENDER_PARAM_OPENGL_FBO, &targetFbo},
             {MPV_RENDER_PARAM_FLIP_Y, &flipVertically},
+            {MPV_RENDER_PARAM_BLOCK_FOR_TARGET_TIME, &blockForTargetTime},
             {MPV_RENDER_PARAM_INVALID, nullptr},
         };
 
@@ -304,6 +306,9 @@ MpvVideo::MpvVideo(QQuickItem *parent)
     checkMpv(mpv_set_option_string(m_state->handle, "keep-open", "no"),
              "Configuring mpv end-of-file behaviour");
     checkMpv(mpv_set_option_string(m_state->handle, "idle", "yes"), "Configuring mpv idle mode");
+    // Prepare one 50 Hz frame ahead; never block the shared Qt render thread
+    // at mpv's target time and then miss Qt's following presentation deadline.
+    checkMpv(mpv_set_option_string(m_state->handle, "video-timing-offset", "0.02"), "Setting video preparation lead time");
     checkMpv(mpv_set_option_string(m_state->handle, "volume-max", "160"),
              "Allowing amplified Mabel TV playback volume");
     checkMpv(mpv_set_option_string(m_state->handle, "volume", "20"), "Setting initial mpv volume");
