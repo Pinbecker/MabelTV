@@ -331,6 +331,7 @@ MpvVideo::MpvVideo(QQuickItem *parent)
         checkMpv(mpv_set_option_string(m_state->handle, "msg-level", "all=v"),
                  "Configuring mpv diagnostic verbosity");
     }
+    MpvSubtitles::configureStyle(m_state->handle);
     if (!checkMpv(mpv_initialize(m_state->handle), "Initialising libmpv")) {
         mpv_terminate_destroy(m_state->handle);
         m_state->handle = nullptr;

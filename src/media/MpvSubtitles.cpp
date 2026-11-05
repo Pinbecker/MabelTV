@@ -18,6 +18,22 @@ QString stringValue(const mpv_node &node) {
 }
 }
 
+void MpvSubtitles::configureStyle(mpv_handle *handle)
+{
+    // One plain subtitle style for films and children's programmes, including
+    // tracks rendered natively. Source files and subtitle timing are unchanged.
+    const char *options[][2] = {
+        {"sub-ass-override", "strip"}, {"sub-font", "sans-serif"},
+        {"sub-font-size", "42"}, {"sub-color", "#FFFFFFFF"},
+        {"sub-border-color", "#FF000000"}, {"sub-border-size", "1.5"},
+        {"sub-shadow-offset", "0"}, {"sub-margin-y", "32"},
+    };
+    for (const auto &option : options) {
+        const int error = mpv_set_option_string(handle, option[0], option[1]);
+        if (error < 0) qWarning("Subtitle style %s failed: %s", option[0], mpv_error_string(error));
+    }
+}
+
 MpvSubtitles::MpvSubtitles(QQuickItem *surface)
     : QQuickPaintedItem(surface), m_surface(surface)
 {
@@ -261,7 +277,7 @@ void MpvSubtitles::layoutCaption()
     QPainter raster(&m_image);
     raster.setRenderHint(QPainter::Antialiasing);
     QAbstractTextDocumentLayout::PaintContext context;
-    // The border must be underneath the coloured glyphs, not drawn over them.
+    // The border must be underneath the white glyphs, not drawn over them.
     border.documentLayout()->draw(&raster, context);
     fill.documentLayout()->draw(&raster, context);
     update(); // Rasterise/upload once per cue or resize, never per video frame.

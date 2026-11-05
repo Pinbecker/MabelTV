@@ -14,6 +14,7 @@ class MpvSubtitles final : public QQuickPaintedItem
 {
     Q_OBJECT
 public:
+    static void configureStyle(mpv_handle *handle);
     explicit MpvSubtitles(QQuickItem *surface);
     void attach(mpv_handle *handle);
     void process(const mpv_event &event);
@@ -40,7 +41,7 @@ private:
     QQuickItem *m_surface;
     QImage m_image;
     QString m_font = "sans-serif";
-    double m_fontSize = 55, m_border = 3, m_marginY = 22, m_marginX = 19, m_scale = 1;
+    double m_fontSize = 42, m_border = 1.5, m_marginY = 32, m_marginX = 19, m_scale = 1;
     QString m_html, m_codec;
     qint64 m_trackId = -1;
     bool m_cached = false, m_shown = true, m_loaded = false;

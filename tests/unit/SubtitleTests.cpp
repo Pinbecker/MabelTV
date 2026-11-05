@@ -10,19 +10,32 @@
 
 class SubtitleTests : public QObject {
     Q_OBJECT
+    static bool plainCaption(const QImage &frame) {
+        if (frame.isNull()) return false;
+        int white = 0, coloured = 0, topText = 0;
+        for (int y = 0; y < 535; ++y) for (int x = 100; x < 860; ++x) {
+            const auto pixel = frame.pixelColor(x, y);
+            const bool bright = pixel.red() > 180 && pixel.green() > 180 && pixel.blue() > 180;
+            if (y > 360 && bright) ++white;
+            if (y < 160 && bright) ++topText;
+            if (pixel.green() > 180 && pixel.red() < 80 && pixel.blue() < 80) ++coloured;
+        }
+        return white > 100 && coloured == 0 && topText == 0;
+    }
 private slots:
-    void preservesSrtStylingAndEscapesContent() {
+    void normalisesSrtStylingAndEscapesContent() {
         const auto rich = subtitleRichText("{\\c&HFF00&}Green {\\i1}italic{\\i0}{\\c}\\NWhite {\\b1}bold{\\b0} & <img src='file:///private'>");
         QVERIFY(rich);
-        QVERIFY(rich->contains("color:#00ff00"));
-        QVERIFY(rich->contains("font-style:italic"));
+        QVERIFY(!rich->contains("color:#00ff00"));
+        QVERIFY(!rich->contains("font-style:italic"));
         QVERIFY(rich->contains("color:#ffffff"));
-        QVERIFY(rich->contains("font-weight:bold"));
+        QVERIFY(!rich->contains("font-weight:bold"));
+        QVERIFY(rich->contains("Green ") && rich->contains("italic") && rich->contains("bold"));
         QVERIFY(rich->contains("<br>"));
         QVERIFY(rich->contains("&amp; &lt;img"));
         QVERIFY(!rich->contains("<img"));
         const auto blue = subtitleRichText("{\\1c&HFF0000&}Blue");
-        QVERIFY(blue && blue->contains("color:#0000ff"));
+        QVERIFY(blue && blue->contains("color:#ffffff") && blue->contains("Blue"));
     }
 
     void leavesComplexStylesToMpv() {
@@ -82,17 +95,10 @@ private slots:
         capture.save("subtitle-cached.png");
         QVERIFY(capture.pixelColor(480, 100).red() > 200);
         QVERIFY(capture.pixelColor(100, 450).blue() > 200);
-        int greenPixels = 0, whitePixels = 0;
-        for (int y = 360; y < 535; ++y) for (int x = 100; x < 860; ++x) {
-            const auto pixel = capture.pixelColor(x, y);
-            if (pixel.green() > 180 && pixel.red() < 80 && pixel.blue() < 80) ++greenPixels;
-            if (pixel.green() > 180 && pixel.red() > 180 && pixel.blue() > 180) ++whitePixels;
-        }
-        QVERIFY2(greenPixels > 100, "The actual coloured subtitle was not drawn");
-        QVERIFY2(whitePixels > 100, "The white subtitle line was not drawn");
+        QVERIFY2(plainCaption(capture), "Cached subtitles must be white and centred near the bottom");
         video->setCachedSubtitles(false);
         QTRY_VERIFY(!captions->isVisible());
-        QTest::qWait(150);
+        QTRY_VERIFY(plainCaption(window.grabWindow()));
         window.grabWindow().save("subtitle-native.png");
         video->setCachedSubtitles(true);
         QTRY_VERIFY(captions->isVisible());
@@ -111,17 +117,9 @@ private slots:
         video->seekAbsolute(19);
         QTRY_VERIFY(!captions->active());
         QVERIFY(!captions->isVisible());
-        const auto topCaptionVisible = [&window] {
-            const auto frame = window.grabWindow();
-            int bright = 0;
-            if (frame.isNull()) return false;
-            for (int y = 0; y < 160; ++y) for (int x = 100; x < 860; ++x) {
-                const auto pixel = frame.pixelColor(x, y);
-                if (pixel.red() > 180 && pixel.green() > 180 && pixel.blue() > 180) ++bright;
-            }
-            return bright > 100;
-        };
-        QTRY_VERIFY(topCaptionVisible());
+        // Native fallback follows the same plain-white/bottom style, even
+        // when the source asks for its own position or speaker colours.
+        QTRY_VERIFY(plainCaption(window.grabWindow()));
         // Unsupported positioning falls back for this entire track, even
         // after seeking back to a simple cue.
         video->seekAbsolute(2);
