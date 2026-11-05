@@ -17,17 +17,18 @@ async function ensureIntel(tools, signal) {
   }
   await check;
 }
-function videoFilters(analysis, target) {
+function videoFilters(analysis, target, preparation) {
   const { width, height } = outputGeometry(analysis, target);
   const canvasHeight = Math.max(height, Math.min(target === 'mabel' ? 720 : 1080, Math.ceil(width * 9 / 32) * 2));
   const hdr = ['smpte2084', 'arib-std-b67'].includes(analysis.colorTransfer);
   const toneMap = hdr ? 'zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,' : '';
   const deinterlace = analysis.interlaced ? 'bwdif=mode=send_field:parity=auto:deint=all,' : '';
-  return deinterlace + toneMap + `scale=trunc(iw*sar/2)*2:ih,setsar=1,scale=${width}:${height}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,pad=${width}:${canvasHeight}:(ow-iw)/2:(oh-ih)/2,format=yuv420p,setparams=range=limited:color_primaries=bt709:color_trc=bt709:colorspace=bt709`;
+  const cadence = outputFrameRate(analysis, true, preparation) !== outputFrameRate(analysis, true) ? 'fps=25,' : '';
+  return deinterlace + cadence + toneMap + `scale=trunc(iw*sar/2)*2:ih,setsar=1,scale=${width}:${height}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,pad=${width}:${canvasHeight}:(ow-iw)/2:(oh-ih)/2,format=yuv420p,setparams=range=limited:color_primaries=bt709:color_trc=bt709:colorspace=bt709`;
 }
 async function encodeCompression({ file, destination, target, analysis, tools, signal, progress, inspect, compression, allowRisk = false }) {
   const compatible = compression === 'compatible';
-  const expectedFps = outputFrameRate(analysis, true);
+  const expectedFps = outputFrameRate(analysis, true, compression);
   const plan = compatible ? null : compressionPlan(analysis, compression, target);
   if (plan?.risky && !allowRisk) { const error = new Error(plan.warning + ' Confirm compression or keep the existing copy.'); error.code = 'QUALITY_REVIEW'; throw error; }
   if (path.resolve(file) === path.resolve(destination)) throw new Error('The original and output paths must be different.');
@@ -44,12 +45,13 @@ async function encodeCompression({ file, destination, target, analysis, tools, s
     preset: policy.preset, lookAhead: true, sourceBytes: plan?.sourceBytes || analysis.bytes, duration: analysis.duration,
     sourceFps: analysis.fps, outputFps: expectedFps };
   const args = ['-nostdin', '-hide_banner', '-loglevel', 'warning', '-y', '-i', file, '-map', '0:v:0',
-    '-vf', videoFilters(analysis, target), '-c:v', policy.encoder, '-preset', policy.preset, '-look_ahead', '1', ...rate,
+    '-vf', videoFilters(analysis, target, compression), '-c:v', policy.encoder, '-preset', policy.preset, '-look_ahead', '1', ...rate,
     '-maxrate', String(maximumRate), '-bufsize', String(target === 'mabel' ? 5000000 : policy.bufferSize),
-    '-profile:v', 'high', '-level:v', outputLevel(analysis, target), '-pix_fmt', 'yuv420p', '-fps_mode', 'passthrough',
+    '-profile:v', 'high', '-level:v', outputLevel(analysis, target, compression), '-pix_fmt', 'yuv420p', '-fps_mode', 'passthrough',
     '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709',
     '-bsf:v', 'h264_metadata=colour_primaries=1:transfer_characteristics=1:matrix_coefficients=1:video_full_range_flag=0',
-    '-map', '0:a:0?', '-c:a', 'aac', '-b:a', String(plan?.audioBitrate || 192000), '-ac', '2',
+    '-map', '0:a:0?', ...(compatible && !analysis.reasons.some(reason => ['AAC audio', 'stereo audio'].includes(reason))
+      ? ['-c:a', 'copy'] : ['-c:a', 'aac', '-b:a', String(plan?.audioBitrate || 192000), '-ac', '2']),
     '-map_metadata', '0', '-map_chapters', '-1', '-metadata', 'comment=' + JSON.stringify({ mabeltv: proof }),
     '-movflags', '+faststart+write_colr', '-progress', 'pipe:1', '-nostats', partial];
   try {
@@ -60,10 +62,10 @@ async function encodeCompression({ file, destination, target, analysis, tools, s
     const now = fs.statSync(file);
     if (now.size !== stats.size || now.mtimeMs !== stats.mtimeMs || now.ino !== stats.ino) throw new Error('The original changed during conversion. It was kept.');
     const validated = await inspect(partial, target, signal);
-    const expectedFrames = analysis.frameCount * (analysis.interlaced ? 2 : 1);
+    const expectedFrames = analysis.frameCount && Math.round(analysis.frameCount * expectedFps / analysis.fps);
     if (Math.abs(validated.fps - expectedFps) > .005
-        || expectedFrames && validated.frameCount && expectedFrames !== validated.frameCount)
-      throw new Error('The prepared video did not preserve the source motion. The original was kept.');
+        || expectedFrames && validated.frameCount && Math.abs(expectedFrames - validated.frameCount) > (expectedFps !== outputFrameRate(analysis, true) ? 1 : 0))
+      throw new Error('The prepared video did not match the requested frame rate. The original was kept.');
     if (!validated.ready || Math.abs(validated.duration - analysis.duration) > 2 || validated.hasAudio !== analysis.hasAudio)
       throw new Error('The prepared video failed validation. The original was kept.');
     if (!compatible && validated.bytes >= analysis.bytes)

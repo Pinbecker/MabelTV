@@ -33,7 +33,8 @@ class StudioTests(unittest.TestCase):
         claimed = self.poll(capabilities=["intel-policy-v2", "compression-presets"])["job"]
         self.assertEqual(claimed["id"], identity)
         self.assertEqual(claimed["destination"]["preparationIntent"], "compatible")
-        self.assertEqual(self.library.studio_destination({"kind": "film"})["preparationIntent"], "compress")
+        self.assertEqual(self.library.studio_destination({"kind": "film"})["preparationIntent"], "compatible")
+        self.assertEqual(self.library.studio_destination({"kind": "film", "compression": "compact"})["preparationIntent"], "compress")
         with self.assertRaisesRegex(ValueError, "compression profile"):
             self.library.studio_destination({"kind": "icloud", "cloudCopies": "optimised", "optimiseCloud": True, "preparationIntent": "compatible"})
 

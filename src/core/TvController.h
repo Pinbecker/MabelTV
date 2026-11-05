@@ -2,6 +2,7 @@
 
 #include "library/ChannelLibrary.h"
 #include "library/ShuffleBag.h"
+#include "MyTvResumeWriter.h"
 
 #include <QElapsedTimer>
 #include <QFutureWatcher>
@@ -304,6 +305,7 @@ private:
     QString m_mediaRoot;
     QString m_myTvMediaRoot;
     QString m_databasePath;
+    MyTvResumeWriter m_myTvResumeWriter;
     QString m_libraryStatus;
     QStringList m_libraryWarnings;
     QString m_numericEntry;

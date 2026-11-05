@@ -17,19 +17,19 @@ function outputGeometry(analysis, target = 'mytv') {
   return { width: Math.max(2, Math.floor(displayWidth * ratio / 2) * 2),
     height: Math.max(2, Math.floor(analysis.height * ratio / 2) * 2) };
 }
-function outputFrameRate(analysis, required = false) {
+function outputFrameRate(analysis, required = false, preparation = 'compress') {
   const source = analysis.fps;
   if (required && !(Number.isFinite(source) && source > 0))
     throw Object.assign(new Error('The source frame rate could not be read. The original was kept.'), { code: 'FRAME_RATE' });
   const fps = (source > 0 ? source : 24) * (analysis.interlaced ? 2 : 1);
   if (fps > policy.maximumFrameRate + .001)
     throw Object.assign(new Error(`This video needs ${fps.toFixed(2)} fps. Studio supports up to ${policy.maximumFrameRate} fps without reducing motion. The original was kept.`), { code: 'FRAME_RATE' });
-  return fps;
+  return preparation === 'compatible' && Math.abs(fps - 50) < .005 ? 25 : fps;
 }
-function outputLevel(analysis, target) {
+function outputLevel(analysis, target, preparation) {
   const { width, height } = outputGeometry(analysis, target);
   const canvas = Math.max(height, Math.min(target === 'mabel' ? 720 : 1080, Math.ceil(width * 9 / 32) * 2));
-  return Math.ceil(width / 16) * Math.ceil(canvas / 16) * outputFrameRate(analysis, true) > 245760 ? '4.2' : '4.1';
+  return Math.ceil(width / 16) * Math.ceil(canvas / 16) * outputFrameRate(analysis, true, preparation) > 245760 ? '4.2' : '4.1';
 }
 function compressionProof(probe, bytes, duration) {
   try {

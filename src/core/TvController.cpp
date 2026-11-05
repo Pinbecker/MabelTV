@@ -127,6 +127,7 @@ TvController::TvController(QObject *parent)
 
 TvController::~TvController()
 {
+    m_myTvResumeWriter.flush();
     saveState();
 }
 

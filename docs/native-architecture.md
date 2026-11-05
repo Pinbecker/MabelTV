@@ -47,6 +47,10 @@ Tests cover real white cue pixels, removal of colour/style, pause/seek/toggle,
 native fallback, source changes and reuse of
 the same caption texture across advancing video frames. Pi frame-rate acceptance
 must still be measured on hardware before calling this a verified speed fix.
+The portal subtitle control follows the active player's available track in all
+children's picture modes as well as My TV. If the display has no matching
+refresh rate for a film, its highest supported refresh is used; a 24 fps film
+must not be sent to 50 Hz merely because that ratio is nearer an integer.
 
 ## QML composition
 
@@ -317,3 +321,5 @@ window responds to a local request file in its private /run/mabeltv/frame-captur
 folder, reads at most three final OpenGL render passes into private PNGs, and expires after ten
 minutes. There is no HTTP endpoint and the feature has no timer or file writes
 when disabled. Runtime overrides used for acceptance are removed afterwards.
+
+My TV periodic resume checkpoints use `MyTvResumeWriter`: one background SQLite operation, with only the latest waiting checkpoint per film. Lock waits and disk sync cannot block the GUI through this path. Failed saves retry; shutdown flushes pending checkpoints. Timestamp guards keep an older queued save from replacing a newer phone or restart checkpoint.

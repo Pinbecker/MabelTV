@@ -4,6 +4,15 @@ const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const {outputFrameRate,outputLevel,compressionPlan,compressionProof,videoFilters}=require('../lib/compression.cjs');
 const {analyse}=require('../lib/media.cjs');
 const facts={width:1920,height:1080,bytes:3.5e9,duration:7200,hasAudio:true,ready:false,sar:1};
+test('compatibility halves 50 fps motion while other rates and compression choices retain their cadence',()=>{
+ for(const fps of [24000/1001,24,25,30000/1001,30,50,60000/1001,60])
+  assert.equal(outputFrameRate({...facts,fps},true,'compatible'),fps===50?25:fps);
+ assert.equal(outputFrameRate({...facts,fps:25,interlaced:true},true,'compatible'),25);
+ assert.equal(outputLevel({...facts,fps:50},'mytv','compatible'),'4.1');
+ assert.match(videoFilters({...facts,fps:50},'mytv','compatible'),/fps=25,/);
+ assert.doesNotMatch(videoFilters({...facts,fps:25},'mytv','compatible'),/fps=/);
+ assert.doesNotMatch(videoFilters({...facts,fps:50},'mytv','compact'),/fps=/);
+});
 test('source cadence is preserved and H264 level matches the encoded frame size and rate',()=>{
  for(const fps of [24000/1001,24,25,30000/1001,30,50,60000/1001,60]) {
   assert.equal(outputFrameRate({...facts,fps},true),fps);

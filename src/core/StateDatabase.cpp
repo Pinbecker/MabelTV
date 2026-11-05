@@ -159,7 +159,7 @@ bool saveMyTvResume(const QString &path, const QString &libraryId,
         "duration_seconds=CASE WHEN excluded.duration_present THEN excluded.duration_seconds "
         "ELSE my_tv_resume.duration_seconds END,updated_utc_ms=excluded.updated_utc_ms,"
         "position_present=1,duration_present=MAX(my_tv_resume.duration_present,excluded.duration_present),"
-        "updated_present=1"));
+        "updated_present=1 WHERE excluded.updated_utc_ms >= my_tv_resume.updated_utc_ms"));
     query.addBindValue(libraryId); query.addBindValue(position);
     query.addBindValue(duration); query.addBindValue(updated); query.addBindValue(duration >= 10);
     if (!query.exec()) {

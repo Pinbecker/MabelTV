@@ -18,8 +18,11 @@ inline int chooseRate(double fps, const std::vector<double> &rates)
         if (!std::isfinite(hz) || hz < 23 || hz > 60.1) continue;
         const double ratio = fps > 0 ? hz / fps : 1;
         const double cadence = fps > 0 ? std::abs(ratio - std::round(ratio)) : 0;
+        // Prefer a matching cadence. When none is available, use the highest
+        // supported refresh rather than giving 24 fps films an irregular 50 Hz
+        // cadence just because 50/24 happens to be close to an integer.
         const double score = (fps > 0 && hz + .06 < fps ? 10 : 0)
-            + cadence + (60.1 - hz) * .000001;
+            + (cadence <= .005 ? cadence : 1) + (60.1 - hz) * .000001;
         if (score < bestScore) { bestScore = score; best = i; }
     }
     return best;

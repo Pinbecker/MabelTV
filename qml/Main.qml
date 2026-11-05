@@ -73,9 +73,11 @@ Window {
     readonly property bool portalStoryAudioPlaying: familyMedia.active && familyMedia.audioOnlyPlaying
     readonly property bool portalStandby: tvController.standby
     readonly property bool portalSubtitlesAvailable: myTvMode.active
-        && myTvMode.subtitlesAvailable || portalFullScreenEnabled && player.subtitlesAvailable
+        && myTvMode.subtitlesAvailable || !myTvMode.active && !familyMedia.active
+        && !tvController.standby && player.subtitlesAvailable
     readonly property bool portalSubtitlesVisible: myTvMode.active
-        && myTvMode.subtitlesVisible || portalFullScreenEnabled && player.subtitlesVisible
+        && myTvMode.subtitlesVisible || !myTvMode.active && !familyMedia.active
+        && !tvController.standby && player.subtitlesVisible
     readonly property bool widescreenContentAvailable: !directMediaMode
         && !introPlaying && player.videoAspectRatio >= 1.70
     readonly property bool portalWidescreenAvailable: presentation.available
@@ -432,7 +434,7 @@ Window {
         } else if (command === "toggle-subtitles") {
             if (myTvMode.active)
                 myTvMode.toggleSubtitles()
-            else if (presentation.visible) presentation.toggleSubtitles()
+            else if (portalSubtitlesAvailable) presentation.toggleSubtitles()
         } else if (command === "toggle-widescreen-mode") {
             if (!myTvMode.active) presentation.cycle()
         } else if (command === "volume-up") {

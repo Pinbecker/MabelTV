@@ -174,12 +174,8 @@ void TvController::setMyTvPlaybackPosition(const QString &libraryId,
     // it resurrects an older bookmark from a phone on the next resume.
     const double saved = position < 2.0 ? 0.0 : position;
     const qint64 updated = QDateTime::currentMSecsSinceEpoch();
-    QString error;
-    if (!mabeltv::state::saveMyTvResume(m_databasePath, key, saved,
-                                       m_myTvPlaybackDurations.value(key), updated, &error)) {
-        qWarning().noquote() << "Could not save My TV progress:" << error;
-        return;
-    }
+    m_myTvResumeWriter.save(m_databasePath, key, saved,
+                           m_myTvPlaybackDurations.value(key), updated);
     m_myTvPlaybackPositions.insert(key, saved);
     m_myTvPlaybackUpdatedUtcMs.insert(key, updated);
     emit myTvPlaybackStateChanged();

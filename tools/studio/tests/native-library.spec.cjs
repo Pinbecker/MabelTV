@@ -26,7 +26,7 @@ test('iCloud library is native, preserves artwork on selection and sends a froze
     await page.locator('#cloud-select').click();await page.getByRole('button',{name:'Arrival',exact:true}).click();
     await expect(page.locator('#library-send')).toBeVisible();
     await expect(page.locator('#library-destination [data-field="compression"] option')).toHaveCount(4);
-    await page.locator('#library-destination [data-field="compression"]').selectOption('compatible');
+    await expect(page.locator('#library-destination [data-field="compression"]')).toHaveValue('compatible');
     await page.screenshot({path:'test-results/native-cloud-send.png'});
     await page.getByRole('button',{name:'Send to My TV',exact:true}).click();
     await expect(page.locator('#view-queue')).toBeVisible();

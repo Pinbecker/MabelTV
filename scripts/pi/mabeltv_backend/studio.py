@@ -65,7 +65,7 @@ class StudioMixin:
         destination.update(temporaryWork=True, keepOptimised=False)
         destination["allowRisk"] = value.get("allowRisk") is True
         destination["unattended"] = value.get("unattended") is True
-        destination["preparationIntent"] = "compatible" if value.get("preparationIntent") == "compatible" else "compress"
+        destination["preparationIntent"] = "compatible" if value.get("preparationIntent") == "compatible" or (not value.get("preparationIntent") and not value.get("compression") and value["kind"] != "icloud") else "compress"
         if "compression" in value:
             destination["compression"] = compression_profile(value["compression"])["id"]
         if not isinstance(value.get("cloudCopies", "original"), str) or value.get("cloudCopies", "original") not in {"original", "optimised", "both"}:

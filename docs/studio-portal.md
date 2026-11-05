@@ -114,6 +114,7 @@ continue. Non-lock filesystem errors still preserve the files and report failure
 
 Choose My TV films/series, a Mabel TV channel, or iCloud. TV uploads are always
 prepared for their destination: Mabel TV uses 720p, My TV uses up to 1080p.
+Compatibility only is the default for new TV deliveries in the portal and Windows Studio, including iPlayer, torrents, local files and iCloud. Balanced, Compact and Smallest remain explicit space-saving choices. Existing queued choices are retained. Compatibility converts 50 fps motion (including 25 fps interlaced material) to 25 progressive frames for either TV destination; other supported rates are unchanged. This requires a high-quality video encode, not a fixed size reduction. iCloud-only space-saving actions still use their chosen compression profile.
 Compatibility-only delivery copies suitable H.264 picture packets unchanged
 when only the container, fast-start layout, audio codec or stereo mix needs
 correction. Audio can become AAC stereo without another picture encode. Output

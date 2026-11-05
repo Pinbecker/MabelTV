@@ -60,6 +60,8 @@ add_library(mabeltv_core STATIC
     src/core/TvControllerPlayback.cpp
     src/core/TvControllerPortal.cpp
     src/core/StateDatabase.cpp
+    src/core/MyTvResumeWriter.cpp
+    src/core/MyTvResumeWriter.h
     src/core/MabelQueueState.cpp
     src/core/TvControllerQueue.cpp
     src/core/StateDatabase.h
@@ -258,6 +260,7 @@ if(BUILD_TESTING)
 
     qt_add_executable(mabeltv_core_tests
         tests/unit/CoreTests.cpp
+        tests/unit/StateDatabaseTests.cpp
         tests/unit/CoreTests.h
         tests/unit/PortalProgrammeTests.cpp
         tests/unit/QueueTests.cpp

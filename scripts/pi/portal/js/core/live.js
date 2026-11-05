@@ -184,13 +184,13 @@
       if (lockLabel) lockLabel.textContent = locked ? 'Unlock kids' : 'Lock kids'
       lockButton.setAttribute('aria-label', locked ? 'Unlock kids’ physical remote' : 'Lock kids’ physical remote')
       $$('[data-live-command]').forEach(button => {
-        const myTvSubtitles = button.dataset.liveCommand !== 'toggle-subtitles'
-          || ((my_tv || presentationMode === 'fullscreen') && state.subtitles_available !== false)
+        const subtitleControl = button.dataset.liveCommand !== 'toggle-subtitles'
+          || (available && state.subtitles_available === true)
         const widescreenControl = button.dataset.liveCommand !== 'toggle-widescreen-mode'
           || widescreenAvailable
         const myTvHandoffControl = button.dataset.liveCommand !== 'continue-in-my-tv-mode'
           || myTvHandoffAvailable
-        button.disabled = !myTvSubtitles || !widescreenControl || !myTvHandoffControl
+        button.disabled = !subtitleControl || !widescreenControl || !myTvHandoffControl
       })
       if ($('#remotePlay')) $('#remotePlay').disabled = !available || !paused
       if ($('#remotePause')) $('#remotePause').disabled = !available || paused

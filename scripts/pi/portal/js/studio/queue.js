@@ -54,8 +54,11 @@ function studioSyncDestination() {
   const fromCloud = studioDraft?.sources.length > 0 && studioDraft.sources.every(source => source.type === 'cloud')
   const compression = $('#studioCompression')
   let compatibility = compression.querySelector('[value="compatible"]')
-  if (fromCloud && chosen !== 'icloud' && !compatibility) compression.add(new Option('Compatibility only', 'compatible'))
-  if ((!fromCloud || chosen === 'icloud') && compatibility) {
+  if (chosen !== 'icloud' && !compatibility) {
+    compression.add(new Option('Compatibility only', 'compatible'), 0)
+    compression.value = 'compatible'
+  }
+  if (chosen === 'icloud' && compatibility) {
     if (compression.value === 'compatible') compression.value = 'compact'
     compatibility.remove()
   }

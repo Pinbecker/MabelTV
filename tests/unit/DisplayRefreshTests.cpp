@@ -21,6 +21,9 @@ private slots:
         using mabeltv::display::chooseRate;
         QCOMPARE(chooseRate(50, {30, 60, 120}), 1);
         QCOMPARE(chooseRate(24, {24, 48, 120}), 1);
+        QCOMPARE(chooseRate(24, {50, 60}), 1);
+        QCOMPARE(chooseRate(24000.0/1001, {50, 60}), 1);
+        QCOMPARE(chooseRate(25, {30, 60}), 1);
         QCOMPARE(chooseRate(50, {}), -1);
         QCOMPARE(chooseRate(120, {120}), -1);
         QCOMPARE(chooseRate(std::numeric_limits<double>::quiet_NaN(), {60}), -1);

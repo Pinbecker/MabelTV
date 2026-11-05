@@ -45,7 +45,7 @@ class DesktopLibrary {
     if (value.kind !== 'icloud') destinationValid(value);
     if (!['original', 'optimised', 'both'].includes(value.cloudCopies)) throw new Error('Choose which iCloud copies to keep.');
     const destination = { kind: value.kind, cloudCopies: value.cloudCopies, saveCloud: true,
-      compression: compressionProfile(value.compression).id, preparationIntent: value.preparationIntent === 'compatible' ? 'compatible' : 'compress' };
+      compression: compressionProfile(value.compression).id, preparationIntent: value.preparationIntent === 'compatible' || (!value.preparationIntent && !value.compression && !value.spaceOnly) ? 'compatible' : 'compress' };
     if (value.kind === 'mabel') {
       const library = await this.portal.api('/api/library');
       const channel = library.channels.find(channel => channel.number === value.channel);

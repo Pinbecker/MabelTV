@@ -35,7 +35,7 @@ export class LibrarySend {
       }
     } });
     Object.assign(this.destination.state, { target: 'mytv', type: context.item?.kind === 'series' || seasons.length ? 'series' : 'film',
-      cloudCopies: context.type === 'cloud' || context.type === 'original' ? 'original' : 'optimised', compression: context.type === 'original' ? 'compatible' : 'compact' });
+      cloudCopies: context.type === 'cloud' || context.type === 'original' ? 'original' : 'optimised', compression: 'compatible' });
     this.destination.suggest({ title: name, series: seasons[0] });
     this.destination.render(); this.renderFiles();
     if (!this.dialog.open) this.dialog.showModal();

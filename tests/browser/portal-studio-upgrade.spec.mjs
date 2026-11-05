@@ -2,6 +2,19 @@ import { test, expect } from './test-fixtures.mjs'
 import { openStudio } from './studio-fixtures.mjs'
 test.use({ serviceWorkers: 'block' })
 
+test('new TV deliveries default to compatibility for cloud, BBC and torrent sources', async ({ page }) => {
+  await openStudio(page)
+  for (const type of ['cloud', 'iplayer', 'torrent']) {
+    await page.evaluate(type => openStudioDestination([{ type, title: 'Test film', id: 'a'.repeat(24) }]), type)
+    await expect(page.locator('#studioCompression')).toHaveValue('compatible')
+    await expect(page.locator('#studioCompression option')).toHaveCount(4)
+    await page.locator('#studioCompression').selectOption('compact')
+    await page.evaluate(() => studioSyncDestination())
+    await expect(page.locator('#studioCompression')).toHaveValue('compact')
+    await page.evaluate(() => closeLibrarySheet(document.querySelector('#studioDestinationSheet')))
+  }
+})
+
 async function bounded(page, id) {
   const viewport = page.viewportSize()
   const panel = await page.locator(`#${id} > :is(.library-sheet-panel,.watch-film-panel)`).boundingBox()

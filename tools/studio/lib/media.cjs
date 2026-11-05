@@ -2,7 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { run } = require('./process.cjs');
-const { compressionProof, compressionPlan, reusableCompression, encodeCompression, policy } = require('./compression.cjs');
+const { compressionProof, compressionPlan, reusableCompression, encodeCompression, policy, outputFrameRate } = require('./compression.cjs');
 const { remuxCompatible } = require('./compatible-media.cjs');
 
 function frameRate(value) { const parts = String(value).split('/').map(Number); return parts.length === 2 ? parts[0] / parts[1] : parts[0]; }
@@ -67,6 +67,9 @@ class Media {
     // is still checked below; only a dedicated space-saving request asks for consent.
     if (compression !== 'compatible' && !options.spaceOnly && !options.allowRisk
         && compressionPlan(analysis, compression, target).risky) compression = 'compatible';
+    if (compression === 'compatible' && outputFrameRate(analysis, true, compression) !== outputFrameRate(analysis, true)) {
+      analysis.ready = false; analysis.reasons.push('25 fps TV playback');
+    }
     if (compression === 'compatible' ? analysis.ready : reusableCompression(analysis, compression, target))
       return { file, analysis, sourceAnalysis: analysis, converted: false, compression };
     reserve?.(analysis);

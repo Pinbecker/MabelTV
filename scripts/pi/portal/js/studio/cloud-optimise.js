@@ -33,7 +33,7 @@ async function studioOpenCloudOptimise() {
   button.setAttribute('aria-busy', 'true')
   try {
     studioOptimiseDraft = studioDraft
-    $('#studioOptimiseCompression').value = $('#studioCompression').value
+    $('#studioOptimiseCompression').value = $('#studioCompression').value === 'compatible' ? 'compact' : $('#studioCompression').value
     $('#studioOptimiseError').classList.add('hidden')
     closeLibrarySheet($('#studioDestinationSheet'), false)
     closeLibrarySheet($('#studioActionsSheet'), false)

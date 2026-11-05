@@ -2,6 +2,31 @@ import { test, expect } from './test-fixtures.mjs'
 
 test.use({ serviceWorkers: 'block' })
 
+test('remote subtitles work for kids in every picture mode and disable without a track', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.locator('.app-shell')).toBeVisible()
+  await page.evaluate(() => openView('live'))
+  const subtitles = page.locator('#remoteSubtitles')
+  for (const mode of ['standard', 'widescreen', 'fullscreen']) {
+    await page.evaluate(presentation_mode => renderRemoteState({
+      available: true, standby: false, my_tv_mode: false, presentation_mode,
+      subtitles_available: true, subtitles_visible: false,
+    }), mode)
+    await expect(subtitles).toBeEnabled()
+    await expect(subtitles).toHaveAttribute('aria-pressed', 'false')
+  }
+  const sent = page.waitForRequest(request => request.url().endsWith('/api/live/control')
+    && request.method() === 'POST')
+  await subtitles.click()
+  expect((await sent).postDataJSON()).toMatchObject({ command: 'toggle-subtitles' })
+  await page.evaluate(() => renderRemoteState({ available: true, my_tv_mode: false,
+    subtitles_available: true, subtitles_visible: true }))
+  await expect(subtitles).toHaveAttribute('aria-pressed', 'true')
+  await page.evaluate(() => renderRemoteState({ available: true, my_tv_mode: false,
+    subtitles_available: false, subtitles_visible: false }))
+  await expect(subtitles).toBeDisabled()
+})
+
 test('inline iOS player Back consumes its history layer and restores the launching card', async ({ page }) => {
   await page.goto('/')
   await expect(page.locator('.app-shell')).toBeVisible()
