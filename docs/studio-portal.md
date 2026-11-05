@@ -129,7 +129,9 @@ archive. An iCloud-only original needs no conversion. Both keeps two versions
 when conversion changes the file; an already compatible file can satisfy both
 roles without duplicate bytes. Versions share one title card and metadata.
 Existing iCloud sources are not offered iCloud as a destination, but still have
-the three archive choices. Optimised only warns that it replaces the existing
+the three archive choices. These sends default to Original in both the portal
+and Windows Studio: the existing cloud file is retained without uploading a
+duplicate, independently of the TV preparation choice. Optimised only warns that it replaces the existing
 original, recommends Both to retain it, and requires separate confirmation.
 Deletion waits for verified cloud and TV receipts and rechecks the frozen
 original version. A changed original is kept for a fresh confirmation.

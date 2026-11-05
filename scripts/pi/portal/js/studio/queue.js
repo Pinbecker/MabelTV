@@ -3,12 +3,13 @@
 let studioDraft = null, studioMatchTimer = null, studioAuth = null, studioAuthBusy = false
 
 function openStudioDestination(sources, matchingJob = null, cloudContext = null) {
+  const fromCloud = sources.length > 0 && sources.every(source => source.type === 'cloud')
   studioDraft = { sources, targetCollections: {}, match: cloudContext?.titles.length === 1 ? cloudContext.titles[0].metadata : null, matchingJob, cloudContext }
   studioState.episodeDraft = null
   $('#studioDestinationTitle').textContent = matchingJob ? matchingJob.title : sources.length === 1 ? sources[0].title : `${sources.length} items selected`
   $('#studioDestinationError').classList.add('hidden')
   $('#studioDestinationForm').reset()
-  $('#studioDestinationForm input[name="studioCloudCopies"][value="optimised"]').checked = true
+  $(`#studioDestinationForm input[name="studioCloudCopies"][value="${fromCloud ? 'original' : 'optimised'}"]`).checked = true
   $('#studioMatchResults').replaceChildren()
   $('#studioMatchSelected').textContent = 'Studio will try an exact title match. Ambiguous matches can be chosen later.'
   $('#studioMatchQuery').value = matchingJob?.title || sources[0]?.title?.replace(/\.[^.]+$/, '').replace(/[._]/g, ' ') || ''
@@ -27,7 +28,6 @@ function openStudioDestination(sources, matchingJob = null, cloudContext = null)
   }
   const nonVideo = sources.some(source => source.kind && source.kind !== 'video')
   if (nonVideo) throw new Error('Choose a film or TV video.')
-  const fromCloud = sources.length > 0 && sources.every(source => source.type === 'cloud')
   $('#studioDestinationForm').classList.toggle('is-cloud-source', fromCloud)
   for (const input of $$('#studioDestinationForm input[name="studioDestination"]')) {
     input.disabled = fromCloud && input.value === 'icloud'

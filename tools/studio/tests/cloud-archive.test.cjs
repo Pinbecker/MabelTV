@@ -98,14 +98,19 @@ test('lost cloud confirmation keeps temporary working files safe', async t => {
   await assert.rejects(async () => { await verifyCloudCopies(f.remote, f.local, f.portal, f.signal); cleanWorkingCopies(f.remote, f.local, f.store); }, /kept/);
   assert.ok(fs.existsSync(f.local.sourcePath)); assert.ok(fs.existsSync(f.local.preparedPath));
 });
-test('existing cloud originals are reused, and optimised copies preserve MCU folder and numbering', async t => {
-  const f = fixture(t), originalPath = 'Films/MCU/01 - Film.mkv';
+for (const copies of ['original', 'both']) test(`existing cloud originals remain intact with ${copies} retention`, async t => {
+  const f = fixture(t, copies), originalPath = 'Films/MCU/01 - Film.mkv';
   const target = path.join(f.media, ...originalPath.split('/')); fs.mkdirSync(path.dirname(target), { recursive: true }); fs.copyFileSync(f.local.sourcePath, target);
   const item = { id: 'c'.repeat(24), path: originalPath, bytes: fs.statSync(target).size, modified: '2026-11-01', remoteId: 'original-remote', variants: ['original'] };
   f.cloud.set(originalPath, item); f.remote.source = { type: 'cloud', ...item, archiveGroup: 'd'.repeat(32) };
   await saveCloud(f.remote, f.local, f.store, f.portal, f.signal);
-  assert.equal(f.cloud.size, 2); assert.equal(f.local.savedCloudCopies.original.id, item.id);
-  assert.match(f.local.savedCloudCopies.optimised.path, /^Films\/MCU\/01 - Film.*\[Optimised\]\.mp4$/);
+  assert.equal(f.cloud.size, copies === 'original' ? 1 : 2); assert.equal(f.local.savedCloudCopies.original.id, item.id);
+  if (copies === 'both') assert.match(f.local.savedCloudCopies.optimised.path, /^Films\/MCU\/01 - Film.*\[Optimised\]\.mp4$/);
+  else {
+    assert.equal(f.local.savedCloudCopies.optimised, undefined);
+    assert.deepEqual(fs.readdirSync(path.dirname(target)), [path.basename(target)]);
+    assert.equal(f.calls.some(call => call.body?.reserve), false);
+  }
   assert.equal(fs.readFileSync(target, 'utf8'), 'full quality original');
   assert.equal(f.calls.filter(call => call.route.endsWith('replace-original')).length, 0);
 });
