@@ -276,13 +276,21 @@
 
     function myTvSeriesContinueEntries() {
       return (library?.my_tv_series || []).map(series => {
-        const episode = (series.episodes || [])
-          .filter(value => value.watched !== true && watchFilmResumable(value))
+        const episodes = series.episodes || []
+        const resumable = episodes
+          .filter(value => watchFilmResumable(value) && (value.watched !== true
+            || Number(value.watched_updated || 0) > 0
+              && Number(value.remote_last_watched || 0) > Number(value.watched_updated)))
           .sort((left, right) => Number(right.remote_last_watched || 0)
             - Number(left.remote_last_watched || 0))[0]
+        const completed = episodes.filter(value => value.watched === true)
+        const episode = resumable || (completed.length
+          ? nextLocalEpisodeAfterProgress(episodes) : null)
         return episode ? {
-          kind: 'my-tv-series', series, episode,
-          lastWatched: Number(episode.remote_last_watched || 0),
+          kind: 'my-tv-series', series, episode, nextEpisode: !resumable,
+          lastWatched: resumable ? Number(episode.remote_last_watched || 0)
+            : Math.max(...completed.map(value => Math.max(Number(value.remote_last_watched || 0),
+              Number(value.watched_updated || 0)))),
         } : null
       }).filter(Boolean)
     }
@@ -294,7 +302,9 @@
       const card = document.createElement('button')
       card.type = 'button'
       card.className = 'watch-continue-card'
-      card.setAttribute('aria-label', `Resume ${series.title}, ${episode.display_name} at ${watchTimeLabel(episode.remote_position)}`)
+      card.setAttribute('aria-label', entry.nextEpisode
+        ? `Play next episode of ${series.title}, ${episode.display_name}`
+        : `Resume ${series.title}, ${episode.display_name} at ${watchTimeLabel(episode.remote_position)}`)
       const art = document.createElement('span')
       art.className = 'watch-continue-art'
       art.style.setProperty('--watch-progress', `${watchFilmProgress(episode)}%`)
@@ -317,11 +327,13 @@
       const copy = document.createElement('span')
       copy.className = 'watch-continue-copy'
       const label = document.createElement('small')
-      label.textContent = `Continue · ${series.title}`
+      label.textContent = `${entry.nextEpisode ? 'Next episode' : 'Continue'} · ${series.title}`
       const title = document.createElement('strong')
       title.textContent = episode.display_name
       const time = document.createElement('span')
-      time.textContent = `${watchTimeLabel(episode.remote_position)} watched`
+      time.textContent = entry.nextEpisode
+        ? `Series ${episode.season}, Episode ${episode.episode}`
+        : `${watchTimeLabel(episode.remote_position)} watched`
       copy.append(label, title, time)
       card.append(art, copy)
       // Continue Watching is a direct launch surface, not a drill-down into

@@ -6,6 +6,222 @@ async function openPortal(page) {
   await expect(page.locator('.app-shell')).toBeVisible()
 }
 
+function localSeries() {
+  return {
+    id: 'fixture-series', title: 'Fixture Series', metadata: {},
+    episode_count: 3, episodes: [
+      { season: 1, episode: 1, path: 'Season 1/Episode 1.mp4',
+        display_name: 'A very long episode title that needs its own space',
+        browser_ready: true, watched: false },
+      { season: 1, episode: 2, path: 'Season 1/Episode 2.mp4',
+        display_name: 'The second episode', browser_ready: true, watched: false },
+      { season: 2, episode: 1, path: 'Season 2/Episode 1.mp4',
+        display_name: 'A new series begins', browser_ready: true, watched: false },
+    ],
+  }
+}
+
+async function openDeviceEpisode(page) {
+  await openPortal(page)
+  await page.evaluate(async series => {
+    library.my_tv_series = [series]
+    library.remote_viewing = { allow_simultaneous: true }
+    window.__episodeRequests = []
+    const networkApi = window.api
+    window.api = async (path, options) => {
+      if (path.startsWith('/api/remote/')) {
+        const body = JSON.parse(options?.body || '{}')
+        window.__episodeRequests.push({ path, body })
+        if (path === '/api/remote/start') {
+          const index = series.episodes.findIndex(value => value.path === body.file)
+          return { kind: 'my-tv-series', title: series.episodes[index].display_name,
+            stream_url: `/api/remote/media?stream=episode-${index + 1}`, resume_position: 0 }
+        }
+        return { ok: true }
+      }
+      return networkApi(path, options)
+    }
+    const video = document.querySelector('#iosWatchVideo')
+    video.load = () => {}
+    video.play = () => Promise.resolve()
+    video.pause = () => {}
+    video.webkitEnterFullscreen = () => {}
+    video.webkitExitFullscreen = () => {}
+    Object.defineProperty(video, 'src', { configurable: true, get: () => '', set: () => {} })
+    Object.defineProperty(video, 'duration', { configurable: true, value: 1800 })
+    Object.defineProperty(video, 'currentTime', { configurable: true, writable: true, value: 0 })
+    await startIosRemotePlayer({ kind: 'my-tv-series', series: series.id,
+      file: series.episodes[0].path, position: 0 })
+  }, localSeries())
+}
+
+test('My TV Continue watching offers the following episode after completion', async ({ page }) => {
+  await openPortal(page)
+  await page.evaluate(series => {
+    library.my_tv_library = []
+    library.my_tv_series = [series]
+    openView('my-tv-home')
+    series.episodes[0].watched = true
+    series.episodes[0].remote_last_watched = 2_000_000_000
+    renderMyTvHomeContinue()
+  }, localSeries())
+  const rail = page.locator('#myTvHomeContinueRail')
+  await expect(rail.locator('.watch-continue-card')).toHaveCount(1)
+  await expect(rail).toContainText('Next episode · Fixture Series')
+  await expect(rail).toContainText('The second episode')
+  await rail.locator('.watch-continue-card').click()
+  await expect(page.locator('#myTvEpisodeTitle')).toHaveText('The second episode')
+  await page.evaluate(() => {
+    closeMyTvEpisodeSheet(false)
+    const series = library.my_tv_series[0]
+    series.episodes[2].watched = true
+    renderMyTvHomeContinue()
+  })
+  await expect(page.locator('#myTvHomeContinueSection')).toBeHidden()
+})
+
+test('My TV series continuation prioritises a live bookmark over completed episodes', async ({ page }) => {
+  await openPortal(page)
+  const result = await page.evaluate(series => {
+    library.my_tv_series = [series]
+    series.episodes[0].watched = true
+    Object.assign(series.episodes[1], { remote_position: 420,
+      remote_duration: 1800, remote_last_watched: 2_000_000_000 })
+    return myTvSeriesContinueEntries()
+  }, localSeries())
+  expect(result).toHaveLength(1)
+  expect(result[0].nextEpisode).toBe(false)
+  expect(result[0].episode.path).toBe('Season 1/Episode 2.mp4')
+  const replay = await page.evaluate(() => {
+    const episode = library.my_tv_series[0].episodes[1]
+    episode.watched = true
+    episode.watched_updated = 1_900_000_000
+    return myTvSeriesContinueEntries()
+  })
+  expect(replay[0].nextEpisode).toBe(false)
+  expect(replay[0].episode.path).toBe('Season 1/Episode 2.mp4')
+})
+
+test('My TV device episode completes, offers a cancellable handoff and advances across series', async ({ page }) => {
+  await openDeviceEpisode(page)
+  await page.evaluate(async () => {
+    const video = document.querySelector('#iosWatchVideo')
+    video.currentTime = 1800
+    await video.onended()
+  })
+  await expect(page.locator('#iosWatchNextHint')).toHaveText('Next episode starts in 8s')
+  await page.locator('#iosWatchNextCancel').click()
+  await expect(page.locator('#iosWatchNextHint')).toHaveText('Next episode is ready when you are')
+  await page.locator('#iosWatchNextPlay').click()
+  await expect(page.locator('#iosWatchTitle')).toHaveText('The second episode')
+  await expect(page.locator('#iosWatchNextContext')).toHaveText('Series 2, Episode 1')
+  const requests = await page.evaluate(() => window.__episodeRequests)
+  expect(requests.filter(value => value.path === '/api/remote/start').map(value => value.body.file))
+    .toEqual(['Season 1/Episode 1.mp4', 'Season 1/Episode 2.mp4'])
+  expect(requests.find(value => value.path === '/api/remote/position').body)
+    .toMatchObject({ stream: 'episode-1', position: 1800, duration: 1800 })
+})
+
+test('My TV device handoff saves an unfinished episode and Back cancels pending autoplay', async ({ page }) => {
+  await openDeviceEpisode(page)
+  await page.clock.install()
+  await page.evaluate(() => { document.querySelector('#iosWatchVideo').currentTime = 600 })
+  await page.locator('#iosWatchNextPlay').click()
+  await expect(page.locator('#iosWatchTitle')).toHaveText('The second episode')
+  expect(await page.evaluate(() => window.__episodeRequests.find(value =>
+    value.path === '/api/remote/position').body.position)).toBe(600)
+  await page.evaluate(async () => {
+    const video = document.querySelector('#iosWatchVideo')
+    video.currentTime = 1800
+    await video.onended()
+    closeIosRemotePlayer({ fromHistory: true })
+  })
+  await page.clock.fastForward(10_000)
+  await expect(page.locator('#iosWatchPlayer')).toBeHidden()
+  expect(await page.evaluate(() => window.__episodeRequests.filter(value =>
+    value.path === '/api/remote/start').length)).toBe(2)
+})
+
+test('My TV device automatically advances once and stops at the last episode', async ({ page }) => {
+  await openDeviceEpisode(page)
+  await page.clock.install()
+  await page.evaluate(async () => {
+    const video = document.querySelector('#iosWatchVideo')
+    video.currentTime = 1800
+    await video.onended()
+    await video.onended()
+  })
+  await page.clock.fastForward(8_000)
+  await expect(page.locator('#iosWatchTitle')).toHaveText('The second episode')
+  expect(await page.evaluate(() => window.__episodeRequests.filter(value =>
+    value.path === '/api/remote/start').length)).toBe(2)
+  await page.locator('#iosWatchNextPlay').click()
+  await expect(page.locator('#iosWatchTitle')).toHaveText('A new series begins')
+  await expect(page.locator('#iosWatchNext')).toBeHidden()
+  await page.evaluate(async () => { await document.querySelector('#iosWatchVideo').onended() })
+  await page.clock.fastForward(10_000)
+  await expect(page.locator('#iosWatchContext')).toHaveText('Fixture Series · Last episode finished')
+  expect(await page.evaluate(() => window.__episodeRequests.filter(value =>
+    value.path === '/api/remote/start').length)).toBe(3)
+})
+
+test('My TV does not advance when saving completion fails or the next file needs VLC', async ({ page }) => {
+  await openDeviceEpisode(page)
+  await page.clock.install()
+  await page.evaluate(async () => {
+    const video = document.querySelector('#iosWatchVideo')
+    const apiBeforeFailure = window.api
+    window.api = (path, options) => path === '/api/remote/position'
+      ? Promise.reject(new Error('Progress could not be saved')) : apiBeforeFailure(path, options)
+    video.currentTime = 1800
+    await video.onended()
+  })
+  await expect(page.locator('#iosWatchNextHint')).toContainText('Could not save your progress')
+  await page.clock.fastForward(10_000)
+  expect(await page.evaluate(() => window.__episodeRequests.filter(value =>
+    value.path === '/api/remote/start').length)).toBe(1)
+  await page.evaluate(async () => {
+    const video = document.querySelector('#iosWatchVideo')
+    window.api = async path => path === '/api/remote/position' ? { ok: true } : {}
+    video._myTvEpisode.ended = false
+    video._myTvEpisode.next.browser_ready = false
+    await video.onended()
+  })
+  await expect(page.locator('#iosWatchNextHint')).toHaveText('Next episode is ready in VLC')
+  await expect(page.locator('#iosWatchNextCancel')).toBeHidden()
+})
+
+test('Closing My TV while its stream is starting prevents a late player reopening', async ({ page }) => {
+  await openDeviceEpisode(page)
+  await page.evaluate(() => {
+    const before = window.api
+    window.api = (path, options) => path === '/api/remote/start'
+      ? new Promise(resolve => { window.__finishStarting = resolve }) : before(path, options)
+    window.__pendingStart = startIosRemotePlayer({ kind: 'my-tv-series', series: 'fixture-series',
+      file: 'Season 1/Episode 2.mp4', position: 0 })
+  })
+  await page.locator('#iosWatchBack').click()
+  await expect(page.locator('#iosWatchPlayer')).toBeHidden()
+  await page.evaluate(async () => {
+    window.__finishStarting({ kind: 'my-tv-series', title: 'A late episode',
+      stream_url: '/api/remote/media?stream=late-episode' })
+    await window.__pendingStart
+  })
+  await expect(page.locator('#iosWatchPlayer')).toBeHidden()
+  await expect(page.locator('#iosWatchTitle')).not.toHaveText('A late episode')
+})
+
+test('My TV player header separates Back and the episode title @visual', async ({ page }, testInfo) => {
+  await openDeviceEpisode(page)
+  const back = await page.locator('#iosWatchBack').boundingBox()
+  const title = await page.locator('#iosWatchTitle').boundingBox()
+  expect(title.x - (back.x + back.width)).toBeGreaterThanOrEqual(16)
+  await testInfo.attach('my-tv-device-player', {
+    body: await page.screenshot({ path: `../../work/my-tv-device-player-${testInfo.project.name}.png` }),
+    contentType: 'image/png',
+  })
+})
+
 function titleDetail() {
   return {
     key: 'tv:6001', media_type: 'tv', tmdb_id: 6001,
