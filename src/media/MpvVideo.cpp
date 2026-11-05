@@ -11,6 +11,7 @@
 #include <QOpenGLFramebufferObject>
 #include <QOpenGLFramebufferObjectFormat>
 #include <QQuickOpenGLUtils>
+#include <QQuickWindow>
 #include <QtGlobal>
 
 #include <mpv/client.h>
@@ -108,6 +109,7 @@ public:
 
     ~MpvRenderer() override
     {
+        QObject::disconnect(m_swapConnection);
         auto *context = m_state->renderContext.exchange(nullptr);
         m_state->renderReady.store(false);
         if (context != nullptr) {
@@ -219,6 +221,10 @@ private:
         }
         m_state->renderContext.store(context);
         m_state->renderReady.store(true);
+        m_swapConnection = QObject::connect(m_item->window(), &QQuickWindow::frameSwapped,
+            m_item->window(), [state = m_state] {
+                if (auto *render = state->renderContext.load()) mpv_render_context_report_swap(render);
+            }, Qt::DirectConnection);
         mpv_render_context_set_update_callback(context, requestFrame, m_item);
         QMetaObject::invokeMethod(m_item,
                                   &MpvVideo::handleRenderContextReady,
@@ -226,6 +232,7 @@ private:
     }
 
     MpvVideo *m_item;
+    QMetaObject::Connection m_swapConnection;
     bool m_needsRedraw = true;
     std::shared_ptr<MpvVideo::SharedState> m_state;
 };

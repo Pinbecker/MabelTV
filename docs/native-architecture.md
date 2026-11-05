@@ -15,6 +15,8 @@ blocking the decoder; display geometry and refresh are logged at startup.
 The Pi decoder uses three software threads, retaining the safe H.264 handoff
 without the unstable MMAL hardware path. The renderer retains mpv's normal
 intermediate precision.
+Qt's completed frame swaps are reported to libmpv on the render thread, so
+its timing follows actual presentation rather than an estimated swap time.
 Qt's OpenGL state is reset before as well as after every libmpv render. The
 render API requires standard defaults on entry; leaving Qt's state active can
 corrupt picture pixels. The texture test uses a multi-frame two-colour video
