@@ -36,6 +36,15 @@ else()
     pkg_check_modules(SYSTEMD QUIET libsystemd)
 endif()
 
+add_library(mabeltv_display STATIC src/hardware/DisplayRefresh.cpp src/hardware/DisplayRefresh.h)
+target_include_directories(mabeltv_display PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_link_libraries(mabeltv_display PUBLIC Qt6::Quick)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    pkg_check_modules(DRM REQUIRED IMPORTED_TARGET libdrm)
+    target_compile_definitions(mabeltv_display PRIVATE MABELTV_HAVE_DRM=1)
+    target_link_libraries(mabeltv_display PRIVATE PkgConfig::DRM)
+endif()
+
 if(MABELTV_PI_APPLIANCE AND NOT SYSTEMD_FOUND)
     message(FATAL_ERROR "A Raspberry Pi appliance build requires libsystemd development files")
 endif()
@@ -200,6 +209,7 @@ qt_add_shaders(mabeltv "mabeltv_shaders"
 
 target_link_libraries(mabeltv PRIVATE
     mabeltv_core
+    mabeltv_display
     Qt6::Core
     Qt6::Gui
     Qt6::Qml
@@ -236,6 +246,10 @@ include(CTest)
 if(BUILD_TESTING)
     find_package(Qt6 6.4 REQUIRED COMPONENTS Test)
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+    qt_add_executable(mabeltv_display_refresh_tests tests/unit/DisplayRefreshTests.cpp)
+    target_link_libraries(mabeltv_display_refresh_tests PRIVATE mabeltv_display Qt6::Test)
+    add_test(NAME mabeltv_display_refresh_tests COMMAND mabeltv_display_refresh_tests)
 
     qt_add_executable(mabeltv_core_tests
         tests/unit/CoreTests.cpp
@@ -304,7 +318,7 @@ if(BUILD_TESTING)
     qt_add_executable(mabeltv_crt_effect_tests tests/unit/CrtEffectTests.cpp)
     qt_add_executable(mabeltv_mpv_texture_tests tests/unit/MpvTextureTests.cpp src/media/MpvVideo.cpp src/media/MpvVideoTexture.cpp src/media/MpvVideo.h)
     target_include_directories(mabeltv_mpv_texture_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" ${MPV_INCLUDE_DIRS} ${MPV_INCLUDE_DIR})
-    target_link_libraries(mabeltv_mpv_texture_tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml Qt6::OpenGL ${MPV_LINK_LIBRARIES} ${MPV_LIBRARY})
+    target_link_libraries(mabeltv_mpv_texture_tests PRIVATE mabeltv_display Qt6::Test Qt6::Quick Qt6::Qml Qt6::OpenGL ${MPV_LINK_LIBRARIES} ${MPV_LIBRARY})
     qt_add_shaders(mabeltv_mpv_texture_tests "mpv_texture_shader" PREFIX "/shaders" BASE "tests/shaders" FILES tests/shaders/texture-copy.frag)
     target_link_libraries(mabeltv_crt_effect_tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml)
     target_compile_definitions(mabeltv_crt_effect_tests PRIVATE TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/qml"

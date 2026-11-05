@@ -1,5 +1,24 @@
 # Studio validation — 3 October 2026
 
+## Studio 1.8.1 compatibility picture preservation — 5 November 2026
+
+Installed 1.8.1 exactly matches the tested media owners. All 25 existing queue
+IDs and the worker identity were preserved. The complete Intel-required Studio
+suite passed 111 tests with no skips. A real H.264/MKV plus DTS-surround fixture
+is delivered as fast-start MP4/AAC stereo with an identical elementary picture
+stream hash. Container timestamp rounding is checked against signalled cadence
+and available exact frame counts rather than treating a rounded short-clip
+average as evidence of re-encoding.
+
+Central Intelligence's 2,911,372,258-byte original was prepared into a
+2,464,633,539-byte compatible copy. The entire original and prepared H.264
+streams have the same SHA-256
+`d59398798534d5d1191850ba0de0a1d8a0323ef856919550565bfcd0eb7c79af`.
+Only the container/audio changed. Original library files stay unchanged.
+
+Evidence: ignored `out/playback-quality-20261105` contains test/package logs,
+the preserved pre-upgrade journal and the full-film preparation receipt.
+
 ## Studio 1.8.0 native desktop library — 5 November 2026
 
 Studio 1.8.0 is installed. The owner completed installation after automatic

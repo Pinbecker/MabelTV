@@ -138,8 +138,15 @@ existing SQLite viewing owner before advancing, including across seasons. A
 manual early skip retains its bookmark; Back, close, failure or a new external
 request cancels a pending handoff. The final episode returns to the library.
 Menus distinguish resuming an episode, starting the next episode and a completed
-series. The existing display-resolution setting selects 1080p at 30 Hz without
-changing the media encoding policy or creating another player.
+series. The display-resolution setting starts 1080p menus at 60 Hz. During video,
+`hardware/DisplayRefresh` selects an advertised progressive mode at the same
+resolution whose refresh matches the source cadence (including 50 Hz for 25/50
+fps and 23.976/24 Hz for films). It uses the application's existing DRM master
+at a Qt render boundary, validates an atomic MODE_ID-only change before applying
+it, and leaves the previous mode intact on failure. Stale playback requests are
+discarded, an inactive player cannot override the current owner, and menus
+return to their supported refresh after playback. Explicit DRM mode overrides
+disable matching. Neither media timestamps nor the CRT composition change.
 
 The My TV section shortcut also opens a separate family-channel directory,
 ordered by channel number within episode and film sections. Selected channels

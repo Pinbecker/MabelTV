@@ -1,4 +1,5 @@
 #include "MpvVideo.h"
+#include "hardware/DisplayRefresh.h"
 
 #include <QDir>
 #include <QElapsedTimer>
@@ -343,6 +344,7 @@ MpvVideo::MpvVideo(QQuickItem *parent)
     mpv_observe_property(m_state->handle, 10, "avsync", MPV_FORMAT_DOUBLE);
     mpv_observe_property(m_state->handle, 11, "video-params/w", MPV_FORMAT_INT64);
     mpv_observe_property(m_state->handle, 12, "video-params/h", MPV_FORMAT_INT64);
+    mpv_observe_property(m_state->handle, 13, "container-fps", MPV_FORMAT_DOUBLE);
     if (const auto *screen = QGuiApplication::primaryScreen())
         qInfo() << "Playback display:" << screen->size() << screen->refreshRate() << "Hz";
     auto *diagnostics = new QTimer(this);
@@ -364,6 +366,7 @@ MpvVideo::MpvVideo(QQuickItem *parent)
 
 MpvVideo::~MpvVideo()
 {
+    mabeltv::display::releaseRefresh(this, window());
     if (m_state && m_state->handle != nullptr) {
         mpv_set_wakeup_callback(m_state->handle, nullptr, nullptr);
     }
@@ -882,6 +885,7 @@ void MpvVideo::processMpvEvents()
         }
         case MPV_EVENT_END_FILE: {
             const auto *end = static_cast<mpv_event_end_file *>(event->data);
+            mabeltv::display::releaseRefresh(this, window());
             m_fileActive = false;
             resetPlaybackTelemetry();
             if (m_stopPending) {
@@ -902,6 +906,11 @@ void MpvVideo::processMpvEvents()
         case MPV_EVENT_PROPERTY_CHANGE: {
             const auto *change = static_cast<mpv_event_property *>(event->data);
             if (change == nullptr || change->name == nullptr) {
+                break;
+            }
+            if (event->reply_userdata == 13) {
+                if (m_fileActive && change->format == MPV_FORMAT_DOUBLE && change->data)
+                    mabeltv::display::requestRefresh(this, window(), *static_cast<double *>(change->data));
                 break;
             }
             if (event->reply_userdata >= 8 && event->reply_userdata <= 10 && change->data) {

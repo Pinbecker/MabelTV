@@ -65,14 +65,14 @@ PY
 # Include refresh rates for fixed modes: resolution-only requests let Qt pick
 # the highest EDID match and can silently select 1080p120 on capable TVs.
 case "$display_mode" in
-    # MabelTV media is deliberately prepared at 25/30 fps.  A 30 Hz 1080p
-    # canvas keeps the My TV Library natively sharp without spending a full
-    # extra display cycle on frames the player does not have.
-    1080p) kms_mode="1920x1080@30" ;;
+    # Start menus at 60 Hz; the player matches the connected display's
+    # refresh to each video's preserved cadence without changing resolution.
+    1080p) kms_mode="1920x1080@60" ;;
     native) kms_mode="preferred" ;;
     *) kms_mode="1280x720@60" ;;
 esac
 kms_mode="${MABELTV_DRM_MODE:-$kms_mode}"
+export MABELTV_MATCH_REFRESH="${MABELTV_MATCH_REFRESH:-1}"
 
 mkdir -p "$runtime_dir"
 if command -v qrencode >/dev/null 2>&1; then

@@ -114,6 +114,11 @@ continue. Non-lock filesystem errors still preserve the files and report failure
 
 Choose My TV films/series, a Mabel TV channel, or iCloud. TV uploads are always
 prepared for their destination: Mabel TV uses 720p, My TV uses up to 1080p.
+Compatibility-only delivery copies suitable H.264 picture packets unchanged
+when only the container, fast-start layout, audio codec or stereo mix needs
+correction. Audio can become AAC stereo without another picture encode. Output
+geometry, signalled cadence, available frame counts and duration are validated;
+other video incompatibilities still require destination preparation.
 There is no Download destination or optimisation checkbox. A multi-season selection preserves source seasons, including season
 0 for specials. New series saved into iCloud use a show/season hierarchy so the
 cloud catalogue groups them again.

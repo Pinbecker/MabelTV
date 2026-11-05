@@ -42,7 +42,7 @@ function analyse(probe, file, target) {
   const duration = Number(probe.format?.duration) || 0, bytes = fs.statSync(file).size;
   const sar = String(video.sample_aspect_ratio || '1:1').split(':').map(Number);
   return { ready: reasons.length === 0, reasons, width: video.width, height: video.height,
-    fps, frameCount: Number(video.nb_frames) || null, duration, bytes, sar: sar[1] > 0 && sar[0] > 0 ? sar[0] / sar[1] : 1, hasAudio: audio.length > 0, colorTransfer: video.color_transfer,
+    fps, nominalFps: frameRate(video.r_frame_rate), frameCount: Number(video.nb_frames) || null, duration, bytes, sar: sar[1] > 0 && sar[0] > 0 ? sar[0] / sar[1] : 1, hasAudio: audio.length > 0, colorTransfer: video.color_transfer,
     codec: video.codec_name, pixelFormat: video.pix_fmt, bitrate: Number(probe.format?.bit_rate) || bytes * 8 / duration,
     subtitleStreams: (probe.streams || []).filter(stream => stream.codec_type === 'subtitle')
       .map(({ index, codec_type, codec_name, tags }) => ({ index, codec_type, codec_name, tags: { language: tags?.language } })),
@@ -72,7 +72,7 @@ class Media {
     reserve?.(analysis);
     const tools = this.getTools(); if (!tools.ffmpeg) throw new Error('FFmpeg is unavailable. Check Settings.');
     if (compression === 'compatible') {
-      const remuxed = await remuxCompatible(file, destination, analysis, tools, target, signal, this.inspect.bind(this));
+      const remuxed = await remuxCompatible(file, destination, analysis, tools, target, signal, this.inspect.bind(this), progress);
       if (remuxed) return { ...remuxed, sourceAnalysis: analysis };
     }
     let output;
