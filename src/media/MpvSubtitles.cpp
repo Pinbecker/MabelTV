@@ -106,7 +106,16 @@ void MpvSubtitles::readCue()
 void MpvSubtitles::setCue(const QString &cue, bool valid)
 {
     if (m_codec != "subrip" || m_trackId < 0 || m_rejected) return;
-    const auto html = valid ? subtitleRichText(cue) : std::nullopt;
+    if (!valid) {
+        // mpv 0.35 reports unavailable before the first playback timestamp
+        // and during decoder transitions. This is not an unsupported track.
+        // Keep native rendering until a subsequent observed cue is readable.
+        m_haveCue = false;
+        m_html.clear();
+        reconcile();
+        return;
+    }
+    const auto html = subtitleRichText(cue);
     if (!html) {
         // Keep the whole track native after encountering unsupported layout.
         m_rejected = true;
