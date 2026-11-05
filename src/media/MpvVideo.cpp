@@ -341,6 +341,8 @@ MpvVideo::MpvVideo(QQuickItem *parent)
     mpv_observe_property(m_state->handle, 8, "frame-drop-count", MPV_FORMAT_INT64);
     mpv_observe_property(m_state->handle, 9, "decoder-frame-drop-count", MPV_FORMAT_INT64);
     mpv_observe_property(m_state->handle, 10, "avsync", MPV_FORMAT_DOUBLE);
+    mpv_observe_property(m_state->handle, 11, "video-params/w", MPV_FORMAT_INT64);
+    mpv_observe_property(m_state->handle, 12, "video-params/h", MPV_FORMAT_INT64);
     if (const auto *screen = QGuiApplication::primaryScreen())
         qInfo() << "Playback display:" << screen->size() << screen->refreshRate() << "Hz";
     auto *diagnostics = new QTimer(this);
@@ -948,6 +950,12 @@ void MpvVideo::processMpvEvents()
                 const auto subtitleTrack = change->format == MPV_FORMAT_INT64 && change->data != nullptr
                     ? *static_cast<std::int64_t *>(change->data) : -1;
                 setSubtitlesAvailable(subtitleTrack >= 0);
+            } else if (QByteArray(change->name) == QByteArrayLiteral("video-params/w")
+                       || QByteArray(change->name) == QByteArrayLiteral("video-params/h")) {
+                const int value = change->format == MPV_FORMAT_INT64 && change->data
+                    ? static_cast<int>(std::clamp<std::int64_t>(*static_cast<std::int64_t*>(change->data), 0, 32768)) : 0;
+                int& dimension = QByteArray(change->name) == QByteArrayLiteral("video-params/w") ? m_videoWidth : m_videoHeight;
+                if (dimension != value) { dimension = value; emit videoDimensionsChanged(); }
             } else if (QByteArray(change->name) == QByteArrayLiteral("video-params/aspect")) {
                 if (change->format == MPV_FORMAT_DOUBLE && change->data != nullptr) {
                     setVideoAspectRatio(*static_cast<double *>(change->data));

@@ -11,6 +11,7 @@
 #include <QCoreApplication>
 #include <QCursor>
 #include <QDir>
+#include "diagnostics/FrameCapture.h"
 #include <QFile>
 #include <QFileInfo>
 #include <QGuiApplication>
@@ -479,6 +480,7 @@ int main(int argc, char *argv[])
     // additional checks prove that whichever libmpv player is visible is still
     // loading or delivering frames; MyTv Mode owns a separate player and must
     // not fall outside the same recovery boundary as ordinary television.
+    FrameCapture::enable(qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst()));
     auto *video = engine.rootObjects().constFirst()->findChild<MpvVideo *>(
         QStringLiteral("mabeltvPlayer"));
     auto *myTvVideo = engine.rootObjects().constFirst()->findChild<MpvVideo *>(

@@ -2,8 +2,8 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import MabelTV 1.0
-Rectangle {
-    id: cabinet
+Item {
+    id: televisionCabinet
 
     required property var appRoot
     readonly property var playerObject: player
@@ -57,347 +57,55 @@ Rectangle {
         ? Math.min(appRoot.width - 48, (appRoot.height - 48) / 0.64)
         : Math.min(appRoot.width - 48, (appRoot.height - 48) * 4 / 3)
     height: fullscreen ? appRoot.height : width * (widescreen ? 0.64 : 3 / 4)
-    radius: isSlim ? Math.max(38, width * 0.055)
+    readonly property real radius: isSlim ? Math.max(38, width * 0.055)
         : Math.max(44, width * 0.067)
-    color: fullscreen || usesDecorativeSurround ? "transparent" : "#151a16"
-    border.color: fullscreen || usesDecorativeSurround ? "transparent" : (isSlim ? "#454c46"
-        : (isSilver ? "#f5f3eb"
-           : (isCharcoal ? "#555a55" : "#333632")))
-    border.width: fullscreen ? 0 : 2
-    antialiasing: true
+    CrtCabinet { anchors.fill: parent; cabinet: televisionCabinet; tube: screen }
 
-    gradient: Gradient {
-        GradientStop {
-            position: 0
-            color: cabinet.fullscreen || cabinet.usesDecorativeSurround ? "transparent" : (cabinet.isSlim ? "#252a26"
-                : (cabinet.isSilver ? "#deded7"
-                   : (cabinet.isCharcoal ? "#3f433f" : "#2d302d")))
-        }
-        GradientStop {
-            position: 1
-            color: cabinet.fullscreen || cabinet.usesDecorativeSurround ? "transparent" : (cabinet.isSlim ? "#0d100e"
-                : (cabinet.isSilver ? "#979992"
-                   : (cabinet.isCharcoal ? "#171a18" : "#101210")))
-        }
-    }
-
-    Rectangle {
-        anchors.fill: parent
-        anchors.margins: 3
-        visible: !cabinet.usesDecorativeSurround && !cabinet.fullscreen
-        radius: Math.max(0, cabinet.radius - 3)
-        color: "transparent"
-        border.color: cabinet.isSilver ? "#70ffffff" : "#36ffffff"
-        border.width: 1
-        antialiasing: true
-    }
-
-    // White/silver plastic set: a deep 1990s control shelf with the small
-    // rectangular buttons and large power switch from the reference.
-    Item {
-        id: silverFascia
-
-        visible: cabinet.isSilver && !cabinet.fullscreen
-        x: cabinet.width * 0.11
-        y: cabinet.fasciaTop + cabinet.width * 0.016
-        width: cabinet.width * 0.78
-        height: cabinet.height - y - cabinet.width * 0.035
-
-        Text {
-            text: "MABEL"
-            color: "#454743"
-            font.pixelSize: Math.max(10, silverFascia.height * 0.15)
-            font.bold: true
-            anchors.left: parent.left
-            anchors.top: parent.top
-            anchors.leftMargin: parent.width * 0.02
-        }
-
-        Rectangle {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            height: parent.height * 0.58
-            radius: height * 0.22
-            color: "#aaaca6"
-            border.color: "#777a75"
-            border.width: 1
-        }
-
-        Item {
-            x: parent.width * 0.18
-            y: parent.height * 0.52
-            width: parent.width * 0.60
-            height: parent.height * 0.34
-
-            Repeater {
-                model: 6
-
-                delegate: Rectangle {
-                    required property int index
-                    x: index * parent.width / 6
-                        + (parent.width / 6 - width) / 2
-                    width: parent.width * 0.075
-                    height: parent.height * 0.42
-                    radius: 2
-                    color: index < 2 ? "#797c77" : "#666965"
-                    border.color: "#c9cac5"
-                    border.width: 1
-                }
-            }
-        }
-
-        Rectangle {
-            width: parent.height * 0.27
-            height: width
-            radius: width / 2
-            anchors.right: parent.right
-            anchors.rightMargin: parent.width * 0.035
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: parent.height * 0.12
-            color: "#555854"
-            border.color: "#d4d5cf"
-            border.width: 2
-        }
-    }
-
-    // Dark late-90s set: twin speaker grilles and a compact central control
-    // cluster give it the broad, heavy lower chin seen in the reference.
-    Item {
-        id: charcoalFascia
-
-        visible: cabinet.isCharcoal && !cabinet.fullscreen
-        x: cabinet.width * 0.095
-        y: cabinet.fasciaTop + cabinet.width * 0.012
-        width: cabinet.width * 0.81
-        height: cabinet.height - y - cabinet.width * 0.03
-
-        Rectangle {
-            id: leftSpeaker
-            width: parent.width * 0.32
-            height: parent.height * 0.66
-            anchors.left: parent.left
-            anchors.bottom: parent.bottom
-            radius: height * 0.08
-            color: "#222522"
-            border.color: "#4f544f"
-            border.width: 1
-
-            Repeater {
-                model: 6
-
-                delegate: Rectangle {
-                    required property int index
-                    x: 0
-                    y: index * parent.height / 6
-                    width: parent.width
-                    height: Math.max(2, parent.height * 0.028)
-                    radius: height / 2
-                    color: "#080a09"
-                    opacity: 0.78
-                }
-            }
-        }
-
-        Rectangle {
-            width: leftSpeaker.width
-            height: leftSpeaker.height
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            radius: height * 0.08
-            color: "#222522"
-            border.color: "#4f544f"
-            border.width: 1
-
-            Repeater {
-                model: 6
-
-                delegate: Rectangle {
-                    required property int index
-                    x: 0
-                    y: index * parent.height / 6
-                    width: parent.width
-                    height: Math.max(2, parent.height * 0.028)
-                    radius: height / 2
-                    color: "#080a09"
-                    opacity: 0.78
-                }
-            }
-        }
-
-        Text {
-            text: "MABEL"
-            color: "#aaada8"
-            font.pixelSize: Math.max(9, parent.height * 0.16)
-            font.bold: true
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.top: parent.top
-        }
-
-        Rectangle {
-            width: parent.width * 0.19
-            height: parent.height * 0.27
-            radius: height * 0.28
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: parent.height * 0.12
-            color: "#0b0d0c"
-            border.color: "#626762"
-            border.width: 1
-        }
-    }
-
-    // Older box set: wide speaker vents, two physical dials and small feet.
-    Item {
-        id: vintageFascia
-
-        visible: cabinet.isVintage && !cabinet.fullscreen
-        x: cabinet.width * 0.12
-        y: cabinet.fasciaTop + cabinet.width * 0.012
-        width: cabinet.width * 0.76
-        height: cabinet.height - y - cabinet.width * 0.025
-
-        Rectangle {
-            id: vintageSpeaker
-            width: parent.width * 0.52
-            height: parent.height * 0.63
-            anchors.left: parent.left
-            anchors.bottom: parent.bottom
-            radius: height * 0.08
-            color: "#090b09"
-            border.color: "#414440"
-            border.width: 1
-
-            Repeater {
-                model: 8
-
-                delegate: Rectangle {
-                    required property int index
-                    x: vintageSpeaker.width * 0.07
-                    y: vintageSpeaker.height * (0.09 + index * 0.105)
-                    width: vintageSpeaker.width * 0.86
-                    height: Math.max(2, vintageSpeaker.height * 0.025)
-                    radius: height / 2
-                    color: "#4d514c"
-                }
-            }
-        }
-
-        Text {
-            text: tvDisplayName.toUpperCase()
-            color: "#a3a69f"
-            font.pixelSize: Math.max(9, parent.height * 0.14)
-            font.bold: true
-            anchors.left: vintageSpeaker.left
-            anchors.bottom: vintageSpeaker.top
-            anchors.bottomMargin: parent.height * 0.08
-        }
-
-        Column {
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            spacing: parent.height * 0.07
-
-            Repeater {
-                model: 2
-
-                delegate: Rectangle {
-                    required property int index
-                    width: vintageFascia.height * 0.27
-                    height: width
-                    radius: width / 2
-                    color: "#151815"
-                    border.color: "#777b74"
-                    border.width: 2
-
-                    Rectangle {
-                        width: parent.width * 0.08
-                        height: parent.height * 0.35
-                        radius: width / 2
-                        color: "#94988f"
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        anchors.top: parent.top
-                        anchors.topMargin: parent.height * 0.08
-                    }
-                }
-            }
-        }
-    }
-
-    Rectangle {
-        visible: cabinet.isVintage && !cabinet.fullscreen
-        x: cabinet.width * 0.16
-        y: cabinet.height - height * 0.35
-        width: cabinet.width * 0.10
-        height: cabinet.width * 0.022
-        radius: height / 2
-        color: "#080a08"
-    }
-
-    Rectangle {
-        visible: cabinet.isVintage && !cabinet.fullscreen
-        x: cabinet.width * 0.74
-        y: cabinet.height - height * 0.35
-        width: cabinet.width * 0.10
-        height: cabinet.width * 0.022
-        radius: height / 2
-        color: "#080a08"
-    }
-
-    Rectangle {
-        id: bezelLip
-
-        visible: !cabinet.usesDecorativeSurround && !cabinet.fullscreen
-        x: screen.x - cabinet.lipWidth
-        y: screen.y - cabinet.lipWidth
-        width: screen.width + cabinet.lipWidth * 2
-        height: screen.height + cabinet.lipWidth * 2
-        radius: screen.radius + cabinet.lipWidth
-        color: cabinet.lipColor
-        border.color: cabinet.isSilver ? "#757872" : "#050605"
-        border.width: 2
-        antialiasing: true
-    }
+    CrtGrain { id: crtGrain }
 
     Rectangle {
         id: screen
 
-        x: (cabinet.width - width) / 2
-        y: cabinet.fullscreen ? 0 : cabinet.tubeTop
-        width: cabinet.fullscreen ? cabinet.width : cabinet.tubeWidth
-        height: cabinet.fullscreen ? cabinet.height : cabinet.tubeHeight
-        radius: cabinet.fullscreen ? 0 : cabinet.isSlim ? Math.max(38, width * 0.065)
+        x: (televisionCabinet.width - width) / 2
+        y: televisionCabinet.fullscreen ? 0 : televisionCabinet.tubeTop
+        width: televisionCabinet.fullscreen ? televisionCabinet.width : televisionCabinet.tubeWidth
+        height: televisionCabinet.fullscreen ? televisionCabinet.height : televisionCabinet.tubeHeight
+        radius: televisionCabinet.fullscreen ? 0 : televisionCabinet.isSlim ? Math.max(38, width * 0.065)
             : Math.max(42, width * 0.075)
-        color: "#010201"
+        color: usesCrtLayer ? "transparent" : "#010201"
         clip: true
         antialiasing: true
-        // Preserve the full CRT appearance whenever any CRT control is in
-        // use. Only bypass the off-screen texture and shader when the user
-        // has explicitly turned both effects off and playback is not
-        // paused; the normal KidsTV picture remains pixel-for-pixel the
-        // same as before this optimisation.
-        layer.enabled: !cabinet.fullscreen && (tvController.crtGlass > 0
-                       || tvController.videoDistortion > 0
-                       || player.paused)
-        layer.smooth: true
-        layer.effect: ShaderEffect {
-            property variant source
-            property real flicker: appRoot.flickerAmount
-            property real effectStrength: tvController.crtGlass / 100
-            property real distortion: tvController.videoDistortion / 100
-            property real phase: appRoot.distortionPhase
-            property real pausedEffect: player.paused && !appRoot.introPlaying ? 1 : 0
-            property real cornerRadius: screen.radius
-            property real maskSoftness: 1.65
-            property vector2d resolution: Qt.vector2d(screen.width, screen.height)
-            fragmentShader: "qrc:/shaders/crt.frag.qsb"
+        // Preserve the original curved tube, clipping and composition. Bypass
+        // the effect only when both CRT controls are off and playback runs.
+        readonly property bool usesCrtLayer: !televisionCabinet.fullscreen && (tvController.crtGlass > 0
+                       || tvController.videoDistortion > 0 || player.paused)
+        readonly property real sourceTextureScale: usesCrtLayer && typeof player.videoWidth === "number"
+            && player.videoWidth > 0 && player.videoHeight > 0
+            ? Math.min(1, Math.max(player.videoWidth / width, player.videoHeight / height)) : 1
+        CrtForegroundSource {
+            id: foregroundTexture
+            sourceItem: screenForeground
+            smooth: true
+            hideSource: screen.usesCrtLayer
+            animating: appRoot.showStatic || appRoot.warmingUp || appRoot.poweringOff
+                || appRoot.filmCountdownActive || firstRunSetupRequired
+                || channelOsd.opacity > 0 || volumeOsd.opacity > 0
+                || programmeName.opacity > 0 || scrubOsd.opacity > 0
+                || tvController.numericEntry.length > 0
+            revision: [screen.width, screen.height, tvController.crtGlass,
+                televisionCabinet.fullscreen, tvController.standby,
+                tvController.currentChannelNumber, player.status, player.paused].join(':')
+            visible: false
         }
 
         MpvVideo {
             id: player
+            textureOnly: screen.usesCrtLayer
             objectName: "mabeltvPlayer"
 
-            anchors.fill: parent
+            width: screen.width * screen.sourceTextureScale
+            height: screen.height * screen.sourceTextureScale
+            transform: Scale { xScale: 1 / screen.sourceTextureScale; yScale: 1 / screen.sourceTextureScale }
             // A hidden my_tv overlay used to leave this framebuffer player
             // rendering underneath the my_tv framebuffer player. On the Pi
             // that can block Qt's render thread inside libmpv, freezing all
@@ -405,7 +113,7 @@ Rectangle {
             visible: !myTvMode.active
             volume: tvController.volume
             muted: tvController.muted
-            aspectMode: cabinet.fullscreen ? "fit" : tvController.currentAspectMode
+            aspectMode: televisionCabinet.fullscreen ? "fit" : tvController.currentAspectMode
 
             onPausedChanged: {
                 if (!appRoot.introPlaying && !directMediaMode
@@ -465,6 +173,30 @@ Rectangle {
             }
         }
 
+        ShaderEffect {
+            anchors.fill: parent
+            visible: screen.usesCrtLayer && !myTvMode.active
+            property variant source: player
+            property variant foreground: foregroundTexture
+            property variant grainTexture: crtGrain.texture
+            property real flicker: appRoot.flickerAmount
+            property real effectStrength: tvController.crtGlass / 100
+            property real glassCurve: Math.pow(effectStrength, 1.25)
+            property real maskExponent: 7 - 3 * Math.pow(effectStrength, 0.8)
+            property real distortion: tvController.videoDistortion / 100
+            property real phase: appRoot.distortionPhase
+            property real pausedEffect: player.paused && !appRoot.introPlaying ? 1 : 0
+            property real cornerRadius: screen.radius
+            property real maskSoftness: 1.65
+            property vector2d resolution: Qt.vector2d(screen.width, screen.height)
+            mesh: GridMesh { resolution: Qt.size(64, 36) }
+            vertexShader: "qrc:/shaders/crt.vert.qsb"
+            fragmentShader: tvController.videoDistortion <= 30 && !player.paused
+                ? "qrc:/shaders/crt-fast.frag.qsb" : "qrc:/shaders/crt.frag.qsb"
+        }
+        Item {
+            id: screenForeground
+            anchors.fill: parent
         Rectangle {
             id: filmCountdownOverlay
             anchors.fill: parent
@@ -581,7 +313,7 @@ Rectangle {
             styleColor: "#4b4b40"
             font.family: "Consolas"
             font.bold: true
-            font.pixelSize: Math.max(24, cabinet.height * 0.055)
+            font.pixelSize: Math.max(24, televisionCabinet.height * 0.055)
             text: "NO SIGNAL"
         }
 
@@ -677,37 +409,10 @@ Rectangle {
             }
         }
 
-        Rectangle {
+        CrtReflection {
             anchors.fill: parent
-            color: "transparent"
-            opacity: cabinet.fullscreen ? 0 : tvController.crtGlass / 100
-
-            gradient: Gradient {
-                GradientStop { position: 0.0; color: "#60ffffff" }
-                GradientStop { position: 0.16; color: "#24ffffff" }
-                GradientStop { position: 0.46; color: "#03000000" }
-                GradientStop { position: 0.78; color: "#13000000" }
-                GradientStop { position: 1.0; color: "#36000000" }
-            }
-        }
-
-        Rectangle {
-            width: screen.width * 1.18
-            height: screen.height * 0.23
-            x: -screen.width * 0.12
-            y: screen.height * 0.055
-            rotation: -10
-            transformOrigin: Item.Center
-            opacity: cabinet.fullscreen ? 0 : 0.72 * Math.pow(tvController.crtGlass / 100, 1.3)
-            color: "transparent"
-
-            gradient: Gradient {
-                GradientStop { position: 0.0; color: "#00ffffff" }
-                GradientStop { position: 0.34; color: "#28ffffff" }
-                GradientStop { position: 0.50; color: "#64ffffff" }
-                GradientStop { position: 0.67; color: "#1cffffff" }
-                GradientStop { position: 1.0; color: "#00ffffff" }
-            }
+            visible: !televisionCabinet.fullscreen && tvController.crtGlass > 0
+            glass: tvController.crtGlass / 100
         }
 
         Text {
@@ -716,7 +421,7 @@ Rectangle {
             anchors.leftMargin: appRoot.playbackOsdInsetX
             anchors.topMargin: appRoot.playbackOsdInsetY
             z: 70
-            visible: player.paused && !appRoot.introPlaying && !appRoot.poweringOff && !cabinet.fullscreen
+            visible: player.paused && !appRoot.introPlaying && !appRoot.poweringOff && !televisionCabinet.fullscreen
             color: "#e8e4d0"
             style: Text.Outline
             styleColor: "#5f5360"
@@ -755,11 +460,13 @@ Rectangle {
 
         Text {
             id: programmeName
+            property bool belowChannel: false
 
             anchors.right: parent.right
             anchors.top: parent.top
             anchors.rightMargin: appRoot.playbackOsdInsetX
-            anchors.topMargin: appRoot.playbackOsdInsetY
+            anchors.topMargin: belowChannel
+                ? channelOsd.y + channelOsd.height + 12 : appRoot.playbackOsdInsetY
             z: 70
             width: screen.width * 0.55
             opacity: 0
@@ -816,8 +523,10 @@ Rectangle {
 
             anchors.top: parent.top
             anchors.right: parent.right
-            anchors.margins: Math.max(20, screen.width * 0.035)
-            width: Math.max(230, channelName.implicitWidth + 48)
+            anchors.topMargin: appRoot.playbackOsdInsetY
+            anchors.rightMargin: appRoot.playbackOsdInsetX
+            width: Math.min(screen.width - appRoot.playbackOsdInsetX * 2,
+                Math.max(230, channelNumber.implicitWidth + channelName.implicitWidth + 48))
             height: 94
             color: "#b5070d08"
             border.color: "#789878"
@@ -952,35 +661,36 @@ Rectangle {
                 opacity: (1 - appRoot.warmProgress) * 0.8
             }
         }
+        } // screen foreground
     }
 
     Loader {
         anchors.fill: parent
-        active: cabinet.isDinosaur && !cabinet.fullscreen
+        active: televisionCabinet.isDinosaur && !televisionCabinet.fullscreen
         visible: active
         z: 10
 
         sourceComponent: Component {
             DinosaurDenSurround {
-                appRoot: cabinet.appRoot
+                appRoot: televisionCabinet.appRoot
             }
         }
     }
 
     Loader {
         anchors.fill: parent
-        active: (cabinet.isOcean || cabinet.isNemo) && !cabinet.fullscreen
+        active: (televisionCabinet.isOcean || televisionCabinet.isNemo) && !televisionCabinet.fullscreen
         visible: active
         z: 10
 
-        sourceComponent: cabinet.isNemo ? nemoSurround : oceanSurround
+        sourceComponent: televisionCabinet.isNemo ? nemoSurround : oceanSurround
         Component {
             id: nemoSurround
-            FindingNemo { appRoot: cabinet.appRoot }
+            FindingNemo { appRoot: televisionCabinet.appRoot }
         }
         Component {
             id: oceanSurround
-            OceanClubSurround { appRoot: cabinet.appRoot }
+            OceanClubSurround { appRoot: televisionCabinet.appRoot }
         }
     }
 }

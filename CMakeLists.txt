@@ -79,7 +79,10 @@ qt_add_executable(mabeltv WIN32
     src/app/main.cpp
     src/diagnostics/Logging.cpp
     src/diagnostics/Logging.h
+    src/diagnostics/FrameCapture.cpp
+    src/diagnostics/FrameCapture.h
     src/media/MpvVideo.cpp
+    src/media/MpvVideoTexture.cpp
     src/media/MpvVideo.h
     src/media/SoundEffects.cpp
     src/media/SoundEffects.h
@@ -95,6 +98,10 @@ qt_add_resources(mabeltv "mabeltv_qml"
     FILES
         qml/Main.qml
         qml/TelevisionScreen.qml
+        qml/CrtGrain.qml
+        qml/CrtReflection.qml
+        qml/CrtCabinet.qml
+        qml/CrtForegroundSource.qml
         qml/MabelQueueDoneScreen.qml
         qml/MabelQueueCoordinator.qml
         qml/FamilyMediaCoordinator.qml
@@ -178,11 +185,16 @@ qt_add_resources(mabeltv "storytime_materials"
         scripts/pi/portal/assets/storytime/stone-floor.png
         scripts/pi/portal/assets/storytime/parchment.png)
 
+qt_add_resources(mabeltv "crt_grain_texture" PREFIX "/textures" BASE "assets/textures" FILES assets/textures/crt-grain.png)
+
+qt_add_shaders(mabeltv "crt_vertex_shader" BATCHABLE PREFIX "/shaders" BASE "shaders" FILES shaders/crt.vert)
+
 qt_add_shaders(mabeltv "mabeltv_shaders"
     PREFIX "/shaders"
     BASE "shaders"
     FILES
         shaders/crt.frag
+        shaders/crt-fast.frag
         shaders/my-tv-rounded.frag
 )
 
@@ -289,9 +301,26 @@ if(BUILD_TESTING)
         storytimeLibraryNavigationAndClosingAreInterruptible)
     set_tests_properties(mabeltv_storytime_library_tests PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software" TIMEOUT 15)
+    qt_add_executable(mabeltv_crt_effect_tests tests/unit/CrtEffectTests.cpp)
+    qt_add_executable(mabeltv_mpv_texture_tests tests/unit/MpvTextureTests.cpp src/media/MpvVideo.cpp src/media/MpvVideoTexture.cpp src/media/MpvVideo.h)
+    target_include_directories(mabeltv_mpv_texture_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" ${MPV_INCLUDE_DIRS} ${MPV_INCLUDE_DIR})
+    target_link_libraries(mabeltv_mpv_texture_tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml Qt6::OpenGL ${MPV_LINK_LIBRARIES} ${MPV_LIBRARY})
+    qt_add_shaders(mabeltv_mpv_texture_tests "mpv_texture_shader" PREFIX "/shaders" BASE "tests/shaders" FILES tests/shaders/texture-copy.frag)
+    target_link_libraries(mabeltv_crt_effect_tests PRIVATE Qt6::Test Qt6::Quick Qt6::Qml)
+    target_compile_definitions(mabeltv_crt_effect_tests PRIVATE TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/qml"
+        TEST_OUTPUT_DIR="${CMAKE_CURRENT_BINARY_DIR}/crt-effect-artifacts")
+    qt_add_resources(mabeltv_crt_effect_tests "crt_test_grain" PREFIX "/textures" BASE "assets/textures" FILES assets/textures/crt-grain.png)
+    qt_add_shaders(mabeltv_crt_effect_tests "crt_test_vertex" BATCHABLE PREFIX "/shaders" BASE "shaders" FILES shaders/crt.vert)
+    qt_add_shaders(mabeltv_crt_effect_tests "crt_test_shaders" PREFIX "/shaders" BASE "shaders"
+        FILES shaders/crt.frag shaders/crt-fast.frag)
+    qt_add_shaders(mabeltv_crt_effect_tests "crt_reference_shader" PREFIX "/shaders" BASE "tests/shaders" FILES tests/shaders/crt-reference.frag)
     if(UNIX)
         find_program(XVFB_RUN_EXECUTABLE xvfb-run)
         if(XVFB_RUN_EXECUTABLE)
+            add_test(NAME mabeltv_mpv_texture_tests COMMAND "${XVFB_RUN_EXECUTABLE}" -a $<TARGET_FILE:mabeltv_mpv_texture_tests>)
+            set_tests_properties(mabeltv_mpv_texture_tests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=xcb;QT_QUICK_BACKEND=rhi;QSG_RHI_BACKEND=opengl;MABELTV_HWDEC=no" TIMEOUT 20)
+            add_test(NAME mabeltv_crt_effect_tests COMMAND "${XVFB_RUN_EXECUTABLE}" -a $<TARGET_FILE:mabeltv_crt_effect_tests>)
+            set_tests_properties(mabeltv_crt_effect_tests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=xcb;QT_QUICK_BACKEND=rhi;QSG_RHI_BACKEND=opengl" TIMEOUT 30)
             add_test(NAME mabeltv_storybook_opengl_tests COMMAND "${XVFB_RUN_EXECUTABLE}" -a
                 $<TARGET_FILE:mabeltv_family_ui_tests> illustrationTravelsWithLeafAndLandsWithoutJump)
             set_tests_properties(mabeltv_storybook_opengl_tests PROPERTIES

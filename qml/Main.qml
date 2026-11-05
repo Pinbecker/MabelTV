@@ -61,8 +61,8 @@ Window {
     property real filmCountdownFlicker: 1
     property url pendingFilmSource: ""
     property double pendingFilmStart: 0
-    readonly property real playbackOsdInsetX: Math.max(30, television.screenWidth * 0.055)
-    readonly property real playbackOsdInsetY: Math.max(28, television.screenHeight * 0.065)
+    readonly property real playbackOsdInsetX: Math.max(30, television.screenWidth * 0.10)
+    readonly property real playbackOsdInsetY: Math.max(28, television.screenHeight * 0.10)
     readonly property var player: television.playerObject
     readonly property var familyMedia: familyPlayback
     readonly property var channelOverlay: channelSummaryOverlay
@@ -229,6 +229,7 @@ Window {
     }
 
     function showChannel(number, name) {
+        television.programmeNameItem.belowChannel = true
         television.channelNumberLabel.text = (number < 10 ? "0" : "") + number
         television.channelNameLabel.text = name.toUpperCase()
         television.channelOsdItem.opacity = 1
@@ -246,6 +247,8 @@ Window {
         if (name.length === 0)
             return
         currentProgrammeTitle = name
+        television.programmeNameItem.belowChannel = channelOsdTimer.running
+            || television.channelOsdItem.opacity > 0.01
         television.programmeNameItem.text = name.toUpperCase()
         television.programmeNameItem.opacity = 1
         programmeOsdTimer.restart()

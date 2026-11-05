@@ -26,6 +26,9 @@ class MpvVideo : public QQuickFramebufferObject
     Q_PROPERTY(int volume READ volume WRITE setVolume NOTIFY volumeChanged)
     Q_PROPERTY(bool muted READ muted WRITE setMuted NOTIFY mutedChanged)
     Q_PROPERTY(QString aspectMode READ aspectMode WRITE setAspectMode NOTIFY aspectModeChanged)
+    Q_PROPERTY(int videoWidth READ videoWidth NOTIFY videoDimensionsChanged)
+    Q_PROPERTY(int videoHeight READ videoHeight NOTIFY videoDimensionsChanged)
+    Q_PROPERTY(bool textureOnly READ textureOnly WRITE setTextureOnly NOTIFY textureOnlyChanged)
     Q_PROPERTY(double videoAspectRatio READ videoAspectRatio NOTIFY videoAspectRatioChanged)
     Q_PROPERTY(qulonglong playbackGeneration READ playbackGeneration NOTIFY playbackGenerationChanged)
 
@@ -50,6 +53,10 @@ public:
     void setMuted(bool muted);
     [[nodiscard]] QString aspectMode() const;
     void setAspectMode(const QString &aspectMode);
+    [[nodiscard]] int videoWidth() const { return m_videoWidth; }
+    [[nodiscard]] int videoHeight() const { return m_videoHeight; }
+    [[nodiscard]] bool textureOnly() const { return m_textureOnly; }
+    void setTextureOnly(bool enabled);
     [[nodiscard]] double videoAspectRatio() const;
     [[nodiscard]] qulonglong playbackGeneration() const;
 
@@ -77,12 +84,17 @@ signals:
     void mutedChanged();
     void aspectModeChanged();
     void videoAspectRatioChanged();
+    void videoDimensionsChanged();
+    void textureOnlyChanged();
     void playbackGenerationChanged();
     void playbackFinished();
     void playbackReady();
     void playbackStopped();
     void playbackFailed(const QString &message);
     void fatalPlayerFailure(const QString &message);
+
+protected:
+    QSGNode *updatePaintNode(QSGNode *node, UpdatePaintNodeData *data) override;
 
 private slots:
     void handleRenderContextReady();
@@ -112,6 +124,7 @@ private:
     QUrl m_source;
     QString m_status = QStringLiteral("Ready");
     bool m_paused = false;
+    bool m_textureOnly = false;
     bool m_subtitlesVisible = true;
     bool m_subtitlesAvailable = false;
     bool m_subtitleDefaultOn = false;
@@ -119,6 +132,8 @@ private:
     bool m_muted = false;
     QString m_aspectMode = QStringLiteral("crop");
     double m_videoAspectRatio = 0.0;
+    int m_videoWidth = 0;
+    int m_videoHeight = 0;
     double m_pendingStartPosition = 0.0;
     double m_playbackPosition = 0.0;
     double m_playbackDuration = 0.0;

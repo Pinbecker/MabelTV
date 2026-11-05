@@ -2,12 +2,16 @@
 
 layout(location = 0) in vec2 qt_TexCoord0;
 layout(location = 0) out vec4 fragColor;
+layout(location = 1) in vec2 glassUv;
+layout(location = 2) in vec3 glassSurface;
 
 layout(std140, binding = 0) uniform Buffer {
     mat4 qt_Matrix;
     float qt_Opacity;
     float flicker;
     float effectStrength;
+    float glassCurve;
+    float maskExponent;
     float distortion;
     float pausedEffect;
     float phase;
@@ -17,28 +21,6 @@ layout(std140, binding = 0) uniform Buffer {
 } uniforms;
 
 layout(binding = 1) uniform sampler2D source;
-
-float roundedScreenMask(vec2 uv)
-{
-    vec2 point = abs(uv * 2.0 - 1.0);
-    float glass = clamp(uniforms.effectStrength, 0.0, 1.0);
-    // A superellipse bows every edge outward like the glass in the Mabel TV
-    // welcome film. Higher glass settings move from a modern rounded rectangle
-    // towards the visibly convex face of a deep CRT tube.
-    float exponent = mix(7.0, 4.0, pow(glass, 0.8));
-    float shape = pow(point.x, exponent) + pow(point.y, exponent);
-    vec2 safeResolution = max(uniforms.resolution, vec2(1.0));
-    vec2 shapeGradient = exponent
-        * pow(max(point, vec2(0.0001)), vec2(exponent - 1.0)) * 2.0;
-    // Convert the curve's local slope into a pixel footprint. A fixed UV
-    // softness became sub-pixel along the flatter parts of the superellipse,
-    // which made the inside bezel edge look stair-stepped on a television.
-    float pixelFootprint = dot(shapeGradient, 1.0 / safeResolution);
-    float softness = max(uniforms.maskSoftness * 2.2
-                             / min(safeResolution.x, safeResolution.y),
-                         pixelFootprint * 1.50);
-    return 1.0 - smoothstep(1.0 - softness, 1.0 + softness, shape);
-}
 
 float analogueNoise(vec2 point)
 {
@@ -51,27 +33,32 @@ float frameNoise(vec2 point)
     return fract(sin(dot(point, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
+layout(binding = 3) uniform sampler2D foreground;
+vec4 pictureAt(vec2 uv)
+{
+    vec4 picture = texture(source, uv);
+    picture.rgb += vec3(1.0, 2.0, 1.0) / 255.0 * (1.0-picture.a);
+    picture.a = 1.0;
+    vec4 overlay = texture(foreground, uv);
+    return overlay + picture * (1.0-overlay.a);
+}
+
 void main()
 {
-    vec2 centered = qt_TexCoord0 * 2.0 - 1.0;
     float glass = clamp(uniforms.effectStrength, 0.0, 1.0);
-    float glassCurve = pow(glass, 1.25);
-    float curveAmount = 0.044 * glassCurve;
-    float curve = 1.0 + curveAmount * dot(centered, centered);
-    // Barrel distortion is the convex direction. Dividing here produced the
-    // concave/pincushion look. Normalising by the corner maximum retains the
-    // convex bend while keeping every sample inside the source texture.
-    vec2 sampleUv = centered * curve / (1.0 + curveAmount * 2.0) * 0.5 + 0.5;
-    float mask = roundedScreenMask(qt_TexCoord0);
+    vec2 sampleUv = glassUv;
+    float mask = 1.0 - smoothstep(1.0 - glassSurface.y, 1.0 + glassSurface.y, glassSurface.x);
     float distortion = clamp(uniforms.distortion, 0.0, 1.0);
 
     // Motion is deliberately reserved for the very top of the distortion
     // control. Lower settings add age and haze without making the image swim.
     float wobbleAmount = smoothstep(0.94, 1.0, distortion);
-    float horizontalWobble = sin(sampleUv.y * 31.0 + uniforms.phase * 4.7)
-        + 0.45 * sin(sampleUv.y * 83.0 - uniforms.phase * 7.1);
-    sampleUv.x += horizontalWobble * 0.00032 * wobbleAmount;
-    sampleUv.y += sin(uniforms.phase * 3.3) * 0.00012 * wobbleAmount;
+    if (wobbleAmount > 0.0) {
+        float horizontalWobble = sin(sampleUv.y * 31.0 + uniforms.phase * 4.7)
+            + 0.45 * sin(sampleUv.y * 83.0 - uniforms.phase * 7.1);
+        sampleUv.x += horizontalWobble * 0.00032 * wobbleAmount;
+        sampleUv.y += sin(uniforms.phase * 3.3) * 0.00012 * wobbleAmount;
+    }
 
     float paused = clamp(uniforms.pausedEffect, 0.0, 1.0);
     if (paused > 0.001) {
@@ -97,12 +84,12 @@ void main()
     vec2 sampleMinimum = pixel * 0.5;
     vec2 sampleMaximum = vec2(1.0) - sampleMinimum;
     sampleUv = clamp(sampleUv, sampleMinimum, sampleMaximum);
-    vec4 centreSample = texture(source, sampleUv);
-    vec4 leftSample = texture(source,
+    vec4 centreSample = pictureAt( sampleUv);
+    vec4 leftSample = pictureAt(
                               clamp(sampleUv - vec2(pixel.x, 0.0),
                                     sampleMinimum,
                                     sampleMaximum));
-    vec4 rightSample = texture(source,
+    vec4 rightSample = pictureAt(
                                clamp(sampleUv + vec2(pixel.x, 0.0),
                                      sampleMinimum,
                                      sampleMaximum));
@@ -115,12 +102,12 @@ void main()
     if (distortion > 0.001) {
         float colourOffset = (0.5 + 3.5 * distortion * distortion) * pixel.x;
         vec3 separatedColour = vec3(
-            texture(source,
+            pictureAt(
                     clamp(sampleUv + vec2(colourOffset, 0.0),
                           sampleMinimum,
                           sampleMaximum)).r,
             centreSample.g,
-            texture(source,
+            pictureAt(
                     clamp(sampleUv - vec2(colourOffset, 0.0),
                           sampleMinimum,
                           sampleMaximum)).b);
@@ -150,12 +137,12 @@ void main()
         // firmly in place.
         float pauseChromaOffset = (1.8 + 2.2 * trackingBand) * pixel.x;
         vec3 pauseColour = vec3(
-            texture(source,
+            pictureAt(
                     clamp(sampleUv + vec2(pauseChromaOffset, 0.0),
                           sampleMinimum,
                           sampleMaximum)).r,
             centreSample.g,
-            texture(source,
+            pictureAt(
                     clamp(sampleUv - vec2(pauseChromaOffset, 0.0),
                           sampleMinimum,
                           sampleMaximum)).b);
@@ -172,13 +159,9 @@ void main()
 
     float scanline = 1.0 - (0.018 * glass + 0.055 * distortion)
         * (0.5 + 0.5 * sin(sampleUv.y * uniforms.resolution.y * 3.14159265));
-    float vignette = 1.0 - 0.18 * glassCurve
-        * smoothstep(0.38, 1.25, length(centered));
-    float cornerDepth = pow(abs(centered.x * centered.y), 1.35);
-    float glassDepth = 1.0 - 0.13 * glassCurve * cornerDepth;
     float analogueVariation = 1.0
         - uniforms.flicker * (0.001 * glass + 0.003 * distortion);
-    colour *= scanline * vignette * glassDepth * analogueVariation;
+    colour *= scanline * glassSurface.z * analogueVariation;
 
     // Qt Quick composites ShaderEffect output as premultiplied alpha. Leaving
     // full-strength RGB in the partially transparent mask pixels produces a

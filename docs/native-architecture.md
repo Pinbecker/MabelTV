@@ -236,3 +236,42 @@ Unrequested background resumes during an active presentation are discarded.
 `MyTvPortalPlayback.qml` resolves exact local series playback and serialises the decoder handoff without embedding My TV in a surround. Storytime EOF returns through the same book-closing/shelf transition as Back and never resumes the previous child film.
 
 Audio-only stories use `FamilyAudioOnly.qml`: two rendered black frames precede CEC wake/Active Source, then playback waits for HDMI readiness. This mask covers the complete Pi UI throughout listening and EOF. Back intentionally opens Storytime; explicit normal playback or power-off cancels a pending quiet wake. The controller exposes the connected TV power state without a second QML state machine.
+
+## CRT rendering cost
+
+`TelevisionScreen.qml` retains the original tube geometry and foreground child
+order. `CrtCabinet.qml` caches the original cabinet/bezel vectors at display
+resolution and refreshes when their settings or geometry change. Four cabinet
+styles are compared against uncached drawing. `CrtReflection.qml` retains the two original glass reflections in
+the independent foreground texture; `CrtGrain.qml` supplies a
+bounded 256-pixel lookup.
+
+`MpvVideoTexture.cpp` owns the opt-in texture-only adapter. Qt's framebuffer
+renderer/provider stays alive while its unwarped presentation quad is empty.
+The CRT shader reads that existing video texture directly and composites the
+complete original foreground (including OSD, pause, countdown and reflections)
+BEFORE the common curvature and mask. CrtForegroundSource holds unchanged
+foreground pixels, enables live updates during overlay animations, and
+invalidates for geometry/settings/status changes. Its final fade is captured
+before freezing so it cannot retain a stale label. There is no unmasked picture underneath,
+no separate OSD above the curved effect, and no intermediate full-tube copy of
+every video frame. Fullscreen/effects-off uses ordinary video presentation.
+
+The video framebuffer uses a smaller source's native detail before scaling
+into the original tube. Dimensions come from mpv. The 64 by 36 shader mesh
+computes curvature and shading; low distortion during playback uses the faster
+shader, while high distortion and paused tape retain their detailed path.
+
+`MpvTextureTests` verifies real libmpv pixels, orientation, absence of the
+unwarped quad, ShaderEffect consumption and restoration of normal presentation.
+`CrtEffectTests` compares the original combined picture with the separate video
+and translucent foreground composition, including live glass/distortion/size
+changes and OSD text. The original reference shader is frozen from HEAD. Real
+full-window captures and sustained playback telemetry remain separate release
+checks; a shader benchmark alone does not establish actual playback speed.
+
+Completed-frame diagnostics are opt-in via MABELTV_FRAME_CAPTURE=1. The native
+window responds to a local request file in its private /run/mabeltv/frame-capture
+folder, reads at most three final OpenGL render passes into private PNGs, and expires after ten
+minutes. There is no HTTP endpoint and the feature has no timer or file writes
+when disabled. Runtime overrides used for acceptance are removed afterwards.
