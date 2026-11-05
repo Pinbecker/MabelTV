@@ -1,35 +1,46 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
-const {outputFrameRate,outputLevel,compressionPlan,compressionProof,videoFilters}=require('../lib/compression.cjs');
+const {sourceFrameRate,outputFrameRate,outputLevel,compressionPlan,compressionProof,videoFilters}=require('../lib/compression.cjs');
 const {analyse}=require('../lib/media.cjs');
 const facts={width:1920,height:1080,bytes:3.5e9,duration:7200,hasAudio:true,ready:false,sar:1};
-test('compatibility halves 50 fps motion while other rates and compression choices retain their cadence',()=>{
- for(const fps of [24000/1001,24,25,30000/1001,30,50,60000/1001,60])
-  assert.equal(outputFrameRate({...facts,fps},true,'compatible'),fps===50?25:fps);
- assert.equal(outputFrameRate({...facts,fps:25,interlaced:true},true,'compatible'),25);
- assert.equal(outputLevel({...facts,fps:50},'mytv','compatible'),'4.1');
- assert.match(videoFilters({...facts,fps:50},'mytv','compatible'),/fps=25,/);
- assert.doesNotMatch(videoFilters({...facts,fps:25},'mytv','compatible'),/fps=/);
- assert.doesNotMatch(videoFilters({...facts,fps:50},'mytv','compact'),/fps=/);
+test('all preparation choices halve 50 fps, including interlaced fields, for both TV destinations',()=>{
+ for(const profile of ['compatible','balanced','compact','smallest']) for(const target of ['mytv','mabel']) {
+  for(const source of [{fps:50},{fps:25,interlaced:true}]) {
+   const input={...facts,...source};
+   assert.equal(outputFrameRate(input,true,profile),25);
+   assert.equal(outputLevel(input,target,profile),'4.1');
+   assert.match(videoFilters(input,target,profile),/fps=25,/);
+  }
+  assert.doesNotMatch(videoFilters({...facts,fps:25},target,profile),/fps=/);
+ }
 });
-test('source cadence is preserved and H264 level matches the encoded frame size and rate',()=>{
- for(const fps of [24000/1001,24,25,30000/1001,30,50,60000/1001,60]) {
+
+test('other source rates are preserved and H264 level matches the encoded rate',()=>{
+ for(const fps of [24000/1001,24,25,30000/1001,30,60000/1001,60]) {
   assert.equal(outputFrameRate({...facts,fps},true),fps);
+  assert.equal(sourceFrameRate({...facts,fps},true),fps);
   assert.equal(outputLevel({...facts,fps},'mytv'),fps>30?'4.2':'4.1');
   assert.equal(outputLevel({...facts,fps},'mabel'),'4.1');
  }
- assert.equal(outputFrameRate({...facts,fps:25,interlaced:true},true),50);
- assert.match(videoFilters({...facts,fps:25,interlaced:true},'mytv'),/bwdif=mode=send_field/);
+ assert.equal(sourceFrameRate({...facts,fps:25,interlaced:true},true),50);
+ assert.match(videoFilters({...facts,fps:25,interlaced:true},'mytv'),/bwdif=mode=send_field.*fps=25/);
  assert.throws(()=>outputFrameRate({...facts,fps:120},true),e=>e.code==='FRAME_RATE');
  assert.throws(()=>outputFrameRate({...facts,fps:NaN},true),e=>e.code==='FRAME_RATE');
 });
-test('50fps estimates and risk checks budget for every source frame',()=>{
- const plan=fps=>compressionPlan({...facts,fps},'compact');
- assert.ok(plan(50).targetBytes>plan(30).targetBytes);
- assert.equal(plan(30).risky,false);assert.equal(plan(50).risky,true);
- assert.equal(compressionPlan({...facts,fps:25,interlaced:true},'compact').targetBytes,plan(50).targetBytes);
+
+test('50 fps estimates budget for 25 output frames and existing 50 fps copies require preparation',()=>{
+ for(const profile of ['balanced','compact','smallest']) {
+  const plan=fps=>compressionPlan({...facts,fps},profile);
+  assert.equal(plan(50).targetBytes,plan(25).targetBytes);
+  assert.equal(plan(50).risky,plan(25).risky);
+  assert.equal(compressionPlan({...facts,fps:25,interlaced:true},profile).targetBytes,plan(50).targetBytes);
+  const prepared={...facts,ready:true,compressionProof:{profile,sourceBytes:facts.bytes*3}};
+  assert.equal(compressionPlan({...prepared,fps:50},profile).keepExisting,false);
+  assert.equal(compressionPlan({...prepared,fps:25},profile).keepExisting,true);
+ }
 });
+
 test('existing v1/v2 compressed copies remain recognised after the policy update',()=>{
  for(const version of [1,2,3]) assert.equal(compressionProof({format:{tags:{comment:JSON.stringify({mabeltv:{version,profile:'compact',sourceBytes:2000,duration:10}})}}},1000,10).version,version);
 });

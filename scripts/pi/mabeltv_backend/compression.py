@@ -13,7 +13,7 @@ def output_frame_rate(facts):
     fps *= 2 if facts.get("interlaced") else 1
     if not isinstance(fps, (int, float)) or not math.isfinite(fps) or fps <= 0 or fps > POLICY["maximumFrameRate"] + .001:
         raise ValueError("The source frame rate is outside the supported range. The original was kept.")
-    return fps
+    return 25 if abs(fps - 50) < .005 else fps
 
 
 def compression_profile(value=None):
@@ -51,8 +51,10 @@ def compression_estimate(size, profile_id=None, facts=None, source_bytes=None, p
         estimate = int((video + audio) * duration / 8)
         risky = not prepared and (size * 8 / duration - audio) / pixels < POLICY["riskBitsPerPixel"] if pixels else False
     prior = compression_profile(prepared_profile) if prepared_profile else None
-    keep = bool(prepared and (prior and prior["sourceFraction"] <= profile["sourceFraction"] or size <= basis * profile["sourceFraction"])
-                or estimate >= size * .95)
+    source_fps = facts.get("fps")
+    cadence_change = isinstance(source_fps, (int, float)) and abs(source_fps * (2 if facts.get("interlaced") else 1) - 50) < .005
+    keep = not cadence_change and bool(prepared and (prior and prior["sourceFraction"] <= profile["sourceFraction"] or size <= basis * profile["sourceFraction"])
+                                      or estimate >= size * .95)
     return {"estimatedBytes": size if keep else estimate, "alreadyMeetsTarget": keep, "risky": risky,
             "recommended": "balanced" if risky else POLICY["default"],
             "warning": "This copy is already heavily compressed. Further compression may reduce picture quality." if risky else ""}

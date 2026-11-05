@@ -114,7 +114,7 @@ continue. Non-lock filesystem errors still preserve the files and report failure
 
 Choose My TV films/series, a Mabel TV channel, or iCloud. TV uploads are always
 prepared for their destination: Mabel TV uses 720p, My TV uses up to 1080p.
-Compatibility only is the default for new TV deliveries in the portal and Windows Studio, including iPlayer, torrents, local files and iCloud. Balanced, Compact and Smallest remain explicit space-saving choices. Existing queued choices are retained. Compatibility converts 50 fps motion (including 25 fps interlaced material) to 25 progressive frames for either TV destination; other supported rates are unchanged. This requires a high-quality video encode, not a fixed size reduction. iCloud-only space-saving actions still use their chosen compression profile.
+Compatibility only is the default for new TV deliveries in the portal and Windows Studio, including iPlayer, torrents, local files and iCloud. Balanced, Compact and Smallest remain explicit space-saving choices. Existing queued choices are retained. All four choices convert 50 fps motion (including 25 fps interlaced material) to 25 progressive frames for either TV destination; other supported rates are unchanged. This requires a high-quality video encode, not a fixed size reduction. iCloud-only space-saving actions still use their chosen compression profile.
 Compatibility-only delivery copies suitable H.264 picture packets unchanged
 when only the container, fast-start layout, audio codec or stereo mix needs
 correction. Audio can become AAC stereo without another picture encode. Output
@@ -244,7 +244,7 @@ integration, not part of this release.
 
 ## Compression choices
 
-Every preparation/send flow offers Balanced, Compact (preselected), and Smallest.
+Every TV send defaults to Compatibility only, with Balanced, Compact and Smallest available as space-saving choices.
 The shared immutable `compression-profiles.json` is packaged with Windows Studio
 and the Pi backend: targets are approximately 60%, 40%, and 25% of the source
 size, with a small mux allowance. Known source sizes produce an estimate before
@@ -255,20 +255,20 @@ Preparation uses single-pass Intel Quick Sync H.264/AAC MP4, fast-start playback
 My TV/iCloud. Mabel TV channel copies retain their 720p playback cap; an optimised
 iCloud copy is prepared separately from the original when that cap would reduce
 the cloud version. Lower-resolution originals are not upscaled. Each output is
-validated and must be smaller before replacing an original. Embedded encoding
+validated. Space-saving replacements must be smaller before replacing an original. Embedded encoding
 proof retains the original size basis so repeated sends do not repeatedly
 multiply the reduction; an already smaller compatible prepared copy is reused.
 
-Policy v3 preserves source frame rates up to 60 fps for every choice, including
-Compatibility only. Progressive 50 fps stays 50; interlaced 25 fps becomes 50
-progressive frames to retain field motion. Unsupported rates fail with the
-original kept rather than silently losing frames. Source-frame-aware quality
-floors drive both Windows encoding and metadata-only Pi estimates. 1080p50/60
-uses H.264 level 4.2; 720p50/60 stays within level 4.1 limits. The Pi accepts prepared high
-frame rates without queuing another conversion. Existing v1/v2 encoding records
-remain recognised. Compatibility-only encoding uses the destination bitrate
-ceiling without a source-size reduction target; already compatible files reuse
-or remux their existing video.
+Every preparation profile converts 50 fps motion to 25 progressive frames,
+including 25 fps interlaced material. Other supported rates up to 60 fps are
+preserved. The same output-frame-rate policy drives Windows encoding and
+metadata-only Pi estimates. Existing 50 fps prepared copies cannot bypass this
+step when sent again. Unsupported rates fail with the original kept.
+The Pi still accepts older prepared high-frame-rate uploads without queuing a
+conversion loop. Existing v1/v2/v3 encoding records remain recognised.
+Compatibility-only encoding uses the destination bitrate ceiling without a
+source-size reduction target; already suitable files reuse or remux their
+existing video.
 
 ## Validation for the November 2026 build
 

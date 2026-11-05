@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { run } = require('./process.cjs');
 const mediaPolicy = require('./media-policy.cjs');
-const { policy, compressionPlan, outputGeometry, outputFrameRate, outputLevel } = mediaPolicy;
+const { policy, compressionPlan, outputGeometry, sourceFrameRate, outputFrameRate, outputLevel } = mediaPolicy;
 const availability = new Map();
 async function ensureIntel(tools, signal) {
   if (!tools.ffmpeg) throw new Error('FFmpeg is unavailable. Check Settings.');
@@ -23,7 +23,7 @@ function videoFilters(analysis, target, preparation) {
   const hdr = ['smpte2084', 'arib-std-b67'].includes(analysis.colorTransfer);
   const toneMap = hdr ? 'zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,' : '';
   const deinterlace = analysis.interlaced ? 'bwdif=mode=send_field:parity=auto:deint=all,' : '';
-  const cadence = outputFrameRate(analysis, true, preparation) !== outputFrameRate(analysis, true) ? 'fps=25,' : '';
+  const cadence = outputFrameRate(analysis, true) !== sourceFrameRate(analysis, true) ? 'fps=25,' : '';
   return deinterlace + cadence + toneMap + `scale=trunc(iw*sar/2)*2:ih,setsar=1,scale=${width}:${height}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,pad=${width}:${canvasHeight}:(ow-iw)/2:(oh-ih)/2,format=yuv420p,setparams=range=limited:color_primaries=bt709:color_trc=bt709:colorspace=bt709`;
 }
 async function encodeCompression({ file, destination, target, analysis, tools, signal, progress, inspect, compression, allowRisk = false }) {
@@ -64,7 +64,7 @@ async function encodeCompression({ file, destination, target, analysis, tools, s
     const validated = await inspect(partial, target, signal);
     const expectedFrames = analysis.frameCount && Math.round(analysis.frameCount * expectedFps / analysis.fps);
     if (Math.abs(validated.fps - expectedFps) > .005
-        || expectedFrames && validated.frameCount && Math.abs(expectedFrames - validated.frameCount) > (expectedFps !== outputFrameRate(analysis, true) ? 1 : 0))
+        || expectedFrames && validated.frameCount && Math.abs(expectedFrames - validated.frameCount) > (expectedFps !== sourceFrameRate(analysis, true) ? 1 : 0))
       throw new Error('The prepared video did not match the requested frame rate. The original was kept.');
     if (!validated.ready || Math.abs(validated.duration - analysis.duration) > 2 || validated.hasAudio !== analysis.hasAudio)
       throw new Error('The prepared video failed validation. The original was kept.');

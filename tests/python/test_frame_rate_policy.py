@@ -3,13 +3,17 @@ from mabeltv_backend.compression import compression_estimate, output_frame_rate
 
 
 class FrameRatePolicyTests(unittest.TestCase):
-    def test_estimates_preserve_source_frames_and_account_for_interlaced_fields(self):
+    def test_estimates_use_25fps_for_all_profiles_and_interlaced_fields(self):
         facts = {"width": 1920, "height": 1080, "duration": 7200, "hasAudio": True}
-        estimate = lambda fps: compression_estimate(3_500_000_000, "compact", {**facts, "fps": fps})
-        self.assertGreater(estimate(50)["estimatedBytes"], estimate(30)["estimatedBytes"])
-        self.assertFalse(estimate(30)["risky"])
-        self.assertTrue(estimate(50)["risky"])
-        self.assertEqual(compression_estimate(3_500_000_000, "compact", {**facts, "fps": 25, "interlaced": True}), estimate(50))
+        for profile in ("balanced", "compact", "smallest"):
+            estimate = lambda fps: compression_estimate(3_500_000_000, profile, {**facts, "fps": fps})
+            self.assertEqual(estimate(50), estimate(25))
+            self.assertEqual(compression_estimate(3_500_000_000, profile, {**facts, "fps": 25, "interlaced": True}), estimate(25))
+            prepared = lambda fps: compression_estimate(1_000_000_000, profile, {**facts, "fps": fps}, source_bytes=5_000_000_000, prepared=True, prepared_profile=profile)
+            self.assertFalse(prepared(50)["alreadyMeetsTarget"])
+            self.assertTrue(prepared(25)["alreadyMeetsTarget"])
+        for fps in (23.976, 24, 25, 29.97, 30, 59.94, 60):
+            self.assertEqual(output_frame_rate({"fps": fps}), fps)
         with self.assertRaises(ValueError):
             output_frame_rate({"fps": 120})
 

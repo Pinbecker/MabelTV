@@ -17,14 +17,18 @@ function outputGeometry(analysis, target = 'mytv') {
   return { width: Math.max(2, Math.floor(displayWidth * ratio / 2) * 2),
     height: Math.max(2, Math.floor(analysis.height * ratio / 2) * 2) };
 }
-function outputFrameRate(analysis, required = false, preparation = 'compress') {
+function sourceFrameRate(analysis, required = false) {
   const source = analysis.fps;
   if (required && !(Number.isFinite(source) && source > 0))
     throw Object.assign(new Error('The source frame rate could not be read. The original was kept.'), { code: 'FRAME_RATE' });
   const fps = (source > 0 ? source : 24) * (analysis.interlaced ? 2 : 1);
   if (fps > policy.maximumFrameRate + .001)
     throw Object.assign(new Error(`This video needs ${fps.toFixed(2)} fps. Studio supports up to ${policy.maximumFrameRate} fps without reducing motion. The original was kept.`), { code: 'FRAME_RATE' });
-  return preparation === 'compatible' && Math.abs(fps - 50) < .005 ? 25 : fps;
+  return fps;
+}
+function outputFrameRate(analysis, required = false) {
+  const fps = sourceFrameRate(analysis, required);
+  return Math.abs(fps - 50) < .005 ? 25 : fps;
 }
 function outputLevel(analysis, target, preparation) {
   const { width, height } = outputGeometry(analysis, target);
@@ -54,7 +58,8 @@ function compressionPlan(analysis, value, target = 'mytv') {
   const targetBytes = Math.floor((videoBitrate + audioBitrate) * analysis.duration / 8);
   const risky = !analysis.compressionProof && pixelsPerSecond > 0 && sourceRate / pixelsPerSecond < policy.riskBitsPerPixel;
   const priorProfile = analysis.compressionProof && compressionProfile(analysis.compressionProof.profile);
-  const keepExisting = Boolean(analysis.ready && (priorProfile && priorProfile.sourceFraction <= profile.sourceFraction
+  const keepExisting = Boolean(analysis.ready && outputFrameRate(analysis) === sourceFrameRate(analysis)
+    && (priorProfile && priorProfile.sourceFraction <= profile.sourceFraction
     || targetBytes >= analysis.bytes * .95));
   return { profile, sourceBytes, targetBytes: keepExisting ? analysis.bytes : targetBytes, audioBitrate, videoBitrate,
     maximumBytes: Math.max(Math.floor(sourceBytes * profile.sourceFraction * 1.06), Math.ceil(targetBytes * 1.06)),
@@ -63,4 +68,4 @@ function compressionPlan(analysis, value, target = 'mytv') {
 function reusableCompression(analysis, value, target) {
   return compressionPlan(analysis, value, target).keepExisting;
 }
-module.exports = { policy, qualityWarning, compressionProfile, compressionProof, compressionPlan, reusableCompression, outputGeometry, outputFrameRate, outputLevel };
+module.exports = { policy, qualityWarning, compressionProfile, compressionProof, compressionPlan, reusableCompression, outputGeometry, sourceFrameRate, outputFrameRate, outputLevel };
