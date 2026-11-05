@@ -28,18 +28,24 @@ private slots:
         }
         image.close();
         QQuickWindow window;
+        QSignalSpy presented(&window,&QQuickWindow::frameSwapped);
         const QColor background(18,52,86);
         window.setColor(background); window.resize(96,64);
         auto *video = new MpvVideo(window.contentItem());
         video->setSize(QSizeF(96,64)); video->setAspectMode("fit");
         window.show(); video->setSource(QUrl::fromLocalFile(image.fileName()));
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
         QTRY_VERIFY_WITH_TIMEOUT(video->videoWidth()==64,5000);
         // Header discovery precedes the first rendered frame. Pausing on width
         // alone can freeze a still-empty framebuffer on a slower CI worker.
         // Keep the GUI event loop free while libmpv finishes that frame.
         QTRY_VERIFY_WITH_TIMEOUT(video->renderedFrameCount()>=3,5000);
+        QTRY_VERIFY_WITH_TIMEOUT(video->positionSeconds()>=0.2,5000);
         video->togglePause();
         QTRY_VERIFY_WITH_TIMEOUT(video->paused(),5000);
+        const int beforePresentation=presented.count();
+        window.update();
+        QTRY_VERIFY_WITH_TIMEOUT(presented.count()>beforePresentation,5000);
         const QImage original=window.grabWindow();
         if (!original.isNull() && original.pixelColor(48,16).red()<=200)
             original.save(QDir::current().filePath("mpv-texture-original.png"));

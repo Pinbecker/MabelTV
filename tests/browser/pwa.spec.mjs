@@ -174,8 +174,9 @@ test('warm startup uses the authorised snapshot and loads charts only on demand'
       new URL(response.url()).pathname === '/api/library')
     releaseRefresh()
     await refreshResponse
-    await page.unroute('**/api/library')
-    await page.unroute('**/api/bootstrap')
+    // A bootstrap refresh can still be fulfilling its response here. Drain
+    // these test-owned handlers before restoring ordinary network requests.
+    await page.unrouteAll({ behavior: 'wait' })
   }
 
   await page.locator('[data-view-button="my-tv-home"]').click()
