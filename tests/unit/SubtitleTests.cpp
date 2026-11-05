@@ -39,8 +39,12 @@ private slots:
         QFile videoFile(path);
         QVERIFY(videoFile.open(QIODevice::WriteOnly));
         videoFile.write("YUV4MPEG2 W64 H36 F50:1 Ip A1:1 C420jpeg\n");
-        for (int frame = 0; frame < 1500; ++frame)
-            videoFile.write("FRAME\n" + QByteArray(64 * 36, char(16)) + QByteArray(32 * 18 * 2, char(128)));
+        for (int frame = 0; frame < 1500; ++frame) {
+            videoFile.write("FRAME\n");
+            videoFile.write(QByteArray(64 * 18, char(81)) + QByteArray(64 * 18, char(41)));
+            videoFile.write(QByteArray(32 * 9, char(90)) + QByteArray(32 * 9, char(240)));
+            videoFile.write(QByteArray(32 * 9, char(240)) + QByteArray(32 * 9, char(110)));
+        }
         videoFile.close();
         QFile srt(directory.filePath("captions.srt"));
         QVERIFY(srt.open(QIODevice::WriteOnly));
@@ -76,6 +80,8 @@ private slots:
         const auto capture = window.grabWindow();
         QVERIFY(!capture.isNull());
         capture.save("subtitle-cached.png");
+        QVERIFY(capture.pixelColor(480, 100).red() > 200);
+        QVERIFY(capture.pixelColor(100, 450).blue() > 200);
         int greenPixels = 0, whitePixels = 0;
         for (int y = 360; y < 535; ++y) for (int x = 100; x < 860; ++x) {
             const auto pixel = capture.pixelColor(x, y);

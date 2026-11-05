@@ -41,6 +41,15 @@ private slots:
         // Keep the GUI event loop free while libmpv finishes that frame.
         QTRY_VERIFY_WITH_TIMEOUT(video->renderedFrameCount()>=3,5000);
         QTRY_VERIFY_WITH_TIMEOUT(video->positionSeconds()>=0.2,5000);
+        // A render callback / playback clock can precede the first coloured
+        // texture actually reaching Qt's window. Establish that observable
+        // frame before pausing, then independently check the paused capture.
+        const auto picturePresented = [&window] {
+            const auto frame = window.grabWindow();
+            return !frame.isNull() && frame.pixelColor(48,16).red()>200
+                && frame.pixelColor(48,48).green()>200;
+        };
+        QTRY_VERIFY_WITH_TIMEOUT(picturePresented(),5000);
         video->togglePause();
         QTRY_VERIFY_WITH_TIMEOUT(video->paused(),5000);
         const int beforePresentation=presented.count();
