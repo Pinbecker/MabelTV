@@ -10,9 +10,11 @@ readout and finish time, without a repeated start time or current clock. Draggin
 seek with no automatic retry. A programme change closes the timeline. The native
 capability flag keeps the control disabled until the matching player is active.
 `core/remote-preview.js` preloads the playing programme while Remote is visible,
-before Scrub opens. Two bounded requests fill a 12-MB in-memory cache, retained
+before Scrub opens. Two background requests fill a 12-MB in-memory cache, retained
 when the timeline closes and cleared when playback identity changes. Moving the
-thumb does not abort useful requests; cached pictures paint synchronously. Each
+thumb keeps background work running; an independent foreground slot requests
+the pointed-to strip immediately, replacing only an obsolete foreground request.
+At most three requests are outstanding. Cached pictures paint synchronously. Each
 request has a real 18-second abort deadline and a bounded retry. Background
 prefetch uses the paced warmup queue, not the foreground decoder priority.
 Preview failures never block seeking or create a global banner. Pictures sample

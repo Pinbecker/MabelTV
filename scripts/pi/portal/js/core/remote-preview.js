@@ -22,19 +22,35 @@ function remotePreviewPrepare(token, position, duration) {
 function remotePreviewPump() {
   clearTimeout(scrubPreview.timer)
   if (!scrubPreview.token || document.hidden || !$('#view-live').classList.contains('active')) return
+  const focus = scrubPreview.focus
+  if (remoteScrub.open && remoteScrub.dragging) {
+    // A cold background strip must never occupy the requested picture's slot.
+    // Only obsolete foreground requests are replaced; background work survives.
+    for (const [bucket, controller] of scrubPreview.pending) {
+      if (controller.previewForeground && bucket !== focus) {
+        controller.previewSuperseded = true; controller.abort(); scrubPreview.pending.delete(bucket)
+      }
+    }
+    if (!scrubPreview.cache.has(focus) && !scrubPreview.pending.has(focus)
+        && Date.now() >= (scrubPreview.failures.get(focus) || 0)) remotePreviewStart(focus, true)
+  }
   if (Date.now() < scrubPreview.retryAt) {
     scrubPreview.timer = setTimeout(remotePreviewPump, scrubPreview.retryAt - Date.now()); return
   }
-  const count = Math.min(360, Math.ceil(scrubPreview.duration / 80)), focus = scrubPreview.focus
+  const count = Math.min(360, Math.ceil(scrubPreview.duration / 80))
   const order = Array.from({ length: count }, (_, bucket) => bucket).sort((a, b) => Math.abs(a - focus) - Math.abs(b - focus))
   for (const bucket of order) {
     if (scrubPreview.pending.size >= 2) break
     if (scrubPreview.cache.has(bucket) || scrubPreview.pending.has(bucket) || Date.now() < (scrubPreview.failures.get(bucket) || 0)) continue
     if (scrubPreview.bytes >= 10 * 1024 * 1024 && Math.abs(bucket - focus) > 2) continue
-    const controller = new AbortController()
-    scrubPreview.pending.set(bucket, controller)
-    void remotePreviewLoad(bucket, scrubPreview.revision, controller)
+    remotePreviewStart(bucket)
   }
+}
+function remotePreviewStart(bucket, foreground = false) {
+  const controller = new AbortController()
+  controller.previewForeground = foreground
+  scrubPreview.pending.set(bucket, controller)
+  void remotePreviewLoad(bucket, scrubPreview.revision, controller)
 }
 function remotePreviewPaint(position) {
   const box = $('#remoteScrubPreview')
@@ -86,13 +102,13 @@ async function remotePreviewLoad(bucket, revision, controller) {
     }
     throw new Error('Preview unavailable')
   } catch (error) {
-    if (revision !== scrubPreview.revision) return
+    if (revision !== scrubPreview.revision || controller.previewSuperseded) return
     scrubPreview.failures.set(bucket, Date.now() + 5000); scrubPreview.retryAt = Date.now() + 1500
     remotePreviewPaint(scrubPreview.position)
   } finally {
     clearTimeout(timeout)
     if (revision === scrubPreview.revision) {
-      scrubPreview.pending.delete(bucket)
+      if (scrubPreview.pending.get(bucket) === controller) scrubPreview.pending.delete(bucket)
       scrubPreview.timer = setTimeout(remotePreviewPump, 100)
     }
   }

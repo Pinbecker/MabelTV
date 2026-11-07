@@ -69,6 +69,18 @@ class SeekPreviewTests(unittest.TestCase):
         self.assertEqual(len(self.library.seek_preview_warm_pending), 2)
         self.library.live_tv_control.assert_not_called()
 
+    def test_warmup_tracks_a_seek_in_the_same_programme_not_old_prefetch_positions(self):
+        self.library.seek_preview_worker = mock.Mock(is_alive=mock.Mock(return_value=True))
+        self.mode.update(playback_duration=800, playback_position=0)
+        self.library.warm_seek_previews(self.mode)
+        self.assertEqual(self.library.seek_preview_warm_pending[0]["start"], 0)
+        self.mode["playback_position"] = 650
+        self.library.warm_seek_previews(self.mode)
+        self.assertEqual(self.library.seek_preview_warm_pending[0]["start"], 640)
+        self.library.seek_preview("a" * 64, 0, background=True)
+        self.assertEqual(self.library.seek_preview_warm_pending[0]["start"], 640)
+        self.library.live_tv_control.assert_not_called()
+
     def test_warmup_waits_when_hot_and_replaces_queue_when_programme_changes(self):
         self.library.seek_preview_worker = mock.Mock(is_alive=mock.Mock(return_value=True))
         self.library.warm_seek_previews(self.mode)

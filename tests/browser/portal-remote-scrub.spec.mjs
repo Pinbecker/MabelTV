@@ -1,6 +1,32 @@
 import {test,expect} from './test-fixtures.mjs'
 test.use({serviceWorkers:'block'})
 
+test('dragged preview bypasses stalled background requests and replaces an obsolete foreground request',async({page})=>{
+  const state={available:true,standby:false,paused:true,seek_supported:true,seek_available:true,
+    seek_token:'f'.repeat(64),playback_position:90,playback_duration:960,programme:'Shrek'}
+  const requests=[],failed=[],commands=[]
+  await page.route('**/api/live',route=>route.fulfill({json:state}))
+  await page.route('**/api/live/control',route=>{commands.push(route.request().postDataJSON());return route.abort()})
+  page.on('requestfailed',request=>{if(request.url().includes('seek-preview'))failed.push(Number(new URL(request.url()).searchParams.get('position')))})
+  await page.route('**/api/live/seek-preview?**',route=>{
+    const url=new URL(route.request().url()),position=Number(url.searchParams.get('position'))
+    requests.push({position,warm:url.searchParams.get('warm')})
+    if(position!==560)return // Both background slots and the first foreground request remain blocked.
+    return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="144"><rect width="2048" height="144" fill="#526e56"/></svg>'})
+  })
+  await page.goto('/#live');await page.evaluate(value=>renderRemoteState(value),state)
+  await expect.poll(()=>requests.length).toBe(2)
+  await page.locator('#remoteScrubOpen').click()
+  const drag=position=>page.locator('#remoteScrubRange').evaluate((input,value)=>{input.value=String(value);input.dispatchEvent(new Event('input',{bubbles:true}))},position)
+  await drag(330)
+  await expect.poll(()=>requests.some(item=>item.position===320&&item.warm===null),{timeout:1500}).toBe(true)
+  await drag(630)
+  await expect(page.locator('#remoteScrubPreviewImage')).toBeVisible({timeout:1500})
+  await expect.poll(()=>failed.includes(320)).toBe(true)
+  expect(failed.includes(0)||failed.includes(80)).toBe(false)
+  expect(commands).toHaveLength(0)
+})
+
 test('prewarmed previews paint immediately across the programme and survive closing Scrub',async({page},info)=>{
   const state={available:true,standby:false,paused:false,seek_supported:true,seek_available:true,
     seek_token:'d'.repeat(64),playback_position:90,playback_duration:640,programme:'The Grinch'}

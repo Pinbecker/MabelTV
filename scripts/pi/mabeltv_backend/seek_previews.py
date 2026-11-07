@@ -23,6 +23,7 @@ class SeekPreviewsMixin:
         self.seek_preview_warm_token = ""
         self.seek_preview_warm_pending = []
         self.seek_preview_closed = threading.Event()
+        self.seek_preview_urgent = threading.Event()
         self.seek_preview_watcher = None
 
     def seek_preview_context(self, token, position, mode=None):
@@ -48,6 +49,7 @@ class SeekPreviewsMixin:
         identity = hashlib.sha256(f"{stat.st_dev}:{stat.st_ino}:{stat.st_size}:{stat.st_mtime_ns}".encode()).hexdigest()
         key = f"{identity}-{bucket}"
         return {"key": key, "identity": identity, "token": token, "path": path, "duration": duration,
+                "playback_position": mode.get("playback_position", 0),
                 "start": bucket * STEP * FRAMES, "output": self.seek_preview_root / (key + ".jpg")}
 
     def start_seek_preview_warmer(self):
@@ -76,8 +78,8 @@ class SeekPreviewsMixin:
             return
         context = self.seek_preview_context(token, mode.get("playback_position", 0), mode)
         with self.seek_preview_lock:
+            current = context["start"] // (STEP * FRAMES)
             if self.seek_preview_warm_token != token:
-                current = context["start"] // (STEP * FRAMES)
                 count = min(360, math.ceil(context["duration"] / (STEP * FRAMES)))
                 order = sorted(range(count), key=lambda bucket: abs(bucket - current))
                 self.seek_preview_warm_pending = []
@@ -88,6 +90,7 @@ class SeekPreviewsMixin:
                         self.seek_preview_warm_pending.append({**context, "key": key, "output": output,
                             "start": bucket * STEP * FRAMES, "background": True})
                 self.seek_preview_warm_token = token
+            self.seek_preview_warm_pending.sort(key=lambda item: abs(item["start"] // (STEP * FRAMES) - current))
             if self.seek_preview_warm_pending:
                 self.start_seek_preview_worker()
 
@@ -108,6 +111,7 @@ class SeekPreviewsMixin:
 
     def close_seek_previews(self, timeout=10):
         self.seek_preview_closed.set()
+        self.seek_preview_urgent.set()
         for worker in (self.seek_preview_watcher, self.seek_preview_worker):
             if worker:
                 worker.join(timeout=timeout)
@@ -121,19 +125,21 @@ class SeekPreviewsMixin:
         if background:
             self.warm_seek_previews({"seek_available": True, "seek_token": token,
                 "seek_file": str(context["path"]), "playback_duration": context["duration"],
-                "playback_position": float(position)})
+                "playback_position": context["playback_position"]})
             return None
         with self.seek_preview_lock:
             if self.seek_preview_failures.get(context["key"], 0) > time.monotonic():
                 raise ValueError("Preview unavailable for this part")
             if self.seek_preview_current != context["key"]:
                 self.seek_preview_pending = context
+                self.seek_preview_urgent.set()
             self.start_seek_preview_worker()
         return None
 
     def run_seek_previews(self):
         while not self.seek_preview_closed.is_set():
             with self.seek_preview_lock:
+                self.seek_preview_urgent.clear()
                 context = self.seek_preview_pending
                 self.seek_preview_pending = None
                 if context is None and not self.seek_preview_too_warm():
@@ -167,7 +173,7 @@ class SeekPreviewsMixin:
                         self.seek_preview_warm_pending.append(context)
             if context.get("background"):
                 # Leave CPU time for TV playback; warming never runs at full tilt.
-                self.seek_preview_closed.wait(min(2, max(.2, (time.monotonic() - started) * 2)))
+                self.seek_preview_urgent.wait(min(2, max(.2, (time.monotonic() - started) * 2)))
 
     def prepare_seek_preview(self, context):
         self.seek_preview_root.mkdir(mode=0o750, parents=True, exist_ok=True)
