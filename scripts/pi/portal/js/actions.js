@@ -594,17 +594,6 @@ let managementBusy = false
         if (command === 'restart-programme' && !await portalConfirm({ title: 'Restart this programme?', message: 'Playback will start from the beginning.', confirmLabel: 'Restart programme' })) return
         sendLiveCommand(command, button)
       })
-      const remoteKeyboard = $('#remoteKeyboard')
-      const remoteKeyboardText = $('#remoteKeyboardText')
-      remoteKeyboard?.addEventListener('submit', async event => {
-        event.preventDefault()
-        const text = remoteKeyboardText.value
-        if (!text) return
-        if (await sendLiveCommand('text-input', remoteKeyboard.querySelector('button'), { text })) {
-          remoteKeyboardText.value = ''
-          remoteKeyboardText.focus()
-        }
-      })
     const livePreviewToggle = $('#toggleLivePreview')
     if (livePreviewToggle) livePreviewToggle.onclick = () => {
       const card = livePreviewToggle.closest('.mabel-status-card')

@@ -243,18 +243,21 @@ function renderChannelNumbers() {
         return
       }
       items.forEach(item => {
-        const row = document.createElement('div'); row.className = 'programme'
-        const name = document.createElement('span'); name.textContent = `${item.display_name} · ${item.channel_name} · ${studioBytes(item.bytes || 0)}`
-        const actions = document.createElement('div'); actions.className = 'programme-actions'
+        const row = document.createElement('div'); row.className = 'programme recycle-item'
+        const name = document.createElement('div'); name.className = 'recycle-item-copy'
+        const title = document.createElement('strong'); title.textContent = item.display_name
+        const detail = document.createElement('small'); detail.textContent = `${item.channel_name} · ${studioBytes(item.bytes || 0)}`
+        name.append(title, detail)
+        const actions = document.createElement('div'); actions.className = 'watch-film-actions recycle-actions'
         actions.append(
           portalButton({
             text: 'Restore',
-            className: 'secondary',
+            className: 'watch-film-play',
             onClick: () => manage('restore', { id: item.id }),
           }),
           portalButton({
             text: 'Delete forever',
-            className: 'danger',
+            className: 'watch-film-play watch-film-danger',
             onClick: () => {
               if (confirm('Permanently delete this video? This cannot be undone.')) {
                 manage('delete', { id: item.id })
@@ -262,6 +265,12 @@ function renderChannelNumbers() {
             },
           }),
         )
+        actions.querySelectorAll('button').forEach((button, index) => {
+          const icon = document.createElement('span'); icon.className = 'watch-action-icon'
+          icon.append(portalIcon(index ? 'signal-trash' : 'signal-restart'))
+          const label = document.createElement('span'), strong = document.createElement('strong')
+          strong.textContent = button.textContent; label.append(strong); button.replaceChildren(icon, label)
+        })
         row.append(name, actions); bin.append(row)
       })
     }

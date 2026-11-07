@@ -257,6 +257,10 @@ body.portal-experience .studio-version-field select { width:100%; min-width:0; }
 body.portal-experience #studioVersions:empty { display:none; }
 body.portal-experience .studio-existing-summary { margin:0; white-space:pre-line; overflow-wrap:anywhere; color:var(--experience-muted); font-size:13px; line-height:1.5; }
 body.portal-experience #studioCloudDeleteNames { list-style:none; padding:0; }
+body.portal-experience dialog#studioCloudDeleteSheet > .library-sheet-panel { height:auto; max-height:85dvh; }
+body.portal-experience #studioCloudDeleteNames { display:grid; gap:10px; margin:16px 0 0; background:transparent; border:0; }
+body.portal-experience #studioCloudDeleteNames .studio-episode { border:1px solid var(--experience-line); border-radius:12px; background:var(--experience-elevated); }
+body.portal-experience #studioCloudDeleteSheet .studio-sheet-footer { justify-content:flex-end; }
 body.portal-experience #subtitleSheet > .library-sheet-panel { height:auto; max-height:85dvh; }
 body.portal-experience #subtitleTracks { display:grid; gap:10px; border:0; background:transparent; }
 body.portal-experience #subtitleTracks .studio-episode { border:1px solid var(--experience-line); border-radius:12px; }

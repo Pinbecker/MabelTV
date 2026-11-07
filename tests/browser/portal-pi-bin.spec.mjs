@@ -2,6 +2,7 @@ import {test,expect} from './test-fixtures.mjs'
 test.use({serviceWorkers:'block'})
 
 test('Pi bin shows space and deletes only its confirmed snapshot without a TV command',async({page},info)=>{
+  if(info.project.name==='iphone-chromium')await page.addInitScript(()=>localStorage.setItem('mabeltv-experience-theme','light'))
   let items=[{id:'12345678-abcdef01',display_name:'Old film copy',channel_name:'My TV',bytes:3*1024**3,fingerprint:'111111'}]
   const writes=[]
   await page.route('**/api/library',async route=>{

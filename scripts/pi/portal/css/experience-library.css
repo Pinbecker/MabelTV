@@ -570,3 +570,15 @@ body.portal-v2 .channel-page-show-copy small { overflow: hidden; text-overflow: 
 body.portal-v2 .channel-page-show-copy strong { font-size: 12px; }
 body.portal-v2 .channel-page-show-copy small { color: var(--experience-dim); font-size: 9px; }
 body.portal-v2 .channel-page-chevron { width: 16px; height: 16px; fill: none; stroke: var(--experience-dim); stroke-width: 2; }
+/* The Pi bin uses the same separate action cards as film settings. */
+body.portal-experience #recycleSheet .library-sheet-panel { max-height:85dvh; }
+body.portal-experience #recycleSheet .library-recycle-list { gap:12px; }
+body.portal-experience #recycleSheet .recycle-item { display:grid; gap:16px; padding:16px; border:1px solid var(--experience-line); border-radius:14px; background:var(--experience-elevated); }
+body.portal-experience .recycle-item-copy { display:grid; gap:6px; min-width:0; }
+body.portal-experience .recycle-item-copy strong { font-size:15px; font-weight:600; line-height:1.4; overflow-wrap:anywhere; }
+body.portal-experience .recycle-item-copy small { font-size:12px; color:var(--experience-muted); }
+body.portal-experience #recycleSheet .recycle-actions { display:grid; grid-template-columns:1fr; gap:10px; margin:0; }
+body.portal-experience #recycleSheet button:disabled { opacity:.45; }
+body.portal-experience #recycleSheet .studio-sheet-footer { justify-content:space-between; gap:16px; }
+body.portal-experience #recycleSheet .studio-sheet-footer .watch-film-play { width:auto; }
+body.portal-experience #recycleSummary { color:var(--experience-muted); font-size:12px; }

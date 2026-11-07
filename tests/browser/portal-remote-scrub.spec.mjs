@@ -22,6 +22,7 @@ for(const myTv of [false,true]) test(`remote scrub seeks ${myTv?'My TV':'Mabel T
   await page.evaluate(value=>renderRemoteState(value),state)
   await expect(page.locator('#remoteScrubOpen')).toBeEnabled()
   await expect(page.locator('#remoteScrubOpen')).toBeVisible()
+  await expect(page.locator('#remoteKeyboard')).toHaveCount(0)
   await page.screenshot({path:info.outputPath(`remote-controls-${myTv?'mytv':'mabel'}.png`)})
   const before=await page.locator('#view-live .tv-remote-transport-row').boundingBox()
   await page.locator('#remoteScrubOpen').click()
