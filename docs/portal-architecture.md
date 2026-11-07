@@ -673,8 +673,10 @@ only and no bodies or query values. Transient gateway/busy GETs have one bounded
 delayed retry; actions are never automatically replayed. Invalid JSON is also
 recorded. The loaded bundle still identifies its own immutable PWA build.
 
-Cloud-to-Pi destinations offer Compatibility only alongside the three
-compression profiles. This sets preparationIntent=compatible; it is not a
+TV destinations and prepared iCloud-only downloads offer Compatibility only
+alongside the three compression profiles in both the portal and native Studio.
+Changing destination retains the chosen quality. Original-only iCloud saves
+still bypass preparation. Compatibility sets preparationIntent=compatible; it is not a
 fourth size target. The Windows worker reuses a compatible input, otherwise
 remuxes or performs the required destination conversion. The separate iCloud
 space-saving action still requires a compression profile.

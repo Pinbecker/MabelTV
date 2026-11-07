@@ -66,6 +66,32 @@ test('iCloud library is native, preserves artwork on selection and sends a froze
     expect(job.replaceCloudOriginal).toBe(false);expect(f.errors).toEqual([]);
   } finally {await f.close();}
 });
+test('native iCloud-only torrent saves retain compatibility without selecting a compression profile',async()=>{
+  const f=await launch();try {
+    const {page,state}=f;
+    await page.locator('[data-view="torrents"]').click();
+    await page.locator('#torrent-query').fill('Sherlock');await page.locator('#torrent-query').press('Enter');
+    await page.locator('.torrent-result').click();
+    await expect(page.locator('#library-send')).toBeVisible();
+    await page.locator('#library-select-all').click();
+    await page.locator('#library-destination [data-target="icloud"]').click();
+    const quality=page.locator('#library-destination [data-field="compression"]');
+    await expect(quality).toHaveValue('compatible');
+    await expect(quality.locator('option')).toHaveCount(4);
+    await page.locator('#library-destination [data-field="cloudCopies"]').selectOption('original');
+    await expect(quality).toHaveCount(0);
+    await page.locator('#library-destination [data-field="cloudCopies"]').selectOption('both');
+    await expect(quality).toHaveValue('compatible');
+    await page.screenshot({path:'test-results/native-icloud-compatible.png'});
+    await page.getByRole('button',{name:'Save to iCloud · 2',exact:true}).click();
+    expect(state.writes.find(write=>write.path==='/api/studio/jobs').destination).toMatchObject({
+      kind:'icloud',cloudCopies:'both',preparationIntent:'compatible',saveCloud:true,
+    });
+    expect(state.writes.some(write=>write.path==='/api/live/control')).toBe(false);
+    expect(f.errors).toEqual([]);
+  } finally {await f.close();}
+});
+
 test('native Find anything searches, inspects and selects torrent episodes without opening any portal window',async()=>{
   const f=await launch();try {
     const {page,app,state}=f;

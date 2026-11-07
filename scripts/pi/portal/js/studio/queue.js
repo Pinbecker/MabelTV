@@ -53,16 +53,6 @@ function studioSyncDestination() {
   $('#studioSeriesFields').classList.toggle('hidden', !series)
   $('#studioNewSeriesField').classList.toggle('hidden', $('#studioSeries').value !== 'new' || !series)
   const fromCloud = studioDraft?.sources.length > 0 && studioDraft.sources.every(source => source.type === 'cloud')
-  const compression = $('#studioCompression')
-  let compatibility = compression.querySelector('[value="compatible"]')
-  if (chosen !== 'icloud' && !compatibility) {
-    compression.add(new Option('Compatibility only', 'compatible'), 0)
-    compression.value = 'compatible'
-  }
-  if (chosen === 'icloud' && compatibility) {
-    if (compression.value === 'compatible') compression.value = 'compact'
-    compatibility.remove()
-  }
   const cloudCopies = $('#studioDestinationForm input[name="studioCloudCopies"]:checked')?.value || 'original'
   $('#studioCloudCopiesField').classList.toggle('hidden', Boolean(studioDraft?.matchingJob))
   const originalOnly = chosen === 'icloud' && cloudCopies === 'original'
