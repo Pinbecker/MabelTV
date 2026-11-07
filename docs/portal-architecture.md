@@ -60,8 +60,14 @@ ordered scripts initialise.
 `playback/progress.js` owns durable My TV progress and retry acknowledgements;
 `playback/ios-presentation.js` owns the native fullscreen handoff for streamed
 and downloaded video. `playback/stream-recovery.js` renews an expired media
-source at the current position with bounded retries. `players.js` coordinates
-these owners and retains the separate Mabel TV device-player presentation.
+source at the last valid position with bounded retries. It checks the session
+when the app returns, renews a long-paused or stalled stream, and keeps an
+explicit pause paused. Metadata alone cannot dismiss a recovery failure. If
+WebKit rejects autoplay, Resume playback calls play synchronously from the tap
+on the prepared source. A single recovery owner retires late requests on close,
+retries or a different film, and renews the caption and queue stream identities.
+`players.js` coordinates these owners and retains the separate Mabel TV
+device-player presentation.
 
 Opening a specific local film copy keeps that file selected when cached or
 fresh title metadata arrives. The title-wide metadata cache does not decide

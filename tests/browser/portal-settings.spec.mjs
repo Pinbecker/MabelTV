@@ -6,6 +6,8 @@ const destinations = ['settings-mabel', 'settings-my-tv', 'appearance', 'setting
 test.use({ serviceWorkers: 'block' })
 
 test('interrupted health responses preserve the last valid Pi readings', async ({ page }) => {
+  // Keep the displayed clock stable while comparing the retained readings.
+  await page.clock.setFixedTime(new Date('2026-11-07T12:00:00Z'))
   await page.goto('/#settings/help')
   const details = page.locator('#systemDetails')
   await expect(details).toContainText('Storage')

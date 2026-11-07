@@ -167,17 +167,184 @@ test('media reconnection preserves position and native fullscreen has one owner'
   expect(await page.locator('#iosWatchVideo').evaluate(video => video.controls)).toBe(true)
   await page.evaluate(() => document.querySelector('#iosWatchVideo').onplay())
   expect(await page.evaluate(() => window.fullscreenRequests)).toBe(1)
+  await page.evaluate(() => {
+    const video = document.querySelector('#iosWatchVideo')
+    const present = bindIosPresentation(video, iosPlayerGeneration)
+    video.onwebkitbeginfullscreen(); video.onwebkitendfullscreen()
+    present(new Event('play'))
+  })
+  expect(await page.evaluate(() => window.fullscreenRequests)).toBe(1)
 })
 
-test('slow media startup offers a retry and clears it once the video is ready', async ({ page }) => {
+test('slow media startup keeps retry visible until playback actually starts', async ({ page }) => {
   await page.clock.install()
   await player(page)
   await page.clock.fastForward(15000)
   await expect(page.locator('#iosWatchRetry')).toBeVisible()
   await expect(page.locator('#iosWatchError')).toContainText('taking longer than expected')
   await page.evaluate(() => document.querySelector('#iosWatchVideo').oncanplay())
+  await expect(page.locator('#iosWatchRetry')).toBeVisible()
+  await page.evaluate(() => document.querySelector('#iosWatchVideo').onplaying())
   await expect(page.locator('#iosWatchRetry')).toBeHidden()
   await expect(page.locator('#iosWatchError')).toBeHidden()
+})
+
+test('iOS recovery keeps Resume visible after metadata and uses its tap without fetching another stream', async ({ page }) => {
+  await player(page)
+  await page.evaluate(() => {
+    const video = document.querySelector('#iosWatchVideo')
+    video.currentTime = 1400; video.onplaying()
+    window.resumePlays = []
+    const retry = document.querySelector('#iosWatchRetry'), onRetry = retry.onclick
+    retry.onclick = event => {
+      window.insideResumeTap = true
+      try { return onRetry(event) } finally { window.insideResumeTap = false }
+    }
+    video.play = () => {
+      window.resumePlays.push({ insideTap: !!window.insideResumeTap, position: video.currentTime })
+      if (!window.insideResumeTap) return Promise.reject(new DOMException('A tap is required', 'NotAllowedError'))
+      video.onplay(); video.onplaying(); return Promise.resolve()
+    }
+    video.onerror()
+  })
+  await expect(page.locator('#iosWatchRetry')).toHaveText('Resume playback')
+  await page.evaluate(() => {
+    const video = document.querySelector('#iosWatchVideo')
+    video.onloadedmetadata(); video.oncanplay()
+  })
+  await expect(page.locator('#iosWatchRetry')).toBeVisible()
+  await expect(page.locator('#iosWatchError')).toHaveText('Ready to continue.')
+  await page.locator('#iosWatchRetry').click()
+  await expect(page.locator('#iosWatchRetry')).toBeHidden()
+  expect(await page.evaluate(() => window.starts.length)).toBe(2)
+  expect(await page.evaluate(() => window.resumePlays.at(-1))).toEqual({ insideTap: true, position: 1400 })
+})
+
+test('resuming after a long pause renews the stream and retains the new play intent', async ({ page }) => {
+  await page.clock.install()
+  await player(page)
+  await page.evaluate(() => {
+    const video = document.querySelector('#iosWatchVideo')
+    video.currentTime = 1680; video.onplaying(); video.onpause()
+    clearInterval(iosRemoteHeartbeatTimer)
+    window.resumePlays = 0
+    video.play = () => { window.resumePlays++; video.onplaying(); return Promise.resolve() }
+  })
+  await page.clock.fastForward(180000)
+  await page.evaluate(() => document.querySelector('#iosWatchVideo').onplay())
+  await expect.poll(() => page.evaluate(() => window.starts.length)).toBe(2)
+  await expect.poll(() => page.evaluate(() => window.resumePlays)).toBe(1)
+  expect(await page.evaluate(() => window.starts.at(-1).position)).toBe(1680)
+  await expect(page.locator('#iosWatchError')).toBeHidden()
+})
+
+test('returning to an expired paused stream prepares the same position without autoplay', async ({ page }) => {
+  await page.clock.install()
+  await player(page)
+  await page.evaluate(() => {
+    const video = document.querySelector('#iosWatchVideo')
+    video.currentTime = 1725; video.onplaying(); video.onpause()
+    clearInterval(iosRemoteHeartbeatTimer)
+    const previousApi = window.api
+    window.api = (path, options) => path === '/api/remote/heartbeat'
+      ? Promise.reject(Object.assign(new Error('Session expired'), { status: 400 })) : previousApi(path, options)
+    window.resumePlays = 0
+    video.play = () => { window.resumePlays++; return Promise.resolve() }
+  })
+  await page.clock.fastForward(180000)
+  await page.evaluate(() => window.dispatchEvent(new Event('pageshow')))
+  await expect.poll(() => page.evaluate(() => window.starts.length)).toBe(2)
+  expect(await page.evaluate(() => window.starts.at(-1).position)).toBe(1725)
+  expect(await page.locator('#iosWatchVideo').evaluate(video => video.currentTime)).toBe(1725)
+  expect(await page.evaluate(() => window.resumePlays)).toBe(0)
+})
+
+test('a failed iOS resource resetting currentTime cannot replace the bookmark with zero', async ({ page }) => {
+  await player(page)
+  await page.evaluate(() => {
+    const video = document.querySelector('#iosWatchVideo')
+    video.currentTime = 1900; video.onplaying(); video.dispatchEvent(new Event('timeupdate'))
+    Object.defineProperty(video, 'error', { configurable: true, value: { code: 2 } })
+    video.currentTime = 0; video.onerror()
+  })
+  await expect.poll(() => page.evaluate(() => window.starts.length)).toBe(2)
+  expect(await page.evaluate(() => window.starts.at(-1).position)).toBe(1900)
+  expect(await page.evaluate(() => window.samples.some(sample => sample.position === 0))).toBe(false)
+})
+
+test('a stalled resume reconnects once even without a media error event', async ({ page }) => {
+  await page.clock.install()
+  await player(page)
+  await page.evaluate(() => {
+    const video = document.querySelector('#iosWatchVideo')
+    video.currentTime = 2100; video.onplaying(); video.onpause(); video.onplay()
+    video.dispatchEvent(new Event('waiting'))
+  })
+  await page.clock.fastForward(8000)
+  await expect.poll(() => page.evaluate(() => window.starts.length)).toBe(2)
+  expect(await page.evaluate(() => window.starts.at(-1).position)).toBe(2100)
+  await page.clock.fastForward(16000)
+  await expect(page.locator('#iosWatchRetry')).toBeEnabled()
+  expect(await page.evaluate(() => window.starts.length)).toBe(2)
+})
+
+test('closing during reconnection discards the late response and does not revive the player', async ({ page }) => {
+  await player(page)
+  await page.evaluate(() => {
+    const previousApi = window.api
+    window.api = (path, options) => path === '/api/remote/start'
+      ? new Promise(resolve => { window.finishRecovery = () => resolve(previousApi(path, options)) }) : previousApi(path, options)
+    const video = document.querySelector('#iosWatchVideo')
+    video.currentTime = 2000; video.onplaying(); video.onerror()
+  })
+  await expect.poll(() => page.evaluate(() => typeof window.finishRecovery)).toBe('function')
+  await page.evaluate(() => closeIosRemotePlayer({ fromHistory: true }))
+  await page.evaluate(async () => { window.finishRecovery(); await Promise.resolve() })
+  await expect(page.locator('#iosWatchPlayer')).toBeHidden()
+  expect(await page.evaluate(() => iosRemoteSession)).toBeNull()
+})
+
+test('a timed-out reconnect cannot replace a newer retry when its response arrives late', async ({ page }) => {
+  await page.clock.install()
+  await player(page)
+  await page.evaluate(() => {
+    const previousApi = window.api
+    window.pendingRecoveryResponses = []
+    window.api = (path, options) => path === '/api/remote/start'
+      ? previousApi(path, options).then(result => new Promise(resolve => {
+        window.pendingRecoveryResponses.push(() => resolve(result))
+      })) : previousApi(path, options)
+    const video = document.querySelector('#iosWatchVideo')
+    video.currentTime = 2050; video.onplaying(); video.onerror()
+  })
+  await page.clock.fastForward(16000)
+  await page.locator('#iosWatchRetry').click()
+  await expect.poll(() => page.evaluate(() => window.pendingRecoveryResponses.length)).toBe(2)
+  await page.evaluate(() => window.pendingRecoveryResponses[1]())
+  await expect.poll(() => page.evaluate(() => iosRemoteSession)).toBe('test-3')
+  await page.evaluate(() => window.pendingRecoveryResponses[0]())
+  expect(await page.evaluate(() => iosRemoteSession)).toBe('test-3')
+  expect(await page.locator('#iosWatchVideo').evaluate(video => video.currentTime)).toBe(2050)
+})
+
+test('reconnection renews subtitle URLs and retains the selected subtitle state', async ({ page }) => {
+  await player(page)
+  await page.evaluate(() => {
+    const previousApi = window.api
+    window.api = async (path, options) => {
+      const result = await previousApi(path, options)
+      return path === '/api/remote/start' ? { ...result, subtitle_url: '/renewed-subtitles.vtt' } : result
+    }
+    const video = document.querySelector('#iosWatchVideo'), track = document.createElement('track')
+    track.kind = 'subtitles'; track.src = '/expired-subtitles.vtt'
+    video.append(track); track.track.mode = 'showing'
+    video.currentTime = 1600; video.onplaying(); video.onerror()
+  })
+  await expect.poll(() => page.evaluate(() => window.starts.length)).toBe(2)
+  await page.evaluate(() => document.querySelector('#iosWatchVideo').oncanplay())
+  expect(await page.locator('#iosWatchVideo track').count()).toBe(1)
+  await expect(page.locator('#iosWatchVideo track')).toHaveAttribute('src', '/renewed-subtitles.vtt')
+  expect(await page.locator('#iosWatchVideo track').evaluate(track => track.track.mode)).toBe('showing')
 })
 
 test('playback retry and pending-sync messages remain readable @visual', async ({ page }, testInfo) => {
@@ -200,4 +367,13 @@ test('playback retry and pending-sync messages remain readable @visual', async (
   const retry = await page.locator('#iosWatchRetry').boundingBox()
   expect(error.y + error.height).toBeLessThan(retry.y)
   await page.screenshot({ path: '../../work/playback-retry.png' })
+  await page.evaluate(() => {
+    const video = document.querySelector('#iosWatchVideo')
+    video.onplaying()
+    video.play = () => Promise.reject(new DOMException('A tap is required', 'NotAllowedError'))
+    video.onerror()
+  })
+  await expect(page.locator('#iosWatchRetry')).toHaveText('Resume playback')
+  await expect(page.locator('#iosWatchError')).toHaveText('Ready to continue.')
+  await page.screenshot({ path: '../../work/playback-resume-tap.png' })
 })

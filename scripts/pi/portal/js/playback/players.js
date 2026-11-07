@@ -186,6 +186,7 @@ function remoteTime(value) {
 
     function saveIosRemotePosition(finished = false, force = false) {
       const video = $('#iosWatchVideo')
+      if (video.error) return Promise.resolve(false)
       if (video._myTvProgress) return myTvProgress.checkpoint(video, finished || video.ended, force)
       if (!iosRemoteSession || !Number.isFinite(video.currentTime) || (!finished && !force && Math.abs(video.currentTime - iosRemoteLastSaved) < 10)) return Promise.resolve(false)
       const session = iosRemoteSession
@@ -197,6 +198,7 @@ function remoteTime(value) {
 
     function beaconIosRemotePosition() {
       const video = $('#iosWatchVideo')
+      if (video.error) return
       if (video._myTvProgress) { myTvProgress.beacon(video); return }
       if (!iosRemoteSession || !Number.isFinite(video.currentTime) || !navigator.sendBeacon) return
       const duration = Number.isFinite(video.duration) ? video.duration : 0
@@ -217,6 +219,7 @@ function remoteTime(value) {
       const session = iosRemoteSession
       const myTvPlayer = $('#iosWatchPlayer').classList.contains('is-my-tv')
       const saved = saveIosRemotePosition(false, true)
+      video._iosStreamRecovery?.dispose(); video._iosStreamRecovery = null
       video._myTvProgress = null
       iosPlayerGeneration += 1
       clearTimeout(video._iosStartupTimer)
@@ -246,6 +249,7 @@ function remoteTime(value) {
       const shell = $('#iosWatchPlayer'); const video = $('#iosWatchVideo'); const error = $('#iosWatchError')
       const startup = traceMediaStartup()
       void saveIosRemotePosition(false, true)
+      video._iosStreamRecovery?.dispose(); video._iosStreamRecovery = null
       video._myTvProgress = null
       const previousSession = iosRemoteSession
       iosRemoteSession = null; iosOfflineDownloadId = null
@@ -284,7 +288,7 @@ function remoteTime(value) {
         $('#iosWatchContext').textContent = result.kind === 'usb' ? 'Playing directly from USB' : `${tvName()} remote viewing`
         if (payload.kind === 'my_tv') $('#iosWatchContext').textContent = 'My TV · Playing on this device'
         video.pause(); video.removeAttribute('src'); video.replaceChildren()
-        let captionsAttached = false
+        let captionsAttached = false, captionsVisible = false
         const attachNativeCaptions = () => {
           recovery.onReady()
           if (!result.subtitle_url || captionsAttached) return
@@ -295,6 +299,7 @@ function remoteTime(value) {
           // own selector still reported Off.
           track.kind = 'subtitles'; track.srclang = 'en'; track.label = 'English'; track.src = result.subtitle_url; track.default = false
           video.append(track)
+          if (captionsVisible) track.track.mode = 'showing'
         }
         let resume = Number(payload.position ?? result.resume_position ?? 0)
         if (shell.classList.contains('is-my-tv')) {
@@ -321,12 +326,20 @@ function remoteTime(value) {
         // received the video and text track together. Once canplay fires, the
         // movie is already accepted and the native AVPlayer can safely add CC.
         video.oncanplay = attachNativeCaptions
-        const recovery = bindIosStreamRecovery(video, payload, generation, error, startup)
+        const recovery = bindIosStreamRecovery(video, payload, generation, error, startup, {
+          position: resume, present: requestNativeFullscreen,
+          renewed: next => {
+            captionsVisible = [...video.textTracks].some(track => track.mode === 'showing')
+            result = next; captionsAttached = false
+          },
+        })
+        video._iosStreamRecovery = recovery
         video.onerror = recovery.onError
         // Ask for the true native player immediately from the library tap and
         // retry only once the media becomes ready. This avoids the old inline
         // hand-off before the Liquid Glass player opens.
         video.onplay = () => {
+          if (!recovery.onPlay()) return
           if (episodeState?.ended && !video.ended) {
             episodeState.ended = false
             clearInterval(iosNextEpisodeTimer); iosNextEpisodeTimer = null
@@ -348,12 +361,9 @@ function remoteTime(value) {
         video.src = result.stream_url
         startup.mark('source-set', video)
         video.load()
-        const playAttempt = video.play()
+        const playAttempt = recovery.startPlayback()
         requestNativeFullscreen()
-        await playAttempt.catch(() => {
-          if (episodeState && generation === iosPlayerGeneration)
-            $('#iosWatchContext').textContent += ' · Tap Play to continue'
-        })
+        await playAttempt
       } catch (startError) {
         if (generation !== iosPlayerGeneration) return
         startup.mark('open-error', video); startup.flush()
@@ -371,6 +381,7 @@ function remoteTime(value) {
       if (!await authoriseOfflineDownload(manifest)) return
       const shell = $('#iosWatchPlayer'); const video = $('#iosWatchVideo'); const error = $('#iosWatchError')
       void saveIosRemotePosition(false, true)
+      video._iosStreamRecovery?.dispose(); video._iosStreamRecovery = null
       video._myTvProgress = null
       const generation = ++iosPlayerGeneration
       clearIosNextEpisode()

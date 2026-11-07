@@ -31,9 +31,9 @@ function bindIosPresentation(video, generation) {
     void saveIosRemotePosition(false, true)
   }
   video.onwebkitpresentationmodechanged = transition
-  return () => {
-    if (!current() || returned || requested || active() || typeof video.webkitEnterFullscreen !== 'function') return
-    try { video.webkitEnterFullscreen(); requested = true }
+  return (fromGesture = false) => {
+    if (!current() || (fromGesture !== true && (returned || requested)) || active() || typeof video.webkitEnterFullscreen !== 'function') return
+    try { video.webkitEnterFullscreen(); requested = true; returned = false }
     catch (_) { /* Retry from metadata/play when WebKit accepts the same media. */ }
   }
 }

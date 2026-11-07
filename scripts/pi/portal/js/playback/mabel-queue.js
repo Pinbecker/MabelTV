@@ -276,11 +276,13 @@
       const stream = new URL(result.stream_url, location.origin).searchParams.get('stream')
       const binding = { id: payload.queue_id || '', stream, payload, start, started: false, ending: false }
       video._mabelQueue = binding
+      const onPlaying = video.onplaying
       video.onplaying = () => {
+        onPlaying?.()
         if (!binding.id || binding.started) return
         binding.started = true
         binding.confirmed = api('/api/mabel-queue', { method: 'POST', body: JSON.stringify({ action: 'started',
-          id: binding.id, stream }) }).then(value => { mabelQueue = value; renderMabelQueue() })
+          id: binding.id, stream: binding.stream }) }).then(value => { mabelQueue = value; renderMabelQueue() })
           .catch(error => { if (video._mabelQueue === binding) { video.pause(); showError(error) } })
       }
     }

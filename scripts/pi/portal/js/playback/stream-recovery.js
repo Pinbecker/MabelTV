@@ -24,90 +24,184 @@ function traceMediaStartup() {
   }
 }
 
-function bindIosStreamRecovery(video, payload, generation, error, startup = null) {
-  let recovering = false; let attempts = 0; let wasPlaying = !video.paused
-  let readyReported = false; let playingReported = false
-  let recoveryPosition = null
-  const current = () => generation === iosPlayerGeneration && !$('#iosWatchPlayer').classList.contains('hidden')
-  function waiting() {
-    clearTimeout(video._iosStartupTimer)
+function bindIosStreamRecovery(video, payload, generation, error, startup = null, options = {}) {
+  const retry = $('#iosWatchRetry')
+  let phase = 'starting', attempts = 0, wantsPlayback = true, disposed = false
+  let operation = 0, playAttempt = 0, pausedAt = 0, lastContact = Date.now()
+  let position = Number(options.position) || 0, sourceReady = false, heartbeatPending = false
+  let readyReported = false, playingReported = false, waitKind = ''
+  const current = () => !disposed && generation === iosPlayerGeneration && !$('#iosWatchPlayer').classList.contains('hidden')
+  const loading = () => phase === 'renewing' || phase === 'loading'
+  const clearWait = () => { clearTimeout(video._iosStartupTimer); video._iosStartupTimer = null; waitKind = '' }
+  function capturePosition() {
+    if (!loading() && !video.error && Number.isFinite(video.currentTime)
+        && (sourceReady || video._myTvProgress?.ready)) position = Math.max(0, video.currentTime)
+    return position
+  }
+  function hideMessage() { error.classList.add('hidden'); retry.classList.add('hidden'); retry.disabled = false }
+  function showMessage(message, label = 'Retry playback', busy = false) {
+    error.textContent = message; error.classList.remove('hidden')
+    retry.textContent = label; retry.disabled = busy; retry.classList.remove('hidden')
+  }
+  function exposeControls() {
+    setNativeVideoBackdrop(false)
+    video.controls = true; video.style.pointerEvents = ''
+    // A failed AVKit presentation can hide the portal's recovery control.
+    if (video.webkitDisplayingFullscreen) { try { video.webkitExitFullscreen?.() } catch (_) {} }
+  }
+  function waiting(delay = 15000, reconnect = false) {
+    if (reconnect && waitKind === 'stall') return
+    clearWait()
+    waitKind = reconnect ? 'stall' : 'startup'
     video._iosStartupTimer = setTimeout(() => {
-      if (!current()) return
-      recovering = false
+      video._iosStartupTimer = null; waitKind = ''
+      if (!current() || phase === 'paused' || phase === 'tap') return
       startup?.mark('waiting', video); startup?.flush()
-      error.textContent = 'The video is taking longer than expected. You can retry playback.'
-      error.classList.remove('hidden'); $('#iosWatchRetry').classList.remove('hidden')
-    }, 15000)
+      if (reconnect && !loading() && !payload.queue_id && attempts++ < 1) { void recover(); return }
+      // A timeout retires this attempt. A late response cannot replace a retry.
+      operation++; playAttempt++; phase = 'failed'
+      exposeControls()
+      showMessage('The video is taking longer than expected. You can retry playback.')
+    }, delay)
   }
-  function ready() {
-    if (!current()) return
-    if (!readyReported) { readyReported = true; startup?.mark('can-play', video) }
-    clearTimeout(video._iosStartupTimer)
-    error.classList.add('hidden'); $('#iosWatchRetry').classList.add('hidden')
-  }
-  waiting()
-  async function recover() {
-    if (!current() || recovering) return
-    recovering = true
-    waiting()
-    const state = video._myTvProgress
-    const position = state?.ready ? Number(video.currentTime) || 0
-      : recoveryPosition ?? state?.latest?.position ?? (Number(video.currentTime) || 0)
-    recoveryPosition = position
-    const paused = !wasPlaying
-    void saveIosRemotePosition(false, true)
-    if (video._myTvProgress) video._myTvProgress.ready = false
-    error.textContent = 'Reconnecting video…'; error.classList.remove('hidden')
-    try {
-      const result = await startRemoteStream({ ...payload, position })
-      if (!current()) {
-        void playbackRequest('/api/remote/release', { stream: new URL(result.stream_url, location.origin).searchParams.get('stream') }).catch(() => {})
-        return
-      }
-      iosRemoteSession = new URL(result.stream_url, location.origin).searchParams.get('stream')
-      video.onloadedmetadata = () => {
-        if (!current()) return
-        if (position > 0 && position < video.duration - 5) video.currentTime = position
-        if (video._myTvProgress) video._myTvProgress.ready = true
-        recovering = false
-        error.classList.add('hidden'); $('#iosWatchRetry').classList.add('hidden')
-        if (!paused) void video.play().catch(() => {})
-      }
-      video.querySelectorAll('track').forEach(track => { if (result.subtitle_url) track.src = result.subtitle_url })
-      video.classList.remove('hidden'); video.src = result.stream_url; video.load()
-      if (!paused) void video.play().catch(() => {})
-    } catch (failure) {
-      if (!current()) return
-      recovering = false
-      error.textContent = failure.message; $('#iosWatchRetry').classList.remove('hidden')
+  function playFailed(failure, id = playAttempt) {
+    if (!current() || id !== playAttempt || phase === 'playing') return
+    if (failure?.name === 'AbortError' && loading()) return
+    clearWait()
+    startup?.mark(failure?.name === 'NotAllowedError' ? 'resume-tap-needed' : 'resume-failed', video); startup?.flush()
+    exposeControls()
+    if (failure?.name === 'NotAllowedError') {
+      phase = 'tap'
+      showMessage('Ready to continue.', 'Resume playback')
+    } else {
+      phase = 'failed'
+      showMessage('Playback could not resume. Reconnect and try again.')
     }
   }
+  function play(fromTap = false) {
+    const id = ++playAttempt
+    wantsPlayback = true
+    if (fromTap) { phase = sourceReady ? 'resuming' : 'loading'; waiting() }
+    // This call must stay synchronous with the Resume button's tap. No fetch,
+    // metadata wait or promise is allowed to consume WebKit's user gesture.
+    try {
+      const attempt = video.play()
+      if (fromTap) options.present?.(true)
+      return Promise.resolve(attempt).then(() => true, failure => { playFailed(failure, id); return false })
+    } catch (failure) { playFailed(failure, id); return Promise.resolve(false) }
+  }
+  async function recover() {
+    if (!current() || loading()) return
+    const savedPosition = capturePosition(), id = ++operation
+    playAttempt++
+    if (!video.error) void saveIosRemotePosition(false, true)
+    if (video._myTvProgress) video._myTvProgress.ready = false
+    phase = 'renewing'; sourceReady = false
+    showMessage('Reconnecting video…', 'Reconnecting…', true)
+    waiting()
+    try {
+      const result = await startRemoteStream({ ...payload, position: savedPosition })
+      const session = new URL(result.stream_url, location.origin).searchParams.get('stream')
+      if (!current() || id !== operation) {
+        void playbackRequest('/api/remote/release', { stream: session }).catch(() => {})
+        return
+      }
+      iosRemoteSession = session; lastContact = Date.now()
+      options.renewed?.(result)
+      if (video._mabelQueue) { video._mabelQueue.stream = session; video._mabelQueue.started = false }
+      // Match the working close/reopen reset without losing the film, bookmark,
+      // episode context or the player's navigation history.
+      video.onloadedmetadata = null
+      video.pause(); video.removeAttribute('src'); video.querySelectorAll('track').forEach(track => track.remove()); video.load()
+      phase = 'loading'
+      video.onloadedmetadata = () => {
+        if (!current() || id !== operation) return
+        if (savedPosition > 0 && savedPosition < video.duration - 0.1) video.currentTime = savedPosition
+        position = savedPosition; sourceReady = true
+        if (video._myTvProgress) video._myTvProgress.ready = true
+        if (!wantsPlayback) { phase = 'paused'; pausedAt = Date.now(); clearWait(); hideMessage() }
+        // Metadata is not playback. Keep the recovery control until playing or
+        // an explicit Resume tap; never hide a rejected play() behind canplay.
+      }
+      video.classList.remove('hidden'); video.src = result.stream_url; video.load()
+      if (wantsPlayback) play()
+    } catch (failure) {
+      if (!current() || id !== operation) return
+      phase = 'failed'; clearWait(); exposeControls()
+      showMessage(failure.message || 'Could not reconnect. Try again.')
+    }
+  }
+  async function heartbeat() {
+    if (!current() || !iosRemoteSession || loading() || heartbeatPending) return
+    const session = iosRemoteSession
+    heartbeatPending = true
+    try { await playbackRequest('/api/remote/heartbeat', { stream: session }); lastContact = Date.now() }
+    catch (failure) {
+      if (!current() || session !== iosRemoteSession) return
+      // A paused film may be prepared again, but must never start itself.
+      if (failure.status === 400 && attempts++ < 1 && !payload.queue_id) {
+        wantsPlayback = !video.paused && wantsPlayback
+        await recover()
+      }
+    } finally { heartbeatPending = false }
+  }
+  const onReturn = () => {
+    if (current() && document.visibilityState === 'visible' && Date.now() - lastContact > 60000) void heartbeat()
+  }
+  const onWait = () => { if (current() && wantsPlayback && !loading() && phase !== 'tap') waiting(8000, true) }
+  const onTime = () => { if (current()) capturePosition() }
+  video.addEventListener('waiting', onWait); video.addEventListener('stalled', onWait)
+  video.addEventListener('timeupdate', onTime)
+  document.addEventListener('visibilitychange', onReturn)
+  window.addEventListener('pageshow', onReturn); window.addEventListener('online', onReturn)
   video.onplaying = () => {
-    wasPlaying = true; attempts = 0; ready()
+    if (!current()) return
+    phase = 'playing'; wantsPlayback = true; sourceReady = true; attempts = 0; pausedAt = 0
+    capturePosition(); clearWait(); hideMessage()
     if (!playingReported) { playingReported = true; startup?.mark('playing', video); startup?.flush() }
   }
-  $('#iosWatchRetry').onclick = () => { attempts = 0; wasPlaying = true; void recover() }
+  retry.disabled = false; retry.textContent = 'Retry playback'
+  retry.onclick = () => {
+    if (!current() || loading()) return
+    wantsPlayback = true; attempts = 0
+    if (phase === 'tap' && !video.error) { play(true); return }
+    void recover()
+  }
+  waiting()
   return {
-    onReady: ready,
-    onPause: () => { if (!recovering && !video.error) wasPlaying = false },
-    onError: () => {
+    onReady: () => {
       if (!current()) return
-      startup?.mark('media-error', video); startup?.flush()
-      recovering = false
-      if (['my_tv', 'my-tv-series'].includes(payload.kind) && attempts++ < 1) { void recover(); return }
-      setNativeVideoBackdrop(false)
-      error.textContent = `This video could not be played (media error ${video.error?.code || 'unknown'}).`
-      error.classList.remove('hidden'); $('#iosWatchRetry').classList.remove('hidden')
-      failMabelQueueDevice(video, error.textContent)
+      if (!readyReported) { readyReported = true; startup?.mark('can-play', video) }
+      if (phase === 'starting') { sourceReady = true; clearWait(); hideMessage() }
     },
-    heartbeat: async () => {
-      if (!current() || !iosRemoteSession || recovering) return
-      try { await playbackRequest('/api/remote/heartbeat', { stream: iosRemoteSession }) }
-      catch (failure) {
-        // A server restart/expired token needs a fresh source, while a brief
-        // network outage should leave already-buffered playback undisturbed.
-        if (failure.status === 400 && attempts++ < 1) await recover()
-      }
+    onPlay: () => {
+      if (!current()) return false
+      wantsPlayback = true
+      if (phase === 'paused' && Date.now() - pausedAt > 90000 && !payload.queue_id) { void recover(); return false }
+      if (phase === 'paused' || phase === 'tap' || phase === 'failed') phase = 'resuming'
+      if (!loading() && phase !== 'playing') waiting(8000, true)
+      return true
+    },
+    onPause: () => {
+      if (!current() || loading() || phase === 'tap' || video.error) return
+      capturePosition(); wantsPlayback = false; phase = 'paused'; pausedAt = Date.now(); clearWait()
+    },
+    onError: () => {
+      if (!current() || phase === 'renewing') return
+      startup?.mark('media-error', video); startup?.flush()
+      phase = 'failed'; clearWait()
+      if (!payload.queue_id && attempts++ < 1) { void recover(); return }
+      exposeControls()
+      showMessage(`This video could not be played (media error ${video.error?.code || 'unknown'}).`)
+    },
+    startPlayback: play,
+    heartbeat,
+    dispose: () => {
+      disposed = true; operation++; playAttempt++; clearWait()
+      video.removeEventListener('waiting', onWait); video.removeEventListener('stalled', onWait)
+      video.removeEventListener('timeupdate', onTime)
+      document.removeEventListener('visibilitychange', onReturn)
+      window.removeEventListener('pageshow', onReturn); window.removeEventListener('online', onReturn)
     },
   }
 }
