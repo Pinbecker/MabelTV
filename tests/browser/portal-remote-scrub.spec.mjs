@@ -100,19 +100,17 @@ for(const myTv of [false,true]) test(`remote scrub seeks ${myTv?'My TV':'Mabel T
   const after=await page.locator('#view-live .tv-remote-transport-row').boundingBox()
   expect(after.height).toBe(before.height)
   await page.screenshot({path:info.outputPath(`remote-scrub-${myTv?'mytv':'mabel'}.png`)})
-  state.seek_token='b'.repeat(64);state.playback_position=0
-  await page.evaluate(value=>renderRemoteState(value),state)
+  // Change the server's programme and let the normal status poll deliver it.
+  // Calling the renderer directly could race an already-in-flight old response.
+  state.seek_token='b'.repeat(64);state.playback_position=0;state.paused=true
   await expect(page.locator('#remoteScrubPanel')).toBeHidden()
   await range.dispatchEvent('change')
   expect(commands).toHaveLength(1)
-  state.paused=true
-  await page.evaluate(value=>renderRemoteState(value),state)
   await page.locator('#remoteScrubOpen').click()
   await expect(page.locator('#remoteScrubClock')).toContainText('Paused')
   await page.locator('#remoteScrubClose').click()
   await expect(page.locator('#remoteTransportButtons')).toBeVisible()
   state.seek_available=false;state.standby=true
-  await page.evaluate(value=>renderRemoteState(value),state)
   await expect(page.locator('#remoteScrubOpen')).toBeDisabled()
   expect(commands).toHaveLength(1)
 })
