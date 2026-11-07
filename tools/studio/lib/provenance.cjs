@@ -8,7 +8,9 @@ async function recordProvenance(remote, local, portal, signal) {
     duration: analysis.duration, width: analysis.width, height: analysis.height, fps: analysis.fps, sar: analysis.sar,
     codec: analysis.codec, interlaced: analysis.interlaced, hasAudio: analysis.hasAudio, fingerprint: local.sourceFingerprint };
   const provenance = { source, cloudCopies: local.savedCloudCopies || {}, pi: local.result || null,
-    encoding: local.analysis?.compressionProof || null, cloudEncoding: local.cloudPreparedAnalysis?.compressionProof || null,
+    encoding: local.analysis?.compressionProof || local.preparationReport?.encoding || null,
+    preparationReport: local.preparationReport || null, cloudPreparationReport: local.cloudPreparationReport || null,
+    cloudEncoding: local.cloudPreparedAnalysis?.compressionProof || null,
     policyVersion: policy.version, profile: local.destination.compression, fileIndex: remote.selectedFile,
     retained: remote.destination.cloudCopies, originalRecovery: remote.originalRecovery === true };
   await portal.api('/api/studio/provenance', { method: 'POST', body: { job: remote.id, claim: remote.claim,

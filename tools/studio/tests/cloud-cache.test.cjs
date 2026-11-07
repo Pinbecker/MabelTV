@@ -51,7 +51,7 @@ test('TV-only original recovery releases its hydrated cloud source without needi
   const local = { id: f.store.state.jobs[0]?.id || 'a'.repeat(32), savedCloudCopies: {}, result: { complete: true } };
   if (!f.store.state.jobs.some(value => value.id === local.id)) f.store.add(local);
   await releaseCloudCaches({ source: { type: 'cloud', ...item }, destination: { temporaryWork: true, saveCloud: false } }, local, f.store,
-    { api: async () => item }, f.signal, async (file, bytes) => { calls.push([file, bytes]); return { status: 'cloud_only' }; });
+    { api: async () => item }, f.signal, async (file, bytes) => { calls.push([file, bytes]); return { status: 'cloud_only', allocated: 0 }; });
   assert.equal(calls.length, 1); assert.equal(calls[0][0], f.file); assert.equal(local.cloudCacheReleased, true);
 });
 test('non-saving cloud optimisation keeps the original and avoids another upload', async t => {
@@ -64,11 +64,28 @@ test('non-saving cloud optimisation keeps the original and avoids another upload
   const item = { id: 'cloud', path: path.basename(f.file), bytes: 5, modified: 'same', remoteId: 'remote' };
   const remote = { id: remoteId, source: { type: 'cloud', ...item }, destination: { kind: 'icloud', optimiseCloud: true, temporaryWork: true } };
   let released = 0;
-  const queue = { releaseCloudCaches: async () => { if (!local.cloudCacheReleased) { released++; assert.ok(fs.existsSync(prepared)); local.cloudCacheReleased = true; } } };
+  const queue = { releaseCloudCaches: async () => { if (!local.cloudCacheReleased) { released++; assert.equal(fs.existsSync(prepared), false); local.cloudCacheReleased = true; } } };
   const portal = { api: async route => { assert.ok(route.startsWith('/api/studio/cloud/item?') || ['/api/studio/cloud/confirm', '/api/studio/provenance'].includes(route)); return route.includes('/item?') ? item : { confirmed: true }; } };
   const state = {};
   await new CompanionJobs(f.store, queue, {}, portal).run(remote, state, f.signal);
   assert.equal(state.progress.result.unchanged, true); assert.equal(released, 1);
   assert.equal(fs.readFileSync(f.file, 'utf8'), 'video'); assert.equal(fs.existsSync(prepared), false);
   await new CompanionJobs(f.store, queue, {}, portal).run(remote, {}, f.signal);
+});
+
+test('pinned or still allocated cloud files are not reported as released', async t => {
+  const f = fixture(t);
+  for (const result of [{ status: 'kept_downloaded', allocated: 5 }, { status: 'cloud_only', allocated: 5 }])
+    await assert.rejects(freeCloudCache(f.file, 5, f.signal, async () => ({ stdout: JSON.stringify(result) })), { code: 'CLOUD_CACHE_PENDING' });
+  assert.equal(fs.readFileSync(f.file, 'utf8'), 'video');
+});
+
+test('legacy kept-downloaded receipts are retried instead of treated as free space', async t => {
+  const f = fixture(t), receipt = { id: 'cloud', path: path.basename(f.file), bytes: 5, modified: 'same', remoteId: 'remote', confirmed: true };
+  const local = { id: 'd'.repeat(32), savedCloudCopies: { original: receipt }, cloudCacheReleased: true,
+    cloudCacheReceipts: [{ id: receipt.id, status: 'kept_downloaded', allocated: 5 }] }; f.store.add(local);
+  let calls = 0;
+  await releaseCloudCaches({ destination: { temporaryWork: true } }, local, f.store, { api: async () => receipt }, f.signal,
+    async () => { calls++; return { status: 'cloud_only', allocated: 0 }; });
+  assert.equal(calls, 1); assert.equal(local.cloudCacheReceipts[0].allocated, 0);
 });

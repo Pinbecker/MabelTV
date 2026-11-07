@@ -53,6 +53,20 @@ test('disk admission accounts for other jobs and preserves the free-space reserv
   resources.release('one'); resources.reserve('three', 30); assert.equal(resources.reservations.size, 2);
 });
 
+test('only 2 GB is held free and completed download bytes are not reserved again', () => {
+  const gb = 1024 ** 3; let available = 8 * gb;
+  const resources = new StageResources({}, { freeBytes: () => available });
+  resources.reserve('film', 6 * gb);
+  available -= 4 * gb; // Source hydration and workspace copy now occupy disk.
+  resources.reserve('film', 2 * gb);
+  assert.equal(resources.reservations.get('film'), 2 * gb);
+  assert.throws(() => resources.reserve('another', 1), error => error.code === 'SPACE' && /laptop disk space: 4.0 GB free/.test(error.message));
+  resources.release('film');
+  resources.reserve('another', 2 * gb);
+  available--;
+  assert.throws(() => resources.reserve('another', 2 * gb), { code: 'SPACE' });
+});
+
 test('torrent runners release download slots before processing their completed films', async () => {
   const resources = new StageResources({}, { freeBytes: () => 1000000, minimumFree: 0 });
   const downloaded = deferred(), processed = deferred(), signal = new AbortController().signal;

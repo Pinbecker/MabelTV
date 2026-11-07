@@ -25,7 +25,6 @@ public static class StudioCloudCache {
   IntPtr b=Marshal.AllocHGlobal(65536);
   try { uint used;
    if(CfGetPlaceholderInfo(h,0,b,65536,out used)!=0 || Marshal.ReadInt32(b,4)!=1) throw new Exception("iCloud has not confirmed this copy yet");
-   if(Marshal.ReadInt32(b,0)==1) return "kept_downloaded";
    if(Allocated(p)==0) return "cloud_only";
    CloseHandle(h); h=CreateFileW(p,0x81,7,IntPtr.Zero,3,0x2200000,IntPtr.Zero);
    if(h==new IntPtr(-1)) throw new Exception("Cloud cache handle unavailable");
@@ -57,14 +56,19 @@ async function freeCloudCache(file, bytes, signal, run = execute) {
   try { ({ stdout } = await run('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')], {
     windowsHide: true, timeout: 110000, maxBuffer: 32768, signal,
     env: { ...process.env, MABEL_STUDIO_CLOUD_TARGET: file, MABEL_STUDIO_CLOUD_BYTES: String(bytes) },
-  })); } catch { throw new Error('iCloud has not released its local cache yet. The cloud copy and working files are safe; retry to finish freeing space.'); }
+  })); } catch (error) {
+    if (signal?.aborted) throw error;
+    throw Object.assign(new Error('Waiting for iCloud to free local space. Retained copies are safe.'), { code: 'CLOUD_CACHE_PENDING' });
+  }
   const result = JSON.parse(stdout.trim()), after = fs.statSync(file);
   if (after.ino !== before.ino || after.size !== before.size || after.mtimeMs !== before.mtimeMs) throw new Error('The iCloud file changed during space release.');
-  if (!['cloud_only', 'kept_downloaded'].includes(result.status)) throw new Error('iCloud has not finished releasing local space.');
+  if (result.status !== 'cloud_only' || result.allocated !== 0) throw Object.assign(new Error('Waiting for iCloud to free local space.'), { code: 'CLOUD_CACHE_PENDING' });
   return result;
 }
 async function releaseCloudCaches(remote, local, store, portal, signal, release = freeCloudCache) {
-  if (!remote.destination.temporaryWork || local.cloudCacheReleased) return;
+  if (!remote.destination.temporaryWork) return;
+  if (local.cloudCacheReleased && local.cloudCacheReceipts?.length &&
+      local.cloudCacheReceipts.every(receipt => receipt.status === 'cloud_only' && receipt.allocated === 0)) return;
   const root = path.join(store.state.settings.iCloudRoot || path.join(process.env.USERPROFILE, 'iCloudDrive'), 'Media');
   const copies = new Map(Object.values(local.savedCloudCopies || {}).map(copy => [copy.id || copy.path, copy]));
   if (remote.source?.type === 'cloud' && remote.source.id && !local.cloudOriginalRemoved && !copies.has(remote.source.id))
@@ -76,7 +80,9 @@ async function releaseCloudCaches(remote, local, store, portal, signal, release 
     if (item.bytes !== receipt.bytes || item.remoteId !== receipt.remoteId || item.modified !== receipt.modified) throw new Error('The retained iCloud copy changed. Local files were kept.');
     const file = beneath(root, item.path);
     if (!fs.realpathSync(file).startsWith(fs.realpathSync(root) + path.sep)) throw new Error('The cache file is outside the iCloud media folder.');
-    released.push({ id: receipt.id, path: item.path, ...await release(file, receipt.bytes, signal) });
+    const result = await release(file, receipt.bytes, signal);
+    if (result.status !== 'cloud_only' || result.allocated !== 0) throw Object.assign(new Error('Waiting for iCloud to free local space.'), { code: 'CLOUD_CACHE_PENDING' });
+    released.push({ id: receipt.id, path: item.path, ...result });
   }
   if (copies.size) store.update(local.id, { cloudCacheReleased: true, cloudCacheReceipts: released });
 }

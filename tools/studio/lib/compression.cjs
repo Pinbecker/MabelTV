@@ -4,6 +4,7 @@ const path = require('node:path');
 const { run } = require('./process.cjs');
 const mediaPolicy = require('./media-policy.cjs');
 const { policy, compressionPlan, outputGeometry, sourceFrameRate, outputFrameRate, outputLevel } = mediaPolicy;
+const { compatibilityPlan, assertCompatibilitySize } = require('./compatibility-size.cjs');
 const availability = new Map();
 async function ensureIntel(tools, signal) {
   if (!tools.ffmpeg) throw new Error('FFmpeg is unavailable. Check Settings.');
@@ -26,32 +27,33 @@ function videoFilters(analysis, target, preparation) {
   const cadence = outputFrameRate(analysis, true) !== sourceFrameRate(analysis, true) ? 'fps=25,' : '';
   return deinterlace + cadence + toneMap + `scale=trunc(iw*sar/2)*2:ih,setsar=1,scale=${width}:${height}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,pad=${width}:${canvasHeight}:(ow-iw)/2:(oh-ih)/2,format=yuv420p,setparams=range=limited:color_primaries=bt709:color_trc=bt709:colorspace=bt709`;
 }
-async function encodeCompression({ file, destination, target, analysis, tools, signal, progress, inspect, compression, allowRisk = false }) {
+async function encodeCompression({ file, destination, target, analysis, tools, signal, progress, inspect, compression, allowRisk = false, compatibilityScale = 1 }) {
   const compatible = compression === 'compatible';
   const expectedFps = outputFrameRate(analysis, true, compression);
-  const plan = compatible ? null : compressionPlan(analysis, compression, target);
+  const maximumRate = target === 'mabel' ? 2500000 : policy.maximumVideoBitrate;
+  const plan = compatible ? compatibilityPlan(analysis, maximumRate, compatibilityScale) : compressionPlan(analysis, compression, target);
   if (plan?.risky && !allowRisk) { const error = new Error(plan.warning + ' Confirm compression or keep the existing copy.'); error.code = 'QUALITY_REVIEW'; throw error; }
   if (path.resolve(file) === path.resolve(destination)) throw new Error('The original and output paths must be different.');
   await ensureIntel(tools, signal);
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   const stats = fs.statSync(file), free = fs.statfsSync(path.dirname(destination));
-  const partial = destination + '.part.mp4', maximumRate = target === 'mabel' ? 2500000 : policy.maximumVideoBitrate;
-  const expectedBytes = plan?.targetBytes || Math.ceil((maximumRate + 192000) * analysis.duration / 8);
+  const partial = destination + '.part.mp4';
+  const expectedBytes = plan.targetBytes;
   if (Number(free.bavail) * Number(free.bsize) < expectedBytes + 256 * 1024 ** 2) throw new Error('Not enough free space for safe preparation.');
-  // LA_ICQ ignores VBV limits. Use the destination ceiling for compatibility,
-  // independent of source size, so the output passes the same playback checks.
-  const rate = ['-b:v', String(compatible ? maximumRate : plan.videoBitrate)];
-  const proof = { version: policy.version, profile: plan?.profile.id || 'compatible', encoder: policy.encoder,
+  // Use the source-size budget; the destination ceiling is a cap, not a target.
+  const rate = ['-b:v', String(plan.videoBitrate)];
+  const proof = { version: policy.version, profile: plan.profile?.id || 'compatible', encoder: policy.encoder,
     preset: policy.preset, lookAhead: true, sourceBytes: plan?.sourceBytes || analysis.bytes, duration: analysis.duration,
-    sourceFps: analysis.fps, outputFps: expectedFps };
+    sourceFps: analysis.fps, outputFps: expectedFps, videoBitrate: plan.videoBitrate, audioBitrate: plan.audioBitrate,
+    ...(compatible ? { sizePolicyVersion: plan.sizePolicyVersion, maximumBytes: plan.maximumBytes, attempts: compatibilityScale === 1 ? 1 : 2 } : {}) };
   const args = ['-nostdin', '-hide_banner', '-loglevel', 'warning', '-y', '-i', file, '-map', '0:v:0',
     '-vf', videoFilters(analysis, target, compression), '-c:v', policy.encoder, '-preset', policy.preset, '-look_ahead', '1', ...rate,
     '-maxrate', String(maximumRate), '-bufsize', String(target === 'mabel' ? 5000000 : policy.bufferSize),
     '-profile:v', 'high', '-level:v', outputLevel(analysis, target, compression), '-pix_fmt', 'yuv420p', '-fps_mode', 'passthrough',
     '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709',
     '-bsf:v', 'h264_metadata=colour_primaries=1:transfer_characteristics=1:matrix_coefficients=1:video_full_range_flag=0',
-    '-map', '0:a:0?', ...(compatible && !analysis.reasons.some(reason => ['AAC audio', 'stereo audio'].includes(reason))
-      ? ['-c:a', 'copy'] : ['-c:a', 'aac', '-b:a', String(plan?.audioBitrate || 192000), '-ac', '2']),
+    '-map', '0:a:0?', ...(compatible && plan.audioCopied
+      ? ['-c:a', 'copy'] : ['-c:a', 'aac', '-b:a', String(plan.audioBitrate || 192000), '-ac', '2']),
     '-map_metadata', '0', '-map_chapters', '-1', '-metadata', 'comment=' + JSON.stringify({ mabeltv: proof }),
     '-movflags', '+faststart+write_colr', '-progress', 'pipe:1', '-nostats', partial];
   try {
@@ -68,6 +70,13 @@ async function encodeCompression({ file, destination, target, analysis, tools, s
       throw new Error('The prepared video did not match the requested frame rate. The original was kept.');
     if (!validated.ready || Math.abs(validated.duration - analysis.duration) > 2 || validated.hasAudio !== analysis.hasAudio)
       throw new Error('The prepared video failed validation. The original was kept.');
+    if (compatible && validated.bytes > plan.maximumBytes && compatibilityScale === 1) {
+      const audioBytes = plan.audioBitrate * analysis.duration / 8;
+      const scale = Math.max(.1, Math.min(.95, (analysis.bytes * .97 - audioBytes) / Math.max(1, validated.bytes - audioBytes)));
+      fs.unlinkSync(partial);
+      return await encodeCompression({ file, destination, target, analysis, tools, signal, progress, inspect, compression, allowRisk, compatibilityScale: scale });
+    }
+    if (compatible) assertCompatibilitySize(analysis.bytes, validated.bytes);
     if (!compatible && validated.bytes >= analysis.bytes)
       throw Object.assign(new Error('The conversion would not save space. The original was kept.'), { code: 'NOT_SMALLER' });
     fs.renameSync(partial, destination);

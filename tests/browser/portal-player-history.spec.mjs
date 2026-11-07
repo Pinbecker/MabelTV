@@ -3,15 +3,22 @@ import { test, expect } from './test-fixtures.mjs'
 test.use({ serviceWorkers: 'block' })
 
 test('remote subtitles work for kids in every picture mode and disable without a track', async ({ page }) => {
+  const state = {available:true,standby:false,my_tv_mode:false,presentation_mode:'standard',
+    subtitles_available:true,subtitles_visible:false}
+  // Keep polling and the command acknowledgement on the same simulated TV.
+  // The generic fixture has no native subtitle controller.
+  await page.route('**/api/live', route => route.fulfill({json:state}))
+  await page.route('**/api/live/control', route => {
+    if (route.request().postDataJSON().command === 'toggle-subtitles') state.subtitles_visible = !state.subtitles_visible
+    return route.fulfill({json:{ok:true}})
+  })
   await page.goto('/')
   await expect(page.locator('.app-shell')).toBeVisible()
   await page.evaluate(() => openView('live'))
   const subtitles = page.locator('#remoteSubtitles')
   for (const mode of ['standard', 'widescreen', 'fullscreen']) {
-    await page.evaluate(presentation_mode => renderRemoteState({
-      available: true, standby: false, my_tv_mode: false, presentation_mode,
-      subtitles_available: true, subtitles_visible: false,
-    }), mode)
+    state.presentation_mode = mode
+    await page.evaluate(value => renderRemoteState(value), state)
     await expect(subtitles).toBeEnabled()
     await expect(subtitles).toHaveAttribute('aria-pressed', 'false')
   }
@@ -19,11 +26,9 @@ test('remote subtitles work for kids in every picture mode and disable without a
     && request.method() === 'POST')
   await subtitles.click()
   expect((await sent).postDataJSON()).toMatchObject({ command: 'toggle-subtitles' })
-  await page.evaluate(() => renderRemoteState({ available: true, my_tv_mode: false,
-    subtitles_available: true, subtitles_visible: true }))
   await expect(subtitles).toHaveAttribute('aria-pressed', 'true')
-  await page.evaluate(() => renderRemoteState({ available: true, my_tv_mode: false,
-    subtitles_available: false, subtitles_visible: false }))
+  state.subtitles_available = false; state.subtitles_visible = false
+  await page.evaluate(value => renderRemoteState(value), state)
   await expect(subtitles).toBeDisabled()
 })
 

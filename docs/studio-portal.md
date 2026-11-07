@@ -95,7 +95,8 @@ records, and worker-session heartbeats retain background claims between batches.
 Only confirmation HTTP requests are bounded; that does not limit Apple's file
 uploads. Foreground work can be paused or cancelled
 without stopping other jobs. Disk admission accounts for other jobs' working
-reservations and retains a 20 GiB free-space allowance; insufficient space
+reservations and retains a 2 GiB free-space allowance; reservations shrink as
+downloads finish and work advances to conversion. Insufficient space
 keeps new downloads waiting. qBittorrent's secondary queue is disabled because
 Studio owns payload concurrency and metadata lookups must remain available.
 Studio uses iCloud for Windows to fetch selected files. Its
@@ -138,6 +139,12 @@ original version. A changed original is kept for a fresh confirmation.
 Studio-owned temporary media is removed only after retained cloud copies and
 TV publication are confirmed. Imported user files remain untouched. Interrupted
 work keeps its journals and resumes from confirmed per-version receipts.
+Verified temporary downloads and converted files are removed before waiting for
+Windows to release the iCloud cache. Managed cloud copies are unpinned, including
+copies marked Always keep on this device, and cleanup finishes only when their
+allocated local size is zero. Provider delays retry automatically without
+occupying download, conversion or Pi upload slots; restarting Studio resumes
+cleanup from its receipts. Metadata warnings do not retain completed torrent packs.
 When phone notifications are configured, each successfully published film or
 episode sends a "Ready on your TV" alert with its destination. This is based on
 the Pi's completed publication receipt and actual file presence, independently
@@ -268,9 +275,26 @@ metadata-only Pi estimates. Existing 50 fps prepared copies cannot bypass this
 step when sent again. Unsupported rates fail with the original kept.
 The Pi still accepts older prepared high-frame-rate uploads without queuing a
 conversion loop. Existing v1/v2/v3 encoding records remain recognised.
-Compatibility-only encoding uses the destination bitrate ceiling without a
-source-size reduction target; already suitable files reuse or remux their
-existing video.
+Compatibility-only preparation reuses suitable files and copies compatible
+H.264 picture streams when only the container or audio needs correction.
+Necessary video encoding budgets against the source size and selected audio,
+with the destination bitrate ceiling acting only as a cap. Outputs may grow
+by at most 3% or 100 MiB, whichever is smaller (64 KiB minimum for container
+overhead on tiny files). One bitrate correction is allowed after an overshoot;
+an output still exceeding the limit is rejected before upload. Previously
+prepared compatibility outputs are checked against the same limit on resume.
+The original is kept when preparation fails. Codec conversion is lossy;
+stream copying preserves the compressed picture bytes exactly.
+
+Each preparation records input/output bytes, codec, dimensions, frame rate,
+elapsed time, actual preparation method and encoder budget in the transfer
+journal and delivery provenance. Separate iCloud preparation has its own
+report. These fields survive working-media cleanup and are included in the
+existing Studio profile and Pi database backups.
+Choosing Compatibility only with an Optimised iCloud copy archives that
+compatible output, including when a separate 1080p cloud copy is needed for
+a 720p Mabel TV channel. It does not apply the stored Compact preference.
+An Original iCloud choice adopts the existing cloud file without replacing it.
 
 ## Validation for the November 2026 build
 

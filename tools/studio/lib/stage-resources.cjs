@@ -2,6 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { setTimeout: delay } = require('node:timers/promises');
+const MINIMUM_FREE_BYTES = 2 * 1024 ** 3;
 
 class StageGate {
   constructor(limit) { this.limit = limit; this.active = 0; this.waiters = []; }
@@ -37,10 +38,14 @@ class StageResources {
   }
   reserve(key, bytes) {
     if (!Number.isFinite(bytes) || bytes < 0) throw new Error('The working-space estimate is invalid.');
-    const needed = Math.max(bytes, this.reservations.get(key) || 0);
+    // Reservations describe space still needed, not a job's historical peak.
+    const needed = bytes;
     const other = [...this.reservations].reduce((sum, [id, size]) => sum + (id === key ? 0 : size), 0);
-    if (this.freeBytes() < needed + other + (this.options.minimumFree ?? 20 * 1024 ** 3)) {
-      const error = new Error('Waiting for disk space. Existing files and transfer records are retained.');
+    const minimumFree = this.options.minimumFree ?? MINIMUM_FREE_BYTES;
+    const available = this.freeBytes(), required = needed + other + minimumFree;
+    if (available < required) {
+      const gb = value => (value / 1024 ** 3).toFixed(1);
+      const error = new Error(`Waiting for laptop disk space: ${gb(available)} GB free; ${gb(required)} GB needed, including ${gb(minimumFree)} GB kept free. Existing files are retained.`);
       error.code = 'SPACE'; throw error;
     }
     this.reservations.set(key, needed);
@@ -55,4 +60,4 @@ class StageResources {
   }
   release(key) { this.reservations.delete(key); }
 }
-module.exports = { StageGate, StageResources };
+module.exports = { StageGate, StageResources, MINIMUM_FREE_BYTES };

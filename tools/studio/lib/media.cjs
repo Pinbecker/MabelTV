@@ -4,6 +4,7 @@ const path = require('node:path');
 const { run } = require('./process.cjs');
 const { compressionProof, compressionPlan, reusableCompression, encodeCompression, policy, sourceFrameRate, outputFrameRate } = require('./compression.cjs');
 const { remuxCompatible } = require('./compatible-media.cjs');
+const { preparationReport } = require('./preparation-report.cjs');
 
 function frameRate(value) { const parts = String(value).split('/').map(Number); return parts.length === 2 ? parts[0] / parts[1] : parts[0]; }
 function fastStart(file) {
@@ -44,6 +45,7 @@ function analyse(probe, file, target) {
   return { ready: reasons.length === 0, reasons, width: video.width, height: video.height,
     fps, nominalFps: frameRate(video.r_frame_rate), frameCount: Number(video.nb_frames) || null, duration, bytes, sar: sar[1] > 0 && sar[0] > 0 ? sar[0] / sar[1] : 1, hasAudio: audio.length > 0, colorTransfer: video.color_transfer,
     codec: video.codec_name, pixelFormat: video.pix_fmt, bitrate: Number(probe.format?.bit_rate) || bytes * 8 / duration,
+    audioBitrate: Number(audio[0]?.bit_rate) || null,
     subtitleStreams: (probe.streams || []).filter(stream => stream.codec_type === 'subtitle')
       .map(({ index, codec_type, codec_name, tags }) => ({ index, codec_type, codec_name, tags: { language: tags?.language } })),
     interlaced: !['progressive', 'unknown', undefined].includes(video.field_order),
@@ -62,6 +64,18 @@ class Media {
     this.cache.set(key, probe); return result;
   }
   async prepare(file, destination, target, signal, progress, reserve, compression = policy.default, options = {}) {
+    const started = Date.now();
+    try {
+      const output = await this.prepareFile(file, destination, target, signal, progress, reserve, compression, options);
+      return { ...output, preparationReport: preparationReport(output, compression, target, started) };
+    } catch (error) {
+      error.preparationReport = { version: 1, startedAt: new Date(started).toISOString(), finishedAt: new Date().toISOString(),
+        elapsedMs: Date.now() - started, requested: compression, target, status: 'failed', error: error.message,
+        errorCode: error.code || '', sourceBytes: error.sourceBytes, outputBytes: error.outputBytes };
+      throw error;
+    }
+  }
+  async prepareFile(file, destination, target, signal, progress, reserve, compression, options) {
     const analysis = await this.inspect(file, target, signal);
     // Normal delivery must not demand another lossy size reduction. Compatibility
     // is still checked below; only a dedicated space-saving request asks for consent.
@@ -82,7 +96,7 @@ class Media {
     try { output = await encodeCompression({ file, destination, target, analysis, tools, signal, progress,
       inspect: this.inspect.bind(this), compression, allowRisk: options.allowRisk === true }); }
     catch (error) {
-      if (!options.spaceOnly && error.code === 'NOT_SMALLER')
+      if (compression !== 'compatible' && !options.spaceOnly && error.code === 'NOT_SMALLER')
         return this.prepare(file, destination, target, signal, progress, reserve, 'compatible', options);
       if (options.spaceOnly && error.code === 'NOT_SMALLER') return { file, analysis, sourceAnalysis: analysis, converted: false, compression, unchanged: true };
       throw error;

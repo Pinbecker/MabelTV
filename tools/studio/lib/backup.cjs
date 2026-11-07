@@ -5,6 +5,7 @@ const crypto = require('node:crypto');
 const { pipeline } = require('node:stream/promises');
 const { copy, beneath } = require('./cloud-files.cjs');
 const { freeCloudCache } = require('./cloud-cache.cjs');
+const { MINIMUM_FREE_BYTES } = require('./stage-resources.cjs');
 const settingKeys = ['localUrl', 'remoteUrl', 'connectionMode', 'workspace', 'iCloudRoot', 'toolFolder'];
 function profileSnapshot(store) {
   const { version, sourceId, settings, jobs } = store.snapshot();
@@ -44,7 +45,7 @@ class BackupBridge {
       const directory = path.join(this.store.root, 'Backups'); fs.mkdirSync(directory, { recursive: true });
       if (!/^MabelTV-Backup-\d{4}-\d{2}-\d{2}T\d{6}Z\.tar\.gz$/.test(info.name) || !/^[a-f0-9]{64}$/.test(info.sha256)) throw new Error('Invalid Pi backup manifest.');
       const free = fs.statfsSync(directory);
-      if (Number(free.bavail) * Number(free.bsize) < 20 * 1024 ** 3 + info.bytes * 2) throw new Error('Waiting for disk space for backup delivery.');
+      if (Number(free.bavail) * Number(free.bsize) < MINIMUM_FREE_BYTES + info.bytes * 2) throw new Error('Waiting for laptop disk space for backup delivery.');
       const local = path.join(directory, info.name), partial = local + '.part';
       if (!fs.existsSync(local) || await hash(local) !== info.sha256) {
         const response = await this.portal.transport(this.portal.current.base + '/api/studio/backup/file?name=' + encodeURIComponent(info.name),

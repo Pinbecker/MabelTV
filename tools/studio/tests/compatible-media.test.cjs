@@ -51,6 +51,8 @@ test('compatibility delivery preserves H264 picture bytes while correcting DTS s
   const progress = [];
   const result = await media.prepare(source,destination,'mytv',undefined,p=>progress.push(p),undefined,'compatible');
   assert.equal(result.videoCopied,true); assert.equal(result.audioConverted,true);
+  assert.equal(result.preparationReport.method,'picture-copied');
+  assert.ok(result.preparationReport.sizeChangePercent < 3);
   assert.equal(result.compression,'compatible'); assert.equal(result.analysis.ready,true);
   assert.equal(result.analysis.fps,25); assert.deepEqual([result.analysis.width,result.analysis.height],[640,360]);
   const pictureHash = file => run(tools.ffmpeg,['-v','error','-i',file,'-map','0:v:0','-c:v','copy',
@@ -60,5 +62,23 @@ test('compatibility delivery preserves H264 picture bytes while correcting DTS s
   const probe = JSON.parse(await run(tools.ffprobe,['-v','error','-show_streams','-of','json',destination]));
   const audio = probe.streams.find(stream=>stream.codec_type==='audio');
   assert.equal(audio.codec_name,'aac'); assert.equal(audio.channels,2); assert.ok(progress.some(p=>p>0));
+  await run(tools.ffmpeg,['-v','error','-xerror','-i',destination,'-f','null','-']);
+});
+
+test('low-bitrate legacy AVI conversion does not expand to the playback ceiling', async t => {
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'studio-avi-budget-'));
+  t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
+  const tools=resolveTools(''),media=new Media(()=>tools);
+  const source=path.join(root,'legacy.avi'),destination=path.join(root,'compatible.mp4');
+  await run(tools.ffmpeg,['-v','error','-y','-f','lavfi','-i','testsrc2=size=720x304:rate=24000/1001',
+    '-f','lavfi','-i','sine=frequency=440:sample_rate=48000','-t','20','-c:v','mpeg4','-b:v','900k',
+    '-c:a','ac3','-b:a','384k','-ac','6',source]);
+  const before=fs.readFileSync(source);
+  const result=await media.prepare(source,destination,'mytv',undefined,undefined,undefined,'compatible');
+  assert.ok(result.analysis.ready); assert.ok(result.analysis.bytes <= before.length*1.03);
+  assert.ok(result.encoding.videoBitrate < 1500000);
+  assert.equal(result.preparationReport.method,'video-encoded');
+  assert.equal(result.preparationReport.encoding.sizePolicyVersion,1);
+  assert.deepEqual(fs.readFileSync(source),before);
   await run(tools.ffmpeg,['-v','error','-xerror','-i',destination,'-f','null','-']);
 });

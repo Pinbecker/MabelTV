@@ -4,7 +4,7 @@ const path = require('node:path');
 
 function inside(root, file) { return file !== root && file.startsWith(root + path.sep); }
 function cleanWorkingCopies(remote, local, store) {
-  if (!remote.destination.temporaryWork || local.workingRemoved || local.subtitleWarning) return false;
+  if (!remote.destination.temporaryWork || local.workingRemoved) return false;
   const workspace = fs.realpathSync(store.state.settings.workspace);
   const directory = fs.existsSync(local.directory) ? fs.realpathSync(local.directory) : path.resolve(local.directory);
   if (!/^[a-f0-9]{32}$/.test(local.id) || !inside(workspace, directory) || !path.basename(directory).endsWith(local.id.slice(0, 8))) throw new Error('Working files were kept because their ownership could not be confirmed.');

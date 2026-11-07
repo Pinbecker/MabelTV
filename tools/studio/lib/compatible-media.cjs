@@ -2,6 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { run } = require('./process.cjs');
+const { assertCompatibilitySize } = require('./compatibility-size.cjs');
 async function remuxCompatible(file, destination, analysis, tools, target, signal, inspect, progress) {
   if (analysis.reasons.some(reason => !['MP4 container', 'fast-start playback', 'AAC audio', 'stereo audio'].includes(reason))) return null;
   const audioConverted = analysis.reasons.some(reason => ['AAC audio', 'stereo audio'].includes(reason));
@@ -10,7 +11,7 @@ async function remuxCompatible(file, destination, analysis, tools, target, signa
   const source = fs.statSync(file), partial = destination + '.part.mp4';
   try {
     await run(tools.ffmpeg, ['-nostdin', '-v', 'error', '-y', '-i', file, '-map', '0:v:0', '-map', '0:a:0?',
-      '-c:v', 'copy', ...(audioConverted ? ['-c:a', 'aac', '-b:a', '192000', '-ac', '2'] : ['-c:a', 'copy']),
+      '-c:v', 'copy', ...(audioConverted ? ['-c:a', 'aac', '-b:a', String(Math.min(192000, analysis.audioBitrate || 192000)), '-ac', '2'] : ['-c:a', 'copy']),
       '-map_metadata', '0', '-movflags', '+faststart', '-progress', 'pipe:1', '-nostats', partial], {
       signal, timeout: 2 * 3600000, onLine: line => {
         const match = line.match(/^out_time_us=(\d+)/);
@@ -27,6 +28,7 @@ async function remuxCompatible(file, destination, analysis, tools, target, signa
         || analysis.frameCount && checked.frameCount && analysis.frameCount !== checked.frameCount
         || checked.width !== analysis.width || checked.height !== analysis.height)
       throw new Error('The Pi-compatible copy failed validation.');
+    assertCompatibilitySize(analysis.bytes, checked.bytes);
     fs.renameSync(partial, destination);
     return { file: destination, analysis: checked, converted: true, compression: 'compatible', remuxed: true, videoCopied: true, audioConverted };
   } finally { if (fs.existsSync(partial)) fs.unlinkSync(partial); }

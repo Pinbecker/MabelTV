@@ -253,25 +253,29 @@ test('selection shows empty circles and fills only selected cards with a tick', 
   await expect(page.locator('.studio-file-tick')).toHaveCount(0)
 })
 
-test('Activity keeps recent completed receipts and removes cancelled work', async ({ page }) => {
+test('Activity keeps completed and cancelled receipts across polling until explicitly dismissed', async ({ page }) => {
   const { jobs } = await openStudio(page)
   jobs.push({id:'working',title:'A Grand Day Out',status:'active',destination:{kind:'film',label:'My TV'},percent:70},
     {id:'finished',title:'Finished film',status:'complete',destination:{kind:'film',label:'My TV'}},
     {id:'cancelled',title:'Cancelled film',status:'cancelled',destination:{kind:'film',label:'My TV'}},
     {id:'metadata',title:'Choose details',status:'complete',metadataWarning:'Choose the right title.',destination:{kind:'film',label:'My TV'}})
   await page.locator('[data-studio-tab="activity"]').click()
-  await expect(page.locator('.studio-job')).toHaveCount(3)
+  await expect(page.locator('.studio-job')).toHaveCount(4)
   await expect(page.locator('#studioJobs')).toContainText('Finished film')
-  await expect(page.locator('#studioJobs')).not.toContainText('Cancelled film')
+  await expect(page.locator('[data-studio-job="cancelled"] .studio-job-route')).toHaveText('Cancelled')
+  await expect(page.locator('[data-studio-job="cancelled"] .studio-job-actions button')).toHaveCount(0)
   await expect(page.getByRole('button',{name:'Match title',exact:true})).toBeVisible()
   jobs[0].status = 'complete'
-  await expect(page.locator('.studio-job')).toHaveCount(3)
+  await expect(page.locator('.studio-job')).toHaveCount(4)
   await expect(page.locator('[data-studio-job="metadata"]')).toContainText('Needs attention')
   await expect(page.locator('#studioActiveCount')).toBeEmpty()
   jobs[3].metadataWarning = ''
-  await expect(page.locator('.studio-job')).toHaveCount(3)
+  await expect(page.locator('.studio-job')).toHaveCount(4)
   await expect(page.locator('#studioJobs')).toContainText('Finished film')
-  await expect(page.locator('#studioJobCount')).toHaveText('3 items')
+  await expect(page.locator('#studioJobCount')).toHaveText('4 items')
+  jobs[2].historyHidden = true
+  await expect(page.locator('[data-studio-job="cancelled"]')).toHaveCount(0)
+  await expect(page.locator('.studio-job')).toHaveCount(3)
 })
 
 test('cloud series are one title with seasons and the library has four columns', async ({ page }) => {

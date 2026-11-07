@@ -44,7 +44,9 @@ class CompanionTorrents {
       result = child.progress.result; cloudPath = child.progress.savedCloudPath || cloudPath;
       if (downloaded.files.length === 1) matchedTitle = child.progress.matchedTitle || null;
     }
-    if (!warning && !published) this.downloads.cleanup(downloaded);
+    // All children have verified delivery and completed their temporary cleanup.
+    // An artwork/title warning is not a reason to retain the downloaded pack.
+    if (!published) this.downloads.cleanup(downloaded);
     state.progress = { status: 'complete', stage: 'complete', percent: 100, message: 'Saved to iCloud' + (remote.destination.kind !== 'icloud' ? ' and available on TV' : ''),
       result, savedCloudPath: cloudPath, matchedTitle, metadataWarning: warning };
   }

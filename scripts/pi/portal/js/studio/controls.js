@@ -95,6 +95,7 @@ $('#studioCreateCollection').onclick = async () => {
 function studioJobPresentation(job, waitingCloud) {
   const tv = ['film','series','mabel'].includes(job.destination.kind)
   const place = job.destination.kind === 'mabel' ? 'Mabel TV' : tv ? 'My TV' : 'iCloud'
+  if (job.status === 'cancelled') return {status:'Cancelled',message:''}
   if (job.cloudOperation) return {status:job.status === 'complete' ? 'Complete' : job.status === 'failed' ? 'Needs attention' : 'Working',message:job.error || job.message || ''}
   const review = job.status === 'failed' && job.errorCode === 'QUALITY_REVIEW'
   if (review && !job.destination.optimiseCloud) return { status: tv ? 'Downloaded · not yet on TV' : 'Downloaded · not yet in iCloud',

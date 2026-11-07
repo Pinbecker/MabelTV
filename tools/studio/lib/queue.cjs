@@ -7,6 +7,7 @@ const { cleanupDownload } = require('./media-cleanup.cjs');
 const { titleMatch } = require('./title-match.cjs');
 const { StageResources } = require('./stage-resources.cjs');
 const { compressionProfile } = require('./compression.cjs');
+const { assertCompatibilitySize } = require('./compatibility-size.cjs');
 
 function safeName(value) {
   const name = String(value).replace(/[<>:"/\\|?*\x00-\x1f]/g, ' ').replace(/\s+/g, ' ').trim().replace(/[. ]+$/, '').slice(0, 170) || 'Video';
@@ -88,7 +89,8 @@ class Queue extends EventEmitter {
     this.execute(job, controller.signal).catch(error => {
       const status = active.requested || (['OFFLINE', 'AUTH'].includes(error.code) ? 'waiting' : error.code === 'PAUSED' ? 'paused' : 'failed');
       this.store.update(job.id, { status, message: active.requested ? (status === 'cancelled' ? 'Cancelled. Local files kept.' : 'Paused. Resume when ready.') : error.message,
-        nextAttempt: Date.now() + (error.code === 'AUTH' ? 60000 : 30000), errorCode: error.code || '' });
+        nextAttempt: Date.now() + (error.code === 'AUTH' ? 60000 : 30000), errorCode: error.code || '',
+        ...(error.preparationReport ? { preparationReport: error.preparationReport } : {}) });
       if (error.code === 'OFFLINE') this.portal.current = null;
     }).finally(() => { this.actives.delete(job.id); if (!job.reservationKey) this.resources.release(job.id); this.changed(); this.kick(); });
     this.kick();
@@ -144,8 +146,11 @@ class Queue extends EventEmitter {
       if (job.match?.title && job.destination.kind === 'film') publishName = safeName(job.match.title + (job.match.year ? ' (' + job.match.year + ')' : '')) + path.extname(output.file);
       if (job.variantLabel) publishName = safeName(path.basename(publishName, path.extname(publishName)) + ' - ' + job.variantLabel) + path.extname(publishName);
       change({ preparedPath: output.file, analysis: output.analysis, sourceAnalysis: output.sourceAnalysis, converted: output.converted,
-        preparedCompression: output.compression || job.destination.compression || 'compact', publishName }, true);
+        preparedCompression: output.compression || job.destination.compression || 'compact', preparationReport: output.preparationReport, publishName }, true);
     }
+    const originalBytes = job.sourceAnalysis?.bytes || job.sourceFingerprint?.size;
+    if (originalBytes && (job.preparedCompression === 'compatible' || job.destination.preparationIntent === 'compatible'))
+      assertCompatibilitySize(originalBytes, fs.statSync(job.preparedPath).size);
     await this.cleanupOriginal(job);
     if (job.destination.kind === 'local') { change({ status: 'prepared', percent: 100, message: job.originalRemoved ? 'Ready locally. Prepared copy kept; downloaded original removed.' : 'Ready locally. Your original file is unchanged.' }, true); return; }
     if (job.piReturn?.replacePi && !job.converted) {

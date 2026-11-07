@@ -62,7 +62,7 @@ function renderStudioJobs() {
   if (organiser) cloud.push({ ...organiser, id: 'organiser', cloudOperation: true, destination: { label: 'iCloud' } })
   const all = [...(studioState.status?.jobs || []), ...cloud]
   const recent = new Set(all.filter(job => job.status === 'complete').sort((a,b) => b.updated-a.updated).slice(0, 20).map(job => job.id))
-  const jobs = all.filter(job => !job.historyHidden && !studioDismissedJobs.has(job.id) && job.status !== 'cancelled' && !(job.id === 'organiser' && job.status === 'complete') && (job.status !== 'complete' || recent.has(job.id) || job.metadataWarning)).sort((a,b) => b.created-a.created), root = $('#studioJobs')
+  const jobs = all.filter(job => !job.historyHidden && !studioDismissedJobs.has(job.id) && !(job.id === 'organiser' && job.status === 'complete') && (job.status !== 'complete' || recent.has(job.id) || job.metadataWarning)).sort((a,b) => b.created-a.created), root = $('#studioJobs')
   const rows = new Map([...root.querySelectorAll('[data-studio-job]')].map(row => [row.dataset.studioJob, row]))
   $('#studioJobCount').textContent = `${jobs.length} item${jobs.length === 1 ? '' : 's'}`
   for (const [index, job] of jobs.entries()) {

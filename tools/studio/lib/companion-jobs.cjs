@@ -3,8 +3,8 @@ const fs = require('node:fs');
 const { fetchCloud } = require('./cloud-files.cjs');
 const { fetchPi } = require('./pi-files.cjs');
 const { recordProvenance } = require('./provenance.cjs');
-const { saveCloud, cloudCopiesComplete, replaceCloudOriginal, verifyCloudCopies, archiveMatch } = require('./cloud-archive.cjs');
-const { cleanWorkingCopies } = require('./working-cleanup.cjs');
+const { saveCloud, cloudCopiesComplete, replaceCloudOriginal, archiveMatch } = require('./cloud-archive.cjs');
+const { finishTemporaryWork } = require('./companion-cleanup.cjs');
 const { removeOptimised } = require('./subtitles.cjs');
 const { prepareCloudCompression } = require('./cloud-compression.cjs');
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -47,7 +47,7 @@ class CompanionJobs {
   }
   async run(remote, state, signal) {
     let local = this.store.state.jobs.find(j => j.remoteId === (remote.localKey || remote.id));
-    if (local && !local.result?.complete && local.source === 'file' && (!local.sourcePath || !fs.existsSync(local.sourcePath))) {
+    if (local && !local.result?.complete && !local.cleanupVerified && local.source === 'file' && (!local.sourcePath || !fs.existsSync(local.sourcePath))) {
       this.store.update(local.id, { remoteId: '', status: 'cancelled', message: 'Missing working copy. Recovering from the recorded source.' });
       local = null;
     }
@@ -120,7 +120,7 @@ class CompanionJobs {
     }
     if (remote.destination.piReturn) {
       await recordProvenance(remote, local, this.portal, signal);
-      cleanWorkingCopies(remote, local, this.store);
+      await finishTemporaryWork(remote, local, this.store, this.portal, this.queue, signal, progress => { state.progress = progress; });
       state.progress = { status: 'complete', stage: 'complete', percent: 100, message: 'Available on TV', result: local.result };
       return;
     }
@@ -135,8 +135,7 @@ class CompanionJobs {
       if (!verified.confirmed) throw new Error('The existing iCloud original could not be confirmed. Working files were kept.');
       this.store.update(local.id, { savedCloudPath: item.path, savedCloudCopies: { original: { ...item, confirmed: true } }, cloudOptimisationUnchanged: true });
       await recordProvenance(remote, local, this.portal, signal);
-      if (this.queue.releaseCloudCaches) await this.queue.releaseCloudCaches(remote, local, signal);
-      cleanWorkingCopies(remote, local, this.store);
+      await finishTemporaryWork(remote, local, this.store, this.portal, this.queue, signal, progress => { state.progress = progress; });
       state.progress = { status: 'complete', stage: 'complete', percent: 100, message: local.analysis?.compressionProof && !local.converted
         ? 'Existing copy kept: it already meets the selected size target' : 'Original kept: conversion would not save space',
         result: { complete: true, unchanged: true }, savedCloudPath: item.path };
@@ -180,15 +179,7 @@ class CompanionJobs {
       }
     }
     await replaceCloudOriginal(remote, local, this.store, this.portal, signal);
-    if (this.queue.releaseCloudCaches && remote.destination.temporaryWork) {
-      state.progress = { stage: 'freeing-space', percent: 100, message: 'Freeing the local iCloud cache' };
-      await this.queue.releaseCloudCaches(remote, local, signal);
-    }
-    if (remote.destination.temporaryWork && !local.workingRemoved) {
-      if (remote.destination.saveCloud || remote.destination.kind === 'icloud') await verifyCloudCopies(remote, local, this.portal, signal);
-      else if (!local.result?.complete) throw new Error('Wait for verified TV publication before removing working copies.');
-      cleanWorkingCopies(remote, local, this.store);
-    }
+    await finishTemporaryWork(remote, local, this.store, this.portal, this.queue, signal, progress => { state.progress = progress; });
     if (!remote.destination.temporaryWork && !remote.destination.keepOptimised && !local.optimisedRemoved &&
         (local.result?.complete || cloudPath)) {
       if (removeOptimised(local, this.store.state.settings.workspace)) this.store.update(local.id, { optimisedRemoved: true });

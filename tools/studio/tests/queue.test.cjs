@@ -31,6 +31,9 @@ test('real conversion preserves source bytes, produces compatible fast-start med
   const [job] = queue.add([{ kind: 'file', path: file }], { kind: 'local', profile: 'mabel', label: 'Local' });
   await waitFor(queue, jobs => jobs[0].status === 'prepared' || jobs[0].status === 'failed');
   assert.equal(job.status, 'prepared', job.message); assert.ok(job.analysis.ready); assert.ok(job.converted);
+  assert.equal(job.preparationReport.method, 'video-encoded');
+  assert.equal(job.preparationReport.source.bytes, original.length);
+  assert.equal(job.preparationReport.output.bytes, fs.statSync(job.preparedPath).size);
   assert.deepEqual(fs.readFileSync(file), original); assert.equal(uploaded, false);
   await queue.action(job.id, 'send', { kind: 'film', label: 'My TV · Films' });
   await waitFor(queue, jobs => jobs[0].status === 'complete'); assert.equal(uploaded, true);
@@ -54,4 +57,17 @@ test('a changed original cannot silently replace the media in a resumed job', as
   queue.add([{ kind: 'file', path: file }], { kind: 'local', label: 'Local' }); fs.writeFileSync(file, 'different bytes');
   queue.stopping = false; queue.kick(); await waitFor(queue, jobs => jobs[0].status === 'failed');
   assert.match(queue.snapshot()[0].message, /original file changed/);
+});
+
+test('an oversized compatibility copy from an older build cannot upload or delete its original', async t => {
+  const { root, store } = setup(t), file = path.join(root, 'source.mp4'), prepared = path.join(root, 'oversized.mp4');
+  fs.writeFileSync(file, Buffer.alloc(100000)); fs.writeFileSync(prepared, Buffer.alloc(500000));
+  let uploaded = false, cleaned = false;
+  const queue = new Queue(store, {}, {}, { upload: async () => { uploaded = true; } });
+  queue.stopping = true; queue.cleanupOriginal = async () => { cleaned = true; };
+  t.after(async () => { await queue.shutdown(); fs.rmSync(root, { recursive: true, force: true }); });
+  const [job] = queue.add([{ kind: 'file', path: file }], { kind: 'film', preparationIntent: 'compatible' });
+  store.update(job.id, { preparedPath: prepared, preparedCompression: 'compatible' });
+  await assert.rejects(queue.execute(job, new AbortController().signal), { code: 'COMPATIBILITY_SIZE' });
+  assert.equal(uploaded, false); assert.equal(cleaned, false); assert.ok(fs.existsSync(file));
 });
