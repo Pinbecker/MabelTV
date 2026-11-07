@@ -170,6 +170,46 @@ test('library updates remove deleted films from the selected collection grid', a
   await expect(page.locator('#myLibraryGrid')).not.toContainText('Chamber')
 })
 
+for (const cached of [false, true]) test(`chosen local copy survives ${cached ? 'cached and fresh' : 'fresh'} title metadata`, async ({ page }) => {
+  const selectedPath = 'Compatibility tests/Harry Potter - Compatibility test.mp4'
+  let release
+  const ready = new Promise(resolve => { release = resolve })
+  const detail = { key: 'movie:671', media_type: 'movie', tmdb_id: 671,
+    title: 'Fresh film metadata', year: '2001', on_mabeltv: true, providers: [],
+    local: { kind: 'film', path: 'Harry Potter 1.mp4' } }
+  await page.route('**/api/my-tv/title?*', async route => {
+    await ready
+    await route.fulfill({ json: detail })
+  })
+  await openLibrary(page)
+  await page.evaluate(async ({ selectedPath, cached, detail }) => {
+    const original = library.my_tv_library[0]
+    library.my_tv_library.push({ ...original, path: selectedPath, library_id: 'compatible-copy',
+      folder: 'Compatibility tests', browser_ready: true })
+    library.my_tv_folders.push('Compatibility tests')
+    renderMyLibrary()
+    window.copyPlayback = []
+    window.playOnTv = source => window.copyPlayback.push({ destination: 'tv', ...source })
+    window.openRemotePlayer = source => window.copyPlayback.push({ destination: 'device', ...source })
+    if (cached) await writePortalDataCache('my-tv-title-v1:movie:671', { ...detail, title: 'Cached film metadata' })
+  }, { selectedPath, cached, detail })
+  await page.locator('#myLibraryGenre').selectOption('Compatibility tests')
+  await page.locator('#myLibraryGrid > button').click()
+  if (cached) {
+    await expect(page.locator('#myTvTitleName')).toHaveText('Cached film metadata')
+    await page.locator('#myTvTitleFilmTv').click()
+    expect(await page.evaluate(() => window.copyPlayback.at(-1).file)).toBe(selectedPath)
+  }
+  release()
+  await expect.poll(() => page.evaluate(() => selectedMyTvTitle.title)).toBe('Fresh film metadata')
+  await page.locator('#myTvTitleFilmTv').click()
+  await page.locator('#myTvTitleFilmHere').click()
+  expect(await page.evaluate(() => window.copyPlayback.slice(-2))).toEqual([
+    { destination: 'tv', kind: 'my_tv', file: selectedPath },
+    { destination: 'device', kind: 'my_tv', file: selectedPath },
+  ])
+})
+
 test('My Library phone and tablet layout, collections and light theme @visual', async ({ page }, testInfo) => {
   await openLibrary(page)
   await page.locator('#myLibraryBack').click()

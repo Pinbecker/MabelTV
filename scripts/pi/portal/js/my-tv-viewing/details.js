@@ -646,6 +646,7 @@ async function openMyTvTitle(title, returnTo = null, {verifyLocal = false} = {})
   myTvTitleMembershipKnown = undefined
   const revision = ++myTvTitleOpenRevision
   const localContext = title.local_context || 'library'
+  const selectedLocal = title.local?.kind === 'film' && title.local.path ? { ...title.local } : null
   const sheet = prepareMyTvTitleSheet(title)
   portalSheets.open(sheet, { returnTo, focus: sheet.querySelector('.watch-film-panel') })
   const cacheKey = `my-tv-title-v1:${title.media_type}:${Number(title.tmdb_id)}`
@@ -664,6 +665,7 @@ async function openMyTvTitle(title, returnTo = null, {verifyLocal = false} = {})
     if (!value || networkApplied || request.signal.aborted || revision !== myTvTitleOpenRevision) return
     cached = value
     displayed = {...value.data, viewing: myTvViewingRecord(title),
+      ...(selectedLocal ? { local: selectedLocal } : {}),
       local_context: localContext, catalogue_only: title.catalogue_only === true}
     renderMyTvTitleDetail(displayed, false, revision, false)
     rememberMyTvTitleMetadata(displayed, title)
@@ -674,6 +676,7 @@ async function openMyTvTitle(title, returnTo = null, {verifyLocal = false} = {})
     if (revision !== myTvTitleOpenRevision || request.signal.aborted) return
     networkApplied = true
     const fresh = { ...detail, viewing: myTvViewingRecord(title),
+      ...(selectedLocal ? { local: selectedLocal } : {}),
       local_context: localContext,
       catalogue_only: title.catalogue_only === true }
     rememberMyTvTitleMetadata(fresh, title)

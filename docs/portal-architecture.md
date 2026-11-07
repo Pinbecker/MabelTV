@@ -37,6 +37,11 @@ and downloaded video. `playback/stream-recovery.js` renews an expired media
 source at the current position with bounded retries. `players.js` coordinates
 these owners and retains the separate Mabel TV device-player presentation.
 
+Opening a specific local film copy keeps that file selected when cached or
+fresh title metadata arrives. The title-wide metadata cache does not decide
+which version the TV and device playback buttons use; an explicit library
+selection takes precedence over another copy with the same TMDB identity.
+
 Mabel TV Up Next retains the playing entry at position one with an artwork
 overlay. Programme sheets carry its queue identity to the chosen player;
 ordinary library playback remains separate. `playback/mabel-queue.js` owns the
