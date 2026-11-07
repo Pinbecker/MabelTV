@@ -42,6 +42,12 @@ fresh title metadata arrives. The title-wide metadata cache does not decide
 which version the TV and device playback buttons use; an explicit library
 selection takes precedence over another copy with the same TMDB identity.
 
+Phone playback begins the local resume lookup alongside the stream request;
+an explicit start position does not need that lookup. Bounded startup phase
+timings distinguish session creation, resume lookup, metadata and first playback.
+They contain no filenames or stream tokens, and are sent only after playback
+starts or a wait/error so diagnostics do not compete with initial video loading.
+
 Mabel TV Up Next retains the playing entry at position one with an artwork
 overlay. Programme sheets carry its queue identity to the chosen player;
 ordinary library playback remains separate. `playback/mabel-queue.js` owns the

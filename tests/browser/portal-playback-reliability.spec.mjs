@@ -44,6 +44,54 @@ test('fresh resume and explicit zero are distinct playback intents', async ({ pa
   expect(await page.evaluate(() => window.samples.some(sample => sample.source.library_id === 'film-identity'))).toBe(true)
 })
 
+test('resume lookup runs alongside the stream request and explicit restart skips that lookup', async ({ page }) => {
+  await player(page)
+  await page.evaluate(() => {
+    const previousApi = window.api
+    window.checkpointReads = 0
+    myTvProgress.read = async () => { window.checkpointReads++; return null }
+    window.api = (path, options) => path === '/api/remote/start'
+      ? new Promise(resolve => { window.finishStreamStart = () => resolve(previousApi(path, options)) })
+      : previousApi(path, options)
+    window.pendingStart = startIosRemotePlayer({ kind: 'my_tv', file: 'Resume.mp4' })
+  })
+  expect(await page.evaluate(() => window.checkpointReads)).toBe(1)
+  await page.evaluate(async () => { window.finishStreamStart(); await window.pendingStart })
+  await page.evaluate(() => {
+    window.pendingStart = startIosRemotePlayer({ kind: 'my_tv', file: 'Resume.mp4' }, 0)
+  })
+  expect(await page.evaluate(() => window.checkpointReads)).toBe(1)
+  await page.evaluate(async () => { window.finishStreamStart(); await window.pendingStart })
+  expect(await page.locator('#iosWatchVideo').evaluate(video => video.currentTime)).toBe(0)
+})
+
+test('startup timings identify a media wait without sending filenames or competing with initial loading', async ({ page }) => {
+  await page.clock.install()
+  const reports = []
+  await page.route('**/api/studio/diagnostics', route => {
+    reports.push(route.request().postDataJSON())
+    return route.fulfill({ json: { ok: true } })
+  })
+  await player(page)
+  expect(reports).toEqual([])
+  await page.clock.fastForward(15000)
+  await expect.poll(() => reports.length).toBe(1)
+  const first = reports[0].events
+  expect(first.map(event => event.code.replace(/-r\d-n\d$/, ''))).toEqual([
+    'session-ready', 'resume-ready', 'source-set', 'metadata', 'waiting',
+  ])
+  expect(first.at(-1).duration).toBeGreaterThanOrEqual(15000)
+  expect(first.every(event => event.path === '/api/remote/media' && event.method === 'MEDIA')).toBe(true)
+  expect(new Set(first.map(event => event.requestId)).size).toBe(1)
+  expect(JSON.stringify(first)).not.toMatch(/Resume\.mp4|film-identity|stream=test/)
+  await page.evaluate(() => {
+    const video = document.querySelector('#iosWatchVideo')
+    video.oncanplay(); video.onplaying(); video.onplaying()
+  })
+  await expect.poll(() => reports.length).toBe(2)
+  expect(reports[1].events.map(event => event.code.replace(/-r\d-n\d$/, ''))).toEqual(['can-play', 'playing'])
+})
+
 test('failed saves remain durable and retry without further playback movement', async ({ page }) => {
   await player(page)
   await page.evaluate(async () => {

@@ -244,6 +244,7 @@ function remoteTime(value) {
 
     async function startIosRemotePlayer(payload, position = null) {
       const shell = $('#iosWatchPlayer'); const video = $('#iosWatchVideo'); const error = $('#iosWatchError')
+      const startup = traceMediaStartup()
       void saveIosRemotePosition(false, true)
       video._myTvProgress = null
       const previousSession = iosRemoteSession
@@ -253,6 +254,8 @@ function remoteTime(value) {
       video.oncanplay = null; video.onerror = null; video.onplay = null; video.onended = null
       video.pause()
       if (position != null && payload.position == null) payload = { ...payload, position }
+      const localCheckpoint = ['my_tv', 'my-tv-series'].includes(payload.kind) && payload.position == null
+        ? myTvProgress.read(payload).catch(() => null) : Promise.resolve(null)
       const generation = ++iosPlayerGeneration
       clearIosNextEpisode()
       shell.classList.toggle('is-my-tv', ['my_tv', 'my-tv-series'].includes(payload.kind))
@@ -269,6 +272,7 @@ function remoteTime(value) {
       try {
         let result
         result = await startRemoteStream(payload)
+        startup.mark('session-ready')
         if (generation !== iosPlayerGeneration) {
           const stream = new URL(result.stream_url, location.origin).searchParams.get('stream')
           void api('/api/remote/release', { method: 'POST', body: JSON.stringify({ stream }) }).catch(() => {})
@@ -294,7 +298,8 @@ function remoteTime(value) {
         }
         let resume = Number(payload.position ?? result.resume_position ?? 0)
         if (shell.classList.contains('is-my-tv')) {
-          const local = await myTvProgress.read(payload).catch(() => null)
+          const local = await localCheckpoint
+          startup.mark('resume-ready')
           if (generation !== iosPlayerGeneration) return
           if (payload.position == null && local?.pending && local.observed_at > (result.resume_updated || 0))
             resume = local.finished ? 0 : local.position
@@ -305,6 +310,7 @@ function remoteTime(value) {
         const episodeState = prepareIosNextEpisode(payload)
         video.onloadedmetadata = () => {
           if (generation !== iosPlayerGeneration) return
+          startup.mark('metadata', video)
           if (resume > 0 && resume < video.duration - 5) video.currentTime = resume
           if (video._myTvProgress) video._myTvProgress.ready = true
           if (payload.position === 0) void saveIosRemotePosition(false, true)
@@ -315,7 +321,7 @@ function remoteTime(value) {
         // received the video and text track together. Once canplay fires, the
         // movie is already accepted and the native AVPlayer can safely add CC.
         video.oncanplay = attachNativeCaptions
-        const recovery = bindIosStreamRecovery(video, payload, generation, error)
+        const recovery = bindIosStreamRecovery(video, payload, generation, error, startup)
         video.onerror = recovery.onError
         // Ask for the true native player immediately from the library tap and
         // retry only once the media becomes ready. This avoids the old inline
@@ -340,6 +346,7 @@ function remoteTime(value) {
         clearInterval(iosRemotePositionTimer); iosRemotePositionTimer = setInterval(saveIosRemotePosition, 5000)
         clearInterval(iosRemoteHeartbeatTimer); iosRemoteHeartbeatTimer = setInterval(recovery.heartbeat, 30000)
         video.src = result.stream_url
+        startup.mark('source-set', video)
         video.load()
         const playAttempt = video.play()
         requestNativeFullscreen()
@@ -349,6 +356,7 @@ function remoteTime(value) {
         })
       } catch (startError) {
         if (generation !== iosPlayerGeneration) return
+        startup.mark('open-error', video); startup.flush()
         error.textContent = startError.message; error.classList.remove('hidden'); video.classList.add('hidden')
         $('#iosWatchRetry').classList.remove('hidden')
         $('#iosWatchRetry').onclick = () => { void startIosRemotePlayer(payload, position) }
