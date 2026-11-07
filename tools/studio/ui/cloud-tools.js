@@ -1,6 +1,8 @@
 import { $, escape, icon, attempt, toast } from './shared.js';
 import { artwork, bytes, wireDialog, confirmAction, loading } from './library-common.js';
 import { reviewTitles } from './title-review.js';
+import { chooseDeleteFiles } from './library-versions.js';
+import { openSubtitles } from './subtitles.js';
 
 export class CloudTools {
   constructor(refresh) {
@@ -24,6 +26,10 @@ export class CloudTools {
   }
   async open(send) {
     this.send = send; this.originalInfo = null; const revision = ++this.revision;
+    let subtitles = this.settings.querySelector('[data-subtitles]');
+    if (!subtitles) { subtitles = document.createElement('button'); subtitles.dataset.subtitles = 'true'; subtitles.textContent = 'Subtitles'; this.settings.querySelector('.library-setting-actions').append(subtitles); }
+    subtitles.disabled = send.chosen().length !== 1;
+    subtitles.onclick = () => openSubtitles({kind:'cloud',id:send.chosen()[0].id}, send.context.title);
     send.dialog.close();
     const item = send.context.item, name = item?.metadata?.title || item?.title || send.context.title;
     $('#cloud-settings-title').textContent = name;
@@ -86,8 +92,8 @@ export class CloudTools {
     this.send.open({type:'original',item,title,files});
   }
   async delete() {
-    const chosen = this.send.chosen(), files = chosen.flatMap(file => file.versions || [file]);
-    if (!await confirmAction('Delete from iCloud?',`${files.length} selected file${files.length === 1 ? '' : 's'} will be deleted from iCloud and synced devices. Separate TV copies are kept.`, 'Delete from iCloud',true)) return;
+    const chosen = this.send.chosen(), files = await chooseDeleteFiles(chosen.flatMap(file => file.versions || [file]));
+    if (!files.length) return;
     await window.studio.libraryWrite('delete',{items:files,confirmed:true});
     this.settings.close(); this.revision++; toast('Deletion queued.'); this.refresh();
   }

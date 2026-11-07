@@ -712,6 +712,13 @@ class Handler(BaseHTTPRequestHandler):
             if parsed.path == "/api/live/frame.jpg":
                 self.stream_bytes(self.server.library.live_tv_frame(), "image/jpeg")
                 return
+            if parsed.path == "/api/live/seek-preview":
+                data = self.server.library.seek_preview(query.get("token", [""])[0], query.get("position", [""])[0])
+                if data is None:
+                    self.json(202, {"status": "preparing"})
+                else:
+                    self.stream_bytes(data, "image/jpeg")
+                return
             if self.path.startswith("/api/live/segment-") or self.path == "/api/live/init.mp4":
                 self.json(410, {"error": "The live picture now uses the portal frame feed"})
                 return

@@ -5,7 +5,7 @@ import time
 
 class StudioRecoveryMixin:
     def studio_finish_recovery(self, payload):
-        with self.config_lock:
+        with self.subtitle_track_lock, self.config_lock:
             return self._studio_finish_recovery(payload)
 
     def _studio_finish_recovery(self, payload):
@@ -86,6 +86,7 @@ class StudioRecoveryMixin:
             old_state, _, _ = self._studio_recovery_states(frozen["receipt"], previous, replacement, target)
             stat = replacement.stat()
             job["recoveryCandidate"] = {"fingerprint": [stat.st_size, stat.st_mtime_ns, stat.st_ino], "state": old_state}
+            job["recoveryCandidate"]["subtitles"] = self.subtitle_replacement_snapshot(frozen["receipt"], output)
             self.state_database.studio_add("job", job)
             os.link(previous, rollback)
             os.replace(replacement, target)
@@ -93,10 +94,22 @@ class StudioRecoveryMixin:
         saved = saved or job["recoveryCandidate"]["state"]
         saved.update(state="original", message="", updated=time.time())
         commit(saved)
+        subtitle_snapshot = job["recoveryCandidate"].get("subtitles")
+        if subtitle_snapshot and not job.get("previousSubtitlesRetired"):
+            archive = self.incoming / (job["id"] + ".previous-subtitles")
+            archive.mkdir(exist_ok=True)
+            for name in subtitle_snapshot.get("oldSidecars", []):
+                old_sidecar = previous.parent / name
+                if old_sidecar.is_file() and not (archive / name).exists():
+                    os.replace(old_sidecar, archive / name)
+            job["previousSubtitlesRetired"] = True
+            self.state_database.studio_add("job", job)
         for sidecar in replacement.parent.glob(replacement.stem + ".*"):
             if sidecar.suffix.lower() in {".srt", ".vtt"} and sidecar.is_file():
                 os.replace(sidecar, target.parent / (target.stem + sidecar.name[len(replacement.stem):]))
         published = {**frozen["receipt"], "file_name": target.name, "complete": True, "status": "complete", "bytes": target.stat().st_size}
+        if subtitle_snapshot:
+            self.subtitle_replacement_restore(published, subtitle_snapshot)
         receipt = {"complete": True, "file": target_name, "published": published}
         job["recoveryReceipt"] = receipt
         self.state_database.studio_add("job", job)

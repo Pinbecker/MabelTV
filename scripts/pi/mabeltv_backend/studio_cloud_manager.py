@@ -6,6 +6,7 @@ from pathlib import PurePosixPath
 import subprocess
 import time
 import uuid
+from .subtitle_files import belongs_to_video
 
 class StudioCloudManagerMixin:
     def studio_cloud_replace_original(self, payload):
@@ -70,7 +71,13 @@ class StudioCloudManagerMixin:
             if any(selection.get(key) != item.get(key, "") for key in ("bytes", "modified", "remoteId")):
                 raise ValueError("A selected video changed. Refresh and confirm deletion again.")
             stem = str(PurePosixPath(item["path"]).with_suffix(""))
-            related = [item] + [sidecar for sidecar in files.values() if sidecar.get("extension") in {".srt", ".vtt", ".ass"} and sidecar["path"].startswith(stem + ".")]
+            shared = any(other["id"] not in {value.get("id") for value in selected}
+                         and self._studio_media_file(other) and str(PurePosixPath(other["path"]).with_suffix("")) == stem
+                         for other in files.values())
+            related = [item] + [sidecar for sidecar in files.values()
+                if sidecar.get("extension") in {".srt", ".vtt", ".ass", ".mks"}
+                and belongs_to_video(item["path"], sidecar["path"])
+                and (not shared or sidecar["path"].startswith(item["path"] + "."))]
             for value in related:
                 frozen[value["id"]] = {"path": "Media/" + value["path"], "bytes": value["bytes"],
                     "modified": value.get("modified", ""), "remoteId": value.get("remoteId", "")}

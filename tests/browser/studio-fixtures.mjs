@@ -22,7 +22,8 @@ export async function openStudio(page, { online = false, series = false, organis
     const payload = route.request().method() === 'POST' ? route.request().postDataJSON() : null
     if (payload) writes.push({ path, ...payload })
     let json = {}
-    if (path === '/api/studio/status') json = { workers: online ? [{ id: 'a'.repeat(32), name: 'Your laptop', online: true }] : [], jobs, cloud, organiser }
+    if (path === '/api/studio/presence') json = {items:payload.ids.map(id => ({id,copies:[]}))}
+    else if (path === '/api/studio/status') json = { workers: online ? [{ id: 'a'.repeat(32), name: 'Your laptop', online: true }] : [], jobs, cloud, organiser }
     else if (path === '/api/studio/cloud') {
       if (url.searchParams.has('series')) return route.fulfill({ json: { items: episodes.map((item, index) => ({ ...item, id: 'episode-' + index, series_title: 'Ludwig', name: item.episode + '.mp4', kind: 'video', series: index === 2 ? 2 : 1 })) } })
       const q = url.searchParams.get('q')?.toLowerCase() || ''

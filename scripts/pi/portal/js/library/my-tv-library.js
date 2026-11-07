@@ -116,6 +116,7 @@ function renderMyTvLibraryControls() {
       bindSendToMabel($('#myTvFilmSheet .watch-film-actions'), { kind: "my_tv", file: film.path }, title,
         () => openMyTvFilmSheet(film, returnTo))
       const busy = ['processing', 'queued'].includes(film.playback_state)
+      bindSubtitleControls($('#myTvFilmSheet .watch-film-actions'), { kind: 'my_tv', file: film.path }, title, () => openMyTvFilmSheet(film, returnTo))
       const optimise = $('#myTvFilmOptimise')
       optimise.disabled = busy || film.playback_state === 'optimised'
       optimise.querySelector('strong').textContent = film.playback_state === 'optimised' ? 'Already optimised' : busy ? myTvOptimisationLabel(film) : 'Optimise for Pi'

@@ -1,4 +1,5 @@
 import { $, escape, art, empty, attempt, toast } from './shared.js';
+import { openSubtitles } from './subtitles.js';
 
 const labels = { queued: 'Queued', 'queued-download': 'Waiting to download', 'queued-conversion': 'Waiting to convert', 'queued-upload': 'Waiting to send', 'saving-cloud': 'Uploading to iCloud', 'waiting-for-cloud': 'Uploading to iCloud', 'freeing-space': 'Freeing local cache', downloading: 'Downloading', assembling: 'Assembling download', preparing: 'Preparing video', uploading: 'Sending', publishing: 'Adding to library', matching: 'Adding metadata', waiting: 'Waiting for connection', paused: 'Paused', failed: 'Needs attention', complete: 'Complete', prepared: 'Ready locally', cancelled: 'Cancelled' };
 export function renderJobs(jobs) {
@@ -20,6 +21,13 @@ export function renderJobs(jobs) {
     button.disabled = true;
     const { id, jobAction } = button.dataset;
     if (jobAction === 'reveal') await window.studio.reveal(id);
+    else if (jobAction === 'subtitles') {
+      const job = jobs.find(job => job.id === id), result = job.result;
+      const source = {kind:result.kind,file:result.kind === 'my_tv' ? [result.folder,result.file_name].filter(Boolean).join('/') : result.kind === 'my-tv-series' ? `Season ${result.season}/${result.file_name}` : result.file_name};
+      if (result.kind === 'my-tv-series') source.series = result.series_id;
+      if (result.kind === 'channel') source.channel = result.channel;
+      await openSubtitles(source,job.metadata.title || 'Subtitles');
+    }
     else if (jobAction === 'send') window.openSendDialog(id);
     else if (jobAction === 'compress-anyway') {
       if (window.confirm('This copy is already heavily compressed. Further compression may reduce picture quality. Compress anyway?')) await window.studio.action(id, 'compress-anyway');
@@ -55,6 +63,7 @@ function card(job) {
   if (!finished && !['publishing', 'matching', 'saving-cloud', 'waiting-for-cloud', 'freeing-space'].includes(job.status)) actions += button(job, 'cancel', 'Cancel');
   if (job.preparedPath || job.sourcePath) actions += button(job, 'reveal', 'Show file');
   if (job.status === 'prepared') actions += button(job, 'send', 'Send to MabelTV');
+  if (job.result?.complete && ['my_tv','my-tv-series','channel'].includes(job.result.kind)) actions += button(job,'subtitles','Subtitles');
   if (job.status === 'complete' && job.metadataWarning && !job.matchApplied) actions += button(job, 'metadata', 'Retry metadata');
   const title = [job.metadata.title, job.metadata.episode].filter(Boolean).join(' · ');
   const label = job.status === 'downloading' && ['audio', 'video'].includes(job.downloadStage) ? 'Downloading ' + job.downloadStage : labels[job.status] || job.status;

@@ -1,4 +1,5 @@
 #include "PortalControlServer.h"
+#include "PortalSeek.h"
 
 #include "hardware/CecTvControl.h"
 
@@ -114,6 +115,13 @@ void PortalControlServer::dispatch(QLocalSocket *socket, const QByteArray &rawCo
         const QJsonDocument request = QJsonDocument::fromJson(rawCommand);
         const QJsonObject object = request.object();
         const QString operation = object.value(QStringLiteral("command")).toString();
+        if (request.isObject() && operation == QStringLiteral("seek")) {
+            const bool accepted = object.value(QStringLiteral("position")).isDouble()
+                && PortalSeek::apply(m_rootObject, object.value(QStringLiteral("position")).toDouble(),
+                                     object.value(QStringLiteral("token")).toString());
+            finish(socket, accepted ? "ok\n" : "unsupported\n");
+            return;
+        }
         if (request.isObject() && (operation == QStringLiteral("play-family-media")
                                   || operation == QStringLiteral("family-media-control")
                                   || operation == QStringLiteral("open-storytime"))) {
@@ -238,6 +246,7 @@ void PortalControlServer::dispatch(QLocalSocket *socket, const QByteArray &rawCo
     if (command == QStringLiteral("status")) {
         m_tvControl->getStatus();
         QJsonObject status{
+            {QStringLiteral("film_move_preserves_playback"), true},
             {QStringLiteral("mode"), QStringLiteral("kids")},
             {QStringLiteral("volume"), m_rootObject->property("portalVolume").toInt()},
             {QStringLiteral("muted"), m_rootObject->property("portalMuted").toBool()},
@@ -289,6 +298,8 @@ void PortalControlServer::dispatch(QLocalSocket *socket, const QByteArray &rawCo
             status.insert(QStringLiteral("playback_duration"), family->property("playbackDuration").toDouble());
             status.insert(QStringLiteral("widescreen_available"), false);
         }
+        const QJsonObject seekStatus = PortalSeek::status(m_rootObject);
+        for (auto entry = seekStatus.begin(); entry != seekStatus.end(); ++entry) status.insert(entry.key(), entry.value());
         finish(socket, QJsonDocument(status).toJson(QJsonDocument::Compact) + '\n');
         return;
     }

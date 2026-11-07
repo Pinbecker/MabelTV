@@ -1,4 +1,5 @@
 #include "ChannelLibrary.h"
+#include "MediaFileIdentity.h"
 #include "core/StateDatabase.h"
 
 #include <QDir>
@@ -151,7 +152,8 @@ ChannelLibraryResult ChannelLibrary::load(const QString &databasePath,
             }
 
             channel.episodes.append(
-                Episode{file.absoluteFilePath(), std::max(0.0, inspection.durationSeconds)});
+                Episode{file.absoluteFilePath(), std::max(0.0, inspection.durationSeconds),
+                        mediaFileIdentity(file.absoluteFilePath())});
         }
 
         if (channel.episodes.isEmpty()) {

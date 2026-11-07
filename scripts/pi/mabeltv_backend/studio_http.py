@@ -75,6 +75,11 @@ def studio_post(handler, path, payload):
     routes["/api/studio/cloud/match"] = "studio_cloud_match"
     routes["/api/studio/cloud/collection"] = "studio_cloud_collection"
     routes["/api/studio/subtitle"] = "studio_subtitle"
+    routes["/api/studio/presence"] = "studio_presence"
+    for action in ("tracks", "search", "select", "download", "receive"):
+        routes["/api/studio/subtitles/" + action] = "subtitle_" + action
+    routes["/api/studio/subtitles/archive-verify"] = "subtitle_archive_verify"
+    routes["/api/studio/subtitles/forward"] = "subtitle_forward"
     routes["/api/studio/torrents/search"] = "studio_torrent_search"
     routes["/api/studio/torrents/inspect"] = "studio_torrent_inspect"
     routes["/api/studio/download-original"] = "studio_download_original"

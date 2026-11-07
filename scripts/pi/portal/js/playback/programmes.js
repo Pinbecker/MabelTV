@@ -94,6 +94,7 @@
 
     function openWatchProgrammeEpisodeMoreSheet(channel, programme, context, returnTo) {
       const title = programme.metadata?.title || programme.display_name
+      bindSubtitleControls($('#watchProgrammeEpisodeMoreSheet .watch-programme-film-tools'), { kind: 'channel', channel: channel.number, file: programme.name }, title, () => openWatchProgrammeEpisodeMoreSheet(channel, programme, context, returnTo))
       $('#watchProgrammeEpisodeMoreEyebrow').textContent = `CH ${channel.number} · ${channel.name}`
       $('#watchProgrammeEpisodeMoreTitle').textContent = title
       $('#watchProgrammeEpisodeMoreMeta').textContent = 'More episode options'
@@ -105,6 +106,7 @@
     function openWatchProgrammeMoreSheet(channel, programme, context, returnTo) {
       const metadata = programme.metadata || {}
       const title = metadata.title || programme.display_name
+      bindSubtitleControls($('#watchProgrammeMoreSheet .watch-programme-film-tools'), { kind: 'channel', channel: channel.number, file: programme.name }, title, () => openWatchProgrammeMoreSheet(channel, programme, context, returnTo))
       $('#watchProgrammeMoreEyebrow').textContent = `CH ${channel.number} · ${channel.name}`
       $('#watchProgrammeMoreTitle').textContent = title
       $('#watchProgrammeMoreMeta').textContent = [metadata.year, 'More film options'].filter(Boolean).join(' · ')

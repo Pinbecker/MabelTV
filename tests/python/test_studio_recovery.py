@@ -165,6 +165,8 @@ class StudioRecoveryTests(unittest.TestCase):
         new = self.library.my_tv_root / "Recovered - Pi compatible.mp4"
         old.write_bytes(b"old-copy")
         new.write_bytes(b"high-quality-recovered-copy")
+        old.with_suffix(".en.srt").write_text("1\n00:00:01,000 --> 00:00:02,000\nOld cut", encoding="utf-8")
+        new.with_suffix(".en.srt").write_text("1\n00:00:03,000 --> 00:00:04,000\nNew cut", encoding="utf-8")
         self.library.write_my_tv_media_states({old.name: {"library_id": "3" * 32, "remote_position": 321}, new.name: {"library_id": "4" * 32}})
         job = self.claimed()
         stat = old.stat()
@@ -182,6 +184,9 @@ class StudioRecoveryTests(unittest.TestCase):
             self.assertTrue(result["complete"])
             self.assertEqual(result["published"]["file_name"], old.name)
             self.assertEqual(old.read_bytes(), b"high-quality-recovered-copy")
+            self.assertIn("New cut", old.with_suffix(".en.srt").read_text())
+            tracks = self.library.subtitle_tracks({"source":{"kind":"my_tv","file":old.name}})
+            self.assertEqual(len(tracks["tracks"]), 1)
             state = self.library.my_tv_media_states()[old.name]
             self.assertEqual(state["library_id"], "3" * 32)
             self.assertEqual(state["remote_position"], 321)

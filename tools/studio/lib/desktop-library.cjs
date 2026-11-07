@@ -36,6 +36,7 @@ class DesktopLibrary {
     }
     if (action === 'request') return this.portal.api('/api/studio/request?id=' + id(value.id, false, 32));
     if (action === 'status') return this.portal.api('/api/studio/status');
+    if (action === 'presence') return post('/api/studio/presence', { ids: list(value.ids).map(value => id(value)) });
     if (action === 'originals') return post('/api/studio/originals', { ids: list(value.ids).map(value => id(value)) });
     if (action === 'preview') return post('/api/studio/cloud/optimise-preview', { ids: list(value.ids).map(value => id(value)), compression: compressionProfile(value.compression).id });
     throw new Error('That Studio library action is unavailable.');
@@ -58,6 +59,10 @@ class DesktopLibrary {
   }
   async write(action, value = {}) {
     const post = (route, body) => this.portal.api(route, { method: 'POST', body });
+    if (action === 'subtitles') {
+      if (!['tracks','search','select','download'].includes(value.action)) throw new Error('Choose a subtitle action.');
+      return post('/api/studio/subtitles/' + value.action, { source:value.source,query:text(value.query || '',160),track:text(value.track || '',80),id:text(value.id || '',80),fingerprint:value.fingerprint });
+    }
     if (action === 'search') {
       const query = text(value.query, 160).trim();
       if (query.length < 2) throw new Error('Enter a film or TV title.');
@@ -66,7 +71,7 @@ class DesktopLibrary {
     if (action === 'inspect') return post('/api/studio/torrents/inspect', { request: id(value.request, false, 32), hash: id(value.hash, false, 40) });
     if (action === 'submit') {
       const sources = list(value.sources).map(source => {
-        if (source.type === 'cloud') return { type: 'cloud', ...frozen(source) };
+        if (source.type === 'cloud') return { type: 'cloud', ...frozen(source), ...(source.existingCopy ? { existingCopy: source.existingCopy } : {}) };
         if (source.type !== 'torrent') throw new Error('Choose an iCloud file or download result.');
         const files = list(source.files, 200);
         if (files.some(index => !Number.isInteger(index) || index < 0 || index > 5000) || new Set(files).size !== files.length) throw new Error('Choose valid video files.');

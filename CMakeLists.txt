@@ -64,12 +64,17 @@ add_library(mabeltv_core STATIC
     src/core/MyTvResumeWriter.h
     src/core/MabelQueueState.cpp
     src/core/TvControllerQueue.cpp
+    src/core/TvControllerReload.cpp
     src/core/StateDatabase.h
     src/ipc/PortalControlServer.cpp
+    src/ipc/PortalSeek.cpp
+    src/ipc/PortalSeek.h
     src/ipc/PortalControlServer.h
     src/hardware/CecTvControl.cpp
     src/hardware/CecTvControl.h
     src/library/ChannelLibrary.cpp
+    src/library/MediaFileIdentity.cpp
+    src/library/MediaFileIdentity.h
     src/library/ChannelLibrary.h
     src/library/MediaIndex.cpp
     src/library/MediaIndex.h
@@ -263,6 +268,8 @@ if(BUILD_TESTING)
         tests/unit/StateDatabaseTests.cpp
         tests/unit/CoreTests.h
         tests/unit/PortalProgrammeTests.cpp
+        tests/unit/PortalSeekTests.cpp
+        tests/unit/FilmMoveTests.cpp
         tests/unit/QueueTests.cpp
         tests/unit/TestStateFixture.cpp
         tests/unit/TestStateFixture.h

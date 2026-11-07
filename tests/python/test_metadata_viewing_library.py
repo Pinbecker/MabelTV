@@ -41,7 +41,7 @@ class MetadataViewingLibraryTests(unittest.TestCase):
 
     def test_tmdb_apply_automatically_fetches_one_matching_english_subtitle(self) -> None:
         movie = self.fixture.library.my_tv_root / "Fellowship of the Ring 2001.mkv"
-        movie.write_bytes(b"video")
+        movie.write_bytes(b"v" * 131072)
         self.fixture.library.tmdb_request = mock.Mock(return_value={
             "id": 120, "title": "The Lord of the Rings: The Fellowship of the Ring",
             "original_title": "The Lord of the Rings: The Fellowship of the Ring",
@@ -51,7 +51,7 @@ class MetadataViewingLibraryTests(unittest.TestCase):
         self.fixture.library.subtitle_availability = mock.Mock(return_value={"status": "missing"})
         self.fixture.library.opensubtitles_key = mock.Mock(return_value="private-consumer-key")
         self.fixture.library.opensubtitles_request = mock.Mock(side_effect=[
-            {"data": [{"attributes": {"language": "en", "hearing_impaired": False,
+            {"data": [{"attributes": {"language": "en", "hearing_impaired": False, "moviehash_match": True,
                                           "ratings": 8.0, "download_count": 20,
                                           # OpenSubtitles commonly returns a
                                           # release name with no .srt suffix.
@@ -259,6 +259,7 @@ class MetadataViewingLibraryTests(unittest.TestCase):
             })
 
     def test_film_can_move_to_another_film_channel_with_state(self) -> None:
+        self.fixture.library.player_mode_status = mock.Mock(return_value={"film_move_preserves_playback": True})
         channels = [
             {"number": 5, "name": "Films", "folder": "films",
              "aspect": "fit", "content_type": "films"},
@@ -274,6 +275,12 @@ class MetadataViewingLibraryTests(unittest.TestCase):
             (self.fixture.media / channel["folder"]).mkdir(parents=True)
         source = self.fixture.media / "films" / "The Snowman.mp4"
         source.write_bytes(b"film")
+        included = source.with_suffix(".en.srt")
+        included.write_text("1\n00:00:01,000 --> 00:00:02,000\nHello\n", encoding="utf-8")
+        other_version = source.with_suffix(".mkv")
+        other_version.write_bytes(b"independent version")
+        specific = source.with_name(source.name + ".fr.srt")
+        specific.write_bytes(included.read_bytes())
         settings = self.fixture.library.settings()
         settings.setdefault("library", {}).setdefault("disabled_programmes", {})["5"] = [source.name]
         self.fixture.library.write_state("settings", json.loads(json.dumps(settings)))
@@ -284,6 +291,20 @@ class MetadataViewingLibraryTests(unittest.TestCase):
         })
         self.fixture.library.refresh_tv = mock.Mock(return_value=True)
 
+        queue = self.fixture.library.state_database.mabel_queue_change("add", {
+            "channel_number": 5, "file_name": source.name, "title": "The Snowman", "artwork": "", "channel_name": "Films"})
+        queue_id = queue["items"][0]["id"]
+        self.fixture.library.state_database.mabel_queue_select(queue_id, "tv")
+        self.fixture.library.state_database.mabel_queue_event("started", "tv", queue_id)
+        self.fixture.library.state_database.mabel_queue_event("position", "tv", queue_id, position=300)
+
+        self.fixture.library.player_mode_status.return_value = {}
+        with self.assertRaisesRegex(ValueError, "player update"):
+            self.fixture.library.manage({"action": "move-programme", "channel": 5, "target_channel": 6, "file": source.name})
+        self.assertTrue(source.exists())
+        self.fixture.library.refresh_tv.assert_not_called()
+        self.fixture.library.player_mode_status.return_value = {"film_move_preserves_playback": True}
+
         self.fixture.library.manage({
             "action": "move-programme", "channel": 5,
             "target_channel": 6, "file": source.name,
@@ -291,6 +312,16 @@ class MetadataViewingLibraryTests(unittest.TestCase):
 
         self.assertFalse(source.exists())
         self.assertTrue((self.fixture.media / "christmas-films" / source.name).is_file())
+        self.assertTrue(included.exists(), "The remaining MKV still owns the shared subtitle")
+        self.assertTrue(other_version.exists())
+        self.assertFalse(specific.exists())
+        self.assertTrue((self.fixture.media / "christmas-films" / included.name).is_file())
+        self.assertTrue((self.fixture.media / "christmas-films" / specific.name).is_file())
+        updated_queue = self.fixture.library.state_database.mabel_queue()
+        self.assertEqual(updated_queue["current_id"], queue_id)
+        self.assertEqual(updated_queue["phase"], "playing")
+        self.assertEqual(updated_queue["position_seconds"], 300)
+        self.assertEqual(updated_queue["items"][0]["channel_number"], 6)
         disabled = self.fixture.library.settings()["library"]["disabled_programmes"]
         self.assertNotIn(source.name, disabled["5"])
         self.assertIn(source.name, disabled["6"])

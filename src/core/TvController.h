@@ -253,6 +253,7 @@ private:
     void saveSettings();
     void loadState();
     void saveState() const;
+    QString relocateFilmResumeState(const ChannelLibraryResult &library, const QString &activePath);
     void requestTune(int channelIndex,
                      bool updatePreviousChannel = true,
                      bool preserveCurrentPosition = true);

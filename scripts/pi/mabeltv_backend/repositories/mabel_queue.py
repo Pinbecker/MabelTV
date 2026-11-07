@@ -4,6 +4,15 @@ import uuid
 from typing import Any
 
 class MabelQueueRepositoryMixin:
+    def relocate_queue_item(self, source_channel, source_name, target_channel, target_name):
+        with self.transaction() as db:
+            for table in ("mabel_queue_entries", "mabel_queue_history"):
+                db.execute(f"UPDATE {table} SET channel_number=?,file_name=?,"
+                           "channel_name=COALESCE((SELECT name FROM channels WHERE number=?),channel_name) "
+                           "WHERE channel_number=? AND file_name=?",
+                           (target_channel, target_name, target_channel, source_channel, source_name))
+            self._bump_revisions(db, "channels")
+
     def mabel_queue(self) -> dict[str, Any]:
         db = self.connect()
         try:

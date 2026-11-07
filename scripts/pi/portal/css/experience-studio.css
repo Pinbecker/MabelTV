@@ -251,3 +251,16 @@ body.portal-experience .studio-job .studio-job-percent { margin-left:auto; }
 body.portal-experience .studio-job-actions .studio-button { min-height:32px; padding:0 10px; }
 
 body.portal-experience .studio-job-speed { font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+body.portal-experience .studio-version-field { display:grid; gap:12px; padding:14px; margin-bottom:16px; border:1px solid var(--experience-line); border-radius:12px; }
+body.portal-experience .studio-version-field select { width:100%; min-width:0; }
+body.portal-experience #studioVersions:empty { display:none; }
+body.portal-experience .studio-existing-summary { margin:0; white-space:pre-line; overflow-wrap:anywhere; color:var(--experience-muted); font-size:13px; line-height:1.5; }
+body.portal-experience #studioCloudDeleteNames { list-style:none; padding:0; }
+body.portal-experience #subtitleSheet > .library-sheet-panel { height:auto; max-height:85dvh; }
+body.portal-experience #subtitleTracks { display:grid; gap:10px; border:0; background:transparent; }
+body.portal-experience #subtitleTracks .studio-episode { border:1px solid var(--experience-line); border-radius:12px; }
+body.portal-experience #subtitleTracks input { border-radius:50%; }
+body.portal-experience #subtitleMessage { margin:16px 0; color:var(--experience-muted); font-size:13px; line-height:1.5; }
+body.portal-experience #subtitleResults { margin-top:16px; }
+body.portal-experience #subtitleSearchButton { display:none; }

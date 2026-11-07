@@ -148,6 +148,13 @@ an interrupted transfer is restarted from its original source.
 
 ## Backup, restore and rollback
 
+Subtitle alternatives and selections use reserved `studio.subtitles.*` records
+in `application_settings`, bound to stable local identity/cloud ID plus the
+video fingerprint. Track text is retained in SQLite, so the normal online
+database backup includes it. Search candidates are separate, short-lived
+`studio.subtitleSearch.*` records. Replacing a video invalidates its old track
+association; matching a title alone never attaches another cut's subtitles.
+
 Never copy `mabeltv.db` directly while services are active and never back up
 only the main file without WAL state. Use SQLite's online backup API through
 `mabeltv-state-migrate backup`, then validate the snapshot's integrity, foreign

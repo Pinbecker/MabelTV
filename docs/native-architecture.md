@@ -101,11 +101,14 @@ signals, properties and callable methods:
 | `TvController.cpp` | Lifecycle, library application, read-only models and guide data. |
 | `TvControllerActions.cpp` | Remote actions, parent settings, volume/power commands and reload requests. |
 | `TvControllerPortal.cpp` | Authenticated portal playback, My TV progress and library enable/disable operations. |
+| `TvControllerReload.cpp` | Recognises same-filesystem film moves using cached file identities, relocates resume keys and preserves the active programme during a library reload. |
+| `library/MediaFileIdentity.cpp` | Filesystem volume/object identity plus size and modification time; no title matching or media hashing. Used only to reconcile a vanished pathname with one unambiguous current file. |
 | `TvControllerPersistence.cpp` | Loading and atomically saving settings and runtime state. |
 | `StateDatabase.cpp` | Focused SQLite projections, field-level settings merges and atomic player snapshots; SQLite remains the single persistent authority. |
 | `MabelQueueState.cpp` | Atomic TV queue reservations, confirmation, completion, playback history and interruption state. |
 | `TvControllerQueue.cpp` | Validated queue playback, failure handling and ownership transfer through the existing controller. |
 | `ipc/PortalControlServer.cpp` | Buffered newline-framed local control socket and command dispatch into the controller. |
+| `ipc/PortalSeek.cpp` | Exact seeks for the currently active Mabel TV, My TV or Storytime player. A source/generation token rejects requests for a programme that changed. Seeking does not change pause state, open another player or issue CEC commands. |
 | `TvControllerPlayback.cpp` | Tuning, timeline selection, episode reuse, playback position and low-level state setters. |
 | `TvControllerFormatting.h` | Small shared formatting helpers used by more than one implementation unit. |
 

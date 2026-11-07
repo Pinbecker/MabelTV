@@ -67,6 +67,8 @@ from mabeltv_backend.portal import (
 from mabeltv_backend.studio_cloud_metadata import StudioCloudMetadataMixin
 from mabeltv_backend.studio_cloud_manager import StudioCloudManagerMixin
 from mabeltv_backend.studio import StudioMixin
+from mabeltv_backend.studio_presence import StudioPresenceMixin
+from mabeltv_backend.subtitle_tracks import SubtitleTracksMixin
 from mabeltv_backend.studio_originals import StudioOriginalsMixin
 from mabeltv_backend.studio_pi import StudioPiMixin
 from mabeltv_backend.studio_backups import StudioBackupsMixin
@@ -87,6 +89,7 @@ from mabeltv_backend.upload_notifications import UploadNotificationsMixin
 from mabeltv_backend.studio_cloud_optimisation import StudioCloudOptimisationMixin
 from mabeltv_backend.usb import UsbMixin
 from mabeltv_backend.viewing import ViewingMixin
+from mabeltv_backend.seek_previews import SeekPreviewsMixin
 from mabeltv_backend.viewing_queue import ViewingQueueMixin
 
 __all__ = [
@@ -116,17 +119,18 @@ __all__ = [
     "urlopen",
 ]
 
-class Library(StudioMixin, StudioOriginalsMixin, StudioTorrentsMixin, StudioCloudMixin, StudioOrganiserMixin, StudioCloudFilingMixin, StudioCloudManagerMixin, StudioCloudMetadataMixin, StudioCloudOptimisationMixin, MyTvTransferMixin, PlaylistsMixin, FamilyMediaMixin, FamilyUploadsMixin,
+class Library(SubtitleTracksMixin, StudioPresenceMixin, StudioMixin, StudioOriginalsMixin, StudioTorrentsMixin, StudioCloudMixin, StudioOrganiserMixin, StudioCloudFilingMixin, StudioCloudManagerMixin, StudioCloudMetadataMixin, StudioCloudOptimisationMixin, MyTvTransferMixin, PlaylistsMixin, FamilyMediaMixin, FamilyUploadsMixin,
               IPlayerLibraryMixin, MabelQueueMixin, ViewingMixin, UploadConversionMixin, UploadNotificationsMixin, TranscodingMixin, AuthenticationMixin,
               ArtworkProxyMixin, StudioPiMixin, StudioBackupsMixin, StudioRecoveryMixin, StudioDesktopMixin,
               MediaCatalogueMixin, ManagementMixin, RemotePlaybackMixin, PlaybackProgressMixin, LgControlMixin,
-              UsbMixin,
+              UsbMixin, SeekPreviewsMixin,
               ProviderTransportMixin, NativeMyTvMixin, MyTvMetadataMixin, ProviderMetadataMixin,
               ViewingQueueMixin,
               MyTvInsightsMixin, MyTvExploreMixin,
               SystemStatusMixin):
     def __init__(self, args: argparse.Namespace) -> None:
         self.media_root = Path(args.media_root).resolve()
+        self.initialise_seek_previews()
         self.config_path = Path(args.config).resolve()
         database_value = getattr(args, "database", None)
         if not database_value:
@@ -179,6 +183,7 @@ class Library(StudioMixin, StudioOriginalsMixin, StudioTorrentsMixin, StudioClou
         self.sessions: dict[str, float] = {}
         self.login_failures: dict[str, list[float]] = {}
         self.config_lock = threading.RLock()
+        self.subtitle_track_lock = threading.RLock()
         self.iplayer_inventory_lock = threading.RLock()
         self.iplayer_identity_cache: dict[str, Any] = {}
         self.channel_programme_duration_cache: dict[tuple[str, int, int], float] = {}

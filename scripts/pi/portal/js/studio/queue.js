@@ -40,6 +40,7 @@ function openStudioDestination(sources, matchingJob = null, cloudContext = null)
   studioSyncDestination()
   studioDestinationMetadata()
   openLibrarySheet($('#studioDestinationSheet'))
+  void studioLoadVersions(studioDraft)
 }
 function studioSyncDestination() {
   const chosen = $('#studioDestinationForm input[name="studioDestination"]:checked').value
@@ -116,6 +117,10 @@ async function studioSubmitDestination(event) {
   const button = $('#studioDestinationSubmit'), draft = studioDraft
   button.disabled = true
   try {
+    if (draft.cloudContext && !draft.originalInfo && !draft.presenceReady) throw new Error('Wait for the Pi copy check, or retry it.')
+    if (!draft.originalInfo && draft.sources.length && draft.sources.every(source => source.existingCopy?.mode === 'keep')) {
+      closeLibrarySheet($('#studioDestinationSheet')); notice('Existing TV copies kept.'); return
+    }
     if (draft.matchingJob) {
       if (!draft.match) throw new Error('Choose the matching title first.')
       await api('/api/studio/action', { method: 'POST', body: JSON.stringify({ id: draft.matchingJob.id, action: 'metadata', match: draft.match }) })
@@ -142,7 +147,10 @@ async function studioSubmitDestination(event) {
         const mode = $('#studioOriginalMode').value
         if (mode === 'replace' && !await portalConfirm({ title: 'Replace existing copy?', message: `Replace the existing ${chosen === 'icloud' ? 'iCloud' : 'TV'} version of ${draft.originalInfo.title} after the new copy is verified.`, confirmLabel: 'Download and replace' })) return
         await api('/api/studio/download-originals', { method: 'POST', body: JSON.stringify({ ids: draft.originalInfo.items.map(item => item.deliveryId), destination, mode, confirmReplace: mode === 'replace' }) })
-      } else await api('/api/studio/jobs', { method: 'POST', body: JSON.stringify({ sources: draft.sources, destination, replaceCloudOriginal: draft.replaceCloudOriginal === true, match: chosen === 'film' ? draft.match : null }) })
+      } else {
+        if (draft.sources.some(source => source.existingCopy?.mode === 'replace') && !await portalConfirm({ title: 'Replace the selected TV copy?', message: 'The existing copy stays until the new one is verified.', confirmLabel: 'Replace copy' })) return
+        await api('/api/studio/jobs', { method: 'POST', body: JSON.stringify({ sources: draft.sources, destination, replaceCloudOriginal: draft.replaceCloudOriginal === true, match: chosen === 'film' ? draft.match : null }) })
+      }
     }
     closeLibrarySheet($('#studioDestinationSheet'))
     studioState.selected.clear(); studioState.selecting = false

@@ -405,6 +405,8 @@
         file: episode.path }
       bindSendToMabel($('#myTvEpisodeSheet .watch-destination-actions'), source, episode.display_name,
         () => openMyTvEpisodeSheet(current, episode, returnTo))
+      bindSubtitleControls($('#myTvEpisodeSheet .watch-destination-actions'), source, episode.display_name,
+        () => openMyTvEpisodeSheet(current, episode, returnTo))
       $('#myTvEpisodeTv').onclick = () => {
         playOnTv(source, episode.display_name)
       }

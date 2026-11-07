@@ -87,10 +87,11 @@ function renderStudioCloud() {
   $('#studioCloudSelect').textContent = studioState.selecting ? 'Done' : 'Select'
 }
 async function studioOpenCloudTitles(titles, selectedEpisodes = null) {
-  const files = [], sources = []
+  const files = [], sources = [], groups = []
   for (const title of titles) {
     const episodes = selectedEpisodes || (title.kind === 'series' ? (await api('/api/studio/cloud?series=' + encodeURIComponent(title.id))).items : [title])
     for (const file of episodes) {
+      groups.push(file)
       files.push(...(file.versions || [file]))
       sources.push({ type: 'cloud', id: file.id, title: title.title || title.name, kind: 'video',
         bytes: file.bytes, modified: file.modified || '', remoteId: file.remoteId || '',
@@ -98,7 +99,7 @@ async function studioOpenCloudTitles(titles, selectedEpisodes = null) {
         series: file.series, match: title.metadata || null })
     }
   }
-  const context = { titles, files, selectedEpisodes: Boolean(selectedEpisodes) }
+  const context = { titles, files, groups, selectedEpisodes: Boolean(selectedEpisodes) }
   if (selectedEpisodes && studioState.episodeDraft) {
     studioDraft = studioState.episodeDraft; studioState.episodeDraft = null
     const previousSeasons = new Set(studioDraft.sources.map(source => source.series))
@@ -107,6 +108,7 @@ async function studioOpenCloudTitles(titles, selectedEpisodes = null) {
     studioDraft.sources = sources; studioDraft.cloudContext = context
     studioSyncDestination(); studioDestinationMetadata()
     openLibrarySheet($('#studioDestinationSheet'))
+    void studioLoadVersions(studioDraft)
     return
   }
   openStudioDestination(sources, null, context)

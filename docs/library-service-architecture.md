@@ -1,5 +1,20 @@
 # Library service architecture
 
+Film channel moves preserve subtitle sidecars, subtitle choices, viewing and
+playlist identity, and queued/history entries. Shared legacy sidecars stay with
+any other same-stem video. The native player reconciles the moved file and its
+resume position without a new playback request. Older player binaries reject
+the move before changing files. Bin deletion checks a frozen list of item sizes
+and modification fingerprints and does not issue a player refresh.
+
+`seek_previews.py` owns disposable `.seek-previews` JPEG strips (256 MB maximum).
+The authenticated endpoint validates the active native seek token and a local
+media-root path. One low-priority, single-threaded ffmpeg worker decodes sparse
+keyframes into eight ten-second thumbnails. Pending work follows the latest
+pointer position instead of building an unbounded queue. Each process has a
+15-second deadline. Native source paths stay on local IPC; no preview operation
+commands playback. These rebuildable images are excluded from state backups.
+
 The local Library service is the private backend for the MabelTV portal and its
 installed iOS PWA. Public routes, cookies, JSON response shapes, local socket
 commands and the systemd entry point are compatibility contracts.
@@ -19,6 +34,19 @@ keeps dependencies directed toward the composition root and avoids hidden
 secondary service objects.
 
 ## Backend owners
+
+- `studio_presence.py`: live metadata identity checks for TV copies and frozen,
+  explicitly chosen keep/replace/alongside decisions. Episode identity is required
+  for series; grouping never establishes that two video versions are identical.
+- `subtitle_tracks.py`: authenticated, version-bound text subtitle alternatives,
+  selection, manual provider search/download and cloud subtitle preservation.
+  Alternatives and choices are durable `studio.subtitles.*` SQLite records and
+  therefore part of the existing database backups. It never commands playback.
+- `subtitle_matching.py`: bounded OpenSubtitles file-hash lookup helpers, independent
+  of application state. Automatic downloads require a reported file-hash match;
+  ambiguous title-only matches remain available through the manual chooser.
+- `subtitle_files.py`: pure subtitle sidecar ownership for video versions sharing
+  a filename stem. Explicit container-qualified sidecars stay with that file.
 
 - `database_schema.py`: immutable schema definitions and the ordered migration
   ledger.
@@ -328,8 +356,12 @@ existing show, season and episode names.
 
 `studio_cloud_filing.py` applies that policy to verified metadata. Existing
 filenames are retained; stable-ID suffixes resolve collisions only. Existing
-same-stem subtitle sidecars move with their videos, but Studio never uploads
-new subtitles to iCloud. Checked file versions
+subtitle sidecars move with their videos. Container-qualified sidecars belong
+to that exact video; legacy shared sidecars stay when another same-stem version
+needs them. Studio preserves text alternatives in SQLite and publishes the
+selected track beside each verified iCloud copy. Before discarding a source
+with embedded subtitles it also verifies a lossless subtitle-only archive in
+iCloud. No subtitle action issues a playback or CEC command. Checked file versions
 carry canonical title links through cloud-side renames, including series-group
 identity changes. Reserved `studio.filing.*` SQLite journals checkpoint each
 move and recover an unacknowledged move by checking both endpoints. Existing

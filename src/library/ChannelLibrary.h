@@ -12,6 +12,7 @@ struct Episode
 {
     QString path;
     double durationSeconds = 0.0;
+    QString fileIdentity;
 };
 
 struct Channel

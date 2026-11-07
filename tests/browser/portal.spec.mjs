@@ -403,7 +403,7 @@ test('@visual Mabel TV remote keeps its controls on one screen', async ({ page }
   await expect(page.locator('#view-live .remote-transport-context button')).toHaveCount(4)
   await expect(page.locator('#view-live #openLiveChannels')).toHaveCount(0)
   await expect(page.locator('#remoteMyTvAction')).toHaveCount(0)
-  await expect(page.locator('#remoteSubtitles')).toHaveText('Subtitles')
+  await expect(page.locator('#remoteSubtitles')).toHaveText('Subtitles · None')
   await expect(page.locator('#remoteMyTvHandoff')).toHaveText('Open My TV')
   await expect(page.locator('#remoteWidescreen')).toBeVisible()
   await expect(page.locator('#remoteLock')).toHaveText('')

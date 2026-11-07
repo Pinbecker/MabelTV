@@ -155,11 +155,10 @@
   <section class="library-sheet-panel wide">
     <header class="library-sheet-head">
       <div>
-        <p class="section-kicker">Safe to change your mind</p>
-        <h2>Recycle bin</h2>
+        <p class="section-kicker">Pi storage</p>
+        <h2>Pi bin</h2>
         <p>
-          Binned programmes stay here for 30 days unless you restore or remove
-          them sooner.
+          Removed files stay here for 30 days. iCloud copies are separate.
         </p>
       </div>
       <button
@@ -171,6 +170,7 @@
       </button>
     </header>
     <div id="bin" class="library-sheet-body library-recycle-list"></div>
+    <div class="studio-sheet-footer"><span id="recycleSummary" role="status"></span><button id="emptyRecycleBin" type="button" class="danger" disabled>Empty bin</button></div>
   </section>
 </dialog>
 <dialog id="channelUploadPanel" class="library-sheet channel-upload-sheet">

@@ -1,5 +1,19 @@
 # Portal architecture
 
+The Remote transport row offers Scrub for both Mabel TV and My TV playback.
+`core/remote-scrub.js` owns the in-place timeline, elapsed/total time and wall-clock
+finish estimate. Dragging previews locally; release sends one generation-bound
+seek with no automatic retry. A programme change closes the timeline. The native
+capability flag keeps the control disabled until the matching player is active.
+`core/remote-preview.js` adds a floating thumbnail while holding/dragging. It
+caches up to sixteen strips, cancels obsolete requests and never seeks the TV.
+An uncached strip has an explicit preparing state; preview failures do not block
+the timeline or create a global error banner. Pictures sample ten-second points;
+the release still seeks to the selected second.
+The subtitle control shows On/Off explicitly and None when no track is available.
+System and help links to the existing Pi bin sheet, with sizes and a confirmed
+snapshot-based empty action; deleting bin contents never refreshes playback.
+
 The Mabel TV remote's **Open My TV** shortcut opens the native library directly.
 Its picture control cycles Standard, Widescreen and Full screen, labels the
 next mode, and exposes the current mode in its accessible description. Full
@@ -559,7 +573,7 @@ the normal Studio route and Back behaviour, including `/torrents` deep links.
 
 The laptop's durable worker reports independent stage progress without refreshing the library or losing form focus. iCloud refresh keeps the previous catalogue on failure. Search requests wait on the Pi while the laptop is offline. Cloud sign-in runs only through the owner-authenticated HTTPS portal and never browser storage. A private Unix socket carries rclone's configuration protocol.
 
-`studio/cloud-library.js` owns four-column My Viewing poster cards, grouped cloud series. iCloud collections are no longer exposed in the portal. `studio/metadata.js` owns background exact matching and explicit rich metadata correction before publishing. `studio/cloud-delete.js` owns only the named deletion confirmation reached from the destination sheet. The library exposes Films/TV/Kids and sorting. My TV collections remain destination choices for Pi filing; cloud collection assignment and filtering are removed. Historical cloud associations remain stored without moving or deleting media. Activity keeps keyed rows with a Studio-specific version marker, compact status/actions with one visible failure message; the portal system-version marker is reserved for actual version labels.
+`studio/cloud-library.js` owns four-column My Viewing poster cards, grouped cloud series. iCloud collections are no longer exposed in the portal. `studio/metadata.js` owns background exact matching and explicit rich metadata correction before publishing. `studio/cloud-delete.js` owns per-file deletion confirmation: grouped versions are unchecked until individually selected. `studio/versions.js` checks canonical title/episode identity against current Pi files and offers Keep, Replace or Both with a frozen version check. `library/subtitles.js` provides the shared subtitle selection/search sheet for My TV, Mabel TV and iCloud files; changes apply on the next playback and never issue a TV command. The library exposes Films/TV/Kids and sorting. My TV collections remain destination choices for Pi filing; cloud collection assignment and filtering are removed. Historical cloud associations remain stored without moving or deleting media. Activity keeps keyed rows with a Studio-specific version marker, compact status/actions with one visible failure message; the portal system-version marker is reserved for actual version labels.
 
 Studio keeps catalogue matching quiet and exposes corrections per title. The library toolbar contains the category selector and Select; refresh sits beside the connection status. Selection mode replaces personal artwork status with an empty circle on each card and a filled tick for chosen titles. Activity lists pending work, actionable failures and the twenty most recent completion receipts. Cancelled records remain visible with a Cancelled status and can be removed from history by the same swipe action as completed entries.
 

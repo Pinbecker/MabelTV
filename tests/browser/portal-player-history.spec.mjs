@@ -21,15 +21,18 @@ test('remote subtitles work for kids in every picture mode and disable without a
     await page.evaluate(value => renderRemoteState(value), state)
     await expect(subtitles).toBeEnabled()
     await expect(subtitles).toHaveAttribute('aria-pressed', 'false')
+    await expect(subtitles).toHaveText('Subtitles · Off')
   }
   const sent = page.waitForRequest(request => request.url().endsWith('/api/live/control')
     && request.method() === 'POST')
   await subtitles.click()
   expect((await sent).postDataJSON()).toMatchObject({ command: 'toggle-subtitles' })
   await expect(subtitles).toHaveAttribute('aria-pressed', 'true')
+  await expect(subtitles).toHaveText('Subtitles · On')
   state.subtitles_available = false; state.subtitles_visible = false
   await page.evaluate(value => renderRemoteState(value), state)
   await expect(subtitles).toBeDisabled()
+  await expect(subtitles).toHaveText('Subtitles · None')
 })
 
 test('inline iOS player Back consumes its history layer and restores the launching card', async ({ page }) => {

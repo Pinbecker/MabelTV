@@ -93,6 +93,8 @@ class MediaCatalogueMixin:
             source_channel, source_name, target_channel, target_name)
         self.state_database.relocate_playlist_item(
             source_channel, source_name, target_channel, target_name)
+        self.state_database.relocate_queue_item(
+            source_channel, source_name, target_channel, target_name)
 
     def read_json(self, path: Path, fallback: Any) -> Any:
         try:

@@ -179,6 +179,8 @@ class StudioMixin:
             if destination.get("optimiseCloud") and origin["type"] != "cloud":
                 raise ValueError("Choose an existing iCloud video to optimise")
             chosen = dict(destination)
+            if origin["type"] == "cloud" and self.studio_choose_existing(source, chosen):
+                continue
             chosen["saveCloud"] = True
             if origin["type"] == "cloud" and chosen["cloudCopies"] == "optimised":
                 chosen["replaceCloudOriginal"] = True
@@ -198,6 +200,7 @@ class StudioMixin:
                 continue
             jobs.append({"id": uuid.uuid4().hex, "fingerprint": fingerprint,
                 "source": origin, "title": title, "destination": chosen, "match": self.studio_match(source_match),
+                "originalRecovery": chosen.get("recoveryMode") == "replace",
                 "status": "queued", "stage": "queued", "percent": 0, "policyVersion": 2, "created": time.time(), "updated": time.time()})
         jobs = self.state_database.studio_add_jobs(jobs)
         return {"ok": True, "ids": [j["id"] for j in jobs]}
@@ -256,6 +259,8 @@ class StudioMixin:
         language = str(payload.get("language", "en"))
         if not re.fullmatch(r"[a-z]{2,3}(?:-[A-Z]{2})?", language):
             raise ValueError("Choose a subtitle language")
+        if language in {"en", "eng"}:
+            return self.subtitle_receive({**payload, "source": self.subtitle_upload_source(result)})
         try:
             data = base64.b64decode(str(payload.get("data", "")), validate=True)
             if data.startswith((b"\xff\xfe", b"\xfe\xff")):

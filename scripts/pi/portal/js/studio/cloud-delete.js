@@ -1,20 +1,28 @@
 'use strict'
 
-let studioDeleteContext = null, studioDeleteVersion = ''
+let studioDeleteContext = null, studioDeleteVersion = '', studioDeleteFiles = []
 function studioConfirmCloudDelete() {
   studioDeleteContext = studioDraft.cloudContext
   const list = $('#studioCloudDeleteNames'); list.replaceChildren()
-  for (const title of studioDeleteContext.titles) {
-    const row = document.createElement('li')
-    row.textContent = title.title || title.name
-    if (title.kind === 'series') row.textContent += ` · ${studioDeleteContext.files.length} selected episodes`
-    else if (title.versions?.length > 1) row.textContent += ` · ${title.versions.length} versions`
-    list.append(row)
+  studioDeleteFiles = [...new Map(studioDeleteContext.files.map(file => [file.id, file])).values()]
+  for (const file of studioDeleteFiles) {
+    const row = document.createElement('li'), label = document.createElement('label')
+    label.className = 'studio-episode'
+    label.innerHTML = `<input type="checkbox" value="${escapeHtml(file.id)}"><span><strong>${escapeHtml(file.name || file.path?.split('/').pop() || 'Video')}</strong><small>${escapeHtml(studioBytes(file.bytes))} · ${escapeHtml((file.extension || file.path?.split('.').pop() || '').replace('.', '').toUpperCase())}</small></span>`
+    label.querySelector('input').checked = studioDeleteFiles.length === 1
+    label.querySelector('input').onchange = studioDeleteSelection
+    row.append(label); list.append(row)
   }
+  studioDeleteSelection()
   $('#studioCloudDeleteError').classList.add('hidden')
   closeLibrarySheet($('#studioDestinationSheet'), false)
   closeLibrarySheet($('#studioActionsSheet'), false)
   openLibrarySheet($('#studioCloudDeleteSheet'))
+}
+function studioDeleteSelection() {
+  const count = $$('#studioCloudDeleteNames input:checked').length
+  $('#studioCloudDeleteConfirm').disabled = !count
+  $('#studioCloudDeleteConfirm').textContent = count ? `Delete ${count} ${count === 1 ? 'file' : 'files'}` : 'Choose a version'
 }
 function studioCancelCloudDelete() {
   closeLibrarySheet($('#studioCloudDeleteSheet'), false)
@@ -34,7 +42,9 @@ $('#studioCloudDeleteCancel').onclick = studioCancelCloudDelete
 $('#studioCloudDeleteConfirm').onclick = async () => {
   const button = $('#studioCloudDeleteConfirm'); button.disabled = true
   try {
-    const items = studioDeleteContext.files.map(item => ({ id: item.id, bytes: item.bytes, modified: item.modified || '', remoteId: item.remoteId || '' }))
+    const selected = new Set($$('#studioCloudDeleteNames input:checked').map(input => input.value))
+    const items = studioDeleteFiles.filter(item => selected.has(item.id)).map(item => ({ id: item.id, bytes: item.bytes, modified: item.modified || '', remoteId: item.remoteId || '' }))
+    if (!items.length) return
     await api('/api/studio/cloud/operation', { method: 'POST', body: JSON.stringify({ action: 'delete', confirmed: true, items }) })
     closeLibrarySheet($('#studioCloudDeleteSheet'))
     studioState.selected.clear(); studioState.selecting = false

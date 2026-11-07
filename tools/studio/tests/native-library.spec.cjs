@@ -10,6 +10,35 @@ async function launch() {
   await expect(page.locator('#connection-label')).toContainText('Connected');
   return {...f,app,page,errors,close:async()=>{await app.close();await f.close();}};
 }
+
+test('existing Pi versions and subtitle alternatives stay in the native Studio window',async()=>{
+  const f=await launch();try {
+    const {page,state,app}=f;
+    state.copies=[{key:'pi-copy',name:'Arrival compatible.mp4',bytes:2e9,location:'My TV films',fingerprint:[200,'mtime','inode']}];
+    await page.locator('[data-view="cloud"]').click();await page.getByRole('button',{name:'Arrival',exact:true}).click();
+    await expect(page.locator('.library-presence')).toContainText('Already on your Pi');
+    await expect(page.locator('[data-mode]')).toHaveValue('keep');
+    await page.getByRole('button',{name:'Send to My TV',exact:true}).click();
+    expect(state.writes.some(write=>write.path==='/api/studio/jobs')).toBe(false);
+    await page.getByRole('button',{name:'Arrival',exact:true}).click();
+    await page.locator('[data-mode]').selectOption('alongside');
+    await page.getByRole('button',{name:'Media settings'}).click();
+    await page.locator('[data-subtitles]').click();
+    await expect(page.locator('.subtitle-dialog')).toContainText('Included English');
+    await page.locator('.subtitle-dialog input[value="off"]').check();
+    await expect.poll(()=>state.subtitle).toBe('off');
+    await page.locator('.subtitle-dialog input[type=search]').press('Enter');
+    await page.getByRole('button',{name:/Arrival exact release/}).click();
+    await expect(page.locator('.subtitle-dialog input[value="downloaded"]')).toBeChecked();
+    await page.screenshot({path:'test-results/native-subtitle-options.png'});
+    await page.getByRole('button',{name:'Close subtitles'}).click();
+    await page.getByRole('button',{name:'Close settings'}).click();
+    await page.getByRole('button',{name:'Send to My TV',exact:true}).click();
+    expect(state.writes.find(write=>write.path==='/api/studio/jobs').sources[0].existingCopy).toEqual({key:'pi-copy',fingerprint:[200,'mtime','inode'],mode:'alongside'});
+    expect(state.writes.some(write=>write.path==='/api/live/control')).toBe(false);
+    expect(app.windows()).toHaveLength(1);expect(f.errors).toEqual([]);
+  } finally {await f.close();}
+});
 test('iCloud library is native, preserves artwork on selection and sends a frozen compatibility-only copy',async()=>{
   const f=await launch();try {
     const {page,app,state}=f;
@@ -79,7 +108,7 @@ test('native cloud settings preview optimisation, cancel deletion and recover or
     expect(job.replaceCloudOriginal).toBe(true);
     await page.locator('[data-view="cloud"]').click();await page.getByRole('button',{name:'Arrival',exact:true}).click();
     await page.getByRole('button',{name:'Media settings'}).click();await page.locator('[data-cloud-action="delete"]').click();
-    await page.locator('.library-confirm [data-cancel]').click();
+    await page.locator('.library-settings [data-cancel]').click();
     expect(state.writes.some(write=>write.path==='/api/studio/cloud/operation')).toBe(false);
     await page.locator('[data-cloud-action="original"]').click();
     await expect(page.locator('#library-send')).toBeVisible();

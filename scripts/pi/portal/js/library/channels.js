@@ -229,6 +229,9 @@ function renderChannelNumbers() {
     function renderBin() {
       const items = library.recycle || []
       $('#recycleCount').textContent = items.length
+      const total = items.reduce((sum, item) => sum + (item.bytes || 0), 0)
+      $('#recycleSummary').textContent = `${items.length} ${items.length === 1 ? 'item' : 'items'} · ${studioBytes(total)}`
+      $('#emptyRecycleBin').disabled = !items.length
       const bin = $('#bin')
       bin.innerHTML = ''
       if (!items.length) {
@@ -241,7 +244,7 @@ function renderChannelNumbers() {
       }
       items.forEach(item => {
         const row = document.createElement('div'); row.className = 'programme'
-        const name = document.createElement('span'); name.textContent = `${item.display_name} · ${item.channel_name}`
+        const name = document.createElement('span'); name.textContent = `${item.display_name} · ${item.channel_name} · ${studioBytes(item.bytes || 0)}`
         const actions = document.createElement('div'); actions.className = 'programme-actions'
         actions.append(
           portalButton({

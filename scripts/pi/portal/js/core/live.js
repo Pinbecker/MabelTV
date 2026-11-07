@@ -159,8 +159,13 @@
       }
       $('#remotePlayPause')?.classList.toggle('paused', paused)
       if ($('#remotePlayPauseLabel')) $('#remotePlayPauseLabel').textContent = paused ? 'Play' : 'Pause'
-      $('#remoteSubtitles').classList.toggle('active', state.subtitles_visible === true)
-      $('#remoteSubtitles').setAttribute('aria-pressed', String(state.subtitles_visible === true))
+      const subtitlesOn = available && state.subtitles_available === true && state.subtitles_visible === true
+      const subtitlesState = !available ? '—' : state.subtitles_available !== true ? 'None' : subtitlesOn ? 'On' : 'Off'
+      $('#remoteSubtitles').classList.toggle('active', subtitlesOn)
+      $('#remoteSubtitles').setAttribute('aria-pressed', String(subtitlesOn))
+      $('#remoteSubtitles').querySelector('span').textContent = `Subtitles · ${subtitlesState}`
+      $('#remoteSubtitles').setAttribute('aria-label', !available ? 'Subtitles unavailable while TV is offline' : state.subtitles_available !== true ? 'No subtitles for this programme' : `Subtitles ${subtitlesState.toLowerCase()}. Turn ${subtitlesOn ? 'off' : 'on'}`)
+      renderRemoteScrub(state)
       const widescreenAvailable = !my_tv && state.widescreen_available === true
       const presentationMode = state.presentation_mode || (state.widescreen_enabled ? 'widescreen' : 'standard')
       const nextPresentation = presentationMode === 'widescreen' ? 'Full screen'

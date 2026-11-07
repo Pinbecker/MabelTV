@@ -6,6 +6,9 @@ class CoreTests final : public QObject
     Q_OBJECT
 
 private slots:
+    void portalSeekTargetsCurrentOwnerAndRejectsStalePlayback();
+    void movedFilmKeepsPlaybackAndResume_data();
+    void movedFilmKeepsPlaybackAndResume();
     void shuffleBagVisitsEveryItemBeforeRepeating();
     void shuffleBagAvoidsImmediateRepeatAcrossRefill();
     void channelLibraryLoadsAndSortsValidChannels();

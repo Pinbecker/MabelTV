@@ -56,6 +56,10 @@ function studioDestinationMetadata() {
 }
 function studioOpenActions() {
   studioDestinationMetadata()
+  const source = studioDraft.sources.length === 1 ? studioDraft.sources[0] : null
+  const root = $('#studioActionsSheet .watch-film-actions')
+  root?.querySelector('[data-subtitle-options]')?.remove()
+  if (source) bindSubtitleControls(root, { kind: 'cloud', id: source.id }, source.title, studioOpenActions)
   closeLibrarySheet($('#studioDestinationSheet'), false)
   openLibrarySheet($('#studioActionsSheet'))
   void studioLoadOriginalAction().catch(() => {})

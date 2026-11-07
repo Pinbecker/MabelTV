@@ -19,6 +19,11 @@ async function fixture() {
     if (url.pathname === '/api/library') return json({channels:[{number:1,name:'Julia Donaldson',folder:'Julia'}],my_tv_folders:['MCU'],my_tv_series:[{id:id(20,32),title:'Sherlock',seasons:[1,2]}]});
     if (url.pathname === '/api/studio/collections') return json({pi:['MCU'],cloud:[]});
     if (url.pathname === '/api/studio/status') return json({jobs:state.jobs,workers:[{online:true}],cloud:{configured:true}});
+    if (url.pathname === '/api/studio/presence') return json({items:body.ids.map(id=>({id,copies:state.copies || []}))});
+    if (url.pathname === '/api/studio/subtitles/tracks') return json({configured:true,fingerprint:[100,'v1'],selected:state.subtitle || 'included',tracks:[{id:'included',label:'Included English',origin:'included'}]});
+    if (url.pathname === '/api/studio/subtitles/select') {state.subtitle=body.track;return json({ok:true});}
+    if (url.pathname === '/api/studio/subtitles/search') return json({results:[{id:'45',label:'Arrival exact release',fps:23.976}]});
+    if (url.pathname === '/api/studio/subtitles/download') return json({configured:true,fingerprint:[100,'v1'],selected:'downloaded',tracks:[{id:'included',label:'Included English'},{id:'downloaded',label:'Arrival exact release'}]});
     if (url.pathname === '/api/studio/cloud') {
       let selected = url.searchParams.has('series') ? episodes : items.filter(item => url.searchParams.get('category') === 'tv' ? item.kind === 'series' : item.kind !== 'series');
       const query = url.searchParams.get('q')?.toLowerCase(); if(query) selected=selected.filter(item=>item.title.toLowerCase().includes(query));

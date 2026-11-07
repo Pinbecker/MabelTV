@@ -6,23 +6,26 @@ const { run } = require('./process.cjs');
 async function subtitleFiles(job, tools, signal) {
   const source = job.sourcePath, directory = path.dirname(source);
   const stem = path.basename(source, path.extname(source));
-  const sidecars = fs.existsSync(directory) ? fs.readdirSync(directory).filter(name => name.startsWith(stem + '.') && /\.(srt|vtt|ass)$/i.test(name)) : [];
-  const subtitles = sidecars.slice(0, 8).map(name => ({ path: path.join(directory, name), language: name.slice(stem.length + 1, -4).match(/^[a-z]{2,3}$/)?.[0] || 'en' }));
-  if (!subtitles.length && fs.existsSync(source)) {
+  const filename = path.basename(source);
+  const sidecars = fs.existsSync(directory) ? fs.readdirSync(directory).filter(name => name.startsWith(stem + '.') && /\.(srt|vtt|ass)$/i.test(name) &&
+    (name.startsWith(filename + '.') || !/^(mp4|mkv|avi|mov|m4v|webm|ts|m2ts)\./i.test(name.slice(stem.length + 1)))).sort((a,b) => Number(b === filename + '.en.srt') - Number(a === filename + '.en.srt') || a.localeCompare(b)) : [];
+  const subtitles = sidecars.slice(0, 8).map(name => ({ path: path.join(directory, name), label:name, language: name.split('.').at(-2)?.match(/^[a-z]{2,3}$/)?.[0] || 'en' }));
+  if (fs.existsSync(source) && (!subtitles.length || job.sourceAnalysis?.subtitleStreams || tools?.ffprobe)) {
     const info = Array.isArray(job.sourceAnalysis?.subtitleStreams) ? { streams: job.sourceAnalysis.subtitleStreams }
       : JSON.parse(await run(tools.ffprobe, ['-v', 'error', '-show_streams', '-of', 'json', source], { signal, timeout: 15000 }));
-    const text = info.streams?.find(s => s.codec_type === 'subtitle' && ['subrip', 'ass', 'ssa', 'webvtt', 'mov_text', 'text'].includes(s.codec_name));
-    if (text) {
-      const target = path.join(job.directory, 'Prepared', 'Subtitles.srt');
+    const texts = (info.streams || []).filter(s => (s.codec_type === 'subtitle' || !s.codec_type) && ['subrip', 'ass', 'ssa', 'webvtt', 'mov_text', 'text'].includes(s.codec_name));
+    texts.sort((a,b) => Number(['en','eng'].includes(b.tags?.language)) - Number(['en','eng'].includes(a.tags?.language)) || Number(b.disposition?.default || 0) - Number(a.disposition?.default || 0));
+    for (const text of texts.slice(0, 12 - subtitles.length)) {
+      const target = path.join(job.directory, 'Prepared', 'Subtitles-' + text.index + '.srt');
       fs.mkdirSync(path.dirname(target), { recursive: true });
       await run(tools.ffmpeg, ['-v', 'error', '-y', '-i', source, '-map', '0:' + text.index, '-c:s', 'srt', target], { signal });
-      subtitles.push({ path: target, language: /^[a-z]{2,3}$/.test(text.tags?.language) ? text.tags.language : 'en' });
+      subtitles.push({ path: target, label:text.tags?.title || `Included track ${text.index} · ${text.tags?.language || 'English'}`, language: /^[a-z]{2,3}$/.test(text.tags?.language) ? text.tags.language : 'en' });
     }
-    else if (info.streams?.some(s => s.codec_type === 'subtitle')) throw new Error('This video has image-based subtitles. The original is kept; text subtitles are needed for the portal.');
+    if (!subtitles.length && info.streams?.some(s => s.codec_type === 'subtitle')) throw new Error('This video has image-based subtitles. The original is kept; text subtitles are needed for the portal.');
   }
-  for (const subtitle of subtitles) {
+  for (const [index, subtitle] of subtitles.entries()) {
     if (!/\.srt$/i.test(subtitle.path)) {
-      const target = path.join(job.directory, 'Prepared', 'Subtitles-' + subtitle.language + '.srt');
+      const target = path.join(job.directory, 'Prepared', 'Sidecar-' + index + '.srt');
       fs.mkdirSync(path.dirname(target), { recursive: true });
       await run(tools.ffmpeg, ['-v', 'error', '-y', '-i', subtitle.path, '-c:s', 'srt', target], { signal });
       subtitle.path = target;
@@ -34,8 +37,8 @@ async function subtitleFiles(job, tools, signal) {
 }
 async function sendSubtitles(job, portal, tools, signal) {
   if (!job.result?.complete || job.subtitlesSent) return;
-  for (const subtitle of await subtitleFiles(job, tools, signal)) {
-    await portal.api('/api/studio/subtitle', { method: 'POST', body: { upload: job.uploadId, language: subtitle.language, data: fs.readFileSync(subtitle.path).toString('base64') }, signal });
+  for (const [index, subtitle] of (await subtitleFiles(job, tools, signal)).entries()) {
+    await portal.api('/api/studio/subtitle', { method: 'POST', body: { upload: job.uploadId, language: subtitle.language, label:'Included with download · ' + (subtitle.label || path.basename(subtitle.path)), activate:index === 0, data: fs.readFileSync(subtitle.path).toString('base64') }, signal });
   }
   return true;
 }

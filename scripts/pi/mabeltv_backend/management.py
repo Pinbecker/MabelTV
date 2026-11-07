@@ -8,10 +8,12 @@ import subprocess
 import sys
 import time
 import uuid
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
 
 from .constants import SAFE_NAME, SUPPORTED_EXTENSIONS
+from .subtitle_files import belongs_to_video
 
 
 class ManagementMixin:
@@ -38,15 +40,38 @@ class ManagementMixin:
                     print(f"Could not clear incomplete recycle item {manifest_path.parent}: {error}",
                           file=sys.stderr, flush=True)
 
-    def recycle_items(self) -> list[dict[str, str]]:
+    def recycle_items(self) -> list[dict[str, Any]]:
         values = []
         for manifest in self.bin.glob("*/manifest.json"):
+            if manifest.parent.is_symlink() or manifest.parent.resolve().parent != self.bin.resolve():
+                continue
             item = self.read_json(manifest, {})
             file_name = Path(str(item.get("file_name", ""))).name
             if item.get("id") and file_name \
                 and (manifest.parent / file_name).is_file():
-                values.append({"id": item["id"], "display_name": self.display_name(item["file_name"]), "channel_name": item.get("channel_name", "Unknown channel")})
+                files = [path.stat() for path in manifest.parent.iterdir() if path.is_file() and not path.is_symlink()]
+                values.append({"id": item["id"], "display_name": self.display_name(item["file_name"]),
+                    "channel_name": item.get("channel_name", "Unknown channel"), "bytes": sum(stat.st_size for stat in files),
+                    "fingerprint": str(max((stat.st_mtime_ns for stat in files), default=0))})
         return sorted(values, key=lambda value: value["id"], reverse=True)
+
+    def empty_recycle_bin(self, payload):
+        selected = payload.get("items")
+        if payload.get("confirmed") is not True or not isinstance(selected, list) or not 1 <= len(selected) <= 5000:
+            raise ValueError("Confirm which items to permanently delete from the Pi bin")
+        current = {item["id"]: item for item in self.recycle_items()}
+        directories = []
+        for item in selected:
+            identity = item.get("id") if isinstance(item, dict) else None
+            value = current.get(identity)
+            if not value or not re.fullmatch(r"\d+-[a-f0-9]{8}", str(identity)) or any(item.get(key) != value[key] for key in ("bytes", "fingerprint")):
+                raise ValueError("The Pi bin changed. Reopen it before emptying")
+            directory = self.bin / identity
+            if directory.is_symlink() or directory.resolve().parent != self.bin.resolve():
+                raise ValueError("That item is outside the Pi bin")
+            directories.append(directory)
+        for directory in dict.fromkeys(directories):
+            shutil.rmtree(directory)
 
     def update_settings(self, mutator: Any) -> None:
         with self.config_lock:
@@ -79,13 +104,13 @@ class ManagementMixin:
         # cannot be renumbered or deleted between an upload check and creation.
         if payload.get("action") == "refresh":
             return self.refresh_tv()
-        with self.config_lock:
+        with (self.subtitle_track_lock if payload.get("action") == "move-programme" else nullcontext()), self.config_lock:
             self._apply_management(payload)
         if payload.get("action") in {
                 "optimise-my-tv", "set-remote-simultaneous",
                 "set-watchmode-availability", "set-my-tv-provider-badges",
                 "create-my-tv-series", "create-my-tv-season",
-                "trash-my-tv-series", "optimisation-action", "move-my-tv-series-collection"}:
+                "trash-my-tv-series", "optimisation-action", "move-my-tv-series-collection", "delete", "empty-bin"}:
             # These settings belong to the portal/library service.  In
             # particular, allowing a browser stream alongside the television
             # must never refresh or otherwise disturb the TV player.
@@ -105,6 +130,9 @@ class ManagementMixin:
 
     def _apply_management(self, payload: dict[str, Any]) -> None:
         action = payload.get("action")
+        if action == "empty-bin":
+            self.empty_recycle_bin(payload)
+            return
         if action == "reorder-channels":
             order = payload.get("channels")
             self._check_channel_order_uploads(order)
@@ -443,7 +471,34 @@ class ManagementMixin:
             destination = self.safe_media_path(target, source.name)
             if destination.exists():
                 raise ValueError("That film channel already contains a film with this name")
-            source.rename(destination)
+            if self.player_mode_status().get("film_move_preserves_playback") is not True:
+                raise ValueError("Moving films needs the TV player update. The film has not moved")
+            old_subtitles = self.subtitle_record(self.subtitle_context({"kind": "channel", "channel": source_number, "file": source.name}))
+            shared_stem = any(path != source and path.is_file() and path.stem == source.stem
+                              and path.suffix.lower() in SUPPORTED_EXTENSIONS for path in source.parent.iterdir())
+            sidecars = [path for path in source.parent.iterdir()
+                        if path.is_file() and not path.is_symlink()
+                        and path.suffix.lower() in {".srt", ".vtt", ".ass", ".ssa", ".mks"}
+                        and belongs_to_video(source.name, path.name)]
+            if any((target_folder / path.name).exists() for path in sidecars):
+                raise ValueError("That film channel already has subtitles with this name")
+            moved = []
+            try:
+                for path in [*sidecars, source]:
+                    dest = target_folder / path.name
+                    shared = path != source and shared_stem and not path.name.startswith(source.name + ".")
+                    if shared:
+                        shutil.copy2(path, dest)
+                    else:
+                        path.rename(dest)
+                    moved.append((path, dest, shared))
+            except OSError:
+                for path, dest, shared in reversed(moved):
+                    if shared:
+                        dest.unlink()
+                    else:
+                        dest.rename(path)
+                raise
 
             def move_visibility(library: dict[str, Any]) -> None:
                 disabled = library.setdefault("disabled_programmes", {})
@@ -480,6 +535,10 @@ class ManagementMixin:
                 self.write_channel_media_states(states)
             self.relocate_viewing_item(
                 source_number, source.name, target_number, destination.name)
+            if old_subtitles.get("tracks") or old_subtitles.get("selected"):
+                context = self.subtitle_context({"kind": "channel", "channel": target_number, "file": destination.name})
+                old_subtitles.update(id=context["id"], source=context["source"], fingerprint=context["fingerprint"])
+                self.state_database.studio_add("subtitles", old_subtitles)
         elif action == "rename":
             source = self.safe_media_path(channel, str(payload.get("file", "")))
             if not source.is_file(): raise ValueError("Programme not found")
@@ -533,6 +592,7 @@ class ManagementMixin:
         elif action in {"restore", "delete"}:
             item_id = str(payload.get("id", "")); directory = self.bin / item_id
             if not re.fullmatch(r"\d+-[a-f0-9]{8}", item_id) or not directory.is_dir(): raise ValueError("Recycle-bin item not found")
+            if directory.is_symlink() or directory.resolve().parent != self.bin.resolve(): raise ValueError("That item is outside the Pi bin")
             manifest = self.read_json(directory / "manifest.json", {})
             if action == "restore":
                 folder = self.media_root / str(manifest.get("folder", "")); file_name = str(manifest.get("file_name", "")); destination = folder / Path(file_name).name

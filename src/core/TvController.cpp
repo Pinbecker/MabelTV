@@ -63,14 +63,19 @@ TvController::TvController(QObject *parent)
                 const bool wasStarted = m_started;
                 const bool wasPaused = m_playbackPaused;
                 QString activeProgrammePath;
+                double activePosition = 0.0;
                 if (m_currentChannelIndex >= 0 && m_currentChannelIndex < m_channels.size()) {
                     const ChannelRuntime &active = m_channels[m_currentChannelIndex];
                     if (active.currentEpisode >= 0
                         && active.currentEpisode < active.channel.episodes.size()) {
                         activeProgrammePath = QFileInfo(
                             active.channel.episodes[active.currentEpisode].path).absoluteFilePath();
+                        activePosition = active.anchorPositionSeconds;
+                        if (!wasPaused) activePosition += std::max<qint64>(0,
+                            m_broadcastClock.elapsed() - active.anchorMilliseconds) / 1000.0;
                     }
                 }
+                activeProgrammePath = relocateFilmResumeState(library, activeProgrammePath);
                 saveState();
                 loadSettings(true);
                 const bool loaded = applyLibrary(std::move(library));
@@ -100,6 +105,10 @@ TvController::TvController(QObject *parent)
                     if (preservedChannel >= 0) {
                         m_currentChannelIndex = preservedChannel;
                         m_channels[preservedChannel].currentEpisode = preservedEpisode;
+                        auto &preserved = m_channels[preservedChannel];
+                        preserved.anchorPositionSeconds = clampPlaybackPosition(preserved, preservedEpisode, activePosition);
+                        preserved.anchorMilliseconds = m_broadcastClock.elapsed();
+                        preserved.programmePositions[preservedEpisode] = preserved.anchorPositionSeconds;
                         m_started = true;
                         m_playbackPaused = wasPaused;
                         setNoSignal(false);

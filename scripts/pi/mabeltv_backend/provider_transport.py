@@ -8,6 +8,7 @@ import os
 import re
 import subprocess
 import time
+from .subtitle_matching import movie_hash, exact_matches
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -163,10 +164,14 @@ class ProviderTransportMixin:
         if not self.opensubtitles_key():
             return {"status": "not_configured"}
         try:
+            fingerprint = movie_hash(source)
+            if not fingerprint:
+                return {"status": "unavailable", "provider": "OpenSubtitles"}
             matches = self.opensubtitles_request(
                 "subtitles", {"tmdb_id": tmdb_id, "languages": "en",
+                               "moviehash": fingerprint, "moviehash_match": "only",
                                "order_by": "download_count", "order_direction": "desc"})
-            file_id = self.opensubtitles_best_file(matches)
+            file_id = self.opensubtitles_best_file(exact_matches(matches))
             if file_id is None:
                 return {"status": "unavailable", "provider": "OpenSubtitles"}
             ticket = self.opensubtitles_request("download", body={"file_id": file_id})

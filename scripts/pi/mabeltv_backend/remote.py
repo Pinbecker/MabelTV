@@ -927,7 +927,8 @@ class RemotePlaybackMixin:
 
     def browser_subtitles_for_source(self, source: Path) -> bytes:
         sidecars = self.subtitle_sidecars(source)
-        preferred = next((path for path in sidecars if path.suffix.lower() == ".vtt"), None)
+        preferred = next((path for path in sidecars if path.name == source.stem + ".en.srt"), None)
+        preferred = preferred or next((path for path in sidecars if path.suffix.lower() == ".vtt"), None)
         preferred = preferred or next((path for path in sidecars if path.suffix.lower() == ".srt"), None)
         if not preferred:
             raise ValueError("No browser subtitle track is available for this film")
@@ -944,6 +945,7 @@ class RemotePlaybackMixin:
         for field in ("volume", "muted", "remote_locked", "standby", "subtitles_available",
                       "subtitles_visible", "widescreen_available", "widescreen_enabled", "presentation_mode",
                       "my_tv_handoff_available",
+                      "seek_supported", "seek_available", "seek_token",
                       "connected_tv_available", "connected_tv_power"):
             if field in mode:
                 status[field] = mode[field]
@@ -980,6 +982,8 @@ class RemotePlaybackMixin:
                     0.0, float(activity.get("position", 0) or 0)))
                 status["playback_duration"] = round(max(
                     0.0, float(activity.get("media_duration", 0) or 0)))
+        if mode.get("seek_available") is True:
+            status.update(playback_position=mode.get("playback_position", 0), playback_duration=mode.get("playback_duration", 0))
         return status
 
     def player_mode_status(self) -> dict[str, Any]:
@@ -1020,11 +1024,21 @@ class RemotePlaybackMixin:
                    "enter-my-tv-mode", "continue-in-my-tv-mode",
                    "navigate-up", "navigate-down", "navigate-left",
                    "navigate-right", "select", "return-to-mabeltv", "toggle-remote-lock",
-                   "text-input", "tune-channel"}
+                   "text-input", "tune-channel", "seek"}
         if command not in allowed:
             raise ValueError("Unknown live TV control")
         wire_command = command
-        if command == "tune-channel":
+        if command == "seek":
+            position, token = payload.get("position"), str(payload.get("token", ""))
+            if type(position) not in (int, float) or not 0 <= position <= 604800 or not re.fullmatch(r"[a-f0-9]{64}", token):
+                raise ValueError("Choose a valid position in the current programme")
+            state = self.player_mode_status()
+            if state.get("seek_supported") is not True:
+                raise ValueError("Scrub will be available after the TV player update")
+            if state.get("seek_available") is not True or token != state.get("seek_token"):
+                raise ValueError("The programme changed. Reopen Scrub")
+            wire_command = json.dumps({"command": "seek", "position": position, "token": token}, separators=(",", ":"))
+        elif command == "tune-channel":
             try:
                 channel_number = int(payload.get("channel"))
             except (TypeError, ValueError) as error:

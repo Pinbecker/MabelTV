@@ -51,16 +51,25 @@
 
           <section class="remote-playback" aria-label="Programme controls">
             <div class="tv-remote-transport-row" aria-label="Playback controls">
+              <div id="remoteTransportButtons" class="remote-transport-buttons">
               <button type="button" data-live-command="previous-programme" aria-label="Previous programme"><svg><use href="/portal/icons.svg#signal-rewind"/></svg></button>
               <div class="tv-remote-play-pause">
                 <button type="button" id="remotePlay" data-live-command="toggle-pause" aria-label="Play" disabled><svg><use href="/portal/icons.svg#signal-play"/></svg></button>
                 <button type="button" id="remotePause" data-live-command="toggle-pause" aria-label="Pause" disabled><svg><use href="/portal/icons.svg#signal-pause"/></svg></button>
               </div>
               <button type="button" data-live-command="next-programme" aria-label="Next programme"><svg><use href="/portal/icons.svg#signal-fast-forward"/></svg></button>
+              <button id="remoteScrubOpen" type="button" aria-expanded="false" aria-controls="remoteScrubPanel" disabled><svg aria-hidden="true"><use href="/portal/icons.svg#signal-scrub"/></svg><span>Scrub</span></button>
+              </div>
+              <div id="remoteScrubPanel" class="remote-scrub-panel hidden">
+                <div class="remote-scrub-timeline">
+                  <div id="remoteScrubPreview" class="remote-scrub-preview hidden" aria-hidden="true"><div id="remoteScrubPreviewImage" class="remote-scrub-preview-image hidden"></div><div id="remoteScrubPreviewMessage" class="remote-scrub-preview-message loading">Preparing preview…</div><span id="remoteScrubPreviewTime">0:00</span></div>
+                  <div class="remote-scrub-readout"><output id="remoteScrubPosition" for="remoteScrubRange">0:00</output><span id="remoteScrubClock"></span></div><input id="remoteScrubRange" type="range" min="0" max="1" step="1" value="0" aria-label="Playback position"><div class="remote-scrub-limits"><span>0:00</span><span id="remoteScrubDuration">0:00</span></div></div>
+                <button id="remoteScrubClose" type="button" aria-label="Return to playback controls"><svg><use href="/portal/icons.svg#signal-x"/></svg></button>
+              </div>
             </div>
             <div class="remote-transport remote-transport-context">
               <button type="button" data-live-command="restart-programme"><svg><use href="/portal/icons.svg#signal-restart"/></svg><span>Restart</span></button>
-              <button type="button" id="remoteSubtitles" data-live-command="toggle-subtitles"><svg><use href="/portal/icons.svg#signal-captions"/></svg><span>Subtitles</span></button>
+              <button type="button" id="remoteSubtitles" data-live-command="toggle-subtitles" aria-pressed="false"><svg><use href="/portal/icons.svg#signal-captions"/></svg><span>Subtitles · —</span></button>
               <button type="button" id="remoteWidescreen" data-live-command="toggle-widescreen-mode" aria-pressed="false"><svg><use href="/portal/icons.svg#signal-rotate-cw"/></svg><span>Widescreen</span></button>
               <button type="button" id="remoteMyTvHandoff" data-live-command="enter-my-tv-mode"><svg><use href="/portal/icons.svg#signal-monitor-play"/></svg><span>Open My TV</span></button>
             </div>

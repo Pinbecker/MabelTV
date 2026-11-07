@@ -69,8 +69,17 @@ let managementBusy = false
     $('#openAddChannelUtility').onclick = showAddChannelSheet
     $('#watchNewChannel').onclick = showAddChannelSheet
     $('#channelNumbersAdd').onclick = showAddChannelSheet
-    $('#openRecycleBin').onclick = () => openLibrarySheet($('#recycleSheet'))
+    $('#openRecycleBin').onclick = () => { renderBin(); openLibrarySheet($('#recycleSheet')); void reloadLibraryWithoutLosingPlace().catch(error => notice(error.message, true)) }
     $('#watchRecycleBin').onclick = () => $('#openRecycleBin').click()
+    $('#settingsRecycleBin').onclick = () => $('#openRecycleBin').click()
+    $('#emptyRecycleBin').onclick = async () => {
+      const items = (library.recycle || []).map(({id, bytes, fingerprint}) => ({id, bytes, fingerprint}))
+      if (!items.length) return
+      const total = items.reduce((sum, item) => sum + (item.bytes || 0), 0)
+      if (!await portalConfirm({title: 'Empty the Pi bin?', message: `Permanently delete these ${items.length} items (${studioBytes(total)})? This cannot be undone.`, confirmLabel: 'Empty bin'})) return
+      $('#emptyRecycleBin').disabled = true
+      try { await manage('empty-bin', {items, confirmed:true}) } finally { renderBin() }
+    }
     $('#cancelAddChannel').onclick = () => closeLibrarySheet($('#addChannelPanel'))
     ;[
       [$('#addChannelPanel'), $('#closeAddChannel')],
@@ -530,7 +539,7 @@ let managementBusy = false
       'navigate-up': 'Up', 'navigate-down': 'Down', 'navigate-left': 'Left',
       'navigate-right': 'Right', select: 'Selected', 'previous-programme': 'Previous programme',
       'next-programme': 'Next programme', 'restart-programme': 'Restarting programme',
-      'toggle-pause': 'Playback changed', 'toggle-subtitles': 'Subtitles changed',
+      'toggle-pause': 'Playback changed', 'toggle-subtitles': 'Subtitles changed', seek: 'Playback position changed',
       'toggle-widescreen-mode': 'Picture mode changed',
       'toggle-remote-lock': 'Remote lock changed', 'turn-on': 'Turning TV on',
       'turn-off': 'Turning TV off', 'turn-on-mabel-only': `Turning ${tvName()} on`,

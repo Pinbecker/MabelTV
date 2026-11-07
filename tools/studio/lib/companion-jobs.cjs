@@ -6,6 +6,7 @@ const { recordProvenance } = require('./provenance.cjs');
 const { saveCloud, cloudCopiesComplete, replaceCloudOriginal, archiveMatch } = require('./cloud-archive.cjs');
 const { finishTemporaryWork } = require('./companion-cleanup.cjs');
 const { removeOptimised } = require('./subtitles.cjs');
+const { archiveSubtitles } = require('./archive-subtitles.cjs');
 const { prepareCloudCompression } = require('./cloud-compression.cjs');
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -161,6 +162,7 @@ class CompanionJobs {
         }
       }
     }
+    await archiveSubtitles(remote, local, this.store, this.portal, this.queue.media.getTools?.(), signal);
     await recordProvenance(remote, local, this.portal, signal);
     if (remote.originalRecovery && remote.destination.recoveryMode === 'replace') {
       const receipt = await this.portal.api('/api/studio/recovery/finish', { method: 'POST', body: { job: remote.id, claim: remote.claim, upload: local.uploadId }, signal });

@@ -12,6 +12,7 @@ import threading
 import time
 
 from .studio_cloud_auth import ICloudConversation
+from .subtitle_files import belongs_to_video
 
 
 VIDEO = {".mp4", ".mkv", ".m4v", ".mov", ".avi", ".webm", ".mpg", ".mpeg", ".ts"}
@@ -185,7 +186,9 @@ class StudioCloudMixin:
             stem = str(PurePosixPath(item["path"]).with_suffix(""))
             item["subtitles"] = [{"path": i["path"], "bytes": i["bytes"]} for i in self.studio_cloud_files
                                  if i["extension"] in {".srt", ".vtt", ".ass"}
-                                 and (i["path"].startswith(stem + "."))]
+                                 and belongs_to_video(item["path"], i["path"])]
+            item["subtitleArchives"] = [{"path": i["path"], "bytes": i["bytes"]} for i in self.studio_cloud_files
+                if i["extension"] == ".mks" and belongs_to_video(item["path"], i["path"])]
         if self._studio_media_file(item):
             title = self.studio_cloud_title_for_file(identity)
             item["metadata"] = title.get("metadata")

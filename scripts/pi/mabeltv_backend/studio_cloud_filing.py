@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import PurePosixPath
+from .subtitle_files import belongs_to_video
 import re
 import time
 from .studio_filing_policy import POLICY_VERSION, collection_members, component, movie_folder, series_target
@@ -72,8 +73,10 @@ class StudioCloudFilingMixin:
                     target = parent / (target.stem + " [" + member["id"][:8] + "]" + target.suffix)
             parent, stem = target.parent, target.stem
             related = [member] + [item for item in files
-                if item.get("extension") in {".srt", ".vtt", ".ass", ".ssa", ".nfo"}
-                and item["path"].startswith(str(source.with_suffix("")) + ".")]
+                if item.get("extension") in {".srt", ".vtt", ".ass", ".ssa", ".nfo", ".mks"}
+                and belongs_to_video(member["path"], item["path"])
+                and (item["path"].startswith(member["path"] + ".") or not any(other["id"] != member["id"]
+                     and self._studio_media_file(other) and PurePosixPath(other["path"]).with_suffix("") == source.with_suffix("") for other in files))]
             for item in related:
                 destination = target if item["id"] == member["id"] else parent / (stem + item["path"][len(str(source.with_suffix(""))):])
                 if str(destination) != item["path"]:

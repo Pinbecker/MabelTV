@@ -41,7 +41,7 @@ test('fresh resume and explicit zero are distinct playback intents', async ({ pa
   await page.evaluate(async () => { await startIosRemotePlayer({ kind: 'my_tv', file: 'Resume.mp4' }, 0) })
   expect(await page.evaluate(() => window.starts.at(-1).position)).toBe(0)
   expect(await page.locator('#iosWatchVideo').evaluate(video => video.currentTime)).toBe(0)
-  expect(await page.evaluate(() => window.samples.some(sample => sample.source.library_id === 'film-identity'))).toBe(true)
+  await expect.poll(() => page.evaluate(() => window.samples.some(sample => sample.source.library_id === 'film-identity'))).toBe(true)
 })
 
 test('resume lookup runs alongside the stream request and explicit restart skips that lookup', async ({ page }) => {
