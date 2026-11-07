@@ -272,6 +272,7 @@ class Library(SubtitleTracksMixin, StudioPresenceMixin, StudioMixin, StudioOrigi
         """Drain and stop the single media worker (primarily for clean tests)."""
         if self.conversion_closed.is_set():
             return
+        self.close_seek_previews(timeout)
         self.close_upload_notifications(timeout)
         self.close_studio_cloud()
         with self.lg_tv_lock:
@@ -309,7 +310,10 @@ def main() -> None:
     parser.add_argument("--media-root", default="/srv/mabeltv/media")
     parser.add_argument("--config", default="/etc/mabeltv/library.conf")
     parser.add_argument("--database", default="/var/lib/mabeltv/mabeltv.db")
-    args = parser.parse_args(); LibraryServer((args.bind, args.port), Library(args)).serve_forever()
+    args = parser.parse_args()
+    library = Library(args)
+    library.start_seek_preview_warmer()
+    LibraryServer((args.bind, args.port), library).serve_forever()
 
 
 if __name__ == "__main__": main()

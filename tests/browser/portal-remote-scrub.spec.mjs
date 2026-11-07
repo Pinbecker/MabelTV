@@ -1,6 +1,63 @@
 import {test,expect} from './test-fixtures.mjs'
 test.use({serviceWorkers:'block'})
 
+test('prewarmed previews paint immediately across the programme and survive closing Scrub',async({page},info)=>{
+  const state={available:true,standby:false,paused:false,seek_supported:true,seek_available:true,
+    seek_token:'d'.repeat(64),playback_position:90,playback_duration:640,programme:'The Grinch'}
+  const requests=[],commands=[]
+  await page.route('**/api/live',route=>route.fulfill({json:state}))
+  await page.route('**/api/live/control',route=>{commands.push(route.request().postDataJSON());return route.fulfill({json:{ok:true}})})
+  await page.route('**/api/live/seek-preview?**',route=>{
+    requests.push(route.request().url())
+    return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="144"><rect width="2048" height="144" fill="#526e56"/></svg>'})
+  })
+  await page.goto('/#live');await page.evaluate(value=>renderRemoteState(value),state)
+  await expect.poll(()=>page.evaluate(()=>scrubPreview.cache.size)).toBe(8)
+  expect(requests.every(url=>new URL(url).searchParams.get('warm')==='1')).toBe(true)
+  const warmed=requests.length
+  await page.locator('#remoteScrubOpen').click()
+  for(const position of [0,90,330,630]){
+    const immediate=await page.locator('#remoteScrubRange').evaluate((input,value)=>{
+      input.value=String(value);input.dispatchEvent(new Event('input',{bubbles:true}))
+      return !document.querySelector('#remoteScrubPreviewImage').classList.contains('hidden')
+        && document.querySelector('#remoteScrubPreviewMessage').classList.contains('hidden')
+    },position)
+    expect(immediate).toBe(true)
+  }
+  expect(requests).toHaveLength(warmed)
+  expect(commands).toHaveLength(0)
+  await page.locator('#remoteScrubClose').click();await page.locator('#remoteScrubOpen').click()
+  await page.setViewportSize({width:340,height:740})
+  const row=await page.locator('.tv-remote-transport-row:visible').boundingBox()
+  expect(row.height).toBe(70)
+  expect(await page.locator('.remote-scrub-limits').count()).toBe(0)
+  const elapsed=await page.locator('.remote-scrub-elapsed').boundingBox(),clock=await page.locator('#remoteScrubClock').boundingBox()
+  expect(elapsed.x+elapsed.width+4).toBeLessThanOrEqual(clock.x)
+  expect(await page.locator('#remoteScrubClock').textContent()).toMatch(/^Ends /)
+  await page.screenshot({path:info.outputPath('scrub-clean-times-narrow.png')})
+  expect(requests).toHaveLength(warmed)
+})
+
+test('a stalled preview request times out and recovers without another gesture',async({page})=>{
+  // Exercise the real 18-second network deadline plus its retry, not a larger app timeout.
+  test.setTimeout(45000)
+  const state={available:true,standby:false,paused:true,seek_supported:true,seek_available:true,
+    seek_token:'e'.repeat(64),playback_position:20,playback_duration:60,programme:'The Grinch'}
+  let stalled=true
+  await page.route('**/api/live',route=>route.fulfill({json:state}))
+  await page.route('**/api/live/seek-preview?**',route=>{
+    if(stalled)return
+    return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="144"><rect width="2048" height="144" fill="#526e56"/></svg>'})
+  })
+  await page.goto('/#live');await page.evaluate(value=>renderRemoteState(value),state)
+  await page.locator('#remoteScrubOpen').click()
+  await page.locator('#remoteScrubRange').evaluate(input=>{input.value='20';input.dispatchEvent(new Event('input',{bubbles:true}))})
+  await expect(page.locator('#remoteScrubPreviewMessage')).toHaveText('Preview unavailable',{timeout:21000})
+  stalled=false
+  await expect(page.locator('#remoteScrubPreviewImage')).toBeVisible({timeout:9000})
+  await expect(page.locator('#remoteScrubPreviewMessage')).toBeHidden()
+})
+
 for(const myTv of [false,true]) test(`scrub cancels upward and resumes when returned to the bar in ${myTv?'My TV':'Mabel TV'}`,async({page},info)=>{
   const state={available:true,standby:false,my_tv_mode:myTv,paused:true,seek_supported:true,
     seek_available:true,seek_token:'c'.repeat(64),playback_position:900,playback_duration:7200,programme:'The Grinch'}

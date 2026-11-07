@@ -14,6 +14,12 @@ keyframes into eight ten-second thumbnails. Pending work follows the latest
 pointer position instead of building an unbounded queue. Each process has a
 15-second deadline. Native source paths stay on local IPC; no preview operation
 commands playback. These rebuildable images are excluded from state backups.
+The service entrypoint starts a five-second watcher that warms the current
+programme ahead of a phone opening Scrub. Warmup and foreground requests share
+one decoder, with foreground priority, retry backoff, pauses between background
+strips and a 75C thermal pause for background work. A programme change replaces
+its warmup queue. Existing strips survive player/service restarts and are
+identified by the file's actual inode, size and modification time.
 
 The local Library service is the private backend for the MabelTV portal and its
 installed iOS PWA. Public routes, cookies, JSON response shapes, local socket

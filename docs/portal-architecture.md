@@ -5,15 +5,18 @@ Dragging upward away from the slider arms cancellation; releasing there sends
 no command, and returning to the slider resumes the gesture. Pointer loss,
 Escape and the close control also discard an unfinished scrub. Pointer release
 owns the commit so a later native range change event cannot duplicate the seek.
-`core/remote-scrub.js` owns the in-place timeline, elapsed/total time and wall-clock
-finish estimate. Dragging previews locally; release sends one generation-bound
+`core/remote-scrub.js` owns the fixed 70-pixel timeline, combined elapsed/total
+readout and finish time, without a repeated start time or current clock. Dragging previews locally; release sends one generation-bound
 seek with no automatic retry. A programme change closes the timeline. The native
 capability flag keeps the control disabled until the matching player is active.
-`core/remote-preview.js` adds a floating thumbnail while holding/dragging. It
-caches up to sixteen strips, cancels obsolete requests and never seeks the TV.
-An uncached strip has an explicit preparing state; preview failures do not block
-the timeline or create a global error banner. Pictures sample ten-second points;
-the release still seeks to the selected second.
+`core/remote-preview.js` preloads the playing programme while Remote is visible,
+before Scrub opens. Two bounded requests fill a 12-MB in-memory cache, retained
+when the timeline closes and cleared when playback identity changes. Moving the
+thumb does not abort useful requests; cached pictures paint synchronously. Each
+request has a real 18-second abort deadline and a bounded retry. Background
+prefetch uses the paced warmup queue, not the foreground decoder priority.
+Preview failures never block seeking or create a global banner. Pictures sample
+ten-second points; release still seeks to the selected second.
 The subtitle control shows On/Off explicitly and None when no track is available.
 System and help links to the existing Pi bin sheet, with sizes and a confirmed
 snapshot-based empty action; deleting bin contents never refreshes playback.

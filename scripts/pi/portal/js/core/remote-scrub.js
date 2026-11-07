@@ -22,12 +22,12 @@ function remoteScrubPaint() {
   const now = new Date(), ends = new Date(now.getTime() + (remoteScrub.duration - position) * 1000)
   $('#remoteScrubClock').textContent = remoteScrub.busy ? 'Seeking…' : remoteScrub.dragging
     ? remoteScrub.cancelArmed ? 'Release to cancel' : 'Slide up to cancel'
-    : `${clock(now)} · ${remoteScrub.paused ? 'Paused' : 'Ends ' + clock(ends)}`
+    : remoteScrub.paused ? 'Paused' : 'Ends ' + clock(ends)
   $('#remoteScrubPanel').classList.toggle('is-cancelling', remoteScrub.cancelArmed)
   remotePreviewPaint(position)
 }
 function remoteScrubClose(focus = false) {
-  remotePreviewReset()
+  $('#remoteScrubPreview').classList.add('hidden')
   remoteScrub.open = false; remoteScrub.dragging = false
   remoteScrub.pointer = null; remoteScrub.cancelArmed = false; remoteScrub.ignoreChange = true
   $('#remoteTransportButtons').classList.remove('hidden'); $('#remoteScrubPanel').classList.add('hidden')
@@ -46,6 +46,7 @@ function renderRemoteScrub(state) {
   remoteScrub.position = Math.max(0, Number(state.playback_position) || 0)
   remoteScrub.duration = Math.max(0, Number(state.playback_duration) || 0)
   remoteScrub.paused = state.paused === true; remoteScrub.at = performance.now()
+  remotePreviewPrepare(remoteScrub.token, remoteScrub.position, remoteScrub.duration)
   if (remoteScrub.pending && (Math.abs(remoteScrub.position - remoteScrub.pending.position) < 3 || Date.now() > remoteScrub.pending.until)) remoteScrub.pending = null
   $('#remoteScrubRange').max = String(Math.floor(remoteScrub.duration))
   $('#remoteScrubRange').disabled = !available || remoteScrub.busy

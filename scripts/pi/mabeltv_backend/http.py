@@ -713,7 +713,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.stream_bytes(self.server.library.live_tv_frame(), "image/jpeg")
                 return
             if parsed.path == "/api/live/seek-preview":
-                data = self.server.library.seek_preview(query.get("token", [""])[0], query.get("position", [""])[0])
+                data = self.server.library.seek_preview(query.get("token", [""])[0], query.get("position", [""])[0], background=query.get("warm", [""])[0] == "1")
                 if data is None:
                     self.json(202, {"status": "preparing"})
                 else:

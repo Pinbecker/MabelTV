@@ -344,11 +344,10 @@ body.portal-v2 .remote-scrub-panel {
 body.portal-v2 .remote-transport-buttons.hidden,
 body.portal-v2 .remote-scrub-panel.hidden { display: none; }
 body.portal-v2 .remote-scrub-timeline { position: relative; min-width: 0; font-variant-numeric: tabular-nums; }
-body.portal-v2 .remote-scrub-readout,
-body.portal-v2 .remote-scrub-limits { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-body.portal-v2 #remoteScrubPosition { color: #f4f4f7; font-size: 15px; font-weight: 600; letter-spacing: .01em; }
-body.portal-v2 #remoteScrubClock,
-body.portal-v2 .remote-scrub-limits { color: #b6b6bf; font-size: 10px; white-space: nowrap; }
+body.portal-v2 .remote-scrub-readout { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding-top: 4px; }
+body.portal-v2 .remote-scrub-elapsed { display: flex; align-items: baseline; gap: 5px; color: #b6b6bf; font-size: 11px; white-space: nowrap; }
+body.portal-v2 #remoteScrubPosition { color: #f4f4f7; font-size: 14px; font-weight: 600; letter-spacing: .01em; }
+body.portal-v2 #remoteScrubClock { color: #b6b6bf; font-size: 10px; white-space: nowrap; }
 body.portal-v2 #remoteScrubRange {
   display: block;
   width: 100%;
