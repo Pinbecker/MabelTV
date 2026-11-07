@@ -76,6 +76,61 @@ class StudioRecoveryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "settings"):
             self.library.studio_profile_backup({"worker": "a" * 32, "snapshot": snapshot})
 
+    def test_cancelled_pi_optimisation_restores_kept_copy_and_never_reappears(self):
+        source = self.library.my_tv_root / "Film.mp4"
+        source.write_bytes(b"kept-film")
+        for previous in ("original", "optimised"):
+            with self.subTest(previous=previous):
+                self.library.write_my_tv_media_states({source.name: {
+                    "library_id": "1" * 32, "state": previous, "compression": "balanced",
+                    "remote_position": 123, "metadata": {"title": "Kept film"}}})
+                self.library.request_my_tv_optimisation(source.name, "compact")
+                self.library.my_tv_optimisation_action(source.name, "cancel")
+                self.library.studio_pi_sync_progress()
+                state = self.library.my_tv_media_states()[source.name]
+                self.assertEqual(state["state"], previous)
+                self.assertEqual(state["message"], "")
+                self.assertNotIn("compressionOperation", state)
+                self.assertNotIn("compressionBaseline", state)
+                self.assertEqual(state["library_id"], "1" * 32)
+                self.assertEqual(state["remote_position"], 123)
+                self.assertEqual(state["metadata"]["title"], "Kept film")
+                if previous == "optimised":
+                    self.assertEqual(state["compression"], "balanced")
+                self.assertEqual(source.read_bytes(), b"kept-film")
+                self.assertFalse(any(item["state"] == "error" for item in self.library.my_tv_optimisations()["items"]))
+
+    def test_cancelled_legacy_pi_job_clears_error_but_failed_job_keeps_warning(self):
+        source = self.library.my_tv_root / "Film.mp4"
+        source.write_bytes(b"kept-film")
+        self.library.request_my_tv_optimisation(source.name, "compact")
+        job = self.db.studio_records("job")[0]
+        states = self.library.my_tv_media_states()
+        states[source.name].pop("compressionBaseline")
+        self.library.write_my_tv_media_states(states)
+        job.update(status="failed", message="Download interrupted", percent=2)
+        self.db.studio_add("job", job)
+        self.library.studio_pi_sync_progress()
+        self.assertEqual(self.library.my_tv_media_states()[source.name]["state"], "error")
+        job.update(status="cancelled", historyHidden=True)
+        self.db.studio_add("job", job)
+        self.library.my_tv_optimisation_action(source.name, "cancel")
+        self.library.studio_pi_sync_progress()
+        state = self.library.my_tv_media_states()[source.name]
+        self.assertEqual((state["state"], state["message"], state["progress"]), ("original", "", 0))
+        self.assertEqual(self.library.my_tv_optimisations()["items"], [])
+
+    def test_cancel_after_verified_replacement_keeps_optimised_state(self):
+        source = self.library.my_tv_root / "Film.mp4"
+        source.write_bytes(b"published-film")
+        self.library.request_my_tv_optimisation(source.name)
+        job = self.db.studio_records("job")[0]
+        job.update(status="cancelled", replacementReceipt={"complete": True})
+        self.db.studio_add("job", job)
+        self.library.studio_pi_sync_progress()
+        self.assertEqual(self.library.my_tv_media_states()[source.name]["state"], "optimised")
+        self.assertEqual(source.read_bytes(), b"published-film")
+
     def test_interrupted_pi_replacement_keeps_original_and_recovers_identity_without_reencoding(self):
         source = self.library.my_tv_root / "Film.mp4"
         original = b"original" * 1000

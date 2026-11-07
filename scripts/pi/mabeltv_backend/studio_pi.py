@@ -27,6 +27,23 @@ class StudioPiMixin:
                     if state.get("compressionOperation") != job["id"]:
                         continue
                     status = job["status"]
+                    if status == "cancelled":
+                        baseline = state.pop("compressionBaseline", {})
+                        restored = baseline.get("state", "original")
+                        published = job.get("replacementReceipt") or job.get("result", {}).get("complete")
+                        compression = state.get("compression") if published else baseline.get("compression")
+                        if published:
+                            restored = "optimised"
+                        if restored not in {"original", "optimised"}:
+                            restored = "original"
+                        state.update(state=restored, message="", progress=100 if restored == "optimised" else 0)
+                        state.pop("compressionOperation", None)
+                        state.pop("compression", None)
+                        if restored == "optimised" and compression:
+                            state["compression"] = compression
+                        states[relative] = state
+                        changed = True
+                        continue
                     patch = {"state": {"queued": "queued", "active": "processing", "paused": "paused"}.get(status, "error"),
                              "message": job.get("message") or ("Waiting for laptop" if status == "queued" else job.get("stage", "")),
                              "progress": job.get("percent") or 0}

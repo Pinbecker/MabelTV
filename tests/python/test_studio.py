@@ -150,6 +150,19 @@ class StudioTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     self.library.studio_subtitle({**payload, **changes})
 
+    def test_downloaded_subtitle_encodings_keep_text_and_timestamps(self):
+        video = self.library.my_tv_root / "Published.mp4"
+        video.write_bytes(b"video")
+        srt = "1\n00:00:28,500 --> 00:00:31,461\nKönigstraße — ready?\n"
+        with mock.patch.object(self.library, "upload_status", return_value={"complete": True, "kind": "my_tv", "file_name": video.name}):
+            for encoding in ("utf-8-sig", "utf-16", "cp1252"):
+                with self.subTest(encoding=encoding):
+                    self.library.studio_subtitle({"upload": "a" * 32, "language": "en",
+                        "data": base64.b64encode(srt.encode(encoding)).decode()})
+                    self.assertEqual(video.with_suffix(".en.srt").read_text(encoding="utf-8"), srt)
+            with self.assertRaises(ValueError):
+                self.library.studio_subtitle({"upload": "a" * 32, "data": base64.b64encode((srt + "\x00").encode()).decode()})
+
     def test_series_batches_preserve_seasons_including_specials_and_upload_destination(self):
         base = self.library.studio_cloud_files[0]
         self.library.studio_cloud_files = [{**base, "id": str(season), "path": f"TV/Example/Season {season}/S{season:02}E01.mp4", "name": f"S{season:02}E01.mp4"} for season in [0, 1]]

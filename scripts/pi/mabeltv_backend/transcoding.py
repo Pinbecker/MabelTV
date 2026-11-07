@@ -88,10 +88,14 @@ class TranscodingMixin:
         if not source.is_file():
             raise ValueError("Film not found")
         relative = self.my_tv_relative_path(source)
+        state = self.my_tv_media_states().get(relative, {})
+        baseline = state.get("compressionBaseline") if state.get("state") in {"queued", "processing", "paused", "error"} else None
+        baseline = baseline or {
+            "state": state.get("state", "original"), "compression": state.get("compression")}
         job = self.studio_pi_queue({"kind": "my_tv", "file": relative},
                                    {"kind": "film"}, profile["id"], replace=True)
         self.set_my_tv_media_state(relative, "queued", progress=0, compression=profile["id"],
-                                   compressionOperation=job["id"], message="Waiting for laptop")
+                                   compressionOperation=job["id"], compressionBaseline=baseline, message="Waiting for laptop")
 
     def my_tv_optimisation_action(self, file_name: str, action: str) -> None:
         if action not in {"pause", "resume", "cancel"}:
@@ -102,7 +106,11 @@ class TranscodingMixin:
         operation = stored.get("compressionOperation")
         pending = next((job for job in self.state_database.studio_records("job") if job["id"] == operation), None)
         if pending:
-            self.studio_job_action({"id": operation, "action": action})
+            if action != "cancel" or pending["status"] != "cancelled":
+                self.studio_job_action({"id": operation, "action": action})
+            if action == "cancel":
+                self.studio_pi_sync_progress()
+                return
         with self.config_lock:
             state = self.my_tv_media_states().get(relative, {})
             current = str(state.get("state", "")) if isinstance(state, dict) else ""
@@ -117,10 +125,9 @@ class TranscodingMixin:
                 self.set_my_tv_media_state(relative, "processing", "",
                                            progress=int(state.get("progress", 0) or 0))
             else:
-                if current not in {"queued", "processing", "paused"}:
+                if current not in {"queued", "processing", "paused", "error"}:
                     raise ValueError("This optimisation cannot be cancelled now")
-                self.set_my_tv_media_state(relative, "error", "Optimisation cancelled",
-                                           progress=int(state.get("progress", 0) or 0))
+                self.set_my_tv_media_state(relative, "original", "", progress=0)
 
     def optimise_my_tv_file(self, file_name: str) -> None:
         state = self.my_tv_media_states().get(file_name, {})

@@ -258,10 +258,16 @@ class StudioMixin:
             raise ValueError("Choose a subtitle language")
         try:
             data = base64.b64decode(str(payload.get("data", "")), validate=True)
-            text = data.decode("utf-8-sig")
+            if data.startswith((b"\xff\xfe", b"\xfe\xff")):
+                text = data.decode("utf-16")
+            else:
+                try:
+                    text = data.decode("utf-8-sig")
+                except UnicodeDecodeError:
+                    text = data.decode("cp1252")
         except (ValueError, UnicodeError):
-            raise ValueError("Choose a UTF-8 SRT subtitle") from None
-        if len(data) > 1024 * 1024 or "-->" not in text[:65536]:
+            raise ValueError("Choose a text SRT subtitle") from None
+        if len(data) > 1024 * 1024 or "\x00" in text or "-->" not in text[:65536]:
             raise ValueError("Choose an SRT subtitle smaller than 1 MB")
         target = video.with_name(video.stem + "." + language + ".srt")
         temporary = target.with_suffix(".srt.new")
