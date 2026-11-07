@@ -123,6 +123,31 @@
       button.title = waking ? `Turn ${tvName()} on` : `${tvName()} power options`
     }
 
+    let remoteSubtitlePending = null
+    function remoteSubtitleKey(state) {
+      return state.seek_token || [state.my_tv_mode, state.channel_number, state.file_name, state.programme].join('|')
+    }
+    function resetRemoteStatusRequest() {
+      remoteStatusGeneration++; remoteStatusRequest?.abort(); remoteStatusRequest = null
+    }
+    function beginRemoteSubtitleToggle() {
+      if (liveTvState?.available !== true || liveTvState.subtitles_available !== true) return null
+      const pending = { key: remoteSubtitleKey(liveTvState), before: liveTvState.subtitles_visible === true,
+        target: liveTvState.subtitles_visible !== true }
+      resetRemoteStatusRequest(); remoteSubtitlePending = pending
+      renderRemoteState(liveTvState)
+      return pending
+    }
+    function finishRemoteSubtitleToggle(pending, result) {
+      if (!pending || remoteSubtitlePending !== pending) return
+      remoteSubtitlePending = null; resetRemoteStatusRequest()
+      const confirmed = result?.control_state
+      if (remoteSubtitleKey(liveTvState) === pending.key && (!confirmed?.seek_token || confirmed.seek_token === pending.key)) {
+        liveTvState = { ...liveTvState, subtitles_visible: result
+          ? (typeof confirmed?.subtitles_visible === 'boolean' ? confirmed.subtitles_visible : pending.target) : pending.before }
+      }
+      renderRemoteState(liveTvState)
+    }
     function renderRemoteState(state) {
       const available = state.available === true
       const locked = state.remote_locked === true
@@ -158,7 +183,9 @@
       }
       $('#remotePlayPause')?.classList.toggle('paused', paused)
       if ($('#remotePlayPauseLabel')) $('#remotePlayPauseLabel').textContent = paused ? 'Play' : 'Pause'
-      const subtitlesOn = available && state.subtitles_available === true && state.subtitles_visible === true
+      if (remoteSubtitlePending && (!available || remoteSubtitleKey(state) !== remoteSubtitlePending.key)) remoteSubtitlePending = null
+      const subtitlesVisible = remoteSubtitlePending ? remoteSubtitlePending.target : state.subtitles_visible === true
+      const subtitlesOn = available && state.subtitles_available === true && subtitlesVisible
       const subtitlesState = !available ? '—' : state.subtitles_available !== true ? 'None' : subtitlesOn ? 'On' : 'Off'
       $('#remoteSubtitles').classList.toggle('active', subtitlesOn)
       $('#remoteSubtitles').setAttribute('aria-pressed', String(subtitlesOn))

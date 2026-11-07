@@ -1064,7 +1064,13 @@ class RemotePlaybackMixin:
             raise ValueError("The TV player is not ready for portal controls") from error
         if reply != "ok":
             raise ValueError("The TV could not accept that control")
-        return {"ok": True, "message": "Command sent"}
+        result = {"ok": True, "message": "Command sent"}
+        if command == "toggle-subtitles":
+            state = self.player_mode_status()
+            if isinstance(state.get("subtitles_visible"), bool):
+                result["control_state"] = {key: state[key] for key in
+                    ("subtitles_visible", "subtitles_available", "seek_token") if key in state}
+        return result
 
     def play_on_tv(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Start a known library item through the private player socket."""

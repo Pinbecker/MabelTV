@@ -31,7 +31,8 @@ class LiveStatusResilienceTests(unittest.TestCase):
                     "return-to-mabeltv", "toggle-remote-lock",
                     "turn-on", "turn-off", "turn-on-mabel-only",
                     "turn-off-mabel-only")
-        with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True):
+        with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
+                mock.patch.object(self.fixture.library, "player_mode_status", return_value={}):
             with mock.patch.object(mabeltv_library.socket, "socket") as socket_factory:
                 client = socket_factory.return_value.__enter__.return_value
                 client.recv.return_value = b"ok\n"
@@ -43,6 +44,21 @@ class LiveStatusResilienceTests(unittest.TestCase):
                 self.assertEqual(
                     [call.args[0] for call in client.sendall.call_args_list],
                     [f"{command}\n".encode() for command in commands])
+
+    def test_subtitle_command_returns_confirmed_state_without_slow_live_status_or_private_paths(self):
+        library = self.fixture.library
+        mode = {"subtitles_visible": False, "subtitles_available": True,
+                "seek_token": "a" * 64, "seek_file": "/private/film.mp4"}
+        with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
+                mock.patch.object(mabeltv_library.socket, "socket") as factory, \
+                mock.patch.object(library, "player_mode_status", return_value=mode), \
+                mock.patch.object(library, "live_tv_status", side_effect=AssertionError("Slow status requested")):
+            client = factory.return_value.__enter__.return_value
+            client.recv.return_value = b"ok\n"
+            result = library.live_tv_control({"command": "toggle-subtitles"})
+        self.assertEqual(result["control_state"], {"subtitles_visible": False,
+            "subtitles_available": True, "seek_token": "a" * 64})
+        client.sendall.assert_called_once_with(b"toggle-subtitles\n")
 
     def test_live_tv_channel_picker_sends_a_validated_direct_tune(self) -> None:
         self.fixture.library.complete_setup({

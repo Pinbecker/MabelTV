@@ -554,8 +554,10 @@ let managementBusy = false
       }
       navigator.vibrate?.(8)
       setRemoteFeedback(liveCommandFeedback[command] || 'Sending…', '', 0)
+      const subtitleToggle = command === 'toggle-subtitles' ? beginRemoteSubtitleToggle() : null
       try {
-        await api('/api/live/control', { method: 'POST', body: JSON.stringify({ command, ...extra }) })
+        const result = await api('/api/live/control', { method: 'POST', body: JSON.stringify({ command, ...extra }) })
+        finishRemoteSubtitleToggle(subtitleToggle, result)
         if (button) {
           button.classList.remove('is-sending')
           button.classList.add('command-ok')
@@ -569,10 +571,12 @@ let managementBusy = false
             refreshHomePowerState().catch(() => {})
           }, 1400)
         } else {
-          setTimeout(() => refreshLiveTv(false), 280)
+          if (subtitleToggle) void refreshLiveTv(false)
+          else setTimeout(() => refreshLiveTv(false), 280)
         }
         return true
       } catch (error) {
+        finishRemoteSubtitleToggle(subtitleToggle, null)
         if (button) button.classList.remove('is-sending')
         setRemoteFeedback('Command failed', 'error', 2200)
         notice(error.message, true)

@@ -2,6 +2,57 @@ import { test, expect } from './test-fixtures.mjs'
 
 test.use({ serviceWorkers: 'block' })
 
+for (const myTv of [false,true]) test(`subtitle toggle responds immediately and rolls back failure in ${myTv?'My TV':'Mabel TV'}`,async({page})=>{
+  const state={available:true,standby:false,my_tv_mode:myTv,seek_token:'a'.repeat(64),
+    subtitles_available:true,subtitles_visible:false,programme:'Shrek'}
+  let release,fail=false,commands=0
+  await page.route('**/api/live',route=>route.fulfill({json:state}))
+  await page.route('**/api/live/control',async route=>{
+    commands++;await new Promise(resolve=>{release=resolve})
+    if(fail)return route.fulfill({status:503,json:{error:'The TV could not accept that control'}})
+    state.subtitles_visible=!state.subtitles_visible
+    return route.fulfill({json:{ok:true,control_state:{subtitles_visible:state.subtitles_visible,seek_token:state.seek_token}}})
+  })
+  await page.goto('/#live');await page.evaluate(value=>renderLiveTv(value),state)
+  const button=page.locator('#remoteSubtitles')
+  expect(await button.evaluate(button=>{button.click();return button.textContent.trim()})).toBe('Subtitles · On')
+  await expect.poll(()=>commands).toBe(1)
+  // A delayed pre-command status response cannot undo the pending state.
+  await page.evaluate(value=>renderLiveTv(value),state)
+  await expect(button).toHaveText('Subtitles · On')
+  await button.evaluate(button=>button.click());expect(commands).toBe(1)
+  release()
+  await expect.poll(()=>button.getAttribute('data-remote-busy')).toBeNull()
+  await expect(button).toHaveAttribute('aria-pressed','true')
+  fail=true
+  expect(await button.evaluate(button=>{button.click();return button.textContent.trim()})).toBe('Subtitles · Off')
+  await expect.poll(()=>commands).toBe(2)
+  await page.evaluate(value=>renderLiveTv(value),state)
+  await expect(button).toHaveText('Subtitles · Off')
+  release()
+  await expect(button).toHaveText('Subtitles · On')
+  await expect(button).toHaveAttribute('aria-pressed','true')
+})
+
+test('a subtitle acknowledgement cannot change the next programme',async({page})=>{
+  const state={available:true,standby:false,my_tv_mode:false,seek_token:'a'.repeat(64),
+    subtitles_available:true,subtitles_visible:false,programme:'Shrek'}
+  let release
+  await page.route('**/api/live',route=>route.fulfill({json:state}))
+  await page.route('**/api/live/control',async route=>{
+    await new Promise(resolve=>{release=resolve})
+    return route.fulfill({json:{ok:true,control_state:{subtitles_visible:true,seek_token:'a'.repeat(64)}}})
+  })
+  await page.goto('/#live');await page.evaluate(value=>renderLiveTv(value),state)
+  const button=page.locator('#remoteSubtitles');await button.click()
+  await expect.poll(()=>typeof release).toBe('function')
+  state.seek_token='b'.repeat(64);state.programme='The Grinch'
+  await page.evaluate(value=>renderLiveTv(value),state)
+  release()
+  await expect.poll(()=>button.getAttribute('data-remote-busy')).toBeNull()
+  await expect(button).toHaveText('Subtitles · Off')
+})
+
 test('remote subtitles work for kids in every picture mode and disable without a track', async ({ page }) => {
   const state = {available:true,standby:false,my_tv_mode:false,presentation_mode:'standard',
     subtitles_available:true,subtitles_visible:false}

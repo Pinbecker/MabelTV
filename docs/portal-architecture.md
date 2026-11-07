@@ -20,6 +20,9 @@ prefetch uses the paced warmup queue, not the foreground decoder priority.
 Preview failures never block seeking or create a global banner. Pictures sample
 ten-second points; release still seeks to the selected second.
 The subtitle control shows On/Off explicitly and None when no track is available.
+It changes immediately on a tap, protects that pending choice from stale polls,
+then confirms from the command response or reverts on failure. It does not wait
+for the slower full live-status refresh to update the button.
 System and help links to the existing Pi bin sheet, with sizes and a confirmed
 snapshot-based empty action; deleting bin contents never refreshes playback.
 

@@ -22,6 +22,8 @@ its warmup queue, and seeking within the same programme reprioritises the queue
 around the actual playback position. Phone prefetch cannot move that centre.
 Existing strips survive player/service restarts and are
 identified by the file's actual inode, size and modification time.
+Subtitle-toggle replies include the native player's confirmed subtitle state
+without running the full live-status path or exposing native source paths.
 
 The local Library service is the private backend for the MabelTV portal and its
 installed iOS PWA. Public routes, cookies, JSON response shapes, local socket
