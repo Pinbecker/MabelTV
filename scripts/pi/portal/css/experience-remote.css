@@ -364,7 +364,7 @@ body.portal-v2 #remoteScrubRange {
   background: transparent;
   accent-color: var(--experience-orange);
   cursor: pointer;
-  touch-action: pan-y;
+  touch-action: none;
 }
 body.portal-v2 #remoteScrubRange::-webkit-slider-runnable-track {
   height: 4px;
@@ -414,3 +414,9 @@ body.portal-v2 .remote-scrub-preview-message.loading::before {
 }
 body.portal-v2 #remoteScrubPreviewTime { position: absolute; bottom: 7px; right: 7px; padding: 4px 7px; border-radius: 5px; background: #101014d9; color: #fff; font-size: 12px; font-weight: 600; letter-spacing: .02em; }
 @keyframes remote-preview-spin { to { transform: rotate(360deg); } }
+body.portal-v2 .remote-scrub-cancel-hint { position:absolute; inset:0; display:grid; align-content:center; justify-items:center; gap:8px; background:#141419e6; color:#f4f4f7; font-size:13px; font-weight:600; }
+body.portal-v2 .remote-scrub-cancel-hint.hidden { display:none; }
+body.portal-v2 .remote-scrub-cancel-hint svg { width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:1.5; }
+body.portal-v2 .remote-scrub-preview.is-cancelling :is(#remoteScrubPreviewTime,.remote-scrub-preview-message) { display:none; }
+body.portal-v2 .remote-scrub-panel.is-cancelling #remoteScrubRange::-webkit-slider-runnable-track { background:#43434b; }
+body.portal-v2 .remote-scrub-panel.is-cancelling #remoteScrubRange::-webkit-slider-thumb { background:#aaaab4; box-shadow:none; }

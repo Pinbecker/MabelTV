@@ -1,6 +1,7 @@
 """Current-file identity checks and explicitly chosen TV replacements."""
 import hashlib
 import re
+from .constants import SUPPORTED_EXTENSIONS
 
 
 class StudioPresenceMixin:
@@ -18,7 +19,8 @@ class StudioPresenceMixin:
                 "My TV · " + series.get("title", "Series"), int(number[1]) if number else episode.get("season"),
                 int(number[2]) if number else episode.get("episode")))
         states = self.channel_media_states()
-        for channel in self.channels():
+        channels = {channel["number"]: channel for channel in self.channels()}
+        for channel in channels.values():
             for key, metadata in states.get("programmes", {}).items():
                 prefix = str(channel["number"]) + "/"
                 if not key.startswith(prefix):
@@ -33,13 +35,20 @@ class StudioPresenceMixin:
             if not metadata.get("tmdb_id"):
                 continue
             try:
-                _, path, title, _, _ = self.remote_source(source)
+                if source["kind"] == "my_tv":
+                    path = self.safe_my_tv_path(source["file"])
+                elif source["kind"] == "my-tv-series":
+                    path = self.my_tv_series_path(source["series"], source["file"])
+                else:
+                    path = self.safe_media_path(channels[source["channel"]], source["file"])
+                if path.suffix.lower() not in SUPPORTED_EXTENSIONS or not path.is_file():
+                    continue
                 stat = path.stat()
             except (ValueError, OSError):
                 continue
             key = hashlib.sha256(str(path).encode()).hexdigest()[:24]
             result.append({"key": key, "source": source, "location": location, "name": path.name,
-                "title": metadata.get("title") or title, "bytes": stat.st_size,
+                "title": metadata.get("title") or self.display_name(path.name), "bytes": stat.st_size,
                 "fingerprint": [stat.st_size, str(stat.st_mtime_ns), str(stat.st_ino)],
                 "tmdb_id": metadata["tmdb_id"], "media_type": metadata.get("media_type", "tv" if season is not None else "movie"),
                 "season": season, "episode": episode})
@@ -47,13 +56,19 @@ class StudioPresenceMixin:
 
     def studio_presence(self, payload):
         identities = payload.get("ids", [])
-        if not isinstance(identities, list) or not 1 <= len(identities) <= 100:
+        if not isinstance(identities, list) or not 1 <= len(identities) <= 100 or any(not isinstance(value, str) or not value for value in identities):
             raise ValueError("Choose up to 100 iCloud files")
         copies, results = self.studio_local_copies(), []
+        # Take one catalogue snapshot for the whole selection, without opening
+        # playback sources or repeatedly loading resume state for every file.
+        titles, groups = self.studio_cloud_media_titles()
+        files = {item["id"]: {**item, "metadata": title.get("metadata")}
+                 for title in titles for item in groups.get(title["id"], [title])}
         for identity in dict.fromkeys(identities):
-            item = self.studio_cloud_item(str(identity))
-            title = self.studio_cloud_title_for_file(item["id"])
-            match = title.get("metadata") or {}
+            item = files.get(identity)
+            if not item:
+                raise ValueError("That file is no longer in the iCloud catalogue. Refresh and try again.")
+            match = item.get("metadata") or {}
             matches = [copy for copy in copies if copy["tmdb_id"] == match.get("tmdb_id")
                 and copy["media_type"] == match.get("media_type", "movie")
                 and (copy["media_type"] == "movie" or type(item.get("episodeNumber")) is int

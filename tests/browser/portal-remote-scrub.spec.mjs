@@ -1,6 +1,46 @@
 import {test,expect} from './test-fixtures.mjs'
 test.use({serviceWorkers:'block'})
 
+for(const myTv of [false,true]) test(`scrub cancels upward and resumes when returned to the bar in ${myTv?'My TV':'Mabel TV'}`,async({page},info)=>{
+  const state={available:true,standby:false,my_tv_mode:myTv,paused:true,seek_supported:true,
+    seek_available:true,seek_token:'c'.repeat(64),playback_position:900,playback_duration:7200,programme:'The Grinch'}
+  const commands=[]
+  await page.route('**/api/live',route=>route.fulfill({json:state}))
+  await page.route('**/api/live/seek-preview?**',route=>route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="144"><rect width="2048" height="144" fill="#3e6c70"/></svg>'}))
+  await page.route('**/api/live/control',async route=>{
+    const body=route.request().postDataJSON();commands.push(body);state.playback_position=body.position
+    await route.fulfill({json:{ok:true}})
+  })
+  await page.goto('/#live');await page.evaluate(value=>renderRemoteState(value),state)
+  await page.locator('#remoteScrubOpen').click()
+  const range=page.locator('#remoteScrubRange'),box=await range.boundingBox(),y=box.y+box.height/2
+  const start=async()=>{await page.mouse.move(box.x+box.width*.2,y);await page.mouse.down();await page.mouse.move(box.x+box.width*.7,y,{steps:3})}
+  await start();expect(commands).toHaveLength(0)
+  await page.mouse.move(box.x+box.width*.7,y-110,{steps:3})
+  await expect(page.locator('#remoteScrubCancelHint')).toBeVisible()
+  await expect(page.locator('#remoteScrubClock')).toHaveText('Release to cancel')
+  await page.screenshot({path:info.outputPath(`scrub-cancel-${myTv?'mytv':'mabel'}.png`)})
+  await page.mouse.up()
+  await expect(range).toHaveValue('900')
+  await expect(page.locator('#remoteScrubPreview')).toBeHidden()
+  expect(commands).toHaveLength(0)
+  // A second drag can leave the bar, return, then commit once on release.
+  await start();await page.mouse.move(box.x+box.width*.7,y-110,{steps:3})
+  await page.mouse.move(box.x+box.width*.7,y,{steps:3})
+  await expect(page.locator('#remoteScrubCancelHint')).toBeHidden()
+  await page.mouse.up()
+  await expect.poll(()=>commands.length).toBe(1)
+  expect(commands[0].position).toBeGreaterThan(4000)
+  await expect(range).toBeEnabled()
+  // An interrupted touch must never fall through to the native change event.
+  await start();await range.dispatchEvent('pointercancel');await page.mouse.up()
+  expect(commands).toHaveLength(1)
+  // Closing while another finger is dragging cancels without seeking.
+  await start();await page.locator('#remoteScrubClose').evaluate(button=>button.click());await page.mouse.up()
+  await expect(page.locator('#remoteScrubPanel')).toBeHidden()
+  expect(commands).toHaveLength(1)
+})
+
 for(const myTv of [false,true]) test(`remote scrub seeks ${myTv?'My TV':'Mabel TV'} only on release and rejects stale programme`,async({page},info)=>{
   if(myTv)await page.addInitScript(()=>localStorage.setItem('mabeltv-experience-theme','light'))
   const state={available:true,standby:false,my_tv_mode:myTv,paused:false,seek_supported:true,

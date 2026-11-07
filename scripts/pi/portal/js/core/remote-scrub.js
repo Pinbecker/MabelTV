@@ -1,6 +1,6 @@
 'use strict'
 
-const remoteScrub = { open: false, dragging: false, token: '', position: 0, duration: 0, paused: true, at: 0, pending: null, busy: false }
+const remoteScrub = { open: false, dragging: false, pointer: null, cancelArmed: false, ignoreChange: false, token: '', position: 0, duration: 0, paused: true, at: 0, pending: null, busy: false }
 function remoteScrubTime(seconds) {
   const total = Math.max(0, Math.floor(Number(seconds) || 0)), hours = Math.floor(total / 3600)
   return (hours ? hours + ':' : '') + String(Math.floor(total / 60) % 60).padStart(hours ? 2 : 1, '0') + ':' + String(total % 60).padStart(2, '0')
@@ -20,12 +20,16 @@ function remoteScrubPaint() {
   $('#remoteScrubDuration').textContent = remoteScrubTime(remoteScrub.duration)
   const clock = date => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   const now = new Date(), ends = new Date(now.getTime() + (remoteScrub.duration - position) * 1000)
-  $('#remoteScrubClock').textContent = remoteScrub.busy ? 'Seeking…' : `${clock(now)} · ${remoteScrub.paused ? 'Paused' : 'Ends ' + clock(ends)}`
+  $('#remoteScrubClock').textContent = remoteScrub.busy ? 'Seeking…' : remoteScrub.dragging
+    ? remoteScrub.cancelArmed ? 'Release to cancel' : 'Slide up to cancel'
+    : `${clock(now)} · ${remoteScrub.paused ? 'Paused' : 'Ends ' + clock(ends)}`
+  $('#remoteScrubPanel').classList.toggle('is-cancelling', remoteScrub.cancelArmed)
   remotePreviewPaint(position)
 }
 function remoteScrubClose(focus = false) {
   remotePreviewReset()
   remoteScrub.open = false; remoteScrub.dragging = false
+  remoteScrub.pointer = null; remoteScrub.cancelArmed = false; remoteScrub.ignoreChange = true
   $('#remoteTransportButtons').classList.remove('hidden'); $('#remoteScrubPanel').classList.add('hidden')
   $('#remoteScrubOpen').setAttribute('aria-expanded', 'false')
   if (focus) $('#remoteScrubOpen').focus({ preventScroll: true })
@@ -50,20 +54,59 @@ function renderRemoteScrub(state) {
 $('#remoteScrubOpen').onclick = () => {
   if (!remoteScrub.token) return
   remoteScrub.open = true
+  remoteScrub.ignoreChange = false
   $('#remoteTransportButtons').classList.add('hidden'); $('#remoteScrubPanel').classList.remove('hidden')
   $('#remoteScrubOpen').setAttribute('aria-expanded', 'true')
   remoteScrubPaint(); $('#remoteScrubRange').focus({ preventScroll: true })
 }
 $('#remoteScrubClose').onclick = () => remoteScrubClose(true)
 const remoteScrubSlider = $('#remoteScrubRange')
-remoteScrubSlider.oninput = () => { remoteScrub.dragging = true; remoteScrubPaint() }
-remoteScrubSlider.onpointerdown = () => { if (!remoteScrubSlider.disabled) { remoteScrub.dragging = true; remoteScrubPaint() } }
-remoteScrubSlider.onpointerup = () => { remoteScrub.dragging = false; setTimeout(remoteScrubPaint, 0) }
-remoteScrubSlider.onpointercancel = () => { remoteScrub.dragging = false; remoteScrubPaint() }
+function remoteScrubCancelDrag() {
+  remoteScrub.pointer = null; remoteScrub.dragging = false; remoteScrub.cancelArmed = false
+  remoteScrub.ignoreChange = true; remoteScrubPaint()
+}
+function remoteScrubPointerPosition(event) {
+  const bounds = remoteScrubSlider.getBoundingClientRect()
+  remoteScrub.cancelArmed = event.clientY < bounds.top - 48
+  if (!remoteScrub.cancelArmed) {
+    const fraction = Math.max(0, Math.min(1, (event.clientX - bounds.left - 9) / Math.max(1, bounds.width - 18)))
+    remoteScrubSlider.value = String(Math.round(fraction * remoteScrub.duration))
+  }
+  remoteScrubPaint()
+}
+remoteScrubSlider.oninput = () => {
+  if (remoteScrub.ignoreChange && remoteScrub.pointer === null) return
+  remoteScrub.dragging = true; remoteScrubPaint()
+}
+remoteScrubSlider.onpointerdown = event => {
+  if (remoteScrubSlider.disabled || event.isPrimary === false || remoteScrub.pointer !== null) return
+  event.preventDefault(); remoteScrubSlider.focus({ preventScroll: true })
+  remoteScrub.pointer = event.pointerId; remoteScrub.dragging = true
+  remoteScrub.cancelArmed = false; remoteScrub.ignoreChange = false
+  remoteScrubSlider.setPointerCapture(event.pointerId); remoteScrubPointerPosition(event)
+}
+remoteScrubSlider.onpointermove = event => {
+  if (remoteScrub.pointer !== event.pointerId) return
+  remoteScrubPointerPosition(event)
+}
+remoteScrubSlider.onpointerup = event => {
+  if (remoteScrub.pointer !== event.pointerId) return
+  remoteScrubPointerPosition(event)
+  const cancel = remoteScrub.cancelArmed
+  remoteScrub.pointer = null; remoteScrub.ignoreChange = true
+  if (cancel) remoteScrubCancelDrag()
+  else void remoteScrubCommit()
+}
+remoteScrubSlider.onpointercancel = remoteScrubCancelDrag
+remoteScrubSlider.onlostpointercapture = () => { if (remoteScrub.pointer !== null) remoteScrubCancelDrag() }
 remoteScrubSlider.onkeydown = event => {
   if (event.key === 'Escape') { event.preventDefault(); remoteScrubClose(true) }
+  else remoteScrub.ignoreChange = false
 }
-remoteScrubSlider.onchange = async () => {
+remoteScrubSlider.onchange = () => {
+  if (remoteScrub.pointer === null && !remoteScrub.ignoreChange) void remoteScrubCommit()
+}
+async function remoteScrubCommit() {
   if (!remoteScrub.open || !remoteScrub.token || remoteScrub.busy) return
   const token = remoteScrub.token, position = Number(remoteScrubSlider.value)
   remoteScrub.dragging = false; remoteScrub.busy = true; remoteScrubSlider.disabled = true

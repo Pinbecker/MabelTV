@@ -58,9 +58,9 @@
               </div>
               <div id="remoteScrubPanel" class="remote-scrub-panel hidden">
                 <div class="remote-scrub-timeline">
-                  <div id="remoteScrubPreview" class="remote-scrub-preview hidden" aria-hidden="true"><div id="remoteScrubPreviewImage" class="remote-scrub-preview-image hidden"></div><div id="remoteScrubPreviewMessage" class="remote-scrub-preview-message loading">Preparing preview…</div><span id="remoteScrubPreviewTime">0:00</span></div>
+                  <div id="remoteScrubPreview" class="remote-scrub-preview hidden" aria-hidden="true"><div id="remoteScrubPreviewImage" class="remote-scrub-preview-image hidden"></div><div id="remoteScrubPreviewMessage" class="remote-scrub-preview-message loading">Preparing preview…</div><span id="remoteScrubPreviewTime">0:00</span><div id="remoteScrubCancelHint" class="remote-scrub-cancel-hint hidden"><svg aria-hidden="true"><use href="/portal/icons.svg#signal-x"/></svg><span>Release to cancel</span></div></div>
                   <div class="remote-scrub-readout"><output id="remoteScrubPosition" for="remoteScrubRange">0:00</output><span id="remoteScrubClock"></span></div><input id="remoteScrubRange" type="range" min="0" max="1" step="1" value="0" aria-label="Playback position"><div class="remote-scrub-limits"><span>0:00</span><span id="remoteScrubDuration">0:00</span></div></div>
-                <button id="remoteScrubClose" type="button" aria-label="Return to playback controls"><svg><use href="/portal/icons.svg#signal-x"/></svg></button>
+                <button id="remoteScrubClose" type="button" aria-label="Cancel scrubbing"><svg><use href="/portal/icons.svg#signal-x"/></svg></button>
               </div>
             </div>
             <div class="remote-transport remote-transport-context">

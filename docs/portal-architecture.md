@@ -1,6 +1,10 @@
 # Portal architecture
 
 The Remote transport row offers Scrub for both Mabel TV and My TV playback.
+Dragging upward away from the slider arms cancellation; releasing there sends
+no command, and returning to the slider resumes the gesture. Pointer loss,
+Escape and the close control also discard an unfinished scrub. Pointer release
+owns the commit so a later native range change event cannot duplicate the seek.
 `core/remote-scrub.js` owns the in-place timeline, elapsed/total time and wall-clock
 finish estimate. Dragging previews locally; release sends one generation-bound
 seek with no automatic retry. A programme change closes the timeline. The native

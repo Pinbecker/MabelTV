@@ -123,6 +123,9 @@ class StudioVersionsSubtitleTests(unittest.TestCase):
         self.assertEqual({item["path"] for item in actual["subtitles"]}, {"Films/Film.en.srt", "Films/Film.mp4.en.srt"})
 
     def test_presence_matches_metadata_and_keep_does_not_download_again(self):
+        self.library.studio_cloud_media_titles = mock.Mock(return_value=([
+            {**item, "metadata": {"tmdb_id": 100, "media_type": "movie"}}
+            for item in self.library.studio_cloud_files], {}))
         presence = self.library.studio_presence({"ids": ["a" * 24]})
         copy = presence["items"][0]["copies"][0]
         self.assertEqual(copy["source"], self.source)
@@ -141,8 +144,21 @@ class StudioVersionsSubtitleTests(unittest.TestCase):
     def test_presence_requires_specific_episode_and_ignores_removed_files(self):
         copies = [{"tmdb_id": 100, "media_type": "tv", "season": 1, "episode": 2}]
         self.library.studio_local_copies = mock.Mock(return_value=copies)
-        self.library.studio_cloud_title_for_file.return_value = {"metadata": {"tmdb_id": 100, "media_type": "tv"}}
-        self.library.studio_cloud_item = mock.Mock(return_value={"id": "a" * 24, "series": 1, "episodeNumber": 3})
+        episode = {"id": "a" * 24, "series": 1, "episodeNumber": 3}
+        self.library.studio_cloud_media_titles = mock.Mock(return_value=([
+            {"id": "show", "metadata": {"tmdb_id": 100, "media_type": "tv"}}], {"show": [episode]}))
         self.assertEqual(self.library.studio_presence({"ids": ["a" * 24]})["items"][0]["copies"], [])
-        self.library.studio_cloud_item.return_value["episodeNumber"] = 2
+        episode["episodeNumber"] = 2
         self.assertEqual(self.library.studio_presence({"ids": ["a" * 24]})["items"][0]["copies"], copies)
+
+    def test_presence_checks_many_files_without_playback_reads_or_library_writes(self):
+        files = [{**self.cloud(str(i), f"Film {i}.mp4", 100), "metadata": {"tmdb_id": 100, "media_type": "movie"}} for i in range(100)]
+        self.library.studio_cloud_media_titles = mock.Mock(return_value=(files, {}))
+        self.library.remote_source = mock.Mock(side_effect=AssertionError("Presence must not open playback sources"))
+        self.library.my_tv_library = mock.Mock(side_effect=AssertionError("Presence must not rebuild the library"))
+        result = self.library.studio_presence({"ids": [item["id"] for item in files]})
+        self.assertEqual(len(result["items"]), 100)
+        self.assertTrue(all(len(item["copies"]) == 1 for item in result["items"]))
+        self.library.studio_cloud_media_titles.assert_called_once()
+        self.video.unlink()
+        self.assertEqual(self.library.studio_presence({"ids": [files[0]["id"]]})["items"][0]["copies"], [])

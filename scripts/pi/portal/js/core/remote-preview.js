@@ -11,10 +11,13 @@ function remotePreviewPaint(position) {
   const box = $('#remoteScrubPreview')
   if (!remoteScrub.open || !remoteScrub.dragging) { box.classList.add('hidden'); return }
   box.classList.remove('hidden'); scrubPreview.position = position
+  box.classList.toggle('is-cancelling', remoteScrub.cancelArmed)
+  $('#remoteScrubCancelHint').classList.toggle('hidden', !remoteScrub.cancelArmed)
   const timeline = box.parentElement, width = timeline.clientWidth
   const previewWidth = box.offsetWidth
   box.style.left = Math.max(0, Math.min(width - previewWidth, width * position / Math.max(1, remoteScrub.duration) - previewWidth / 2)) + 'px'
   $('#remoteScrubPreviewTime').textContent = remoteScrubTime(position)
+  if (remoteScrub.cancelArmed) return
   const bucket = Math.floor(Math.min(position, Math.max(0, remoteScrub.duration - 1)) / 80)
   const key = `${remoteScrub.token}:${bucket}`
   const url = scrubPreview.cache.get(key)
