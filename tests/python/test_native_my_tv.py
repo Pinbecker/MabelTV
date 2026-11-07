@@ -29,7 +29,9 @@ class NativeMyTvTests(unittest.TestCase):
         fake_socket = mock.MagicMock()
         fake_socket.__enter__.return_value = fake_socket
         fake_socket.recv.return_value = b"ok\n"
-        with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
+        with mock.patch.object(library, "player_mode_status", return_value={}), \
+                mock.patch.object(library, "confirm_tv_playback"), \
+                mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
                 mock.patch.object(mabeltv_library.socket, "socket", return_value=fake_socket):
             library.play_on_tv(payload)
             command = json.loads(fake_socket.sendall.call_args.args[0])

@@ -1072,6 +1072,22 @@ class RemotePlaybackMixin:
                     ("subtitles_visible", "subtitles_available", "seek_token") if key in state}
         return result
 
+    def confirm_tv_playback(self, source: Path, previous_token: str) -> None:
+        """An IPC acknowledgement queues an action; verify the new playback too."""
+        deadline = time.monotonic() + 12
+        expected = source.resolve()
+        while True:
+            status = self.player_mode_status()
+            filename = status.get("seek_file")
+            token = status.get("seek_token")
+            if (status.get("seek_available") is True and filename and token
+                    and token != previous_token and Path(filename).resolve() == expected):
+                return
+            if time.monotonic() >= deadline:
+                raise ValueError("The TV has not confirmed that this video started. "
+                                 "Check the TV before trying again.")
+            time.sleep(0.25)
+
     def play_on_tv(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Start a known library item through the private player socket."""
         kind = str(payload.get("kind", ""))
@@ -1080,7 +1096,12 @@ class RemotePlaybackMixin:
             if kind != "channel" or queued["channel_number"] != int(payload.get("channel", 0)) \
                     or queued["file_name"] != str(payload.get("file") or ""):
                 raise ValueError("That queue entry does not match the selected programme")
-            return self.play_queue_on_tv(queued["id"])
+            _kind, source, _title, _identity, _position = self.remote_source(payload)
+            previous = self.player_mode_status().get("seek_token", "")
+            result = self.play_queue_on_tv(queued["id"])
+            self.confirm_tv_playback(source, previous)
+            result["message"] = f"Playing {queued.get('title') or _title} from Up Next"
+            return result
         if kind == "channel":
             _kind, source, title, library_id, resume = self.remote_source(payload)
             if "position" in payload:
@@ -1120,13 +1141,13 @@ class RemotePlaybackMixin:
                        "position": resolved["position"]}
         if not source.is_file():
             raise ValueError(f"That video is no longer in the {self.tv_identity()[1]} library")
-        state = self.read_state("player")
+        before = self.player_mode_status()
+        state = before if "standby" in before else self.read_state("player")
         woke_tv = False
         if isinstance(state, dict) and state.get("standby"):
             self.live_tv_control({"command": "turn-on"})
             woke_tv = True
         sent_to_player = False
-        accepted_without_reply = False
         try:
             with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
                 client.settimeout(3)
@@ -1135,13 +1156,10 @@ class RemotePlaybackMixin:
                 sent_to_player = True
                 reply = client.recv(32).decode(errors="replace").strip()
         except socket.timeout as error:
-            # A busy renderer transition can delay the socket acknowledgement
-            # even though the complete command is already queued in the local
-            # player.  Do not turn that accepted request into the false failure
-            # the portal previously showed while the film started on screen.
+            # The acknowledgement may be late. Do not send a duplicate command;
+            # the native playback check below must still confirm it started.
             if not sent_to_player:
                 raise ValueError("The TV player is not ready to start that video") from error
-            accepted_without_reply = True
             reply = "ok"
         except OSError as error:
             raise ValueError("The TV player is not ready to start that video") from error
@@ -1159,12 +1177,13 @@ class RemotePlaybackMixin:
                     client.settimeout(2)
                     client.connect("/run/mabeltv/portal-control.sock")
                     client.sendall(b"select\n")
-                    skip_reply = client.recv(32).decode(errors="replace").strip()
-            except OSError as error:
-                raise ValueError(f"The film was selected, but {self.tv_identity()[1]} could not start it immediately") from error
-            if skip_reply != "ok":
-                raise ValueError(f"The film was selected, but {self.tv_identity()[1]} could not start it immediately")
-        verb = "Starting" if accepted_without_reply else "Playing"
+                    client.recv(32)
+            except OSError:
+                # Skipping the leader is optional. The film can still start at
+                # its end, and the playback check determines success below.
+                pass
+        self.confirm_tv_playback(source, before.get("seek_token", ""))
+        verb = "Playing"
         return {"ok": True,
                 "message": (f"Turned on {self.tv_identity()[1]} and {verb.lower()} "
                             f"{title}"

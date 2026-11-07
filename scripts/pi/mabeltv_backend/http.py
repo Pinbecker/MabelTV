@@ -826,6 +826,8 @@ class Handler(BaseHTTPRequestHandler):
         except RemoteTvActiveError as error:
             self.json(HTTPStatus.CONFLICT, {"error": str(error), "code": "tv-active"})
         except ValueError as error:
+            if self.path == "/api/play-on-tv":
+                print("portal-playback rejected: " + str(error)[:240], flush=True)
             self.json(400, {"error": str(error)})
         except Exception as error:
             self.unexpected("POST", error)

@@ -173,6 +173,10 @@ ship the fixture form to preserve a test shortcut.
 3. `portal/js/core/foundation.js`: shared state, API, escaping, auth, and base
    helpers. `core/confirmation.js` follows it and owns asynchronous playback
    confirmation with large touch controls; cancellation sends no command.
+   Play on TV keeps that sheet open while starting, disables duplicate taps,
+   and displays request failures inside it with Retry/Cancel. Success closes
+   the originating cards; an expired session exposes the PIN screen. Playback
+   POSTs are never automatically retried after a lost response.
    Upload source identities use the shared UUID helper: HTTPS can use
    `crypto.randomUUID`, while LAN HTTP uses `crypto.getRandomValues` with the
    same UUID format. A missing secure-context API must not prevent portal boot.

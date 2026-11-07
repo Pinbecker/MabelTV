@@ -24,6 +24,12 @@ Existing strips survive player/service restarts and are
 identified by the file's actual inode, size and modification time.
 Subtitle-toggle replies include the native player's confirmed subtitle state
 without running the full live-status path or exposing native source paths.
+Play on TV checks the exact local source and a new native playback generation
+before reporting success, including Up Next. A socket acknowledgement alone is
+not proof; a late acknowledgement is verified without resending the command.
+The bounded status check uses local IPC, not the slower live-screen capture.
+A missed optional film-leader skip can still succeed when the leader finishes.
+Rejected playback requests retain their reason in the Library journal.
 
 The local Library service is the private backend for the MabelTV portal and its
 installed iOS PWA. Public routes, cookies, JSON response shapes, local socket

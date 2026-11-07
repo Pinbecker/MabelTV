@@ -353,7 +353,9 @@ class UsbLibraryTests(unittest.TestCase):
         context.__enter__.return_value = client
         context.__exit__.return_value = False
         client.recv.return_value = b"ok\n"
-        with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
+        with mock.patch.object(self.fixture.library, "player_mode_status", return_value={}), \
+                mock.patch.object(self.fixture.library, "confirm_tv_playback"), \
+                mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
                 mock.patch.object(mabeltv_library.socket, "socket", return_value=context), \
                 mock.patch.object(mabeltv_library.time, "sleep") as sleep:
             channel_result = self.fixture.library.play_on_tv({
@@ -383,7 +385,9 @@ class UsbLibraryTests(unittest.TestCase):
             "channel_film_durations": {"1/Episode.mp4": 7200},
             "channel_film_position_updated_utc_ms": {"1/Episode.mp4": 1000},
         })))
-        with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
+        with mock.patch.object(self.fixture.library, "player_mode_status", return_value={}), \
+                mock.patch.object(self.fixture.library, "confirm_tv_playback"), \
+                mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
                 mock.patch.object(mabeltv_library.socket, "socket", return_value=context), \
                 mock.patch.object(mabeltv_library.time, "sleep") as sleep:
             film_channel_result = self.fixture.library.play_on_tv({
@@ -403,7 +407,7 @@ class UsbLibraryTests(unittest.TestCase):
                 "kind": "my_tv", "file": "Films/Missing.mkv",
             })
 
-    def test_portal_play_on_tv_treats_a_sent_command_as_accepted_if_ack_is_late(self) -> None:
+    def test_portal_play_on_tv_verifies_a_sent_command_if_ack_is_late(self) -> None:
         my_tv_movie = self.fixture.library.my_tv_root / "Passengers (2016).mp4"
         my_tv_movie.write_bytes(b"film")
         client = mock.MagicMock()
@@ -412,7 +416,9 @@ class UsbLibraryTests(unittest.TestCase):
         context.__exit__.return_value = False
         client.recv.side_effect = mabeltv_library.socket.timeout("late acknowledgement")
 
-        with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
+        with mock.patch.object(self.fixture.library, "player_mode_status", return_value={}), \
+                mock.patch.object(self.fixture.library, "confirm_tv_playback"), \
+                mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
                 mock.patch.object(mabeltv_library.socket, "socket", return_value=context), \
                 mock.patch.object(self.fixture.library, "tv_identity",
                                   return_value=("Mabel", "Mabel TV")):
@@ -421,7 +427,7 @@ class UsbLibraryTests(unittest.TestCase):
             })
 
         self.assertTrue(result["ok"])
-        self.assertEqual(result["message"], "Starting Passengers (2016) on Mabel TV")
+        self.assertEqual(result["message"], "Playing Passengers (2016) on Mabel TV")
         client.sendall.assert_called_once()
 
     def test_portal_play_on_tv_wakes_standby_and_honours_start_position(self) -> None:
@@ -438,7 +444,9 @@ class UsbLibraryTests(unittest.TestCase):
         self.fixture.library.live_tv_control = mock.Mock(
             return_value={"ok": True, "message": "Command sent"})
 
-        with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
+        with mock.patch.object(self.fixture.library, "player_mode_status", return_value={}), \
+                mock.patch.object(self.fixture.library, "confirm_tv_playback"), \
+                mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
                 mock.patch.object(mabeltv_library.socket, "socket", return_value=context), \
                 mock.patch.object(self.fixture.library, "tv_identity",
                                   return_value=("Mabel", "Mabel TV")):
@@ -467,7 +475,9 @@ class UsbLibraryTests(unittest.TestCase):
         context.__exit__.return_value = False
         client.connect.side_effect = OSError("player unavailable")
 
-        with mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
+        with mock.patch.object(self.fixture.library, "player_mode_status", return_value={}), \
+                mock.patch.object(self.fixture.library, "confirm_tv_playback"), \
+                mock.patch.object(mabeltv_library.socket, "AF_UNIX", 1, create=True), \
                 mock.patch.object(mabeltv_library.socket, "socket", return_value=context), \
                 self.assertRaisesRegex(ValueError, "not ready to start"):
             self.fixture.library.play_on_tv({

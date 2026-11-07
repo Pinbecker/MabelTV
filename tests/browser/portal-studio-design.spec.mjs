@@ -73,3 +73,77 @@ test('large playback confirmation cancels without a command and plays only after
   expect(writes[0]).toMatchObject({ kind: 'channel', channel: 1, file: 'Snowy Adventure.mp4' })
   expect(native).toEqual([])
 })
+
+async function openTvConfirmation(page) {
+  await page.route('**/api/studio/diagnostics', route => route.fulfill({ json: { ok: true } }))
+  await page.goto('/')
+  await page.waitForFunction(() => library?.channels?.length)
+  await page.evaluate(() => openWatchProgrammeSheet(library.channels[0], library.channels[0].programmes[0]))
+  await page.locator('#watchProgrammeTv').click()
+}
+
+test('TV playback stays pending, blocks duplicate taps and closes the programme only after success', async ({ page }, info) => {
+  let release, writes = 0
+  await page.route('**/api/play-on-tv', async route => {
+    writes++
+    await new Promise(resolve => { release = resolve })
+    await route.fulfill({ json: { ok: true, message: 'Playing Snowy Adventure on Mabel TV' } })
+  })
+  await openTvConfirmation(page)
+  await page.locator('#portalConfirmationAccept').click()
+  await expect(page.locator('#portalConfirmationAccept')).toHaveText('Starting on TV…')
+  await expect(page.locator('#portalConfirmationAccept')).toBeDisabled()
+  await expect(page.locator('#portalConfirmationCancel')).toBeDisabled()
+  await page.keyboard.press('Escape')
+  await page.evaluate(() => { document.querySelector('#portalConfirmationAccept').click(); void playOnTv({kind:'channel'}, 'Duplicate') })
+  await expect(page.locator('#portalConfirmationSheet')).toBeVisible()
+  await expect.poll(() => writes).toBe(1)
+  await page.screenshot({ path: info.outputPath('tv-starting.png') })
+  release()
+  await expect(page.locator('#portalConfirmationSheet')).toBeHidden()
+  await expect(page.locator('#watchProgrammeSheet')).toBeHidden()
+  await expect(page.locator('#notice')).toContainText('Playing Snowy Adventure')
+})
+
+test('TV playback failure stays in front with an explicit retry and cancel', async ({ page }, info) => {
+  let writes = 0
+  await page.route('**/api/play-on-tv', route => {
+    writes++
+    return route.fulfill(writes === 1
+      ? { status: 400, json: { error: 'The TV player is not ready to start that video' } }
+      : { json: { ok: true } })
+  })
+  await openTvConfirmation(page)
+  await page.locator('#portalConfirmationAccept').click()
+  await expect(page.locator('#portalConfirmationMessage')).toHaveText('The TV player is not ready to start that video')
+  await expect(page.locator('#portalConfirmationAccept')).toHaveText('Try again')
+  await expect(page.locator('#portalConfirmationCancel')).toBeEnabled()
+  await page.screenshot({ path: info.outputPath('tv-failed.png') })
+  expect(writes).toBe(1)
+  await page.locator('#portalConfirmationAccept').click()
+  await expect(page.locator('#watchProgrammeSheet')).toBeHidden()
+  expect(writes).toBe(2)
+})
+
+test('TV playback lost response is visible and never retried automatically', async ({ page }) => {
+  let writes = 0
+  await page.route('**/api/play-on-tv', route => { writes++; return route.abort('failed') })
+  await openTvConfirmation(page)
+  await page.locator('#portalConfirmationAccept').click()
+  await expect(page.locator('#portalConfirmationAccept')).toHaveText('Try again')
+  await expect(page.locator('#portalConfirmationMessage')).toContainText('Connection interrupted')
+  await page.locator('#portalConfirmationCancel').click()
+  await expect(page.locator('#portalConfirmationSheet')).toBeHidden()
+  await expect(page.locator('#watchProgrammeSheet')).toBeVisible()
+  expect(writes).toBe(1)
+})
+
+test('TV playback expired session exposes the PIN screen instead of another play loop', async ({ page }) => {
+  await page.route('**/api/play-on-tv', route => route.fulfill({ status: 401, json: { error: 'Session expired' } }))
+  await openTvConfirmation(page)
+  await page.locator('#portalConfirmationAccept').click()
+  await expect(page.locator('#portalConfirmationSheet')).toBeHidden()
+  await expect(page.locator('#watchProgrammeSheet')).toBeHidden()
+  await expect(page.locator('#loginError')).toContainText('Your session was locked')
+  await expect(page.locator('#pin')).toBeVisible()
+})

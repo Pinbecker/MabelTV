@@ -41,12 +41,21 @@ let managementBusy = false
     }
 
     async function playOnTv(payload, title) {
-      if (!await portalConfirm({ title: `Play “${title}” on ${tvName()}?`, message: 'This will replace what is currently playing.', confirmLabel: 'Play on TV' })) return
-      try {
-        await api('/api/play-on-tv', {
-          method: 'POST', body: JSON.stringify(payload)
-        })
-      } catch (error) { notice(error.message, true) }
+      const parents = [...document.querySelectorAll('dialog[open]')]
+      let result
+      const played = await portalConfirm({
+        title: `Play “${title}” on ${tvName()}?`,
+        message: 'This will replace what is currently playing.', confirmLabel: 'Play on TV',
+        pendingLabel: 'Starting on TV…',
+        onConfirm: async () => {
+          result = await api('/api/play-on-tv', { method: 'POST', body: JSON.stringify(payload) })
+          if (result.ok !== true) throw new Error(result.error || 'The TV did not start. Try again.')
+        },
+      })
+      if (!played) return
+      parents.forEach(dialog => portalSheets.close(dialog, { restore: false }))
+      portalSheets.dismissJourney()
+      notice(result.message || `Playing “${title}” on ${tvName()}`)
     }
 
     async function renameProgramme(channel, programme) {
